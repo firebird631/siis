@@ -1,0 +1,10 @@
+#!/bin/bash
+MARKETS='*USDT,*BTC'
+
+python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=1 --timeframe=1w &
+python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=1 --timeframe=1d
+python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=1 --timeframe=4h &
+python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=1 --timeframe=1h
+python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=50 --timeframe=15m &
+python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=50 --timeframe=5m
+python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=50 --timeframe=1m

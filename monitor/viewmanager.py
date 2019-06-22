@@ -1,0 +1,1 @@
+# @todo manage update of dynamic terminal views (part of actuel desktopnotifier)

@@ -1,0 +1,155 @@
+# @date 2018-09-08
+# @author Frederic SCHERMA
+# @license Copyright (c) 2018 Dream Overflow
+# Strategy appliance worker pool.
+
+import traceback
+import threading
+import time
+import multiprocessing
+import collections
+
+from terminal.terminal import Terminal
+
+import logging
+logger = logging.getLogger('siis.common.workerpool')
+
+
+class CountDown(object):
+
+    def __init__(self, n):
+        self._count = n
+        self._condition = threading.Condition()
+
+    def wait(self):
+        self._condition.acquire()
+        while self._count > 0:
+            self._condition.wait()
+        self._condition.release()
+
+    def done(self):
+        self._condition.acquire()
+        self._count -= 1
+        if self._count <= 0:
+            self._condition.notifyAll()
+        self._condition.release()
+
+
+class Worker(threading.Thread):
+
+    def __init__(self, pool, uid):
+        super().__init__(name="st-wk-%s" % uid)
+
+        self._pool = pool
+        self._uid = uid
+        self._running = False
+        self._ping = False
+
+    def start(self):
+        if not self._running:
+            self._running = True
+            try:
+                super().start()
+            except Exception as e:
+                self._running = False
+                return False
+
+            return True
+        else:
+            return False
+
+    def stop(self):
+        if self._running:
+            self._running = False
+
+    def __process_once(self):
+        count_down, job = self._pool.next_job()
+
+        if job:
+            job[0](*job[1])
+
+        if count_down:
+            count_down.done()
+
+        if not job:
+            # avoid CPU usage
+            time.sleep(0.00001)
+
+        if self._ping:
+            # process the pong message
+            self.pong("")
+            self._ping = False
+
+    def run(self):
+        # don't waste with try/catch, do it only at last level
+        # restart the loop if exception thrown
+        while self._running:
+            try:
+                while self._running:
+                    self.__process_once()
+            except Exception as e:
+                logger.error(traceback.format_exc())
+                Terminal.inst().error(repr(e))
+                self._error = e
+
+        self._running = False
+
+    @property
+    def running(self):
+        return self._running
+
+    @property
+    def uid(self):
+        return self._uid
+    
+    def ping(self):
+        self._ping = True
+
+    def pong(self, msg):
+        Terminal.inst().action("From the pool of worker, worker %s is alive %s" % (self._uid, msg), view='content')
+
+
+class WorkerPool(object):
+
+    def __init__(self, num_workers=None):
+        if not num_workers:
+            self._num_workers = multiprocessing.cpu_count()
+        else:
+            self._num_workers = num_workers
+
+        self._workers = [Worker(self, i) for i in range(0, self._num_workers)]
+        self._queue = collections.deque()
+        self._mutex = threading.RLock()
+
+    def start(self):
+        for worker in self._workers:
+            worker.start()
+
+    def stop(self):
+        for worker in self._workers:
+            if worker._running:
+                worker.stop()
+                worker.join()
+
+    def ping(self):
+        for worker in self._workers:
+            worker.ping()
+
+    def add_job(self, count_down, job):
+        self._mutex.acquire()
+        self._queue.append((count_down, job))
+        self._mutex.release()
+
+    def next_job(self):
+        count_down = None
+        job = None
+
+        self._mutex.acquire()
+        if len(self._queue):
+            count_down, job = self._queue.popleft()
+        self._mutex.release()
+
+        return count_down, job
+
+    def new_count_down(self, n):
+        return CountDown(n)
