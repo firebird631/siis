@@ -16,7 +16,7 @@ from notifier.notifiable import Notifiable
 from notifier.signal import Signal
 
 from terminal.terminal import Terminal
-from watcher.position import Position as WatcherPosition
+from trader.position import Position
 from trader.connector.papertrader.trader import PaperTrader
 
 
@@ -215,7 +215,7 @@ class TraderService(Service):
 
         if signal.signal_type == Signal.SIGNAL_POSITION_ENTER:
             # @deprecated @todo its from social trading...
-            direction = "long" if signal.data.direction == WatcherPosition.POSITION_LONG else "short"
+            direction = "long" if signal.data.direction == Position.LONG else "short"
 
             # here we only assume that because of what 1broker return to us but should be timestamp in the model
             position_timestamp = time.mktime(signal.data.entry_date.timetuple())
@@ -237,7 +237,7 @@ class TraderService(Service):
 
         elif signal.signal_type == Signal.SIGNAL_POSITION_EXIT:
             # @deprecated @todo its from social trading...
-            direction = "long" if signal.data.direction == WatcherPosition.POSITION_LONG else "short"
+            direction = "long" if signal.data.direction == Position.LONG else "short"
 
             # here we only assume that because of what 1broker return to us but should be timestamp in the model
             position_timestamp = time.mktime(signal.data.exit_date.timetuple())
@@ -269,9 +269,9 @@ class TraderService(Service):
         #       return          
 
         #   order_date = datetime.datetime.fromtimestamp(float(signal.data['timestamp']))
-        #   direction = 'long' if signal.data['direction'] == WatcherPosition.POSITION_LONG else 'short' if signal.data['direction'] == WatcherPosition.POSITION_SHORT else ''
+        #   direction = 'long' if signal.data['direction'] == Position.LONG else 'short' if signal.data['direction'] == Position.SHORT else ''
 
-        #   if signal.data['direction'] == WatcherPosition.POSITION_LONG or signal.data['direction'] == WatcherPosition.POSITION_SHORT:
+        #   if signal.data['direction'] == Position.LONG or signal.data['direction'] == Position.SHORT:
         #       Terminal.inst().low("Social trading order signal on %s :" % (order_date,))
         #       Terminal.inst().info("Strategy %s order %s on %s at %s" %  (signal.data['strategy'], direction, signal.data['symbol'], signal.data['price']))
         #       Terminal.inst().action("Trigger key %s to copy this signal..." % (key_id))

@@ -19,13 +19,17 @@ from terminal.terminal import Terminal
 
 class IGAccount(Account):
 
+    CURRENCY = "USD"
+    CURRENCY_SYMBOL = "$"
+
     def __init__(self, parent):
         super().__init__(parent)
 
         self._account_type = Account.TYPE_MARGIN
 
-        self._currency = 'EUR'
-        self._currency_ratio = 1.16  # from USD
+        self._currency = IGAccount.CURRENCY
+        self._currency_display = IGAccount.CURRENCY_SYMBOL
+        self._currency_ratio = 1.16  # initial, from USD
 
         self._last_update = 0.0
 

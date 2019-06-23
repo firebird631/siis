@@ -18,7 +18,7 @@ from trader.trader import Trader
 from .account import BinanceAccount
 
 from trader.asset import Asset
-from trader.position import Position as TraderPosition
+from trader.position import Position
 from trader.order import Order
 from terminal.terminal import Terminal
 from trader.account import Account
@@ -261,7 +261,7 @@ class BinanceTrader(Trader):
         self.unlock()
 
         symbol = order.symbol
-        side = Client.SIDE_BUY if order.direction == TraderPosition.POSITION_LONG else Client.SIDE_SELL
+        side = Client.SIDE_BUY if order.direction == Position.LONG else Client.SIDE_SELL
         time_in_force = Client.TIME_IN_FORCE_GTC  # @todo as option for the order strategy
 
         if order.quantity < market.min_size:
@@ -437,7 +437,7 @@ class BinanceTrader(Trader):
         #     order_type = Client.ORDER_TYPE_LIMIT
         #     price = limit_price
 
-        # side = Client.SIDE_SELL if position.direction == TraderPosition.POSITION_LONG else Client.SIDE_BUY
+        # side = Client.SIDE_SELL if position.direction == Position.LONG else Client.SIDE_BUY
 
         # data = {
         #     'symbol': symbol,
@@ -981,7 +981,7 @@ class BinanceTrader(Trader):
                 order.quantity = data['origQty']
                 order.executed = data['executedQty']
 
-                order.direction = Order.ORDER_LONG if data['side'] == 'BUY' else Order.ORDER_SHORT
+                order.direction = Order.LONG if data['side'] == 'BUY' else Order.SHORT
 
                 if data['type'] == 'LIMIT':
                     order.order_type = Order.ORDER_LIMIT
@@ -1220,7 +1220,7 @@ class BinanceTrader(Trader):
 
         if data['trade-id']:
             # same asset used for commission
-            buy_or_sell = data['direction'] == Order.ORDER_LONG
+            buy_or_sell = data['direction'] == Order.LONG
 
             # base details in the trade order
             base_trade_qty = data['filled']

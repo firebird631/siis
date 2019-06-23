@@ -27,14 +27,20 @@ class BitMexAccount(Account):
     Currency prefered is BTC. Conversion must be done prior and during update.
     """
 
+    CURRENCY = "BTC"
+    CURRENCY_SYMBOL = "₿"
+    ALT_CURRENCY = "USD"
+    ALT_CURRENCY_SYMBOL = "$"
+
     def __init__(self, parent):
         super().__init__(parent)
 
         self._account_type = Account.TYPE_MARGIN
 
-        self._currency = 'BTC'
-        self._alt_currency = "USD"
-        self._alt_currency_display = "$"
+        self._currency = BitMexAccount.CURRENCY
+        self._currency_display = BitMexAccount.CURRENCY_SYMBOL
+        self._alt_currency = BitMexAccount.ALT_CURRENCY
+        self._alt_currency_display = BitMexAccount.ALT_CURRENCY_SYMBOL
 
         self._currency_precision = 8
         self._alt_currency_precision = 2

@@ -284,11 +284,55 @@ the related broker identifier, and suffixed by :
 Running
 -------
 
+```
 python siis.py <identity> [--help, --options...]
+```
+
+### List of command line options ###
+
+* --help display command line help.
+* --version display the version number.
+* --profile=<profile> Use a specific profile of appliance else default loads any.
+* --paper-mode instanciate paper mode trader and simulate as best as possible.
+* --backtest process a backtesting, uses paper mode traders and data history avalaible in the database.
+* --timestep=<seconds> Timestep in seconds to increment the backesting. More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal candles size uses in the backtested strategies. Default is 60 seconds.
+* --time-factor=<factor> in backtesting mode only allow the user to change the time factor and permit to interact during the backtesting. Default speed factor is as fast as possible.
+* --check-data @todo Process a test on candles data. Check if there is inconsitencies into the time of the candles and if there is some gaps. The test is done only on the defined range of time.
+* --from=<YYYY-MM-DDThh:mm:ss> define the date time from which start the backtesting, fetcher or binarizer. If ommited use whoole data set (take care).
+* --to=<YYYY-MM-DDThh:mm:ss> define the date time to which stop the backtesting, fetcher or binarizer. If ommited use now.
+* --last=<number> Fast last number of candles for every watched market (take care can take all requests credits on the broker). By default it is configured to get 1m, 5m and 1h candles.
+* --market=<market-id> Specific market identifier to fetch, binarize only.
+* --broker=<broker-name> Specific fetcher or watcher name to fetche or binarize market from.
+* --timeframe=<timeframe> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in 1m 5m 15m 1h 2h 4h d m w
+* --cascaded=<max-timeframe> During fetch process generate the candles of highers timeframe from lowers. Default is no. Take care to have entire multiple to fullfill the generated candles.
+* --spec=<specific-option> Specific fetcher option (exemple STOCK for alphavantage.co fetcher to fetch a stock market).
+* --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.
+* --read-only Don't write market neither candles data to the database. Default is writing to the database.
+* --fetch Process the data fetcher.
+* --binarize Process to text file to binary conversion for a market (text version of data could be removed on the futur).
+
+You need to define the name of the identity to used. This is related to the name defined into the identities.py file.
+Then the next option must be the name of the profile of appliance to use --profile=<profilename>.
+
+```
+Important, about performance and stability :
+
+The nature of SiiS is to uses distinct thread per watcher, per websocket, per trader, plus a pool of worker
+for the strategies instances, and potentially some others thread for notification and communication extra services.
+
+Because of the Python GIL, thread are not as efficient as in Java or C++ programs. In Python using thread is good for IO, but not for computing where the GILcan be solicited too often and degrading the global performance of the program instance.
+
+In addition, to have a better stability it is more efficient to have distinct account, instance and profiles with the minimalist configuration.
+The lesser you have market to watch and to trade, the more the instance will be fast.
+
+This version as a prototype is monolithic, the connector and the watcher is in the same instance as the strategies. Then stopping an instance mean stopping to watch and to store in local DB the related market data. This is no longer a problem in the revisited version where connector are standalones processes configured per broket and account.
+```
+
+So you have different running mode, the normal mode, will start the watching, trading capacity (paper-mode, live or backtesting) and offering an interactive terminal session or you can run only the fetcher or the binarizer functions.
 
 
-Importing some data
--------------------
+Fetcher : importing some historical market data
+-----------------------------------------------
 
 ...
 
@@ -311,15 +355,45 @@ Live-mode
 ...
 
 
-Data storage
-------------
+About data storage
+------------------
 
-...
+The tick or trade data (price, volume) are stored during the running or when fetching data at the tick timeframe.
+The OHLC data are stored in the PostgreSQL database. But only the 4h, 1D, 1W candle are kept forever :
 
+* Weekly, daily, 4h and 3h ohlc are always kept and store in the SQL DB.
+* 2h, 1h and 45m ohlc are kept for 90 days (if the cleaner is executed).
+* 30m, 15m, 10m are kept for 21 days.
+* 5m, 3m, 1m are kept for 8 days.
+* 1s, 10s are never kept.
 
-## Data fetching ##
+The cleaner is executed frequently by running instance of SiiS. It is necessary to clean some candle, else the DB
+will become to big. In addition OHLC are used for live mode, to initially feed the indicators of the strategies,
+and to avoid to request the broker API for data history.
 
-...
+Why not requesting the broker API ? Because depending of the broker, but it take lot of time, especially when you have
+a lot of markets, it could consume lot of API call credits, or your are candle count limited like with IG (10k candles per week per account).
+Maybe this will not be longer a problem with the revisited version of SiiS because the connector are standalone
+then they don't have to be stopped each time you have to try some changes on your strategy.
+
+For conveniance I'm made some bash script to frequently fetch OHLC, and some others script (look at the scripts/ directory for examples)
+that I run juste before starting a live instance to make a prefetching (only the last N candles).
+I know there is more work that could be done on this part, but remember this version acts more as a prototype, but fonctionnal.
+
+About the file containing the ticks, there is bad effect of that design. The good effect is the high performance, but because of Python
+performance this is not very impressive, but the C++ version could read millions of tick per seconds, its more performant than any
+timestamp based DB engine. So the bad side is I've choosen to have 1 file per month (per market), and I've not implemented file initial
+seeking method, so its linear (but its not really a problem because when backtesting we not only do it for the last day of the month, and
+this optimization could be part of a futur developpement. The big problem is the temporal consistency of the data. I don't made any
+check of the timestamp before appending, then fetching could append to a file containing some more recent data, maybe with some lacks.
+I know, its really bad, for now if I need clean data set, I delete the month of the market I want to be clean, and I fetch them.
+
+Where it is more problematic its for IG broker, where it's impossible to get history at tick level. So missed data are forever missing.
+For this case I realize the backtesting on other dataset. A cool solution could be to run an instance with a profile having only
+the watchers, (using your demo account for the IG broker case), always running, then you will have all data from live. And then
+when you run the others instances to avoid multiple writting, use the --read-only option (will not work generated candle, neither ticks in files).
+
+All that to say, this part is far from be perfect, but I can deal with, so you could too.
 
 
 Troubles
@@ -331,7 +405,7 @@ TA-lib is not found : look you have installed it, and may be you have to export 
 Disclaimer
 ----------
 
-The authors are not responsible of the losses on your trading accounts you will made using SiiS Revisited,
+The authors are not responsible of the losses on your trading accounts you will made using SiiS,
 nethier of the data loss, corruption, computer crash or physicial dommages on your computers or on the cloud you uses.
 
 The authors are not responsible of the loss due to the lack of the security of your systems.

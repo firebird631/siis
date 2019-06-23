@@ -19,7 +19,6 @@ from common.utils import UTC, fix_thread_set_name, TIMEFRAME_FROM_STR_MAP
 
 from watcher.watcher import Watcher
 from watcher.service import WatcherService
-from watcher.position import Position
 
 from trader.trader import Trader
 from strategy.strategy import Strategy

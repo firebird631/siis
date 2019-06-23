@@ -58,7 +58,7 @@ class Database(object):
 
     Prefered ohlc of interest are 1m, 5m, 15m, 1h, 4h, daily, weekly.
 
-        - Weekly, daily, 4h and 3h ohlc are always kept and store in one sqlite DB per market.
+        - Weekly, daily, 4h and 3h ohlc are always kept and store in the SQL DB.
         - 2h, 1h and 45m ohlc are kept for 90 days (if the cleaner is executed).
         - 30m, 15m, 10m are kept for 21 days.
         - 5m, 3m, 1m are kept for 8 days.

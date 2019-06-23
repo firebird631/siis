@@ -16,7 +16,7 @@ from notifier.signal import Signal
 from trader.trader import Trader
 
 from .account import PaperTraderAccount
-from trader.position import Position as TraderPosition
+from trader.position import Position
 from trader.order import Order
 from trader.asset import Asset
 from terminal.terminal import Terminal
@@ -80,7 +80,7 @@ class PaperTraderHistoryEntry(object):
         """
         Return a string report.
         """
-        direction = "LONG" if self._order.direction == TraderPosition.POSITION_LONG else "SHORT"
+        direction = "LONG" if self._order.direction == Position.LONG else "SHORT"
         at = datetime.datetime.fromtimestamp(self._order.transact_time).strftime('%Y-%m-%dT%H:%M:%S.%fZ') if self._order.transact_time else ""
 
         if self._gain_loss_pip is not None:
@@ -640,10 +640,10 @@ class PaperTrader(Trader):
         # logger.info("- Market bid/ofr %s %s %s" % (bid_price, ofr_price, bid_price < ofr_price))
 
         # open long are executed on bid and short on ofr, close the inverse
-        if order.direction == TraderPosition.POSITION_LONG:
+        if order.direction == Position.LONG:
             open_exec_price = ofr_price  # bid_price
             close_exec_price = bid_price  # ofr_price
-        elif order.direction == TraderPosition.POSITION_SHORT:
+        elif order.direction == Position.SHORT:
             open_exec_price = bid_price  # ofr_price
             close_exec_price = ofr_price  # bid_price
         else:
@@ -756,10 +756,10 @@ class PaperTrader(Trader):
                 ofr_price = market.ofr
 
             # open long are executed on bid and short on ofr, close the inverse
-            if order.direction == TraderPosition.POSITION_LONG:
+            if order.direction == Position.LONG:
                 open_exec_price = ofr_price  # bid_price
                 close_exec_price = bid_price  # ofr_price
-            elif order.direction == TraderPosition.POSITION_SHORT:
+            elif order.direction == Position.SHORT:
                 open_exec_price = bid_price  # ofr_price
                 close_exec_price = ofr_price  # bid_price
             else:
@@ -973,10 +973,10 @@ class PaperTrader(Trader):
 
             # price difference depending of the direction
             delta_price = 0
-            if current_position.direction == TraderPosition.POSITION_LONG:
+            if current_position.direction == Position.LONG:
                 delta_price = close_exec_price - current_position.entry_price
                 # logger.debug("cl", delta_price, " use ", close_exec_price, " other ", open_exec_price, close_exec_price < open_exec_price)
-            elif current_position.direction == TraderPosition.POSITION_SHORT:
+            elif current_position.direction == Position.SHORT:
                 delta_price = current_position.entry_price - close_exec_price
                 # logger.debug("cs", delta_price, " use ", close_exec_price, " other ", open_exec_price, close_exec_price < open_exec_price)
 
@@ -1245,7 +1245,7 @@ class PaperTrader(Trader):
                 return False
 
             # create a new position at market
-            position = TraderPosition(self)
+            position = Position(self)
             position.symbol = order.symbol
 
             position.set_position_id(position_id)
@@ -1372,7 +1372,7 @@ class PaperTrader(Trader):
         quote_market = self._markets.get(quote_asset.symbol+quote_asset.quote)
         quote_exec_price = quote_market.price if quote_market else 1.0
 
-        if order.direction == TraderPosition.POSITION_LONG:
+        if order.direction == Position.LONG:
             # buy
             base_qty = order.quantity  # market.adjust_quantity(order.quantity)
             quote_qty = base_qty * open_exec_price  # quote_market.adjust_quantity(base_qty * open_exec_price) if quote_market else self.adjust_quantity(base_qty * open_exec_price)
@@ -1466,7 +1466,7 @@ class PaperTrader(Trader):
             self.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (order.symbol, order_data, order.ref_order_id))
             self.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (order.symbol, order.order_id, ""))
 
-        elif order.direction == TraderPosition.POSITION_SHORT:
+        elif order.direction == Position.SHORT:
             # sell
             base_qty = order.quantity  # market.adjust_quantity(order.quantity)
             quote_qty = base_qty * close_exec_price  # quote_market.adjust_quantity(base_qty * close_exec_price) if quote_market else self.adjust_quantity(base_qty * close_exec_price)
@@ -1672,43 +1672,43 @@ class PaperTrader(Trader):
         return quote_price * trade_qty
 
     def __limit_buy_sell(self, order, market):
-        if order.direction == TraderPosition.POSITION_LONG:
+        if order.direction == Position.LONG:
             pass  # @todo
 
-        elif order.direction == TraderPosition.POSITION_SHORT:
+        elif order.direction == Position.SHORT:
             pass  # @todo
 
     def __limit_margin(self, order, market):
-        if order.direction == TraderPosition.POSITION_LONG:
+        if order.direction == Position.LONG:
             pass  # @todo
 
-        elif order.direction == TraderPosition.POSITION_SHORT:
+        elif order.direction == Position.SHORT:
             pass  # @todo
 
     def __take_profit_buy_sell(self, order, market):
-        if order.direction == TraderPosition.POSITION_LONG:
+        if order.direction == Position.LONG:
             pass  # @todo
 
-        elif order.direction == TraderPosition.POSITION_SHORT:
+        elif order.direction == Position.SHORT:
             pass  # @todo
 
     def __take_profit_margin(self, order, market):
-        if order.direction == TraderPosition.POSITION_LONG:
+        if order.direction == Position.LONG:
             pass  # @todo
 
-        elif order.direction == TraderPosition.POSITION_SHORT:
+        elif order.direction == Position.SHORT:
             pass  # @todo
 
     def __stop_limit_buy_sell(self, order, market):
-        if order.direction == TraderPosition.POSITION_LONG:
+        if order.direction == Position.LONG:
             pass  # @todo
 
-        elif order.direction == TraderPosition.POSITION_SHORT:
+        elif order.direction == Position.SHORT:
             pass  # @todo
 
     def __stop_limit_margin(self, order, market):
-        if order.direction == TraderPosition.POSITION_LONG:
+        if order.direction == Position.LONG:
             pass  # @todo
 
-        elif order.direction == TraderPosition.POSITION_SHORT:
+        elif order.direction == Position.SHORT:
             pass  # @todo

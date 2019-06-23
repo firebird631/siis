@@ -7,7 +7,6 @@ import time
 import datetime 
 
 from terminal.terminal import Terminal
-from watcher.position import Position as WatcherPosition
 
 from config import config
 from strategy.strategy import Strategy

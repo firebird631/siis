@@ -207,11 +207,11 @@ class BitMexWatcher(Watcher):
                         continue
 
                     if ld.get('currentQty', 0) != 0:
-                        direction = Order.ORDER_SHORT if ld['currentQty'] < 0 else Order.ORDER_LONG
+                        direction = Order.SHORT if ld['currentQty'] < 0 else Order.LONG
                     elif ld.get('openOrderBuyQty', 0) > 0:
-                        direction = Order.ORDER_LONG
+                        direction = Order.LONG
                     elif ld.get('openOrderSellQty', 0) > 0:
-                        direction = Order.ORDER_SHORT
+                        direction = Order.SHORT
                     else:
                         direction = 0
 
@@ -314,7 +314,7 @@ class BitMexWatcher(Watcher):
                         order = {
                             'id': ld['orderID'],
                             'symbol': symbol,
-                            'direction': Order.ORDER_LONG if ld['side'] == 'Buy' else Order.ORDER_SHORT,
+                            'direction': Order.LONG if ld['side'] == 'Buy' else Order.SHORT,
                             'type': order_type,
                             'timestamp': transact_time,
                             'quantity': ld.get('orderQty', 0),

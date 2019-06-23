@@ -1448,7 +1448,7 @@ class Strategy(Runnable):
 
         # command data
         market_or_limit = data.get('limit', True)  # default is market order
-        direction = data.get('direction', Order.ORDER_LONG)
+        direction = data.get('direction', Order.LONG)
         lprice = data.get('price')
         method = data.get('method', 'market')
         quantity_rate = data.get('quantity-rate', 1.0)

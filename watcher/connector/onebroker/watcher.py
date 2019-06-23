@@ -20,10 +20,16 @@ from terminal.terminal import Terminal
 
 
 class OneBrokerWatcher(Watcher):
+	"""
+	1broker is now closed.
+
+	@deprecated no longer authorized broker.
+
 	# @todo use the 1broker connector to watch social positions and live data (using ws)
 	# @todo fetch_market and store
 	# @todo fetch tick and candles and store
 	# @todo store social buy/sell signals
+	"""
 
 	def __init__(self, service, name="1broker.com"):
 		super().__init__(name, service, Watcher.WATCHER_ALL)
@@ -192,7 +198,7 @@ class OneBrokerWatcher(Watcher):
 				position_id = t['position_id']
 				position = Position(self, position_id, author)
 
-				direction = Position.POSITION_LONG if t['direction'] == 'long' else Position.POSITION_SHORT
+				direction = Position.LONG if t['direction'] == 'long' else Position.SHORT
 				date_created = datetime.datetime.strptime(t['date_created'], "%Y-%m-%dT%H:%M:%SZ") # .%fZ")
 				is_open = t['is_open']
 

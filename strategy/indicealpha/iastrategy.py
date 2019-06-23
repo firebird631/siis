@@ -10,8 +10,7 @@ import copy
 import numpy as np
 
 from terminal.terminal import Terminal
-from watcher.position import Position as WatcherPosition
-from trader.position import Position as TraderPosition
+from trader.position import Position
 from trader.order import Order
 
 from config import config

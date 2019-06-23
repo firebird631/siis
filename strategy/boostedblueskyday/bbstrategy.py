@@ -10,8 +10,7 @@ import copy
 import numpy as np
 
 from terminal.terminal import Terminal
-from watcher.position import Position as WatcherPosition
-from trader.position import Position as TraderPosition
+from trader.position import Position
 from trader.order import Order
 
 from config import config
@@ -226,15 +225,15 @@ class BoostedBlueSkyDayStrategy(Strategy):
         price_vwma_score = 0
 
         if sub_trader.blueskyday:
-            if sub_trader.blueskyday[-1].direction == Position.POSITION_LONG:
+            if sub_trader.blueskyday[-1].direction == Position.LONG:
                 bsd_score = BSD_SCORE_FACTOR
-            elif sub_trader.blueskyday[-1].direction == Position.POSITION_SHORT:
+            elif sub_trader.blueskyday[-1].direction == Position.SHORT:
                 bsd_score = -BSD_SCORE_FACTOR
 
         if sub_trader.channelbreakout:
-            if sub_trader.channelbreakout[-1].direction == TraderPosition.POSITION_LONG:
+            if sub_trader.channelbreakout[-1].direction == Position.LONG:
                 cbo_score = CBO_SCORE_FACTOR
-            elif sub_trader.channelbreakout[-1].direction == TraderPosition.POSITION_SHORT:
+            elif sub_trader.channelbreakout[-1].direction == Position.SHORT:
                 cbo_score = -CBO_SCORE_FACTOR
 
         # rsi 30/70, gives strong signals
@@ -349,7 +348,7 @@ class BoostedBlueSkyDayStrategy(Strategy):
                 sub_trader.shorts.append((timestamp, last_prices[-1]))
 
             date_str = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-            direction = TraderPosition.POSITION_LONG if final_score > 0 else TraderPosition.POSITION_SHORT
+            direction = Position.LONG if final_score > 0 else Position.SHORT
 
             # create an order an post it
             if final_score > 0:
@@ -388,7 +387,7 @@ class BoostedBlueSkyDayStrategy(Strategy):
 
                 if order.quantity > 0:
                     # @todo debug only
-                    Terminal.inst().info("Do order %s %s with %s" % (instrument.market_id, 'SHORT' if direction==TraderPosition.POSITION_SHORT else 'LONG', order.quantity))
+                    Terminal.inst().info("Do order %s %s with %s" % (instrument.market_id, 'SHORT' if direction==Position.SHORT else 'LONG', order.quantity))
                     trader.create_order(order)
 
             # consumes buy sell signals

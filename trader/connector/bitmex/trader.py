@@ -233,7 +233,7 @@ class BitMexTrader(Trader):
         qty = order.quantity
 
         # short means negative quantity
-        if order.direction == Position.POSITION_SHORT:
+        if order.direction == Position.SHORT:
             qty = -qty
 
         exec_inst = []
@@ -369,7 +369,7 @@ class BitMexTrader(Trader):
         }
 
         # short mean negative quantity
-        if order.direction == Position.POSITION_SHORT:
+        if order.direction == Position.SHORT:
             qty = -qty
 
         # fully close (using Close and need 'side' when qty is not defined)
@@ -515,7 +515,7 @@ class BitMexTrader(Trader):
                 position.set_key(self.service.gen_key())
 
                 quantity = abs(float(pos['currentQty']))
-                direction = Position.POSITION_SHORT if pos['currentQty'] < 0 else Position.POSITION_LONG
+                direction = Position.SHORT if pos['currentQty'] < 0 else Position.LONG
 
                 position.entry(direction, symbol, quantity)
 
@@ -531,7 +531,7 @@ class BitMexTrader(Trader):
 
                 # absolute value because we work with positive quantity + direction information
                 position.quantity = abs(float(pos['currentQty']))
-                position.direction = Position.POSITION_SHORT if pos['currentQty'] < 0 else Position.POSITION_LONG
+                position.direction = Position.SHORT if pos['currentQty'] < 0 else Position.LONG
 
                 position.leverage = pos['leverage']
 
@@ -599,7 +599,7 @@ class BitMexTrader(Trader):
             #   continue
 
             # update
-            order.direction = Position.POSITION_LONG if src_order['side'] == 'Buy' else Position.POSITION_SHORT
+            order.direction = Position.LONG if src_order['side'] == 'Buy' else Position.SHORT
             # 'orderQty' (ordered qty), 'cumQty' (cumulative done), 'leavesQty' (remaning)
             order.quantity = src_order.get('leavesQty', src_order.get('orderQty', 0))
 

@@ -565,11 +565,11 @@ class IGWatcher(Watcher):
                         event_time = datetime.datetime.strptime(data['date'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
 
                         if data['direction'] == 'BUY':
-                            direction = Order.ORDER_LONG
+                            direction = Order.LONG
                         elif data['direction'] == 'SELL':
-                            direction = Order.ORDER_SHORT
+                            direction = Order.SHORT
                         else:
-                            direction = Order.ORDER_LONG                        
+                            direction = Order.LONG                        
 
                         quantity = float(data.get('size')) if data.get('size') is not None else 0.0
 
@@ -646,11 +646,11 @@ class IGWatcher(Watcher):
                     data = json.loads(values.get('OPU'))
 
                     if data.get('direction', '') == 'BUY':
-                        direction = Order.ORDER_LONG
+                        direction = Order.LONG
                     elif data.get('direction', '') == 'SELL':
-                        direction = Order.ORDER_SHORT
+                        direction = Order.SHORT
                     else:
-                        direction = Order.ORDER_LONG
+                        direction = Order.LONG
 
                     position_id = data['dealId']
                     ref_order_id = data['dealReference']

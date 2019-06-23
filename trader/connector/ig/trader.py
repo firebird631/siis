@@ -16,7 +16,7 @@ from trader.trader import Trader
 
 from .account import IGAccount
 
-from trader.position import Position as TraderPosition
+from trader.position import Position
 from trader.order import Order
 from terminal.terminal import Terminal
 from trader.account import Account
@@ -253,7 +253,7 @@ class IGTrader(Trader):
         epic = order.symbol
         size = order.quantity
 
-        direction = 'BUY' if order.direction == TraderPosition.POSITION_LONG else 'SELL'
+        direction = 'BUY' if order.direction == Position.LONG else 'SELL'
 
         # EPIC market detail fetched once next use cached
         market_info = self.market(epic)
@@ -351,7 +351,7 @@ class IGTrader(Trader):
                 self._orders[order.order_id] = order
 
                 # store the position directly because create_open_position fetch the position after acceptance or wait the WS signal
-                # position = TraderPosition(self)
+                # position = Position(self)
                 # position.set_key(self.service.gen_key())
 
                 # position.entry(direction, epic, size)
@@ -432,7 +432,7 @@ class IGTrader(Trader):
             order_type = 'LIMIT'
             level = limit_price
 
-        direction = 'SELL' if position.direction == TraderPosition.POSITION_LONG else 'BUY'
+        direction = 'SELL' if position.direction == Position.LONG else 'BUY'
 
         # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
         logger.info(self._previous_order)
@@ -592,12 +592,12 @@ class IGTrader(Trader):
             # create or update the local position
             #
 
-            direction = TraderPosition.POSITION_LONG if pos.get('direction') == 'BUY' else TraderPosition.POSITION_SHORT
+            direction = Position.LONG if pos.get('direction') == 'BUY' else Position.SHORT
             quantity = pos.get('dealSize', 0.0)
 
             position = self._positions.get(deal_id)
             if position is None:
-                position = TraderPosition(self)
+                position = Position(self)
 
                 position.set_position_id(deal_id)
                 position.set_key(self.service.gen_key())

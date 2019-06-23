@@ -14,7 +14,7 @@ import urllib.parse
 
 from watcher.watcher import Watcher
 from watcher.author import Author
-from watcher.position import Position
+from trader.position import Position
 from notifier.signal import Signal
 
 from config import config
@@ -187,7 +187,7 @@ class TradingViewWatcher(Watcher):
 			if not direction:
 				continue
 
-			dir_type = Position.POSITION_LONG if direction == 'long' else Position.POSITION_SHORT
+			dir_type = Position.LONG if direction == 'long' else Position.SHORT
 
 			# expiry after 180 seconds (@todo are we sure to first filtering here ?)
 			now = time.time()

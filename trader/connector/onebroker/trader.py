@@ -15,7 +15,7 @@ from notifier.signal import Signal
 from trader.trader import Trader
 
 from .account import OneBrokerAccount
-from trader.position import Position as TraderPosition
+from trader.position import Position
 from trader.order import Order
 from terminal.terminal import Terminal
 
@@ -234,7 +234,7 @@ class OneBrokerTrader(Trader):
 		else:
 			order_type = 'market'
 
-		direction = "long" if order.direction == TraderPosition.POSITION_LONG else "short"
+		direction = "long" if order.direction == Position.LONG else "short"
 		margin = order.quantity
 
 		# min/max leverage or custom leverage from account and conf @todo not here, on strategy and comes from appliance/instrument not trader
@@ -365,7 +365,7 @@ class OneBrokerTrader(Trader):
 		response = self._connector._conn.getresponse()
 		data = response.read()
 
-		direction = "long" if position.direction == TraderPosition.POSITION_LONG else "short"
+		direction = "long" if position.direction == Position.LONG else "short"
 
 		if response.status != 200:
 			Terminal.inst().error("Http error close on %s a %s order for %s !" % (self.name, direction, position.symbol))
@@ -471,7 +471,7 @@ class OneBrokerTrader(Trader):
 				# an order open to a position
 
 				# insert the new position
-				position = TraderPosition(self)
+				position = Position(self)
 
 				position.set_position_id(pos['position_id'])
 				position.set_key(self.service.gen_key())
@@ -479,7 +479,7 @@ class OneBrokerTrader(Trader):
 				# create the position
 				position.set_copied_position_id(order.copied_position_id)
 				position.entry(
-					TraderPosition.POSITION_LONG if pos['direction'] == 'long' else TraderPosition.POSITION_SHORT,
+					Position.LONG if pos['direction'] == 'long' else Position.SHORT,
 					pos['symbol'],
 					pos['margin'],
 					float(pos['take_profit']) if pos['take_profit'] else None,
@@ -514,7 +514,7 @@ class OneBrokerTrader(Trader):
 				# can be a full update
 				if not position.created_time:
 					position.entry(
-						TraderPosition.POSITION_LONG if pos['direction'] == 'long' else TraderPosition.POSITION_SHORT,
+						Position.LONG if pos['direction'] == 'long' else Position.SHORT,
 						pos['symbol'],
 						pos['margin'],
 						float(pos['take_profit']) if pos['take_profit'] else None,
@@ -532,7 +532,7 @@ class OneBrokerTrader(Trader):
 				# externaly created position or with auto copy of plateforme
 
 				# create from copy of position (lookup for position)
-				position = TraderPosition(self)
+				position = Position(self)
 
 				position.set_position_id(pos['position_id'])
 				position.set_key(self.service.gen_key())
@@ -541,7 +541,7 @@ class OneBrokerTrader(Trader):
 				# create the position
 				position.set_copied_position_id(copy_of)
 				position.entry(
-					TraderPosition.POSITION_LONG if pos['direction'] == 'long' else TraderPosition.POSITION_SHORT,
+					Position.LONG if pos['direction'] == 'long' else Position.SHORT,
 					pos['symbol'],
 					pos['margin'],
 					pos['take_profit'],

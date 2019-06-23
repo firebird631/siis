@@ -625,7 +625,7 @@ class BinanceWatcher(Watcher):
                     'symbol': symbol,
                     'type': order_type,
                     'trade-id': str(data['t']),
-                    'direction': Order.ORDER_LONG if data['S'] == 'BUY' else Order.ORDER_SHORT,
+                    'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
                     'timestamp': timestamp,
                     'quantity': float(data['q']),
                     'order-price': float(data['p']),
@@ -679,7 +679,7 @@ class BinanceWatcher(Watcher):
                 order = {
                     'id': order_id,
                     'symbol': symbol,
-                    'direction': Order.ORDER_LONG if data['S'] == 'BUY' else Order.ORDER_SHORT,
+                    'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
                     'type': order_type,
                     'timestamp': event_timestamp,
                     'quantity': float(data['q']),

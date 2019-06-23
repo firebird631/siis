@@ -254,7 +254,7 @@ class StrategyTrader(object):
                     continue
 
                 # potential order exec close price (always close a long)
-                close_exec_price = self.instrument.close_exec_price(Order.ORDER_LONG)
+                close_exec_price = self.instrument.close_exec_price(Order.LONG)
 
                 if trade.tp > 0 and (close_exec_price >= trade.tp):
                     # take profit order
@@ -288,7 +288,7 @@ class StrategyTrader(object):
                     Terminal.inst().high(text, view='common') if profit_loss_rate > 0 else Terminal.inst().low(text, view='common')
 
                     # notify
-                    self.strategy.notify_order(trade.id, Order.ORDER_SHORT, self.instrument.market_id,
+                    self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
                             market.format_price(close_exec_price), timestamp, trade.timeframe,
                             'take-profit', profit_loss_rate)
 
@@ -322,7 +322,7 @@ class StrategyTrader(object):
                     Terminal.inst().high(text, view='common') if profit_loss_rate > 0 else Terminal.inst().low(text, view='common')
 
                     # notify
-                    self.strategy.notify_order(trade.id, Order.ORDER_SHORT, self.instrument.market_id,
+                    self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
                             market.format_price(close_exec_price), timestamp, trade.timeframe,
                             'stop-loss', profit_loss_rate)
 

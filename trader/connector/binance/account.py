@@ -28,8 +28,9 @@ class BinanceAccount(Account):
     """
 
     CURRENCY = "BTC"
+    CURRENCY_SYMBOL = "₿"
     ALT_CURRENCY = "USDT"
-    ALT_CURRENCY_DISPLAY = "T"
+    ALT_CURRENCY_SYMBOL = "Ť"
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -37,8 +38,9 @@ class BinanceAccount(Account):
         self._account_type = Account.TYPE_ASSET
         
         self._currency = BinanceAccount.CURRENCY
+        self._currency_display = BinanceAccount.CURRENCY_SYMBOL
         self._alt_currency = BinanceAccount.ALT_CURRENCY
-        self._alt_currency_display = BinanceAccount.ALT_CURRENCY_DISPLAY
+        self._alt_currency_display = BinanceAccount.ALT_CURRENCY_SYMBOL
 
         self._currency_precision = 8
         self._alt_currency_precision = 2

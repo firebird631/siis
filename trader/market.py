@@ -381,9 +381,9 @@ class Market(object):
         If position is long, then returns the market ofr price.
         If position is short, then returns the market bid price.
         """
-        if direction == Position.POSITION_LONG:
+        if direction == Position.LONG:
             return self._ofr
-        elif direction == Position.POSITION_SHORT:
+        elif direction == Position.SHORT:
             return self._bid
         else:
             return self._ofr
@@ -395,9 +395,9 @@ class Market(object):
         If position is long, then returns the market bid price.
         If position is short, then returns the market ofr price.
         """
-        if direction == Position.POSITION_LONG:
+        if direction == Position.LONG:
             return self._bid
-        elif direction == Position.POSITION_SHORT:
+        elif direction == Position.SHORT:
             return self._ofr
         else:
             return self._bid

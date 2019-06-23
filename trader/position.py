@@ -23,8 +23,8 @@ class Position(Keyed):
     @deprecated copied_position_id must be managed at social strategy level.
     """
 
-    POSITION_LONG = 1    # long direction
-    POSITION_SHORT = -1  # short direction
+    LONG = 1    # long direction
+    SHORT = -1  # short direction
 
     STATE_PENDING = 0
     STATE_OPENED = 1
@@ -57,7 +57,7 @@ class Position(Keyed):
         self._take_profit = None
         self._stop_loss = None
         self._trailing_stop = False
-        self._direction = Position.POSITION_LONG
+        self._direction = Position.LONG
 
         # for social position
         self._author = None
@@ -251,9 +251,9 @@ class Position(Keyed):
         """
         Map the direction to one of the given object or string parameters.
         """
-        if self._direction == Position.POSITION_LONG:
+        if self._direction == Position.LONG:
             return if_long
-        elif self._direction == Position.POSITION_SHORT:
+        elif self._direction == Position.SHORT:
             return if_short
 
         return default
@@ -268,9 +268,9 @@ class Position(Keyed):
             return 0.0
 
         # delta price if closing at market
-        if self.direction == Position.POSITION_LONG:
+        if self.direction == Position.LONG:
             delta_price = market.bid - self.entry_price
-        elif self.direction == Position.POSITION_SHORT:
+        elif self.direction == Position.SHORT:
             delta_price = self.entry_price - market.ofr
         else:
             delta_price = 0.0
@@ -289,9 +289,9 @@ class Position(Keyed):
             return
 
         # delta price if closing at market
-        if self.direction == Position.POSITION_LONG:
+        if self.direction == Position.LONG:
             delta_price = market.bid - self.entry_price
-        elif self.direction == Position.POSITION_SHORT:
+        elif self.direction == Position.SHORT:
             delta_price = self.entry_price - market.ofr
         else:
             delta_price = 0.0
@@ -326,7 +326,7 @@ class Position(Keyed):
         Return the inverse of the direction of the position that is needed to close or revert this position.
         It does not invert the position ! Its just a syntaxic sugar.
         """
-        return Position.POSITION_LONG if self.direction == Position.POSITION_SHORT else Position.POSITION_SHORT
+        return Position.LONG if self.direction == Position.SHORT else Position.SHORT
 
     def position_cost(self, market):
         """

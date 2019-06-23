@@ -356,7 +356,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         market = trader.market(self.instrument.market_id)
 
         quantity = 0.0
-        direction = Order.ORDER_LONG   # entry is always a long
+        direction = Order.LONG   # entry is always a long
         price = price + market.spread  # signal price + spread
 
         # date_time = datetime.datetime.fromtimestamp(timestamp)

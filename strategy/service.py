@@ -16,7 +16,6 @@ from notifier.notifiable import Notifiable
 from notifier.signal import Signal
 
 from terminal.terminal import Terminal
-from watcher.position import Position as WatcherPosition
 
 from strategy.strategy import Strategy
 

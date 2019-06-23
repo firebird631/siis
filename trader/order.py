@@ -13,8 +13,8 @@ class Order(Keyed):
     @deprecated copied_position_id must be managed at social strategy level.
     """
 
-    ORDER_LONG = 1    # long direction
-    ORDER_SHORT = -1  # short direction
+    LONG = 1    # long direction
+    SHORT = -1  # short direction
 
     ORDER_MARKET = 0             # market order
     ORDER_LIMIT = 1              # entry or exit limit
@@ -261,7 +261,7 @@ class Order(Keyed):
     #
 
     def direction_to_str(self):
-        return 'long' if self._direction == self.ORDER_LONG else 'short'
+        return 'long' if self._direction == self.LONG else 'short'
 
     def is_market(self):
         """

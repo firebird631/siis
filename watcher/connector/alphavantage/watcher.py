@@ -24,8 +24,6 @@ from terminal.terminal import Terminal
 from instrument.instrument import Instrument, Candle, Tick
 from database.database import Database
 
-from watcher.position import Position
-from trader.order import Order
 from trader.market import Market
 
 import logging

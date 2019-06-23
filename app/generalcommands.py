@@ -94,7 +94,6 @@ class UnaliasCommand(Command):
         return True
 
 
-
 def register_general_commands(commands_handler):
     cmd = HelpCommand(commands_handler)
     commands_handler.register(cmd)

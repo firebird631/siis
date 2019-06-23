@@ -13,7 +13,7 @@ import logging
 import subprocess
 import traceback
 
-from watcher.position import Position
+from trader.position import Position
 from monitor.discord import send_to_discord
 
 from notifier.notifiable import Notifiable
@@ -134,7 +134,7 @@ class DesktopNotifier(Notifiable):
                 label = "Entry position on %s" % (signal.data.symbol,)
                 message = "Trader %s enter %s on %s at %s (x%s)" % (
                     signal.data.author.name if signal.data.author is not None else "???",
-                    "long" if signal.data.direction == Position.POSITION_LONG else "short",
+                    "long" if signal.data.direction == Position.LONG else "short",
                     signal.data.symbol,
                     signal.data.entry_price,
                     signal.data.leverage)
@@ -151,7 +151,7 @@ class DesktopNotifier(Notifiable):
                 label = "Exit position on %s" % (signal.data.symbol,)
                 message = "Trader %s exit %s on %s at %s" % (
                     signal.data.author.name,
-                    "long" if signal.data.direction == Position.POSITION_LONG else "short",
+                    "long" if signal.data.direction == Position.LONG else "short",
                     signal.data.symbol,
                     signal.data.exit_price)
 
@@ -163,7 +163,7 @@ class DesktopNotifier(Notifiable):
 
                 message = "Position %s %s of %s on %s start at %s %s is in regretable loss %s (%s%%) :$" % (
                     signal.data.position_id,
-                    "long" if signal.data.direction == Position.POSITION_LONG else "short",
+                    "long" if signal.data.direction == Position.LONG else "short",
                     signal.data.author.name if signal.data.author is not None else "???",
                     signal.data.trader.name,
                     signal.data.entry_price,
@@ -178,7 +178,7 @@ class DesktopNotifier(Notifiable):
 
                 message = "Position %s %s of %s on %s start at %s %s is in enjoyable profit %s (%s%%) :)" % (
                     signal.data.position_id,
-                    "long" if signal.data.direction == Position.POSITION_LONG else "short",
+                    "long" if signal.data.direction == Position.LONG else "short",
                     signal.data.author.name if signal.data.author is not None else "???",
                     signal.data.trader.name,
                     signal.data.entry_price,
@@ -188,7 +188,7 @@ class DesktopNotifier(Notifiable):
 
             elif signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
                 icon = "contact-new"
-                direction = "long" if signal.data['direction'] == Position.POSITION_LONG else "short"
+                direction = "long" if signal.data['direction'] == Position.LONG else "short"
                 audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
 
                 if signal.data['action'] == 'stop':
