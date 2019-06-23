@@ -64,8 +64,8 @@ Features
 
 ### Donation ###
 
-BTC: 1GVdwcVrvvbqBgzNMii6tGNhTYnGvsJZFE
-ETH: 0xd9cbda09703cdd4df9aeabf63f23be8da19ca9bf
+* BTC: 1GVdwcVrvvbqBgzNMii6tGNhTYnGvsJZFE
+* ETH: 0xd9cbda09703cdd4df9aeabf63f23be8da19ca9bf
 
 
 Installation
@@ -124,26 +124,161 @@ in these files describe a possible way to install them.
 Configuration
 -------------
 
-First running will create a .siis folder on Linux based systems, and into UserData/siis on Windows.
+First running will try to create a data structure on your local user.
+* /home/<username>/.siis on Linux based systems
+* C:\Users\<username\AppData\Local\siis on Windows
+* /Users/<username>/.siis on MacOSX
 
-### <.siis/config/>config.py ###
+The directory will contains 4 sub-directories:
+
+* config/ contains important configurations files (described belows)
+* log/ contains siis.log the main log and evantually some others logs files (client.log...)
+* markets/ contains sub-directories for each configured brokers (detailes belows)
+* reports/ contains the reports of the backtesting, per datetime, broker name, 3 files per reports (data.py, report.log, trades.log)
+
+### config ###
+
+#### <.siis/config/>config.py ####
 
 You have an initial file in config/config.py. Do not modifiy the original.
 
-...
+This file comes from the beginning of the project, would need some reorganization, but it looks like :
+
+* DATABASES the 'siis' database configuration (type is pgsql or mysql). There is only only database for now.
+* FETCHERS You should not modifiy this dict, it contains the classpath for the availables fetchers.
+* WATCHERS Must contain 1 entry per broker to have the capacity to connect to a broker, watching price data, and user trade data
+    * Not those values could be overrided into the appliances.py file but here you could defined the general config
+        and eventually having the necessary adjustement on the appliances profiles
+    * status if None then it will not be loaded by default else must be set to 'load'
+    * classpath You should not modify the default value
+    * symbols The list of the market identifier that you want to look for
+        * (could be overrided per appliance profile)
+        * on binance all tickers are watched but you can filter for some markets
+        * on bitmex all markets are subscribed by default but you can filter too
+        * on IG take care because your are limit on the number of subscriptions (like 40 max per account)
+        * this must be a list of string
+            * either the full name of the market
+            * either a wildchar prefixed value. For example *BTC to filter any BTC quoted paires
+            * either a ! prefixed value (meaning not) for avoiding this particular market
+            * you could have ['*BTC', '!BCHABCBTC'] for exemple to watching any BTC quote paires excpted the BCHABCBTC.
+    * there is some more specific options on the tradingview webhock server (host and port of your listening server).
+* INDICATORS Like for fetcher you might not have to modifiy this part or if you create your own indicators.
+* TRADEOPS Again likes indictors, except if you create your own trade operations.
+* STRATEGIES Contains the default built-ins strategies, you'll need to add yours here.
+* TRADERS Must contains 1 entry per broker to have the capacity to enable the trading feature for the live-mode
+    * Not those values could be overrided into the appliances.py file but here you could defined the general config
+        and eventually having the necessary adjustement on the appliances profiles
+    * status if None then it will not be loaded by default else must be set to 'load'
+        * (could be overrided per appliance profile)
+    * classpath You should not modify the default value
+    * symbols Contains a list of the market identifiers allowed for trading and than strategies will be able to auto-trades
+        * (could be overrided per appliance profile)
+        * If a market identifier is not defined on the WATCHERS side it could not be found
+    * leverage its a deprecated values list used only for 1broker
+        * (could be overrided per appliance profile)
+    * stop-loosing-position its a deprecated feature to cut margin positions at the trader level
+        * (could be overrided per appliance profile)
+        * mode level or percent or balance-percent
+        * value
+    * paper-mode To define the paper trader initially balances
+        * (could be overrided per appliance profile)
+        * type asset or margin to specify the account type
+        * currency principal currency asset symbol
+        * currency-symbol only for display
+        * alt-currency alternative currency asset symbol (usefull for binance)
+        * alt-currency-symbol only for display
+        * initial initial balance in the currency if type is margin
+        * assets is a list of the initials balance for different assets
+            * base name of the asset
+            * quote prefered quote (where asset + quote must related to a valid market)
+            * initial initial quantity for the asset
+
+* MONITORING Contains the configuration of the listening service to connect a futur Web tools
+  to control SiiS more friendly than using the CLI
 
 
-### <.siis/config/>appliances.py ###
+#### <.siis/config/>appliances.py ####
 
 You have an initial file in config/appliances.py. Do not modify the original.
 
-...
+This file must contains your configuration named profile (command line options --profile=<profilename>).
+You have the profiles and the appliances.
 
+A profile is a mixing of one or many appliance, that can be runned on a same instance of SiiS, with
+traders and watchers options overriding.
 
-### <.siis/config/>identities.py ###
+* PROFILES At the first level you have the unique name of the profile
+    * If no profile is specicied on command line option the default profile will be used
+        * You should constat than any appliances will then be loaded, its a bad idea, probably the profile option
+          will be mandatory in the futur and the wildchar usage too.
+    * appliances A list of the name of the appliance to run in this profile (instance)
+    * watchers A dict of the watchers to enable
+        * unique name of the watcher
+            * status Must be set to enabled to load the module of the watcher
+    * traders a dict of the traders to enable
+        * unique name of the trader
+            * it is recommanded to have only one trader per profile (per running instance)
+            * any of the options configured in the config.py TRADERS can be overrided here
+              especially the paper-mode option when you want to make some specifics profiles of backtesting
+* APPLIANCES At the first level you have the unique name of the appliance
+    * status enabled or None If None the appliance could not be started in any of the profiles
+    * strategy
+        * name Identifier of the strategy (binance.com, bitmex.com, ig.com....)
+        * parameters Here you can overrides any of the default strategy parameters (indicator constants, timeframes...)
+    * watcher A list of the different watcher to use for the strategy (for now only one source of data is possible)
+        * name Watcher unique identifier
+        * symbols If defined here it overrided the symbols list from config.py (see WATCHERS)
+    * trader The related trader (even for paper-mode)
+        * name Identifier of the trader (binance.com, bitmex.com, ig.com...)
+        * instruments A dict for the mapping of the traded instruments
+            * Supports a wildchar as the beginning
+            * You can map a common symbol name (like EURUSD) to the broker market identifier (useful when multiple watcher sources)
+            * market-id Mapped broker unique market identifier or {0} when using wildchar
+                * If you have for example '*BTC' as instrument, you want to map any of the BTC quote market to the same settings
+                  then you will have to set market-id to {0} that will be replaced by the filtered market identifier
+            * size Base quantity in quote asset to trade
+                * if USD 100 and margin, will trade 100$ per position
+                * if BTC 0.5 and asset spot, will trade an equivalent (adjusted value) of 0.5 BTC of the asset quantity
+                * if size is in contract then 1.0 mean 1 contract (1 lot for forex, or 1 mini-lot if market is mini lot or 1 micro-lot...)
+            * alias User defined instrument name alias
+ 
+
+#### <.siis/config/>identities.py ####
 
 This is the more sensible file, which contains your API keys.
 You have a config/identities.py.template file. Do not modify this file it will not be read.
+
+* IDENTITIES
+    * the identifier of the differents brokers
+        * profiles name
+            * for my usage I have real and demo
+            * specific needed value for the connector (API key, account identifier, password...)
+
+The template show you the needed values to configure for the supported brokers.
+
+
+### markets ###
+
+Each broker have its own usage name, creating if directory. Then you have 1 sub-directory per market.
+The market is identified by the unique broker market name.
+
+Then you will have a sub-directory T/ meaning tick or trade. All filed then found defines data at the tick
+or trade level. For binance or bitmex this is at aggregate trade level, for IG its ticks.
+
+There is one file per month, there is a binary and a tabular version of the file at this time. But maybe later
+the tabular version will be disabled and not stored by default.
+
+See more details on the data fetching section.
+
+
+### reports ###
+
+Each backtest generate a triplet of files beginning with the starting datetime of the backtest, plus 
+the related broker identifier, and suffixed by :
+
+* data.py some Python data array (possibles evolution of this file)
+* report.log this is a summary
+* trades.log this a tabular file containing each trades with profit/loss and balance
 
 
 Running
@@ -178,6 +313,11 @@ Live-mode
 
 Data storage
 ------------
+
+...
+
+
+## Data fetching ##
 
 ...
 
