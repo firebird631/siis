@@ -35,7 +35,7 @@ class CryptoAlphaStrategy(Strategy):
     """
 
     def __init__(self, strategy_service, watcher_service, trader_service, options, parameters):
-        super().__init__("cryptoalpha", strategy_service, watcher_service, trader_service, options, parameters)
+        super().__init__("cryptoalpha", strategy_service, watcher_service, trader_service, options, DEFAULT_PARAMS)
 
         if parameters:
             # apply overrided parameters

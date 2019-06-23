@@ -52,6 +52,8 @@ class CommandsHandler(object):
         self._alias = {}
         self._accelerators = {}
 
+        self._aliases = {}
+
     def register(self, command):
         """
         Register a new command with unique id, optionnal alias and optionnal accelerator.
@@ -156,3 +158,25 @@ class CommandsHandler(object):
                 result.append((command.accelerator, command.help))
 
         return result
+
+    def set_alias(self, key_code, args):
+        if key_code and args:
+            self._aliases[key_code] = args
+
+    def reset_alias(self, key_code):
+        if key_code in self._aliases:
+            del self._aliases[key_code]
+
+    def process_key(self, key_code, args):
+        """
+        Process a key on the command handler.
+        F(X) keys are used for aliases.
+        """
+        if key_code in self._aliases:
+            return self._aliases[key_code]
+
+        # @todo manage tab-key for completation
+        # @todo manage left/right key for cursor
+        # @todo manage ctrl-backspace for word cut
+
+        return args

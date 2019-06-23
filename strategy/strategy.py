@@ -994,8 +994,9 @@ class Strategy(Runnable):
     def notify_order(self, trade_id, direction, symbol, price, timestamp, timeframe,
             action='order', rate=None, stop_loss=None, take_profit=None):
         """
-        Notify a potentiel order to the user, that does not process an order. It must be called by the strategy,
-        when a potentiel order occcurs, and the strategy may or may not order it.
+        Notify an executed order to the user. It must be called by the strategy.
+
+        @param trade_id If -1 then it notify a simple signal unrelated to a trade.
         """
         signal_data = {
             'trade-id': trade_id,

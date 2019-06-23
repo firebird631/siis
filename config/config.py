@@ -137,7 +137,6 @@ TRADERS = {
         'status': None,  # 'load', @todo api are not same version as 1broker.com
         'classpath': 'trader.connector.onefox.trader.OneFoxTrader',
         'symbols': ['BTCUSD', 'BCHUSD'],
-        'default-margin': 0.003,      # BTC
         'stop-loosing-position': {
             'mode': 'percent',
             'value': 0.4

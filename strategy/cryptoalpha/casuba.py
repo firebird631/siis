@@ -41,7 +41,7 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
         prices = self.price.compute(last_timestamp, candles)
         volumes = self.volume.compute(last_timestamp, candles)
 
-        signal = self.process4(timestamp, last_timestamp, candles, prices, volumes)
+        signal = self.process3(timestamp, last_timestamp, candles, prices, volumes)
 
         if candles:
             # last processed candle timestamp (from last candle if non consolidated else from the next one)

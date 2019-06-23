@@ -18,7 +18,7 @@ class Signal(object):
 	SIGNAL_AUTHOR_REMOVED = 8
 
 	SIGNAL_POSITION_ENJOY = 9
-	SIGNAL_STRATEGY_ENTRY_EXIT = 10     # data is a dict {'trader-name', 'symbol', 'direction', 'price', 'symbol', 'action', 'rate', 'timestamp'}
+	SIGNAL_STRATEGY_ENTRY_EXIT = 10     # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'rate', 'timestamp', ...}
 
 	SIGNAL_WAKE_UP = 100                # data is a float timestamp
 	SIGNAL_SOCIAL_ORDER = 102           # data is a tuple with (str market id, dict position details)

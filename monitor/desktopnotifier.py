@@ -28,8 +28,10 @@ from common.utils import timeframe_to_str
 class DesktopNotifier(Notifiable):
     """
     Desktop + audible notification from some particulars signals.
+
     @todo seperate module and as a service + instance : one for the desktop, one for the terminal views, one for the email, one discord, to avoid blocking
     @todo config
+    @todo the discord notifier part had to move to a DiscordNotifier module
     """
 
     AUDIO_ALERT_SIMPLE = 0
@@ -220,6 +222,10 @@ class DesktopNotifier(Notifiable):
                         send_to_discord(self._discord_webhook[signal.data['identifier']], 'CryptoBot', '```' + message + '```')
                     else:
                         send_to_discord(self._discord_webhook['signals'], 'CryptoBot', '```' + message + '```')
+
+                # log them to the content view
+                Terminal.inst().notice(label, view="content")
+                Terminal.inst().notice(message, view="content")
 
             # process sound
             if self.audible and audio_alert:

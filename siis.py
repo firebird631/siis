@@ -403,6 +403,10 @@ def application(argv):
                     # cancel command
                     value = None
 
+                if key:
+                    values = ' '.join(commands_handler.process_key(key, values.split(' ')))
+
+                # @todo move the rest to command_handler
                 if c:
                     if c == '\b' and value and value.startswith(':'):
                         # backspace, erase last command char
@@ -446,10 +450,10 @@ def application(argv):
                                 Terminal.inst().action("Send replicate to market command for position %s" % (value,), view='status')
                                 trader_service.command(Trader.COMMAND_TRIGGER, {'key': value})
 
-                            else:
-                                # unsupported command
-                                value = value[1:]
-                                Terminal.inst().action("Unsupported command %s" % (value,), view='status')
+                            # else:
+                            #     # unsupported command
+                            #     value = value[1:]
+                            #     Terminal.inst().action("Unsupported command %s" % (value,), view='status')
 
                         # clear command value
                         value = None

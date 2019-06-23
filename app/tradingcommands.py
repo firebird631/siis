@@ -155,6 +155,7 @@ class LongCommand(Command):
             Terminal.inst().action("Quantity must be non empty", view='status')
             return False
 
+
         self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, {
             'appliance': appliance,
             'market-id': market_id,

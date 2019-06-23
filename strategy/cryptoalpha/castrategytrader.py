@@ -375,6 +375,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # create an order
         #
 
+        # only if active
         do_order = self.strategy.activity
 
         order_quantity = 0.0
@@ -425,9 +426,6 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if do_order:
             trade = StrategyAssetTrade(timeframe)
 
-            # logger.info("Order long %s qty=%s p=%s sl=%s tp=%s ts=%s" % (self.instrument.market_id,
-            #    market.format_quantity(order_quantity), market.format_price(order_price), market.format_price(stop_loss), market.format_price(take_profit), date_str))
-
             # the new trade must be in the trades list if the event comes before, and removed after only it failed
             self.add_trade(trade)
 
@@ -441,44 +439,52 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             else:
                 self.remove_trade(trade)
 
+        else:
+            # notify a signal only
+            self.strategy.notify_order(-1, Order.LONG, self.instrument.market_id, market.format_price(price),
+                    timestamp, trade.timeframe, 'entry', None, market.format_price(stop_loss), market.format_price(take_profit))
+
     def process_exit(self, timestamp, trade, exit_price, immediate=True):
         if trade is None:
             return
 
-        if immediate:
-            # close at market as taker
-            trader = self.strategy.trader()
-            trade.close(trader, self.instrument.market_id)
+        do_order = self.strategy.activity
 
-            self._global_streamer.member('buy-exit').update(exit_price, timestamp)
+        if do_order:
+            if immediate:
+                # close at market as taker
+                trader = self.strategy.trader()
+                trade.close(trader, self.instrument.market_id)
 
-            market = trader.market(self.instrument.market_id)
+                self._global_streamer.member('buy-exit').update(exit_price, timestamp)
 
-            # estimed profit/loss rate
-            profit_loss_rate = (exit_price - trade.p) / trade.p
+                market = trader.market(self.instrument.market_id)
 
-            # estimed maker/taker fee rate for entry and exit
-            if trade.get_stats()['entry-maker']:
-                profit_loss_rate -= market.maker_fee
+                # estimed profit/loss rate
+                profit_loss_rate = (exit_price - trade.p) / trade.p
+
+                # estimed maker/taker fee rate for entry and exit
+                if trade.get_stats()['entry-maker']:
+                    profit_loss_rate -= market.maker_fee
+                else:
+                    profit_loss_rate -= market.taker_fee
+
+                if trade.get_stats()['exit-maker']:
+                    profit_loss_rate -= market.maker_fee
+                else:
+                    profit_loss_rate -= market.taker_fee
+
+                # notify
+                self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, market.format_price(exit_price),
+                        timestamp, trade.timeframe, 'exit', profit_loss_rate)
             else:
-                profit_loss_rate -= market.taker_fee
+                # delayed
 
-            if trade.get_stats()['exit-maker']:
-                profit_loss_rate -= market.maker_fee
-            else:
-                profit_loss_rate -= market.taker_fee
+                # will exit at market, using update_trade on the next iteration
+                trade.sl = exit_price if exit_price < trade.p else 0
+                trade.tp = exit_price if exit_price > trade.p else 0
 
-            # notify
-            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, market.format_price(exit_price),
-                    timestamp, trade.timeframe, 'exit', profit_loss_rate)
-        else:
-            # delayed
-
-            # will exit at market, using update_trade on the next iteration
-            trade.sl = exit_price if exit_price < trade.p else 0
-            trade.tp = exit_price if exit_price > trade.p else 0
-
-            # or will create an exit order
-            # trader = self.strategy.trader()
-            # trade.modify_take_profit(trader, self.instrument.market_id, exit_price)
-            # trade.modify_stop_loss(trader, self.instrument.market_id, exit_price)
+                # or will create an exit order
+                # trader = self.strategy.trader()
+                # trade.modify_take_profit(trader, self.instrument.market_id, exit_price)
+                # trade.modify_stop_loss(trader, self.instrument.market_id, exit_price)
