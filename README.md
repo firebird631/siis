@@ -327,3 +327,16 @@ Troubles
 
 TA-lib is not found : look you have installed it, and may be you have to export your LD_LIBRARY_PATH.
 
+
+Disclaimer
+----------
+
+The authors are not responsible of the losses on your trading accounts you will made using SiiS Revisited,
+nethier of the data loss, corruption, computer crash or physicial dommages on your computers or on the cloud you uses.
+
+The authors are not responsible of the loss due to the lack of the security of your systems.
+
+Use SiiS at your own risk, backtest strategies many time before running them on a live account. Test the stability,
+test the efficiency, take in account the potential execution slippage and latency caused by the network, the broker or
+by having an inadequate system.
+
