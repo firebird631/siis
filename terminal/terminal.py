@@ -926,6 +926,14 @@ class Terminal(object):
                 if ord(c[0]) == 27:
                     self._key = 'KEY_ESCAPE'
                     return None
+
+                if c[0] == '\t':
+                    self._key = 'KEY_STAB'
+                    return None
+
+                if c[0] == '\n':
+                    self._key = 'KEY_ENTER'
+                    return '\n'
             except:
                 pass
 
@@ -933,10 +941,16 @@ class Terminal(object):
             if c and c.startswith('KEY_'):
                 
                 if c == 'KEY_BACKSPACE':
+                    self._key = c
                     return '\b'
 
                 elif c == 'KEY_ENTER':
+                    self._key = c
                     return '\n'
+
+                elif c == 'KEY_BTAB':
+                    self._key = 'KEY_BTAB'
+                    return None
 
                 elif c == 'KEY_RESIZE':  # ch == curses.KEY_RESIZE:
                     for k, view in self._views.items():

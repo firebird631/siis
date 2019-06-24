@@ -11,8 +11,8 @@ DEFAULT_PARAMS = {
     'max-trades': 3,    # max number of simultaned trades for a same market
     'trade-delay': 30,  # at least wait 30 seconds before sending another signal 
     'base-timeframe': Instrument.TF_TICK,   # process each time strategy receive a tick
-    'min-traded-timeframe': Instrument.TF_15MIN,
-    'max-traded-timeframe': Instrument.TF_HOUR,
+    'min-traded-timeframe': Instrument.TF_MIN,
+    'max-traded-timeframe': Instrument.TF_MIN,
     'need-update': True,      # only compute when update is waited
     'min-vol24h': 100,        # 300 BTC per 24h
     'min-price': 0.00000069,  # or 69 sats (to binary otherwise)
@@ -42,7 +42,7 @@ DEFAULT_PARAMS = {
                 'fibonacci': None,  # ('fibonacci', 15,),
                 'pivotpoint': ('pivotpoint', 3,),
                 'tomdemark': None,
-                'atr': ('atr', 14, 1.618),
+                'atr': ('atr', 14, 2.618),
             },
             'constants': {
                 'rsi_low': 0.3,
@@ -74,7 +74,7 @@ DEFAULT_PARAMS = {
                 'fibonacci': None,  # ('fibonacci', 15,),
                 'pivotpoint': ('pivotpoint', 3,),
                 'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.618),
+                'atr': ('atr', 14, 2.618),
             },
             'constants': {
                 'rsi_low': 0.3,
@@ -106,7 +106,7 @@ DEFAULT_PARAMS = {
                 'fibonacci': None,  # ('fibonacci', 15,),
                 'pivotpoint': ('pivotpoint', 3,),
                 'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.618),
+                'atr': ('atr', 14, 2.618),
             },
             'constants': {
                 'rsi_low': 0.3,
@@ -138,7 +138,7 @@ DEFAULT_PARAMS = {
                 'fibonacci': None,  # ('fibonacci', 15,),
                 'pivotpoint': ('pivotpoint', 3,),
                 'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.618),
+                'atr': ('atr', 14, 2.618),
             },
             'constants': {
                 'rsi_low': 0.3,
@@ -170,7 +170,7 @@ DEFAULT_PARAMS = {
                 'fibonacci': None,  # ('fibonacci', 15,),
                 'pivotpoint': ('pivotpoint', 3,),
                 'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.618),
+                'atr': ('atr', 14, 2.618),
             },
             'constants': {
                 'rsi_low': 0.3,
@@ -202,7 +202,7 @@ DEFAULT_PARAMS = {
                 'fibonacci': None,  # ('fibonacci', 15,),
                 'pivotpoint': ('pivotpoint', 3,),
                 'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.618),
+                'atr': ('atr', 14, 2.618),
             },
             'constants': {
                 'rsi_low': 0.3,
@@ -234,7 +234,39 @@ DEFAULT_PARAMS = {
                 'fibonacci': None,  # ('fibonacci', 15,),
                 'pivotpoint': ('pivotpoint', 3,),
                 'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.618),
+                'atr': ('atr', 14, 2.618),
+            },
+            'constants': {
+                'rsi_low': 0.3,
+                'rsi_high': 0.7,
+            }
+        },
+        {
+            'timeframe': Instrument.TF_MIN,
+            'parent': Instrument.TF_MIN,
+            'mode': 'A',
+            'depth': 20,
+            'history': 20,
+            'score-ratio': 0.5,
+            'score-level': 0.05,
+            'indicators': {
+                'price': ('price', 1,),
+                'volume': ('volume', 0,),
+                'rsi': ('rsi', 8,),
+                'stochrsi': ('stochrsi', 13, 13, 13),
+                'sma': ('sma', 20,),
+                'ema': ('ema', 8,),
+                'hma': ('hma', 8,),
+                'vwma': ('vwma', 8,),
+                'momentum': ('momentum', 20,),
+                'stochastic': None,
+                'macd': None,  # ('macd', 17,),
+                'bollingerbands': None, # ('bollingerbands', 26,),
+                'triangle': None,
+                'fibonacci': None,  # ('fibonacci', 15,),
+                'pivotpoint': ('pivotpoint', 3,),
+                'tomdemark': ('tomdemark', 9),
+                'atr': ('atr', 14, 2.618),
             },
             'constants': {
                 'rsi_low': 0.3,

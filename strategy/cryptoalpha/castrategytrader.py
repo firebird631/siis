@@ -263,6 +263,10 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 tf_match = False
                 retained_exit = None
 
+                # don't manage user trade here
+                if trade.is_user_managed():
+                    continue
+
                 for signal in exits:
                     hi_signal_tf = self.parent_timeframe(signal.timeframe)
 
@@ -303,22 +307,22 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 stop_loss = trade.sl
 
                 # ATR stop-loss update
-                # sl = self.timeframes[trade.timeframe].atr.stop_loss(trade.direction)
-                # if sl > stop_loss:
-                #     stop_loss = sl
+                sl = self.timeframes[trade.timeframe].atr.stop_loss(trade.direction)
+                if sl > stop_loss:
+                    stop_loss = sl
 
-                # profitable stop-loss for long direction
-                for resistances in self.timeframes[trade.timeframe].pivotpoint.resistances:
-                    if len(resistances):
-                        level = np.min(resistances)
-                        if last_price >= level and level > stop_loss:
-                            stop_loss = level
+                # # profitable stop-loss for long direction
+                # for resistances in self.timeframes[trade.timeframe].pivotpoint.resistances:
+                #     if len(resistances):
+                #         level = np.min(resistances)
+                #         if last_price >= level and level > stop_loss:
+                #             stop_loss = level
 
-                for supports in self.timeframes[trade.timeframe].pivotpoint.supports:
-                    if len(supports):
-                        level = np.max(supports)
-                        if last_price >= level and level > stop_loss:
-                            stop_loss = level
+                # for supports in self.timeframes[trade.timeframe].pivotpoint.supports:
+                #     if len(supports):
+                #         level = np.max(supports)
+                #         if last_price >= level and level > stop_loss:
+                #             stop_loss = level
 
                 # need a parameters, or compute using ATR
                 # if (trade.get_stats()['best-price'] - trade.p) / trade.p >= 0.0075:

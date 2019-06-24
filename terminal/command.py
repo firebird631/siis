@@ -3,6 +3,12 @@
 # @license Copyright (c) 2018 Dream Overflow
 # terminal commands
 
+import json
+
+import logging
+logger = logging.getLogger('siis.command')
+
+
 class Command(object):
 
     def __init__(self, command_id, command_alias=None, accelerator=None, is_user=False):
@@ -44,8 +50,17 @@ class Command(object):
     def execute(self, args):
         return True
 
+    def completion(self, args, tab_pos):
+        return args, tab_pos
+
 
 class CommandsHandler(object):
+    """
+    Process direct key and advanced command.
+    Offers history, aliases with shortcut, and completion.
+
+    F(X) keys are used for aliases.
+    """
 
     def __init__(self):
         self._commands = {}
@@ -53,6 +68,45 @@ class CommandsHandler(object):
         self._accelerators = {}
 
         self._aliases = {}
+        self._history = []
+        self._history_pos = 0
+        self._current = []
+        self._tab_pos = 0
+
+    def init(self, config):
+        filename = config.get('config-path', '.') + '/' + "history.json"
+
+        try:
+            f = open(filename, "rb")
+            data = json.loads(f.read())
+            f.close()
+
+            self._history = data.get('commands', [])
+            self._aliases = data.get('aliases', {})
+
+        except FileNotFoundError as e:
+            pass
+        except json.JSONDecodeError as e:
+            pass
+        except Exception as e:
+            logger.error(repr(e))
+
+    def terminate(self, config):
+        filename = config.get('config-path', '.') + '/' + "history.json"
+
+        try:
+            f = open(filename, "wb")
+            
+            dump = json.dumps({
+                "commands": self._history,
+                "aliases": self._aliases
+            })
+            
+            f.write(dump.encode('utf-8'))
+
+            f.close()
+        except Exception as e:
+            logger.error(repr(e))
 
     def register(self, command):
         """
@@ -109,10 +163,19 @@ class CommandsHandler(object):
         """
         Process from advanced command line.
         """
-        args = command_line.split(' ')
+        if command_line.startswith(':'):
+            args = command_line[1:].split(' ')
+        else:
+            args = []
 
         if len(args):
-            cmd = args[0].lstrip(':')  # remove the trailing ':' if necessary
+            cmd = args[0]
+
+            if not self._history or (self._history and ([cmd, *args[1:]] != self._history[-1])):
+                self._history.append([cmd, *args[1:]])
+    
+            self._history_pos = 0
+            self._current = []
 
             if cmd in self._commands:
                 return self._commands[cmd].execute(args[1:])
@@ -123,6 +186,27 @@ class CommandsHandler(object):
                     return self._commands[command_id].execute(args[1:])
 
         return False
+
+    def process_cli_completion(self, args, tab_pos):
+        """
+        Process work completion from advanced command line.
+        """
+        if len(args):
+            cmd = args[0]
+
+            self._history_pos = 0
+
+            if cmd in self._commands:
+                largs, tp = self._commands[cmd].completion(args[1:], tab_pos)
+                return [cmd, *largs], tp
+
+            elif cmd in self._alias:
+                command_id = self._alias[cmd]
+                if command_id in self._commands:
+                    largs, tp = self._commands[command_id].completion(args[1:], tab_pos)
+                    return [cmd, *largs], tp
+
+        return args, tab_pos
 
     def get_cli_help(self):
         """
@@ -170,12 +254,47 @@ class CommandsHandler(object):
     def process_key(self, key_code, args):
         """
         Process a key on the command handler.
-        F(X) keys are used for aliases.
         """
         if key_code in self._aliases:
+            self._current = []
+            self._history_pos = 0
+
             return self._aliases[key_code]
 
-        # @todo manage tab-key for completation
+        elif key_code == 'KEY_ESCAPE':
+            self._current = []
+            self._history_pos = 0
+
+        elif key_code == 'KEY_STAB':
+            self._tab_pos += 1
+            args, self._tab_pos = self.process_cli_completion(args, self._tab_pos)
+
+            return args
+
+        elif key_code == 'KEY_BTAB':
+            self._tab_pos = max(0, self._tab_pos-1)
+            args, self._tab_pos = self.process_cli_completion(args, self._tab_pos-1)
+
+            return args
+
+        elif key_code == 'KEY_UP':
+            if self._history:
+                if (len(self._history) + self._history_pos > 0):
+                    if self._history_pos == 0:
+                        self._current = args
+
+                    self._history_pos -= 1
+                    return self._history[self._history_pos]
+
+        elif key_code == 'KEY_DOWN':
+            if self._history:
+                if self._history_pos < 0:
+                    self._history_pos += 1
+                    return self._history[self._history_pos]
+                else:
+                    return self._current
+
+        # @todo manage tab-key for completion
         # @todo manage left/right key for cursor
         # @todo manage ctrl-backspace for word cut
 

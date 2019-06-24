@@ -24,6 +24,7 @@ class PlayCommand(Command):
 
     def execute(self, args):
         if not args:
+            Terminal.inst().action("Missing parameters", view='status')
             return False
 
         if args[0] == 'traders':
@@ -49,6 +50,7 @@ class PauseCommand(Command):
 
     def execute(self, args):
         if not args:
+            Terminal.inst().action("Missing parameters", view='status')
             return False
 
         if args[0] == 'traders':
@@ -74,6 +76,7 @@ class InfoCommand(Command):
 
     def execute(self, args):
         if not args:
+            Terminal.inst().action("Missing parameters", view='status')
             return False
 
         if args[0] == 'traders':
@@ -96,6 +99,7 @@ class LongCommand(Command):
 
     def execute(self, args):
         if not args:
+            Terminal.inst().action("Missing parameters", view='status')
             return False
 
         # ie: ":long altbtc:BTCUSDT L@8500 SL@8300 TP@9600 1.0"
@@ -182,6 +186,7 @@ class ShortCommand(Command):
 
     def execute(self, args):
         if not args:
+            Terminal.inst().action("Missing parameters", view='status')
             return False
 
         # ie: ":long altbtc:BTCUSDT L@8500 SL@8300 TP@9600 1.0"
@@ -268,6 +273,7 @@ class CloseCommand(Command):
 
     def execute(self, args):
         if not args:
+            Terminal.inst().action("Missing parameters", view='status')
             return False
 
         appliance = None
@@ -308,6 +314,7 @@ class DynamicStopLossOperationCommand(Command):
 
     def execute(self, args):
         if not args:
+            Terminal.inst().action("Missing parameters", view='status')
             return False
 
         appliance = None
@@ -358,6 +365,7 @@ class RemoveOperationCommand(Command):
 
     def execute(self, args):
         if not args:
+            Terminal.inst().action("Missing parameters", view='status')
             return False
 
         appliance = None
@@ -444,6 +452,7 @@ class ModifyTakeProfitCommand(Command):
 
     def execute(self, args):
         if not args:
+            Terminal.inst().action("Missing parameters", view='status')
             return False
 
         appliance = None
@@ -487,6 +496,7 @@ class TradeInfoCommand(Command):
 
     def execute(self, args):
         if not args:
+            Terminal.inst().action("Missing parameters", view='status')
             return False
 
         appliance = None
@@ -530,6 +540,10 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     cmd = InfoCommand(trader_service, strategy_service)
     commands_handler.register(cmd)
 
+    #
+    # order
+    #
+
     cmd = LongCommand(strategy_service)
     commands_handler.register(cmd)
 
@@ -539,21 +553,21 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     cmd = CloseCommand(strategy_service)
     commands_handler.register(cmd)
 
-    cmd = RemoveOperationCommand(strategy_service)
-    commands_handler.register(cmd)
-
     cmd = ModifyStopLossCommand(strategy_service)
     commands_handler.register(cmd)
 
     cmd = ModifyTakeProfitCommand(strategy_service)
     commands_handler.register(cmd)    
 
-    cmd = TradeInfoCommand(strategy_service)
-    commands_handler.register(cmd)
-
     #
     # trade operations
     #
+
+    cmd = TradeInfoCommand(strategy_service)
+    commands_handler.register(cmd)
+
+    cmd = RemoveOperationCommand(strategy_service)
+    commands_handler.register(cmd)
 
     cmd = DynamicStopLossOperationCommand(strategy_service)
     commands_handler.register(cmd)

@@ -2,16 +2,16 @@
 TO='2019-12-31T23:59:59'
 MARKETS='XBTUSD,ETHUSD,ETHM19,BCHM19,LTCM19,TRXM19,EOSM19,XRPM19,ADAM19,ETHU19,BCHU19,LTCU19,TRXU19,EOSU19,XRPU19,ADAU19'
 # last mysql 2019-04-01
-# last pgsql 2019-06-17
+# last pgsql 2019-06-24
 
 # need the last 7 day to reconstruct the weekly
-FROM='2019-06-17T00:00:00'
+FROM='2019-06-24T00:00:00'
 python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1d --cascaded=1w
 
 # need the last 4 1h to reconstruct the 4h
-FROM='2019-06-21T12:00:00'
+FROM='2019-06-24T12:00:00'
 python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1h --cascaded=4h
 
 # need the last 3 5m to reconstruct the 15m
-FROM='2019-06-21T12:00:00'
+FROM='2019-06-24T12:00:00'
 python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=5m --cascaded=15m

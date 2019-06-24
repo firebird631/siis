@@ -41,7 +41,7 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
         prices = self.price.compute(last_timestamp, candles)
         volumes = self.volume.compute(last_timestamp, candles)
 
-        signal = self.process3(timestamp, last_timestamp, candles, prices, volumes)
+        signal = self.process4(timestamp, last_timestamp, candles, prices, volumes)
 
         if candles:
             # last processed candle timestamp (from last candle if non consolidated else from the next one)
@@ -645,20 +645,20 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
 
         level1_signal = 0
 
-        # if self.ema.last < self.sma.last:
-        #     # bear trend
-        #     if self.rsi.last > 0.5:  # initial: 0.5
-        #         level1_signal = -1
-        #     elif self.rsi.last < 0.2:  # initial: 0.2
-        #         level1_signal = 1
-        # else:
-        #     # bull trend
-        #     if self.rsi.last > 0.8:  # initial: 0.8
-        #         level1_signal = -1
-        #     elif self.rsi.last < 0.6:  # initial: 0.6
-        #         level1_signal = 1
+        if self.ema.last < self.sma.last:
+            # bear trend
+            if self.rsi.last > 0.5:  # initial: 0.5
+                level1_signal = -1
+            elif self.rsi.last < 0.2:  # initial: 0.2
+                level1_signal = 1
+        else:
+            # bull trend
+            if self.rsi.last > 0.8:  # initial: 0.8
+                level1_signal = -1
+            elif self.rsi.last < 0.6:  # initial: 0.6
+                level1_signal = 1
 
-        if bbawe > 0:
+        if bbawe > 0 and level1_signal >= 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_ENTRY
             signal.dir = 1
@@ -670,7 +670,7 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             if len(self.pivotpoint.resistances[2]):
                 signal.tp = np.max(self.pivotpoint.resistances[2])
 
-        elif bbawe < 0:
+        elif bbawe < 0 and level1_signal <= 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_ENTRY
             signal.dir = -1
@@ -681,6 +681,9 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
 
             if len(self.pivotpoint.supports[2]):
                 signal.tp = np.min(self.pivotpoint.supports[2])
+
+        # if the target is lesser than a profit then ignore it
+        # @todo
 
         if self.tomdemark:
             self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.close)

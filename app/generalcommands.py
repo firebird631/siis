@@ -60,7 +60,7 @@ class AliasCommand(Command):
         if not key_code:
             return False
 
-        commands_handler.set_alias(key_code, args[1:])
+        self._commands_handler.set_alias(key_code, args[1:])
         return True
 
 
@@ -90,7 +90,7 @@ class UnaliasCommand(Command):
         if not key_code:
             return False
 
-        commands_handler.reset_alias(key_code)
+        self._commands_handler.reset_alias(key_code)
         return True
 
 
