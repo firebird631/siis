@@ -70,6 +70,9 @@ class StrategyMarginTrade(StrategyTrade):
         self._stats['entry-maker'] = not order.is_market()
 
         if trader.create_order(order):
+            # keep the related create position identifier if available
+            self.position_id = order.position_id
+
             if not self.open_time:
                 # only at the first open
                 self._open_time = order.created_time
@@ -89,6 +92,8 @@ class StrategyMarginTrade(StrategyTrade):
             if trader.cancel_order(self.create_oid):
                 self.create_ref_oid = None
                 self.create_oid = None
+
+                self._entry_state = StrategyTrade.STATE_CANCELED
 
         if self.stop_oid:
             # cancel the stop order
@@ -110,6 +115,8 @@ class StrategyMarginTrade(StrategyTrade):
             if trader.cancel_order(self.create_oid):
                 self.create_ref_oid = None
                 self.create_oid = None
+
+                self._entry_state = StrategyTrade.STATE_CANCELED
             else:
                 return False
 
@@ -225,6 +232,8 @@ class StrategyMarginTrade(StrategyTrade):
             if trader.cancel_order(self.create_oid):
                 self.create_ref_oid = None
                 self.create_oid = None
+
+                self._entry_state = StrategyTrade.STATE_CANCELED
 
         if self.stop_oid:
             # cancel the stop order
@@ -418,7 +427,6 @@ class StrategyMarginTrade(StrategyTrade):
             self.position_id = data['id']
             self.t = data['timestamp']
 
-            # for IG its OK but not for bitmex (users indivisble margin trade)
             if data.get('filled') is not None and data['filled'] > 0:
                 filled = data['filled']
             elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -442,7 +450,6 @@ class StrategyMarginTrade(StrategyTrade):
                 self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
         elif signal_type == Signal.SIGNAL_POSITION_UPDATED:
-            # for IG... but not for bitmex
             if data.get('filled') is not None and data['filled'] > 0:
                 filled = data['filled']
             elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:

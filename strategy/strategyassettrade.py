@@ -9,6 +9,9 @@ from database.database import Database
 from trader.order import Order
 from .strategytrade import StrategyTrade
 
+import logging
+logger = logging.getLogger('siis.strategy')
+
 
 class StrategyAssetTrade(StrategyTrade):
     """
@@ -96,12 +99,12 @@ class StrategyAssetTrade(StrategyTrade):
                 # returns true, no need to wait signal confirmation
                 self.buy_oid = None
                 self.buy_ref_oid = None
-                self._entry_state = StrategyTrade.STATE_DELETED
-                return True
+                
+                self._entry_state = StrategyTrade.STATE_CANCELED
             else:
                 return False
-        else:
-            return True
+
+        return True
 
     def modify_take_profit(self, trader, market_id, price):
         self.tp = price

@@ -403,7 +403,15 @@ def application(argv):
                     value = None
 
                 if key:
-                    values = ' '.join(commands_handler.process_key(key, values.split(' ')))
+                    # split the commande line
+                    args = value.split(' ') if value else []
+
+                    # process on the arguments
+                    args = commands_handler.process_key(key, [])
+
+                    if args:
+                        # regen the updated commande ligne
+                        value = ' '.join(args)
 
                 # @todo move the rest to command_handler
                 if c:

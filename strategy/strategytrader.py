@@ -23,17 +23,28 @@ logger = logging.getLogger('siis.strategy')
 class StrategyTrader(object):
     """
     A strategy can manage multiple instrument. Strategy trader is on of the managed instruments.
+
+    @todo _global_streamer must be improved. streaming functionnalities must be only connected to the
+        notification receiver (only then keep notify_order calls), streaming will be done on a distinct service.
+        disable any others streaming capacities on the sub-traders excepted for debug purposes.
     """
+
+    MAX_TIME_UNIT = 18  # number of timeframe unit for a trade expiry, default to 18 units
 
     def __init__(self, strategy, instrument):
         self.strategy = strategy
         self.instrument = instrument
+        
         self.trades = []
+        
         self._mutex = threading.RLock()
         self._next_trade_id = 1
 
+        self._expiry_max_time_unit = StrategyTrader.MAX_TIME_UNIT
+
         self._global_streamer = None
         self._timeframe_streamers = {}
+
         self._stats = {
             'perf': 0.0,     # initial
             'worst': 0.0,    # worst trade lost
@@ -112,7 +123,7 @@ class StrategyTrader(object):
                 order_id = data[1]['id'] if type(data[1]) is dict else data[1]
                 ref_order_id = data[2] if (len(data) > 2 and type(data[2]) is str) else None
 
-                if trade.is_target_order(order_id, ref_order_id):   
+                if trade.is_target_order(order_id, ref_order_id):
                     trade.order_signal(signal_type, data[1], data[2] if len(data) > 2 else None)
 
         except Exception as e:
@@ -168,10 +179,8 @@ class StrategyTrader(object):
 
     def update_timeout(self, timestamp, trade):
         """
-        Aadjust the take-profit to current price (bid or ofr)
-        and the stop-loss very tiny to protect the issue of the trade, when
-        the trade arrives to a validity expiration. Mostly depend ofthe timeframe of
-        the trade.
+        Aadjust the take-profit to current price (bid or ofr) and the stop-loss very tiny to protect the issue of the trade,
+        when the trade arrives to a validity expiration. Mostly depend ofthe timeframe of the trade.
         """
         if not trade:
             return False
@@ -179,10 +188,8 @@ class StrategyTrader(object):
         if not trade.is_opened() or trade.is_closing() or trade.is_closed():
             return False
 
-        MAX_TIME_UNIT = 18
-
         # more than max time unit of the timeframe then abort the trade
-        if (trade.created_time > 0) and ((timestamp - trade.created_time) / trade.timeframe) > MAX_TIME_UNIT:
+        if (trade.created_time > 0) and ((timestamp - trade.created_time) / trade.timeframe) > self._expiry_max_time_unit:
             # trade.modify_stop_loss()
             # trade.modify_take_profit()
             
@@ -190,7 +197,7 @@ class StrategyTrader(object):
             trade.tp = self.instrument.close_exec_price(trade.dir)
             trade.sl = self.instrument.close_exec_price(trade.dir)
 
-            logger.info("> Trade %s timeout !" % trade.id)
+            # logger.info("> Trade %s timeout !" % trade.id)
 
         return True
 
@@ -198,9 +205,6 @@ class StrategyTrader(object):
         """
         Update managed trades per instruments and delete terminated trades.
         """
-        if not self.strategy.activity:
-            return
-
         if not self.trades:
             return
 
@@ -253,13 +257,16 @@ class StrategyTrader(object):
                 if trade.is_closing():
                     continue
 
+                if not self.instrument.market_open:
+                    continue
+
                 # potential order exec close price (always close a long)
                 close_exec_price = self.instrument.close_exec_price(Order.LONG)
 
                 if trade.tp > 0 and (close_exec_price >= trade.tp):
                     # take profit order
-                    # @todo or limit order for maker fee
                     # trade.modify_take_profit(trader, market, take_profit)
+
                     # close at market (taker fee)
                     if trade.close(trader, self.instrument.market_id):
                         self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
@@ -280,12 +287,6 @@ class StrategyTrader(object):
                         profit_loss_rate -= market.maker_fee
                     else:
                         profit_loss_rate -= market.taker_fee
-
-                    text = "%s take-profit-market %s %.2f%% on %s (%.4f%s) at %s" % (
-                        self.strategy.identifier, market.symbol, profit_loss_rate*100.0, market.base,
-                        profit_loss_rate/market.base_exchange_rate, trader.account.currency_display, market.format_price(close_exec_price))
-
-                    Terminal.inst().high(text, view='common') if profit_loss_rate > 0 else Terminal.inst().low(text, view='common')
 
                     # notify
                     self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
@@ -294,6 +295,7 @@ class StrategyTrader(object):
 
                 elif trade.sl > 0 and (close_exec_price <= trade.sl):
                     # stop loss order
+
                     # close at market (taker fee)
                     if trade.close(trader, self.instrument.market_id):
                         self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
@@ -314,12 +316,6 @@ class StrategyTrader(object):
                         profit_loss_rate -= market.maker_fee
                     else:
                         profit_loss_rate -= market.taker_fee
-
-                    text = "%s stop-market %s %.2f%% %s (%.4f%s) at %s" % (
-                        self.strategy.identifier, market.symbol, profit_loss_rate*100.0, market.base,
-                        profit_loss_rate/market.base_exchange_rate, trader.account.currency_display, market.format_price(close_exec_price))
-
-                    Terminal.inst().high(text, view='common') if profit_loss_rate > 0 else Terminal.inst().low(text, view='common')
 
                     # notify
                     self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
@@ -378,15 +374,8 @@ class StrategyTrader(object):
                                 market.format_price(close_exec_price), timestamp, trade.timeframe,
                                 'take-profit', profit_loss_rate)
 
-                        # close a long or a short position at take-profit level
-                        text = "%s take-profit-market %s %.4f%s (%.4f) at %s" % (
-                            self.strategy.identifier, market.symbol, profit_loss_rate*100.0, market.quote,
-                            profit_loss_rate/market.base_exchange_rate, market.format_price(close_exec_price))
-
-                        Terminal.inst().high(text, view='common') if profit_loss_rate > 0 else Terminal.inst().low(text, view='common')
-
-                    # and for streaming
-                    self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
+                        # and for streaming
+                        self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
 
                 elif (trade.sl > 0) and (trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl):
                     # close a long or a short position at stop-loss level at market (taker fee)
@@ -418,14 +407,8 @@ class StrategyTrader(object):
                                 market.format_price(close_exec_price), timestamp, trade.timeframe,
                                 'stop-loss', profit_loss_rate)
 
-                        text = "%s stop-market %s %.4f%s (%.4f) at %s" % (
-                            self.strategy.identifier, market.symbol, profit_loss_rate, market.quote,
-                            profit_loss_rate/market.base_exchange_rate, market.format_price(close_exec_price))
-
-                        Terminal.inst().high(text, view='common') if profit_loss_rate > 0 else Terminal.inst().low(text, view='common')
-
-                    # and for streaming                            
-                    self._global_streamer.member('sell-exit').update(close_exec_price, timestamp)
+                        # and for streaming
+                        self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
 
         self.unlock()
 
@@ -433,18 +416,25 @@ class StrategyTrader(object):
         # remove terminated, rejected, canceled and empty trades
         #
 
-        rm_list = []
+        mutated = False
 
         self.lock()
 
         for trade in self.trades:
             if trade.can_delete():
+                mutated = True
+
                 # cleanup if necessary before deleting the trade related refs, and add them to the deletion list
                 trade.remove(trader)
-                rm_list.append(trade)
 
                 # record the trade for analysis and learning
                 if not trade.is_canceled():
+                    # @todo all this part could be in an async method of another background service, because 
+                    # it is not part of the trade managemnt neither strategy computing, its purely for reporting
+                    # and view
+                    # then we could add a list of the deleted trade (producer) and having another service (consumer)
+                    # doing the rest
+
                     # estimation on mid last price, but might be close market price
                     market = trader.market(self.instrument.market_id)
 
@@ -497,15 +487,24 @@ class StrategyTrader(object):
                     else:
                         self._stats['roe'].append(record)
 
-        # delete terminated trades
-        for trade in rm_list:
-            self.trades.remove(trade)
+        # recreate the list of trades
+        if mutated:
+            trades_list = []
+
+            for trade in self.trades:
+                if not trade.can_delete():
+                    # keep only active and pending trades
+                    trades_list.append(trade)
+
+            self.trades = trades_list
 
         self.unlock()
 
-    def update_trailing_stop(self, trade, market):
+    def update_trailing_stop(self, trade, market, distance, local=True, distance_in_percent=True):
         """
         Update the stop price of a trade using a simple level distance or percent distance method.
+        @param local boolean True mean only modify the stop-loss price on this side,
+            not on the position or on the stop order
 
         @note This method is not a way to process a stop, it mostly failed, close for nothing at a wrong price.
         """
@@ -514,24 +513,23 @@ class StrategyTrader(object):
 
         if trade.direction > 0:
             # long case
-            pass
+            ratio = close_exec_price / trade.p
+            sl_ratio = (trade.p - trade.sl) / trade.p
+            dist = (close_exec_price - trade.sl) / trade.p
+            step = distance
 
-            # ratio = close_exec_price / trade.p
-            # sl_ratio = (trade.p - trade.sl) / trade.p
-            # dist = (close_exec_price - trade.sl) / trade.p
-            # step = 0.01  # 1% trailing stop-loss
+            if distance_in_percent:
+                # @todo
+                if dist > (sl_ratio + step):
+                    stop_loss = close_exec_price * (1.0 - distance)
+            else:
+                # @todo
+                pass
 
-            # # # @todo take a stop-loss from a timeframe level
-            # # # profit >= 1% up the stop-loss
             # # if dist > (sl_ratio + step):
             # #     stop_loss = close_exec_price * (1.0 - sl_ratio)
             # #     logger.debug("update SL from %s to %s" % (trade.sl, stop_loss))
 
-            # # # protect from loss when a trade become profitable
-            # # # not a good idea because it depend of the volatility
-            # # if ratio >= 1.01:
-            # #     stop_loss = max(stop_loss, trade.p)  # at 1% profit stop at break-even
-            
             # # # alternative @todo how to trigger
             # # if ratio >= 1.10:
             # #     stop_loss = max(trade.sl, close_exec_price - (close_exec_price/trade.p*(close_exec_price-trade.p)*0.33))
@@ -540,11 +538,24 @@ class StrategyTrader(object):
             # # if dist > 0.25:
             # #     stop_loss = trade.p + (trade.p * (dist * 0.5))
 
-            # # if stop_loss != trade.sl:
-            # #     logger.info("update SL from %s to %s (market price %s)" % (trade.sl, stop_loss, market.price))
-            # #     # trade.modify_stop_loss(trader, market.market_id, stop_loss)
-            # #     trade.sl = stop_loss
-
         elif trade.direction < 0:
             # short case
-            pass
+            ratio = close_exec_price / trade.p
+            sl_ratio = (trade.sl - trade.p) / trade.p
+            dist = (trade.sl - close_exec_price) / trade.p
+            step = distance
+
+            if distance_in_percent:
+                # @todo
+                if dist > (sl_ratio - step):
+                    stop_loss = close_exec_price * (1.0 - distance)
+                pass
+            else:
+                # @todo
+                pass
+
+        if stop_loss != trade.sl:
+            if local:
+                trade.sl = stop_loss
+            else:
+                trade.modify_stop_loss(trader, market.market_id, stop_loss)

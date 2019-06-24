@@ -87,15 +87,12 @@ class Position(Keyed):
     def set_copied_position_id(self, position_id):
         self._copied_position_id = position_id
 
-    @property
     def is_opened(self):
         return self._state == Position.STATE_OPENED
 
-    @property
     def is_closing(self):
         return self._state == Position.STATE_CLOSING
 
-    @property
     def is_closed(self):
         return self._state == Position.STATE_CLOSED
 

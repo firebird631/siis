@@ -444,7 +444,7 @@ class PaperTrader(Trader):
             self.lock()
 
             for k, position in self._positions.items():
-                if position.quantity == 0.0:
+                if position.quantity <= 0.0:
                     rm_list.append(k)
                 else:
                     market = self._markets.get(position.symbol)
@@ -473,7 +473,9 @@ class PaperTrader(Trader):
 
             for k, position in self._positions.items():
                 market = self._markets.get(position.symbol)
-                if market:
+                
+                # only for non empty positions
+                if market and position.quantity > 0.0:
                     # manually compute here because of paper trader
                     if self._account.account_type == PaperTraderAccount.TYPE_MARGIN:
                         profit_loss += position.profit_loss_market / market.base_exchange_rate
@@ -481,7 +483,7 @@ class PaperTrader(Trader):
 
             self.unlock()
 
-            self.account.set_used_margin(used_margin)
+            self.account.set_used_margin(used_margin+profit_loss)
             self.account.set_unrealized_profit_loss(profit_loss)
 
         elif self._account.account_type == PaperTraderAccount.TYPE_ASSET:
@@ -716,7 +718,7 @@ class PaperTrader(Trader):
         self.lock()
         position = self._positions.get(position_id)
 
-        if position and position.is_opened:
+        if position and position.is_opened():
             # market stop order
             order = Order(self, position.symbol)
             order.set_position_id(position_id)
@@ -747,7 +749,7 @@ class PaperTrader(Trader):
             ofr_price = 0
 
             if order.order_type == Order.ORDER_LIMIT:
-                # @todo spread on some instruments (look on market for an average spread)
+                # @todo limit execution when limit reach bid or ofr price (depend of the direction)
                 bid_price = order.order_price
                 ofr_price = order.order_price
 
@@ -790,7 +792,7 @@ class PaperTrader(Trader):
         self.lock()
 
         position = self._positions.get(position_id)
-        if position and position.is_opened:
+        if position and position.is_opened():
             position.stop_loss = stop_loss_price
             position.take_profit = take_profit_price
             result = True
@@ -929,40 +931,40 @@ class PaperTrader(Trader):
         """
         Execute the order for margin position.
 
-        @todo can increase or create, reduce or close, compensate a position.
-        @todo bitmex merge on a single position per market so position_id is market_id in that case, 
-            how to simulate here correctly ?
+        @todo need to make two cases :
+          * one for indivisible position (bitmex...)
+             => always have a single position per market, increase decrease it (take care of the status)
+          * a second for independants positions (ig...)
+             => more complicated, could close a position easy case, if not forced position first we have to cut/reduce 
+                position that are in the opposite direction
         """
         order_id =  "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
-        position_id = "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
 
         current_position = None
         positions = []
 
         self.lock()
 
-        # if not forced position and not heding, for multiples positions on the same market : 
-        # increase the long qty will first reduce the short positions, and reciproqually => @todo
-        # so we have to potentially reduce many position before increase one (last or new depends if like bitmex or like ig)
-
         if order.position_id:
+            # @todo if TRADE_IND_MARGIN do we have position_id == market_id ?
             current_position = self._positions.get(order.position_id)
-
-            if current_position:
-                position_id = current_position.position_id
         else:
-            pass  # @todo for now independant positions
-            # # position of the same market on any directions
-            # for k, pos in self._positions.items():
-            #     if pos.symbol == order.symbol:
-            #         positions.append(pos)
+            if market.trade == market.TRADE_MARGIN:
+                pass
+                # @todo for independants positions
+                # # position of the same market on any directions
+                # for k, pos in self._positions.items():
+                #     if pos.symbol == order.symbol:
+                #         positions.append(pos)
 
-            # if order.hedging and market.hedging:
-            #     pass
-            # else:
-            #     current_position = positions[-1] if positions else None
+                # if order.hedging and market.hedging:
+                #     pass
+                # else:
+                #     current_position = positions[-1] if positions else None
+            elif market.trade == market.TRADE_IND_MARGIN:
+                pass
 
-        if current_position and current_position.is_opened:
+        if current_position and current_position.is_opened():
             # increase or reduce the current position
             org_quantity = current_position.quantity
             exec_price = 0.0
@@ -1094,7 +1096,7 @@ class PaperTrader(Trader):
             order.created_time = self.timestamp
             order.transact_time = self.timestamp
 
-            order.set_position_id(current_position.position_id)
+            #order.set_position_id(current_position.position_id)
             order.set_order_id(order_id)
 
             if position_gain_loss != 0.0 and realized_position_cost > 0.0:
@@ -1112,13 +1114,13 @@ class PaperTrader(Trader):
 
                 self.account.add_realized_profit_loss(position_gain_loss / base_exchange_rate)
 
-                # @todo display only for debug
+                # display only for debug
                 if position_gain_loss > 0.0:
                     Terminal.inst().high("Close profitable position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
-                        position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='trader')
+                        position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
                 elif position_gain_loss < 0.0:
                     Terminal.inst().low("Close loosing position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
-                        position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='trader')
+                        position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
 
                 Terminal.inst().info("Account balance %.2f / Margin balance %.2f" % (self.account.balance, self.account.margin_balance), view='debug')
             else:
@@ -1221,13 +1223,24 @@ class PaperTrader(Trader):
             self.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (order.symbol, order.order_id, ""))
 
             # if position is empty -> closed -> delete it
-            if current_position.quantity == 0.0:
+            if current_position.quantity <= 0.0:
+                self.lock()
+
+                # take care this does not make issues with IND_MARGIN markets                
                 current_position.exit(None)
 
                 if current_position.position_id in self._positions:
                     del self._positions[current_position.position_id]
 
+                self.unlock()
         else:
+            # gen a new position id
+            if market.trade == market.TRADE_IND_MARGIN:
+                # unique position per market
+                position_id = market.market_id
+            elif market.trade == market.TRADE_MARGIN:
+                # distinct positions
+                position_id = "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
 
             # it's what we have really buy
             realized_position_cost = order.quantity * (market.lot_size * market.contract_size)  # in base currency
@@ -1264,14 +1277,14 @@ class PaperTrader(Trader):
             # transaction time is creation position date time
             order.transact_time = position.created_time
             order.set_order_id(order_id)
-            order.set_position_id(position.position_id)
+            order.set_position_id(position_id)
 
             # directly executed quantity
             order.executed = order.quantity
 
             # @todo stop loss, take profit, order type (limit, market...)
 
-            self._positions[position.position_id] = position
+            self._positions[position_id] = position
 
             # increase used margin
             self.account.add_used_margin(margin_cost)

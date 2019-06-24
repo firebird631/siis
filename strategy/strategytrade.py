@@ -182,15 +182,19 @@ class StrategyTrade(object):
         asset or the position are executed.
         """
         if self.e >= self.q and self.x >= self.e:
-            # entry filled filled and exit too
+            # entry fully filled and exit too
             return True
+
+        # if self.e <= 0 and (self._entry_state == StrategyTrade.STATE_CANCELED or self._entry_state == StrategyTrade.STATE_DELETED or self._entry_state == StrategyTrade.STATE_REJECTED):
+        #     # can delete a non filled canceled, deleted or rejected entry
+        #     return True
 
         if self.e > 0 and self.x < self.e:
             # entry quantity but exit quantity not fully filled
             return False
 
         if self._entry_state == StrategyTrade.STATE_NEW or self._entry_state == StrategyTrade.STATE_OPENED:
-            # buy order not opened or opened
+            # buy order not opened or opened but trade still valid till expiry or cancelation
             return False
 
         if self.e > 0 and (self._exit_state == StrategyTrade.STATE_NEW or self._exit_state == StrategyTrade.STATE_OPENED):
@@ -348,6 +352,8 @@ class StrategyTrade(object):
         elif self.e >= self.q:
             # entry quantity reach ordered quantity the entry is filled
             return 'filled'
+        elif self._entry_state == StrategyTrade.STATE_CANCELED and self.e <= 0: 
+            return 'canceled'
         else:
             # any others case meaning pending state
             return 'waiting'

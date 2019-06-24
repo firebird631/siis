@@ -406,7 +406,7 @@ class IGTrader(Trader):
 
         position = self._positions.get(position_id)
 
-        if position is None or not position.is_opened:
+        if position is None or not position.is_opened():
             return False
 
         if not self.has_market(position.symbol):
@@ -470,7 +470,7 @@ class IGTrader(Trader):
 
         position = self._positions.get(position_id)
 
-        if position is None or not position.is_opened:
+        if position is None or not position.is_opened():
             return False
 
         limit_level = None

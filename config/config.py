@@ -390,7 +390,9 @@ STRATEGIES = {
 }
 
 MONITORING = {
+    'host': '127.0.0.1',
+    'port': 8080,
     'allowdeny': 'allowany',  # can be allowany, denyall, allowlist, denylist
-    'allowlist': None,
-    'api-key': 'dadadidadada'
+    'list': None,
+    'api-key': 'e4f7d47e832e115df640ec3b1c95a417c2f26286'  # replace with you generated unique key date --rfc-3339=ns | sha1sum | awk '{print $1}'
 }

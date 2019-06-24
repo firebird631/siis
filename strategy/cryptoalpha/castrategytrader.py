@@ -309,14 +309,16 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                 # profitable stop-loss for long direction
                 for resistances in self.timeframes[trade.timeframe].pivotpoint.resistances:
-                    level = np.min(resistances)
-                    if last_price >= level and level > stop_loss:
-                        stop_loss = level
+                    if len(resistances):
+                        level = np.min(resistances)
+                        if last_price >= level and level > stop_loss:
+                            stop_loss = level
 
                 for supports in self.timeframes[trade.timeframe].pivotpoint.supports:
-                    level = np.max(supports)
-                    if last_price >= level and level > stop_loss:
-                        stop_loss = level
+                    if len(supports):
+                        level = np.max(supports)
+                        if last_price >= level and level > stop_loss:
+                            stop_loss = level
 
                 # need a parameters, or compute using ATR
                 # if (trade.get_stats()['best-price'] - trade.p) / trade.p >= 0.0075:
@@ -442,7 +444,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         else:
             # notify a signal only
             self.strategy.notify_order(-1, Order.LONG, self.instrument.market_id, market.format_price(price),
-                    timestamp, trade.timeframe, 'entry', None, market.format_price(stop_loss), market.format_price(take_profit))
+                    timestamp, timeframe, 'entry', None, market.format_price(stop_loss), market.format_price(take_profit))
 
     def process_exit(self, timestamp, trade, exit_price, immediate=True):
         if trade is None:

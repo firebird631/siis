@@ -105,7 +105,8 @@ class LongCommand(Command):
         # direction base on command name
         direction = 1
         method = 'market'
-        price = None
+        limit_price = None
+        trigger_price = None
         stop_loss = 0.0
         take_profit = 0.0
         quantity_rate = 1.0
@@ -124,10 +125,10 @@ class LongCommand(Command):
 
                 if value.startswith("L@"):
                     method = 'limit'
-                    price = float(value[2:])
+                    limit_price = float(value[2:])
                 elif value.startswith("T@"):
                     method = 'trigger'
-                    price = float(value[2:])
+                    trigger_price = float(value[2:])
                 elif value.startswith("SL@"):
                     stop_loss = float(value[3:])
                 elif value.startswith("TP@"):
@@ -143,11 +144,11 @@ class LongCommand(Command):
             Terminal.inst().action("Invalid parameters", view='status')
             return False
 
-        if price and stop_loss and stop_loss > price:
+        if limit_price and stop_loss and stop_loss > limit_price:
             Terminal.inst().action("Stop-loss must be lesser than limit price", view='status')
             return False
 
-        if price and take_profit and take_profit < price:
+        if limit_price and take_profit and take_profit < limit_price:
             Terminal.inst().action("Stop-loss must be greater than limit price", view='status')
             return False
 
@@ -155,12 +156,12 @@ class LongCommand(Command):
             Terminal.inst().action("Quantity must be non empty", view='status')
             return False
 
-
         self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, {
             'appliance': appliance,
             'market-id': market_id,
             'direction': direction,
-            'price': price,
+            'limit-price': limit_price,
+            'trigger-price': trigger_price,
             'method': method,
             'quantity-rate': quantity_rate,
             'stop-loss': stop_loss,
@@ -190,7 +191,8 @@ class ShortCommand(Command):
         # direction base on command name
         direction = -1
         method = 'market'
-        price = None
+        limit_price = None
+        trigger_price = None
         stop_loss = 0.0
         take_profit = 0.0
         quantity_rate = 1.0
@@ -209,10 +211,10 @@ class ShortCommand(Command):
 
                 if value.startswith("L@"):
                     method = 'limit'
-                    price = float(value[2:])
+                    limit_price = float(value[2:])
                 elif value.startswith("T@"):
                     method = 'trigger'
-                    price = float(value[2:])
+                    trigger_price = float(value[2:])
                 elif value.startswith("SL@"):
                     stop_loss = float(value[3:])
                 elif value.startswith("TP@"):
@@ -228,11 +230,11 @@ class ShortCommand(Command):
             Terminal.inst().action("Invalid parameters", view='status')
             return False
 
-        if price and stop_loss and stop_loss < price:
+        if limit_price and stop_loss and stop_loss < limit_price:
             Terminal.inst().action("Stop-loss must be greater than limit price", view='status')
             return False
 
-        if price and take_profit and take_profit > price:
+        if limit_price and take_profit and take_profit > limit_price:
             Terminal.inst().action("Stop-loss must be less than limit price", view='status')
             return False
 
@@ -244,7 +246,8 @@ class ShortCommand(Command):
             'appliance': appliance,
             'market-id': market_id,
             'direction': direction,
-            'price': price,
+            'limit-price': limit_price,
+            'trigger-price': trigger_price,
             'method': method,
             'quantity-rate': quantity_rate,
             'stop-loss': stop_loss,
@@ -272,11 +275,8 @@ class CloseCommand(Command):
         trade_id = None
         action = "close"
 
-        method = 'market'
-        price = None
-
-        # ie ":close :EURUSD 5 1.12"
-        if not 2 <= len(args) <= 3:
+        # ie ":close :EURUSD 5"
+        if len(args) != 2:
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
@@ -284,10 +284,6 @@ class CloseCommand(Command):
             appliance, market_id = args[0].split(':')
             trade_id = int(args[1])
 
-            if len(args) == 3:
-                price = float(args[2])
-                method = 'limit'
-   
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
             return False
@@ -296,9 +292,7 @@ class CloseCommand(Command):
             'appliance': appliance,
             'market-id': market_id,
             'trade-id': trade_id,
-            'action': action,
-            'method': method,
-            'price': price
+            'action': action
         })
 
         return True

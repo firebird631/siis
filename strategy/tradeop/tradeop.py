@@ -91,6 +91,14 @@ class TradeOp(object):
         if self._count == 0:
             return False
 
+        if self._stage == TradeOp.STAGE_ENTRY and trade.is_active():
+            # cannot be performed once the trade is active
+            return True
+
+        if self._stage == TradeOp.STAGE_EXIT and not trade.is_active():
+            # cannot be performed until the trade is active
+            return False
+
         if self.operate(trade, instrument, trader):
             if self._count > 0:
                 self._count -= 1

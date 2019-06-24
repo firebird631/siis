@@ -8,6 +8,9 @@ from common.utils import truncate
 
 import threading
 
+import logging
+logger = logging.getLogger('siis')
+
 
 class Account(object):
     """
@@ -230,6 +233,7 @@ class Account(object):
 
     def initial(self, balance, currency, currency_display):
         self._balance = balance
+        self._margin_balance = balance
         self._currency = currency
         self._currency_display = currency_display
 

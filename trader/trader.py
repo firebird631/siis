@@ -717,7 +717,7 @@ class Trader(Runnable):
         else:
             position = position_or_id
 
-        if position is None or not position.is_opened:
+        if position is None or not position.is_opened():
             return False
 
         # market stop order
@@ -817,7 +817,7 @@ class Trader(Runnable):
             # close at loss in percent of the position entry price
             for k, position in self._positions.items():
                 # ignore empty and profitable positions
-                if position.quantity <= 0 or not position.is_opened:
+                if position.quantity <= 0 or not position.is_opened():
                     continue
 
                 market = self._markets.get(position.symbol)
@@ -847,7 +847,7 @@ class Trader(Runnable):
         else:
             # close at fixed value in account currency
             for k, position in self._positions.items():
-                if position.quantity <= 0 or not position.is_opened:
+                if position.quantity <= 0 or not position.is_opened():
                     continue
 
                 market = self._markets.get(position.symbol)

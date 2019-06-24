@@ -350,7 +350,7 @@ class OneBrokerTrader(Trader):
 
 		position = self._positions.get(position_id)
 
-		if position is None or not position.is_opened:
+		if position is None or not position.is_opened():
 			return False
 
 		var = {
@@ -396,7 +396,7 @@ class OneBrokerTrader(Trader):
 
 		position = self._positions.get(position_id)
 
-		if position is None or not position.is_opened:
+		if position is None or not position.is_opened():
 			return False
 
 		# @todo

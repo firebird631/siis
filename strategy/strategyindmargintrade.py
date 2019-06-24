@@ -62,6 +62,8 @@ class StrategyIndMarginTrade(StrategyTrade):
         self._stats['entry-maker'] = not order.is_market()
 
         if trader.create_order(order):
+            self.position_id = order.position_id  # might be market-id
+
             if not self.open_time:
                 # only at the first open
                 self._open_time = order.created_time
@@ -81,6 +83,8 @@ class StrategyIndMarginTrade(StrategyTrade):
             if trader.cancel_order(self.create_oid):
                 self.create_ref_oid = None
                 self.create_oid = None
+
+                self._entry_state = StrategyTrade.STATE_CANCELED
 
         if self.stop_oid:
             # cancel the stop order
@@ -102,6 +106,8 @@ class StrategyIndMarginTrade(StrategyTrade):
             if trader.cancel_order(self.create_oid):
                 self.create_ref_oid = None
                 self.create_oid = None
+
+                self._entry_state = StrategyTrade.STATE_CANCELED
             else:
                 return False
 
@@ -205,6 +211,8 @@ class StrategyIndMarginTrade(StrategyTrade):
             if trader.cancel_order(self.create_oid):
                 self.create_ref_oid = None
                 self.create_oid = None
+
+                self._entry_state = StrategyTrade.STATE_CANCELED
 
         if self.stop_oid:
             # cancel the stop order
@@ -386,67 +394,67 @@ class StrategyIndMarginTrade(StrategyTrade):
 
     def position_signal(self, signal_type, data, ref_order_id):
         if signal_type == Signal.SIGNAL_POSITION_OPENED:
-            self.position_id = data['id']
+            pass
+            # self.position_id = data['id']
 
-            # for IG... but not for bitmex
-            if data.get('filled') is not None and data['filled'] > 0:
-                filled = data['filled']
-            elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                filled = data['cumulative-filled'] - self.e  # compute filled qty
-            else:
-                filled = 0                    
+            # if data.get('filled') is not None and data['filled'] > 0:
+            #     filled = data['filled']
+            # elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
+            #     filled = data['cumulative-filled'] - self.e  # compute filled qty
+            # else:
+            #     filled = 0                    
 
-            if data.get('exec-price') is not None and data['exec-price'] > 0:
-                # compute the average price
-                self.p = ((self.p * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
-            elif data.get('avg-price') is not None and data['avg-price'] > 0:
-                self.p = data['avg-price']  # in that case we have avg-price already computed
+            # if data.get('exec-price') is not None and data['exec-price'] > 0:
+            #     # compute the average price
+            #     self.p = ((self.p * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
+            # elif data.get('avg-price') is not None and data['avg-price'] > 0:
+            #     self.p = data['avg-price']  # in that case we have avg-price already computed
 
-            self.e += filled
+            # self.e += filled
 
-            # logger.info("Entry avg-price=%s cum-filled=%s" % (self.p, self.e))
+            # # logger.info("Entry avg-price=%s cum-filled=%s" % (self.p, self.e))
 
-            if self.e == self.q:
-                self._entry_state = StrategyTrade.STATE_FILLED
-            else:
-                self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+            # if self.e == self.q:
+            #     self._entry_state = StrategyTrade.STATE_FILLED
+            # else:
+            #     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
         elif signal_type == Signal.SIGNAL_POSITION_UPDATED:
-            # for IG... but not for bitmex
-            if data.get('filled') is not None and data['filled'] > 0:
-                filled = data['filled']
-            elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                filled = data['cumulative-filled'] - self.x   # computed filled qty
-            else:
-                filled = 0
+            pass
+            # if data.get('filled') is not None and data['filled'] > 0:
+            #     filled = data['filled']
+            # elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
+            #     filled = data['cumulative-filled'] - self.x   # computed filled qty
+            # else:
+            #     filled = 0
 
-            if data.get('exec-price') is not None and data['exec-price'] > 0:
-                # increase/decrease profit/loss
-                if self.dir > 0:
-                    self.pl += ((data['exec-price'] * filled) - (self.p * self.e)) / (self.p * self.e)  # over entry executed quantity
-                elif self.dir < 0:
-                    self.pl += ((self.p * self.e) - (data['exec-price'] * filled)) / (self.p * self.e)  # over entry executed quantity
-            elif data.get('avg-price') is not None and data['avg-price'] > 0:
-                # self.ep = data['avg-price']  # in that case we have avg-price already computed
+            # if data.get('exec-price') is not None and data['exec-price'] > 0:
+            #     # increase/decrease profit/loss
+            #     if self.dir > 0:
+            #         self.pl += ((data['exec-price'] * filled) - (self.p * self.e)) / (self.p * self.e)  # over entry executed quantity
+            #     elif self.dir < 0:
+            #         self.pl += ((self.p * self.e) - (data['exec-price'] * filled)) / (self.p * self.e)  # over entry executed quantity
+            # elif data.get('avg-price') is not None and data['avg-price'] > 0:
+            #     # self.ep = data['avg-price']  # in that case we have avg-price already computed
 
-                # recompute profit-loss
-                if self.dir > 0:
-                    self.pl = (data['avg-price'] - self.p) / self.p
-                elif self.dir < 0:
-                    self.pl = (self.p - data['avg-price']) / self.p
+            #     # recompute profit-loss
+            #     if self.dir > 0:
+            #         self.pl = (data['avg-price'] - self.p) / self.p
+            #     elif self.dir < 0:
+            #         self.pl = (self.p - data['avg-price']) / self.p
 
-            # but this is in quote qty and we want in % change
-            # if data.get('profit-loss') is not None:
-            #     self.pl = data['profit-loss']
+            # # but this is in quote qty and we want in % change
+            # # if data.get('profit-loss') is not None:
+            # #     self.pl = data['profit-loss']
 
-            self.x += filled
+            # self.x += filled
 
-            logger.info("Exit avg-price=%s cum-filled=%s" % (self.p, self.x))
+            # logger.info("Exit avg-price=%s cum-filled=%s" % (self.p, self.x))
 
-            if self.x == self.q:
-                self._exit_state = StrategyTrade.STATE_FILLED
-            else:
-                self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+            # if self.x == self.q:
+            #     self._exit_state = StrategyTrade.STATE_FILLED
+            # else:
+            #     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position

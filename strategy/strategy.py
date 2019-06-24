@@ -40,6 +40,9 @@ class Strategy(Runnable):
 
     @todo tabulated might support columns shifting from left, and row offet to be displayed better in the terminal
         after having added the tabulated support directly to terminal (update for current trades, history trades).
+
+    @todo Getting display data are the slow part, causing potential global latency, don't call it too often.
+        Maybe a kind of event sourcing will be preferable.
     """
 
     MAX_SIGNALS = 1000   # max size of the signals messages queue before ignore some market data (tick, ohlc)
@@ -994,8 +997,7 @@ class Strategy(Runnable):
     def notify_order(self, trade_id, direction, symbol, price, timestamp, timeframe,
             action='order', rate=None, stop_loss=None, take_profit=None):
         """
-        Notify an executed order to the user. It must be called by the strategy.
-
+        Notify an order execution to the user. It must be called by the sub-trader.
         @param trade_id If -1 then it notify a simple signal unrelated to a trade.
         """
         signal_data = {
@@ -1036,6 +1038,8 @@ class Strategy(Runnable):
                 wt: worst hit price timestamp
 
         @note Its implementation could be overrided but respect at the the described informations.
+        @note This method is very slow, it need to go through all the sub-trader, and look for any trades,
+            it lock the sub-trader trades processing, can causing global latency when having lot of markets.
         """
         results = []
         trader = self.trader()
@@ -1447,10 +1451,10 @@ class Strategy(Runnable):
         }
 
         # command data
-        market_or_limit = data.get('limit', True)  # default is market order
         direction = data.get('direction', Order.LONG)
-        lprice = data.get('price')
         method = data.get('method', 'market')
+        limit_price = data.get('limit-price')
+        trigger_price = data.get('trigger-price')
         quantity_rate = data.get('quantity-rate', 1.0)
         stop_loss = data.get('stop-loss', 0.0)
         take_profit = data.get('take-profit', 0.0)
@@ -1464,7 +1468,7 @@ class Strategy(Runnable):
             results['messages'].append("Invalid price method (market, limit, trigger).")
             results['error'] = True
 
-        if method != 'market' and not lprice:
+        if method != 'market' and not limit_price:
             results['messages'].append("Price is missing.")
             results['error'] = True
 
@@ -1487,8 +1491,10 @@ class Strategy(Runnable):
         market = trader.market(sub_trader.instrument.market_id)
 
         # need a valid price to compute the quantity
-        price = lprice or market.open_exec_price(direction)
+        price = limit_price or market.open_exec_price(direction)
         trade = None
+
+        # @todo TRIGGER and TRIGGER LIMIT
 
         if market.trade == Market.TRADE_BUY_SELL:
             trade = StrategyAssetTrade(timeframe)
@@ -1547,12 +1553,11 @@ class Strategy(Runnable):
                 results['messages'].append("Created trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
 
                 # notify @todo would we notify on that case ?
-                self.notify_order(trade.id, trade.dir, sub_trader.instrument.market_id, market.format_price(price),
-                        self.service.timestamp, trade.timeframe, 'entry', None, market.format_price(trade.sl), market.format_price(trade.tp))
+                # self.notify_order(trade.id, trade.dir, sub_trader.instrument.market_id, market.format_price(price),
+                #         self.service.timestamp, trade.timeframe, 'entry', None, market.format_price(trade.sl), market.format_price(trade.tp))
 
                 # want it on the streaming (take care its only the order signal, no the real complete execution)
-                # @todo its not really a perfect way...
-                sub_trader._global_streamer.member('buy-entry').update(price, self.timestamp)
+                # @todo sub_trader._global_streamer.member('buy/sell-entry').update(price, self.timestamp)
             else:
                 sub_trader.remove_trade(trade)
 
@@ -1573,14 +1578,6 @@ class Strategy(Runnable):
             'error': False
         }
 
-        # command data
-        market_or_limit = data.get('limit', True)  # default is market order
-        limit_price = data.get('limit-price')
-
-        if market_or_limit and not limit_price:
-            results['error'] = True
-            results['messages'].append("Limit price is missing.")
-
         # retrieve the trade
         trade_id = -1
 
@@ -1595,6 +1592,9 @@ class Strategy(Runnable):
 
         trade = None
 
+        trader = self.trader()
+        market = trader.market(sub_trader.instrument.market_id)
+
         sub_trader.lock()
 
         if trade_id == -1 and sub_trader.trades:
@@ -1606,10 +1606,28 @@ class Strategy(Runnable):
                     break
 
         if trade:
-            # @todo
-            # method / price
+            price = market.close_exec_price(trade.direction)
 
-            results['messages'].append("Query exit trade %i" % trade_id)
+            if not trade.is_active():
+                # cancel open
+                trade.cancel_open(trader)
+
+                # add a success result message
+                results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
+            else:
+                # close or cancel
+                trade.close(trader, sub_trader.instrument.market_id)
+
+                # add a success result message
+                results['messages'].append("Close trade %i on %s:%s at market price %s" % (trade.id, self.identifier, market.market_id, market.format_price(price)))
+
+                # notify @todo would we notify on that case ?
+                # self.notify_order(trade.id, trade.dir, sub_trader.instrument.market_id, market.format_price(price),
+                #         self.service.timestamp, trade.timeframe, 'exit', None, None, None)
+
+                # want it on the streaming (take care its only the order signal, no the real complete execution)
+                # @todo its not really a perfect way...
+                # sub_trader._global_streamer.member('buy/sell-exit').update(price, self.timestamp)
         else:
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)
@@ -1700,6 +1718,11 @@ class Strategy(Runnable):
 
                 if op_id >= 0 and op_id < len(trade.operations):
                     del trade.operations[op_id]
+
+                    for i, operation in enumerate(trade.operations):
+                        # reajust the id to the index
+                        operation.id = i
+
                 else:
                     results['error'] = True
                     results['messages'].append("Unknown operation-id on trade %i" % trade_id)

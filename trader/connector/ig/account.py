@@ -19,8 +19,8 @@ from terminal.terminal import Terminal
 
 class IGAccount(Account):
 
-    CURRENCY = "USD"
-    CURRENCY_SYMBOL = "$"
+    CURRENCY = "EUR"
+    CURRENCY_SYMBOL = "€"
 
     def __init__(self, parent):
         super().__init__(parent)
