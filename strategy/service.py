@@ -32,6 +32,7 @@ class StrategyService(Service):
         self._indicators = {}
         self._appliances = {}
         self._tradeops = {}
+        self._regions = {}
 
         self._watcher_service = watcher_service
         self._trader_service = trader_service
@@ -42,9 +43,9 @@ class StrategyService(Service):
         self._watcher_only = options.get('watcher-only', False)
         self._profile = options.get('profile', 'default')
 
-        # config @todo indicators and strategies must use default+user-extensions
         self._indicators_config = config.INDICATORS or {}
         self._tradeops_config = config.TRADEOPS or {}
+        self._regions_config = config.REGIONS or {}
         self._strategies_config = config.STRATEGIES or {}
         self._appliances_config = utils.appliances(options.get('config-path')) or {}
         self._profile_config = utils.profiles(options.get('config-path')) or {}
@@ -104,6 +105,10 @@ class StrategyService(Service):
     @property
     def tradeops(self):
         return self._tradeops
+
+    @property
+    def regions(self):
+        return self._regions
 
     def set_activity(self, status):
         """
@@ -439,6 +444,9 @@ class StrategyService(Service):
 
     def get_appliances(self):
         return list(self._appliances.values())
+
+    def appliances_identifiers(self):
+        return [app.identifier for k, app in self._appliances.items()]
 
     @property
     def timestamp(self):

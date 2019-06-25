@@ -5,9 +5,6 @@
 
 from trader.order import Order
 
-import logging
-logger = logging.getLogger('siis.strategy')
-
 
 class TradeOp(object):
     """
@@ -25,8 +22,8 @@ class TradeOp(object):
     OP = -1
     NAME = "undefined"
 
-    def __init__(self, _id, stage):
-        self._id = _id       # operation index in the list of operations of the trade
+    def __init__(self, stage):
+        self._id = -1        # operation unique identifier
         self._stage = stage  # apply on entry or exit
         self._count = -1     # peristant operation count is -1, else its value is decremented until 0
 
@@ -62,8 +59,7 @@ class TradeOp(object):
     # setters
     #
 
-    @id.setter
-    def id(self, _id):
+    def set_id(self, _id):
         self._id = _id
 
     def init(self, parameters):
@@ -121,7 +117,6 @@ class TradeOp(object):
     def operate(self, trade, instrument, trader):
         """
         Override this method to implement the test and the effect of the operation.
-
         @return True when the operation is realized one time.
         """
         return True
@@ -137,9 +132,9 @@ class TradeOp(object):
         Override this method and add specific parameters to be displayed into an UI or a table.
         """
         return {
-            'label': "Dynamic stop-loss",
+            'label': "undefined",
             'name': self.name(),
-            'id': self.id()
+            'id': self.id(),
         }
 
 
@@ -151,8 +146,8 @@ class TradeOpDynamicStopLoss(TradeOp):
     ID = TradeOp.OP_DYNAMIC_STOP_LOSS
     NAME = 'dynamic-stop-loss'
 
-    def __init__(self, _id):
-        super().__init__(_id, TradeOp.STAGE_EXIT)
+    def __init__(self):
+        super().__init__(TradeOp.STAGE_EXIT)
 
         self._trigger = 0.0     # if market price reach this trigger price (in the trade direction)
         self._stop_loss = 0.0   # then the stop-loss price of the trade is modified to this price
@@ -194,7 +189,7 @@ class TradeOpDynamicStopLoss(TradeOp):
                 return True
 
         return False
-    
+
     def str_info(self):
         return "Dynamic stop-loss at %s when reach %s" % (self._stop_loss, self._trigger)
 
@@ -224,8 +219,8 @@ class TradeSingleVarOpCondStopLoss(TradeOp):
     ID = TradeOp.OP_SINGLE_VAR_CONDITION
     NAME = '1var-cond-stop-loss'
 
-    def __init__(self, _id, condition, variable):
-        super().__init__(_id, TradeOp.STAGE_EXIT)
+    def __init__(self, condition, variable):
+        super().__init__(TradeOp.STAGE_EXIT)
 
         self._count = 1
         self._variable = variable
@@ -262,8 +257,8 @@ class TradeTwoVarsOpCondStopLoss(TradeOp):
     ID = TradeOp.OP_TWO_VARS_CONDITION
     NAME = '2vars-cond-stop-loss'
 
-    def __init__(self, _id, condition, variable):
-        super().__init__(_id, TradeOp.STAGE_EXIT)
+    def __init__(self, condition, variable):
+        super().__init__(TradeOp.STAGE_EXIT)
 
         self._count = 1
         self._variable = variable

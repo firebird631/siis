@@ -90,13 +90,13 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         self.setup_streaming()
 
-        # @todo remove (debug only) need subscriber
-        if list(self.strategy._instruments.values())[0] == self.instrument:
-            for tf in (Instrument.TF_15MIN, Instrument.TF_4HOUR):
-                if tf not in self._timeframe_streamers:
-                    streamer = self.create_chart_streamer(self.timeframes[tf])
-                    if streamer:
-                        self._timeframe_streamers[tf] = streamer
+        # @todo remove (debug only) need subscriber command
+        # if list(self.strategy._instruments.values())[0] == self.instrument:
+        #     for tf in (Instrument.TF_15MIN, Instrument.TF_4HOUR):
+        #         if tf not in self._timeframe_streamers:
+        #             streamer = self.create_chart_streamer(self.timeframes[tf])
+        #             if streamer:
+        #                 self._timeframe_streamers[tf] = streamer
 
     def filter_market(self, timestamp):
         """
@@ -459,7 +459,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # create an order
         #
 
-        do_order = self.strategy.activity
+        do_order = self.strategy.activity and self.activity
 
         order_hedging = False
         order_quantity = 0.0
@@ -547,11 +547,13 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             else:
                 self.remove_trade(trade)
 
-    def process_exit(self, timestamp, trade, exit_price, immediate=True):
+    def process_exit(self, timestamp, trade, exit_price):
         if trade is None:
             return
 
-        if immediate:
+        do_order = self.strategy.activity and self.activity
+
+        if do_order:
             # close at market as taker
             trader = self.strategy.trader()
             trade.close(trader, self.instrument.market_id)
@@ -585,19 +587,8 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # notify
             self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, market.format_price(exit_price),
                     timestamp, trade.timeframe, 'exit', profit_loss_rate)
-        else:
-            # delayed
 
-            # will exit at market, using update_trade on the next iteration
-            trade.sl = exit_price if exit_price < trade.p else 0
-            trade.tp = exit_price if exit_price > trade.p else 0
-
-            # or will create an exit order
-            # trader = self.strategy.trader()
-            # trade.modify_take_profit(trader, self.instrument.market_id, exit_price)
-            # trade.modify_stop_loss(trader, self.instrument.market_id, exit_price)
-
-    #### @deprecated scorify method (linear regression) kept for history reference.
+    #### @deprecated scorify method kept for history reference.
         # is_div = False
         # cross_dir = 0
 

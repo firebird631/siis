@@ -104,16 +104,6 @@ class BitMexTrader(Trader):
     def on_watcher_disconnected(self, watcher_name):
         super().on_watcher_disconnected(watcher_name)
 
-    def tradeable(self, market_id):
-        """
-        Return True if the trader accept order and market id is tradeable.
-        """
-        self.lock()
-        result = self._watcher and self._watcher.connected and market_id in self._markets and self._markets[market_id].is_open
-        self.unlock()
-
-        return result
-
     def market(self, market_id, force=False):
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.

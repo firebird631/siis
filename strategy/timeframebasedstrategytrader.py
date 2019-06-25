@@ -163,6 +163,12 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     #     self.unlock()
 
     def compute(self, timeframe, timestamp):
+        """
+        Compute the signals for the differents timeframes depending of the update policy.
+
+        If wait_next_update is set then it will only compute signal for a particular timeframe
+        when the need_update method return True. The standard implementation is to compute signal at a candle close.
+        """
         # split entries from exits signals
         entries = []
         exits = []
@@ -184,10 +190,10 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             for tf, sub in self.timeframes.items():
                 signal = sub.process(timestamp)
                 if signal:
-                        if signal.signal == StrategySignal.SIGNAL_ENTRY:
-                            entries.append(signal)
-                        elif signal.signal == StrategySignal.SIGNAL_EXIT:
-                            exits.append(signal)
+                    if signal.signal == StrategySignal.SIGNAL_ENTRY:
+                        entries.append(signal)
+                    elif signal.signal == StrategySignal.SIGNAL_EXIT:
+                        exits.append(signal)
 
         # finally sort them by timeframe ascending
         entries.sort(key=lambda s: s.timeframe)
@@ -233,82 +239,6 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         high = self.instrument.candle(upper_tf).high
 
         return upper_tf, low, high, price_above_slow_ema
-
-    def get_stop_loss(self, trade, last_price, low, high, trend):
-        if trade.dir > 0:
-            if trend >= 0:
-                # large stop
-                # sl = low - max(self.instrument.height(trade.timeframe, -1), self.instrument.height(trade.timeframe, -2)) #  * 2
-                # sl = low + min(self.instrument.height(tf, -1), self.instrument.height(tf, -2)) #  * 2
-                # sl = entry_price - min(self.instrument.height(trade.timeframe, -1), self.instrument.height(trade.timeframe, -2))
-                # sl = entry_price - min(self.instrument.height(tf, -1), self.instrument.height(tf, -2))
-
-                volatility = high - low
-
-                ch = max(self.instrument.height(trade.timeframe, -1), self.instrument.height(trade.timeframe, -2))
-                # test avec min
-
-                # if not trade.sl:
-                #     return low
-
-                # if last_price - ch > trade.p:
-                if last_price > trade.sl: # trade.p:
-                    # return trade.p  # breakeven
-                    Terminal.inst().info("AAAA", view="debug")
-                    # return trade.p - volatility - ch  #C1  bof
-                    # return last_price - volatility  # C0  OK
-                    # return (last_price - trade.sl) * 0.25 + trade.sl  # C2 +
-
-                    # > C3
-                    if last_price - ch > trade.p or not trade.sl:
-                        return last_price - ch
-                    else:
-                        return (last_price - trade.sl) * 0.5 + trade.sl
-                    # < C3
-                else:
-                    # return low
-                    Terminal.inst().info("BBBB", view="debug")
-                    # return trade.p - volatility * 0.5  #  low + ch  # C2
-                    # return trade.sl + volatility * 0.5  #  low + ch  # C3
-                    return last_price - ch  #  C4
-
-                logger.info("bull up entry=%s last=%s low=%s high=%s sl=%s ch=%s volat=%s" % (trade.p, last_price, low, high, sl, ch, volatility))
-
-            elif trend < 0:
-                volatility = high - low
-
-                ch = max(self.instrument.height(trade.timeframe, -1), self.instrument.height(trade.timeframe, -2))
-                # test avec min
-
-                # if not trade.sl:
-                #     return low
-
-                # if last_price - ch > trade.p:
-                if last_price > trade.sl: # trade.p:
-                    # return trade.p  # breakeven
-                    Terminal.inst().info("YYYY", view="debug")
-                    # return trade.p - volatility  # ch  # C0 OK
-                    # return last_price - volatility  # C1 
-                    # return (last_price - trade.sl) * 0.25 + trade.sl  # C2 +
-
-                    # > C3
-                    if last_price - ch > trade.p or not trade.sl:
-                        return last_price - ch
-                    else:
-                        return (last_price - trade.sl) * 0.5 + trade.sl
-                    # < C3
-                else:
-                    # return low
-                    Terminal.inst().info("ZZZZ", view="debug")
-                    # return low - ch  #  C1 ++
-                    # return trade.p - volatility * 0.5  # low + ch  # C3
-                    # return trade.sl + volatility * 0.5  #  low + ch  # C6
-                    return last_price - ch  #  C4
-
-        elif trade.dir < 0:
-            return trade.sl  # @todo
-        else:
-            return trade.sl
 
     #
     # streaming

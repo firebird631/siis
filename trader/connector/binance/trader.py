@@ -97,18 +97,6 @@ class BinanceTrader(Trader):
 
         self.unlock()
 
-    def tradeable(self, market_id):
-        """
-        Return True if the trader accept order and market id is tradeable.
-        """
-        result = False
-
-        self.lock()
-        result = self._watcher and self._watcher.connected and market_id in self._markets and self._markets[market_id].is_open
-        self.unlock()
-
-        return result
-
     def on_watcher_connected(self, watcher_name):
         super().on_watcher_connected(watcher_name)
 
@@ -130,15 +118,16 @@ class BinanceTrader(Trader):
 
         self.lock()
 
-        for balance in balances:
-            asset_name = balance['asset']
-            self.__get_or_add_asset(asset_name)
-
         # fill the list of quotes symbols
         symbols = self._watcher.connector.client.get_exchange_info()
         for symbol in symbols['symbols']:
             if symbol['quoteAsset'] not in self._quotes:
                 self._quotes.append(symbol['quoteAsset'])
+
+        # and add any asset of the balance
+        for balance in balances:
+            asset_name = balance['asset']
+            self.__get_or_add_asset(asset_name)
 
         self.unlock()
 
@@ -598,7 +587,8 @@ class BinanceTrader(Trader):
 
     def __fetch_assets(self):
         """
-        Fetch recent asset and update the APCU per asset and set it into positions.
+        Fetch recent asset and update the average unit price per asset and set it into positions.
+        
         @note Asset must be fetch before from DB if existings.
         """
         query_time = time.time()
@@ -641,39 +631,14 @@ class BinanceTrader(Trader):
             balance['trades'] = []
 
             #
-            # find the most appriopriate quote if necessary
+            # find the most appropriate quote if necessary
             #
 
             asset = self.__get_or_add_asset(asset_name)
-            asset.precision = symbols.get(asset_name, {'precision': 8})['precision']
+            asset.precision = symbols.get(asset.symbol, {'precision': 8})['precision']
 
-            quote_symbol = asset.quote
-
-            if not quote_symbol:
-                # find the most appriopriate quote
-                if asset_name == self._account.currency and self._watcher.has_instrument(asset_name+self._account.alt_currency):
-                    # probably BTCUSDT
-                    quote_symbol = self._account.alt_currency
-                elif asset_name != self._account.currency and self._watcher.has_instrument(asset_name+self._account.currency):
-                    # any pair based on BTC
-                    quote_symbol = self._account.currency
-                else:
-                    # others case but might not occurs often because most of the assets are expressed in BTC
-                    for qs in self._quotes:
-                        if self._watcher.has_instrument(asset_name+qs):
-                            quote_symbol = qs
-                            break
-
-            if not quote_symbol:
-                if not asset.quote:
-                    logger.warning("No found quote for asset %s" % quote_symbol)
-
-                quote_symbol = asset_name
-
-            asset.quote = quote_symbol
-            balance['quote'] = quote_symbol
-
-            balances[asset_name] = balance
+            balance['quote'] = asset.quote
+            balances[asset.symbol] = balance
 
         #
         # prefetch for currently non empty assets
@@ -955,6 +920,30 @@ class BinanceTrader(Trader):
         for qs in self._quotes:
             if asset_name+qs in self._markets:
                 asset.add_market_id(asset_name+qs)
+
+        # find the most appriopriate quote of an asset.                
+        quote_symbol = None
+        
+        if asset.symbol == self._account.currency and self._watcher.has_instrument(asset.symbol+self._account.alt_currency):
+            # probably BTCUSDT
+            quote_symbol = self._account.alt_currency
+        elif asset.symbol != self._account.currency and self._watcher.has_instrument(asset.symbol+self._account.currency):
+            # any pair based on BTC
+            quote_symbol = self._account.currency
+        else:
+            # others case but might not occurs often because most of the assets are expressed in BTC
+            for qs in self._quotes:
+                if self._watcher.has_instrument(asset.symbol+qs):
+                    quote_symbol = qs
+                    break
+
+        if not quote_symbol:
+            if not asset.quote:
+                logger.warning("No found quote for asset %s" % asset.symbol)
+
+            quote_symbol = asset.symbol
+
+        asset.quote = quote_symbol
 
         return asset
 

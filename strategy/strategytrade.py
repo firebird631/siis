@@ -54,6 +54,8 @@ class StrategyTrade(object):
         self._operations = []   # list containing the operation to process during the trade for semi-automated trading
         self._manager = StrategyTrade.MANAGER_STRATEGY   # who is responsible of the TP & SL dynamic adjustement (strategy or user defined operations)
 
+        self._next_operation_id = 1
+
         self._open_time = 0
 
         self.id = 0      # unique trade identifier
@@ -252,14 +254,10 @@ class StrategyTrade(object):
     def is_entry_timeout(self, timestamp, timeout):
         """
         Return true if the trade timeout.
-        """
-        return (self._entry_state == StrategyTrade.STATE_OPENED) and (self.e == 0) and ((timestamp - self.t) >= timeout)
 
-    # def is_exit_timeout(self, timestamp, timeout):
-    #     """
-    #     Return true if the trade timeout.
-    #     """
-    #     return (self._exit_state == StrategyTrade.STATE_OPENED) and (self.x == 0) and ((timestamp - self.et) >= timeout)
+        @note created timestamp t must be valid else it will timeout every time.
+        """
+        return (self._entry_state == StrategyTrade.STATE_OPENED) and (self.e == 0) and (self.t > 0) and ((timestamp - self.t) >= timeout)
 
     def is_valid(self, timestamp, validity):
         """
@@ -440,10 +438,18 @@ class StrategyTrade(object):
         self._operations = ops
 
     def add_operation(self, trade_operation):
+        trade_operation.set_id(self._next_operation_id)
+        self._next_operation_id += 1
+
         self._operations.append(trade_operation)
 
-    def remove_operation(self, trade_operation_index):
-        del self._operations[trade_operation_index]
+    def remove_operation(self, trade_operation_id):
+        for operation in self._operations:
+            if operation.id == trade_operation_id:
+                self._operations.remove(operation)
+                return True
+
+        return False
 
     def has_operations(self):
         return len(self._operations) > 0

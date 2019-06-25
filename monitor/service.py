@@ -85,7 +85,7 @@ class MonitorService(Service):
         self._loop = None
 
         # host, port, allowed host, order, deny... from config
-        self._mode = MonitorService.MODE_HTTP_WEBSOCKET
+        self._mode = MonitorService.MODE_FIFO  # MODE_HTTP_WEBSOCKET
 
         self._host = self._monitoring_config.get('host', '127.0.0.1')
         self._port = self._monitoring_config.get('port', '8080')
@@ -198,8 +198,6 @@ class MonitorService(Service):
                 try:
                     # write to fifo
                     posix.write(self._fifo, (json.dumps(c[3]) + '\n').encode('utf8'))
-                    # msg = json.dumps({'s': None}) + '\n'
-                    # posix.write(self._fifo, msg.encode('utf8'))
                 except (BrokenPipeError, IOError):
                     pass
                 except (TypeError, ValueError) as e:

@@ -202,12 +202,6 @@ class Trader(Runnable):
     def authenticated(self):
         return False
 
-    def tradeable(self, market_id):
-        """
-        Return True if the trader accept order and market id is tradeable.
-        """
-        return False
-
     @classmethod    
     def authentication_required(cls, fn):
         """
@@ -462,7 +456,7 @@ class Trader(Runnable):
             # display the list of markets
             if self.connected and self._markets:
 
-                Terminal.inst().notice("List %i markets for %s" % (len(self._markets), self._name), view='content-head')
+                Terminal.inst().notice("List %i markets for %s" % (len(self._markets), self._name), view='content')
 
                 # tabular formated text
                 # arr1 = self.formatted_markets(style=Terminal.inst().style())
@@ -476,7 +470,7 @@ class Trader(Runnable):
             # display the list of markets tickers
             if self.connected and self._markets:
 
-                Terminal.inst().notice("List %i markets tickers for %s" % (len(self._markets), self._name), view='content-head')
+                Terminal.inst().notice("List %i markets tickers for %s" % (len(self._markets), self._name), view='content')
 
                 # tabular formated text
                 arr1 = self.formatted_markets_tickers(style=Terminal.inst().style())
@@ -489,7 +483,7 @@ class Trader(Runnable):
                 if self.account is None:
                     return
 
-                Terminal.inst().notice("List %i positions for %s" % (len(self._positions.items()), self._name), view='content-head')
+                Terminal.inst().notice("List %i positions for %s" % (len(self._positions.items()), self._name), view='content')
 
                 if 0:  # @todo  
                     # tabular formated text
@@ -576,7 +570,7 @@ class Trader(Runnable):
                         count += 1
                 self.unlock()
 
-                Terminal.inst().notice("List %i assets for %s" % (count, self._name), view='content-head')
+                Terminal.inst().notice("List %i assets for %s" % (count, self._name), view='content')
 
                 # tabular formated text
                 arr1, arr2 = self.formatted_assets(style=Terminal.inst().style())
@@ -587,20 +581,20 @@ class Trader(Runnable):
         elif command_type == Trader.COMMAND_DISPLAY_ACCOUNT:
             # display the account details
             if self.connected and self._account:
-                Terminal.inst().notice("Account details for %s" % (self._name,), view='content-head')
+                Terminal.inst().notice("Account details for %s" % (self._name,), view='content')
                
                 arr = self.formatted_account(style=Terminal.inst().style())
                 Terminal.inst().info(arr, view='content')
 
         elif command_type == Trader.COMMAND_INFO:
             # info on the appliance
-            Terminal.inst().notice("Traders list", view='content-head')
+            Terminal.inst().notice("Traders list", view='content')
             Terminal.inst().info("Trader %s is %s" % (self.name, ("active" if self._activity else "inactive")), view='content')
 
         elif command_type == Trader.COMMAND_LIST_ORDERS:
             # display the active orders details
             if self.connected and self._orders:
-                Terminal.inst().notice("List %i actives orders for %s" % (len(self._orders), self._name), view='content-head')
+                Terminal.inst().notice("List %i actives orders for %s" % (len(self._orders), self._name), view='content')
                 
                 arr1 = self.formatted_orders(style=Terminal.inst().style())
                 Terminal.inst().info(arr1, view='content')
@@ -643,7 +637,7 @@ class Trader(Runnable):
             results = self.get_live_report()
 
             if results:
-                Terminal.inst().notice("Performance for markets of %s" % self._name, view='content-head')
+                Terminal.inst().notice("Performance for markets of %s" % self._name, view='content')
 
                 # @todo display in table
                 for r in results:
@@ -888,12 +882,7 @@ class Trader(Runnable):
         """
         Notifiable listener.
         """ 
-        if signal.source == Signal.SOURCE_SYSTEM:
-            if signal.signal_type == SIGNAL_WAKE_UP:
-                # signal of interest
-                self._signals.append(signal)
-
-        elif signal.source == Signal.SOURCE_WATCHER:
+        if signal.source == Signal.SOURCE_WATCHER:
             if signal.source_name != self._name:
                 # only interested by the watcher of the same name
                 return

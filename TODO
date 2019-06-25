@@ -16,7 +16,7 @@
 # BUG #
 #######
 
-#84 Il semble que le creation timestamp avec IG n'est pas initialisé, pourtant le parsing de la date est ok.
+#87 Command ajouter/retirer un market d'un watcher/trader/appliance.
 
 #71 vue latéral pour afficher les markets tradé pour l'appliance séléctionné (page-up/down) avec pourquoi pas l'accélérateur affiché dessus
 

@@ -151,12 +151,7 @@ class Watcher(Runnable):
         """
         Notifiable listener.
         """ 
-        if signal.source == Signal.SOURCE_SYSTEM:
-            if signal.signal_type == SIGNAL_WAKE_UP:
-                # signal of interest
-                self._signals.append(signal)
-
-        elif signal.source == Signal.SOURCE_WATCHER:
+        if signal.source == Signal.SOURCE_WATCHER:
             if signal.source_name != self._name:
                 # only interested by the watcher of the same name
                 return

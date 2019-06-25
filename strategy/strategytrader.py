@@ -34,11 +34,15 @@ class StrategyTrader(object):
     def __init__(self, strategy, instrument):
         self.strategy = strategy
         self.instrument = instrument
-        
+
         self.trades = []
-        
-        self._mutex = threading.RLock()
+        self.regions = []
+
         self._next_trade_id = 1
+        self._next_region_id = 1
+
+        self._mutex = threading.RLock()
+        self._activity = True
 
         self._expiry_max_time_unit = StrategyTrader.MAX_TIME_UNIT
 
@@ -60,54 +64,23 @@ class StrategyTrader(object):
     def unlock(self):
         self._mutex.release()
 
-    def create_chart_streamer(self, timeframe):
-        """
-        Create a streamer for the chart at a specific timeframe.
-        Must be overrided.
-        """
-        return None
+    @property
+    def activity(self):
+        return self._activity
 
-    def subscribe(self, timeframe):
+    def set_activity(self, status):
         """
-        Use or create a specific streamer.
+        Enable/disable execution of the automated orders.
         """
-        if timeframe in self._timeframe_streamers:
-            self._timeframe_streamers[timeframe].use()
-            return True
-        else:
-            streamer = self.create_chart_streamer(timeframe)
+        self._activity = status   
 
-            if streamer:
-                streamer.use()
-                self._timeframe_streamers[timeframe] = streamer
-                return True
+    def process(self, timeframe, timestamp):
+        """
+        Override this method to do her all the strategy work. You must call the update_trades method
+        during the process.
 
-        return False
-
-    def unsubscribe(self, timeframe):
-        """
-        Delete a specific streamer when no more subscribers.
-        """
-        if timeframe in self._timeframe_streamers:
-            self._timeframe_streamers[timeframe].unuse()
-            if self._timeframe_streamers[timeframe].is_free():
-                # delete if 0 subscribers
-                del self._timeframe_streamers[timeframe]
-    
-            return True
-        else:
-            return False
-
-    def stream_call(self):
-        """
-        Process the call for the strategy trader. Must be overriden.
-        """
-        pass
-
-    def process(self, tf, timestamp):
-        """
-        @param tf Smallest updated time unit.
-        @param timestamp Current timestamp (or past time in backtest)
+        @param timeframe Update timeframe unit.
+        @param timestamp Current timestamp (or past time in backtest).
         """
         pass
 
@@ -177,7 +150,7 @@ class StrategyTrader(object):
         self.trades.remove(trade)
         self.unlock()
 
-    def update_timeout(self, timestamp, trade):
+    def update_timeout(self, timestamp, trade, local=True):
         """
         Aadjust the take-profit to current price (bid or ofr) and the stop-loss very tiny to protect the issue of the trade,
         when the trade arrives to a validity expiration. Mostly depend ofthe timeframe of the trade.
@@ -190,14 +163,12 @@ class StrategyTrader(object):
 
         # more than max time unit of the timeframe then abort the trade
         if (trade.created_time > 0) and ((timestamp - trade.created_time) / trade.timeframe) > self._expiry_max_time_unit:
-            # trade.modify_stop_loss()
-            # trade.modify_take_profit()
-            
-            # this will exit now but prefer exit at limit and use a tiny stop
-            trade.tp = self.instrument.close_exec_price(trade.dir)
-            trade.sl = self.instrument.close_exec_price(trade.dir)
-
-            # logger.info("> Trade %s timeout !" % trade.id)
+            if local:
+                trade.tp = self.instrument.close_exec_price(trade.dir)
+                trade.sl = self.instrument.close_exec_price(trade.dir)
+            else:
+                trade.modify_stop_loss()
+                trade.modify_take_profit()
 
         return True
 
@@ -500,6 +471,47 @@ class StrategyTrader(object):
 
         self.unlock()
 
+    #
+    # region management
+    #
+
+    def add_region(self, region):
+        self.lock()
+        region.set_id(self._next_region_id)
+        self._next_region_id += 1
+        self.regions.append(region)
+        self.unlock()
+
+    def remove_region(self, region_id):
+        self.lock()
+
+        for region in self.regions:
+            if region.id == region_id:
+                self.regions.remove(region)
+                break
+
+        self.unlock()
+
+    def check_regions(self, signal):
+        """
+        Compare a signal to defined regions if somes are defineds.
+        @note This method is not trade safe.
+        """
+        if self.regions:
+            # one ore many region, have to pass at least one test
+            for region in self.regions:
+                if region.test_region(signal):
+                    return True
+
+            return False
+        else:
+            # no region always pass
+            return True
+
+    #
+    # miscs
+    #
+
     def update_trailing_stop(self, trade, market, distance, local=True, distance_in_percent=True):
         """
         Update the stop price of a trade using a simple level distance or percent distance method.
@@ -559,3 +571,51 @@ class StrategyTrader(object):
                 trade.sl = stop_loss
             else:
                 trade.modify_stop_loss(trader, market.market_id, stop_loss)
+
+    #
+    # signal data streaming
+    #
+
+    def create_chart_streamer(self, timeframe):
+        """
+        Create a streamer for the chart at a specific timeframe.
+        Must be overrided.
+        """
+        return None
+
+    def subscribe(self, timeframe):
+        """
+        Use or create a specific streamer.
+        """
+        if timeframe in self._timeframe_streamers:
+            self._timeframe_streamers[timeframe].use()
+            return True
+        else:
+            streamer = self.create_chart_streamer(timeframe)
+
+            if streamer:
+                streamer.use()
+                self._timeframe_streamers[timeframe] = streamer
+                return True
+
+        return False
+
+    def unsubscribe(self, timeframe):
+        """
+        Delete a specific streamer when no more subscribers.
+        """
+        if timeframe in self._timeframe_streamers:
+            self._timeframe_streamers[timeframe].unuse()
+            if self._timeframe_streamers[timeframe].is_free():
+                # delete if 0 subscribers
+                del self._timeframe_streamers[timeframe]
+    
+            return True
+        else:
+            return False
+
+    def stream_call(self):
+        """
+        Process the call for the strategy trader. Must be overriden.
+        """
+        pass

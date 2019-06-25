@@ -11,59 +11,70 @@ from terminal.terminal import Terminal
 def display_help(commands_handler, user_context=False):
     if user_context:
         # user context help
-        Terminal.inst().notice("User contextuel help command details", view='content-head')
-        for entry in commands_handler.get_user_help():
+        Terminal.inst().message("User contextuel commands:", view='content')
+        for entry in commands_handler.get_user_summary():
             if entry[1]:
                 Terminal.inst().message(" - '%s' %s " % (entry[0], entry[1]) , view='content')
     else:
         # general help
-        Terminal.inst().notice("Help command details", view='content-head')
-        Terminal.inst().message("Direct key actions (single key press), view key are in uppercase:", view='content')
+        Terminal.inst().message("General commands. Direct key actions (single key press), view key are in uppercase:", view='content')
         # @todo accelerator with Command
-        Terminal.inst().action(" - '?' ping all services", view='content')
-        Terminal.inst().action(" - <space> print a time mark in status bar", view='content')
-        Terminal.inst().action(" - 'n' toggle desktop notifications", view='content')
-        Terminal.inst().action(" - 'a' toggle audible notifications", view='content')
-        Terminal.inst().action(" - 'e' toggle discord notifications", view='content')
+        Terminal.inst().message(" - '?' ping all services", view='content')
+        Terminal.inst().message(" - <space> print a time mark in status bar", view='content')
+        Terminal.inst().message(" - 'n' toggle desktop notifications", view='content')
+        Terminal.inst().message(" - 'a' toggle audible notifications", view='content')
+        Terminal.inst().message(" - 'e' toggle discord notifications", view='content')
 
-        Terminal.inst().action(" - 'p' list positions", view='content')
-        Terminal.inst().action(" - 'b' list assets", view='content')
-        Terminal.inst().action(" - 'm' list availables markets", view='content')
-        Terminal.inst().action(" - 'w' list watched markets", view='content')
-        Terminal.inst().action(" - 't' list tickers", view='content')
-        Terminal.inst().action(" - 'c' list accounts", view='content')
-        Terminal.inst().action(" - 'o' list orders", view='content')
-        Terminal.inst().action(" - 'g' print trader performance", view='content')
-        Terminal.inst().action(" - 'f' print appliance performance", view='content')
-        Terminal.inst().action(" - 's' print appliance statistics", view='content')
+        Terminal.inst().message(" - 'p' list positions", view='content')
+        Terminal.inst().message(" - 'b' list assets", view='content')
+        Terminal.inst().message(" - 'm' list availables markets", view='content')
+        Terminal.inst().message(" - 'w' list watched markets", view='content')
+        Terminal.inst().message(" - 't' list tickers", view='content')
+        Terminal.inst().message(" - 'c' list accounts", view='content')
+        Terminal.inst().message(" - 'o' list orders", view='content')
+        Terminal.inst().message(" - 'g' print trader performance", view='content')
+        Terminal.inst().message(" - 'f' print appliance performance", view='content')
+        Terminal.inst().message(" - 's' print appliance statistics", view='content')
 
-        Terminal.inst().action(" - 'F' show strategy view", view='content')
-        Terminal.inst().action(" - 'S' show statistic view", view='content')
-        Terminal.inst().action(" - 'P' show performance view", view='content')
-        Terminal.inst().action(" - 'T' show trader view", view='content')
-        Terminal.inst().action(" - 'M' show monitor view", view='content')
-        Terminal.inst().action(" - 'D' show debug view", view='content')
-        Terminal.inst().action(" - 'I' show content view", view='content')
-        Terminal.inst().action(" - 'C' clear content view", view='content')
+        Terminal.inst().message(" - 'F' show strategy view", view='content')
+        Terminal.inst().message(" - 'S' show statistic view", view='content')
+        Terminal.inst().message(" - 'P' show performance view", view='content')
+        Terminal.inst().message(" - 'T' show trader view", view='content')
+        Terminal.inst().message(" - 'M' show monitor view", view='content')
+        Terminal.inst().message(" - 'D' show debug view", view='content')
+        Terminal.inst().message(" - 'I' show content view", view='content')
+        Terminal.inst().message(" - 'C' clear content view", view='content')
 
-        for entry in commands_handler.get_help():
+        for entry in commands_handler.get_summary():
             if entry[1]:
                 Terminal.inst().message(" - %s %s " % (entry[0], entry[1]) , view='content')
 
         Terminal.inst().message("", view='content')
         Terminal.inst().message("Advanced commands have to be completed by <ENTER> key else <ESC> to cancel. Command typing are avoided after fews seconds.", view='content')
-        Terminal.inst().action(" - ':quit' or ':q' exit", view='content')
+        Terminal.inst().message(" - ':quit' or ':q' exit", view='content')
 
-        for entry in commands_handler.get_cli_help():
+        for entry in commands_handler.get_cli_summary():
             if entry[2]:
                 if entry[1]:
                     Terminal.inst().message(" - ':%s' or ':%s' %s " % (entry[0], entry[1], entry[2]) , view='content')
                 else:
                     Terminal.inst().message(" - ':%s' %s " % (entry[0], entry[2]) , view='content')
 
-        # Terminal.inst().action(" - ':show <strategy-id>:<market-id>' to open an interactive view for a specific market chart", view='content')
 
-        Terminal.inst().message("", view='content')
+def display_command_help(commands_handler, command_name):
+    name, alias, details = commands_handler.get_command_help(command_name)
+
+    if not name:
+        Terminal.inst().message("Command %s not found" % command_name, view='content')
+        return
+
+    Terminal.inst().message("Details of the command %s" % name, view='content')
+    if alias:
+        Terminal.inst().message(" - Alias %s" % alias, view='content')
+
+    if details:
+        for entry in details:
+            Terminal.inst().message(entry, view='content')
 
 
 def display_cli_help():

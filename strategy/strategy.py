@@ -10,7 +10,7 @@ import collections
 from terminal.terminal import Terminal
 from common.runnable import Runnable
 from monitor.streamable import Streamable, StreamMemberFloat, StreamMemberBool
-from common.utils import timeframe_to_str
+from common.utils import timeframe_to_str, timeframe_from_str
 
 from notifier.signal import Signal
 from instrument.instrument import Instrument
@@ -43,6 +43,8 @@ class Strategy(Runnable):
 
     @todo Getting display data are the slow part, causing potential global latency, don't call it too often.
         Maybe a kind of event sourcing will be preferable.
+
+    @todo Move Each COMMAND_ to command/ and have a registry
     """
 
     MAX_SIGNALS = 1000   # max size of the signals messages queue before ignore some market data (tick, ohlc)
@@ -55,6 +57,9 @@ class Strategy(Runnable):
     COMMAND_TRADE_MODIFY = 11   # modify an existing trade
     COMMAND_TRADE_EXIT = 12     # exit (or eventually cancel if not again filled) an existing trade
     COMMAND_TRADE_INFO = 13     # get and display manual trade info (such as listing operations)
+
+    COMMAND_TRADER_MODIFY = 14
+    COMMAND_TRADER_INFO = 15
 
     def __init__(self, name, strategy_service, watcher_service, trader_service, options, parameters=None):
         super().__init__("st-%s" % name)
@@ -301,6 +306,29 @@ class Strategy(Runnable):
                     return instrument
 
         return None
+
+    def symbols_ids(self):
+        """
+        Returns the complete list containing market-ids, theirs alias and theirs related symbol name.
+        """
+        self.lock()
+
+        names = []
+
+        for k, instrument in self._instruments.items():
+            names.append(instrument.market_id)
+
+            if instrument.symbol and instrument.symbol != instrument.market_id and instrument.symbol != instrument.alias:
+                names.append(instrument.symbol)
+
+            if instrument.alias and instrument.alias != instrument.market_id and instrument.alias != instrument.symbol:
+                names.append(instrument.alias)
+
+        self.unlock()
+
+        names.sort()
+
+        return names
 
     def instrument(self, symbol_or_market_id):
         """
@@ -701,7 +729,7 @@ class Strategy(Runnable):
             results = self.get_stats()
 
             if results:
-                Terminal.inst().notice("Active trades for strategy %s - %s" % (self.name, self.identifier), view='content-head')
+                Terminal.inst().notice("Active trades for strategy %s - %s" % (self.name, self.identifier), view='content')
 
                 # tabular formated text
                 arr1, arr2 = self.formatted_stats(results, style=Terminal.inst().style(), quantities=True)
@@ -713,7 +741,7 @@ class Strategy(Runnable):
             results = self.get_history_stats(50)
 
             if results:
-                Terminal.inst().notice("Trade history for strategy %s - %s" % (self.name, self.identifier), view='content-head')
+                Terminal.inst().notice("Trade history for strategy %s - %s" % (self.name, self.identifier), view='content')
 
                 # tabular formated text
                 arr = self.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
@@ -722,7 +750,7 @@ class Strategy(Runnable):
 
         elif command_type == Strategy.COMMAND_INFO:
             # info on the appliance
-            Terminal.inst().notice("Appliances list", view='content-head')
+            Terminal.inst().notice("Appliances list", view='content')
             Terminal.inst().info("Appliances %s identified by \\2%s\\0 is %s" % (
                 self.name, self.identifier, ("active" if self._activity else "inactive")), view='content')
 
@@ -735,13 +763,16 @@ class Strategy(Runnable):
 
             if instrument:
                 sub_trader = self._sub_traders.get(instrument)
-                Terminal.inst().notice("Trade entry for strategy %s - %s" % (self.name, self.identifier), view='content-head')
+                Terminal.inst().notice("Trade entry for strategy %s - %s" % (self.name, self.identifier), view='content')
 
                 # create a new trade
                 results = self.cmd_trade_entry(sub_trader, data)
 
                 if results:
-                    Terminal.inst().notice("Trade entry for strategy %s - %s" % (self.name, self.identifier), view='content-head')
+                    if results['error']:
+                        Terminal.inst().info(results['messages'][0], view='status')
+                    else:
+                        Terminal.inst().info("Done", view='status')
 
                     for message in results['messages']:
                         Terminal.inst().info(message, view='content')
@@ -756,15 +787,16 @@ class Strategy(Runnable):
 
             if instrument and trade_id:
                 sub_trader = self._sub_traders.get(instrument)
+                Terminal.inst().notice("Trade exit for strategy %s - %s" % (self.name, self.identifier), view='content')
 
                 # retrieve the trade and close it
                 results = self.cmd_trade_exit(sub_trader, data)
 
                 if results:
-                    Terminal.inst().notice("Trade exit for strategy %s - %s" % (self.name, self.identifier), view='content-head')
-
                     if results['error']:
                         Terminal.inst().info(results['messages'][0], view='status')
+                    else:
+                        Terminal.inst().info("Done", view='status')
 
                     for message in results['messages']:
                         Terminal.inst().info(message, view='content')
@@ -779,15 +811,16 @@ class Strategy(Runnable):
 
             if instrument and trade_id:
                 sub_trader = self._sub_traders.get(instrument)
+                Terminal.inst().notice("Trade modify for strategy %s - %s" % (self.name, self.identifier), view='content')
 
                 # retrieve the trade and apply the modification
                 results = self.cmd_trade_modify(sub_trader, data)
 
                 if results:
-                    Terminal.inst().notice("Trade modify for strategy %s - %s" % (self.name, self.identifier), view='content-head')
-
                     if results['error']:
                         Terminal.inst().info(results['messages'][0], view='status')
+                    else:
+                        Terminal.inst().info("Done", view='status')
 
                     for message in results['messages']:
                         Terminal.inst().info(message, view='content')
@@ -802,15 +835,64 @@ class Strategy(Runnable):
 
             if instrument and trade_id:
                 sub_trader = self._sub_traders.get(instrument)
+                Terminal.inst().notice("Trade info for strategy %s - %s" % (self.name, self.identifier), view='content')
 
                 # retrieve the trade and display its info
                 results = self.cmd_trade_info(sub_trader, data)
 
                 if results:
-                    Terminal.inst().notice("Trade info for strategy %s - %s" % (self.name, self.identifier), view='content-head')
-
                     if results['error']:
                         Terminal.inst().info(results['messages'][0], view='status')
+                    else:
+                        Terminal.inst().info("Done", view='status')
+
+                    for message in results['messages']:
+                        Terminal.inst().info(message, view='content')
+
+        elif command_type == Strategy.COMMAND_TRADER_MODIFY:
+            # display the details of a trade (stop-loss mode/prices, take-profits prices/qty, any other execution conditions)
+            market_id = data.get('market-id')
+            trade_id = data.get('trade-id')
+
+            # retrieve by market-id or mapped symbol
+            instrument = self.find_instrument(market_id)
+
+            if instrument and trade_id:
+                sub_trader = self._sub_traders.get(instrument)
+                Terminal.inst().notice("Trader modify for strategy %s - %s %s" % (self.name, self.identifier, instrument.market_id), view='content')
+
+                # retrieve the trade and display its info
+                results = self.cmd_sub_trader_modify(sub_trader, data)
+
+                if results:
+                    if results['error']:
+                        Terminal.inst().info(results['messages'][0], view='status')
+                    else:
+                        Terminal.inst().info("Done", view='status')
+
+                    for message in results['messages']:
+                        Terminal.inst().info(message, view='content')
+
+        elif command_type == Strategy.COMMAND_TRADER_INFO:
+            # display the details of a sub-trader (market, activity, regions, number of trades)
+            market_id = data.get('market-id')
+            detail = data.get('detail')
+
+            # retrieve by market-id or mapped symbol
+            instrument = self.find_instrument(market_id)
+
+            if instrument:
+                sub_trader = self._sub_traders.get(instrument)
+                Terminal.inst().notice("Trader info for strategy %s - %s %s" % (self.name, self.identifier, instrument.market_id), view='content')
+
+                # retrieve the sub-trader and display its info
+                results = self.cmd_sub_trader_info(sub_trader, data)
+
+                if results:
+                    if results['error']:
+                        Terminal.inst().info(results['messages'][0], view='status')
+                    else:
+                        Terminal.inst().info("Done", view='status')
 
                     for message in results['messages']:
                         Terminal.inst().info(message, view='content')
@@ -888,20 +970,9 @@ class Strategy(Runnable):
         """
         Notifiable listener.
         """ 
-        if signal.source == Signal.SOURCE_SYSTEM:
-            if signal.signal_type == SIGNAL_WAKE_UP:
-                # signal of interest
-                self._signals.append(signal)
-
-        elif signal.source == Signal.SOURCE_STRATEGY:
-            # filter by instrument for tick or candle data
-            if signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:
-                if signal.data[0] not in self._instruments:
-                    # non interested by this instrument/symbol
-                    return
-
+        if signal.source == Signal.SOURCE_STRATEGY:
             # filter by instrument for tick data
-            elif signal.signal_type == Signal.SIGNAL_TICK_DATA:
+            if signal.signal_type == Signal.SIGNAL_TICK_DATA:
                 if signal.data[0] not in self._instruments:
                     # non interested by this instrument/symbol
                     return
@@ -919,6 +990,12 @@ class Strategy(Runnable):
                     # non interested by this candle data
                     return
 
+            # filter by instrument for buy/sell signal
+            elif signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:
+                if signal.data[0] not in self._instruments:
+                    # non interested by this instrument/symbol
+                    return
+
             # signal of interest
             self._signals.append(signal)
 
@@ -927,14 +1004,8 @@ class Strategy(Runnable):
                 # not interested by this watcher
                 return
 
-            # filter by instrument for tick or candle data
-            if signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:
-                if signal.data[0] not in self._instruments:
-                    # non interested by this instrument/symbol
-                    return
-
             # filter by instrument for tick data
-            elif signal.signal_type == Signal.SIGNAL_TICK_DATA:
+            if signal.signal_type == Signal.SIGNAL_TICK_DATA:
                 if Instrument.TF_TICK != self.base_timeframe():
                     # non interested by this tick data
                     return
@@ -953,6 +1024,12 @@ class Strategy(Runnable):
                     return
 
             elif signal.signal_type == Signal.SIGNAL_MARKET_DATA:
+                if signal.data[0] not in self._instruments:
+                    # non interested by this instrument/symbol
+                    return
+
+            # filter by instrument for buy/sell signal
+            elif signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:
                 if signal.data[0] not in self._instruments:
                     # non interested by this instrument/symbol
                     return
@@ -1685,19 +1762,18 @@ class Strategy(Runnable):
             # add operation
             elif action == 'add-op':
                 op_name = data.get('operation', "")
-                op_id = len(trade.operations)
 
                 if op_name in self.service.tradeops:
                     try:
                         # instanciate the operation
-                        operation = self.service.tradeops[op_name](op_id)
+                        operation = self.service.tradeops[op_name]()
 
                         # and defined the parameters
                         operation.init(data)
 
                         if operation.check(trade):
                             # append the operation to the trade
-                            trade.operations.append(operation)
+                            trade.add_operation(operation)
                         else:
                             results['error'] = True
                             results['messages'].append("Operation checking error %s on trade %i" % (op_name, trade_id))
@@ -1711,22 +1787,14 @@ class Strategy(Runnable):
 
             # remove operation
             elif action == 'del-op':
-                op_id = -1
+                trade_operation_id = -1
 
                 if 'operation-id' in data and type(data.get('operation-id')) is int:
-                    op_id = data['operation-id']
+                    trade_operation_id = data['operation-id']
 
-                if op_id >= 0 and op_id < len(trade.operations):
-                    del trade.operations[op_id]
-
-                    for i, operation in enumerate(trade.operations):
-                        # reajust the id to the index
-                        operation.id = i
-
-                else:
+                if not trade.remove_operation(trade_operation_id):
                     results['error'] = True
                     results['messages'].append("Unknown operation-id on trade %i" % trade_id)
-
             else:
                 # unsupported action
                 results['error'] = True
@@ -1775,14 +1843,167 @@ class Strategy(Runnable):
                     break
 
         if trade:
-            results['messages'].append("List of %i operations:" % len(trade.operations))
+            results['messages'].append("Trade %i, list %i operations:" % (trade_id, len(trade.operations)))
 
             # @todo or as table using operation.parameters() dict
-            for i, operation in enumerate(trade.operations):
-                results['messages'].append(" - #%i: %s" % (i, operation.str_info()))
+            for operation in trade.operations:
+                results['messages'].append(" - #%i: %s" % (operation.id, operation.str_info()))
         else:
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)
+
+        sub_trader.unlock()
+
+        return results
+
+    def cmd_sub_trader_modify(self, sub_trader, data):
+        """
+        Modify a sub-trader region or state.
+        """        
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        action = ""
+        expiry = None
+        timeframe = None
+
+        try:
+            region_id = int(data.get('region-id', -1))
+            action = data.get('action')
+        except Exception:
+            results['error'] = True
+            results['messages'].append("Invalid trade identifier")
+
+        if action == "add-region":
+            region_name = data.get('region', "")
+
+            try:
+                expiry = int(data.get('expiry', 0))
+
+                if 'timeframe' in data and type(data['timeframe']) is str:
+                    timeframe = timeframe_from_str(data['timeframe'])
+
+            except ValueError:
+                results['error'] = True
+                results['messages'].append("Invalid parameters")
+
+            if not results['error']:
+                if region_name in self.service.regions:
+                    try:
+                        # instanciate the region
+                        region = self.service.regions[region_name]()
+
+                        # and defined the parameters
+                        region.init(data)
+
+                        if region.check(trade):
+                            # append the region to the trade
+                            sub_trader.add_region(region)
+                        else:
+                            results['error'] = True
+                            results['messages'].append("Region checking error %s" % (op_name,))
+
+                    except Exception as e:
+                        results['error'] = True
+                        results['messages'].append(repr(e))
+                else:
+                    results['error'] = True
+                    results['messages'].append("Unsupported region %s" % (region_name,))
+
+        elif action == "del-region":
+            try:
+                region_id = int(data.get('region-id', -1))
+            except Exception:
+                results['error'] = True
+                results['messages'].append("Invalid region identifier")
+
+            if region_id >= 0:
+                if not sub_trader.remove_region(region_id):
+                    results['messages'].append("Invalid region identifier")
+        else:
+            results['error'] = True
+            results['messages'].append("Invalid action")
+
+        if results['error']:
+            return results
+
+        region = None
+
+        sub_trader.lock()
+
+        if action == "add-region":
+            # add region
+            # @todo
+            pass
+        
+        elif action == "del-region":
+            # remove region
+            # @todo
+            pass
+
+        sub_trader.unlock()
+
+        return results
+
+    def cmd_sub_trader_info(self, sub_trader, data):
+        """
+        Get sub-trader info or specific element if detail defined.
+        """        
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        detail = data.get('detail', "")
+        region_id = -1
+
+        if detail == "region":
+            try:
+                region_id = int(data.get('region-id'))
+            except Exception:
+                results['error'] = True
+                results['messages'].append("Invalid region identifier")
+
+        if results['error']:
+            return results
+
+        trade = None
+
+        sub_trader.lock()
+
+        results['messages'].append("Stragegy trader %s, list %i regions:" % (sub_trader.instrument.market_id, len(sub_trader.regions)))
+
+        if detail == "region" and region_id >= 0:
+            region = None
+
+            for r in sub_trader.regions:
+                if r.id == region_id:
+                    region = r
+                    break
+
+            if region:
+                results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
+            else:
+                results['error'] = True
+                results['messages'].append("Invalid region identifier %i" % region_id)
+
+        elif not detail:
+            # no specific detail
+
+            # status
+            results['messages'].append(" Activity : %s" % ("enabled" if sub_trader.activity else "disabled"))
+
+            # regions
+            results['messages'].append("Stragegy trader %s, list %i regions:" % (sub_trader.instrument.market_id, len(sub_trader.regions)))
+
+            for region in sub_trader.regions:
+                results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
+
+        else:
+            results['error'] = True
+            results['messages'].append("Invalid detail type name %i" % detail)
 
         sub_trader.unlock()
 

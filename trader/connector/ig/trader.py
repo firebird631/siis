@@ -88,16 +88,6 @@ class IGTrader(Trader):
 
         self.unlock()
 
-    def tradeable(self, market_id):
-        """
-        Return True if the trader accept order and market id is tradeable.
-        """
-        self.lock()
-        result = self._watcher and self._watcher.connected and market_id in self._markets and self._markets[market_id].is_open
-        self.unlock()
-
-        return result
-
     def on_watcher_connected(self, watcher_name):
         super().on_watcher_connected(watcher_name)
 

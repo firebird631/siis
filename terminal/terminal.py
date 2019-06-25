@@ -754,6 +754,9 @@ class Terminal(object):
             'notice': View('notice', View.MODE_BLOCK, self._stdscr, pos=(width//2+1, height-1), size=(width//2, 1), active=True, right_align=True),
         }
 
+        Terminal.inst().info("Content", view='content-head')
+        Terminal.inst().info("Debug", view='debug-head')
+
         self.set_view('default')
         self._active_content = 'content'
 

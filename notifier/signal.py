@@ -20,13 +20,12 @@ class Signal(object):
 	SIGNAL_POSITION_ENJOY = 9
 	SIGNAL_STRATEGY_ENTRY_EXIT = 10     # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'rate', 'timestamp', ...}
 
-	SIGNAL_WAKE_UP = 100                # data is a float timestamp
-	SIGNAL_SOCIAL_ORDER = 102           # data is a tuple with (str market id, dict position details)
-	SIGNAL_BUY_SELL_ORDER = 103         # data is BuySellSignal
-	SIGNAL_CANDLE_DATA = 104            # data is a pair with (market_id, Candle)
-	SIGNAL_TICK_DATA = 105              # data is a pair with (market_id, Tick)
-	SIGNAL_CANDLE_DATA_BULK = 106       # data is a tuple of (market_id, tf, Candle[])
-	SIGNAL_TICK_DATA_BULK = 107         # data is a tuple of (market_id, tf, Tick[])
+	SIGNAL_CANDLE_DATA = 100            # data is a pair with (market_id, Candle)
+	SIGNAL_TICK_DATA = 101              # data is a pair with (market_id, Tick)
+	SIGNAL_CANDLE_DATA_BULK = 102       # data is a tuple of (market_id, tf, Candle[])
+	SIGNAL_TICK_DATA_BULK = 103         # data is a tuple of (market_id, tf, Tick[])
+	SIGNAL_SOCIAL_ORDER = 104           # data is a tuple with (str market id, dict position details)
+	SIGNAL_BUY_SELL_ORDER = 105         # data is BuySellSignal
 
 	SIGNAL_WATCHER_CONNECTED = 200      # data is None
 	SIGNAL_WATCHER_DISCONNECTED = 201   # data is None
@@ -59,11 +58,10 @@ class Signal(object):
 	SIGNAL_TRADE_DATA_BULK = 801        # data is a tuple with (market_id, StrategyTrade[])
 
 	SOURCE_UNDEFINED = 0
-	SOURCE_SYSTEM = 1
-	SOURCE_WATCHER = 2
-	SOURCE_TRADER = 3
-	SOURCE_STRATEGY = 4
-	SOURCE_MONITOR = 5
+	SOURCE_WATCHER = 1
+	SOURCE_TRADER = 2
+	SOURCE_STRATEGY = 3
+	SOURCE_MONITOR = 4
 
 	def __init__(self, source, source_name, signal_type, data):
 		self._source = source

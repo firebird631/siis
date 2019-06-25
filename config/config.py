@@ -344,6 +344,21 @@ TRADEOPS = {
     },
 }
 
+REGIONS = {
+    'range': {
+        'status': 'load',
+        'classpath': 'strategy.region.region.RangeRegion',
+        'options': {
+        }
+    },
+    'trend': {
+        'status': 'load',
+        'classpath': 'strategy.region.region.TrendRegion',
+        'options': {
+        }
+    },
+}
+
 STRATEGIES = {
     'boostedblueskyday': {
         'status': 'load',

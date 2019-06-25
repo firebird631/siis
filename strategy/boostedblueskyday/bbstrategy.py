@@ -241,7 +241,7 @@ class BoostedBlueSkyDayStrategy(Strategy):
         rsi_argmin = np.argmin(rsi)
         rsi_argmax = np.argmax(rsi)
 
-        # trend of the rsi @todo linear regression or MM
+        # trend of the rsi or MM
         if rsi_argmin < rsi_argmax and rsi[rsi_argmin] < rsi[rsi_argmax]:  # ++
             rsi_trend = (rsi[rsi_argmax] + rsi[rsi_argmin]) / (rsi[rsi_argmax] - rsi[rsi_argmin])
         elif rsi_argmax < rsi_argmin and rsi[rsi_argmax] > rsi[rsi_argmin]:  ## --

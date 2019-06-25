@@ -390,7 +390,9 @@ def application(argv):
     running = True
 
     value = None
+    value_changed = False
     command_timeout = 0
+    prev_timestamp = 0
 
     try:
         while running:
@@ -399,10 +401,18 @@ def application(argv):
                 c = Terminal.inst().read()
                 key = Terminal.inst().key()
 
+                if c:
+                    # split the commande line
+                    args = value[1:].split(' ') if value and value.startswith(':') else []
+
+                    # update the current type command
+                    commands_handler.process_char(c, args)
+
                 if key:
                     if key == 'KEY_ESCAPE':
                         # cancel command
                         value = None
+                        value_changed = True
                         command_timeout = 0
 
                     # split the commande line
@@ -414,6 +424,8 @@ def application(argv):
                     if args:
                         # regen the updated commande ligne
                         value = ":" + ' '.join(args)
+                        value_changed = True
+                        command_timeout = 0
 
                 # @todo move the rest to command_handler
                 if c:
@@ -421,11 +433,13 @@ def application(argv):
                         if c == '\b':
                             # backspace, erase last command char
                             value = value[:-1] if value else None
+                            value_changed = True
                             command_timeout = time.time()
 
                         elif c != '\n':
                             # append to the advanced command value
                             value += c
+                            value_changed = True
                             command_timeout = time.time()
 
                         elif c == '\n':
@@ -438,154 +452,117 @@ def application(argv):
                                     running = False
 
                                 elif value.startswith(':x '):
-                                    # @todo move as command
-                                    # manually exit position at market
-                                    value = value[2:]
+                                    # manually exit position at market @todo move as command
+                                    target = value[2:]
 
-                                    if value == "all" or value == "ALL":
+                                    if target == "all" or target == "ALL":
                                         Terminal.inst().action("Send close to market command for any positions", view='status')
                                         trader_service.command(Trader.COMMAND_CLOSE_ALL_MARKET, {})
                                     else:
-                                        Terminal.inst().action("Send close to market command for position %s" % (value,), view='status')
-                                        trader_service.command(Trader.COMMAND_CLOSE_MARKET, {'key': value})
+                                        Terminal.inst().action("Send close to market command for position %s" % (target,), view='status')
+                                        trader_service.command(Trader.COMMAND_CLOSE_MARKET, {'key': target})
 
                                 elif value.startswith(':d '):
                                     # @deprecated manually duplicate a position entry or exit must be associated to social strategy
                                     # @todo move as command
-                                    value = value[2:]
+                                    target = value[2:]
 
-                                    Terminal.inst().action("Send replicate to market command for position %s" % (value,), view='status')
-                                    trader_service.command(Trader.COMMAND_TRIGGER, {'key': value})
+                                    Terminal.inst().action("Send replicate to market command for position %s" % (target,), view='status')
+                                    trader_service.command(Trader.COMMAND_TRIGGER, {'key': target})
 
                                 else:
                                     # unsupported command
-                                    value = value[1:]
-                                    Terminal.inst().action("Unsupported command %s" % (value,), view='status')
+                                    Terminal.inst().action("Unsupported command %s" % (value[1:],), view='status')
 
                             # clear command value
+                            value_changed = True
                             value = None
 
                     elif c != '\n':
                         # initial command value
                         value = "" + c
+                        value_changed = True
                         command_timeout = time.time()
 
                     if value and value[0] != ':':
                         # direct key
                         try:
-                            commands_handler.process_accelerator(key)
-                            command_timeout = 0
+                            result = commands_handler.process_accelerator(key)
 
                             # @todo convert to Command object accelerator
-                            if value == 'p':
-                                value = None
-                                trader_service.command(Trader.COMMAND_LIST_POSITIONS, {})
-                            elif value == 'b':
-                                value = None
-                                trader_service.command(Trader.COMMAND_LIST_ASSETS, {})
-                            elif value == 'm':
-                                value = None
-                                trader_service.command(Trader.COMMAND_LIST_MARKETS, {})
-                            elif value == 't':
-                                value = None
-                                trader_service.command(Trader.COMMAND_LIST_TICKERS, {})                            
-                            elif value == 'c':
-                                value = None
-                                trader_service.command(Trader.COMMAND_DISPLAY_ACCOUNT, {})
-                            elif value == 'o':
-                                value = None
-                                trader_service.command(Trader.COMMAND_LIST_ORDERS, {})
-                            elif value == 'g':
-                                value = None
-                                trader_service.command(Trader.COMMAND_SHOW_PERFORMANCE, {})
-                            elif value == 'f':
-                                value = None
-                                strategy_service.command(Strategy.COMMAND_SHOW_STATS, {})
-                            elif value == 's':
-                                value = None
-                                strategy_service.command(Strategy.COMMAND_SHOW_HISTORY, {})
-                            elif value == 'w':
-                                value = None
-                                # trader_service.command(Trader.COMMAND_LIST_WATCHED, {})
+                            if not result:
+                                result = True
+                                
+                                if value == 'p':
+                                    trader_service.command(Trader.COMMAND_LIST_POSITIONS, {})
+                                elif value == 'b':
+                                    trader_service.command(Trader.COMMAND_LIST_ASSETS, {})
+                                elif value == 'm':
+                                    trader_service.command(Trader.COMMAND_LIST_MARKETS, {})
+                                elif value == 't':
+                                    trader_service.command(Trader.COMMAND_LIST_TICKERS, {})                            
+                                elif value == 'c':
+                                    trader_service.command(Trader.COMMAND_DISPLAY_ACCOUNT, {})
+                                elif value == 'o':
+                                    trader_service.command(Trader.COMMAND_LIST_ORDERS, {})
+                                elif value == 'g':
+                                    trader_service.command(Trader.COMMAND_SHOW_PERFORMANCE, {})
+                                elif value == 'f':
+                                    strategy_service.command(Strategy.COMMAND_SHOW_STATS, {})
+                                elif value == 's':
+                                    strategy_service.command(Strategy.COMMAND_SHOW_HISTORY, {})
 
-                            #
-                            # display view
-                            #
+                                # display views
 
-                            if value == 'C':
-                                value = None
-                                Terminal.inst().clear_content()
-                            elif value == 'F':
-                                value = None
-                                Terminal.inst().switch_view('strategy')
-                            elif value == 'S':
-                                value = None
-                                Terminal.inst().switch_view('stats')
-                            elif value == 'P':
-                                value = None
-                                Terminal.inst().switch_view('perf')
-                            elif value == 'T':
-                                value = None
-                                Terminal.inst().switch_view('trader')
-                            elif value == 'D':
-                                value = None
-                                Terminal.inst().switch_view('debug')
-                            elif value == 'I':
-                                value = None
-                                Terminal.inst().switch_view('content')
-                            elif value == 'A':
-                                value = None
-                                Terminal.inst().switch_view('account')
-                            elif value == 'M':
-                                value = None
-                                Terminal.inst().switch_view('market')
-                            elif value == 'X':
-                                value = None
-                                Terminal.inst().switch_view('ticker')
+                                elif value == 'C':
+                                    Terminal.inst().clear_content()
+                                elif value == 'F':
+                                    Terminal.inst().switch_view('strategy')
+                                elif value == 'S':
+                                    Terminal.inst().switch_view('stats')
+                                elif value == 'P':
+                                    Terminal.inst().switch_view('perf')
+                                elif value == 'T':
+                                    Terminal.inst().switch_view('trader')
+                                elif value == 'D':
+                                    Terminal.inst().switch_view('debug')
+                                elif value == 'I':
+                                    Terminal.inst().switch_view('content')
+                                elif value == 'A':
+                                    Terminal.inst().switch_view('account')
+                                elif value == 'M':
+                                    Terminal.inst().switch_view('market')
+                                elif value == 'X':
+                                    Terminal.inst().switch_view('ticker')
 
-                            elif value == '?':
-                                # ping services and workers
-                                value = None
-                                watcher_service.ping()
-                                trader_service.ping()
-                                strategy_service.ping()
-                                monitor_service.ping()
+                                elif value == '?':
+                                    # ping services and workers
+                                    watcher_service.ping()
+                                    trader_service.ping()
+                                    strategy_service.ping()
+                                    monitor_service.ping()
 
-                            elif value == ' ':
-                                # a simple mark on the terminal
-                                value = None
-                                Terminal.inst().notice("Trading time %s" % (datetime.datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='status')
+                                elif value == ' ':
+                                    # a simple mark on the terminal
+                                    Terminal.inst().notice("Trading time %s" % (datetime.datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='status')
 
-                            #
-                            # notifier opts
-                            #
+                                elif value == 'a':
+                                    desktop_service.audible = not desktop_service.audible
+                                    Terminal.inst().action("Audible notification are now %s" % ("actives" if desktop_service.audible else "disabled",), view='status')
+                                elif value == 'n':
+                                    desktop_service.popups = not desktop_service.popups
+                                    Terminal.inst().action("Desktop notification are now %s" % ("actives" if desktop_service.popups else "disabled",), view='status')
+                                elif value == 'e':
+                                    desktop_service.discord = not desktop_service.discord
+                                    Terminal.inst().action("Discord notification are now %s" % ("actives" if desktop_service.discord else "disabled",), view='status')
 
-                            elif value == 'a':
-                                value = None
-                                desktop_service.audible = not desktop_service.audible
-
-                                if desktop_service.audible:
-                                    Terminal.inst().action("Audible notification are now actives", view='status')
                                 else:
-                                    Terminal.inst().action("Audible notification are now disabled", view='status')
+                                    result = False
 
-                            elif value == 'n':
+                            if result:
                                 value = None
-                                desktop_service.popups = not desktop_service.popups
-
-                                if desktop_service.popups:
-                                    Terminal.inst().action("Desktop notification are now actives", view='status')
-                                else:
-                                    Terminal.inst().action("Desktop notification are now disabled", view='status')
-
-                            elif value == 'e':
-                                value = None
-                                desktop_service.discord = not desktop_service.discord
-
-                                if desktop_service.discord:
-                                    Terminal.inst().action("Discord notification are now actives", view='status')
-                                else:
-                                    Terminal.inst().action("Discord notification are now disabled", view='status')
+                                value_changed = True
+                                command_timeout = 0
 
                         except Exception as e:
                             has_exception(siis_logger, e)
@@ -593,7 +570,7 @@ def application(argv):
                 key = Terminal.inst().key()
                 if key:
                     try:
-                        # todo improve could have event, or just a wrapper on the further desktop service
+                        # todo improve could have event, or just a wrapper on a desktop service
                         if key == 'KEY_PPAGE':
                             desktop_service.prev_item()
                         elif key == 'KEY_NPAGE':
@@ -606,8 +583,25 @@ def application(argv):
             except Exception as e:
                 has_exception(siis_logger, e)
 
+            # display advanced command only
+            if value_changed:
+                if value and value.startswith(':'):        
+                    Terminal.inst().action("Command: %s" % value[1:], view='command')
+                else:
+                    Terminal.inst().message("", view='command')
+
+            # clear input if no char hit during the last MAX_CMD_ALIVE
+            if value:
+                if (command_timeout > 0) and (time.time() - command_timeout >= MAX_CMD_ALIVE):
+                    value = None
+                    value_changed = True
+                    Terminal.inst().info("Current typing canceled", view='status')
+
             try:
-                Terminal.inst().message(datetime.datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S'), view='notice')
+                # display strategy tarding time (update max once per second)
+                if strategy_service.timestamp - prev_timestamp >= 1.0:
+                    Terminal.inst().message(datetime.datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S'), view='notice')
+                    prev_timestamp = strategy_service.timestamp
 
                 # synchronous operations here
                 watcher_service.sync()
@@ -622,21 +616,7 @@ def application(argv):
                 Terminal.inst().error(repr(e))
 
             # don't waste CPU time on main thread
-            # but seems not necessary, and could only wait the rest or a quantil
             # time.sleep(LOOP_SLEEP)
-
-            if value and value.startswith(':'):
-                # display advanced command only
-                Terminal.inst().action("Command: %s" % value[1:], view='command')
-            else:
-                # nothing else to display
-                Terminal.inst().message("", view='command')
-
-            # clear input if no char presseding during the last MAX_CMD_ALIVE seconds
-            if (command_timeout > 0) and (time.time() - command_timeout >= MAX_CMD_ALIVE):
-                if value is not None:
-                    value = None
-                    Terminal.inst().info("Current typing canceled", view='status')
 
     finally:
         Terminal.inst().restore_term()

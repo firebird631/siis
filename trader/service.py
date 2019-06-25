@@ -288,6 +288,9 @@ class TraderService(Service):
     def trader(self, name):
         return self._traders.get(name)
 
+    def traders_names(self):
+        return [trader.name for k, trader in self._traders.items()]
+
     def gen_key(self):
         self.lock()
         nkey = self._next_trader_key

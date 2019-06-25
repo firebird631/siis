@@ -15,12 +15,13 @@ from instrument.instrument import Instrument
 
 class PlayCommand(Command):
 
+    SUMMARY = "[traders,apps] <[appliance-id,trader-id]> <appliance-market-id> to enable trader(s) or appliance(s)."
+
     def __init__(self, trader_service, strategy_service):
         super().__init__('play', None)
 
         self._trader_service = trader_service
         self._strategy_service = strategy_service
-        self._help = "[traders,apps] to enable traders or appliances."
 
     def execute(self, args):
         if not args:
@@ -28,25 +29,56 @@ class PlayCommand(Command):
             return False
 
         if args[0] == 'traders':
-            self._trader_service.set_activity(True)
-            Terminal.inst().action("Activated all traders", view='status')
-            return True
+            if len(args) == 1:
+                self._trader_service.set_activity(True)
+                Terminal.inst().action("Activated all traders", view='status')
+                return True
+            elif len(args) == 2:
+                # @todo specific trader
+                return False
+
         elif args[0] == 'apps':
-            self._strategy_service.set_activity(True)
-            Terminal.inst().action("Activated all appliances", view='status')
-            return True
+            if len(args) == 1:
+                self._strategy_service.set_activity(True)
+                Terminal.inst().action("Activated all appliances", view='status')
+                return True            
+            elif len(args) == 2:
+                # @todo specific appliance
+                return False
+            elif len(args) == 3:
+                # @todo specific appliance instrument
+                return False
 
         return False
 
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, ['apps', 'traders'], args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            # appliance/trader
+            if args[0] == "apps":
+                return self.iterate(1, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+            elif args[0] == "traders":
+                return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
+
+        elif len(args) <= 3:
+            if args[0] == 'apps':
+                # instrument
+                return self.iterate(2, self._strategy_service.appliance(args[1]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
 
 class PauseCommand(Command):
+
+    SUMMARY = "[traders,apps] <[appliance-id,trader-id]> <appliance-market-id> to disable trader(s) or appliance(s)."
 
     def __init__(self, trader_service, strategy_service):
         super().__init__('pause', None)
 
         self._trader_service = trader_service
         self._strategy_service = strategy_service
-        self._help = "[traders,apps] to disable traders or appliances."
 
     def execute(self, args):
         if not args:
@@ -54,25 +86,55 @@ class PauseCommand(Command):
             return False
 
         if args[0] == 'traders':
-            self._trader_service.set_activity(False)
-            Terminal.inst().action("Paused all traders", view='status')
-            return True
+            if len(args) == 1:
+                self._trader_service.set_activity(False)
+                Terminal.inst().action("Paused all traders", view='status')
+                return True
+            elif len(args) == 2:
+                # @todo specific trader
+                return False
         elif args[0] == 'apps':
-            self._strategy_service.set_activity(False)
-            Terminal.inst().action("Paused all appliances", view='status')
-            return True
+            if len(args) == 1:
+                self._strategy_service.set_activity(False)
+                Terminal.inst().action("Paused all appliances", view='status')
+                return True
+            elif len(args) == 3:
+                # @todo specific appliance instrument
+                return False
+            elif len(args) == 2:
+                # @todo specific appliance
+                return False
 
         return False
 
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, ['apps', 'traders'], args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            # appliance/trader
+            if args[0] == "apps":
+                return self.iterate(1, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+            elif args[0] == "traders":
+                return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
+
+        elif len(args) <= 3:
+            if args[0] == 'apps':
+                # instrument
+                return self.iterate(2, self._strategy_service.appliance(args[1]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
 
 class InfoCommand(Command):
+
+    SUMMARY = "[traders,apps] to get info on traders or appliances."
 
     def __init__(self, trader_service, strategy_service):
         super().__init__('info', None)
 
         self._trader_service = trader_service
         self._strategy_service = strategy_service
-        self._help = "[traders,apps] to get info on traders or appliances."
 
     def execute(self, args):
         if not args:
@@ -88,14 +150,21 @@ class InfoCommand(Command):
 
         return False
 
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, ['apps', 'traders'], args, tab_pos, direction)
+
+        return args, 0
+
 
 class LongCommand(Command):
+
+    SUMMARY = "to manually create to a new trade in LONG direction"
 
     def __init__(self, strategy_service):
         super().__init__('long', 'L')
 
         self._strategy_service = strategy_service
-        self._help = "to manually create to a new trade in LONG direction"
 
     def execute(self, args):
         if not args:
@@ -116,14 +185,17 @@ class LongCommand(Command):
         quantity_rate = 1.0
         timeframe = Instrument.TF_4HOUR
 
-        if len(args) < 1:
+        if len(args) < 2:
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
         try:
-            appliance, market_id = args[0].split(':')
+            appliance, market_id = args[0], args[1]
 
-            for value in args[1:]:
+            if appliance == "_":
+                appliance = ""
+
+            for value in args[2:]:
                 if not value:
                     continue
 
@@ -175,14 +247,24 @@ class LongCommand(Command):
 
         return True
 
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
 
 class ShortCommand(Command):
 
+    SUMMARY = "to manually create to a new trade in SHORT direction"
+   
     def __init__(self, strategy_service):
         super().__init__('short', 'S')
 
         self._strategy_service = strategy_service
-        self._help = "to manually create to a new trade in SHORT direction"
 
     def execute(self, args):
         if not args:
@@ -203,14 +285,17 @@ class ShortCommand(Command):
         quantity_rate = 1.0
         timeframe = Instrument.TF_4HOUR
 
-        if len(args) < 1:
+        if len(args) < 2:
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
         try:
-            appliance, market_id = args[0].split(':')
+            appliance, market_id = args[0], args[1]
 
-            for value in args[1:]:
+            if appliance == "_":
+                appliance = ""
+
+            for value in args[2:]:
                 if not value:
                     continue
 
@@ -262,14 +347,24 @@ class ShortCommand(Command):
 
         return True
 
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
 
 class CloseCommand(Command):
+
+    SUMMARY = "to manually close a managed trade at market or limit"
 
     def __init__(self, strategy_service):
         super().__init__('close', 'C')
 
         self._strategy_service = strategy_service
-        self._help = "to manually close a managed trade at market or limit"
 
     def execute(self, args):
         if not args:
@@ -281,14 +376,17 @@ class CloseCommand(Command):
         trade_id = None
         action = "close"
 
-        # ie ":close :EURUSD 5"
-        if len(args) != 2:
+        # ie ":close _ EURUSD 5"
+        if len(args) != 3:
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
         try:
-            appliance, market_id = args[0].split(':')
-            trade_id = int(args[1])
+            appliance, market_id = args[0], args[1]
+            trade_id = int(args[2])
+
+            if appliance == "_":
+                appliance = ""
 
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
@@ -303,14 +401,25 @@ class CloseCommand(Command):
 
         return True
 
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
 
 class DynamicStopLossOperationCommand(Command):
     
+    SUMMARY = "to manually add a dynamic-stop-loss operation on a trade"
+    HELP = ("<appliance-identifier> <market-id> <trigger-price> <stop-loss-price>",)
+
     def __init__(self, strategy_service):
         super().__init__('dynamic-stop-loss', 'DSL')
 
         self._strategy_service = strategy_service
-        self._help = "to manually add a dynamic-stop-loss operation on a trade"
 
     def execute(self, args):
         if not args:
@@ -327,17 +436,21 @@ class DynamicStopLossOperationCommand(Command):
         trigger = 0.0
         stop_loss = 0.0
 
-        # ie ":DSL :EURUSD 4 1.12 1.15"
-        if len(args) != 4:
+        # ie ":DSL _ EURUSD 4 1.12 1.15"
+        if len(args) != 5:
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
         try:
-            appliance, market_id = args[0].split(':')
-            trade_id = int(args[1])
+            appliance, market_id = args[0], args[1]
 
-            trigger = float(args[2])
-            stop_loss = float(args[3])
+            if appliance == "_":
+                appliance = ""
+
+            trade_id = int(args[2])
+
+            trigger = float(args[3])
+            stop_loss = float(args[4])
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
             return False
@@ -354,14 +467,24 @@ class DynamicStopLossOperationCommand(Command):
 
         return True
 
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
 
 class RemoveOperationCommand(Command):
+
+    SUMMARY = "to manually remove an operation from a trade"
 
     def __init__(self, strategy_service):
         super().__init__('del', 'D')
 
         self._strategy_service = strategy_service
-        self._help = "to manually remove an operation from a trade"
 
     def execute(self, args):
         if not args:
@@ -375,15 +498,19 @@ class RemoveOperationCommand(Command):
         action = 'del-op'
         operation_id = None        
 
-        # ie ":SL :EURUSD 1 5"
-        if len(args) < 3:
+        # ie ":SL _ EURUSD 1 5"
+        if len(args) < 4:
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
         try:
-            appliance, market_id = args[0].split(':')
-            trade_id = int(args[1])
-            operation_id = int(args[2])   
+            appliance, market_id = args[0], args[1]
+
+            if appliance == "_":
+                appliance = ""
+
+            trade_id = int(args[2])
+            operation_id = int(args[3])   
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
             return False
@@ -398,14 +525,24 @@ class RemoveOperationCommand(Command):
 
         return True
 
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
 
 class ModifyStopLossCommand(Command):
 
+    SUMMARY = "to manually modify the stop-loss of a trade"
+   
     def __init__(self, strategy_service):
         super().__init__('stop-loss', 'SL')
 
         self._strategy_service = strategy_service
-        self._help = "to manually modify the stop-loss of a trade"
 
     def execute(self, args):
         if not args:
@@ -418,15 +555,19 @@ class ModifyStopLossCommand(Command):
         action = 'stop-loss'
         stop_loss = 0.0
 
-        # ie ":SL :EURUSD 1 1.10"
-        if len(args) < 3:
+        # ie ":SL _ EURUSD 1 1.10"
+        if len(args) < 4:
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
         try:
-            appliance, market_id = args[0].split(':')
-            trade_id = int(args[1])
-            stop_loss = float(args[2])   
+            appliance, market_id = args[0], args[1]
+
+            if appliance == "_":
+                appliance = ""
+
+            trade_id = int(args[2])
+            stop_loss = float(args[3])   
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
             return False
@@ -441,14 +582,24 @@ class ModifyStopLossCommand(Command):
 
         return True
 
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
 
 class ModifyTakeProfitCommand(Command):
+
+    SUMMARY = "to manually modify the take-profit of a trade"
 
     def __init__(self, strategy_service):
         super().__init__('take-profit', 'TP')
 
         self._strategy_service = strategy_service
-        self._help = "to manually modify the take-profit of a trade"
 
     def execute(self, args):
         if not args:
@@ -462,15 +613,19 @@ class ModifyTakeProfitCommand(Command):
         action = 'take-profit'
         take_profit = 0.0
 
-        # ie ":TP :EURUSD 1 1.15"
-        if len(args) < 3:
+        # ie ":TP _ EURUSD 1 1.15"
+        if len(args) < 4:
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
         try:
-            appliance, market_id = args[0].split(':')
-            trade_id = int(args[1])
-            take_profit = float(args[2])   
+            appliance, market_id = args[0], args[1]
+
+            if appliance == "_":
+                appliance = ""
+
+            trade_id = int(args[2])
+            take_profit = float(args[3])
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
             return False
@@ -484,15 +639,25 @@ class ModifyTakeProfitCommand(Command):
         })
 
         return True
+    
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
 
 
 class TradeInfoCommand(Command):
+
+    SUMMARY = "to get operation info of a specific trade"
 
     def __init__(self, strategy_service):
         super().__init__('trade', 'T')
 
         self._strategy_service = strategy_service
-        self._help = "to get operation info of a specific trade"
 
     def execute(self, args):
         if not args:
@@ -503,12 +668,15 @@ class TradeInfoCommand(Command):
         market_id = None
         trade_id = None
 
-        if len(args) >= 1:
+        if len(args) >= 2:
             try:
-                appliance, market_id = args[0].split(':')
+                appliance, market_id = args[0], args[1]
 
-                if len(args) >= 2:
-                    trade_id = int(args[1])
+                if appliance == "_":
+                    appliance = ""
+
+                if len(args) >= 3:
+                    trade_id = int(args[2])
                 else:
                     trade_id = -1
 
@@ -528,6 +696,15 @@ class TradeInfoCommand(Command):
             return False
 
         return False
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
 
 
 def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service):

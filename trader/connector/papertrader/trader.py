@@ -364,22 +364,6 @@ class PaperTrader(Trader):
 
         return result
 
-    def tradeable(self, market_id):
-        """
-        Return True if the trader accept order and market id is tradeable.
-        """
-        result = False
-
-        self.lock()
-        if self.service.backtesting:
-            # in backtesting watcher can be None
-            result = market_id in self._markets and self._markets[market_id].is_open    
-        else:
-            result = self._watcher and self._watcher.connected and market_id in self._markets and self._markets[market_id].is_open
-        self.unlock()
-
-        return result
-
     def market(self, market_id, force=False):
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.

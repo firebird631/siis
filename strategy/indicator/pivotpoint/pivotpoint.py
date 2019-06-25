@@ -121,7 +121,7 @@ class PivotPointIndicator(Indicator):
 
     @property
     def supports(self):
-        return self._supports        
+        return self._supports
 
     @property
     def resistances(self):
