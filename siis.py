@@ -42,6 +42,7 @@ from app.help import display_cli_help, display_welcome
 from app.setup import install
 from app.generalcommands import register_general_commands
 from app.tradingcommands import register_trading_commands
+from app.regioncommands import register_region_commands
 
 
 def signal_handler(sig, frame):
@@ -374,8 +375,10 @@ def application(argv):
     commands_handler = CommandsHandler()
     commands_handler.init(options)
 
+    # cli commands registration
     register_general_commands(commands_handler)
-    register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service)
+    register_trading_commands(commands_handler, trader_service, strategy_service)
+    register_region_commands(commands_handler, strategy_service)
 
     Terminal.inst().message("Running main loop...")
 
@@ -591,7 +594,7 @@ def application(argv):
                     Terminal.inst().message("", view='command')
 
             # clear input if no char hit during the last MAX_CMD_ALIVE
-            if value:
+            if value and not value.startswith(':'):
                 if (command_timeout > 0) and (time.time() - command_timeout >= MAX_CMD_ALIVE):
                     value = None
                     value_changed = True
@@ -616,7 +619,7 @@ def application(argv):
                 Terminal.inst().error(repr(e))
 
             # don't waste CPU time on main thread
-            # time.sleep(LOOP_SLEEP)
+            time.sleep(LOOP_SLEEP)
 
     finally:
         Terminal.inst().restore_term()

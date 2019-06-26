@@ -61,6 +61,9 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         self._stats['entry-maker'] = not order.is_market()
 
+        if order_type == Order.ORDER_LIMIT:
+            self._stats['order-limit-price'] = order_price
+
         if trader.create_order(order):
             self.position_id = order.position_id  # might be market-id
 

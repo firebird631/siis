@@ -488,9 +488,11 @@ class StrategyTrader(object):
         for region in self.regions:
             if region.id == region_id:
                 self.regions.remove(region)
-                break
+                return True
 
         self.unlock()
+
+        return False
 
     def check_regions(self, signal):
         """

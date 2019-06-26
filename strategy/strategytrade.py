@@ -77,7 +77,8 @@ class StrategyTrade(object):
             'worst-price': 0.0,
             'worst-timestamp': 0.0,
             'entry-maker': False,
-            'exit-maker': False
+            'exit-maker': False,
+            'order-limit-price': 0.0,
         }
 
     #
@@ -183,13 +184,10 @@ class StrategyTrade(object):
         Because of the slippage once a trade is closed deletion can only be done once all the quantity of the
         asset or the position are executed.
         """
-        if self.e >= self.q and self.x >= self.e:
-            # entry fully filled and exit too
+        if self.e >= self.q and (self.x >= self.e or self.x >= self.q):
+            # entry fully filled and exit filled whats filled in entry
+            # but some cases filled entry is a bit more than orderer (binance...), but need to compare with initial quantity
             return True
-
-        # if self.e <= 0 and (self._entry_state == StrategyTrade.STATE_CANCELED or self._entry_state == StrategyTrade.STATE_DELETED or self._entry_state == StrategyTrade.STATE_REJECTED):
-        #     # can delete a non filled canceled, deleted or rejected entry
-        #     return True
 
         if self.e > 0 and self.x < self.e:
             # entry quantity but exit quantity not fully filled
@@ -409,6 +407,9 @@ class StrategyTrade(object):
 
     def worst_price_timestamp(self):
         return self._stats['worst-timestamp']
+
+    def order_limit_price(self):
+        return self._stats['order-limit-price']
 
     def get_stats(self):
         return self._stats

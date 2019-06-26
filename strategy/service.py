@@ -120,9 +120,6 @@ class StrategyService(Service):
     def start(self):
         # indicators
         for k, indicators in self._indicators_config.items():
-            if k == "default":
-                continue
-
             if indicators.get("status") is not None and indicators.get("status") == "load":
                 # retrieve the classname and instanciate it
                 parts = indicators.get('classpath').split('.')
@@ -137,9 +134,6 @@ class StrategyService(Service):
 
         # tradeops
         for k, tradeops in self._tradeops_config.items():
-            if k == "default":
-                continue
-
             if tradeops.get("status") is not None and tradeops.get("status") == "load":
                 # retrieve the classname and instanciate it
                 parts = tradeops.get('classpath').split('.')
@@ -151,6 +145,20 @@ class StrategyService(Service):
                     raise Exception("Cannot load tradeop %s" % k) 
 
                 self._tradeops[k] = Clazz
+
+        # regions
+        for k, regions in self._regions_config.items():
+            if regions.get("status") is not None and regions.get("status") == "load":
+                # retrieve the classname and instanciate it
+                parts = regions.get('classpath').split('.')
+
+                module = import_module('.'.join(parts[:-1]))
+                Clazz = getattr(module, parts[-1])
+
+                if not Clazz:
+                    raise Exception("Cannot load region %s" % k) 
+
+                self._regions[k] = Clazz
 
         # strategies
         for k, strategy in self._strategies_config.items():

@@ -332,6 +332,9 @@ class Instrument(object):
     UNIT_CURRENCY = 2     # amount is in currency (quote)
     UNIT_LOT = 3          # unit of one lot, with 1 lot = 100000 of related currency
 
+    MAKER = 0
+    TAKER = 1
+
     def __init__(self, name, symbol, market_id, alias=None):
         self._watchers = {}
         self._name =  name
@@ -359,6 +362,8 @@ class Instrument(object):
 
         self._vol24h = 0.0
         self._vol24h_quote = 0.0
+
+        self._fees = ((0.0, 0.0), (0.0, 0.0))  # maker/taker : fee/commission
 
     def add_watcher(self, watcher_type, watcher):
         if watcher:
@@ -1098,6 +1103,30 @@ class Instrument(object):
             return self._market_ofr
         else:
             return self._market_bid
+
+    #
+    # fee/commission
+    #
+
+    def set_fees(self, maker, taker):
+        self._fees[Instrument.MAKER][0] = maker
+        self._fees[Instrument.TAKER][0] = taker
+
+    def set_commissions(self, maker, taker):
+        self._fees[Instrument.MAKER][1] = maker
+        self._fees[Instrument.TAKER][1] = taker
+
+    def maker_fee(self):
+        return self._fees[Instrument.MAKER][0]
+
+    def taker_fee(self):
+        return self._fees[Instrument.MAKER][0]
+
+    def maker_commission(self):
+        return self._fees[Instrument.TAKER][1]
+
+    def taker_commission(self):
+        return self._fees[Instrument.TAKER][1]
 
     #
     # static

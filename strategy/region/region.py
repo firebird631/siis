@@ -24,13 +24,14 @@ class Region(object):
     BOTH = 0
 
     NAME = "undefined"
-    REGION = Region.REGION_UNDEFINED
+    REGION = REGION_UNDEFINED
 
-    def __init__(self, type):
-        self._id = -1        # operation unique identifier
-        self._stage = stage  # apply on entry, exit or both signal stage
-        self._dir = 0        # apply on long, short or both signal direction
-        self._expiry = 0     # expiration timestamp (<=0 never)
+    def __init__(self, stage, direction, timeframe):
+        self._id = -1          # operation unique identifier
+        self._stage = stage    # apply on entry, exit or both signal stage
+        self._dir = direction  # apply on long, short or both signal direction
+        self._expiry = 0       # expiration timestamp (<=0 never)
+        self._timeframe = timeframe  # specific timeframe or 0 for any
 
     #
     # getters
@@ -84,6 +85,10 @@ class Region(object):
         Expiry timestamp in second.
         """
         return self._expiry
+
+    @property
+    def timeframe(self):
+        return self._timeframe
 
     #
     # setters
@@ -157,6 +162,9 @@ class Region(object):
             'label': "undefined",
             'name': self.name(),
             'id': self.id(),
+            'stage': self._stage,
+            'direction': self._dir,
+            'timeframe': self._timeframe,
             'expiry': self._expiry
         }
 
@@ -169,8 +177,8 @@ class RangeRegion(Region):
     NAME = "range"
     REGION = Region.REGION_RANGE
 
-    def __init__(self, stage):
-        super().__init__(stage)
+    def __init__(self, stage, direction, timeframe):
+        super().__init__(stage, direction, timeframe)
 
         self._low = 0.0
         self._high = 0.0
@@ -194,6 +202,9 @@ class RangeRegion(Region):
             'label': "Range region",
             'name': self.name(),
             'id': self.id(),
+            'stage': self._stage,
+            'direction': self._dir,
+            'timeframe': self._timeframe,
             'expiry': self._expiry,
             'low': self._low,
             'high': self._high
@@ -210,8 +221,8 @@ class TrendRegion(Region):
     NAME = "channel"
     REGION = Region.REGION_TREND
 
-    def __init__(self, stage):
-        super().__init__(stage)
+    def __init__(self, stage, direction, timeframe):
+        super().__init__(stage, direction, timeframe)
 
     def init(self, parameters):
         self._low_a = parameters.get('low-a', 0.0)
@@ -220,7 +231,7 @@ class TrendRegion(Region):
         self._high_b = parameters.get('high-b', 0.0)
 
     def check(self):
-        if self._low_a <= 0.0 or self._high_a <= 0.0 or self._low_b <= 0.0 or self._high_b <= 0.0
+        if self._low_a <= 0.0 or self._high_a <= 0.0 or self._low_b <= 0.0 or self._high_b <= 0.0:
             # points must be greater than 0
             return False
 
@@ -250,6 +261,9 @@ class TrendRegion(Region):
             'label': "Range region",
             'name': self.name(),
             'id': self.id(),
+            'stage': self._stage,
+            'direction': self._dir,
+            'timeframe': self._timeframe,
             'expiry': self._expiry,
             'low-a': self._low_a,
             'low-b': self._low_b,

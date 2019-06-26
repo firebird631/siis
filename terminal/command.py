@@ -89,6 +89,9 @@ class Command(object):
 
             values = filtered
 
+            if not values:
+                return args, 0
+
         if tab_pos >= len(values):
             if direction < 0:
                 tab_pos = len(values)-1
@@ -154,7 +157,7 @@ class CommandsHandler(object):
             
             dump = json.dumps({
                 "commands": self._history,
-                "aliases": self._aliases
+                "aliases": self._aliases,
             })
             
             f.write(dump.encode('utf-8'))
@@ -235,6 +238,42 @@ class CommandsHandler(object):
 
         return False
 
+    def iterate_cmd(self, values, cmd, tab_pos, direction):
+        """
+        Iterate the possibles values of a list for the command.
+        """
+        if not values:
+            return args, 0
+
+        if cmd:
+            filtered = []
+            for v in values:
+                if v.startswith(cmd):
+                    filtered.append(v)
+
+            values = filtered
+
+            if not values:
+                return cmd, 0
+
+        if tab_pos >= len(values):
+            if direction < 0:
+                tab_pos = len(values)-1
+            elif direction > 0:
+                tab_pos = 0
+        elif tab_pos < 0:
+            if direction < 0:
+                tab_pos = len(values)-1
+            elif direction > 0:
+                tab_pos = 0
+
+        if cmd:
+            cmd = values[0]
+        else:
+            cmd = values[tab_pos]
+
+        return cmd, tab_pos
+
     def process_cli_completion(self, args, tab_pos, direction):
         """
         Process work completion from advanced command line.
@@ -258,7 +297,15 @@ class CommandsHandler(object):
                         largs, tp = self._commands[command_name].completion(args[1:], tab_pos+direction, direction)
                         return [cmd, *largs], tp
             else:
-                pass  # @todo command name/alias completion
+                cmds = list(self._commands.keys()) + list(self._alias.keys()).sort()
+                cmd, tp = self.iterate_cmd(cmds, cmd, self._tab_pos+direction, direction)
+
+                return [cmd], tp
+        else:
+            cmds = list(self._commands.keys()) + list(self._alias.keys()).sort()
+            cmd, tp = self.iterate_cmd(cmds, "", self._tab_pos+direction, direction)
+
+            return [cmd], tp
 
         return args, tab_pos
 
@@ -355,6 +402,8 @@ class CommandsHandler(object):
         elif key_code == 'KEY_ESCAPE':
             self._current = []
             self._history_pos = 0
+            self._word = ""
+            self._tab_pos = -1
 
         elif key_code == 'KEY_STAB':
             args, self._tab_pos = self.process_cli_completion([*args[:-1], self._word.lstrip(':')], self._tab_pos, 1)

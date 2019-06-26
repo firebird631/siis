@@ -668,22 +668,25 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                 signal.sl = self.tomdemark.c.tdst
 
             if len(self.pivotpoint.resistances[2]):
-                signal.tp = np.max(self.pivotpoint.resistances[2])
+                if signal.tp > signal.p:
+                    signal.tp = np.max(self.pivotpoint.resistances[2])
+                else:
+                    # ignore this signal
+                    signal = None
 
-        elif bbawe < 0 and level1_signal <= 0:
+        elif bbawe < 0 and level1_signal < 0:
+            # exit signal
             signal = StrategySignal(self.tf, timestamp)
-            signal.signal = StrategySignal.SIGNAL_ENTRY
-            signal.dir = -1
+            signal.signal = StrategySignal.SIGNAL_EXIT
+            signal.dir = 1
             signal.p = self.price.close[-1]
 
-            if self.tomdemark.c.tdst:
-                signal.sl = self.tomdemark.c.tdst
+        if signal and signal.signal == StrategySignal.SIGNAL_ENTRY:
+            min_profit = (0.00075*2 + 0.005) * signal.p
 
-            if len(self.pivotpoint.supports[2]):
-                signal.tp = np.min(self.pivotpoint.supports[2])
-
-        # if the target is lesser than a profit then ignore it
-        # @todo
+            if signal.tp > 0.0 and (signal.tp - signal.p) < min_profit:
+                # if the target is lesser than a profit then ignore it 
+                signal = None
 
         if self.tomdemark:
             self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.close)

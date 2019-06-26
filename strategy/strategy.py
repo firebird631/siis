@@ -47,7 +47,7 @@ class Strategy(Runnable):
     @todo Move Each COMMAND_ to command/ and have a registry
     """
 
-    MAX_SIGNALS = 1000   # max size of the signals messages queue before ignore some market data (tick, ohlc)
+    MAX_SIGNALS = 2000   # max size of the signals messages queue before ignore some market data (tick, ohlc)
 
     COMMAND_SHOW_STATS = 1
     COMMAND_SHOW_HISTORY = 2
@@ -802,7 +802,7 @@ class Strategy(Runnable):
                         Terminal.inst().info(message, view='content')
 
         elif command_type == Strategy.COMMAND_TRADE_MODIFY:
-            # manually trade modify a trade (add/remove a condition)
+            # manually trade modify a trade (add/remove an operation)
             market_id = data.get('market-id')
             trade_id = data.get('trade-id')
 
@@ -826,7 +826,7 @@ class Strategy(Runnable):
                         Terminal.inst().info(message, view='content')
 
         elif command_type == Strategy.COMMAND_TRADE_INFO:
-            # display the details of a trade (stop-loss mode/prices, take-profits prices/qty, any other execution conditions)
+            # display the detail of a trade and its operations
             market_id = data.get('market-id')
             trade_id = data.get('trade-id')
 
@@ -850,16 +850,15 @@ class Strategy(Runnable):
                         Terminal.inst().info(message, view='content')
 
         elif command_type == Strategy.COMMAND_TRADER_MODIFY:
-            # display the details of a trade (stop-loss mode/prices, take-profits prices/qty, any other execution conditions)
+            # modify a sub-trade activity, or add/remove a trading region
             market_id = data.get('market-id')
-            trade_id = data.get('trade-id')
 
             # retrieve by market-id or mapped symbol
             instrument = self.find_instrument(market_id)
 
-            if instrument and trade_id:
+            if instrument:
                 sub_trader = self._sub_traders.get(instrument)
-                Terminal.inst().notice("Trader modify for strategy %s - %s %s" % (self.name, self.identifier, instrument.market_id), view='content')
+                Terminal.inst().notice("Strategy trader modify for strategy %s - %s %s" % (self.name, self.identifier, instrument.market_id), view='content')
 
                 # retrieve the trade and display its info
                 results = self.cmd_sub_trader_modify(sub_trader, data)
@@ -914,7 +913,7 @@ class Strategy(Runnable):
         # strategy must consume its signal else there is first a warning, and then some market data could be ignored
         if len(self._signals) > Strategy.MAX_SIGNALS:
             Terminal.inst().warning("Appliance %s has more than %s waiting signals, some market data could be ignored !" % (
-                self.name, Strategy.MAX_SIGNALS), view='status')
+                self.name, Strategy.MAX_SIGNALS), view='debug')
 
         # dont waste the CPU in live mode
         if not self.service.backtesting:
@@ -1151,6 +1150,7 @@ class Strategy(Runnable):
                         'id': trade.id,
                         'ts': trade.t,
                         'd': trade.direction_to_str(),
+                        'l': market.format_price(trade.order_limit_price()),
                         'p': market.format_price(trade.p),
                         'q': market.format_quantity(trade.q),
                         'e': market.format_quantity(trade.e),
@@ -1249,6 +1249,7 @@ class Strategy(Runnable):
         markets2 = []
         trade_id = []
         direction = []
+        olp = []
         price = []
         sl = []
         tp = []
@@ -1336,13 +1337,14 @@ class Strategy(Runnable):
                 markets2.append(r['symbol'])
                 trade_id.append(t['id'])
                 direction.append(t['d'])
-                price.append(t['p']), # .replace('.', ','))
-                sl.append(t['sl']), # .replace('.', ','))
-                tp.append(t['tp']), # .replace('.', ','))
+                olp.append(t['l'])
+                price.append(t['p'])
+                sl.append(t['sl'])
+                tp.append(t['tp'])
                 rate.append(cr)
-                qty.append(t['q']), # .replace('.', ','))
-                eqty.append(t['e']), # .replace('.', ','))
-                xqty.append(t['x']), # .replace('.', ','))
+                qty.append(t['q'])
+                eqty.append(t['e'])
+                xqty.append(t['x'])
                 status.append(t['s'])
                 bests.append(t['b'])
                 worsts.append(t['w'])
@@ -1402,6 +1404,7 @@ class Strategy(Runnable):
             'Id': trade_id,
             'Dir': direction,
             'P/L(%)': rate,
+            'Limit': olp,
             'Price': price,
             'Entry date': entry_times,
             'TF': timeframes,
@@ -1413,9 +1416,9 @@ class Strategy(Runnable):
 
         if quantities:
             data2['Qty'] = qty
-            data2['Entry'] = eqty
-            data2['Exited'] = xqty
             data2['Status'] = status
+            data2['Entry Q'] = eqty
+            data2['Exit Q'] = xqty
 
         df = data2
 
@@ -1571,19 +1574,19 @@ class Strategy(Runnable):
         price = limit_price or market.open_exec_price(direction)
         trade = None
 
-        # @todo TRIGGER and TRIGGER LIMIT
-
         if market.trade == Market.TRADE_BUY_SELL:
             trade = StrategyAssetTrade(timeframe)
 
             # ajust max quantity according to free asset of quote, and convert in asset base quantity
             if trader.has_asset(market.quote):
-                if trader.has_quantity(market.quote, sub_trader.instrument.trader_quantity):
-                    order_quantity = market.adjust_quantity(sub_trader.instrument.trader_quantity*quantity_rate / price)  # and adjusted to 0/max/step
+                qty = sub_trader.instrument.trader_quantity*quantity_rate
+
+                if trader.has_quantity(market.quote, qty):
+                    order_quantity = market.adjust_quantity(qty / price)  # and adjusted to 0/max/step
                 else:
                     results['error'] = True
                     results['messages'].append("Not enought free quote asset %s, has %s but need %s" % (
-                            market.quote, market.format_quantity(trader.asset(market.quote).free), market.format_quantity(sub_trader.instrument.trader_quantity)))
+                            market.quote, market.format_quantity(trader.asset(market.quote).free), market.format_quantity(qty)))
 
         elif market.trade == Market.TRADE_MARGIN:
             trade = StrategyMarginTrade(timeframe)
@@ -1753,11 +1756,19 @@ class Strategy(Runnable):
         if trade:
             # modify SL
             if action == 'stop-loss' and 'stop-loss' in data and type(data['stop-loss']) is float:
-                trade.sl = data['stop-loss']
+                if data['stop-loss'] > 0.0:
+                    trade.sl = data['stop-loss']
+                else:
+                    results['error'] = True
+                    results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)
 
             # modify TP
             elif action == 'take-profit' and 'take-profit' in data and type(data['take-profit']) is float:
-                trade.tp = data['take-profit']
+                if data['take-profit'] > 0.0:
+                    trade.tp = data['take-profit']
+                else:
+                    results['error'] = True
+                    results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)
 
             # add operation
             elif action == 'add-op':
@@ -1776,14 +1787,14 @@ class Strategy(Runnable):
                             trade.add_operation(operation)
                         else:
                             results['error'] = True
-                            results['messages'].append("Operation checking error %s on trade %i" % (op_name, trade_id))
+                            results['messages'].append("Operation checking error %s on trade %i" % (op_name, trade.id))
 
                     except Exception as e:
                         results['error'] = True
                         results['messages'].append(repr(e))
                 else:
                     results['error'] = True
-                    results['messages'].append("Unsupported operation %s on trade %i" % (op_name, trade_id))
+                    results['messages'].append("Unsupported operation %s on trade %i" % (op_name, trade.id))
 
             # remove operation
             elif action == 'del-op':
@@ -1794,11 +1805,11 @@ class Strategy(Runnable):
 
                 if not trade.remove_operation(trade_operation_id):
                     results['error'] = True
-                    results['messages'].append("Unknown operation-id on trade %i" % trade_id)
+                    results['messages'].append("Unknown operation-id on trade %i" % trade.id)
             else:
                 # unsupported action
                 results['error'] = True
-                results['messages'].append("Unsupported action on trade %i" % trade_id)
+                results['messages'].append("Unsupported action on trade %i" % trade.id)
 
         else:
             results['error'] = True
@@ -1843,7 +1854,7 @@ class Strategy(Runnable):
                     break
 
         if trade:
-            results['messages'].append("Trade %i, list %i operations:" % (trade_id, len(trade.operations)))
+            results['messages'].append("Trade %i, list %i operations:" % (trade.id, len(trade.operations)))
 
             # @todo or as table using operation.parameters() dict
             for operation in trade.operations:
@@ -1866,8 +1877,10 @@ class Strategy(Runnable):
         }
 
         action = ""
-        expiry = None
-        timeframe = None
+        expiry = 0
+        timeframe = 0
+
+        sub_trader.lock()
 
         try:
             region_id = int(data.get('region-id', -1))
@@ -1880,6 +1893,8 @@ class Strategy(Runnable):
             region_name = data.get('region', "")
 
             try:
+                stage = int(data.get('stage', 0))
+                direction = int(data.get('direction', 0))
                 expiry = int(data.get('expiry', 0))
 
                 if 'timeframe' in data and type(data['timeframe']) is str:
@@ -1893,12 +1908,15 @@ class Strategy(Runnable):
                 if region_name in self.service.regions:
                     try:
                         # instanciate the region
-                        region = self.service.regions[region_name]()
+                        region = self.service.regions[region_name](stage, direction, timeframe)
+
+                        if expiry:
+                            region.set_expiry(expiry)
 
                         # and defined the parameters
                         region.init(data)
 
-                        if region.check(trade):
+                        if region.check():
                             # append the region to the trade
                             sub_trader.add_region(region)
                         else:
@@ -1922,26 +1940,24 @@ class Strategy(Runnable):
             if region_id >= 0:
                 if not sub_trader.remove_region(region_id):
                     results['messages'].append("Invalid region identifier")
+
+        elif action == "enable":
+            if not sub_trader.activity:
+                sub_trader.set_activity(True)
+                results['messages'].append("Enabled strategy trader for market %s" % sub.instrument.market_id)
+            else:
+                results['messages'].append("Already enabled strategy trader for market %s" % sub.instrument.market_id)
+
+        elif action == "disable":
+            if sub_trader.activity:
+                sub_trader.set_activity(False)
+                results['messages'].append("Disabled strategy trader for market %s" % sub.instrument.market_id)
+            else:
+                results['messages'].append("Already disabled strategy trader for market %s" % sub.instrument.market_id)
+
         else:
             results['error'] = True
             results['messages'].append("Invalid action")
-
-        if results['error']:
-            return results
-
-        region = None
-
-        sub_trader.lock()
-
-        if action == "add-region":
-            # add region
-            # @todo
-            pass
-        
-        elif action == "del-region":
-            # remove region
-            # @todo
-            pass
 
         sub_trader.unlock()
 
@@ -1973,37 +1989,47 @@ class Strategy(Runnable):
 
         sub_trader.lock()
 
-        results['messages'].append("Stragegy trader %s, list %i regions:" % (sub_trader.instrument.market_id, len(sub_trader.regions)))
+        if detail == "region":
+            if region_id >= 0:
+                region = None
 
-        if detail == "region" and region_id >= 0:
-            region = None
+                for r in sub_trader.regions:
+                    if r.id == region_id:
+                        region = r
+                        break
 
-            for r in sub_trader.regions:
-                if r.id == region_id:
-                    region = r
-                    break
+                if region:
+                    results['messages'].append("Stragegy trader %s region details:" % sub_trader.instrument.market_id)
+                    results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
+                else:
+                    results['error'] = True
+                    results['messages'].append("Invalid region identifier %i" % region_id)
 
-            if region:
-                results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
             else:
-                results['error'] = True
-                results['messages'].append("Invalid region identifier %i" % region_id)
+                results['messages'].append("Stragegy trader %s, list %i regions:" % (sub_trader.instrument.market_id, len(sub_trader.regions)))
+
+                for region in sub_trader.regions:
+                    results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
+
+        elif detail == "status":
+            # status
+            results['messages'].append("Activity : %s" % ("enabled" if sub_trader.activity else "disabled"))
 
         elif not detail:
             # no specific detail
+            results['messages'].append("Stragegy trader %s details:" % sub_trader.instrument.market_id)
 
             # status
-            results['messages'].append(" Activity : %s" % ("enabled" if sub_trader.activity else "disabled"))
+            results['messages'].append("Activity : %s" % ("enabled" if sub_trader.activity else "disabled"))
 
             # regions
-            results['messages'].append("Stragegy trader %s, list %i regions:" % (sub_trader.instrument.market_id, len(sub_trader.regions)))
+            results['messages'].append("List %i regions:" % len(sub_trader.regions))
 
             for region in sub_trader.regions:
                 results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
-
         else:
             results['error'] = True
-            results['messages'].append("Invalid detail type name %i" % detail)
+            results['messages'].append("Invalid detail type name %s" % detail)
 
         sub_trader.unlock()
 

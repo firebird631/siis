@@ -306,23 +306,34 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 stop_loss = trade.sl
 
                 # ATR stop-loss
-                sl = self.timeframes[trade.timeframe].atr.stop_loss(trade.direction)
-                if not trade.sl and sl > stop_loss:
-                    # if trade has no stop-loss
+                trade_parent_tf = self.parent_timeframe(trade.timeframe)
+
+                sl = self.timeframes[trade_parent_tf].atr.stop_loss(trade.direction)
+                if (not trade.sl or last_price > trade.p) and sl > stop_loss:
+                    # if trade has no stop-loss or follow profit
                     stop_loss = sl
 
                 # increase in-profit stop-loss in long direction
-                for resistances in self.timeframes[trade.timeframe].pivotpoint.resistances:
-                    if len(resistances):
-                        level = resistances[-1]
-                        if level < last_price and level > stop_loss:
-                            stop_loss = level
+                # @todo howto ?
+                # for resistances in self.timeframes[trade.timeframe].pivotpoint.resistances:
+                #     if len(resistances):
+                #         level = resistances[-1]
+                #         if level < last_price and level > stop_loss:
+                #             stop_loss = level
+
+                # pivots = self.timeframes[trade.timeframe].pivotpoint.pivots:
+                # if len(pivots):
+                #     level = pivots[-1]
+                #     if level < last_price and level > stop_loss:
+                #         stop_loss = level
 
                 # a try using bbands
                 # level = self.timeframes[trade.timeframe].bollingerbands.last_ma
                 # if level >= stop_loss:
-                #     trade.sl = level
-                #     # trade.modify_stop_loss(trader, stop_loss)
+                #     stop_loss = level               
+
+                if stop_loss > trade.sl:
+                    trade.sl = stop_loss
 
                 #
                 # exit trade if an exit signal retained

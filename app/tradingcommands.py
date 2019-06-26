@@ -310,7 +310,7 @@ class ShortCommand(Command):
                 elif value.startswith("TP@"):
                     take_profit = float(value[3:])
                 elif value.startswith("'"):
-                    take_profit = timeframe_from_str(value[1:])
+                    timeframe = timeframe_from_str(value[1:])
                 elif value.startswith("*"):
                     quantity_rate = float(value[1:])
                 elif value.endswith("%"):
@@ -707,7 +707,7 @@ class TradeInfoCommand(Command):
         return args, 0
 
 
-def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service):
+def register_trading_commands(commands_handler, trader_service, strategy_service):
     cmd = PlayCommand(trader_service, strategy_service)
     commands_handler.register(cmd)
     

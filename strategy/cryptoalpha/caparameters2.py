@@ -11,9 +11,9 @@ DEFAULT_PARAMS = {
     'max-trades': 3,    # max number of simultaned trades for a same market
     'trade-delay': 30,  # at least wait 30 seconds before sending another signal 
     'base-timeframe': Instrument.TF_TICK,   # process each time strategy receive a tick
-    'min-traded-timeframe': Instrument.TF_5MIN,
-    'max-traded-timeframe': Instrument.TF_15MIN,
-    'need-update': False,     # only compute when update is waited
+    'min-traded-timeframe': Instrument.TF_MIN,
+    'max-traded-timeframe': Instrument.TF_MIN,
+    'need-update': True,      # only compute when update is waited
     'min-vol24h': 100,        # 300 BTC per 24h
     'min-price': 0.00000069,  # or 69 sats (to binary otherwise)
     'timeframes': [
@@ -166,7 +166,7 @@ DEFAULT_PARAMS = {
                 'triangle': None,
                 'pivotpoint': ('pivotpoint', 5,),
                 'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.5),
+                'atr': ('atr', 14, 3.0),
                 'bbawe': ('bbawe', 20, 2.0, 3.0, 5, 34, False),
             },
             'constants': {
@@ -197,7 +197,7 @@ DEFAULT_PARAMS = {
                 'triangle': None,
                 'pivotpoint': ('pivotpoint', 5,),
                 'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.5),
+                'atr': ('atr', 14, 3.0),
                 'bbawe': ('bbawe', 20, 2.0, 3.0, 5, 34, False),
             },
             'constants': {
@@ -227,7 +227,7 @@ DEFAULT_PARAMS = {
                 'triangle': None,
                 'pivotpoint': ('pivotpoint', 5,),
                 'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 2.5),
+                'atr': ('atr', 14, 3.0),
                 'bbawe': ('bbawe', 20, 2.0, 3.0, 5, 34, False),
             },
             'constants': {
