@@ -115,11 +115,11 @@ class Region(object):
         @return True if the signal pass the test.
         """
 
-        if self._stage == TradeOp.STAGE_EXIT and signal.signal > 0:
+        if self._stage == Region.STAGE_EXIT and signal.signal > 0:
             # cannot validate an exit region on the entry signal
             return False
 
-        if self._stage == TradeOp.STAGE_ENTRY and signal.signal < 0:
+        if self._stage == Region.STAGE_ENTRY and signal.signal < 0:
             # cannot validate an entry region on the exit signal
             return False
 

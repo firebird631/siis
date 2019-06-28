@@ -232,9 +232,6 @@ class BinanceWatcher(Watcher):
             market.is_open = symbol['status'] == "TRADING"
             market.expiry = '-'
 
-            # @todo market does not support order types because we suppose all...
-            # symbol['orderTypes'] in ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT']
-
             base_asset = symbol['baseAsset']
             market.set_base(base_asset, base_asset, symbol['baseAssetPrecision'])
 
@@ -247,38 +244,47 @@ class BinanceWatcher(Watcher):
             market.contract_size = 1.0
             market.lot_size = 1.0
 
+            # @todo add margin support
             market.margin_factor = 1.0
-            market.trade = Market.TRADE_BUY_SELL
 
-            min_size = 1.0
-            max_size = 0.0
-            step_size = 1.0
-            min_notional = 1.0
+            size_limits = ["1.0", "0.0", "1.0"]
+            notional_limits = ["1.0", "0.0", "0.0"]
+            price_limits = ["0.0", "0.0", "0.0"]
 
             # size min/max/step
             for afilter in symbol["filters"]:
-                if afilter['filterType'] == 'LOT_SIZE':
-                    min_size = afilter['minQty']
-                    max_size = afilter['maxQty']
-                    step_size = afilter['stepSize']
+                if afilter['filterType'] == "LOT_SIZE":
+                    size_limits = [afilter['minQty'], afilter['maxQty'], afilter['stepSize']]
 
-                elif afilter['filterType'] == 'MIN_NOTIONAL':
-                    min_notional = afilter['minNotional']
+                elif afilter['filterType'] == "MIN_NOTIONAL":
+                    notional_limits[0] = afilter['minNotional']
 
-            if float(step_size) < 1:
+                elif afilter['filterType'] == "PRICE_FILTER":
+                    price_limits = [afilter['minPrice'], afilter['maxPrice'], afilter['tickSize']]
+
+            if float(size_limits[2]) < 1:
                 # even if we respect the min step size it reject on some cases
                 # so keep an higher precision for smallest step size
-                step_size = str(float(step_size) * 10)
+                size_limits[2] = str(float(size_limits[2]) * 10)
 
-            market.set_size_limits(float(min_size), float(max_size), float(step_size), float(min_notional))
+            market.set_size_limits(float(size_limits[0]), float(size_limits[1]), float(size_limits[2]))
+            market.set_price_limits(float(price_limits[0]), float(price_limits[1]), float(price_limits[2]))
+            market.set_notional_limits(float(notional_limits[0]), 0.0, 0.0)
 
             market.unit_type = Market.UNIT_AMOUNT
             market.market_type = Market.TYPE_CRYPTO
+            market.trade = Market.TRADE_ASSET
+            market.contract_type = Market.CONTRACT_SPOT
 
-            # account['buyerCommission'] account['sellerCommission']
-            # @todo market does not support distinct buyer/seller commission but seems always 0
+            # @todo orders capacities
+            # symbol['orderTypes'] in ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT']
+            # market.orders = 
+
             market.maker_fee = account['makerCommission'] * 0.0001
             market.taker_fee = account['takerCommission'] * 0.0001
+
+            # market.buyer_commission = account['buyerCommission']
+            # market.seller_commission = account['sellerCommission']
 
             # only order book can give us bid/ofr
             market.bid = float(ticker['price'])
@@ -301,25 +307,32 @@ class BinanceWatcher(Watcher):
 
             # volume 24h
 
-            # in client.get_ticker but cost is 40 for any symbols
+            # in client.get_ticker but cost is 40 for any symbols then wait it at all-tickets WS event
             # vol24_base = ticker24h('volume')
             # vol24_quote = ticker24h('quoteVolume')
 
             # store the last market info to be used for backtesting
             if not self._read_only:
                 Database.inst().store_market_info((self.name, market.market_id, market.symbol,
-                    market.base, market.base_display, market.base_precision,
-                    market.quote, market.quote_display, market.quote_precision,
-                    market.expiry, int(market.last_update_time * 1000.0),
+                    market.market_type, market.unit_type, market.contract_type,  # type
+                    market.trade, market.orders,  # type
+                    market.base, market.base_display, market.base_precision,  # base
+                    market.quote, market.quote_display, market.quote_precision,  # quote
+                    market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
                     str(market.lot_size), str(market.contract_size), str(market.base_exchange_rate),
                     str(market.value_per_pip), str(market.one_pip_means), '-',
-                    min_size, max_size, step_size, min_notional,
-                    market.market_type, market.unit_type, str(market.bid), str(market.ofr),
-                    str(market.maker_fee), str(market.taker_fee), "0.0"))
+                    *size_limits,
+                    *notional_limits,
+                    *price_limits,
+                    str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))
+                )
 
         return market
 
     def update_markets_info(self, markets):
+        """
+        Update market info.
+        """
         self.__prefetch_markets()
 
         for market in markets:
@@ -330,35 +343,39 @@ class BinanceWatcher(Watcher):
             if symbol and ticker and account and market:
                 market.expiry = '-'
 
-                # @todo market does not support order types because we suppose all...
-                # symbol['orderTypes'] in ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT']
-
-                min_size = 0.0
-                max_size = 0.0
-                step_size = 0.0
-                min_notional = 0.0
+                size_limits = ["1.0", "0.0", "1.0"]
+                notional_limits = ["1.0", "0.0", "0.0"]
+                price_limits = ["0.0", "0.0", "0.0"]
 
                 # size min/max/step
                 for afilter in symbol["filters"]:
-                    if afilter['filterType'] == 'LOT_SIZE':
-                        min_size = afilter['minQty']
-                        max_size = afilter['maxQty']
-                        step_size = afilter['stepSize']
+                    if afilter['filterType'] == "LOT_SIZE":
+                        size_limits = [afilter['minQty'], afilter['maxQty'], afilter['stepSize']]
 
-                    elif afilter['filterType'] == 'MIN_NOTIONAL':
-                        min_notional = afilter['minNotional']
+                    elif afilter['filterType'] == "MIN_NOTIONAL":
+                        notional_limits[0] = afilter['minNotional']
 
-                if float(step_size) < 1:
-                    # binance data sucks, even if we respect the min step size it reject on some cases
+                    elif afilter['filterType'] == "PRICE_FILTER":
+                        price_limits = [afilter['minPrice'], afilter['maxPrice'], afilter['tickSize']]
+
+                if float(size_limits[2]) < 1:
+                    # even if we respect the min step size it reject on some cases
                     # so keep an higher precision for smallest step size
-                    step_size = str(float(step_size) * 10)
+                    size_limits[2] = str(float(size_limits[2]) * 10)
 
-                market.set_size_limits(float(min_size), float(max_size), float(step_size), float(min_notional))
+                market.set_size_limits(float(size_limits[0]), float(size_limits[1]), float(size_limits[2]))
+                market.set_price_limits(float(price_limits[0]), float(price_limits[1]), float(price_limits[2]))
+                market.set_notional_limits(float(notional_limits[0]), 0.0, 0.0)
 
-                # account['buyerCommission'] account['sellerCommission']
-                # @todo market does not support distinct buyer/seller commission but seems always 0
+                # @todo orders capacities
+                # symbol['orderTypes'] in ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT']
+                # market.orders = 
+
                 market.maker_fee = account['makerCommission'] * 0.0001
                 market.taker_fee = account['takerCommission'] * 0.0001
+
+                # market.buyer_commission = account['buyerCommission']
+                # market.seller_commission = account['sellerCommission']
 
     def fetch_order_book(self, market_id):
         # get_orderbook_tickers

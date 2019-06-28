@@ -50,7 +50,8 @@ class Signal(object):
 	SIGNAL_ASSET_DATA = 600             # data is a tuple with (asset_id, asset object)
 	SIGNAL_ASSET_DATA_BULK = 601        # data is an array of Asset objects
 	SIGNAL_ASSET_UPDATED = 602          # data is a tuple with (asset_id, locked_balance, free_balance)
-	SIGNAL_STRATEGY_TRADE_LIST = 603    # data is an array of Strategy(Asset|Margin)Trade objects
+	SIGNAL_STRATEGY_TRADE_LIST = 603    # data is an array of Strategy(Asset|Margin|IndMargin)Trade objects
+	SIGNAL_STRATEGY_TRADER_OPTS = 604   # data is a tuple with(strategy-name, appliance-identifier, dict of sub-traders options)
 
 	SIGNAL_ORDER_BOOK = 700             # data is a tuple with (market_id, buys array, sells array)
 

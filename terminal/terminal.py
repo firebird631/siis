@@ -156,7 +156,7 @@ class View(object):
 
         elts = []
 
-        color = 0
+        color = curses.color_pair(0)
         next_is_color = False
         buf = ""
         xp = x
@@ -291,6 +291,7 @@ class View(object):
                     if self._active:
                         if n >= self._first_row and n < self.height:
                             if self._right_align:
+                                # not perfect because count non color escapes
                                 rm = row.count('\\')
                                 x = max(0, self.width - len(row) - rm)
                             else:
@@ -926,6 +927,7 @@ class Terminal(object):
                 # ch = self._stdscr.getch()
                 c = self._stdscr.getkey()
 
+                # if ch == curses.ascii.ESC:
                 if ord(c[0]) == 27:
                     self._key = 'KEY_ESCAPE'
                     return None
@@ -967,27 +969,32 @@ class Terminal(object):
                                 view.redraw()
 
                 # shift + keys arrows for hard scrolling
+                # ch == curses.KEY_SUP
                 elif c == 'KEY_SUP':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
                             view.scroll(-1)
+                            view.redraw()
                 elif c == 'KEY_SDOWN':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
                             view.scroll(1)
+                            view.redraw()
 
                 elif c == 'KEY_SLEFT':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
                             view.hor_scroll(-1)
+                            view.redraw()
                 elif c == 'KEY_SRIGHT':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
                             view.hor_scroll(1)
+                            view.redraw()
 
                 # keys arrows
                 elif c in ('KEY_UP', 'KEY_DOWN', 'KEY_LEFT', 'KEY_RIGHT'):

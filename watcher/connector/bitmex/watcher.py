@@ -550,9 +550,22 @@ class BitMexWatcher(Watcher):
             if base_market_id != symbol and base_market:
                 market.base_exchange_rate = base_market.get('lastPrice', 1.0) / instrument.get('lastPrice', 1.0)
 
-            # @todo value is multiplier 'multiplier': -100000000,
-            # riskStep should be the current leverage in account currency and riskLimit the maximum for the market
-            market.set_size_limits(0.0, 0.0, 1.0, 1.0)
+            logger.info(instrument)
+
+            # @todo 'multiplier', 'riskStep', 'riskLimit'
+
+            # limits
+            min_notional = 1.0  # ³$
+
+            if quote_symbol != "USD" and base_market_id != "XBT":
+                # any contract on futur XBT quote
+                min_notional = 0.0001
+
+            # BCHXBT 'maxOrderQty': 100000000, 'maxPrice': 10, 'lotSize': 1, 'tickSize': 0.0001,
+            # XBCUSD 'maxOrderQty': 10000000, 'maxPrice': 1000000, 'lotSize': 1, 'tickSize': 0.5,
+            market.set_size_limits(instrument.get('tickSize', 1.0), instrument.get('maxOrderQty', 0.0), instrument.get('tickSize', 1.0))
+            market.set_notional_limits(min_notional, instrument.get('maxPrice', 0.0), 0.0)
+            market.set_price_limits(0.0, 0.0, instrument.get('tickSize', 1.0))
 
             # need to divided by account currency XBt = 100000000
             market.margin_factor = instrument.get('initMargin', 1.0)
@@ -569,6 +582,8 @@ class BitMexWatcher(Watcher):
 
             market.market_type = Market.TYPE_CRYPTO
             market.unit_type = Market.UNIT_CONTRACTS
+            market.contract_type = Market.CONTRACT_CFD  # and FUTUR
+            market.trade = Market.TRADE_IND_MARGIN
 
             if bid is not None and ofr is not None:
                 market.bid = bid
@@ -595,16 +610,24 @@ class BitMexWatcher(Watcher):
             # store the last market info to be used for backtesting
             if not self._read_only:
                 Database.inst().store_market_info((self.name, market_id, market.symbol,
-                    market.base, market.base_display, market.base_precision,
-                    market.quote, market.quote_display, market.quote_precision,
-                    market.expiry, int(market.last_update_time * 1000.0),
+                    market.market_type, market.unit_type, market.contract_type,  # type
+                    market.trade, market.orders,  # type
+                    market.base, market.base_display, market.base_precision,  # base
+                    market.quote, market.quote_display, market.quote_precision,  # quote
+                    market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
                     str(market.lot_size), str(market.contract_size), str(market.base_exchange_rate),
                     str(market.value_per_pip), str(market.one_pip_means), str(market.margin_factor),
-                    "0.0", "0.0", "1.0", "1.0",
-                    market.market_type, market.unit_type, str(market.bid), str(market.ofr),
-                    str(market.maker_fee), str(market.taker_fee), "0.0"))
+                    str(market.min_size), str(market.max_size), str(market.step_size),  # size limits
+                    str(market.min_notional), str(market.max_notional), str(market.step_notional),  # notional limits
+                    str(market.min_price), str(market.max_price), str(market.step_price),  # price limits
+                    str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))  # fees
+                )
 
         return market
 
     def update_markets_info(self, markets):
-        pass  # @todo (not very important because its seems it never changes)
+        """
+        Update market info.
+        @todo (not very important because its seems it never changes)
+        """
+        pass  

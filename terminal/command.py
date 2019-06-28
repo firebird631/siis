@@ -117,6 +117,11 @@ class CommandsHandler(object):
     Offers history, aliases with shortcut, and completion.
 
     F(X) keys are used for aliases.
+
+    @todo For the command name (first arguments) if erase some characters,
+        then it is not able to auto complete until ESC key is pressed.
+        But have to move accelerator into command and move the complete code of 
+        input to this object, then disinct more finely command or direct mode.
     """
 
     def __init__(self):
@@ -297,13 +302,15 @@ class CommandsHandler(object):
                         largs, tp = self._commands[command_name].completion(args[1:], tab_pos+direction, direction)
                         return [cmd, *largs], tp
             else:
-                cmds = list(self._commands.keys()) + list(self._alias.keys()).sort()
+                cmds = list(self._commands.keys()) + list(self._alias.keys())
+                cmds.sort()
+
                 cmd, tp = self.iterate_cmd(cmds, cmd, self._tab_pos+direction, direction)
 
                 return [cmd], tp
         else:
             cmds = list(self._commands.keys()) + list(self._alias.keys()).sort()
-            cmd, tp = self.iterate_cmd(cmds, "", self._tab_pos+direction, direction)
+            cmd, tp = self.iterate_cmd(cmds, self._word, self._tab_pos+direction, direction)
 
             return [cmd], tp
 
@@ -376,7 +383,6 @@ class CommandsHandler(object):
             # next word
             self._word = ""
         elif char == '\b':
-            # self._word = self._word[1:] if self._word else ""
             self._word = args[-1][:-1] if args else ""
         elif char == '\n':
             self._word = ""
@@ -384,7 +390,10 @@ class CommandsHandler(object):
             # same word
             self._word += char
 
-        # each time a char is type current completion is reset
+        if len(args) <= 1 and self._word and self._word[0] != ':':
+            self._word = ""
+
+        # each time a char is typed current completion is reset
         self._tab_pos = -1
 
     def process_key(self, key_code, args):

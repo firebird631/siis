@@ -133,6 +133,9 @@ class Database(object):
         self._pending_user_trade_insert = []
         self._pending_user_trade_select = []
 
+        self._pending_user_apps_insert = []
+        self._pending_user_apps_select = []
+
         self._last_tick_flush = 0
         self._last_ohlc_flush = 0
         self._last_ohlc_clean = 0
@@ -195,12 +198,15 @@ class Database(object):
         self.disconnect()
 
         # flush remaining ticks
+        self.lock()
         for k, tick_storage in self._tick_storages.items():
             tick_storage.flush(force=True)
             tick_storage.close()
 
         self._tick_storages = {}
         self._pending_tick_insert = []
+
+        self.unlock()
 
     def setup_market_sql(self):
         pass
@@ -212,7 +218,7 @@ class Database(object):
         pass
 
     #
-    # Market
+    # asyncs saves
     #
 
     def store_market_trade(self, data):
@@ -277,6 +283,10 @@ class Database(object):
             str broker_id (not empty)
             str market_id (not empty)
             str symbol (not empty)
+            int market_type
+            int unit_type
+            int trade_type
+            int orders
             str base (not empty)
             str base_display (not empty)
             int base_precision (not empty)
@@ -295,13 +305,15 @@ class Database(object):
             str max_size
             str step_size
             str min_notional
-            int market_type
-            int unit_type
-            str bid
-            str ofr
+            str max_notional
+            str step_notional
+            str min_price
+            str max_price
+            str step_price
             str maker_fee
             str taker_fee
-            str commission
+            str maker_commission
+            str taker_commission
         """
         self.lock()
         if isinstance(data, list):
@@ -309,6 +321,10 @@ class Database(object):
         else:
             self._pending_market_info_insert.append(data)
         self.unlock()
+
+    #
+    # asyncs loads
+    #
 
     def load_market_ohlc(self, service, broker_id, market_id, timeframe, from_datetime=None, to_datetime=None):
         """
@@ -408,29 +424,9 @@ class Database(object):
             str appliance_id (not empty)
             integer trade_id (not empty)
             integer trade_type (not empty)
-            integer timestamp (ms since epoch)
-            integer direction (not empty)
-            str price (not empty)
-            str stop_loss (not empty)
-            str take_profit (not empty)
-            str quantity (not empty)
-            str entry_quantity (not empty)
-            str exit_quantity (not empty)
-            str profit_loss (not empty)
-            str timeframes (not empty, comma separeted list of timeframes)
-            integer entry_status
-            integer exit_status
-            str entry_order_id
-            str exit1_order_id
-            str exit2_order_id
-            str exit3_order_id
-            str entry_ref_order_id
-            str exit1_ref_order_id
-            str exit2_ref_order_id
-            str exit3_ref_order_id
-            str position_id
-            str copied_position_id
-            str conditions (json formatted conditions)
+            dict data (to be json encoded)
+            dict conditions (to be json encoded)
+            dict operations (to be json encoded)
         """
         self.lock()
         if isinstance(data, list):
@@ -458,7 +454,6 @@ class Database(object):
             self.process_market()
             self.process_ohlc()
             self.process_tick()
-            self.process_user_trade()
 
             time.sleep(0.001)  # don't waste the CPU
 
@@ -480,6 +475,3 @@ class Database(object):
         for tick_storage in pti:
             if tick_storage.has_data():
                 tick_storage.flush()
-
-    def process_user_trade(self):
-        pass

@@ -802,33 +802,50 @@ class IGWatcher(Watcher):
 
         # BINARY OPT_* BUNGEE_* 
         if instrument['type'] == 'CURRENCIES':
-            market._market_type = Market.TYPE_CURRENCY
+            market.market_type = Market.TYPE_CURRENCY
         elif instrument['type'] == 'INDICES':
-            market._market_type = Market.TYPE_INDICE
+            market.market_type = Market.TYPE_INDICE
         elif instrument['type'] == 'COMMODITIES':
-            market._market_type = Market.TYPE_COMMODITY
+            market.market_type = Market.TYPE_COMMODITY
         elif instrument['type'] == 'SHARES':
-            market._market_type = Market.TYPE_STOCK
+            market.market_type = Market.TYPE_STOCK
         elif instrument['type'] == 'RATES':
-            market._market_type = Market.TYPE_RATE
+            market.market_type = Market.TYPE_RATE
         elif instrument['type'] == 'SECTORS':
-            market._market_type = Market.TYPE_SECTOR
+            market.market_type = Market.TYPE_SECTOR
 
-        market.set_size_limits(dealing_rules["minDealSize"]["value"], 0.0, dealing_rules["minDealSize"]["value"], 0.0)
+        market.contract_type = Market.CONTRACT_CFD
+        market.trade = Market.TRADE_MARGIN
+
+        market.set_size_limits(dealing_rules["minDealSize"]["value"], 0.0, dealing_rules["minDealSize"]["value"])
+        market.set_notional_limits(0.0, 0.0, 0.0)
+        market.set_price_limits(0.0, 0.0, 0.0)
+
+        # commission for stocks
+        commission = "0.0"
+        # @todo
 
         # store the last market info to be used for backtesting
         if not self._read_only:
             Database.inst().store_market_info((self.name, epic, market.symbol,
-                market.base, market.base_display, market.base_precision,
-                market.quote, market.quote_display, market.quote_precision,
-                market.expiry, int(market.last_update_time * 1000.0),
+                market.market_type, market.unit_type, market.contract_type,  # type
+                market.trade, market.orders,  # type
+                market.base, market.base_display, market.base_precision,  # base
+                market.quote, market.quote_display, market.quote_precision,  # quote
+                market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
                 instrument['lotSize'], instrument['contractSize'], str(market.base_exchange_rate),
                 instrument['valueOfOnePip'], instrument['onePipMeans'].split(' ')[0], margin_factor,
-                dealing_rules["minDealSize"]["value"], "0.0", dealing_rules["minDealSize"]["value"], "0.0",
-                market.market_type, market.unit_type, str(market.bid), str(market.ofr),
-                "0.0", "0.0", "0.0"))
+                dealing_rules["minDealSize"]["value"], "0.0", dealing_rules["minDealSize"]["value"],  # size limits
+                "0.0", "0.0", "0.0",  # notional limits
+                "0.0", "0.0", "0.0",  # price limits
+                "0.0", "0.0", commission, commission)  # fees
+            )
 
         return market
 
     def update_markets_info(self, markets):
-        pass  # @todo (very important because IG frequently changes lot or contract size)
+        """
+        Update market info.
+        @todo (very important because IG frequently changes lot or contract size)
+        """
+        pass  

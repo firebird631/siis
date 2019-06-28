@@ -294,13 +294,13 @@ class StrategyAssetTrade(StrategyTrade):
                     filled = 0
 
                 if data.get('exec-price') is not None and data['exec-price']:
-                    # compute the average price whe increasing the position
+                    # compute the average entry price whe increasing the trade
                     self.p = ((self.p * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
                 elif data.get('avg-price') is not None and data['avg-price']:
-                    # average price is directly given
+                    # average entry price is directly given
                     self.p = data['avg-price']
 
-                self.e += filled
+                self.e += filled  # cumulative filled entry qty
 
                 # commission asset is asset, have to reduce it from filled
                 if data['commission-asset'] == data['symbol']:
@@ -320,13 +320,19 @@ class StrategyAssetTrade(StrategyTrade):
                     filled = 0
 
                 if data.get('exec-price') is not None and data['exec-price']:
-                    # profit/loss when reducing the position (over executed entry qty)
+                    # average exit price
+                    self.xp = ((self.xp * self.x) + (data['exec-price'] * filled)) / (self.x + filled)
+
+                    # profit/loss when reducing the trade (over executed entry qty)
                     self.pl += ((data['exec-price'] * filled) - (self.p * self.e)) / (self.p * self.e)
                 elif data.get('avg-price') is not None and data['avg-price']:
+                    # average exit price
+                    self.xp = data['avg-price']
+
                     # average price is directly given
                     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.p * self.e)) / (self.p * self.e)
 
-                self.x += filled
+                self.x += filled  # cumulative filled exit qty
 
                 # commission asset is asset, have to reduce it from filled
                 if data['commission-asset'] == data['symbol']:
@@ -338,7 +344,8 @@ class StrategyAssetTrade(StrategyTrade):
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
-            # order price/qty modified @see comment on margintrade
+            # order price or qty modified
+            # but its rarely possible
             pass
 
         elif signal_type == Signal.SIGNAL_ORDER_DELETED:

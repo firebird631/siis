@@ -68,15 +68,18 @@ class MySql(Database):
             CREATE TABLE IF NOT EXISTS market(
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, symbol VARCHAR(32) NOT NULL,
+                market_type INTEGER NOT NULL DEFAULT 0, unit_type INTEGER NOT NULL DEFAULT 0, contract_type INTEGER NOT NULL DEFAULT 0,
+                trade_type INTEGER NOT NULL DEFAULT 0, orders INTEGER NOT NULL DEFAULT 0,
                 base VARCHAR(32) NOT NULL, base_display VARCHAR(32) NOT NULL, base_precision VARCHAR(32) NOT NULL,
                 quote VARCHAR(32) NOT NULL, quote_display VARCHAR(32) NOT NULL, quote_precision VARCHAR(32) NOT NULL,
                 expiry VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL,
                 lot_size VARCHAR(32) NOT NULL, contract_size VARCHAR(32) NOT NULL, base_exchange_rate VARCHAR(32) NOT NULL,
-                min_size VARCHAR(32) NOT NULL, max_size VARCHAR(32) NOT NULL, step_size VARCHAR(32) NOT NULL, min_notional VARCHAR(32) NOT NULL,
-                value_per_pip VARCHAR(32) NOT NULL, one_pip_means VARCHAR(32) NOT NULL, margin_factor VARCHAR(32),
-                market_type INTEGER NOT NULL, unit_type INTEGER NOT NULL,
-                bid VARCHAR(32) NOT NULL, ofr VARCHAR(32) NOT NULL,
-                maker_fee VARCHAR(32) NOT NULL DEFAULT '0', taker_fee VARCHAR(32) NOT NULL DEFAULT '0', commission VARCHAR(32) NOT NULL DEFAULT '0',
+                value_per_pip VARCHAR(32) NOT NULL, one_pip_means VARCHAR(32) NOT NULL, margin_factor VARCHAR(32) NOT NULL DEFAULT '1.0',
+                min_size VARCHAR(32) NOT NULL, max_size VARCHAR(32) NOT NULL, step_size VARCHAR(32) NOT NULL,
+                min_notional VARCHAR(32) NOT NULL, max_notional VARCHAR(32) NOT NULL, step_notional VARCHAR(32) NOT NULL,
+                min_price VARCHAR(32) NOT NULL, max_price VARCHAR(32) NOT NULL, step_price VARCHAR(32) NOT NULL,
+                maker_fee VARCHAR(32) NOT NULL DEFAULT '0', taker_fee VARCHAR(32) NOT NULL DEFAULT '0',
+                maker_commission VARCHAR(32) NOT NULL DEFAULT '0', taker_commission VARCHAR(32) NOT NULL DEFAULT '0',
                 UNIQUE KEY(broker_id, market_id))""")
 
         self._db.commit()
@@ -96,26 +99,6 @@ class MySql(Database):
                 last_trade_id VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL, 
                 quantity VARCHAR(32) NOT NULL, price VARCHAR(32) NOT NULL, quote_symbol VARCHAR(32) NOT NULL,
                 UNIQUE KEY(broker_id, asset_id))""")
-
-        # trade table (generic to support asset trade and margin trade and more)
-        cursor.execute("SHOW TABLES LIKE 'user_trade'")
-        if len(cursor.fetchall()) > 0:
-            return
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_trade(
-                id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
-                appliance_id VARCHAR(255) NOT NULL, trade_id INTEGER NOT NULL, trade_type INTEGER NOT NULL,
-                timestamp BIGINT NOT NULL, direction INTEGER NOT NULL,
-                price VARCHAR(32) NOT NULL, stop_loss VARCHAR(32) NOT NULL, take_profit VARCHAR(32) NOT NULL,
-                quantity VARCHAR(32) NOT NULL, entry_quantity VARCHAR(32) NOT NULL, exit_quantity VARCHAR(32) NOT NULL,
-                profit_loss VARCHAR(32) NOT NULL, timeframes VARCHAR(256) NOT NULL,
-                entry_status INTEGER NOT NULL, exit_status INTEGER NOT NULL,
-                entry_order_id VARCHAR(32), exit1_order_id VARCHAR(32), exit2_order_id VARCHAR(32), exit3_order_id VARCHAR(32),
-                entry_ref_order_id VARCHAR(32), exit1_ref_order_id VARCHAR(32), exit2_ref_order_id VARCHAR(32), exit3_ref_order_id VARCHAR(32),
-                position_id VARCHAR(32), copied_position_id VARCHAR(32), conditions VARCHAR(1024),
-                UNIQUE KEY(broker_id, market_id, appliance_id, trade_id))""")
 
         self._db.commit()
 
@@ -175,17 +158,30 @@ class MySql(Database):
                         mi[16] = margin_factor
 
                 cursor.execute("""INSERT INTO market(broker_id, market_id, symbol,
+                                    market_type, unit_type, contract_type,
+                                    trade_type, orders,
                                     base, base_display, base_precision,
                                     quote, quote_display, quote_precision,
-                                    expiry, timestamp, lot_size, contract_size, base_exchange_rate, value_per_pip, one_pip_means, margin_factor,
-                                    min_size, max_size, step_size, min_notional, market_type, unit_type, bid, ofr, maker_fee, taker_fee, commission) 
-                                VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    expiry, timestamp,
+                                    lot_size, contract_size, base_exchange_rate,
+                                    value_per_pip, one_pip_means, margin_factor,
+                                    min_size, max_size, step_size,
+                                    min_notional, max_notional, step_notional,
+                                    min_price, max_price, step_price,
+                                    maker_fee, taker_fee, maker_commission, taker_commission) 
+                                VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                 ON DUPLICATE KEY UPDATE symbol = %s,
+                                    market_type = %s, unit_type = %s, contract_type = %s,
+                                    trade_type = %s, orders = %s,
                                     base = %s, base_display = %s, base_precision = %s,
                                     quote = %s, quote_display = %s, quote_precision = %s,
-                                    expiry = %s, timestamp = %s, lot_size = %s, contract_size = %s, base_exchange_rate = %s, value_per_pip = %s,
-                                    one_pip_means = %s, margin_factor = %s, min_size = %s, max_size = %s, step_size = %s, min_notional = %s,
-                                    market_type = %s, unit_type = %s, bid = %s, ofr = %s, maker_fee = %s, taker_fee = %s, commission = %s""",
+                                    expiry = %s, timestamp = %s,
+                                    lot_size = %s, contract_size = %s, base_exchange_rate = %s,
+                                    value_per_pip = %s, one_pip_means = %s, margin_factor = %s,
+                                    min_size = %s, max_size = %s, step_size = %s,
+                                    min_notional = %s, max_notional = %s, step_notional = %s,
+                                    min_price = %s, max_price = %s, step_price = %s,
+                                    maker_fee = %s, taker_fee = %s, maker_commission = %s, taker_commission = %s""",
                                 (*mi, *mi[2:]))
 
             self._db.commit()
@@ -210,12 +206,18 @@ class MySql(Database):
             cursor = self._db.cursor()
 
             for mi in mis:
-                cursor.execute("""SELECT symbol, expiry, timestamp,
+                cursor.execute("""SELECT symbol,
+                                    market_type, unit_type, contract_type,
+                                    trade_type, orders,
                                     base, base_display, base_precision,
                                     quote, quote_display, quote_precision,
-                                    lot_size, contract_size, base_exchange_rate, value_per_pip, one_pip_means,
-                                    margin_factor, market_type, unit_type, bid, ofr, min_size, max_size, step_size, min_notional
-                                    maker_fee, taker_fee, commission FROM market
+                                    expiry, timestamp,
+                                    lot_size, contract_size, base_exchange_rate,
+                                    value_per_pip, one_pip_means, margin_factor,
+                                    min_size, max_size, step_size,
+                                    min_notional, max_notional, step_notional,
+                                    min_price, max_price, step_price,
+                                    maker_fee, taker_fee, maker_commission, taker_commission FROM market
                                 WHERE broker_id = '%s' AND market_id = '%s'""" % (
                                     mi[1], mi[2]))
 
@@ -225,40 +227,41 @@ class MySql(Database):
                     market_info = Market(mi[2], row[0])
 
                     market_info.is_open = True
-                    market_info.expiry = row[1]
 
-                    market_info.last_update_time = row[2]
+                    market_info.market_type = row[1]
+                    market_info.unit_type = row[2]
+                    market_info.contract_type = row[3]
 
-                    market_info.set_base(row[3], row[4], int(row[5]))
-                    market_info.set_quote(row[6], row[7], int(row[8]))
+                    market_info.trade = row[4]
+                    market_info.orders = row[5]
 
-                    market_info.lot_size = float(row[9])
-                    market_info.contract_size = float(row[10])
-                    market_info.base_exchange_rate = float(row[11])
-                    market_info.value_per_pip = float(row[12])
-                    market_info.one_pip_means = float(row[13])
+                    market_info.set_base(row[6], row[7], int(row[8]))
+                    market_info.set_quote(row[9], row[10], int(row[11]))
 
-                    if row[14] is not None or row[14] is not 'None':
-                        if row[14] == '-':
-                            # no margin (buy & sell)
+                    market_info.expiry = row[12]
+                    market_info.last_update_time = row[13]
+
+                    market_info.lot_size = float(row[14])
+                    market_info.contract_size = float(row[15])
+                    market_info.base_exchange_rate = float(row[16])
+                    market_info.value_per_pip = float(row[17])
+                    market_info.one_pip_means = float(row[18])
+
+                    if row[19] is not None or row[19] is not 'None':
+                        if row[19] == '-':  # not defined mean 1.0 or no margin
                             market_info.margin_factor = 1.0
-                            market_info.trade = Market.TRADE_BUY_SELL
                         else:
-                            # margin (long & short)
-                            market_info.margin_factor = float(row[14])
-                            market_info.trade = Market.TRADE_MARGIN
+                            market_info.margin_factor = float(row[19])
 
-                    market_info.market_type = row[15]
-                    market_info.unit_type = row[16]
+                    market_info.set_size_limits(float(row[20]), float(row[21]), float(row[22]))
+                    market_info.set_notional_limits(float(row[23]), float(row[24]), float(row[25]))
+                    market_info.set_price_limits(float(row[26]), float(row[27]), float(row[28]))
 
-                    market_info.bid = float(row[17])
-                    market_info.ofr = float(row[18])
+                    market_info.maker_fee = float(row[29])
+                    market_info.taker_fee = float(row[30])
 
-                    market_info.set_size_limits(float(row[19]), float(row[20]), float(row[21]), float(row[22]))
-
-                    market_info.maker_fee = float(row[23])
-                    market_info.taker_fee = float(row[24])
-                    market_info.commission = float(row[25])
+                    market_info.maker_commission = float(row[31])
+                    market_info.taker_commission = float(row[32])
                 else:
                     market_info = None
 
@@ -613,58 +616,3 @@ class MySql(Database):
                 logger.error(repr(e))
 
             self._last_ohlc_clean = time.time()
-
-    def process_user_trade(self):
-        now = time.time()
-
-    #   # check only once per minute
-    #   if (now - self._last_trade_flush) >= 60.0:
-    #       self.lock()
-    #       mti = copy.copy(self._pending_market_trade_insert)
-    #       self._pending_market_trade_insert.clear()
-    #       self.unlock()
-
-    #       for k, data in mti.items():
-    #           if not data:
-    #               continue
-
-    #           @todo
-
-    #               # retry the next time
-    #               self.lock()
-    #               if k in self._pending_market_trade_insert:
-    #                   self._pending_market_trade_insert[k] = data + self._pending_market_trade_insert[k]
-    #               else:
-    #                   self._pending_market_trade_insert[k] = data
-    #               self.unlock()
-
-    #       self._last_trade_flush = time.time()
-
-    #   #
-    #   # select trades
-    #   #
-
-    #   self.lock()
-    #   mts = copy.copy(self._pending_market_trade_select)
-    #   self._pending_market_trade_select.clear()
-    #   self.unlock()
-
-    #   try:
-    #       for mt in mts:
-    #           trades = []
-
-    #           @todo
-
-    #           for row in rows:
-    #               ...
-
-    #           # notify
-    #           mt[0].notify(Signal.SIGNAL_TRADE_DATA_BULK, mt[1], (mt[2], trades))
-
-    #   except Exception as e:
-    #       logger.error(repr(e))
-
-    #       # retry the next time
-    #       self.lock()
-    #       self._pending_market_trade_select = mts + self._pending_market_trade_select
-    #       self.unlock()

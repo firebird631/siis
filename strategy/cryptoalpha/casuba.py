@@ -670,9 +670,9 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             if len(self.pivotpoint.resistances[2]):
                 if signal.tp > signal.p:
                     signal.tp = np.max(self.pivotpoint.resistances[2])
-                else:
-                    # ignore this signal
-                    signal = None
+                # else:
+                #     # ignore this signal
+                #     signal = None
 
         elif bbawe < 0 and level1_signal < 0:
             # exit signal
@@ -681,12 +681,14 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             signal.dir = 1
             signal.p = self.price.close[-1]
 
-        if signal and signal.signal == StrategySignal.SIGNAL_ENTRY:
-            min_profit = (0.00075*2 + 0.005) * signal.p
+        # if signal and signal.signal == StrategySignal.SIGNAL_ENTRY:
+        #     # @todo optimize using market fee and ATR
+        #     min_profit = (0.00075*2 + 0.005) * signal.p
 
-            if signal.tp > 0.0 and (signal.tp - signal.p) < min_profit:
-                # if the target is lesser than a profit then ignore it 
-                signal = None
+        #     if signal.tp > 0.0 and (signal.tp - signal.p) < min_profit:
+        #         # if the target is lesser than a profit then ignore it
+        #         Terminal.inst().info("Ignore trade %s %s because TP is to low" % (self.data.instrument.symbol, self.tf), view='default')
+        #         signal = None
 
         if self.tomdemark:
             self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.close)

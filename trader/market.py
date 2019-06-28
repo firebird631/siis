@@ -17,13 +17,11 @@ class Market(object):
 
     IG : https://labs.ig.com/rest-trading-api-reference/service-detail?id=528
 
-    @todo availables margins levels (min, max... others level or step) but its complicated depending of the broker (BitMex, 1broker)
-    @todo rollover fee buts the structure is complicated depending of the broker, so this should be an approximation of the rate
-    @todo save maker/taker fee and commission into the DB
-    @todo from watcher define if the market support or not hedging for each market (save it into DB)
+    @todo availables margins levels for IG but its complicated to manage
+    @todo rollover fee buts its complicated too
     """
 
-    ROLLOVER_TIME = 60  # in seconds
+    TICK_PRICE_TIMEOUT = 60  # in seconds
 
     TYPE_UNKNOWN = 0
     TYPE_CURRENCY = 1
@@ -33,6 +31,13 @@ class Market(object):
     TYPE_RATE = 5
     TYPE_SECTOR = 6
     TYPE_CRYPTO = 7
+
+    CONTRACT_SPOT = 0
+    CONTRACT_CFD = 1
+    CONTRACT_FUTUR = 2
+    CONTRACT_OPTION = 3
+    CONTRACT_WARRANT = 4
+    CONTRACT_TURBO = 5
 
     UNIT_AMOUNT = 0
     UNIT_CONTRACTS = 1
@@ -94,29 +99,25 @@ class Market(object):
         self._one_pip_means = 1.0
         self._margin_factor = 1.0  # 1.0 / leverage
 
-        self._min_size = 0.0
-        self._max_size = 0.0
-        self._step_size = 1.0
-        self._min_notional = 0.0
+        self._size_limits = (0.0, 0.0, 0.0)
+        self._price_limits = (0.0, 0.0, 0.0)
+        self._notional_limits = (0.0, 0.0, 0.0)
 
         self._market_type = Market.TYPE_UNKNOWN
         self._unit_type = Market.UNIT_CONTRACTS
-
-        self._bid = 0.0
-        self._ofr = 0.0
-        self._last_update_time = time.time()
+        self._contract_type = Market.CONTRACT_SPOT
 
         self._vol24h_base = None
         self._vol24h_quote = None
 
         self._hedging = False
 
-        self._maker_fee = 0.0
-        self._taker_fee = 0.0
-
-        self._commission = 0.0
-
+        self._fees = ([0.0, 0.0], [0.0, 0.0])  # maker 0, taker 1 => fee 0, commission 1
         self._previous = []
+
+        self._bid = 0.0
+        self._ofr = 0.0
+        self._last_update_time = time.time()
 
     @property
     def market_id(self):
@@ -281,6 +282,14 @@ class Market(object):
         self._unit_type = unit_type
 
     @property
+    def contract_type(self):
+        return self._contract_type
+    
+    @contract_type.setter
+    def contract_type(self, contract_type):
+        self._contract_type = contract_type
+
+    @property
     def margin_factor(self):
         return self._margin_factor
 
@@ -293,8 +302,8 @@ class Market(object):
         return self._hedging
     
     @hedging.setter
-    def hedging(self, is_hedging_supported):
-        self._hedging = is_hedging_supported
+    def hedging(self, hedging):
+        self._hedging = hedging
 
     #
     # fees
@@ -302,53 +311,84 @@ class Market(object):
 
     @property
     def maker_fee(self):
-        return self._maker_fee
+        return self._fees[0][0]
 
     @maker_fee.setter
     def maker_fee(self, maker_fee):
-        self._maker_fee = maker_fee
+        self._fees[0][0] = maker_fee
 
     @property
     def taker_fee(self):
-        return self._taker_fee
+        return self._fees[1][0]
 
     @taker_fee.setter
     def taker_fee(self, taker_fee):
-        self._taker_fee = taker_fee
+        self._fees[1][0] = taker_fee
 
     @property
-    def commission(self):
-        return self._commission
+    def maker_commission(self):
+        return self._fees[0][1]
 
-    @commission.setter
-    def commission(self, commission):
-        self._commission = commission
+    @maker_commission.setter
+    def maker_commission(self, commission):
+        self._fees[0][1] = commission
+
+    @property
+    def taker_commission(self):
+        return self._fees[1][1]
+
+    @taker_commission.setter
+    def taker_commission(self, commission):
+        self._fees[1][1] = commission
 
     #
-    # size
+    # limits
     #
 
     @property
     def min_size(self):
-        return self._min_size
+        return self._size_limits[0]
 
     @property
     def max_size(self):
-        return self._max_size
+        return self._size_limits[1]
 
     @property
     def step_size(self):
-        return self._step_size
+        return self._size_limits[2]
 
     @property
     def min_notional(self):
-        return self._min_notional
+        return self._notional_limits[0]
 
-    def set_size_limits(self, min_size, max_size, step_size, min_notional):
-        self._min_size = min_size
-        self._max_size = max_size
-        self._step_size = step_size
-        self._min_notional = min_notional
+    @property
+    def max_notional(self):
+        return self._notional_limits[1]
+
+    @property
+    def step_notional(self):
+        return self._notional_limits[2]
+
+    @property
+    def min_price(self):
+        return self._price_limits[0]
+
+    @property
+    def max_price(self):
+        return self._price_limits[1]
+
+    @property
+    def step_price(self):
+        return self._price_limits[2]
+
+    def set_size_limits(self, min_size, max_size, step_size):
+        self._size_limits = (min_size, max_size, step_size)
+
+    def set_notional_limits(self, min_notional, max_notional, step_notional):
+        self._notional_limits = (min_notional, max_notional, step_notional)
+
+    def set_price_limits(self, min_price, max_price, step_price):
+        self._price_limits = (min_price, max_price, step_price)
 
     #
     # volume
@@ -504,7 +544,7 @@ class Market(object):
         Store the last minute of ticks data.
         """
         for l in self._previous:
-            if self._last_update_time - l['t'] > self.ROLLOVER_TIME:
+            if self._last_update_time - l['t'] > self.TICK_PRICE_TIMEOUT:
                 self._previous.pop(0)
             else:
                 break
@@ -553,6 +593,22 @@ class Market(object):
             return "sector"
         elif self._market_type == Market.TYPE_CRYPTO:
             return "crypto"
+
+        return "undefined"
+
+    def contract_type_str(self):
+        if self._contract_type == Market.CONTRACT_SPOT:
+            return "spot"
+        elif self._contract_type == Market.CONTRACT_CFD:
+            return "cfd"
+        elif self._contract_type == Market.CONTRACT_FUTUR:
+            return "futur"
+        elif self._contract_type == Market.CONTRACT_OPTION:
+            return "option"
+        elif self._contract_type == Market.CONTRACT_WARRANT:
+            return "warrant"
+        elif self._contract_type == Market.CONTRACT_TURBO:
+            return "turbo"
 
         return "undefined"
 

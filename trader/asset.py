@@ -173,11 +173,11 @@ class Asset(Keyed):
         raw_profit_loss = self.quantity * delta_price
 
         # use maker fee and commission
-        self._profit_loss = raw_profit_loss - (cost * market.maker_fee) - (cost * market.commission)
+        self._profit_loss = raw_profit_loss - (cost * market.maker_fee) - (cost * market.maker_commission)
         self._profit_loss_rate = (self._profit_loss / cost) if cost != 0.0 else 0.0
 
         # use taker fee and commission
-        self._profit_loss_market = raw_profit_loss - (cost * market.taker_fee) - (cost * market.commission)
+        self._profit_loss_market = raw_profit_loss - (cost * market.taker_fee) - (cost * market.taker_commission)
         self._profit_loss_market_rate = (self._profit_loss_market / cost) if cost != 0.0 else 0.0
 
     def format_price(self, price):
