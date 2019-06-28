@@ -70,6 +70,17 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 # retains the last valid signal only if valid
                 self.last_signal = signal
 
+                if self.profiling:
+                    # store signal data condition when profiling
+                    signal.add_condition('price', self.price.trace())
+                    # signal.add_condition('rsi', self.rsi.trace())
+                    # signal.add_condition('sma', self.sma.trace())
+                    # signal.add_condition('ema', self.ema.trace())
+                    # signal.add_condition('stochrsi', self.stochrsi.trace())
+                    # signal.add_condition('tomdemark', self.tomdemark.trace())
+                    # signal.add_condition('bbawe', self.bbawe.trace())
+                    # signal.add_condition('bollinger', self.bollingerbands.trade())
+
         return signal
 
     def process_td9(self, timestamp, last_timestamp, candles, prices, volumes):
@@ -291,19 +302,6 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     signal.p = self.price.close[-1]
                     signal.dir = 1
                     Terminal.inst().info("Exit long cd13", view='default')
-
-        if signal:
-            # keep signal conditions for machine learning
-            signal.conditions = {
-                'price': prices[-1],
-                'rsi': self.rsi.last,
-                'stochrsi': self.stochrsi.last_k,
-                'td.c': self.tomdemark.c.c,
-                'td.cd': self.tomdemark.cd.c,
-            }
-
-            if self.bollingerbands:
-                signal.conditions['bollinger'] = (self.bollingerbands.last_bottom, self.bollingerbands.last_ma, self.bollingerbands.last_top)
 
         return signal
 
@@ -597,17 +595,6 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     signal.dir = 1
                     Terminal.inst().info("Exit long cd13", view='default')
 
-        if signal:
-            # keep signal conditions for machine learning
-            signal.conditions = {
-                'price': prices[-1],
-                'rsi': self.rsi.last,
-                'stochrsi': self.stochrsi.last_k,
-                # 'bollinger': (self.bollingerbands.last_bottom, self.bollingerbands.last_ma, self.bollingerbands.last_top),
-                'td.c': self.tomdemark.c.c,
-                'td.cd': self.tomdemark.cd.c,
-            }
-
         return signal
 
     def process_ch(self, timestamp, last_timestamp, candles, prices, volumes):
@@ -857,17 +844,6 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     level1_signal = 0
                     signal = None
 
-        if signal:
-            # keep signal conditions for machine learning
-            signal.conditions = {
-                'price': prices[-1],
-                'rsi': self.rsi.last,
-                'stochrsi': self.stochrsi.last_k,
-                # 'bollinger': (self.bollingerbands.last_bottom, self.bollingerbands.last_ma, self.bollingerbands.last_top),
-                'td.c': self.tomdemark.c.c,
-                'td.cd': self.tomdemark.cd.c,
-            }
-
         return signal
 
     def process_cb(self, timestamp, last_timestamp, candles, prices, volumes):
@@ -1061,16 +1037,6 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 signal.p = self.price.close[-1]
 
         # @todo depending of the pattern, break, triangle... cancel the entry or compute a better target
-
-        if signal:
-            # keep signal conditions for machine learning
-            signal.conditions = {
-                'price': prices[-1],
-                'rsi': self.rsi.last,
-                'stochrsi': self.stochrsi.last_k,
-                'td.c': self.tomdemark.c.c,
-                'td.cd': self.tomdemark.cd.c,
-            }
 
         return signal
 

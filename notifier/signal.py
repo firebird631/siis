@@ -5,20 +5,16 @@
 
 class Signal(object):
 
-	SIGNAL_POSITION_ENTER = 0
-	SIGNAL_POSITION_EXIT = 1
-	SIGNAL_POSITION_SCORIFY = 2
-	
-	SIGNAL_POSITION_ALERT = 3
-	SIGNAL_SERVICE_ALERT = 4
-	SIGNAL_WATCHER_ALERT = 5
-	SIGNAL_TRADER_ALERT = 6
+	SIGNAL_UNDEFINED = 0
 
-	SIGNAL_AUTHOR_ADDED = 7
-	SIGNAL_AUTHOR_REMOVED = 8
+	SIGNAL_SOCIAL_ENTER = 10           # broker copy position entry signal
+	SIGNAL_SOCIAL_EXIT = 11            # broker copy position exit signal
+	SIGNAL_SOCIAL_UPDATED = 12         # broker copy position exit signal
 
-	SIGNAL_POSITION_ENJOY = 9
-	SIGNAL_STRATEGY_ENTRY_EXIT = 10     # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'rate', 'timestamp', ...}
+	SIGNAL_AUTHOR_ADDED = 13
+	SIGNAL_AUTHOR_REMOVED = 14
+
+	SIGNAL_STRATEGY_ENTRY_EXIT = 9      # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'rate', 'timestamp', ...}
 
 	SIGNAL_CANDLE_DATA = 100            # data is a pair with (market_id, Candle)
 	SIGNAL_TICK_DATA = 101              # data is a pair with (market_id, Tick)
@@ -26,6 +22,7 @@ class Signal(object):
 	SIGNAL_TICK_DATA_BULK = 103         # data is a tuple of (market_id, tf, Tick[])
 	SIGNAL_SOCIAL_ORDER = 104           # data is a tuple with (str market id, dict position details)
 	SIGNAL_BUY_SELL_ORDER = 105         # data is BuySellSignal
+	SIGNAL_ORDER_BOOK = 106             # data is a tuple with (market_id, buys array, sells array)
 
 	SIGNAL_WATCHER_CONNECTED = 200      # data is None
 	SIGNAL_WATCHER_DISCONNECTED = 201   # data is None
@@ -50,13 +47,9 @@ class Signal(object):
 	SIGNAL_ASSET_DATA = 600             # data is a tuple with (asset_id, asset object)
 	SIGNAL_ASSET_DATA_BULK = 601        # data is an array of Asset objects
 	SIGNAL_ASSET_UPDATED = 602          # data is a tuple with (asset_id, locked_balance, free_balance)
-	SIGNAL_STRATEGY_TRADE_LIST = 603    # data is an array of Strategy(Asset|Margin|IndMargin)Trade objects
-	SIGNAL_STRATEGY_TRADER_OPTS = 604   # data is a tuple with(strategy-name, appliance-identifier, dict of sub-traders options)
 
-	SIGNAL_ORDER_BOOK = 700             # data is a tuple with (market_id, buys array, sells array)
-
-	SIGNAL_TRADE_DATA = 800             # data is a tuple with (market_id, StrategyTrade)
-	SIGNAL_TRADE_DATA_BULK = 801        # data is a tuple with (market_id, StrategyTrade[])
+	SIGNAL_STRATEGY_TRADE_LIST = 700    # data is a an array of tuple with (market_id, Strategy(Asset|Margin|IndMargin)Trade objects)
+	SIGNAL_STRATEGY_TRADER_OPTS = 701   # data is a an array of tuple with (market_id, dict of sub-trader options)
 
 	SOURCE_UNDEFINED = 0
 	SOURCE_WATCHER = 1

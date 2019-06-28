@@ -1,4 +1,4 @@
-# @date 2018-09-02
+7# @date 2018-09-02
 # @author Frederic SCHERMA
 # @author Xavier BONNIN
 # @license Copyright (c) 2018 Dream Overflow
@@ -78,3 +78,6 @@ class SMAIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._smas
+
+    def trace(self):
+        return tuple(self._last)

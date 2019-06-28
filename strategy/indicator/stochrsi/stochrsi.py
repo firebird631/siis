@@ -156,3 +156,6 @@ class StochRSIIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._ks, self._ds
+
+    def trace(self):
+        return tuple(self._last_k, self._last_d)

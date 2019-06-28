@@ -234,7 +234,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         self._stats['exit-maker'] = not order.is_market()
 
-        # generated a reference order id
+        # generated a reference order id and keep it before ordering to retrieve its signals
         trader.set_ref_order_id(order)
         self.sell_ref_oid = order.ref_order_id
 
@@ -244,6 +244,9 @@ class StrategyAssetTrade(StrategyTrade):
 
             return True
         else:
+            # rejected
+            self.sell_ref_oid = None
+
             return False
 
     def is_closing(self):
@@ -285,7 +288,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_ORDER_TRADED:
             # update the trade quantity
-            if data['id'] == self.buy_oid and 'filled' in data:
+            if (data['id'] == self.buy_oid) and ('filled' in data or 'cumulative-filled' in data):
                 if data.get('filled') is not None and data['filled'] > 0:
                     filled = data['filled']
                 elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -293,14 +296,18 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     filled = 0
 
-                if data.get('exec-price') is not None and data['exec-price']:
-                    # compute the average entry price whe increasing the trade
-                    self.p = ((self.p * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
-                elif data.get('avg-price') is not None and data['avg-price']:
+                if data.get('avg-price') is not None and data['avg-price']:
                     # average entry price is directly given
                     self.p = data['avg-price']
+                elif data.get('exec-price') is not None and data['exec-price']:
+                    # compute the average entry price whe increasing the trade
+                    self.p = ((self.p * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
 
-                self.e += filled  # cumulative filled entry qty
+                # cumulative filled entry qty
+                if data.get('cumulative-filled') is not None:
+                    self.e = data.get('cumulative-filled')
+                else:
+                    self.e += filled
 
                 # commission asset is asset, have to reduce it from filled
                 if data['commission-asset'] == data['symbol']:
@@ -311,7 +318,7 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-            elif data['id'] == self.sell_oid and 'filled' in data:
+            elif (data['id'] == self.sell_oid) and ('filled' in data or 'cumulative-filled' in data):
                 if data.get('filled') is not None and data['filled'] > 0:
                     filled = data['filled']
                 elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -319,20 +326,24 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     filled = 0
 
-                if data.get('exec-price') is not None and data['exec-price']:
-                    # average exit price
-                    self.xp = ((self.xp * self.x) + (data['exec-price'] * filled)) / (self.x + filled)
-
-                    # profit/loss when reducing the trade (over executed entry qty)
-                    self.pl += ((data['exec-price'] * filled) - (self.p * self.e)) / (self.p * self.e)
-                elif data.get('avg-price') is not None and data['avg-price']:
+                if data.get('avg-price') is not None and data['avg-price']:
                     # average exit price
                     self.xp = data['avg-price']
 
                     # average price is directly given
                     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.p * self.e)) / (self.p * self.e)
+                elif data.get('exec-price') is not None and data['exec-price']:
+                    # average exit price
+                    self.xp = ((self.xp * self.x) + (data['exec-price'] * filled)) / (self.x + filled)
 
-                self.x += filled  # cumulative filled exit qty
+                    # profit/loss when reducing the trade (over executed entry qty)
+                    self.pl += ((data['exec-price'] * filled) - (self.p * self.e)) / (self.p * self.e)
+
+                # cumulative filled exit qty
+                if data.get('cumulative-filled') is not None:
+                    self.x = data.get('cumulative-filled')
+                else:
+                    self.x += filled
 
                 # commission asset is asset, have to reduce it from filled
                 if data['commission-asset'] == data['symbol']:
@@ -384,5 +395,17 @@ class StrategyAssetTrade(StrategyTrade):
                 self.sell_oid = None
                 self._exit_state = StrategyTrade.STATE_CANCELED
 
-    def save(self, trader, market_id):
-        pass  # @todo
+    def dumps(self):
+        data = super().dumps()
+
+        # data[''] ... @todo
+
+        return data
+
+    def loads(self, data, strategy_service):
+        if not super().loads(data, strategy_service):
+            return False
+
+        # @todo...
+
+        return True

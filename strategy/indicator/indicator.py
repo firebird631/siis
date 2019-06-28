@@ -62,3 +62,12 @@ class Indicator(object):
 
     def compute(self, timestamp):
         return None
+
+    def trace(self):
+        """
+        Return a tuple or dict of the state of the indicator.
+        It is used mainly for profiling of the signals.
+
+        This method must be overrided.
+        """
+        return tuple()

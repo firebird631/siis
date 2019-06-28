@@ -102,7 +102,8 @@ TRADERS = {
     '1broker.com': {
         'status': None,  # 'load',
         'classpath': 'trader.connector.onebroker.trader.OneBrokerTrader',
-        'leverage': {  # @deprecated defined into the appliance/instruments, and its different if using social strategy
+        'leverages': {
+            # manual leverage limits
             '(ANY)': [1, 100],
             'AUDNZD': [50, 100],
             'AUDUSD': [50, 100],
@@ -128,19 +129,11 @@ TRADERS = {
             'OILWTI': [5, 10],
             '(STOCKS)': [1, 15],
         },
-        'stop-loosing-position': {
-            'mode': 'percent',  # level in account currency or percent of position cost
-            'value': 0.4        # when reach loss of 40% auto-close the position
-        }       
     },
     '1fox.com': {
         'status': None,  # 'load', @todo api are not same version as 1broker.com
         'classpath': 'trader.connector.onefox.trader.OneFoxTrader',
         'symbols': ['BTCUSD', 'BCHUSD'],
-        'stop-loosing-position': {
-            'mode': 'percent',
-            'value': 0.4
-        }
     },
     'binance.com': {
         'status': 'load',
@@ -155,10 +148,6 @@ TRADERS = {
             'initial': 0.1,  # in currency in quote
             'price': 3450
         },
-        'stop-loosing-position': {
-            'mode': 'percent',
-            'value': 0.4
-        }
     },
     'bitmex.com': {
         'status': 'load',
@@ -169,10 +158,6 @@ TRADERS = {
             'currency-symbol': 'BTC',
             'initial': 0.1,
         },
-        'stop-loosing-position': {
-            'mode': 'percent',
-            'value': 0.4        # when reach loss of 40% auto-close the position
-        }
     },
     'ig.com': {
         'status': 'load',
@@ -193,10 +178,6 @@ TRADERS = {
             'currency-symbol': '$',
             'initial': 1000,
         }, 
-        'stop-loosing-position': {
-            'mode': 'percent',
-            'value': 0.4        # when reach loss of 40% auto-close the position
-        }
     }
 }
 

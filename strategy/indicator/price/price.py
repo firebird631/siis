@@ -206,3 +206,6 @@ class PriceIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._prices
+
+    def trace(self):
+        return tuple(self._last, self._min, self._max)

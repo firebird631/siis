@@ -126,7 +126,7 @@ Configuration
 
 First running will try to create a data structure on your local user.
 * /home/<username>/.siis on Linux based systems
-* C:\Users\<username\AppData\Local\siis on Windows
+* C:\Users\<username>\AppData\Local\siis on Windows
 * /Users/<username>/.siis on MacOSX
 
 The directory will contains 4 sub-directories:
@@ -176,10 +176,6 @@ This file comes from the beginning of the project, would need some reorganizatio
         * If a market identifier is not defined on the WATCHERS side it could not be found
     * leverage its a deprecated values list used only for 1broker
         * (could be overrided per appliance profile)
-    * stop-loosing-position its a deprecated feature to cut margin positions at the trader level
-        * (could be overrided per appliance profile)
-        * mode level or percent or balance-percent
-        * value
     * paper-mode To define the paper trader initially balances
         * (could be overrided per appliance profile)
         * type asset or margin to specify the account type
@@ -234,14 +230,14 @@ traders and watchers options overriding.
             * Supports a wildchar as the beginning
             * You can map a common symbol name (like EURUSD) to the broker market identifier (useful when multiple watcher sources)
             * market-id Mapped broker unique market identifier or {0} when using wildchar
-                * If you have for example '*BTC' as instrument, you want to map any of the BTC quote market to the same settings
+                * If you have for example '\*BTC' as instrument, you want to map any of the BTC quote market to the same settings
                   then you will have to set market-id to {0} that will be replaced by the filtered market identifier
             * size Base quantity in quote asset to trade
                 * if USD 100 and margin, will trade 100$ per position
                 * if BTC 0.5 and asset spot, will trade an equivalent (adjusted value) of 0.5 BTC of the asset quantity
                 * if size is in contract then 1.0 mean 1 contract (1 lot for forex, or 1 mini-lot if market is mini lot or 1 micro-lot...)
             * alias User defined instrument name alias
- 
+
 
 #### <.siis/config/>identities.py ####
 

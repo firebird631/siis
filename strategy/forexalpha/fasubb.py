@@ -67,6 +67,17 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
             else:
                 # retains the last valid signal only if valid
                 self.last_signal = signal
+                
+                if self.profiling:
+                    # store signal data condition when profiling
+                    signal.add_condition('price', self.price.trace())
+                    # signal.add_condition('rsi', self.rsi.trace())
+                    # signal.add_condition('sma', self.sma.trace())
+                    # signal.add_condition('ema', self.ema.trace())
+                    # signal.add_condition('stochrsi', self.stochrsi.trace())
+                    # signal.add_condition('tomdemark', self.tomdemark.trace())
+                    # signal.add_condition('bbawe', self.bbawe.trace())
+                    # signal.add_condition('bollinger', self.bollingerbands.trade())
 
         return signal
 
@@ -129,19 +140,6 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
         # TD9 on 1m are not very pertinant on crypto
         # if self.tomdemark:
         #     self.tomdemark.compute(last_timestamp, candles)
-
-        if signal:
-            # keep signal conditions for machine learning
-            signal.conditions = {
-                'price': prices[-1],
-                'rsi': self.rsi.last,
-                'sma': self.sma.last,
-                'ema': self.ema.last,
-                # 'stochrsi': self.stochrsi.last_k,
-                # 'bollinger': (self.bollingerbands.last_bottom, self.bollingerbands.last_ma, self.bollingerbands.last_top),
-                # 'td.c': td.c,
-                # 'td.cd': td.cd
-            }
 
         return signal
 

@@ -137,3 +137,6 @@ class ATRIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._atrs
+
+    def trace(self):
+        return tuple(self._last)

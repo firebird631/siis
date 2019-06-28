@@ -413,15 +413,14 @@ class MySql(Database):
                 # str exit3_ref_order_id
                 # str position_id
                 # str copied_position_id
-                # str conditions (json formatted conditions)
 
                 cursor.execute("""
                     INSERT INTO user_trade(broker_id, market_id, appliance_id, trade_id, trade_type, timestamp, direction, price, stop_loss, take_profit,
                         quantity, entry_quantity, exit_quantity, profit_loss, timeframes, entry_status, exit_status,
                         entry_order_id, exit1_order_id, exit2_order_id, exit3_order_id,
                         entry_ref_order_id, exit1_ref_order_id, exit2_ref_order_id, exit3_ref_order_id,
-                        positiond_id, copied_position_id, conditions
-                        VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        positiond_id, copied_position_id
+                        VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         price = %s, stop_loss = %s, take_profit = %s, quantity = %s, entry_quantity = %s, exit_quantity = %s,
                         profit_loss = %s, timeframes = %s, entry_status = %s, exit_status = %s,

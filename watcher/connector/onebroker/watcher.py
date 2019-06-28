@@ -266,7 +266,7 @@ class OneBrokerWatcher(Watcher):
 				# add position
 				self._positions[position_id] = position
 
-				self.service.notify(Signal.SIGNAL_POSITION_ENTER, self.name, position)
+				self.service.notify(Signal.SIGNAL_SOCIAL_ENTER, self.name, position)
 
 			for t in closed_trades:
 				position_id = t['position_id']
@@ -321,7 +321,7 @@ class OneBrokerWatcher(Watcher):
 
 				# Terminal.inst().info("Exited position %s found !" % (position_id,), view='status')
 
-				self.service.notify(Signal.SIGNAL_POSITION_EXIT, self.name, position)
+				self.service.notify(Signal.SIGNAL_SOCIAL_EXIT, self.name, position)
 
 		self.unlock()
 

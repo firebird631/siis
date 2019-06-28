@@ -19,6 +19,7 @@ class Market(object):
 
     @todo availables margins levels for IG but its complicated to manage
     @todo rollover fee buts its complicated too
+    @todo levarage persistance
     """
 
     TICK_PRICE_TIMEOUT = 60  # in seconds
@@ -114,6 +115,8 @@ class Market(object):
 
         self._fees = ([0.0, 0.0], [0.0, 0.0])  # maker 0, taker 1 => fee 0, commission 1
         self._previous = []
+
+        self._leverages = (1,)  # allowed leverages levels
 
         self._bid = 0.0
         self._ofr = 0.0
@@ -381,6 +384,18 @@ class Market(object):
     def step_price(self):
         return self._price_limits[2]
 
+    @property
+    def min_leverage(self):
+        return min(self._leverages)
+    
+    @property
+    def max_leverage(self):
+        return max(self._leverages)
+
+    @property
+    def leverages(self):
+        return self._leverages
+
     def set_size_limits(self, min_size, max_size, step_size):
         self._size_limits = (min_size, max_size, step_size)
 
@@ -389,6 +404,9 @@ class Market(object):
 
     def set_price_limits(self, min_price, max_price, step_price):
         self._price_limits = (min_price, max_price, step_price)
+
+    def set_leverages(self, leverages):
+        self._leverages = tuple(leverages)
 
     #
     # volume
@@ -511,19 +529,19 @@ class Market(object):
         @param quantity float Quantity to adjust
         @param min_is_zero boolean Default True. If quantity is lesser than min returns 0 else return min size.
         """
-        if self._min_size > 0.0 and quantity < self._min_size:
+        if self.min_size > 0.0 and quantity < self.min_size:
             if min_is_zero:
                 return 0.0
 
-            return self._min_size
+            return self.min_size
 
-        if self._max_size > 0.0 and quantity > self._max_size:
-            return self._max_size
+        if self.max_size > 0.0 and quantity > self.max_size:
+            return self.max_size
 
-        if self._step_size > 0.0:
-            precision = -int(math.log10(self._step_size))
-            # return max(round(int(quantity / self._step_size) * self._step_size, precision), self._min_size)
-            return max(round(self._step_size * round(quantity / self._step_size), precision), self._min_size)
+        if self.step_size > 0.0:
+            precision = -int(math.log10(self.step_size))
+            # return max(round(int(quantity / self.step_size) * self.step_size, precision), self.min_size)
+            return max(round(self.step_size * round(quantity / self.step_size), precision), self.min_size)
 
         return quantity
 
@@ -531,7 +549,7 @@ class Market(object):
         """
         Return a quantity as str according to the precision of the step size.
         """
-        precision = -int(math.log10(self._step_size))
+        precision = -int(math.log10(self.step_size))
         qty = "{:0.0{}f}".format(truncate(quantity, precision), precision)
 
         if '.' in qty:
@@ -617,3 +635,6 @@ class Market(object):
         margin_cost = realized_position_cost * self._margin_factor / self._base_exchange_rate
 
         return margin_cost
+
+    def clamp_leverage(self, leverage):
+        return max(self._leverages, min(self.self._leverages, leverage))

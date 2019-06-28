@@ -550,12 +550,10 @@ class BitMexWatcher(Watcher):
             if base_market_id != symbol and base_market:
                 market.base_exchange_rate = base_market.get('lastPrice', 1.0) / instrument.get('lastPrice', 1.0)
 
-            logger.info(instrument)
-
             # @todo 'multiplier', 'riskStep', 'riskLimit'
 
             # limits
-            min_notional = 1.0  # ³$
+            min_notional = 1.0  # $
 
             if quote_symbol != "USD" and base_market_id != "XBT":
                 # any contract on futur XBT quote

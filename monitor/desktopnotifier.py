@@ -32,6 +32,7 @@ class DesktopNotifier(Notifiable):
     @todo seperate module and as a service + instance : one for the desktop, one for the terminal views, one for the email, one discord, to avoid blocking
     @todo config
     @todo the discord notifier part had to move to a DiscordNotifier module
+    @todo add alert when trade operation is processed
     """
 
     AUDIO_ALERT_SIMPLE = 0
@@ -101,8 +102,7 @@ class DesktopNotifier(Notifiable):
 
     def receiver(self, signal):
         if signal.signal_type in (
-                Signal.SIGNAL_POSITION_ENTER, Signal.SIGNAL_POSITION_EXIT, Signal.SIGNAL_POSITION_ALERT,
-                Signal.SIGNAL_POSITION_ENJOY, Signal.SIGNAL_STRATEGY_ENTRY_EXIT):
+                Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT, Signal.SIGNAL_STRATEGY_ENTRY_EXIT):
 
             # not during a backtesting
             if self.strategy_service and self.strategy_service.backtesting:
@@ -122,7 +122,7 @@ class DesktopNotifier(Notifiable):
             now = time.time()
             audio_alert = None
 
-            if signal.signal_type == Signal.SIGNAL_POSITION_ENTER:
+            if signal.signal_type == Signal.SIGNAL_SOCIAL_ENTER:
                 # here we only assume that because of what 1broker return to us but should be timestamp in the model
                 entry_date = signal.data.entry_date + datetime.timedelta(hours=2)
                 position_timestamp = time.mktime(entry_date.timetuple())
@@ -139,7 +139,7 @@ class DesktopNotifier(Notifiable):
                     signal.data.entry_price,
                     signal.data.leverage)
 
-            elif signal.signal_type == Signal.SIGNAL_POSITION_EXIT:
+            elif signal.signal_type == Signal.SIGNAL_SOCIAL_EXIT:
                 # here we only assume that because of what 1broker return to us but should be timestamp in the model
                 exit_date = signal.data.exit_date + datetime.timedelta(hours=2)
                 position_timestamp = time.mktime(exit_date.timetuple())
@@ -155,36 +155,36 @@ class DesktopNotifier(Notifiable):
                     signal.data.symbol,
                     signal.data.exit_price)
 
-            # @todo a threshold... or a timelimit
-            elif signal.signal_type == Signal.SIGNAL_POSITION_ALERT:
-                icon = "go-down"
-                label = "Position loss on %s" % (signal.data.symbol,)
-                audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
+            # # @todo a threshold... or a timelimit
+            # elif signal.signal_type == Signal.SIGNAL_TRADE_ALERT:
+            #     icon = "go-down"
+            #     label = "Position loss on %s" % (signal.data.symbol,)
+            #     audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
 
-                message = "Position %s %s of %s on %s start at %s %s is in regretable loss %s (%s%%) :$" % (
-                    signal.data.position_id,
-                    "long" if signal.data.direction == Position.LONG else "short",
-                    signal.data.author.name if signal.data.author is not None else "???",
-                    signal.data.trader.name,
-                    signal.data.entry_price,
-                    signal.data.symbol,
-                    signal.data.profit_loss,
-                    signal.data.profit_loss_rate * 100.0)
+            #     message = "Position %s %s of %s on %s start at %s %s is in regretable loss %s (%s%%) :$" % (
+            #         signal.data.position_id,
+            #         "long" if signal.data.direction == Position.LONG else "short",
+            #         signal.data.author.name if signal.data.author is not None else "???",
+            #         signal.data.trader.name,
+            #         signal.data.entry_price,
+            #         signal.data.symbol,
+            #         signal.data.profit_loss,
+            #         signal.data.profit_loss_rate * 100.0)
 
-            elif signal.signal_type == Signal.SIGNAL_POSITION_ENJOY:
-                icon = "go-up"
-                label = "Position profit on %s" % (signal.data.symbol,)
-                audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
+            # elif signal.signal_type == Signal.SIGNAL_TRADE_ENJOY:
+            #     icon = "go-up"
+            #     label = "Position profit on %s" % (signal.data.symbol,)
+            #     audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
 
-                message = "Position %s %s of %s on %s start at %s %s is in enjoyable profit %s (%s%%) :)" % (
-                    signal.data.position_id,
-                    "long" if signal.data.direction == Position.LONG else "short",
-                    signal.data.author.name if signal.data.author is not None else "???",
-                    signal.data.trader.name,
-                    signal.data.entry_price,
-                    signal.data.symbol,
-                    signal.data.profit_loss,
-                    signal.data.profit_loss_rate * 100.0)
+            #     message = "Position %s %s of %s on %s start at %s %s is in enjoyable profit %s (%s%%) :)" % (
+            #         signal.data.position_id,
+            #         "long" if signal.data.direction == Position.LONG else "short",
+            #         signal.data.author.name if signal.data.author is not None else "???",
+            #         signal.data.trader.name,
+            #         signal.data.entry_price,
+            #         signal.data.symbol,
+            #         signal.data.profit_loss,
+            #         signal.data.profit_loss_rate * 100.0)
 
             elif signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
                 icon = "contact-new"
@@ -226,6 +226,9 @@ class DesktopNotifier(Notifiable):
                 # log them to the content view
                 Terminal.inst().notice(label, view="content")
                 Terminal.inst().notice(message, view="content")
+
+            # elif signal.signal_type == Signal.SIGNAL_STRATEGY_MODIFY:
+            #     pass
 
             # process sound
             if self.audible and audio_alert:

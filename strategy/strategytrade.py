@@ -3,8 +3,10 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy trade base class
 
+from datetime import datetime
+
 from notifier.signal import Signal
-from common.utils import timeframe_to_str
+from common.utils import timeframe_to_str, timeframe_from_str
 
 from trader.order import Order
 
@@ -26,10 +28,14 @@ class StrategyTrade(object):
     then for a TP50% use two trade with half of the size, the first having a TP at 50% price.    
     """
 
+    TRADE_UNDEFINED = -1
     TRADE_BUY_SELL = 0    # spot/asset trade
+    TRADE_ASSET = 0
+    TRADE_SPOT = 0
     TRADE_MARGIN = 1      # individual margin trade position (potentially compatible with hedging markets)
     TRADE_IND_MARGIN = 2  # indivisible margin trade position (incompatible with hedging markets), currently found on crypto
 
+    STATE_UNDEFINED = -1
     STATE_NEW = 0
     STATE_REJECTED = 1
     STATE_DELETED = 2
@@ -38,10 +44,6 @@ class StrategyTrade(object):
     STATE_PARTIALLY_FILLED = 5
     STATE_FILLED = 6
 
-    MANAGER_NONE = 0
-    MANAGER_STRATEGY = 1
-    MANAGER_USER = 2
-
     def __init__(self, trade_type, timeframe):
         self._trade_type = trade_type
         
@@ -49,10 +51,9 @@ class StrategyTrade(object):
         self._exit_state = StrategyTrade.STATE_NEW
 
         self._timeframe = timeframe  # timeframe that have given this trade
-        
-        self._conditions = {}   # dict containing the conditions giving the trade for data analysis and machine learning
-        self._operations = []   # list containing the operation to process during the trade for semi-automated trading
-        self._manager = StrategyTrade.MANAGER_STRATEGY   # who is responsible of the TP & SL dynamic adjustement (strategy or user defined operations)
+
+        self._operations = []      # list containing the operation to process during the trade for semi-automated trading
+        self._user_trade = False   # true if the user is responsible of the TP & SL adjustement else (default) strategy manage it
 
         self._next_operation_id = 1
 
@@ -79,6 +80,11 @@ class StrategyTrade(object):
             'entry-maker': False,
             'exit-maker': False,
             'order-limit-price': 0.0,
+            'average-entry-price': 0.0,
+            'average-exit-price': 0.0,
+            'entry-fees': 0.0,
+            'exit-fees': 0.0,
+            'conditions': {}
         }
 
     #
@@ -148,9 +154,11 @@ class StrategyTrade(object):
     def timeframe(self):
         return self._timeframe
 
-    @property
-    def manager(self):
-        return self._manager
+    def set_user_trade(self, user_trade=True):
+        self._user_trade = user_trade
+
+    def is_user_trade(self):
+        return self._user_trade
 
     #
     # processing
@@ -318,6 +326,14 @@ class StrategyTrade(object):
         else:
             return ''
 
+    def direction_from_str(self, direction):
+        if direction == 'long':
+            self.dir = 1
+        elif direction == 'short':
+            self.dir = -1
+        else:
+            self.dir = 0
+
     def state_to_str(self):
         """
         Get a string for the state of the trade.
@@ -357,20 +373,153 @@ class StrategyTrade(object):
     def timeframe_to_str(self):
         return timeframe_to_str(self._timeframe)
 
+    def trade_type_to_str(self):
+        if self._trade_type == TRADE_ASSET:
+            return 'asset'
+        elif self._trade_type == TRADE_MARGIN:
+            return 'margin'
+        elif self._trade_type == TRADE_MARGIN:
+            return 'indisible-margin'
+        else:
+            return "undefined"
+
+    @staticmethod
+    def trade_type_from_str(self, trade_type):
+        if trade_type == 'asset':
+            return StrategyTrade.TRADE_ASSET
+        elif trade_type == 'margin':
+            return StrategyTrade.TRADE_MARGIN
+        elif trade_type == 'ind-margin':
+            return StrategyTrade.TRADE_IND_MARGIN
+        else:
+            return StrategyTrade.TRADE_UNDEFINED
+
+    def trade_state_to_str(self, trade_state):
+        if trade_state == STATE_NEW:
+            return 'new'
+        elif self._trade_type == STATE_REJECTED:
+            return 'rejected'
+        elif self._trade_type == STATE_DELETED:
+            return 'deleted'
+        elif self._trade_type == STATE_CANCELED:
+            return 'canceled'
+        elif self._trade_type == STATE_OPENED:
+            return 'opened'
+        elif self._trade_type == STATE_PARTIALLY_FILLED:
+            return 'partially-filled'
+        elif self._trade_type == STATE_FILLED:
+            return 'filled'
+        else:
+            return "undefined"
+
+    @staticmethod
+    def trade_state_from_str(self, trade_state):
+        if trade_state == 'new':
+            return StrategyTrade.STATE_NEW
+        elif self._trade_type == 'rejected':
+            return StrategyTrade.STATE_REJECTED
+        elif self._trade_type == 'deleted':
+            return StrategyTrade.STATE_DELETED
+        elif self._trade_type == 'canceled':
+            return StrategyTrade.STATE_CANCELED
+        elif self._trade_type == 'opened':
+            return StrategyTrade.STATE_OPENED
+        elif self._trade_type == 'partially-filled':
+            return StrategyTrade.STATE_PARTIALLY_FILLED
+        elif self._trade_type == 'filled':
+            return StrategyTrade.STATE_FILLED
+        else:
+            return StrategyTrade.STATE_UNDEFINED
+
     #
     # presistance
     #
 
-    def save(self, trader, market_id):
-        """
-        Save the trade data to the DB. Related trader and market must be provided.
+    def dump_timestamp(self, timestamp):
+        return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%f')
 
-        @todo Save fields
-        @todo Save conditions
-        @todo Save statistics
-        @todo Save operations
+    def load_timestamp(self, datetime_str):
+        if datetime_str:
+            return datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+        else:
+            return 0
+
+    def dumps(self):
         """
-        pass
+        Override this method to make a dumps for the persistance.
+        @return dict with at least as defined in this method.
+        """
+        return {
+            'id': self.id,
+            'type': self.trade_type_to_str(),
+            'entry-state': self._entry_state,  #  self.trade_state_to_str(self._entry_state),
+            'exit-state': self._exit_state,  # self.trade_state_to_str(self._exit_state),
+            'timeframe': self._timeframe,  # self.timeframe_to_str(),
+            'user-trade': self._user_trade,
+            'operations': [operation.dumps() for operation in self._operations],
+            'open-time': self._open_time,  # self.dump_timestamp(self._open_time),
+            'entry-price': self.p,
+            'take-profit-price': self.tp,
+            'stop-loss-price': self.sl,
+            'direction': self.dir, # self.direction_to_str(),
+            'created-time': self.t,  # self.dump_timestamp(self.t),
+            'order-quantity': self.q,
+            'filled-entry-quantity': self.e,
+            'filled-exit-quantity': self.x,
+            'profit-loss-rate': self.pl,
+            'statistics': self._stats
+        }
+
+    def loads(self, data, strategy_service):
+        """
+        Override this method to make a loads for the persistance model.
+        @return True if success.
+        """
+        self.id = data.get('id', -1)
+        self._trade_type = data.get('type', 0)  # self.trade_type_from_str(data.get('type', ''))
+        self._entry_state = data.get('entry-state', 0)  # self.trade_state_from_str(data.get('entry-state', ''))
+        self._exit_state = data.get('exit-state', 0)  # self.trade_state_from_str(data.get('exit-state', ''))
+        self._timeframe =  data.get('timeframe', 0)  # timeframe_from_str(data.get('timeframe', '4h'))
+        self._user_trade = data.get('user-trade')
+
+        self._operations = []
+        self._next_operation_id = -1
+
+        for op in data.get('operations', []):
+            operation = None
+
+            # @todo from type, service builder
+        #     self._operations.append(operation)
+        #     self._next_operation_id = max(self._next_operation_id, operation.id)
+
+        self._open_time = data.get('open-time')  # self.load_timestamp(data.get('open-datetime'))
+        self.p = data.get('entry-price', 0.0)
+        self.tp = data.get('take-profit-price', None)
+        self.sl = data.get('stop-loss-price', None)
+        self.dir = data.get('direction', 0)  # self.direction_from_str(data.get('direction', ''))
+
+        self.t = data.get('created-time', 0)  # self.load_timestamp(data.get('created-datetime'))
+        self.q = data.get('order-quantity', 0.0)
+        self.e = data.get('filled-entry-quantity', 0.0)
+        self.x = data.get('filled-exit-quantity', 0.0)
+        self.pl = data.get('profit-loss-rate', 0.0)
+
+        self._stats = data.get('statistics', {
+            'best-price': 0.0,
+            'best-timestamp': 0.0,
+            'worst-price': 0.0,
+            'worst-timestamp': 0.0,
+            'entry-maker': False,
+            'exit-maker': False,
+            'order-limit-price': 0.0,
+            'average-entry-price': 0.0,
+            'average-exit-price': 0.0,
+            'entry-fees': 0.0,
+            'exit-fees': 0.0,
+            'conditions': {}
+        })
+
+        return True
 
     #
     # stats
@@ -414,6 +563,12 @@ class StrategyTrade(object):
     def get_stats(self):
         return self._stats
 
+    def add_condition(self, name, data):
+        self._stats['conditions'][name] = data
+
+    def get_conditions(self):
+        return self._stats['conditions']
+
     #
     # operations
     #
@@ -454,29 +609,3 @@ class StrategyTrade(object):
 
     def has_operations(self):
         return len(self._operations) > 0
-
-    #
-    # trade signal conditions
-    #
-
-    @property
-    def conditions(self):
-        return self._conditions
-
-    @conditions.setter
-    def conditions(self, conditions):
-        self._conditions = conditions
-
-    #
-    # manager controlling
-    #
-
-    @manager.setter
-    def manager(self, manager):
-        self._manager = manager
-
-    def is_user_managed(self):
-        return self._manager == StrategyTrade.MANAGER_USER
-
-    def is_strategy_managed(self):
-        return self._manager == StrategyTrade.MANAGER_STRATEGY

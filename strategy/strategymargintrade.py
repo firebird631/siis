@@ -540,5 +540,21 @@ class StrategyMarginTrade(StrategyTrade):
     def is_closing(self):
         return (self.limit_ref_oid or self.stop_ref_oid) or self._exit_state == StrategyTrade.STATE_OPENED or self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED
 
-    def save(self, trader, market_id):
-        pass  # @todo
+    #
+    # persistance
+    #
+
+    def dumps(self):
+        data = super().dumps()
+
+        # data[''] ... @todo
+
+        return data
+
+    def loads(self, data, strategy_service):
+        if not super().loads(data, strategy_service):
+            return False
+
+        # @todo...
+
+        return True

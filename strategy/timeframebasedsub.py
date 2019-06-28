@@ -18,10 +18,13 @@ class TimeframeBasedSub(object):
         self.parent_tf = parent_tf
         self.depth = depth
         self.history = history
+        self.profiling = False
 
         self.next_timestamp = 0  # next candle timestamp
 
         self.candles_gen = CandleGenerator(self.data.base_timeframe, self.tf)
+
+        # @todo distinct entry from exit signal (last)
         self.last_signal = None
 
     def init_candle_generator(self):

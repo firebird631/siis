@@ -117,3 +117,6 @@ class RSIIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._rsis
+
+    def trace(self):
+        return tuple(self._last)

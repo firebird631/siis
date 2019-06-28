@@ -260,8 +260,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 tf_match = False
                 retained_exit = None
 
-                # important, do not manage user controlled trades here
-                if trade.is_user_managed():
+                # important, do not update user controlled trades here
+                if trade.is_user_trade():
                     continue
 
                 for signal in exits:

@@ -1621,7 +1621,7 @@ class Strategy(Runnable):
 
         if trade:
             # user managed trade
-            trade.manager = trade.MANAGER_USER
+            trade.set_user_trade()
 
             # the new trade must be in the trades list if the event comes before, and removed after only it failed
             sub_trader.add_trade(trade)

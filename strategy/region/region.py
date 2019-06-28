@@ -4,6 +4,7 @@
 # Strategy trade region.
 
 from datetime import datetime
+from common.utils import timeframe_to_str, timeframe_from_str
 
 
 class Region(object):
@@ -168,6 +169,49 @@ class Region(object):
             'expiry': self._expiry
         }
 
+    def dumps(self):
+        """
+        Override this method and add specific parameters for dumps parameters for persistance model.
+        """
+        return {
+            'id': self.id(),
+            'type': self.name(),
+            'stage': self._stage,  #  "entry" if self._stage == Region.STAGE_ENTRY else "exit" if self._stage == Region.STAGE_EXIT else "both",
+            'direction': self._dir,  # "long" if self._dir == Region.LONG else "short" if self._dir == Region.SHORT else "both",
+            'timeframe': self._timeframe,  # timeframe_to_str(self._timeframe),
+            'expiry': self._expiry,  # datetime.fromtimestamp(self._expiry).strftime('%Y-%m-%dT%H:%M:%S'),
+        }
+
+    def loads(self, data):
+        """
+        Override this method and add specific parameters for loads parameters from persistance model.
+        """
+        self._id = data.get('id', -1)
+        self._stage = data.get('stage', 0)  # self.stage_from_str(data.get('stage', ''))
+        self._dir = data.get('direction', 0)  # self.direction_from_str(data.get('direction', ''))
+        self._timeframe = data.get('timeframe')  # timeframe_from_str(data.get('timeframe', 't'))
+        self._expiry = data.get('expiry', 0)  # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00'), '%Y-%m-%dT%H:%M:%S').timestamp()
+
+    def stage_from_str(self, stage_str):
+        if stage_str == "entry":
+            return Region.STAGE_ENTRY
+        elif stage_str == "exit":
+            return Region.STAGE_EXIT
+        elif stage_str == "both":
+            return Region.STAGE_BOTH
+        else:
+            return Region.STAGE_BOTH
+
+    def direction_from_str(self, direction_str):
+        if stage_str == "long":
+            return Region.LONG
+        elif stage_str == "short":
+            return Region.SHORT
+        elif stage_str == "both":
+            return Region.BOTH
+        else:
+            return Region.BOTH
+
 
 class RangeRegion(Region):
     """
@@ -209,6 +253,20 @@ class RangeRegion(Region):
             'low': self._low,
             'high': self._high
         }
+
+    def dumps(self):
+        data = super.dumps()
+        
+        data['low'] = self._low
+        data['high'] = self._high
+
+        return data
+
+    def loads(self, data):
+        super.loads(data)
+
+        self._low = data.get('low', 0.0)
+        self._high = data.get('high', 0.0)
 
 
 class TrendRegion(Region):
@@ -270,3 +328,23 @@ class TrendRegion(Region):
             'high-a': self._high_a,
             'high-b': self._high_b
         }
+
+    def dumps(self):
+        data = super.dumps()
+        
+        data['low-a'] = self._low_a
+        data['high-a'] = self._high_a
+
+        data['low-b'] = self._low_b
+        data['high-b'] = self._high_b
+
+        return data
+
+    def loads(self, data):
+        super.loads(data)
+
+        self._low_a = data.get('low-a', 0.0)
+        self._high_a = data.get('high-a', 0.0)
+
+        self._low_b = data.get('low-b', 0.0)
+        self._high_b = data.get('high-b', 0.0)

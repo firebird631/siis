@@ -302,7 +302,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                             retained_exit = signal.as_exit()
                             break
 
-                if trade.is_strategy_managed():
+                if not trade.is_user_trade():
 
                     #
                     # dynamic stop loss

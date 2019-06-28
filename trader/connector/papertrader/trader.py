@@ -411,14 +411,6 @@ class PaperTrader(Trader):
         super().update()
 
         #
-        # stop loosing positions
-        #
-
-        # if self._positions and self._stop_loosing_position is not None and self._stop_loosing_position > 0:
-        #     self.stop_loosing_positions(self._stop_loosing_position, self._stop_loosing_position_mode)
-        #     self.stop_loosing_assets(self._stop_loosing_position, self._stop_loosing_position_mode)
-
-        #
         # update positions (margin trading)
         #
 

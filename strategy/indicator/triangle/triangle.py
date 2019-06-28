@@ -129,3 +129,6 @@ class TriangleIndicator(Indicator):
             j += 2
 
         return self._bottom, self._top
+
+    def trace(self):
+        return tuple()

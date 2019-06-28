@@ -49,10 +49,6 @@ class Trader(Runnable):
     PURGE_COMMANDS_DELAY = 180                # 180s keep commands in seconds
     MAX_COMMANDS_QUEUE = 100
 
-    ALERT_VALUE_LOW = -0.01
-    ALERT_VALUE_HIGH = 0.01
-    ALERT_THRESHOLD = 0.01
-
     # general command
     COMMAND_INFO = 1
 
@@ -70,7 +66,6 @@ class Trader(Runnable):
 
     COMMAND_SHOW_PERFORMANCE = 130            # display the performance for each markets at trader level (prefers using from strategy level)
 
-    # interaction command
     COMMAND_TRIGGER = 150                     # trigger a posted command using its identifier @todo might be moved to social strategy
 
     def __init__(self, name, service):
@@ -90,33 +85,9 @@ class Trader(Runnable):
         self._last_alerts = {}
 
         self._markets = {}
-        self._leverage = {}  # @todo moved to market but needed for 1broker
 
         self._timestamp = 0
         self._signals = collections.deque()  # filtered received signals
-
-        self._stop_loosing_position = None
-        self._stop_loosing_position_is_level = True
-
-        trader_config = service.trader_config(self._name)
-        if trader_config:
-            # @deprecated leverage configuration
-            self._leverage = trader_config.get('leverage', {})
-
-            # last chance stop-loss at trader stage
-            stop_loosing_position = trader_config.get('stop-loosing-position')
-            if stop_loosing_position:
-                stop_loosing_position_mode = stop_loosing_position.get('mode', 'level')
-                if stop_loosing_position_mode == 'level':
-                    self._stop_loosing_position_mode = 'level'
-                elif stop_loosing_position_mode == 'percent':
-                    self._stop_loosing_position_mode = 'percent'
-                elif stop_loosing_position_mode == 'balance-percent':
-                    self._stop_loosing_position_mode = 'balance-percent'
-                else:
-                    self._stop_loosing_position_mode = 'level'
-
-                self._stop_loosing_position = stop_loosing_position.get('value')
 
         # listen to its service
         self.service.add_listener(self)
@@ -352,42 +323,6 @@ class Trader(Runnable):
                 i += 1
 
             self.unlock()
-
-        #
-        # stop loosing positions in asynchronous mode
-        #
-
-        # @deprecated and disabled since the strategy know how to manage position losses
-        # if self._stop_loosing_position is not None and self._stop_loosing_position > 0:
-        #     self.stop_loosing_positions(self._stop_loosing_position, self._stop_loosing_position_mode)
-        #     self.stop_loosing_assets(self._stop_loosing_position, self._stop_loosing_position_mode)
-
-        # # check position
-        # @deprecated might be managed at strategy trade level because here it will notify unmanaged position
-        # and will not inform for spot trades
-        # for k, p in self._positions.items():
-        #     if p.profit_loss_rate < Trader.ALERT_VALUE_LOW:
-        #         alert = self._last_alerts.get(p.position_id)
-        #         if alert and now - alert['timestamp'] < 5:
-        #             continue
-
-        #         if alert and abs(p.profit_loss_rate - alert['profit_loss_rate']) < Trader.ALERT_THRESHOLD:
-        #             continue
-
-        #         self._last_alerts[p.position_id] = {'timestamp': now, 'profit_loss_rate': p.profit_loss_rate}
-
-        #         self.service.notify(Signal.SIGNAL_POSITION_ALERT, self.name, p)
-        #     elif p.profit_loss_rate > Trader.ALERT_VALUE_HIGH:
-        #         alert = self._last_alerts.get(p.position_id)
-        #         if alert and now - alert['timestamp'] < 5:
-        #             continue
-
-        #         if alert and abs(p.profit_loss_rate - alert['profit_loss_rate']) < Trader.ALERT_THRESHOLD:
-        #             continue
-
-        #         self._last_alerts[p.position_id] = {'timestamp': now, 'profit_loss_rate': p.profit_loss_rate}
-
-        #         self.service.notify(Signal.SIGNAL_POSITION_ENJOY, self.name, p)             
 
         return True
 
@@ -774,105 +709,6 @@ class Trader(Runnable):
         self.unlock()
 
         return position
-
-    def stop_loosing_assets(self, pl_value, mode='level'):
-        """
-        Stop any loosing asset position (computed from average price), when current loss is higher than pl_level.
-        This method is trade safe.
-        @param pl_value Profit loss value (always positive)
-        @param level_or_percent True mean level in account currency, False mean percent of account balance (normalized)
-        @warning The assets must be updated just before or some values can have slippage.
-        """
-        pass  # @todo
-
-    def stop_loosing_positions(self, pl_value, mode='level'):
-        """
-        Stop any loosing position, when current loss is higher than pl_level.
-        This method is trade safe.
-        @param pl_value Profit loss value (always positive)
-        @param level_or_percent True mean level in account currency, False mean percent of account balance (normalized)
-        @warning The positions must be updated just before or some values can have slippage.
-        """
-        self.lock()
-
-        positions = []
-
-        if mode == 'level':
-            # value is defined in account currency, just neg it
-            max_loss = -(pl_value)
-        elif mode == 'percent':
-            # value is defined in position cost percent, just neg it
-            max_loss = -(pl_value)
-        elif mode == 'balance-percent':
-            # value is defined in percent of current account balance, and neg it
-            max_loss = -(self.account.balance * pl_value)
-
-        if mode == 'percent':
-            # close at loss in percent of the position entry price
-            for k, position in self._positions.items():
-                # ignore empty and profitable positions
-                if position.quantity <= 0 or not position.is_opened():
-                    continue
-
-                market = self._markets.get(position.symbol)
-
-                # ignore positions if the market is not tradeable
-                if market is None or not market.is_open:
-                    continue
-
-                # potential order exec close price
-                close_exec_price = market.close_exec_price(position.direction)
-
-                # profit/loss ratio
-                rate = (position.change_rate(market) / market.one_pip_means * market.value_per_pip) * 0.01
-
-                if rate < max_loss:
-                    profit_loss_account_currency = position.profit_loss_market / market.base_exchange_rate
-
-                    # avoid multiple time passing, check if the position is opened.
-                    # but because we used a reduce only and the position id even it try many times only one will be accepted
-                    msg = "Automatically close at market a loosing position on %s at price %s loosing %.4f%s (%.2f%%)" % (
-                        position.symbol, close_exec_price, profit_loss_account_currency, self.account.currency_display, position.profit_loss_market_rate*100.0)
-
-                    logger.warning(msg)
-                    Terminal.inst().low(msg, view='content')
-
-                    positions.append(position)
-        else:
-            # close at fixed value in account currency
-            for k, position in self._positions.items():
-                if position.quantity <= 0 or not position.is_opened():
-                    continue
-
-                market = self._markets.get(position.symbol)
-
-                # ignore positions if the market is not tradeable
-                if market is None or not market.is_open:
-                    continue
-
-                # potential order exec close price
-                close_exec_price = market.close_exec_price(position.direction)
-                profit_loss_account_currency = position.profit_loss_market / market.base_exchange_rate
-
-                # ignore non negative positions
-                if profit_loss_account_currency >= 0.0:
-                    continue
-
-                if profit_loss_account_currency <= max_loss:
-                    # avoid multiple time passing, check if the position is opened.
-                    # but because we used a reduce only and the position id even it try many times only one will be accepted
-                    msg = "Automatically close at market a loosing position on %s at price %s loosing %.4f%s (%.2f%%)" % (
-                        position.symbol, close_exec_price, profit_loss_account_currency, self.account.currency_display, position.profit_loss_market_rate*100.0)
-
-                    logger.warning(msg)
-                    Terminal.inst().low(msg, view='content')
-
-                    positions.append(position)
-
-        self.unlock()
-
-        for position in positions:
-            self.close_position(position.position_id, market=True)
 
     #
     # signals
@@ -1725,17 +1561,3 @@ class Trader(Runnable):
         self._commands.append(command)
         self._purge_commands()
         self.unlock()
-
-    def symbol_min_leverage(self, symbol):
-        # @deprecated used for 1broker manual leverage rate
-        symbol = self._leverage.get(symbol, self._leverage.get('(ANY)', [1, 1]))[0]
-        return min(self.account.min_leverage, symbol)  # winning min is always account setting
-
-    def symbol_max_leverage(self, symbol):
-        # @deprecated used for 1broker manual leverage rate
-        symbol = self._leverage.get(symbol, self._leverage.get('(ANY)', [1, 1]))[1]
-        return min(self.account.max_leverage, symbol)  # account max cannot be greater than symbol data
-
-    def clamp_symbol_leverage(self, symbol, leverage):
-        # @deprecated used for 1broker manual leverage rate
-        return max(self.symbol_min_leverage(symbol), min(self.symbol_max_leverage(symbol), leverage))

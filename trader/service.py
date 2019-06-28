@@ -213,7 +213,7 @@ class TraderService(Service):
         now = time.time()
         command_trigger = {'key': self.gen_key()}
 
-        if signal.signal_type == Signal.SIGNAL_POSITION_ENTER:
+        if signal.signal_type == Signal.SIGNAL_SOCIAL_ENTER:
             # @deprecated @todo its from social trading...
             direction = "long" if signal.data.direction == Position.LONG else "short"
 
@@ -235,7 +235,7 @@ class TraderService(Service):
                 elif trader.name == signal.data.watcher.name:
                     trader.on_enter_position(signal.data, command_trigger)
 
-        elif signal.signal_type == Signal.SIGNAL_POSITION_EXIT:
+        elif signal.signal_type == Signal.SIGNAL_SOCIAL_EXIT:
             # @deprecated @todo its from social trading...
             direction = "long" if signal.data.direction == Position.LONG else "short"
 

@@ -33,8 +33,8 @@ CREATE TABLE IF NOT EXISTS asset(
     quantity VARCHAR(32) NOT NULL, price VARCHAR(32) NOT NULL, quote_symbol VARCHAR(32) NOT NULL,
     UNIQUE KEY(broker_id, asset_id));
 
--- candle
-CREATE TABLE IF NOT EXISTS candle(
+-- ohlc
+CREATE TABLE IF NOT EXISTS ohlc(
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
     timestamp BIGINT NOT NULL, timeframe INTEGER NOT NULL,

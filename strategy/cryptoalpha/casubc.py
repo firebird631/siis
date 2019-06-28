@@ -55,6 +55,14 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
                 # retains the last valid signal only if valid
                 self.last_signal = signal
 
+                if self.profiling:
+                    # store signal data condition when profiling
+                    signal.add_condition('price', self.price.trace())
+                    signal.add_condition('rsi', self.rsi.trace())
+                    signal.add_condition('sma', self.sma.trace())
+                    signal.add_condition('ema', self.ema.trace())
+                    signal.add_condition('stochrsi', self.stochrsi.trace())
+
         return signal
 
     def process1(self, timestamp, last_timestamp, candles, prices, volumes):
@@ -119,16 +127,6 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
 
         if self.pivotpoint:
             self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)            
-
-        if signal:
-            # keep signal conditions for machine learning
-            signal.conditions = {
-                'price': prices[-1],
-                'rsi': self.rsi.last,
-                'sma': self.sma.last,
-                'ema': self.ema.last,
-                'stochrsi': self.stochrsi.last_k,
-            }
 
         return signal
 

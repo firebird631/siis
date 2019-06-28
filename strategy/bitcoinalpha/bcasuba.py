@@ -78,6 +78,16 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
                 # retains the last valid signal only if valid
                 self.last_signal = signal
 
+                if self.profiling:
+                    # store signal data condition when profiling
+                    signal.add_condition('price', self.price.trace())
+                    # signal.add_condition('rsi', self.rsi.trace())
+                    # signal.add_condition('sma', self.sma.trace())
+                    # signal.add_condition('ema', self.ema.trace())
+                    # signal.add_condition('stochrsi', self.stochrsi.trace())
+                    # signal.add_condition('tomdemark', self.tomdemark.trace())
+                    # signal.add_condition('bollinger', self.bollingerbands.trade())
+
         return signal
 
     def process1(self, timestamp, to_ts, candles, prices, volumes):
@@ -269,206 +279,192 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
                     logger.info("> Exit short cd13")
                     pass
 
-        if self.volume.last > volume_sma[-1]:
-            self.score.scale(2.0)
-
-        if self.last_signal:
-            # if signal.signal == StrategySignal.SIGNAL_ENTRY and signal.signal == self.last_signal.signal and signal.dir == self.last_signal.dir:
-            if signal.signal == self.last_signal.signal and signal.dir == self.last_signal.dir:
-                if signal.base_time() == self.last_signal.base_time():
-                    # same base time avoid multiple entries on the same candle
-                    signal = None
-
-        if signal:
-            # retains the last signal
-            self.last_signal = signal
-
         return signal
 
-    def process2(self, timestamp, to_ts, candles, prices, volumes):
-        signal = None
+#     def process2(self, timestamp, to_ts, candles, prices, volumes):
+#         signal = None
 
-        rsi = []
-        sma = []
-        ema = []
-        vwma = []
+#         rsi = []
+#         sma = []
+#         ema = []
+#         vwma = []
 
-        if self.rsi:
-            rsi = self.rsi.compute(to_ts, prices)[-self.depth:]
+#         if self.rsi:
+#             rsi = self.rsi.compute(to_ts, prices)[-self.depth:]
 
-        if self.sma:
-            sma = self.sma.compute(to_ts, prices)[-self.depth:]
+#         if self.sma:
+#             sma = self.sma.compute(to_ts, prices)[-self.depth:]
 
-        if self.ema:
-            ema = self.ema.compute(to_ts, prices)[-self.depth:]
+#         if self.ema:
+#             ema = self.ema.compute(to_ts, prices)[-self.depth:]
         
-        if self.vwma:
-            vwma = self.vwma.compute(to_ts, prices, volumes)[-self.depth:]
+#         if self.vwma:
+#             vwma = self.vwma.compute(to_ts, prices, volumes)[-self.depth:]
 
-        mmt = [] # self.mmt.compute(to_ts, prices)[-self.depth:]
-        macd = [] # self.macd.compute(to_ts, prices)[-self.depth:]
-        stochastic = [] # self.stochastic.compute(to_ts, prices)[-self.depth:]
+#         mmt = [] # self.mmt.compute(to_ts, prices)[-self.depth:]
+#         macd = [] # self.macd.compute(to_ts, prices)[-self.depth:]
+#         stochastic = [] # self.stochastic.compute(to_ts, prices)[-self.depth:]
 
-        if self.bollingerbands:
-            self.bollingerbands.compute(to_ts, prices)
+#         if self.bollingerbands:
+#             self.bollingerbands.compute(to_ts, prices)
 
-        # if self.triangle and self.bollingerbands:
-        #   self.triangle.compute(to_ts, self.bollingerbands.last_bottom, self.bollingerbands.last_top)
+#         # if self.triangle and self.bollingerbands:
+#         #   self.triangle.compute(to_ts, self.bollingerbands.last_bottom, self.bollingerbands.last_top)
 
-        # if self.fibonacci:
-        #   last_candles = self.data.instrument.last_candles(self.tf, self.depth)
-        #   self.fibonacci.compute(to_ts, candles)
+#         # if self.fibonacci:
+#         #   last_candles = self.data.instrument.last_candles(self.tf, self.depth)
+#         #   self.fibonacci.compute(to_ts, candles)
 
-        if self.pivotpoint:
-            self.pivotpoint.compute(to_ts, candles)
-            # @todo check price and pivot/sn/rn
+#         if self.pivotpoint:
+#             self.pivotpoint.compute(to_ts, candles)
+#             # @todo check price and pivot/sn/rn
 
-        #
-        # keep last supports and resistances
-        #
+#         #
+#         # keep last supports and resistances
+#         #
 
-        if self.fibonacci:
-            # remove previous N last time
-            # @todo a ScatterWindowData(depth) .update(data) ... or maybe store a max depth in each indicator and remove .last_xyz
+#         if self.fibonacci:
+#             # remove previous N last time
+#             # @todo a ScatterWindowData(depth) .update(data) ... or maybe store a max depth in each indicator and remove .last_xyz
 
-            while self.supports and self.supports[-1][0] >= timestamp - self.depth*self.tf:
-                self.supports.pop(-1)
+#             while self.supports and self.supports[-1][0] >= timestamp - self.depth*self.tf:
+#                 self.supports.pop(-1)
 
-            while self.resistances and self.resistances[-1][0] >= timestamp - self.depth*self.tf:
-                self.resistances.pop(-1)
+#             while self.resistances and self.resistances[-1][0] >= timestamp - self.depth*self.tf:
+#                 self.resistances.pop(-1)
 
-            for s in self.fibonacci.lowers:
-                # set with timestamp and price
-                self.supports.append((timestamp+((self.depth-s[0])*self.tf), s[1]))
+#             for s in self.fibonacci.lowers:
+#                 # set with timestamp and price
+#                 self.supports.append((timestamp+((self.depth-s[0])*self.tf), s[1]))
 
-            for r in self.fibonacci.highers:
-                # set with timestamp and price
-                self.resistances.append((timestamp+((self.depth-r[0])*self.tf), r[1]))
+#             for r in self.fibonacci.highers:
+#                 # set with timestamp and price
+#                 self.resistances.append((timestamp+((self.depth-r[0])*self.tf), r[1]))
 
-            # remove support/resistances older than n*tf (timestamp in second)
-            while self.supports and (self.supports[0][0] + self.tf*96) < timestamp:
-                self.supports.pop(0)
+#             # remove support/resistances older than n*tf (timestamp in second)
+#             while self.supports and (self.supports[0][0] + self.tf*96) < timestamp:
+#                 self.supports.pop(0)
 
-            while self.resistances and (self.resistances[0][0] + self.tf*96) < timestamp:
-                self.resistances.pop(0)
+#             while self.resistances and (self.resistances[0][0] + self.tf*96) < timestamp:
+#                 self.resistances.pop(0)
 
-        #
-        # find fibonacci levels and detect current pattern
-        #
+#         #
+#         # find fibonacci levels and detect current pattern
+#         #
 
-        # @todo
+#         # @todo
 
-        #
-        # triangle interpretations
-        #
+#         #
+#         # triangle interpretations
+#         #
 
-        if self.triangle:
-            # @todo have to remove previous N last time
-            bottoms, tops = self.triangle.triangles()
+#         if self.triangle:
+#             # @todo have to remove previous N last time
+#             bottoms, tops = self.triangle.triangles()
 
-            for bottom in bottoms:
-                # set with timestamp and price
-                self.triangle_bottom.append((timestamp-(self.depth*self.tf)+(bottom[0]*self.tf), bottom[1]))
+#             for bottom in bottoms:
+#                 # set with timestamp and price
+#                 self.triangle_bottom.append((timestamp-(self.depth*self.tf)+(bottom[0]*self.tf), bottom[1]))
 
-            for top in tops:
-                # set with timestamp and price
-                self.triangle_top.append((timestamp-(self.depth*self.tf)+(top[0]*self.tf), top[1]))
+#             for top in tops:
+#                 # set with timestamp and price
+#                 self.triangle_top.append((timestamp-(self.depth*self.tf)+(top[0]*self.tf), top[1]))
 
-            # remove triangle bottom/top older than 24h (timestamp in second)
-            while self.triangle_bottom and (self.triangle_bottom[0][0] + 60*60*24) < timestamp:
-                self.triangle_bottom.pop(0)
+#             # remove triangle bottom/top older than 24h (timestamp in second)
+#             while self.triangle_bottom and (self.triangle_bottom[0][0] + 60*60*24) < timestamp:
+#                 self.triangle_bottom.pop(0)
 
-            while self.triangle_top and (self.triangle_top[0][0] + 60*60*24) < timestamp:
-                self.triangle_top.pop(0)
+#             while self.triangle_top and (self.triangle_top[0][0] + 60*60*24) < timestamp:
+#                 self.triangle_top.pop(0)
 
-        #
-        # analysis of the results and scorify
-        #
+#         #
+#         # analysis of the results and scorify
+#         #
 
-        rsi_ema_div = False
+#         rsi_ema_div = False
 
-        if len(rsi):
-            # trend of the rsi
-            rsi_trend = utils.trend_extremum(rsi)
+#         if len(rsi):
+#             # trend of the rsi
+#             rsi_trend = utils.trend_extremum(rsi)
 
-            # 30/70 @todo use Comparator, cross + strength by distance
-            if rsi[-1] < self.rsi_low:
-                rsi_score = (self.rsi_low-rsi[-1])  # ++
-            elif rsi[-1] > self.rsi_high:
-                rsi_score = (self.rsi_high-rsi[-1])
-            else:
-                rsi_score = 0
+#             # 30/70 @todo use Comparator, cross + strength by distance
+#             if rsi[-1] < self.rsi_low:
+#                 rsi_score = (self.rsi_low-rsi[-1])  # ++
+#             elif rsi[-1] > self.rsi_high:
+#                 rsi_score = (self.rsi_high-rsi[-1])
+#             else:
+#                 rsi_score = 0
 
-            self.score.add(rsi_score*100, self.rsi_score_factor)
+#             self.score.add(rsi_score*100, self.rsi_score_factor)
 
-            # if trend > 0.33 score it else ignore
-            #if abs(rsi_trend) > 0.33:
-            self.score.add(rsi_trend, self.rsi_trend_score_factor)
+#             # if trend > 0.33 score it else ignore
+#             #if abs(rsi_trend) > 0.33:
+#             self.score.add(rsi_trend, self.rsi_trend_score_factor)
 
-        if self.bollingerbands and self.rsi:
-            self.bollingerbands.compute(to_ts, prices)
+#         if self.bollingerbands and self.rsi:
+#             self.bollingerbands.compute(to_ts, prices)
 
-            volatility = prices[-1] - ((self.bollingerbands.last_top - self.bollingerbands.last_ma) * prices[-1]) / 100.0
-            self.score.add(1.0, -volatility*rsi[-1])
+#             volatility = prices[-1] - ((self.bollingerbands.last_top - self.bollingerbands.last_ma) * prices[-1]) / 100.0
+#             self.score.add(1.0, -volatility*rsi[-1])
 
-        if len(ema):
-            # ema trend
-            ema_trend = utils.trend_extremum(ema)
+#         if len(ema):
+#             # ema trend
+#             ema_trend = utils.trend_extremum(ema)
 
-        if len(rsi) and len(ema):
-            # rsi trend and ema divergence
-            if utils.divergence(rsi_trend, ema_trend):
-                rsi_ema_div = True
+#         if len(rsi) and len(ema):
+#             # rsi trend and ema divergence
+#             if utils.divergence(rsi_trend, ema_trend):
+#                 rsi_ema_div = True
 
-        if len(sma) and len(ema):
-            # sma/ema distance and crossing         
-            sma_ema_cross_score_factor = self.sma_ema_cross_score_factor[1] if rsi_ema_div else self.sma_ema_cross_score_factor[0]
+#         if len(sma) and len(ema):
+#             # sma/ema distance and crossing         
+#             sma_ema_cross_score_factor = self.sma_ema_cross_score_factor[1] if rsi_ema_div else self.sma_ema_cross_score_factor[0]
 
-            # crossing
-            if sma_ema_cross_score_factor != 0:
-                sma_ema_score = utils.cross((sma[-2], ema[-2]), (sma[-1], ema[-1]))
-                self.score.add(sma_ema_score, sma_ema_cross_score_factor)
+#             # crossing
+#             if sma_ema_cross_score_factor != 0:
+#                 sma_ema_score = utils.cross((sma[-2], ema[-2]), (sma[-1], ema[-1]))
+#                 self.score.add(sma_ema_score, sma_ema_cross_score_factor)
 
-        if len(ema) and len(vwma):
-            # ema/vwma distance and crossing            
-            ema_vwma_cross_score_factor = self.ema_vwma_cross_score_factor[1] if rsi_ema_div else self.ema_vwma_cross_score_factor[0]
+#         if len(ema) and len(vwma):
+#             # ema/vwma distance and crossing            
+#             ema_vwma_cross_score_factor = self.ema_vwma_cross_score_factor[1] if rsi_ema_div else self.ema_vwma_cross_score_factor[0]
 
-            if ema_vwma_cross_score_factor != 0:
-                # ema-vwma normalized distance
-                ema_vwma_dst_score = (ema[-1]-vwma[-1]) / prices[-1]
-                self.score.add(ema_vwma_dst_score, ema_vwma_cross_score_factor)
+#             if ema_vwma_cross_score_factor != 0:
+#                 # ema-vwma normalized distance
+#                 ema_vwma_dst_score = (ema[-1]-vwma[-1]) / prices[-1]
+#                 self.score.add(ema_vwma_dst_score, ema_vwma_cross_score_factor)
 
-            # @todo ema cross vwma using Comparator
-            # ema_vwma_cross_score = utils.cross((ema[-2], vwma[-2]), (ema[-1], vwma[-1]))
-            # self.score.add(ema_vwma_cross_score, ema_vwma_cross_score_factor)
+#             # @todo ema cross vwma using Comparator
+#             # ema_vwma_cross_score = utils.cross((ema[-2], vwma[-2]), (ema[-1], vwma[-1]))
+#             # self.score.add(ema_vwma_cross_score, ema_vwma_cross_score_factor)
 
-            # ema-vwma + price-vwma give a bonus (@todo is it usefull ?)
-            if self.ema_vwma_score_bonus != 0:
-                if ema[-1] > vwma[-1] and prices[-1] > vwma[-1]:
-                    self.score.add(1, self.ema_vwma_score_bonus)
-                elif ema[-1] < vwma[-1] and prices[-1] < vwma[-1]:
-                    self.score.add(-1, self.ema_vwma_score_bonus)
+#             # ema-vwma + price-vwma give a bonus (@todo is it usefull ?)
+#             if self.ema_vwma_score_bonus != 0:
+#                 if ema[-1] > vwma[-1] and prices[-1] > vwma[-1]:
+#                     self.score.add(1, self.ema_vwma_score_bonus)
+#                 elif ema[-1] < vwma[-1] and prices[-1] < vwma[-1]:
+#                     self.score.add(-1, self.ema_vwma_score_bonus)
 
-        if len(vwma):
-            # vwma/price distance and crossing
-            # price-vwma normalized distance
-            if self.price_vwma_cross_score_factor != 0:
-                price_vwma_score = (prices[-1]-vwma[-1]) / prices[-1]
-                self.score.add(price_vwma_score, self.price_vwma_cross_score_factor)
+#         if len(vwma):
+#             # vwma/price distance and crossing
+#             # price-vwma normalized distance
+#             if self.price_vwma_cross_score_factor != 0:
+#                 price_vwma_score = (prices[-1]-vwma[-1]) / prices[-1]
+#                 self.score.add(price_vwma_score, self.price_vwma_cross_score_factor)
 
-        if rsi_ema_div:
-            rsi_ema_trend_div_score_factor = self.rsi_ema_trend_div_score_factor[1] if rsi_ema_div else self.rsi_ema_trend_div_score_factor[0]
-            # or simply neg the factor
-            # self.score.scale(0.2)  # score is weaken (good result)
+#         if rsi_ema_div:
+#             rsi_ema_trend_div_score_factor = self.rsi_ema_trend_div_score_factor[1] if rsi_ema_div else self.rsi_ema_trend_div_score_factor[0]
+#             # or simply neg the factor
+#             # self.score.scale(0.2)  # score is weaken (good result)
 
-            if rsi_ema_trend_div_score_factor != 0:
-                self.score.add(rsi_trend-ema_trend, rsi_ema_trend_div_score_factor)
+#             if rsi_ema_trend_div_score_factor != 0:
+#                 self.score.add(rsi_trend-ema_trend, rsi_ema_trend_div_score_factor)
 
-        # volume sma, increase signal strength when volume increase over its SMA
-        volume_sma = utils.MM_n(self.depth-1, self.volume.volumes)
+#         # volume sma, increase signal strength when volume increase over its SMA
+#         volume_sma = utils.MM_n(self.depth-1, self.volume.volumes)
 
-        if self.volume.last > volume_sma[-1]:
-            self.score.scale(2.0)
+#         if self.volume.last > volume_sma[-1]:
+#             self.score.scale(2.0)
 
     def process4(self, timestamp, last_timestamp, candles, prices, volumes):
         signal = None
@@ -657,17 +653,6 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
         #         if self.price.last <= np.nanmin(self.pivotpoint.resistances[1]):
         #             level1_signal = 0
         #             signal = None
-
-        if signal:
-            # keep signal conditions for machine learning
-            signal.conditions = {
-                'price': prices[-1],
-                'rsi': self.rsi.last,
-                # 'stochrsi': self.stochrsi.last_k,
-                # 'bollinger': (self.bollingerbands.last_bottom, self.bollingerbands.last_ma, self.bollingerbands.last_top),
-                'td.c': self.tomdemark.c.c,
-                'td.cd': self.tomdemark.cd.c,
-            }
 
         return signal
 

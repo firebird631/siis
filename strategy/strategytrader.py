@@ -444,11 +444,11 @@ class StrategyTrader(object):
                         'rate': rate,
                         'tf': timeframe_to_str(trade.timeframe),
                         's': trade.state_to_str(),
-                        'c': trade.conditions,
                         'b': market.format_price(trade.best_price()),
                         'w': market.format_price(trade.worst_price()),
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
+                        'c': trade.get_conditions()
                     }
 
                     if rate < 0:
