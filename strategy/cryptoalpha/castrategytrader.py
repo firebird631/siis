@@ -415,8 +415,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 if trade.timeframe == timeframe:
                     do_order = False
 
-            # if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].t) < self.trade_delay):
-            if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].t) < timeframe):
+            # if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].entry_open_time) < self.trade_delay):
+            if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].entry_open_time) < timeframe):
                 # the same order occurs just after, ignore it
                 do_order = False
 
