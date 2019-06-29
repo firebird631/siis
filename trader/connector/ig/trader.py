@@ -4,10 +4,11 @@
 # Trader/autotrader connector for ig.com
 
 import time
-import datetime
 import base64
 import uuid
 import copy
+
+from datetime import datetime
 
 from notifier.notifiable import Notifiable
 from notifier.signal import Signal
@@ -331,8 +332,8 @@ class IGTrader(Trader):
                 order.set_position_id(results['dealId'])
 
                 # but it's in local account timezone, not createdDateUTC... but API v2 provides that (@todo look with header v=2 in place of v=1)
-                order.created_time = datetime.datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
-                order.transact_time = datetime.datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
+                order.created_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
+                order.transact_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
 
                 # executed price (no change in limit, but useful when market order)
                 order.entry_price = results.get('level')
@@ -351,7 +352,7 @@ class IGTrader(Trader):
                 # position.take_profit = results.get('limitLevel')
 
                 # but it's in local account timezone, not createdDateUTC... but API v2 provides that (@todo look with header v=2 in place of v=1)
-                # position.created_time = datetime.datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
+                # position.created_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
 
                 # @todo 'trailingStep' 'trailingStopDistance' 'controlledRisk'
 
@@ -556,7 +557,7 @@ class IGTrader(Trader):
 
             deal_id = pos.get('dealId')
 
-            market_update_time = datetime.datetime.strptime(market_data['updateTime'], '%H:%M:%S').timestamp() if market_data.get('updateTime') else None
+            market_update_time = datetime.strptime(market_data['updateTime'], '%H:%M:%S').timestamp() if market_data.get('updateTime') else None
             market_status = (market_data['marketStatus'] == 'TRADEABLE')
             self.on_update_market(epic, market_status, market_update_time, market_data['bid'], market_data['offer'], base_exchange_rate=None)
  
@@ -599,7 +600,7 @@ class IGTrader(Trader):
                 self._positions[deal_id] = position
 
             # account local tz, but createdDateUTC exists in API v2 (look at HTTP header v=2)
-            position.created_time = datetime.datetime.strptime(pos.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
+            position.created_time = datetime.strptime(pos.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
 
             position.entry_price = pos.get('openLevel', 0.0)
             position.stop_loss = pos.get('stopLevel', 0.0)

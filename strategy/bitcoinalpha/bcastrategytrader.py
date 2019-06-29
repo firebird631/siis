@@ -3,12 +3,7 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Bitcoin Alpha strategy trader.
 
-import time
-import datetime
-import copy
-
-import numpy as np
-
+from datetime import datetime
 from terminal.terminal import Terminal
 from trader.order import Order
 
@@ -304,10 +299,10 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         stop_loss = atr_stop
 
                 # if trade.direction > 0 and trade.get_stats()['best-price'] > 0:
-                #     if last_price <= (trade.get_stats()['best-price'] * 0.4 + trade.p * 0.6) and last_price > stop_loss:
+                #     if last_price <= (trade.get_stats()['best-price'] * 0.4 + trade.entry_price * 0.6) and last_price > stop_loss:
                 #         stop_loss = last_price
                 # elif trade.direction < 0 and trade.get_stats()['best-price'] > 0:
-                #     if last_price >= (trade.get_stats()['best-price'] * 0.4 + trade.p * 0.6) and last_price < stop_loss:
+                #     if last_price >= (trade.get_stats()['best-price'] * 0.4 + trade.entry_price * 0.6) and last_price < stop_loss:
                 #         stop_loss = last_price
 
                 # bb_ma = self.timeframes[trade.timeframe].bollingerbands.last_ma
@@ -360,13 +355,13 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                 # ROE (long/short) @todo or optimize ATR, we need volatility index
                 # if trade.direction > 0:
-                #     if (last_price - trade.p) / trade.p >= 0.0075:
-                #         sl = trade.p + (trade.p * 0.001 * 2)
+                #     if (last_price - trade.entry_price) / trade.entry_price >= 0.0075:
+                #         sl = trade.entry_price + (trade.entry_price * 0.001 * 2)
                 #         if trade.sl < sl:
                 #             trade.sl = sl
                 # elif trade.direction < 0:
-                #     if (trade.p - last_price) / trade.p >= 0.0075:
-                #         sl = trade.p - (trade.p * 0.001 * 2)
+                #     if (trade.entry_price - last_price) / trade.entry_price >= 0.0075:
+                #         sl = trade.entry_price - (trade.entry_price * 0.001 * 2)
                 #         if trade.sl > sl:
                 #             trade.sl = sl
 
@@ -375,7 +370,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                 if retained_exit:
                     # exit the trade
-                    self.process_exit(timestamp, trade, retained_exit.p)
+                    self.process_exit(timestamp, trade, retained_exit.price)
 
             self.unlock()
 
@@ -388,7 +383,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             height = 0  # self.instrument.height(entry.timeframe, -1)
 
             # @todo or trade at order book, compute the limit price from what the order book offer or could use ATR
-            signal_price = entry.p + height
+            signal_price = entry.price + height
 
             self.process_entry(timestamp, entry.dir, signal_price, entry.tp, entry.sl, entry.timeframe)
 
@@ -424,7 +419,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         quantity = 0.0
         price = market.ofr # signal is at ofr price (for now limit entry at current ofr price)
 
-        date_time = datetime.datetime.fromtimestamp(timestamp)
+        date_time = datetime.fromtimestamp(timestamp)
         date_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
 
         # ajust max quantity according to free asset of quote, and convert in asset base quantity
@@ -543,9 +538,9 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             # estimed profit/loss rate
             if trade.direction > 0:
-                profit_loss_rate = (exit_price - trade.p) / trade.p
+                profit_loss_rate = (exit_price - trade.entry_price) / trade.entry_price
             elif trade.direction < 0:
-                profit_loss_rate = (trade.p - exit_price) / trade.p
+                profit_loss_rate = (trade.entry_price - exit_price) / trade.entry_price
             else:
                 profit_loss_rate = 0
 

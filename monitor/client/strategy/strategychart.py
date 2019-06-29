@@ -4,11 +4,11 @@
 # Standard strategy charting
 
 import time
-import datetime
 import copy
 
 import numpy as np
 
+from datetime import datetime
 from terminal.terminal import Terminal
 from trader.order import Order
 
@@ -262,7 +262,7 @@ class StrategyChart(object):
 
 					# append the tuple
 					scatter = self.scatters.get(data['n'])
-					scatter.v.append((datetime.datetime.fromtimestamp(data['b']), data['v']))
+					scatter.v.append((datetime.fromtimestamp(data['b']), data['v']))
 
 					# keep only scatter into the window range
 					while scatter.v and scatter.v[0][0].timestamp() < self.range[0]:
@@ -319,14 +319,14 @@ class StrategyChart(object):
 		# 		if sub.triangle_bottom:
 		# 			for b in reversed(sub.triangle_bottom):
 		# 				if b[0] + self.chart.depth*self.chart.tf >= self.chart.last_timestamp:
-		# 					self.chart.triangle_bottom.insert(0, (datetime.datetime.fromtimestamp(b[0]), b[1]))
+		# 					self.chart.triangle_bottom.insert(0, (datetime.fromtimestamp(b[0]), b[1]))
 		# 				else:
 		# 					break
 
 		# 		if sub.triangle_top:
 		# 			for t in reversed(sub.triangle_top):
 		# 				if t[0] + self.chart.depth*self.chart.tf >= self.chart.last_timestamp:
-		# 					self.chart.triangle_top.insert(0, (datetime.datetime.fromtimestamp(t[0]), t[1]))
+		# 					self.chart.triangle_top.insert(0, (datetime.fromtimestamp(t[0]), t[1]))
 		# 				else:
 		# 					break
 
@@ -334,21 +334,21 @@ class StrategyChart(object):
 		# 		# 	for b in reversed(sub.pivots):
 		# 		# 		if [0] + self.chart.depth*self.chart.tf >= self.chart.last_timestamp:
 		# 		# 			ts = 
-		# 		# 			self.chart.pivots.insert(0, (datetime.datetime.fromtimestamp(ts), b))
+		# 		# 			self.chart.pivots.insert(0, (datetime.fromtimestamp(ts), b))
 		# 		# 		else:
 		# 		# 			break
 
 		# 		# if sub.supports:
 		# 		# 	for b in reversed(sub.supports):
 		# 		# 		if b[0] + self.chart.depth*self.chart.tf >= self.chart.last_timestamp:
-		# 		# 			self.chart.supports.insert(0, (datetime.datetime.fromtimestamp(b[0]), b[1]))
+		# 		# 			self.chart.supports.insert(0, (datetime.fromtimestamp(b[0]), b[1]))
 		# 		# 		else:
 		# 		# 			break
 
 		# 		# if sub.resistances:
 		# 		# 	for t in reversed(sub.resistances):
 		# 		# 		if t[0] + self.chart.depth*self.chart.tf >= self.chart.last_timestamp:
-		# 		# 			self.chart.resistances.insert(0, (datetime.datetime.fromtimestamp(t[0]), t[1]))
+		# 		# 			self.chart.resistances.insert(0, (datetime.fromtimestamp(t[0]), t[1]))
 		# 		# 		else:
 		# 		# 			break
 

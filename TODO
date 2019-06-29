@@ -2,26 +2,26 @@
 # EN COURS #
 ############
 
-#38 Fetcher et (REST) Watcher Tiingo
-
 #3 Monitor WebSocket avec Twisted + Web client car le FIFO+Matplotlib ce n'est pas génial
-
-#23 Vérifier que les watchers BitMex et IG supportent tous les signaux Order et Position
+	- PUBSUB+RPC (potasser la doc)
 
 #24 Uniformiser l'order book (bitmex, binance) => avoir un object OrderBook facile à mettre à jour et à exploiter
-	=> Et utiliser DepthCacheManager pour binance
+	- utiliser DepthCacheManager pour binance
 
 
 #######
 # BUG #
 #######
 
-#87 Command ajouter/retirer un market d'un watcher/trader/appliance.
+#87 Problème sur le comptage de la quantité de sortie, et du prix moyen de sortie d'un trade
+	- En effet si la sortie est effectué par plusieurs ordres dans le cas du filled et exec-price, pas de problème,
+		tout s'ajoute, mais si on a que cumulative-filled et avg-price alors remplacer les valeurs comme sur
+		le trade d'entré va écraser les valeurs liées au trades de sorties précédents.
+		- Exemple un take-profit limit, mais mettons la quantité n'est pas fully-filled, et finalement intervient
+			pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier orde)
+	- Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
 
-#71 vue latéral pour afficher les markets tradé pour l'appliance séléctionné (page-up/down) avec pourquoi pas l'accélérateur affiché dessus
-
-#72 On a tjs en double SIGNAL_MARKET_DATA avec un SIGNAL_TICK_DATA, ça sature pour rien les files, dans ce cas faudrait pas que market data renvoi
-	de signal sur les changement de prix, juste sur les changement de status, refléchir...
+#71 vue latéral pour afficher les markets tradés de l'appliance séléctionné
 
 #77 Comment bien gérer les gap de candles ? Car si low volume ok on a mettons un gap en 1m ou 5m, le add_candle va rajouter un volume vide avec les
 	prix la précédente candle. Mais quand le market ferme en forex ou stock, à l'ouverture il ne faut pas créer les candle manquantes,
@@ -32,18 +32,15 @@
 # URGENT #
 ##########
 
-#86 Définir des BUY ZONE et SELL ZONE sur les strategy trader. Un min et max price pour définir si c'est une zone d'intérêt pour entrer ou pour sortir.
-	Donc pour du spot BUY = ENTRY, SELL = EXIT, pour du margin il faut définir les 2 notions.
-	Lorsque que la strategy emet un signal d'entré, on check si on est dans une zone, sinon on rejette le signal.
+#86 Finir la TrendRegion
 
-#85 Les strategies gérant la valeur du SL et TP dynamiquement doivent distinguer le cas des trades ou cela est managé par une operation manuelle
-	tel que les command de modification de SL/TP ou encore les operations visant à modifier ces valeurs
+#88 Persistance pour les région de chaque sub-trader pour une appaliance donnée
+	- appliance-id / market-id => liste de regions, état du sub-trader (actif)
+	=> table strategy_trader appliance_id varchar32, market_id varchar32, activity integer, regions text (JSON)
 
-#82 Pour le stop le placer en LIMIT POST ONLY (maker) si on est en profit plutôt que de le prendre en taker (cas seulement si on est à perte)
+#82 SL sont en market, mais on pourrait avoir en Limit avec un prix assez large
 
-#81 Au lieu de faire activer un stop-loss sur le last-price, avoir une sorte de prix moyen, ajusté, pour pas se faire sortir pour des simples mèches
-
-#80 Prix du SL et TP doivent être formatté/ajusté même si on ne les utilise qu'en interne, car si on les utilise en limit ça pourrait rejetter au price filter
+#81 Imaginer un filtre de prix utilisé pour les SL/TP pour éviter qu'ils s'active sur une mêche pour rien, peut être attendre sur une close sinon ?
 
 #78 Sur le service monitor ajouter les 'notifiers' et les 'views'
 
@@ -53,10 +50,19 @@
     est géré au niveau de chaque vue.
 
 #57 Enregistrer en DB les trades en cours des strategies et les recharger en vérifiant si les positions existent toujours (et au moins la quantité pour les assets)
-	- DB Model fait, DB loads&save fait, abstract fait, reste les implémentation au niveaux des model de Trade.
-	- Rajouter aussi une table TradeOp et les loader/dumpers (avec un trade_id ON DELETE CASCADE) ou sinon un champ JSON
+	- DB Model partiel, DB store/load partiel, model dumps/loads partiel
+	- Cas des positions indépendante (CFD, futur) : pas de soucis tant qu'on retrouve la position et les ordres
+	- Cas des crypto margin: si on rate un trade event, on va perdre le compte : reprendre l'historique des trades, ça devient l'usine à gérer
+	- Cas des crypto spot : pareil si on rate un trade event...
+	=> On pourrait depuis le watcher récupérer à la connexion tout les TRADES
+		- On le fait déjà en fait sur binance pour les asset non vide (nouvellement non vide (valeur fetched) ou précédemment non vide (valeur stocké en DB))
+			- pour binance.com c'est un peu lent et ça consomme du crédit
+			- pour bitmex.com on a get_historical_trades(...)
+			- pour ig.com pas de question à se poser on regarde l'état de la position, et éventuellement les ordres actifs qu'on a fetched
+	=> table strategy_trade appliance_id varchar32, market_id varchar32, trade_id integer, data text (JSON)
 
-#63 Urgency command : Ferme les trades managé (pour l'instant on a que ça au niveau des positions (margin) des traders)
+#63 Urgency command : Ferme les trades managé
+	- Pour l'instant on a que ça au niveau des Trader sur les positions (margin)
 
 
 #############
@@ -71,7 +77,8 @@
 
 #76 Un process par strategie, avec un connecteur RPC ou autre sur le process qui supporte le watcher et le trader. Mieux pour relancer que la stratégie
 	que l'on souhaite (en plus des save des trade en cours pour reload au relancement), mais demande un peu de surcouche, et puis ça découple bien,
-	surtout en cas de plantage (ce découplage est fait sur la V2)
+	surtout en cas de plantage.
+	- Ce découplage est pensé et réalisé sur la V2
 
 #68 A propos du prefetching lorsqu'on lance ne live, même si on a fait un prefetch manuel, actuellement le Watcher ne récupère ni en DB ni depuis l'API du broker
 	la candle en cours pour les timeframes stoquées en DB. Quelle solution ? Car fetcher depuis le broker c'est le mieux, mais ça consomme des crédit, ou c'est long,
@@ -82,34 +89,45 @@
 # TOP #
 #######
 
-#85 Ajouter la gestion du trigger price sur les trade et le trade manager pour entrer sur trigger price, mais est-ce qu'on le fait pas plutôt
-	avec une operation ? Dans ce cas si la commande manuelle long/short contient un trigger price on rajoute en plus une operation TriggerEntry ou TriggerLimitEntry
+#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry
 
 #43 Mécanisme d'abonnement/desabonnement a un flux pour les chart par instrument (nécessite un socket bidir et donc l'API)
+	- Déjà on ne passe les flux de chart qu'en mode debug ou profilage
+	- Et on notify les trade event par la stratégie, et on ne passe pas ainsi directement par le streamer au niveau sub-trader
+		- Entrée, sortie, modification (SL/TP,operation)
+			-> Attention il risque de manquer une fermeture depuis l'extérieur
+				-> Donc comment notifier de ce qui revient sur les StrategyTrade correctement ?
 
 #60 Gérer la partie locked sur le paper trader en mode asset
+	- C'est à dire ne pas tout gérer en free, ce n'est pas super important au final car ça n'empêche pas le fonctionnement,
+		mais c'est pour être plus rigoureux.
 
 
 ########
 # LESS #
 ########
 
-#27 Tester l'indicateur pivotpoint
+#38 Fetcher et (REST) Watcher Tiingo
 
-#45 Pour le watcher AlphaVantage faire une liste cyclique avec priorité vers les marché qui n'ont pas été mis encore à jour pour ainsi faire tourner si plus de 5 marché suivis a une ut de 1m
+#45 Pour le watcher AlphaVantage faire une liste cyclique avec priorité vers les marché qui n'ont pas été mis encore à jour
+	pour ainsi faire tourner si plus de 5 marché suivis a une ut de 1m
 	=> finalement avec Tiingo ou PyEx on devrait tout avoir donc pas besoin d'en faire trop sur AlphaVantage.
 
 #17 Order cancelation pour annuler un ordre si pas passé ou pas totalement que le cours est reparti... En partie géré.
 
-#20 Supprime t'on : 1fox, 1broker et blueskyday strategy ?
+#20 Supprime t'on le support de 1broker, et la stratégie boostedblueskyday, ou les gardes t'on à titre d'exemple ?
 
 
 #########
 # OPTIM #
 #########
 
-#42 Trop de signaux dans la queue de strategy si ont suit une centaine de markets. De plus on a des signaux disons doublons entre TICK et MARKET DATA,
-	ça demanderait un peu de réorganisation. Aussi on pourrait envoyer directement les ohlc/ticks dans les instruments des strategy et juste avoir un signal aggrégé.
+#42 Trop de signaux dans la queue de strategy si ont suit une centaine de markets.
+	De plus on a des signaux "doublons" entre TICK et MARKET DATA
+		- Cela demande un peu de réorganisation.
+		- En effet market-data peut être reçu pour un tick et donc envoyer 2 signaux aux stratégies au même moment.
+	- Aussi on pourrait envoyer directement les ohlc/ticks dans les instruments des strategy et juste avoir un signal aggrégé
+		a la place quand cela est possible dans le cas des tickers à la binance.
 
 
 #########################
@@ -125,5 +143,6 @@
 - Détection des harmonic patterns
 - Bollinger + triangle => pullback + count number of pullback => break
 - Stop : 5min 5% 15m 8% 1h 15% 4h 30%
-- Max durée d'un trade selon la timeframe (ex: 5min => 3h, 15m => 1j...)
 - Chande Kroll Stop @ref https://www.centralcharts.com/fr/forums/12-analyse-technique/1366-indicateur-chande-kroll-stop
+- Algo-G pour optimiser les paramètres
+- ML avec TensorFlow selon différent indicateurs ou encore selon des signaux prétraité (hilbert...)

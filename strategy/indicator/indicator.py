@@ -3,11 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Indicator base class
 
-import time
-import datetime
-import copy
-
-
 class Indicator(object):
     """
     Base class for an indicator.

@@ -4,7 +4,6 @@
 # IndiceAlpha strategy
 
 import time
-import datetime
 import copy
 
 import numpy as np

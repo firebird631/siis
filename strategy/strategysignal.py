@@ -3,8 +3,7 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Strategy signal
 
-import datetime
-
+from datetime import datetime
 from notifier.signal import Signal
 
 from trader.order import Order
@@ -112,8 +111,8 @@ class StrategySignal(object):
         return self.signal == _to.signal and self.dir == _to.dir
 
     def __str__(self):
-        date_time = datetime.datetime.fromtimestamp(self.ts)
-        date_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
+        mydate = datetime.fromtimestamp(self.ts)
+        date_str = mydate.strftime('%Y-%m-%d %H:%M:%S')
 
         return "tf=%s ts=%s signal=%s dir=%s p=%s sl=%s tp=%s" % (
                 timeframe_to_str(self.timeframe), date_str, self.signal_type_str(), self.direction_str(),

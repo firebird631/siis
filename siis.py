@@ -10,10 +10,11 @@ import threading
 import sys
 import os
 import time
-import datetime
 import logging
 import pathlib
 import traceback
+
+from datetime import datetime
 
 from common.utils import UTC, fix_thread_set_name, TIMEFRAME_FROM_STR_MAP
 
@@ -216,10 +217,10 @@ def application(argv):
 
                 elif arg.startswith('--from='):
                     # if backtest from date (if ommited use whoole data) date format is "yyyy-mm-dd-hh:mm:ss", fetch, binarize to date
-                    options['from'] = datetime.datetime.strptime(arg.split('=')[1], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
+                    options['from'] = datetime.strptime(arg.split('=')[1], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
                 elif arg.startswith('--to='):
                     # if backtest to date (can be ommited), fetch, binarize to date
-                    options['to'] = datetime.datetime.strptime(arg.split('=')[1], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
+                    options['to'] = datetime.strptime(arg.split('=')[1], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
                 elif arg.startswith('--last='):
                     # fetch the last n data history
                     options['last'] = int(arg.split('=')[1])
@@ -547,7 +548,7 @@ def application(argv):
 
                                 elif value == ' ':
                                     # a simple mark on the terminal
-                                    Terminal.inst().notice("Trading time %s" % (datetime.datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='status')
+                                    Terminal.inst().notice("Trading time %s" % (datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='status')
 
                                 elif value == 'a':
                                     desktop_service.audible = not desktop_service.audible
@@ -603,7 +604,7 @@ def application(argv):
             try:
                 # display strategy tarding time (update max once per second)
                 if strategy_service.timestamp - prev_timestamp >= 1.0:
-                    Terminal.inst().message(datetime.datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S'), view='notice')
+                    Terminal.inst().message(datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S'), view='notice')
                     prev_timestamp = strategy_service.timestamp
 
                 # synchronous operations here

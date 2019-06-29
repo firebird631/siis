@@ -7,7 +7,6 @@ import math
 import urllib
 import json
 import time
-import datetime
 import os.path
 import traceback
 import requests

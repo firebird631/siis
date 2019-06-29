@@ -4,11 +4,11 @@
 # Blue Sky Day boosted strategy
 
 import time
-import datetime
 import copy
 
 import numpy as np
 
+from datetime import datetime
 from terminal.terminal import Terminal
 from trader.position import Position
 from trader.order import Order
@@ -28,11 +28,11 @@ from database.database import Database
 import logging
 logger = logging.getLogger('siis.strategy.boostedblueskyday')
 
-# @deprecated !!!!
 
 class BoostedBlueSkyDayStrategyTrader(object):
     """
     @todo need to bootstrap in live mode with the last N values to compute the previous scores to have a better accuracy and relevance at startup
+    @deprecated !!!!
     """
 
     MIN_SCORE = 3
@@ -347,7 +347,7 @@ class BoostedBlueSkyDayStrategy(Strategy):
             elif final_score < 0:
                 sub_trader.shorts.append((timestamp, last_prices[-1]))
 
-            date_str = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            date_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
             direction = Position.LONG if final_score > 0 else Position.SHORT
 
             # create an order an post it

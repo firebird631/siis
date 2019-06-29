@@ -7,9 +7,10 @@ import math
 import urllib
 import json
 import time
-import datetime
 import os.path
 import traceback
+
+from datetime import datetime
 
 from watcher.watcher import Watcher
 from notifier.signal import Signal
@@ -372,7 +373,7 @@ class IGWatcher(Watcher):
 
                 # date of the event 20:36:01 without Z
                 if ready:
-                    update_time = datetime.datetime.strptime(values['UPDATE_TIME'], '%H:%M:%S').timestamp()
+                    update_time = datetime.strptime(values['UPDATE_TIME'], '%H:%M:%S').timestamp()
                     market_data = (name[1], True, update_time, float(values["BID"]), float(values["OFFER"]), None, None, None, None, None)
                 else:
                     update_time = 0
@@ -562,7 +563,7 @@ class IGWatcher(Watcher):
                         logger.warning("ig 538 'CONFIRMS' %s" % str(data))
 
                         # date 2018-09-13T20:36:01.096 without Z
-                        event_time = datetime.datetime.strptime(data['date'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+                        event_time = datetime.strptime(data['date'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
 
                         if data['direction'] == 'BUY':
                             direction = Order.LONG
@@ -672,7 +673,7 @@ class IGWatcher(Watcher):
                     # @todo "orderType": "LIMIT", "timeInForce": "GOOD_TILL_CANCELLED", "goodTillDate": null
 
                     # date of the event 2018-09-13T20:36:01.096 without Z
-                    event_time = datetime.datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
 
                     # status OPEN, UPDATED, DELETED
                     if data['status'] == "OPEN":

@@ -3,8 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Service base class
 
-import time
-import datetime
 import threading
 
 from importlib import import_module

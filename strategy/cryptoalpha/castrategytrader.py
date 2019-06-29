@@ -3,11 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Crypto Alpha strategy trader.
 
-import time
-import datetime
-import copy
-
-import numpy as np
+from datetime import datetime
 
 from terminal.terminal import Terminal
 from trader.order import Order
@@ -309,7 +305,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 trade_parent_tf = self.parent_timeframe(trade.timeframe)
 
                 sl = self.timeframes[trade_parent_tf].atr.stop_loss(trade.direction)
-                if (not trade.sl or last_price > trade.p) and sl > stop_loss:
+                if (not trade.sl or last_price > trade.entry_price) and sl > stop_loss:
                     # if trade has no stop-loss or follow profit
                     stop_loss = sl
 
@@ -338,7 +334,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 #
                 # exit trade if an exit signal retained
                 if retained_exit:
-                    self.process_exit(timestamp, trade, retained_exit.p)
+                    self.process_exit(timestamp, trade, retained_exit.price)
 
             self.unlock()
 
@@ -351,7 +347,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             height = 0  # self.instrument.height(entry.timeframe, -1)
 
             # @todo or trade at order book, compute the limit price from what the order book offer or could use ATR
-            signal_price = entry.p + height
+            signal_price = entry.price + height
 
             self.process_entry(timestamp, signal_price, entry.tp, entry.sl, entry.timeframe)
 
@@ -366,7 +362,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         direction = Order.LONG   # entry is always a long
         price = price + market.spread  # signal price + spread
 
-        # date_time = datetime.datetime.fromtimestamp(timestamp)
+        # date_time = datetime.fromtimestamp(timestamp)
         # date_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
 
         # ajust max quantity according to free asset of quote, and convert in asset base quantity
@@ -467,7 +463,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             market = trader.market(self.instrument.market_id)
 
             # estimed profit/loss rate
-            profit_loss_rate = (exit_price - trade.p) / trade.p
+            profit_loss_rate = (exit_price - trade.entry_price) / trade.entry_price
 
             # estimed maker/taker fee rate for entry and exit
             if trade.get_stats()['entry-maker']:

@@ -5,7 +5,6 @@
 
 import json
 import time
-import datetime
 
 from watcher.watcher import Watcher
 from notifier.signal import Signal

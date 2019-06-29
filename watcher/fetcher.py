@@ -4,7 +4,8 @@
 # Fetcher interface
 
 import time
-import datetime
+
+from datetime import datetime, timedelta
 
 from common.utils import matching_symbols_set, UTC
 from terminal.terminal import Terminal
@@ -91,12 +92,12 @@ class Fetcher(object):
 
         if not from_date and n:
             # compute a from date
-            today = datetime.datetime.now().astimezone(UTC())
-            from_date = today - datetime.timedelta(seconds=timeframe*n)
+            today = datetime.now().astimezone(UTC())
+            from_date = today - timedelta(seconds=timeframe*n)
 
         if not to_date:
-            today = datetime.datetime.now().astimezone(UTC())
-            to_date = today + datetime.timedelta(seconds=timeframe)
+            today = datetime.now().astimezone(UTC())
+            to_date = today + timedelta(seconds=timeframe)
 
         # cascaded generation of candles
         if cascaded:

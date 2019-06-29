@@ -5,7 +5,6 @@
 
 import json
 import time
-import datetime
 import traceback
 
 from watcher.fetcher import Fetcher

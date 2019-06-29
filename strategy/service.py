@@ -4,9 +4,9 @@
 # service worker for strategy
 
 import time
-import datetime
 import threading
 
+from datetime import datetime
 from importlib import import_module
 
 from common.service import Service
@@ -60,7 +60,7 @@ class StrategyService(Service):
 
         # cannot be more recent than now
         from common.utils import UTC
-        today = datetime.datetime.now().astimezone(UTC())
+        today = datetime.now().astimezone(UTC())
 
         if self._from_date and self._from_date > today:
             self._from_date = today

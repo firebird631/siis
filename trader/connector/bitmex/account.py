@@ -7,7 +7,6 @@ import http.client
 import urllib
 import json
 import time
-import datetime
 
 from notifier.notifiable import Notifiable
 from notifier.signal import Signal

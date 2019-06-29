@@ -7,11 +7,12 @@ import collections
 import threading
 import os
 import time
-import datetime
 import notify2
 import logging
 import subprocess
 import traceback
+
+from datetime import datetime, timedelta
 
 from trader.position import Position
 from monitor.discord import send_to_discord
@@ -124,7 +125,7 @@ class DesktopNotifier(Notifiable):
 
             if signal.signal_type == Signal.SIGNAL_SOCIAL_ENTER:
                 # here we only assume that because of what 1broker return to us but should be timestamp in the model
-                entry_date = signal.data.entry_date + datetime.timedelta(hours=2)
+                entry_date = signal.data.entry_date + timedelta(hours=2)
                 position_timestamp = time.mktime(entry_date.timetuple())
                 audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
 
@@ -141,7 +142,7 @@ class DesktopNotifier(Notifiable):
 
             elif signal.signal_type == Signal.SIGNAL_SOCIAL_EXIT:
                 # here we only assume that because of what 1broker return to us but should be timestamp in the model
-                exit_date = signal.data.exit_date + datetime.timedelta(hours=2)
+                exit_date = signal.data.exit_date + timedelta(hours=2)
                 position_timestamp = time.mktime(exit_date.timetuple())
                 audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
 
@@ -194,7 +195,7 @@ class DesktopNotifier(Notifiable):
                 if signal.data['action'] == 'stop':
                     audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
 
-                ldatetime = datetime.datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+                ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
                 label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
 

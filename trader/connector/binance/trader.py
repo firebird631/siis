@@ -4,7 +4,6 @@
 # Trader/autotrader connector for binance.com
 
 import time
-import datetime
 import copy
 import traceback
 
@@ -318,9 +317,11 @@ class BinanceTrader(Trader):
             return False
 
         order.set_order_id(result['orderId'])
+
+        order.created_time = result['transactTime'] / 1000.0
         order.transact_time = result['transactTime'] / 1000.0
 
-        # we wait the traded signal
+        # commented because done in the order traded slot
         # if result['executedQty']:
         #     # partially or fully executed quantity
         #     order.executed = float(result['executedQty'])
@@ -1192,7 +1193,7 @@ class BinanceTrader(Trader):
             order = Order(self, data['symbol'])
             order.set_order_id(data['id'])
 
-            # its not the creation timestamp, its the trade execution but its all that we have or need REST call
+            # its might be the creation timestamp but it will be the trade execution
             order.created_time = data['timestamp']
 
             order.direction = data['direction']

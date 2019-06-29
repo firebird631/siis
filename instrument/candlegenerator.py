@@ -3,8 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Higher candle generator.
 
-import datetime
-
+from datetime import datetime, timedelta
 from common.utils import UTC
 
 from instrument.instrument import Candle
@@ -91,12 +90,12 @@ class CandleGenerator(object):
             return int(timestamp / self._to_tf) * self._to_tf
         elif self._to_tf == 7*24*60*60:
             # must find the UTC first day of week
-            dt = datetime.datetime.utcfromtimestamp(timestamp)
-            dt = dt.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC()) - datetime.timedelta(days=dt.weekday())
+            dt = datetime.utcfromtimestamp(timestamp)
+            dt = dt.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC()) - timedelta(days=dt.weekday())
             return dt.timestamp()
         elif self._to_tf == 30*24*60*60:
             # replace by first day of month at 00h00 UTC
-            dt = datetime.datetime.utcfromtimestamp(timestamp)
+            dt = datetime.utcfromtimestamp(timestamp)
             dt = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
             return dt.timestamp()
 

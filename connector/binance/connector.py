@@ -3,14 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # HTTPS+WS connector for binance.com
 
-import json
-import datetime
-import base64
-import requests
-
-from terminal.terminal import Terminal
-from config import config
-
 from connector.binance.client import Client
 from connector.binance.websockets import BinanceSocketManager
 

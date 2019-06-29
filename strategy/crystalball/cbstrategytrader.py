@@ -3,15 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Crystal Ball indicator strategy trader.
 
-import time
-import datetime
-import copy
-
-import numpy as np
-
-from terminal.terminal import Terminal
-from trader.order import Order
-
 from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
 from strategy.strategysignal import StrategySignal
@@ -123,12 +114,12 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
 
         for entry in entries:
             self.strategy.notify_order(-1, entry.direction, self.instrument.market_id,
-                            market.format_price(entry.p), timestamp, entry.timeframe, 'entry',
+                            market.format_price(entry.price), timestamp, entry.timeframe, 'entry',
                             None, market.format_price(entry.sl), market.format_price(entry.tp))
 
         for exit in exits:
             self.strategy.notify_order(-1, exit.direction, self.instrument.market_id,
-                            market.format_price(exit.p), timestamp, exit.timeframe, 'exit')
+                            market.format_price(exit.price), timestamp, exit.timeframe, 'exit')
 
         # update user managed actives trades
         self.update_trades(timestamp)

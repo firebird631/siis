@@ -6,7 +6,6 @@
 import copy
 import time
 import threading
-import datetime
 
 import numpy as np
 import matplotlib
@@ -18,6 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import matplotlib.animation as animation
 
+from datetime import datetime, timedelta
 from matplotlib.dates import date2num
 
 from mpl_finance import candlestick_ohlc, candlestick2_ohlc, volume_overlay2
@@ -133,7 +133,7 @@ class SubChart(object):
 			if d is not None:
 				xaxis = d[4] or self.xaxis
 				xmin = [x for x in xaxis]
-				xmax = [x+datetime.timedelta(seconds=d[6]) for x in xaxis]
+				xmax = [x+timedelta(seconds=d[6]) for x in xaxis]
 
 				plt.hlines(y=d[0], xmin=xmin, xmax=xmax, colors=d[3], linestyle=d[5], linewidth=1.0)
 
@@ -379,7 +379,7 @@ class Chart(object):
 		self._end = end
 		self._step = step
 
-		self._prices.xaxis = [datetime.datetime.fromtimestamp(x) for x in range(int(self._start), int(self._end), int(self._step))]
+		self._prices.xaxis = [datetime.fromtimestamp(x) for x in range(int(self._start), int(self._end), int(self._step))]
 		# np.linspace(self._start, self._end, (self._end-self._start)/self._step)
 
 	def set_candles(self, ohlc, width=None):
@@ -394,7 +394,7 @@ class Chart(object):
 
 		if xaxis:
 			# specific time unit
-			spec_xaxis = [datetime.datetime.fromtimestamp(x) for x in range(int(xaxis[0]), int(xaxis[1]), int(xaxis[2]))]
+			spec_xaxis = [datetime.fromtimestamp(x) for x in range(int(xaxis[0]), int(xaxis[1]), int(xaxis[2]))]
 		else:
 			spec_xaxis = None
 
@@ -409,7 +409,7 @@ class Chart(object):
 
 		if xaxis:
 			# specific time unit
-			spec_xaxis = [datetime.datetime.fromtimestamp(x) for x in range(int(xaxis[0]), int(xaxis[1]), int(xaxis[2]))]
+			spec_xaxis = [datetime.fromtimestamp(x) for x in range(int(xaxis[0]), int(xaxis[1]), int(xaxis[2]))]
 		else:
 			spec_xaxis = None
 
@@ -435,11 +435,11 @@ class Chart(object):
 			self._others[chart_id] = SubChart(chart_id, label if label else "sub%s" % chart_id)
 
 		# default xaxis to the main time unit
-		self._others[chart_id].xaxis = [datetime.datetime.fromtimestamp(x) for x in range(int(self._start), int(self._end), int(self._step))]
+		self._others[chart_id].xaxis = [datetime.fromtimestamp(x) for x in range(int(self._start), int(self._end), int(self._step))]
 
 		if xaxis:
 			# specific time unit
-			spec_xaxis = [datetime.datetime.fromtimestamp(x) for x in range(int(xaxis[0]), int(xaxis[1]), int(xaxis[2]))]
+			spec_xaxis = [datetime.fromtimestamp(x) for x in range(int(xaxis[0]), int(xaxis[1]), int(xaxis[2]))]
 		else:
 			spec_xaxis = None
 
@@ -456,12 +456,12 @@ class Chart(object):
 			self._others[chart_id] = SubChart(chart_id, label if label else "sub%s" % chart_id)
 
 		# default xaxis to the main time unit
-		self._others[chart_id].xaxis = [datetime.datetime.fromtimestamp(x) for x in range(int(self._start), int(self._end), int(self._step))]
+		self._others[chart_id].xaxis = [datetime.fromtimestamp(x) for x in range(int(self._start), int(self._end), int(self._step))]
 		# self._others[chart_id].xaxis = np.linspace(self._start, self._end, (self._end-self._start)/self._step)
 
 		if xaxis:
 			# specific time unit
-			spec_xaxis = [datetime.datetime.fromtimestamp(x) for x in range(int(xaxis[0]*1000), int(xaxis[1]*1000), int(xaxis[2]*1000))]
+			spec_xaxis = [datetime.fromtimestamp(x) for x in range(int(xaxis[0]*1000), int(xaxis[1]*1000), int(xaxis[2]*1000))]
 		else:
 			spec_xaxis = None
 
@@ -476,7 +476,7 @@ class Chart(object):
 
 		if xaxis:
 			# specific time unit
-			spec_xaxis = [datetime.datetime.fromtimestamp(x) for x in range(int(xaxis[0]), int(xaxis[1]), int(xaxis[2]))]
+			spec_xaxis = [datetime.fromtimestamp(x) for x in range(int(xaxis[0]), int(xaxis[1]), int(xaxis[2]))]
 		else:
 			spec_xaxis = None
 

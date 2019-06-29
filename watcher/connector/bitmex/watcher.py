@@ -6,9 +6,10 @@
 import re
 import json
 import time
-import datetime
 import traceback
 import math
+
+from datetime import datetime
 
 from watcher.watcher import Watcher
 from notifier.signal import Signal
@@ -150,7 +151,7 @@ class BitMexWatcher(Watcher):
     #
 
     def _parse_datetime(self, date_str):
-        return datetime.datetime.strptime(date_str or '1970-01-01 00:00:00.000Z', "%Y-%m-%dT%H:%M:%S.%fZ")
+        return datetime.strptime(date_str or '1970-01-01 00:00:00.000Z', "%Y-%m-%dT%H:%M:%S.%fZ")
 
     #
     # protected
@@ -341,7 +342,7 @@ class BitMexWatcher(Watcher):
                         self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, ld.get('clOrdID', "")))
 
                     elif status == 'Filled':  # action='update'
-                        operation_time = datetime.datetime.strptime(ld.get('timestamp', '1970-01-01 00:00:00.000Z'), "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+                        operation_time = datetime.strptime(ld.get('timestamp', '1970-01-01 00:00:00.000Z'), "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
                         # 'workingIndicator': False, if fully filled
                         #  'leavesQty': 0, if fully filled
 
@@ -379,7 +380,7 @@ class BitMexWatcher(Watcher):
                     #
 
                     tradeable = instrument.get('state', 'Closed') == 'Open'
-                    update_time = datetime.datetime.strptime(instrument.get('timestamp', '1970-01-01 00:00:00.000Z'), "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+                    update_time = datetime.strptime(instrument.get('timestamp', '1970-01-01 00:00:00.000Z'), "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
                     symbol = instrument.get('symbol', '')
                     base_symbol = instrument.get('rootSymbol', 'USD')
                     quote_symbol = symbol[-3:]

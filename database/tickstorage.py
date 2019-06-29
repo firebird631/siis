@@ -7,13 +7,13 @@ import os
 import json
 import copy
 import time
-import datetime
 import threading
 import traceback
 import pathlib
 import struct
 import collections
 
+from datetime import datetime
 from instrument.instrument import Tick
 
 import logging
@@ -118,7 +118,7 @@ class TickStorage(object):
         n = 0
         try:
             for d in ticks:
-                date_utc = datetime.datetime.utcfromtimestamp(d[2] / 1000.0)
+                date_utc = datetime.utcfromtimestamp(d[2] / 1000.0)
 
                 if self._curr_date and (self._curr_date.year != date_utc.year or self._curr_date.month != date_utc.month):
                     self.close()

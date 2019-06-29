@@ -4,20 +4,22 @@
 # Utils
 
 import time
-import datetime
 import math
 
-class UTC(datetime.tzinfo):
+from datetime import timedelta, tzinfo
+
+
+class UTC(tzinfo):
     """UTC"""
 
     def utcoffset(self, dt):
-        return datetime.timedelta(0)
+        return timedelta(0)
 
     def tzname(self, dt):
         return "UTC"
 
     def dst(self, dt):
-        return datetime.timedelta(0)
+        return timedelta(0)
 
 
 TIMEFRAME_TO_STR_MAP = {

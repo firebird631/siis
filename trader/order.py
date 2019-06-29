@@ -49,13 +49,16 @@ class Order(Keyed):
         self._copied_position_id = None
 
         self._position_id = None
-        
+
         self._quantity = 0.0  # total order quantity to realize
-        self._executed = 0.0  # executed quantity if partially (executed = quantity when completed)
+
+        self._transact_time = None  # last qty execution (traded) timestamp
+        self._executed = 0.0        # executed quantity if partially (executed = quantity when completed)
 
         self._direction = 0
         self._order_type = Order.ORDER_MARKET
-        self._order_price = None   # for limit, stop...
+        self._order_price = None    # for limit, stop-limit, take-profit-limit
+        self._trigger_price = None  # for trigger market/limit/stop
 
         self._stop_mode = Order.STOP_NONE
         self._stop_loss = None
@@ -68,7 +71,6 @@ class Order(Keyed):
         self._price_type = Order.PRICE_LAST
 
         self._leverage = 1.0
-        self._transact_time = None
 
         self._time_in_force = Order.TIME_IN_FORCE_GTC
 
@@ -127,6 +129,10 @@ class Order(Keyed):
     @property
     def order_price(self):
         return self._order_price
+
+    @property
+    def trigger_price(self):
+        return self._trigger_price
 
     @property
     def trailing_stop(self):
@@ -207,6 +213,10 @@ class Order(Keyed):
     @order_price.setter
     def order_price(self, order_price):
         self._order_price = order_price
+
+    @trigger_price.setter
+    def trigger_price(self, trigger_price):
+        self._trigger_price = trigger_price
 
     @leverage.setter
     def leverage(self, leverage):

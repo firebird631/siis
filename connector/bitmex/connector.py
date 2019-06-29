@@ -5,10 +5,10 @@
 
 import time
 import json
-import datetime
 import base64
 import requests
 
+from datetime import datetime
 from terminal.terminal import Terminal
 from config import config
 from common.utils import UTC
@@ -176,7 +176,7 @@ class Connector(object):
                 # Figure out how long we need to wait.
                 ratelimit_reset = response.headers['X-RateLimit-Reset']
                 to_sleep = int(ratelimit_reset) - int(time.time()) + 1.0  # add 1.0 more second be we still have issues
-                reset_str = datetime.datetime.fromtimestamp(int(ratelimit_reset)).strftime('%X')
+                reset_str = datetime.fromtimestamp(int(ratelimit_reset)).strftime('%X')
 
                 # We're ratelimited, and we may be waiting for a long time. Cancel orders.
                 # logger.warning("Canceling all known orders in the meantime.")
@@ -382,7 +382,7 @@ class Connector(object):
         return dt.strftime('%Y-%m-%d %H:%M:%S+00:00')
 
     def _parse_datetime(self, dt):
-        return datetime.datetime.strptime(dt, '%Y-%m-%dT%H:%M:%S.%fZ')
+        return datetime.strptime(dt, '%Y-%m-%dT%H:%M:%S.%fZ')
 
     def get_order_book_l2(self, symbol, depth):
         """

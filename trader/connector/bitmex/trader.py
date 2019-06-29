@@ -4,11 +4,12 @@
 # Trader/autotrader connector for bitmex.com
 
 import time
-import datetime
 import base64
 import uuid
 import copy
 import requests
+
+from datetime import datetime
 
 from notifier.notifiable import Notifiable
 from notifier.signal import Signal
@@ -471,7 +472,7 @@ class BitMexTrader(Trader):
     #
 
     def _parse_datetime(self, date_str):
-        return datetime.datetime.strptime(date_str or '1970-01-01 00:00:00.000Z', "%Y-%m-%dT%H:%M:%S.%fZ") # .%fZ")
+        return datetime.strptime(date_str or '1970-01-01 00:00:00.000Z', "%Y-%m-%dT%H:%M:%S.%fZ") # .%fZ")
 
     #
     # protected
@@ -526,7 +527,7 @@ class BitMexTrader(Trader):
                 position.leverage = pos['leverage']
 
                 # position.market_close = pos['market_close']
-                position.created_time = datetime.datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()  # .%fZ")
+                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()  # .%fZ")
 
                 # XBt to XBT
                 # ratio = 1.0

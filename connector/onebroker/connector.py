@@ -5,13 +5,6 @@
 
 import http.client
 import urllib
-import json
-import datetime
-import base64
-
-from terminal.terminal import Terminal
-
-from config import config
 
 
 class OneBrokerConnector(object):

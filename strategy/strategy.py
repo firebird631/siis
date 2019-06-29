@@ -4,8 +4,10 @@
 # Strategy interface
 
 import threading
-import time, datetime
+import time
 import collections
+
+from datetime import datetime
 
 from terminal.terminal import Terminal
 from common.runnable import Runnable
@@ -1138,26 +1140,36 @@ class Strategy(Runnable):
             market = trader.market(sub_trader.instrument.market_id) if trader else None
             if market:
                 for trade in sub_trader.trades:
-                    # estimation at close price, does not considers the fee and the notional
-                    if trade.direction > 0 and trade.p:
-                        trade_rate = (market.close_exec_price(trade.direction) - trade.p) / trade.p
-                    elif trade.direction < 0 and trade.p:
-                        trade_rate = (trade.p - market.close_exec_price(trade.direction)) / trade.p
+                    # estimation at close price
+                    if trade.direction > 0 and trade.entry_price:
+                        trade_rate = (market.close_exec_price(trade.direction) - trade.entry_price) / trade.entry_price
+                    elif trade.direction < 0 and trade.entry_price:
+                        trade_rate = (trade.entry_price - market.close_exec_price(trade.direction)) / trade.entry_price
                     else:
                         trade_rate = 0.0
 
+                    # estimed maker/taker fee rate for entry and exit
+                    if trade.get_stats()['entry-maker']:
+                        trade_rate -= market.maker_fee
+                    else:
+                        trade_rate -= market.taker_fee
+
+                    # assume an exit in maker
+                    trade_rate -= market.maker_fee
+
+                    # @todo update
                     trades.append({
                         'id': trade.id,
-                        'ts': trade.t,
+                        'ts': trade.entry_open_time,
                         'd': trade.direction_to_str(),
-                        'l': market.format_price(trade.order_limit_price()),
-                        'p': market.format_price(trade.p),
-                        'q': market.format_quantity(trade.q),
-                        'e': market.format_quantity(trade.e),
-                        'x': market.format_quantity(trade.x),
-                        'tp': market.format_price(trade.tp),
-                        'sl': market.format_price(trade.sl),
-                        'rate': trade_rate or trade.pl,
+                        'l': market.format_price(trade.order_price),
+                        'p': market.format_price(trade.entry_price),
+                        'q': market.format_quantity(trade.order_quantity),
+                        'e': market.format_quantity(trade.exec_entry_qty),
+                        'x': market.format_quantity(trade.exec_exit_qty),
+                        'tp': market.format_price(trade.take_profit),
+                        'sl': market.format_price(trade.stop_loss),
+                        'rate': trade_rate or trade.profit_loss,
                         'tf': timeframe_to_str(trade.timeframe),
                         's': trade.state_to_str(),
                         'b': market.format_price(trade.best_price()),
@@ -1348,7 +1360,7 @@ class Strategy(Runnable):
                 status.append(t['s'])
                 bests.append(t['b'])
                 worsts.append(t['w'])
-                entry_times.append(datetime.datetime.fromtimestamp(t['ts']).strftime('%Y-%m-%d %H:%M:%S'))
+                entry_times.append(datetime.fromtimestamp(t['ts']).strftime('%Y-%m-%d %H:%M:%S'))
                 timeframes.append(t['tf'])
 
         #
@@ -1487,7 +1499,7 @@ class Strategy(Runnable):
             status.append(t['s'])
             bests.append(t['b'])
             worsts.append(t['w'])
-            entry_times.append(datetime.datetime.fromtimestamp(t['ts']).strftime('%Y-%m-%d %H:%M:%S'))
+            entry_times.append(datetime.fromtimestamp(t['ts']).strftime('%Y-%m-%d %H:%M:%S'))
             timeframes.append(t['tf'])
 
         data = {

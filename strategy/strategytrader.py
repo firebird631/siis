@@ -162,7 +162,7 @@ class StrategyTrader(object):
             return False
 
         # more than max time unit of the timeframe then abort the trade
-        if (trade.created_time > 0) and ((timestamp - trade.created_time) / trade.timeframe) > self._expiry_max_time_unit:
+        if (trade.entry_open_time > 0) and ((timestamp - trade.entry_open_time) / trade.timeframe) > self._expiry_max_time_unit:
             if local:
                 trade.tp = self.instrument.close_exec_price(trade.dir)
                 trade.sl = self.instrument.close_exec_price(trade.dir)
@@ -246,7 +246,7 @@ class StrategyTrader(object):
                     market = trader.market(self.instrument.market_id)
 
                     # estimed profit/loss rate
-                    profit_loss_rate = (close_exec_price - trade.p) / trade.p
+                    profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
 
                     # estimed maker/taker fee rate for entry and exit
                     if trade.get_stats()['entry-maker']:
@@ -275,7 +275,7 @@ class StrategyTrader(object):
                     market = trader.market(self.instrument.market_id)
 
                     # estimed profit/loss rate
-                    profit_loss_rate = (close_exec_price - trade.p) / trade.p
+                    profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
 
                     # estimed maker/taker fee rate for entry and exit
                     if trade.get_stats()['entry-maker']:
@@ -322,10 +322,10 @@ class StrategyTrader(object):
                         market = trader.market(self.instrument.market_id)
 
                         # estimed profit/loss rate
-                        if trade.direction > 0 and trade.p:
-                            profit_loss_rate = (close_exec_price - trade.p) / trade.p
-                        elif trade.direction < 0 and trade.p:
-                            profit_loss_rate = (trade.p - close_exec_price) / trade.p
+                        if trade.direction > 0 and trade.entry_price:
+                            profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
+                        elif trade.direction < 0 and trade.entry_price:
+                            profit_loss_rate = (trade.entry_price - close_exec_price) / trade.entry_price
                         else:
                             profit_loss_rate = 0
 
@@ -355,10 +355,10 @@ class StrategyTrader(object):
                         market = trader.market(self.instrument.market_id)
 
                         # estimed profit/loss rate
-                        if trade.direction > 0 and trade.p:
-                            profit_loss_rate = (close_exec_price - trade.p) / trade.p
-                        elif trade.direction < 0 and trade.p:
-                            profit_loss_rate = (trade.p - close_exec_price) / trade.p
+                        if trade.direction > 0 and trade.entry_price:
+                            profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
+                        elif trade.direction < 0 and trade.entry_price:
+                            profit_loss_rate = (trade.entry_price - close_exec_price) / trade.entry_price
                         else:
                             profit_loss_rate = 0
 
@@ -431,16 +431,17 @@ class StrategyTrader(object):
                         self._stats['worst'] = min(self._stats['worst'], rate)
                         self._stats['best'] = max(self._stats['best'], rate)
 
+                    # @todo update
                     record = {
                         'id': trade.id,
-                        'ts': trade.t,
+                        'ts': trade.entry_open_time,
                         'd': trade.direction_to_str(),
-                        'p': market.format_price(trade.p),
-                        'q': market.format_quantity(trade.q),
-                        'e': market.format_quantity(trade.e),
-                        'x': market.format_quantity(trade.x),
-                        'tp': market.format_price(trade.tp),
-                        'sl': market.format_price(trade.sl),
+                        'p': market.format_price(trade.entry_price),
+                        'q': market.format_quantity(trade.order_quantity),
+                        'e': market.format_quantity(trade.exec_entry_qty),
+                        'x': market.format_quantity(trade.exec_exit_qty),
+                        'tp': market.format_price(trade.take_profit),
+                        'sl': market.format_price(trade.stop_loss),
                         'rate': rate,
                         'tf': timeframe_to_str(trade.timeframe),
                         's': trade.state_to_str(),
@@ -527,9 +528,9 @@ class StrategyTrader(object):
 
         if trade.direction > 0:
             # long case
-            ratio = close_exec_price / trade.p
-            sl_ratio = (trade.p - trade.sl) / trade.p
-            dist = (close_exec_price - trade.sl) / trade.p
+            ratio = close_exec_price / trade.entry_price
+            sl_ratio = (trade.entry_price - trade.sl) / trade.entry_price
+            dist = (close_exec_price - trade.sl) / trade.entry_price
             step = distance
 
             if distance_in_percent:
@@ -546,17 +547,17 @@ class StrategyTrader(object):
 
             # # # alternative @todo how to trigger
             # # if ratio >= 1.10:
-            # #     stop_loss = max(trade.sl, close_exec_price - (close_exec_price/trade.p*(close_exec_price-trade.p)*0.33))
+            # #     stop_loss = max(trade.sl, close_exec_price - (close_exec_price/trade.entry_price*(close_exec_price-trade.entry_price)*0.33))
 
             # # ultra large and based on the distance of the price
             # # if dist > 0.25:
-            # #     stop_loss = trade.p + (trade.p * (dist * 0.5))
+            # #     stop_loss = trade.entry_price + (trade.entry_price * (dist * 0.5))
 
         elif trade.direction < 0:
             # short case
-            ratio = close_exec_price / trade.p
-            sl_ratio = (trade.sl - trade.p) / trade.p
-            dist = (trade.sl - close_exec_price) / trade.p
+            ratio = close_exec_price / trade.entry_price
+            sl_ratio = (trade.sl - trade.entry_price) / trade.entry_price
+            dist = (trade.sl - close_exec_price) / trade.entry_price
             step = distance
 
             if distance_in_percent:

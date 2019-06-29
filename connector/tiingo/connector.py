@@ -5,14 +5,9 @@
 
 import time
 import json
-import datetime
-import base64
 import requests
 
-from instrument.instrument import Instrument
-
-from terminal.terminal import Terminal
-from config import config
+from datetime import datetime
 
 import logging
 logger = logging.getLogger('siis.connector.tiingo')
@@ -169,7 +164,7 @@ class Connector(object):
 				# # Figure out how long we need to wait.
 				# ratelimit_reset = response.headers['X-RateLimit-Reset']
 				# to_sleep = int(ratelimit_reset) - int(time.time()) + 1.0  # add 1.0 more second be we still have issues
-				# reset_str = datetime.datetime.fromtimestamp(int(ratelimit_reset)).strftime('%X')
+				# reset_str = datetime.fromtimestamp(int(ratelimit_reset)).strftime('%X')
 
 				# logger.info("Your ratelimit will reset at %s. Sleeping for %d seconds." % (reset_str, to_sleep), True)
 				time.sleep(to_sleep)

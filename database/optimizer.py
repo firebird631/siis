@@ -3,11 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Candle market DB checker/optimizer.
 
-import os
-import time
-import datetime
-import traceback
-
 import logging
 logger = logging.getLogger('siis.database.optimizer')
 

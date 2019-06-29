@@ -557,9 +557,10 @@ class Market(object):
 
         return qty
 
-    def store(self):
+    def push_price(self):
         """
-        Store the last minute of ticks data.
+        Push the last bid/ofr price, base exchange rate and timestamp.
+        Keep only TICK_PRICE_TIMEOUT of samples in memory.
         """
         for l in self._previous:
             if self._last_update_time - l['t'] > self.TICK_PRICE_TIMEOUT:
@@ -574,11 +575,12 @@ class Market(object):
             'e': self._base_exchange_rate
         })
 
-    def price_at(self, timestamp):
+    def recent_price(self, timestamp):
         """
         One minute ticks price history.
-        @todo Could use a dichotomic search.
         @return Price at timestamp or None if not found.
+
+        @todo Could use a dichotomic search.
         """
         for l in self._previous:
             if timestamp >= l['t']:
@@ -638,3 +640,13 @@ class Market(object):
 
     def clamp_leverage(self, leverage):
         return max(self._leverages, min(self.self._leverages, leverage))
+
+    #
+    # persistance
+    #
+
+    def dumps(self):
+        return {}
+
+    def loads(self, data):
+        pass

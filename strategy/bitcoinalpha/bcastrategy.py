@@ -3,11 +3,9 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Bitcoin Alpha strategy, based on crypto alpha with short additionnal and margin trading
 
-import time
-import datetime
-import copy
 import traceback
 
+from datetime import datetime, timedelta
 from terminal.terminal import Terminal
 
 from config import config
@@ -85,7 +83,7 @@ class BitcoinAlphaStrategy(Strategy):
         # pre-feed in live mode only
         Terminal.inst().info("In appliance %s retrieves last data history..." % self.name, view='status')
 
-        now = datetime.datetime.now()
+        now = datetime.now()
 
         for market_id, instrument in self._instruments.items():
             try:
@@ -94,7 +92,7 @@ class BitcoinAlphaStrategy(Strategy):
                     # query for most recent candles per timeframe
                     for timeframe in self.timeframes_config:
                         if timeframe['timeframe'] > 0:
-                            l_from = now - datetime.timedelta(seconds=timeframe['history']*timeframe['timeframe'])
+                            l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                             l_to = now
                             watcher.historical_data(instrument.symbol, timeframe['timeframe'], from_date=l_from, to_date=l_to)
 
@@ -119,8 +117,8 @@ class BitcoinAlphaStrategy(Strategy):
                 for timeframe in self.timeframes_config:
                     if timeframe['timeframe'] > 0:
                         # preload some previous candles
-                        l_from = from_date - datetime.timedelta(seconds=timeframe['history']*timeframe['timeframe'])
-                        l_to = from_date - datetime.timedelta(seconds=1)
+                        l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
+                        l_to = from_date - timedelta(seconds=1)
                         watcher.historical_data(instrument.symbol, timeframe['timeframe'], from_date=l_from, to_date=l_to)
 
                         # wait for this timeframe before processing

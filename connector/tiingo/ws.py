@@ -3,10 +3,7 @@
 # @license Copyright (c) 2019 Dream Overflow
 # tiingo.com WS client implementation
 
-import time
 import json
-import datetime
-import base64
 import websocket
 
 from terminal.terminal import Terminal

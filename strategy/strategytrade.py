@@ -57,15 +57,20 @@ class StrategyTrade(object):
 
         self._next_operation_id = 1
 
-        self._open_time = 0
-
         self.id = 0      # unique trade identifier
-        self.p = 0.0     # entry price (average)
+        self.dir = 0     # direction (1 long, -1 short)
+
+        self.op = 0.0    # ordered price (limit)
+        self.oq = 0.0    # ordered quantity
+
         self.tp = 0.0    # take-profit price
         self.sl = 0.0    # stop-loss price
-        self.dir = 0     # direction (1 long, -1 short)
-        self.t = 0       # creation timestamp
-        self.q = 0.0     # ordered quantity
+
+        self.aep = 0.0   # average entry price
+        self.axp = 0.0   # average exit price
+
+        self.eot = 0     # entry order opened timestamp
+        self.xot = 0     # exit order opened timestamp
 
         self.e = 0.0     # current filled entry quantity
         self.x = 0.0     # current filled exit quantity (a correctly closed trade must have x == f with f <= q and q > 0)
@@ -79,9 +84,6 @@ class StrategyTrade(object):
             'worst-timestamp': 0.0,
             'entry-maker': False,
             'exit-maker': False,
-            'order-limit-price': 0.0,
-            'average-entry-price': 0.0,
-            'average-exit-price': 0.0,
             'entry-fees': 0.0,
             'exit-fees': 0.0,
             'conditions': {}
@@ -111,20 +113,25 @@ class StrategyTrade(object):
         return -self.dir
 
     @property
-    def created_time(self):
-        return self.t
+    def entry_open_time(self):
+        return self.eot
 
     @property
-    def quantity(self):
-        return self.q
+    def exit_open_time(self):
+        return self.xot
 
     @property
     def order_quantity(self):
-        return self.q
+        return self.oq
 
     @property
-    def entry_price(self):
-        return self.p
+    def quantity(self):
+        """Synonym for order_quantity"""
+        return self.oq
+
+    @property  
+    def order_price(self):
+        return self.op
 
     @property
     def take_profit(self):
@@ -133,6 +140,14 @@ class StrategyTrade(object):
     @property
     def stop_loss(self):
         return self.sl
+
+    @property
+    def entry_price(self):
+        return self.aep
+
+    @property
+    def exit_price(self):
+        return self.axp
 
     @property
     def exec_entry_qty(self):
@@ -145,10 +160,6 @@ class StrategyTrade(object):
     @property
     def profit_loss(self):
         return self.pl
-
-    @property
-    def open_time(self):
-        return self._open_time
 
     @property
     def timeframe(self):
@@ -192,7 +203,7 @@ class StrategyTrade(object):
         Because of the slippage once a trade is closed deletion can only be done once all the quantity of the
         asset or the position are executed.
         """
-        if self.e >= self.q and (self.x >= self.e or self.x >= self.q):
+        if self.e >= self.oq and (self.x >= self.e or self.x >= self.oq):
             # entry fully filled and exit filled whats filled in entry
             # but some cases filled entry is a bit more than orderer (binance...), but need to compare with initial quantity
             return True
@@ -263,14 +274,14 @@ class StrategyTrade(object):
 
         @note created timestamp t must be valid else it will timeout every time.
         """
-        return (self._entry_state == StrategyTrade.STATE_OPENED) and (self.e == 0) and (self.t > 0) and ((timestamp - self.t) >= timeout)
+        return (self._entry_state == StrategyTrade.STATE_OPENED) and (self.e == 0) and (self.eot > 0) and ((timestamp - self.eot) >= timeout)
 
     def is_valid(self, timestamp, validity):
         """
         Return true if the trade is not expired (signal still acceptable) and entry quantity not fully filled.
         """
         return ((self._entry_state == StrategyTrade.STATE_OPENED or self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED) and
-                (self.e < self.q) and ((timestamp - self.created_time) <= validity))
+                (self.e < self.oq) and ((timestamp - self.entry_open_time) <= validity))
 
     def cancel_open(self, trader):
         """
@@ -352,7 +363,7 @@ class StrategyTrade(object):
         elif self._exit_state == StrategyTrade.STATE_REJECTED and self.e > self.x:
             # an exit order is rejectect but the exit quantity is not fully filled (x < e), this case must be managed
             return 'problem'
-        elif self.e < self.q and (self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED or self._entry_state == StrategyTrade.STATE_OPENED):
+        elif self.e < self.oq and (self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED or self._entry_state == StrategyTrade.STATE_OPENED):
             # entry order filling until be fully filled or closed (cancel the rest of the entry order, exiting)
             return 'filling'
         elif self.e > 0 and self.x < self.e and (self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED or self._exit_state == StrategyTrade.STATE_OPENED):
@@ -361,7 +372,7 @@ class StrategyTrade(object):
         elif self.e > 0 and self.x >= self.e:
             # exit quantity reached the entry quantity the trade is closed
             return 'closed'
-        elif self.e >= self.q:
+        elif self.e >= self.oq:
             # entry quantity reach ordered quantity the entry is filled
             return 'filled'
         elif self._entry_state == StrategyTrade.STATE_CANCELED and self.e <= 0: 
@@ -457,15 +468,16 @@ class StrategyTrade(object):
             'timeframe': self._timeframe,  # self.timeframe_to_str(),
             'user-trade': self._user_trade,
             'operations': [operation.dumps() for operation in self._operations],
-            'open-time': self._open_time,  # self.dump_timestamp(self._open_time),
-            'entry-price': self.p,
+            'avg-entry-price': self.aep,
+            'avg-exit-price': self.axp,
             'take-profit-price': self.tp,
             'stop-loss-price': self.sl,
             'direction': self.dir, # self.direction_to_str(),
-            'created-time': self.t,  # self.dump_timestamp(self.t),
-            'order-quantity': self.q,
-            'filled-entry-quantity': self.e,
-            'filled-exit-quantity': self.x,
+            'entry-open-time': self.eot,  # self.dump_timestamp(self.eot),
+            'exit-open-time': self.xot,  # self.dump_timestamp(self.xot),
+            'order-qty': self.oq,
+            'filled-entry-qty': self.e,
+            'filled-exit-qty': self.x,
             'profit-loss-rate': self.pl,
             'statistics': self._stats
         }
@@ -492,16 +504,22 @@ class StrategyTrade(object):
         #     self._operations.append(operation)
         #     self._next_operation_id = max(self._next_operation_id, operation.id)
 
-        self._open_time = data.get('open-time')  # self.load_timestamp(data.get('open-datetime'))
-        self.p = data.get('entry-price', 0.0)
-        self.tp = data.get('take-profit-price', None)
-        self.sl = data.get('stop-loss-price', None)
         self.dir = data.get('direction', 0)  # self.direction_from_str(data.get('direction', ''))
 
-        self.t = data.get('created-time', 0)  # self.load_timestamp(data.get('created-datetime'))
-        self.q = data.get('order-quantity', 0.0)
-        self.e = data.get('filled-entry-quantity', 0.0)
-        self.x = data.get('filled-exit-quantity', 0.0)
+        self.oq = data.get('order-qty', 0.0)
+
+        self.tp = data.get('take-profit-price', None)
+        self.sl = data.get('stop-loss-price', None)
+
+        self.aep = data.get('avg-entry-price', 0.0)
+        self.axp = data.get('avg-exit-price', 0.0)
+       
+        self.eot = data.get('entry-open-time', 0)  # self.load_timestamp(data.get('entry-open-datetime'))
+        self.xot = data.get('exit-open-time', 0)  # self.load_timestamp(data.get('exit-open-datetime'))
+
+        self.e = data.get('filled-entry-qty', 0.0)
+        self.x = data.get('filled-exit-qty', 0.0)
+
         self.pl = data.get('profit-loss-rate', 0.0)
 
         self._stats = data.get('statistics', {
@@ -511,9 +529,6 @@ class StrategyTrade(object):
             'worst-timestamp': 0.0,
             'entry-maker': False,
             'exit-maker': False,
-            'order-limit-price': 0.0,
-            'average-entry-price': 0.0,
-            'average-exit-price': 0.0,
             'entry-fees': 0.0,
             'exit-fees': 0.0,
             'conditions': {}
@@ -556,9 +571,6 @@ class StrategyTrade(object):
 
     def worst_price_timestamp(self):
         return self._stats['worst-timestamp']
-
-    def order_limit_price(self):
-        return self._stats['order-limit-price']
 
     def get_stats(self):
         return self._stats

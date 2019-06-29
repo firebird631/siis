@@ -3,8 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Instrument symbol
 
-import datetime
-
+from datetime import datetime, timedelta
 from common.utils import UTC, timeframe_to_str
 
 import logging
@@ -1139,12 +1138,12 @@ class Instrument(object):
             return int(timestamp / tf) * tf
         elif tf == 7*24*60*60:
             # must find the UTC first day of week
-            dt = datetime.datetime.utcfromtimestamp(timestamp)
-            dt = dt.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC()) - datetime.timedelta(days=dt.weekday())
+            dt = datetime.utcfromtimestamp(timestamp)
+            dt = dt.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC()) - timedelta(days=dt.weekday())
             return dt.timestamp()
         elif tf == 30*24*60*60:
             # replace by first day of month at 00h00 UTC
-            dt = datetime.datetime.utcfromtimestamp(timestamp)
+            dt = datetime.utcfromtimestamp(timestamp)
             dt = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
             return dt.timestamp()
 

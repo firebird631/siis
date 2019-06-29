@@ -7,7 +7,8 @@ import http.client
 import urllib
 import json
 import time
-import datetime
+
+from datetime import datetime
 
 from watcher.watcher import Watcher
 from watcher.author import Author
@@ -104,7 +105,7 @@ class OneBrokerWatcher(Watcher):
 				Terminal.inst().error("API error getting %s user %s trades !" % (self.name, trader_id))
 				continue
 
-			server_date = datetime.datetime.strptime(data['server_time'], "%Y-%m-%dT%H:%M:%S.%fZ")
+			server_date = datetime.strptime(data['server_time'], "%Y-%m-%dT%H:%M:%S.%fZ")
 
 			user_id = data['response']['user_id']
 			user_name = data['response']['username']
@@ -187,9 +188,9 @@ class OneBrokerWatcher(Watcher):
 				continue
 
 			try:
-				server_date = datetime.datetime.strptime(data['server_time'], "%Y-%m-%dT%H:%M:%S.%fZ")
+				server_date = datetime.strptime(data['server_time'], "%Y-%m-%dT%H:%M:%S.%fZ")
 			except:
-				server_date = datetime.datetime.strptime(data['server_time'], "%Y-%m-%dT%H:%M:%SZ")
+				server_date = datetime.strptime(data['server_time'], "%Y-%m-%dT%H:%M:%SZ")
 
 			open_trades = data['response']['trading_ideas_open']
 			closed_trades = data['response']['trading_ideas_closed']
@@ -199,7 +200,7 @@ class OneBrokerWatcher(Watcher):
 				position = Position(self, position_id, author)
 
 				direction = Position.LONG if t['direction'] == 'long' else Position.SHORT
-				date_created = datetime.datetime.strptime(t['date_created'], "%Y-%m-%dT%H:%M:%SZ") # .%fZ")
+				date_created = datetime.strptime(t['date_created'], "%Y-%m-%dT%H:%M:%SZ") # .%fZ")
 				is_open = t['is_open']
 
 				if not is_open:
@@ -314,7 +315,7 @@ class OneBrokerWatcher(Watcher):
 
 				profit_loss_percent = float(t['profit_loss_percent'])
 				exit_price = float(p['exit_price']) if p['exit_price'] is not None else None
-				date_closed = datetime.datetime.strptime(t['date_closed'], "%Y-%m-%dT%H:%M:%SZ") # .%fZ")
+				date_closed = datetime.strptime(t['date_closed'], "%Y-%m-%dT%H:%M:%SZ") # .%fZ")
 
 				position.exit(exit_price, date_closed)
 				position.profit_loss_rate = profit_loss_percent * 0.01

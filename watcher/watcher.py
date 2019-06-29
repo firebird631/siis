@@ -4,7 +4,6 @@
 # watcher interface
 
 import time
-import datetime
 import collections
 
 from common.runnable import Runnable

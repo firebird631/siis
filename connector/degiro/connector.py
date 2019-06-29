@@ -3,10 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # HTTPS connector for degiro.nl
 
-import time
-import json
-import datetime
-import base64
 import requests
 
 from terminal.terminal import Terminal

@@ -3,12 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Simple social copy strategy
 
-import time
-import datetime 
-
-from terminal.terminal import Terminal
-
-from config import config
 from strategy.strategy import Strategy
 
 

@@ -7,9 +7,10 @@ import os
 import json
 import shutil
 import time
-import datetime
 import traceback
 import zipfile
+
+from datetime import datetime
 
 from common.utils import UTC
 from watcher.fetcher import Fetcher
@@ -103,10 +104,10 @@ class HistDataFetcher(Fetcher):
         # get all trades and append them into a file
         try:
             if from_date is None:
-                from_date = datetime.datetime.now()
+                from_date = datetime.now()
 
             if to_date is None:
-                to_date = datetime.datetime.now()
+                to_date = datetime.now()
 
             cur_date = from_date
             file_type = self.FILE_NONE
@@ -152,10 +153,10 @@ class HistDataFetcher(Fetcher):
 
         try:
             if from_date is None:
-                from_date = datetime.datetime.now()
+                from_date = datetime.now()
 
             if to_date is None:
-                to_date = datetime.datetime.now()
+                to_date = datetime.now()
 
             cur_date = from_date
 
@@ -247,12 +248,12 @@ class HistDataFetcher(Fetcher):
 
     def parse_tick(self, row):
         parts = row.rstrip('\n').split(',')
-        ts = int(datetime.datetime.strptime(parts[0]+'000', '%Y%m%d %H%M%S%f').replace(tzinfo=UTC()).timestamp() * 1000)
+        ts = int(datetime.strptime(parts[0]+'000', '%Y%m%d %H%M%S%f').replace(tzinfo=UTC()).timestamp() * 1000)
 
         return ts, parts[1], parts[2], parts[3]
 
     def parse_min(self, row):
         parts = row.rstrip('\n').split(';')
-        ts = int(datetime.datetime.strptime(parts[0], '%Y%m%d %H%M%S').replace(tzinfo=UTC()) * 1000)
+        ts = int(datetime.strptime(parts[0], '%Y%m%d %H%M%S').replace(tzinfo=UTC()) * 1000)
 
         return ts, parts[1], parts[2], parts[3], parts[4], parts[1], parts[2], parts[3], parts[4], parts[5]

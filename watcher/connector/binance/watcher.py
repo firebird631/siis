@@ -6,10 +6,11 @@
 import re
 import json
 import time
-import datetime
 import traceback
 import bisect
 import math
+
+from datetime import datetime
 
 from watcher.watcher import Watcher
 from notifier.signal import Signal
@@ -741,5 +742,5 @@ class BinanceWatcher(Watcher):
             d = self.connector.price_for_at(market_id, timestamp)
             return (float(d[0][1]) + float(d[0][4]) + float(d[0][3])) / 3.0
         except Exception as e:
-            logger.error("Cannot found price history for %s at %s" % (market_id, datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
+            logger.error("Cannot found price history for %s at %s" % (market_id, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
             return 0.0

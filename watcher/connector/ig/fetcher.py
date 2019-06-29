@@ -6,9 +6,9 @@
 import urllib
 import json
 import time
-import datetime
 import traceback
 
+from datetime import datetime
 from watcher.fetcher import Fetcher
 
 from config import config
@@ -100,7 +100,7 @@ class IGFetcher(Fetcher):
 		prices = data.get('prices', [])
 
 		for price in prices:
-			timestamp = datetime.datetime.strptime(price['snapshotTime'], '%Y:%m:%d-%H:%M:%S').timestamp()
+			timestamp = datetime.strptime(price['snapshotTime'], '%Y:%m:%d-%H:%M:%S').timestamp()
 
 			if price.get('highPrice')['bid'] is None and price.get('highPrice')['ask'] is None:
 				# ignore empty candles

@@ -7,7 +7,8 @@ import http.client
 import urllib
 import json
 import time
-import datetime
+
+from datetime import datetime
 
 from notifier.notifiable import Notifiable
 from notifier.signal import Signal
@@ -508,7 +509,7 @@ class OneBrokerTrader(Trader):
                 position.profit_loss = float(pos['profit_loss'])
                 position.profit_loss_rate = float(pos['profit_loss_percent']) * 0.01
                 position.market_close = pos['market_close']
-                position.created_time = datetime.datetime.strptime(pos['date_created'], "%Y-%m-%dT%H:%M:%SZ").timestamp() # .%fZ")
+                position.created_time = datetime.strptime(pos['date_created'], "%Y-%m-%dT%H:%M:%SZ").timestamp() # .%fZ")
 
                 # delete the order
                 del self._orders[pos['order_id']]
@@ -539,7 +540,7 @@ class OneBrokerTrader(Trader):
                     position.entry_price = pos['entry_price']
                     position.quantity = float(pos['value'])
                     position.shared = pos['shared']
-                    position.created_time = datetime.datetime.strptime(pos['date_created'], "%Y-%m-%dT%H:%M:%SZ").timestamp() # .%fZ")
+                    position.created_time = datetime.strptime(pos['date_created'], "%Y-%m-%dT%H:%M:%SZ").timestamp() # .%fZ")
 
             elif order is None and position is None:
                 # externaly created position or with auto copy of plateforme
@@ -571,7 +572,7 @@ class OneBrokerTrader(Trader):
                 position.profit_loss = float(pos['profit_loss'])
                 position.profit_loss_rate = float(pos['profit_loss_percent']) * 0.01
                 position.market_close = pos['market_close']
-                position.created_time = datetime.datetime.strptime(pos['date_created'], "%Y-%m-%dT%H:%M:%SZ").timestamp() # .%fZ")
+                position.created_time = datetime.strptime(pos['date_created'], "%Y-%m-%dT%H:%M:%SZ").timestamp() # .%fZ")
 
                 # insert the position
                 self._positions[position.position_id] = position

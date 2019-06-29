@@ -4,15 +4,8 @@
 # HTTPS+WS connector for ig.com
 
 import requests
-import urllib
-import json
-import datetime
-import base64
 
-from terminal.terminal import Terminal
 from instrument.instrument import Instrument
-
-from config import config
 
 from .rest import IGService
 

@@ -5,10 +5,11 @@
 
 import json
 import time
-import datetime
 import copy
 import base64
 import uuid
+
+from datetime import datetime
 
 from notifier.notifiable import Notifiable
 from notifier.signal import Signal
@@ -81,7 +82,7 @@ class PaperTraderHistoryEntry(object):
         Return a string report.
         """
         direction = "LONG" if self._order.direction == Position.LONG else "SHORT"
-        at = datetime.datetime.fromtimestamp(self._order.transact_time).strftime('%Y-%m-%dT%H:%M:%S.%fZ') if self._order.transact_time else ""
+        at = datetime.fromtimestamp(self._order.transact_time).strftime('%Y-%m-%dT%H:%M:%S.%fZ') if self._order.transact_time else ""
 
         if self._gain_loss_pip is not None:
             return '\t'.join((str(self._uid), "EXIT", direction, self._order.symbol, str(self._order.quantity), at,
@@ -108,7 +109,7 @@ class PaperTraderHistory(object):
         self._history = []
 
         self._live_rate = {}  # live rate in percent per market
-        self._create_time = datetime.datetime.now()
+        self._create_time = datetime.now()
 
     def add(self, entry):
         if entry:
@@ -573,7 +574,7 @@ class PaperTrader(Trader):
     def create_asset(self, asset_name, quantity, price, quote, precision=8):
         asset = Asset(self, asset_name, precision)
         asset.set_quantity(0, quantity)
-        asset.update_price(datetime.datetime.now(), 0, price, quote)
+        asset.update_price(datetime.now(), 0, price, quote)
 
         self.lock()
         self._assets[asset_name] = asset
@@ -1242,6 +1243,7 @@ class PaperTrader(Trader):
 
             position.entry(order.direction, order.symbol, order.quantity)
             position.leverage = order.leverage
+
             position.created_time = self.timestamp
 
             account_currency = self.account.currency

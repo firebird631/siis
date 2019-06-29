@@ -6,7 +6,6 @@
 import os
 import json
 import time
-import datetime
 import threading
 import copy
 import traceback
@@ -133,8 +132,8 @@ class Database(object):
         self._pending_user_trade_insert = []
         self._pending_user_trade_select = []
 
-        self._pending_user_apps_insert = []
-        self._pending_user_apps_select = []
+        self._pending_strategy_traders_insert = []
+        self._pending_strategy_traders_select = []
 
         self._last_tick_flush = 0
         self._last_ohlc_flush = 0

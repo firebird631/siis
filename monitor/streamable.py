@@ -5,7 +5,6 @@
 
 import json
 import time
-import datetime	
 
 from terminal.terminal import Terminal
 from .service import MonitorService
@@ -302,11 +301,11 @@ class StreamMemberTradeList(StreamMember):
 				'os': trade.entry_state,
 				'es': trade.exit_state,
 				'u': trade.timeframe,
-				'p': trade.p,
+				'p': trade.aep,
 				'd': trade.dir,
-				'q': trade.q,
-				'e': trade.e,
-				'x': trade.x,
+				'q': trade.q,  # order qty
+				'e': trade.e,  # filled entry qty
+				'x': trade.x,  # filled exit qty
 				'sl': trade.sl,
 				'tp': trade.tp
 			})

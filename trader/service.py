@@ -4,9 +4,9 @@
 # service worker
 
 import time
-import datetime
 import threading
 
+from datetime import datetime, timedelta
 from importlib import import_module
 
 from config import utils
@@ -219,7 +219,7 @@ class TraderService(Service):
 
             # here we only assume that because of what 1broker return to us but should be timestamp in the model
             position_timestamp = time.mktime(signal.data.entry_date.timetuple())
-            entry_date = signal.data.entry_date + datetime.timedelta(hours=2)
+            entry_date = signal.data.entry_date + timedelta(hours=2)
 
             if now - position_timestamp > TraderService.MAX_COPY_ENTRY_DELAY:
                 return
@@ -241,7 +241,7 @@ class TraderService(Service):
 
             # here we only assume that because of what 1broker return to us but should be timestamp in the model
             position_timestamp = time.mktime(signal.data.exit_date.timetuple())
-            exit_date = signal.data.exit_date + datetime.timedelta(hours=2)
+            exit_date = signal.data.exit_date + timedelta(hours=2)
 
             if now - position_timestamp > TraderService.MAX_COPY_ENTRY_DELAY:
                 return
@@ -262,13 +262,13 @@ class TraderService(Service):
                 elif trader.name == signal.data.watcher.name:
                     trader.on_exit_position(signal.data, command_trigger)
 
-        # elif signal.signal_type == Signal.SIGNAL_SOCIAL_ORDER:
-        #   # @deprecated @todo its from social trading...
-        #   # 30 sec max slippage @todo might be configured
-        #   if now - float(signal.data['timestamp']) > TraderService.MAX_ORDER_COPY_SLIPPAGE:
-        #       return          
+        elif signal.signal_type == Signal.SIGNAL_SOCIAL_ORDER:
+            # @deprecated @todo its from social trading...
+            # MAX_ORDER_COPY_SLIPPAGE sec max slippage
+            if now - float(signal.data['timestamp']) > TraderService.MAX_ORDER_COPY_SLIPPAGE:
+                return          
 
-        #   order_date = datetime.datetime.fromtimestamp(float(signal.data['timestamp']))
+        #   order_date = datetime.fromtimestamp(float(signal.data['timestamp']))
         #   direction = 'long' if signal.data['direction'] == Position.LONG else 'short' if signal.data['direction'] == Position.SHORT else ''
 
         #   if signal.data['direction'] == Position.LONG or signal.data['direction'] == Position.SHORT:

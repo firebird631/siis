@@ -4,11 +4,12 @@
 # Trader base class
 
 import time
-import datetime
 import copy
 import base64
 import uuid
 import collections
+
+from datetime import datetime
 
 from notifier.notifiable import Notifiable
 from notifier.signal import Signal
@@ -40,7 +41,6 @@ class Trader(Runnable):
     @todo tabulated might support columns shifting from left, and row offet to be displayed better in the terminal
         after having added the tabulated support directly to terminal
 
-    @deprecated Last chance stop-loss at trader stage is probably no longer useful.
     @deprecated Older social copy methods that must be move to social strategy (to be continued, very low priority).
     """
 
@@ -112,6 +112,10 @@ class Trader(Runnable):
     @property
     def name(self):
         return self._name
+
+    @property
+    def watcher(self):
+        return self._watcher
 
     @property
     def activity(self):
@@ -457,7 +461,7 @@ class Trader(Runnable):
                         margin_factor = 1.0 / p.leverage if p.leverage else market.margin_factor
                         margin = p.margin_cost(market) / market.base_exchange_rate * margin_factor
 
-                        created_date = datetime.datetime.fromtimestamp(p.created_time).strftime('%Y-%m-%d %H:%M:%S') if p.created_time else "???"
+                        created_date = datetime.fromtimestamp(p.created_time).strftime('%Y-%m-%d %H:%M:%S') if p.created_time else "???"
 
                         Terminal.inst().info("Quantity %s / Margin %s (x%s)" % (p.quantity, margin, 1.0 / margin_factor), view='content')
                         Terminal.inst().info("Date %s / Entry price %s / Take profit %s / Current exit price %s" % (
@@ -961,11 +965,15 @@ class Trader(Runnable):
     def on_order_traded(self, market_id, order_data, ref_order_id):
         order = self._orders.get(order_data['id'])
         if order:
-            # update executed qty (filled could be not available from some APIs but having cumulative-filled)
-            if order_data.get('filled') is not None:
-                order.executed += order_data['filled']
-            elif order_data.get('cumulative-filled') is not None:
+            # update executed qty (depending of the implementation filled or cumulative-filled or both are present)
+            if order_data.get('cumulative-filled') is not None:
                 order.executed = order_data['cumulative-filled']
+            elif order_data.get('filled') is not None:
+                order.executed += order_data['filled']
+
+            if order_data.get('timestamp'):
+                # keep last transact_time
+                order.transact_time = order_data['timestamp']
 
     #
     # asset slots
@@ -1019,28 +1027,8 @@ class Trader(Runnable):
         if vol24h_quote is not None:
             market.vol24h_quote = vol24h_quote
 
-        # keep the last minute of ticks prices
-        market.store()
-
-    # @Runnable.mutexed
-    # def set_market_info(self, market_id, symbol, quote, base_exchange_rate,
-    #       value_per_pip, one_pip_means, contract_size, lot_size, margin_factor=1.0):
-    #   """
-    #   Manually set/update constant of a market.
-    #   """
-    #   market = self._markets.get(market_id)
-    #   if market is None:
-    #       market = Market(market_id, symbol)
-    #       self._markets[market_id] = market
-
-    #   market.set_quote(quote, quote)
-
-    #   market.base_exchange_rate = base_exchange_rate
-    #   market.value_per_pip = value_per_pip
-    #   market.one_pip_means = one_pip_means
-    #   market.contract_size = contract_size
-    #   market.lot_size = lot_size
-    #   market.margin_factor = margin_factor
+        # push last price to keep a local cache of history
+        market.push_price()
 
     #
     # utils
@@ -1056,23 +1044,23 @@ class Trader(Runnable):
         if timestamp:
             market = self.market(symbol)
             if market:
-                # lookup into the stored recent ticks
-                price = market.price_at(timestamp)
+                # lookup into the memory local cache
+                price = market.recent_price(timestamp)
 
             if price is None and self._watcher:
                 # query the REST API
                 price = self._watcher.price_history(symbol, timestamp)
 
             if price is None:
-                logger.error("Trader %s cannot found price history for %s at %s" % (self._name, market_id, datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
+                logger.warning("Trader %s cannot found price history for %s at %s" % (self._name, market_id, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
         else:
             # last price
             market = self.market(symbol)
             if market:
                 price = market.price
 
-            # if price is None:
-            #   logger.error("Trader %s cannot found last price for %s" % (self._name, symbol,))
+            if price is None:
+                logger.warning("Trader %s cannot found last price for %s because no market was found" % (self._name, symbol,))
 
         return price
 

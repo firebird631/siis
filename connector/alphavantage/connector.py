@@ -5,10 +5,10 @@
 
 import time
 import json
-import datetime
 import base64
 import requests
 
+from datetime import datetime
 from instrument.instrument import Instrument
 
 from terminal.terminal import Terminal
@@ -141,7 +141,7 @@ class Connector(object):
 				# # Figure out how long we need to wait.
 				# ratelimit_reset = response.headers['X-RateLimit-Reset']
 				# to_sleep = int(ratelimit_reset) - int(time.time()) + 1.0  # add 1.0 more second be we still have issues
-				# reset_str = datetime.datetime.fromtimestamp(int(ratelimit_reset)).strftime('%X')
+				# reset_str = datetime.fromtimestamp(int(ratelimit_reset)).strftime('%X')
 
 				# logger.info("Your ratelimit will reset at %s. Sleeping for %d seconds." % (reset_str, to_sleep))
 				time.sleep(to_sleep)
@@ -285,6 +285,6 @@ class Connector(object):
 
 	def parse_datetime(self, ts):
 		if ' ' in ts:
-			return int(datetime.datetime.strptime(ts, '%Y-%m-%d %H:%M:%S').timestamp()*1000)
+			return int(datetime.strptime(ts, '%Y-%m-%d %H:%M:%S').timestamp()*1000)
 		else:
-			return int(datetime.datetime.strptime(ts, '%Y-%m-%d').timestamp()*1000)
+			return int(datetime.strptime(ts, '%Y-%m-%d').timestamp()*1000)
