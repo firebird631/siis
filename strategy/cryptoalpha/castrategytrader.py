@@ -236,12 +236,11 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             #         Terminal.inst().message("Reject this entry ! %s" % str(retained_entry), view='default')
             #         continue
 
-            # TDST does not give us a stop, ok lets find one
-            # if not entry.sl:
-            #     # ATR stop-loss
-            #     sl = self.timeframes[entry.timeframe].atr.stop_loss(entry.dir)
-            #     if sl < last_price:
-            #         entry.sl = sl
+            # TDST does not give us a stop, ok lets find one using parent ATR
+            if not entry.sl:
+                sl = self.timeframes[parent_entry_tf].atr.stop_loss(entry.dir)
+                if sl < last_price:
+                    entry.sl = sl
 
             retained_entries.append(entry)
 
@@ -333,6 +332,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                 #
                 # exit trade if an exit signal retained
+                #
+
                 if retained_exit:
                     self.process_exit(timestamp, trade, retained_exit.price)
 
