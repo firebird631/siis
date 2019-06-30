@@ -1,0 +1,1 @@
+# todo implement the discord notifier here, but using the discord API to have more than the limited features of the webhook

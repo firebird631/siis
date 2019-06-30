@@ -1,0 +1,1 @@
+# todo implement the hangout notifier here, using the google API

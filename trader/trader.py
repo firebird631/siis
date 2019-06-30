@@ -23,6 +23,7 @@ from common.runnable import Runnable
 from common.utils import matching_symbols_set
 
 from terminal.terminal import Terminal
+from terminal import charmap
 from config import config
 
 from tabulate import tabulate
@@ -397,11 +398,6 @@ class Trader(Runnable):
 
                 Terminal.inst().notice("List %i markets for %s" % (len(self._markets), self._name), view='content')
 
-                # tabular formated text
-                # arr1 = self.formatted_markets(style=Terminal.inst().style())
-
-                # Terminal.inst().info(arr1, view='content')
-
                 columns, table = self.markets_table(style=Terminal.inst().style())
                 Terminal.inst().table(columns, table)
 
@@ -411,10 +407,8 @@ class Trader(Runnable):
 
                 Terminal.inst().notice("List %i markets tickers for %s" % (len(self._markets), self._name), view='content')
 
-                # tabular formated text
-                arr1 = self.formatted_markets_tickers(style=Terminal.inst().style())
-
-                Terminal.inst().info(arr1, view='content')
+                columns, table = self.markets_tickers_table(style=Terminal.inst().style())
+                Terminal.inst().table(columns, table)
         
         elif command_type == Trader.COMMAND_LIST_POSITIONS:
             # display the list of ALL positions of the account (managed or not by a strategy)
@@ -425,11 +419,8 @@ class Trader(Runnable):
                 Terminal.inst().notice("List %i positions for %s" % (len(self._positions.items()), self._name), view='content')
 
                 if 0:  # @todo  
-                    # tabular formated text
-                    arr1, arr2 = self.formatted_positions(style=Terminal.inst().style())
-
-                    Terminal.inst().info(arr1, view='content')
-                    Terminal.inst().info(arr2, view='content')
+                    columns, table = self.positions_table(style=Terminal.inst().style())
+                    Terminal.inst().table(columns, table)
                 else:
                     self.lock()
 
@@ -522,8 +513,8 @@ class Trader(Runnable):
             if self.connected and self._account:
                 Terminal.inst().notice("Account details for %s" % (self._name,), view='content')
                
-                arr = self.formatted_account(style=Terminal.inst().style())
-                Terminal.inst().info(arr, view='content')
+                columns, table = self.account_table(style=Terminal.inst().style())
+                Terminal.inst().table(columns, table)
 
         elif command_type == Trader.COMMAND_INFO:
             # info on the appliance
@@ -1072,31 +1063,33 @@ class Trader(Runnable):
         return []
 
     #
-    # display formatters
+    # data tables
     #
 
-    def markets_table(self, style=''):
+    def markets_table(self, style='', offset=None, limit=None, col_ofs=None):
         """
         Returns a table of any followed markets.
         """
-        markets = []
-        symbols = []
-        rates = []
-        types = []
-        status = []
-        units = []
-        pip_means = []
-        per_pips = []
-        lot_sizes = []
-        contract_sizes = []
-
-        columns = ('Market', 'Symbol', 'Rate', 'Type', 'Status', 'Unit', 'PipMean', 'PerPip', 'Lot', 'Contract')
+        columns = ('Market', 'Symbol', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract')
         data = []
 
         self.lock()
 
-        for k, market in self._markets.items():
-            data.append((
+        markets = list(self._markets.values())
+
+        if offset is None:
+            offset = 0
+
+        if limit is None:
+            limit = len(markets)
+
+        limit = offset + limit
+
+        markets.sort(key=lambda x: x.market_id)
+        markets = markets[offset:limit]
+
+        for market in markets:
+            row = (
                 market.market_id,
                 market.symbol,
                 str("%.8f" % market.base_exchange_rate).rstrip('0').rstrip('.'),
@@ -1107,131 +1100,55 @@ class Trader(Runnable):
                 str("%.8f" % market.value_per_pip).rstrip('0').rstrip('.'),
                 str("%.8f" % market.lot_size).rstrip('0').rstrip('.'),
                 str("%.8f" % market.contract_size).rstrip('0').rstrip('.'))
-            )
+
+            data.append(row[col_ofs:])
 
         self.unlock()
 
-        return columns, data
+        return columns[col_ofs:], data
 
-    def formatted_markets(self, style=''):
+    def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None):
         """
-        Returns a dict of any followed markets.
+        Returns a table of any followed markets tickers.
         """
-        markets = []
-        symbols = []
-        rates = []
-        types = []
-        status = []
-        units = []
-        pip_means = []
-        per_pips = []
-        lot_sizes = []
-        contract_sizes = []
+        columns = ('Market', 'Symbol', 'Bid', 'Ofr', 'Spread', 'Vol24h base', 'Vol24h quote')
+        data = []
 
         self.lock()
 
-        for k, market in self._markets.items():
-            markets.append(market.market_id)
-            symbols.append(market.symbol)
-            rates.append(str("%.8f" % market.base_exchange_rate).rstrip('0').rstrip('.'))
-            types.append(market.market_type_str())
-            units.append(market.unit_type_str())
-            status.append(market.is_open)
-            pip_means.append(str("%.8f" % market.one_pip_means).rstrip('0').rstrip('.'))
-            per_pips.append(str("%.8f" % market.value_per_pip).rstrip('0').rstrip('.'))
-            lot_sizes.append(str("%.8f" % market.lot_size).rstrip('0').rstrip('.'))
-            contract_sizes.append(str("%.8f" % market.contract_size).rstrip('0').rstrip('.'))
+        markets = list(self._markets.values())
+
+        if offset is None:
+            offset = 0
+
+        if limit is None:
+            limit = len(markets)
+
+        limit = offset + limit
+
+        markets.sort(key=lambda x: x.market_id)
+        markets = markets[offset:limit]      
+        
+        for market in markets:
+            row = (
+                market.market_id,
+                market.symbol,
+                market.format_price(market.bid, True, False),
+                market.format_price(market.ofr, True, False),
+                market.format_price(market.spread, True, False),
+                market.format_quantity(market.vol24h_base) if market.vol24h_base else charmap.HOURGLASS,
+                ("%.2f" % market.vol24h_quote) if market.vol24h_quote else charmap.HOURGLASS)
+
+            data.append(row[col_ofs:])
 
         self.unlock()
 
-        df = {
-            'Market': markets,
-            'Symbol': symbols,
-            'Rate': rates,
-            'Type': types,
-            'Status': status,
-            'Unit': units,
-            'PipMean': pip_means,
-            'PerPip': per_pips,
-            'Lot': lot_sizes,
-            'Contract': contract_sizes
-        }
-
-        arr = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        return arr
-
-    def formatted_markets_tickers(self, style=''):
-        """
-        Returns a table of all tickers.
-        """
-        markets = []
-        symbols = []
-        bids = []
-        ofrs = []
-        spreads = []
-        vol24bs = []
-        vol24qs = []
-
-        self.lock()
-
-        for k, market in self._markets.items():
-            markets.append(market.market_id)
-            symbols.append(market.symbol)
-            bids.append(market.format_price(market.bid, True, True))
-            ofrs.append(market.format_price(market.ofr, True, True))
-            spreads.append(market.format_price(market.spread, True, True))
-            vol24bs.append("%s%s" % (market.vol24h_base, market.base_display or market.base_symbol) if market.vol24h_base else "")
-            vol24qs.append("%s%s" % (market.vol24h_quote, market.quote_display or market.quote_symbol) if market.vol24h_quote else "")
-
-        self.unlock()
-
-        df = {
-            'Market': markets,
-            'Symbol': symbols,
-            'Bid': bids,
-            'Ofr': ofrs,
-            'Spread': spreads,
-            'Vol24h base': vol24bs,
-            'Vol24h quote': vol24qs,
-        }
-
-        arr = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        return arr
-
-    def formatted_positions(self, style=''):
-        """
-        Retuns a table of the active positions.
-        @todo
-        """
-        markets = []
-
-        self.lock()
-
-        for k, position in self._positions.items():
-            markets.append(market._symbol)
-            # @todo
-
-        self.unlock()
-  
-        df = {
-            'Market': markets,
-        }
-
-        arr1 = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        df = {
-            'Market': markets,
-        }
-
-        arr2 = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        return arr1, arr2
+        return columns[col_ofs:], data
 
     def formatted_assets(self, style=''):
         """
         Retuns a table of the non empty assets.
+        @todo as data table
         """
         assets = []
         frees = []
@@ -1401,6 +1318,7 @@ class Trader(Runnable):
         Return a table of the actives orders.
 
         @todo To be continued.
+        @todo as data table
         """
         symbols = []
         orders_types = []
@@ -1433,40 +1351,55 @@ class Trader(Runnable):
 
         return arr
 
-    def formatted_account(self, style=''):
+    def account_table(self, style='', offset=None, limit=None, col_ofs=None):
         """
-        Returns a table containing the detail of the account.
+        Returns a table of any followed markets.
         """
+        columns = ('Account', 'Username', 'Email', 'Balance', 'Margin balance', 'Net wort', 'Risk limit', 'Unrealized P/L')
+        data = []
+
         self.lock()
 
-        if self._account.currency != self._account.alt_currency:
-            df = {
-                'Account': [self._account.name, ''],
-                'Username': [self._account.username, ''],
-                'Email': [self._account.email, ''],
-                'Balance': [self.account.format_price(self._account.balance, False, True), self.account.format_price(self._account.balance * self._account.currency_ratio, True, True)],
-                'Margin balance': [self.account.format_price(self._account.margin_balance, False, True), self.account.format_price(self._account.margin_balance * self._account.currency_ratio, True, True)],
-                'Net worth': [self.account.format_price(self._account.net_worth, False, True), self.account.format_price(self._account.net_worth * self._account.currency_ratio, False, True)],
-                'Risk limit': [self.account.format_price(self._account.risk_limit, False, True), ""],
-                'Unrealized P/L': [self.account.format_price(self._account.profit_loss, False, True), self.account.format_price(self._account.profit_loss * self._account.currency_ratio, True, True)],
-            }
-        else:
-            df = {
-                'Account': [self._account.name],
-                'Username': [self._account.username],
-                'Email': [self._account.email],
-                'Balance': [self.account.format_price(self._account.balance, False, True)],
-                'Margin balance': [self.account.format_price(self._account.margin_balance, False, True)],
-                'Net worth': [self.account.format_price(self._account.net_worth, False, True)],
-                'Risk limit': [self.account.format_price(self._account.risk_limit, False, True)],
-                'Unrealized P/L': [self.account.format_price(self._account.profit_loss, False, True)],
-            }
+        if offset is None:
+            offset = 0
 
+        if limit is None:
+            limit = 2 if self._account.currency != self._account.alt_currency else 1
+
+        limit = offset + limit
+
+        row = (
+            self._account.name,
+            self._account.username,
+            self._account.email,
+            self.account.format_price(self._account.balance, False, True),
+            self.account.format_price(self._account.margin_balance, False, True),
+            self.account.format_price(self._account.net_worth, False, True),
+            self.account.format_price(self._account.risk_limit, False, True),
+            self.account.format_price(self._account.profit_loss, False, True))
+
+        if offset < 1 and limit > 0:
+            data.append(row[col_ofs:])
+
+        # in alt currency
+        if self._account.currency != self._account.alt_currency:
+            row = [
+                self._account.name,
+                self._account.username,
+                self._account.email,
+                self.account.format_price(self._account.balance * self._account.currency_ratio, True, True),
+                self.account.format_price(self._account.margin_balance * self._account.currency_ratio, True, True),
+                self.account.format_price(self._account.net_worth * self._account.currency_ratio, False, True),
+                self.account.format_price(self._account.risk_limit, False, True),
+                self.account.format_price(self._account.profit_loss * self._account.currency_ratio, True, True)
+            ]
+
+            if offset < 2 and limit > 1:
+                data.append(row[col_ofs:])
+   
         self.unlock()
 
-        arr = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        return arr
+        return columns[col_ofs:], data
 
     #
     # deprecated (previously used for social copy, but now prefer use the social copy strategy, to be removed once done)

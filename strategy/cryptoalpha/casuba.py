@@ -653,12 +653,12 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             if self.tomdemark.c.tdst:
                 signal.sl = self.tomdemark.c.tdst
 
-            if len(self.pivotpoint.resistances[2]):
-                if signal.tp > signal.p:
-                    signal.tp = np.max(self.pivotpoint.resistances[2])
-                # else:
-                #     # ignore this signal
-                #     signal = None
+            # if len(self.pivotpoint.resistances[2]):
+            #     if signal.tp > signal.p:
+            #         signal.tp = np.max(self.pivotpoint.resistances[2])
+            #     # else:
+            #     #     # ignore this signal
+            #     #     signal = None
 
         elif bbawe < 0 and level1_signal < 0:
             # exit signal

@@ -23,7 +23,7 @@ from trader.asset import Asset
 from config.utils import databases
 
 from .tickstorage import TickStorage, TickStreamer
-from .candlestorage import CandleStorage, CandleStreamer
+from .ohlcstorage import OhlcStorage, OhlcStreamer
 
 from .database import Database
 
@@ -125,7 +125,7 @@ class MySql(Database):
         """
         Create a new tick streamer.
         """
-        return CandleStreamer(self._db, timeframe, broker_id, market_id, from_date, to_date, buffer_size)
+        return OhlcStreamer(self._db, timeframe, broker_id, market_id, from_date, to_date, buffer_size)
 
     #
     # Processing
@@ -599,14 +599,14 @@ class MySql(Database):
         # clean older ohlcs
         #
 
-        # @todo transaction
-        if time.time() - self._last_ohlc_clean >= 60*60:  # no more than once per hour
+        if time.time() - self._last_ohlc_clean >= OhlcStorage.CLEANUP_DELAY:
             try:
                 now = time.time()
                 cursor = self._db.cursor()
 
-                for timeframe, timestamp in CandleStorage.CLEANERS:
+                for timeframe, timestamp in OhlcStorage.CLEANERS:
                     ts = int(now - timestamp) * 1000
+                    # @todo make a count before
                     cursor.execute("DELETE FROM ohlc WHERE timeframe <= %i AND timestamp < %i" % (timeframe, ts))
 
                 self._db.commit()

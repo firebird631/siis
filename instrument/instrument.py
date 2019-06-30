@@ -281,33 +281,53 @@ class Instrument(object):
     market-id is a the unique broker identifier (market-id or sometime the epic).
     alias is a only a secondary or display name.
     base_exchance_rate is rate of symbol over its related account currency.
-
     @note Ofr is a synonym for ask.
-    @todo repair missing/invalid data when timestamp incoherency !?
     """
 
     TF_TICK = 0
+    TF_T = TF_TICK
     TF_SEC = 1
+    TF_1S = TF_SEC
     TF_10SEC = 10
+    TF_10S = TF_10SEC
     TF_30SEC = 30
+    TF_30S = TF_30SEC
     TF_MIN = 60
+    TF_1M = TF_MIN
     TF_2MIN = 60*2
+    TF_2M = TF_2MIN
     TF_3MIN = 60*3
+    TF_3M = TF_3MIN
     TF_5MIN = 60*5
+    TF_5M = TF_5MIN
     TF_10MIN = 60*10
+    TF_10M = TF_10MIN
     TF_15MIN = 60*15
+    TF_15M = TF_15MIN
     TF_30MIN = 60*30
+    TF_30M = TF_30MIN
     TF_HOUR = 60*60
+    TF_1H = TF_HOUR
     TF_2HOUR = 60*60*2
+    TF_2H = TF_2HOUR
     TF_3HOUR = 60*60*3
+    TF_3H = TF_3HOUR
     TF_4HOUR = 60*60*4
+    TF_4H = TF_4HOUR
     TF_6HOUR = 60*60*6
+    TF_6H = TF_6HOUR
     TF_8HOUR = 60*60*8
+    TF_8H = TF_8HOUR
     TF_12HOUR = 60*60*12
+    TF_12H = TF_12HOUR
     TF_DAY = 60*60*24
+    TF_1D = TF_DAY
     TF_2DAY = 60*60*24*2
+    TF_2D = TF_2DAY
     TF_3DAY = 60*60*24*3
+    TF_3D = TF_3DAY
     TF_WEEK = 60*60*24*7
+    TF_1W = TF_WEEK
     TF_MONTH = 60*60*24*30
 
     PRICE_OPEN = 0

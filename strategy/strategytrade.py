@@ -226,6 +226,9 @@ class StrategyTrade(object):
         """
         Return true if the trade is active (non-null entry qty, and exit quantity non fully completed).
         """
+        if self._exit_state == StrategyTrade.STATE_FILLED:
+            return False
+
         if self.e > 0 and self.x < self.e:
             return True
 

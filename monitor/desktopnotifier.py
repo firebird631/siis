@@ -15,7 +15,7 @@ import traceback
 from datetime import datetime, timedelta
 
 from trader.position import Position
-from monitor.discord import send_to_discord
+from monitor.discord.webhooks import send_to_discord
 
 from notifier.notifiable import Notifiable
 from notifier.signal import Signal
@@ -89,6 +89,14 @@ class DesktopNotifier(Notifiable):
 
     def unlock(self):
         self._mutex.release()
+
+    def on_key_pressed(self, key):
+        if key == 'KEY_SPPAGE':
+            self.prev_item()
+        elif key == 'KEY_SNPAGE':
+            self.next_item()
+        elif key in ('KEY_SR', 'KEY_SF', 'KEY_SLEFT', 'KEY_SRIGHT', 'KEY_PPAGE', 'KEY_NPAGE'):
+            self._last_strategy_view = 0  # force refresh
 
     def prev_item(self):
         self._displayed_strategy -= 1
@@ -264,28 +272,16 @@ class DesktopNotifier(Notifiable):
         self.update()
 
         if self.strategy_service:
-
-            #
             # discord 15m reports
-            #
 
             # if self.discord and time.time() - self._last_stats >= 15*60:  # every 15m
             #     if self.send_discord():
             #         self._last_stats = time.time()
 
-            # daily reports
-            # @todo
-
-            # weekly reports
-            # @todo
-
-            #
             # strategy stats
-            #
-
             if time.time() - self._last_strategy_view >= 0.5:  # every 0.5 second, refresh
-                if self.refresh_stats():
-                    self._last_strategy_view = time.time()
+                self.refresh_stats()
+                self._last_strategy_view = time.time()
 
     def send_discord(self):
         # @todo must be in a specific discordnotifier
@@ -322,15 +318,19 @@ class DesktopNotifier(Notifiable):
                 i += 1
 
             if buf:
-                send_to_discord(dst, 'CryptoBot', '```' + buf + '```')
+                send_to_discord(dst, 'Bot', '```' + buf + '```')
 
     def refresh_stats(self):
-        # @todo must be in a View monitor model
+        self.refresh_strategies_stats()
+        self.refresh_traders_stats()
+
+    def refresh_strategies_stats(self):
+        # @todo must be in distinct View
         if not self.strategy_service:
-            return False
+            return
 
         if not (Terminal.inst().is_active('strategy') or Terminal.inst().is_active('perf') or Terminal.inst().is_active('stats')):
-            return False
+            return
 
         appliances = appl = self.strategy_service.get_appliances()
         if self._displayed_strategy >= len(appliances):
@@ -339,12 +339,12 @@ class DesktopNotifier(Notifiable):
         appl = None
 
         if not appliances:
-            return False
+            return
 
         appl = self.strategy_service.get_appliances()[self._displayed_strategy]
 
         if not appl:
-            return False
+            return
 
         if Terminal.inst().is_active('strategy') or Terminal.inst().is_active('perf'):
             results = appl.get_stats()
@@ -365,7 +365,6 @@ class DesktopNotifier(Notifiable):
 
         # stats view
         if Terminal.inst().is_active('stats'):
-            # stats-head
             Terminal.inst().info("Trade history for strategy %s - %s" % (appl.name, appl.identifier), view='stats-head')
 
             results = appl.get_history_stats(25)
@@ -378,4 +377,51 @@ class DesktopNotifier(Notifiable):
                 except:
                     pass
 
-        return True
+    def refresh_traders_stats(self):
+        if not self.trader_service:
+            return
+
+        # account view
+        if Terminal.inst().is_active('account'):
+            traders = self.trader_service.get_traders()
+
+            if len(traders) > 0:
+                trader = next(iter(traders))
+
+                Terminal.inst().info("Account details for trader %s - %s" % (trader.name, trader.account.name), view='account-head')
+
+                try:
+                    columns, table = trader.account_table(*Terminal.inst().active_content().format())
+                    Terminal.inst().table(columns, table, view='account')
+                except:
+                    pass
+
+        # tickers view
+        if Terminal.inst().is_active('ticker'):
+            traders = self.trader_service.get_traders()
+
+            if len(traders) > 0:
+                trader = next(iter(traders))
+
+                Terminal.inst().info("Tickers list for tader %s on account %s" % (trader.name, trader.account.name), view='ticker-head')
+
+                try:
+                    columns, table = trader.markets_tickers_table(*Terminal.inst().active_content().format())
+                    Terminal.inst().table(columns, table, view='ticker')
+                except:
+                    pass
+
+        # markets view
+        if Terminal.inst().is_active('market'):
+            traders = self.trader_service.get_traders()
+
+            if len(traders) > 0:
+                trader = next(iter(traders))
+
+                Terminal.inst().info("Market list trader %s on account %s" % (trader.name, trader.account.name), view='market-head')
+
+                try:
+                    columns, table = trader.markets_table(*Terminal.inst().active_content().format())
+                    Terminal.inst().table(columns, table, view='market')
+                except:
+                    pass

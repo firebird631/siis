@@ -21,8 +21,11 @@ from trader.connector.papertrader.trader import PaperTrader
 
 
 class TraderService(Service):
+    """
+    Trade service is responsible of build, initialize, load configuration, start/stop traders.
 
-    # @todo classify symbols, and set copy only some symbols or some class of symbols to a trader and/or depending of the author
+    @note It os more safe to limit at 1 trader per running instance.
+    """
 
     POLICY_COPY_EVERYWHERE = 0       # copy to from any watcher to any trader (as possible symbols)
     POLICY_COPY_SAME_AS_ORIGIN = 1   # copy only from a watcher type to the same trader type
@@ -290,6 +293,9 @@ class TraderService(Service):
 
     def traders_names(self):
         return [trader.name for k, trader in self._traders.items()]
+
+    def get_traders(self):
+        return list(self._traders.values())
 
     def gen_key(self):
         self.lock()

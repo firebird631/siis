@@ -69,6 +69,9 @@
 # REFLEXION #
 #############
 
+#89 Avoir une notion un model Tool, avoir une method pour avoir la liste des param obligatoire params(), une methode process(logger, options) et une methode cli_help()
+	-> Convertir binarizer, fetcher, optimizer et syncer avec ce modèle et avoir un paramètre --tool=
+
 #79 Pour trend et extremum_trend prob mnt qu'on ne garde pas d'histo sur les indic (pour raison de perf) et en plus TA lib va nous refiler des NaN
 	on va juste avoir Depth-N+1 valeurs (SMA...), voir Depth-N dans le cas de la RSI.
 	Deja pour cross on a besoin des 2 derns, et pour trend, donc plus, ça pourrait donc être un indicateur d'indicateur.

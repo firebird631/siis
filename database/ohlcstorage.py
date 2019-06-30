@@ -16,10 +16,10 @@ import logging
 logger = logging.getLogger('siis.database')
 
 
-class CandleStorage(object):
+class OhlcStorage(object):
     """
     Store per market sqlite DB.
-    @todo Need mysql/pgsql versions 
+    @note Generic SQL.
 
     Delete if timestamp :
         - timeframe for 45m to 2h older than 90 days
@@ -35,6 +35,8 @@ class CandleStorage(object):
         (5*60, 8*24*60*60),      # until 5m
         (30*60, 21*24*60*60),    # until 30m
         (2*60*60, 90*24*60*60))  # until 2h
+
+    CLEANUP_DELAY = 4*60*60      # each 4 hours
 
     def __init__(self, db, broker_id, market_id):
         self._db = db
@@ -111,7 +113,7 @@ class CandleStorage(object):
         try:
             cursor = self._db.cursor()
 
-            for timeframe, timestamp in CandleStorage.CLEANERS:
+            for timeframe, timestamp in OhlcStorage.CLEANERS:
                 ts = int(now - timestamp) * 1000
                 cursor.execute("DELETE FROM ohlc WHERE timeframe <= %i AND timestamp < %i" % (timeframe, ts))
 
@@ -251,10 +253,10 @@ class CandleStorage(object):
             self.close()
 
 
-class CandleStreamer(object):
+class OhlcStreamer(object):
     """
     Streamer that read ohlc from a start to end date.
-    @todo Need mysql/pgsql versions
+    @note Generic SQL.
     """
 
     def __init__(self, db, timeframe, from_date, to_date=None, buffer_size=1000):

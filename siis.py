@@ -39,6 +39,8 @@ from database.database import Database
 from common.runnable import Runnable
 from common.siislog import SiisLog
 
+from view.service import ViewService
+
 from app.help import display_cli_help, display_welcome
 from app.setup import install
 from app.generalcommands import register_general_commands
@@ -47,124 +49,22 @@ from app.regioncommands import register_region_commands
 
 
 def signal_handler(sig, frame):
-    # Terminal.inst().action('Exit signal Ctrl+C pressed !', view='status')
     Terminal.inst().action('Tip command :q<ENTER> to exit !', view='status')
-    # sys.exit(0)
-
 
 def has_exception(siis_logger, e):
     siis_logger.error(repr(e))
     siis_logger.error(traceback.format_exc())
 
-
-def do_binarizer(options, siis_logger):
-    from database.tickstorage import TextToBinary
-
-    Terminal.inst().info("Starting SIIS binarizer...")
-    Terminal.inst().flush()
-
-    timeframe = -1
-
-    if not options.get('timeframe'):
-        timeframe = 60  # default to 1min
-    else:
-        if options['timeframe'] in TIMEFRAME_FROM_STR_MAP:
-            timeframe = TIMEFRAME_FROM_STR_MAP[options['timeframe']]
-        else:
-            try:
-                timeframe = int(options['timeframe'])
-            except:
-                pass
-
-    if timeframe < 0:
-        siis_logger.error("Invalid timeframe !")
-        sys.exit(-1)
-
-    converter = TextToBinary(options['markets-path'], options['broker'], options['market'], options.get('from'), options.get('to'))
-    converter.process()
-
-    Terminal.inst().info("Binarization done!")
-    Terminal.inst().flush()
-
-    Terminal.terminate()
-    sys.exit(0)
-
-
-def do_fetcher(options, siis_logger):
-    Terminal.inst().info("Starting SIIS fetcher using %s identity..." % options['identity'])
-    Terminal.inst().flush()
-
-    # database manager
-    Database.create(options)
-    Database.inst().setup(options)
-
-    watcher_service = WatcherService(options)
-    fetcher = watcher_service.create_fetcher(options['broker'])
-
-    timeframe = -1
-    cascaded = None
-
-    if not options.get('timeframe'):
-        timeframe = 60  # default to 1min
-    else:
-        if options['timeframe'] in TIMEFRAME_FROM_STR_MAP:
-            timeframe = TIMEFRAME_FROM_STR_MAP[options['timeframe']]
-        else:
-            try:
-                timeframe = int(options['timeframe'])
-            except:
-                pass
-
-    if not options.get('cascaded'):
-        cascaded = None
-    else:
-        if options['cascaded'] in TIMEFRAME_FROM_STR_MAP:
-            cascaded = TIMEFRAME_FROM_STR_MAP[options['cascaded']]
-        else:
-            try:
-                cascaded = int(options['cascaded'])
-            except:
-                pass
-
-    if timeframe < 0:
-        siis_logger.error("Invalid timeframe")
-        sys.exit(-1)
-
-    try:
-        fetcher.connect()
-    except:
-        sys.exit(-1)
-
-    if fetcher.connected:
-        siis_logger.info("Fetcher authentified to %s, trying to collect data..." % fetcher.name)
-
-        markets = fetcher.matching_symbols_set(options['market'].split(','), fetcher.available_instruments())
-
-        try:
-            for market_id in markets:
-                if not fetcher.has_instrument(market_id, options.get('spec')):
-                    siis_logger.error("Market %s not found !" % (market_id,))
-                else:
-                    fetcher.fetch_and_generate(market_id, timeframe,
-                        options.get('from'), options.get('to'), options.get('last'),
-                        options.get('spec'), cascaded)
-        except KeyboardInterrupt:
-            pass
-        finally:
-            fetcher.disconnect()
-
-    fetcher = None
-
-    Terminal.inst().info("Flushing database...")
-    Terminal.inst().flush() 
-
-    Database.terminate()
-
-    Terminal.inst().info("Fetch done!")
-    Terminal.inst().flush()
-
-    Terminal.terminate()
-    sys.exit(0)
+def setup_views(siis_logger, view_service, watcher_service, trader_service, strategy_service):
+    pass
+    # @todo
+    # 'strategy'
+    # 'stat'
+    # 'perf'
+    # 'trader'
+    # 'account'
+    # 'market'
+    # 'ticker'
 
 def application(argv):
     fix_thread_set_name()
@@ -203,6 +103,12 @@ def application(argv):
                 elif arg == '--binarize':
                     # use the binarizer
                     options['binarize'] = True
+                elif arg == '--optimize':
+                    # use the optimizer
+                    options['optimize'] = True
+                elif arg == '--sync':
+                    # use the syncer
+                    options['sync'] = True
 
                 elif arg == '--backtest':
                     # backtest mean always paper-mode
@@ -216,26 +122,26 @@ def application(argv):
                     options['time-factor'] = float(arg.split('=')[1])
 
                 elif arg.startswith('--from='):
-                    # if backtest from date (if ommited use whoole data) date format is "yyyy-mm-dd-hh:mm:ss", fetch, binarize to date
+                    # if backtest from date (if ommited use whoole data) date format is "yyyy-mm-dd-hh:mm:ss", fetch, binarize, optimize to date
                     options['from'] = datetime.strptime(arg.split('=')[1], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
                 elif arg.startswith('--to='):
-                    # if backtest to date (can be ommited), fetch, binarize to date
+                    # if backtest to date (can be ommited), fetch, binarize, optimize to date
                     options['to'] = datetime.strptime(arg.split('=')[1], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
                 elif arg.startswith('--last='):
                     # fetch the last n data history
                     options['last'] = int(arg.split('=')[1])
 
                 elif arg.startswith('--market='):
-                    # fetch, binarize the data history for this market
+                    # fetch, binarize, optimize the data history for this market
                     options['market'] = arg.split('=')[1]
                 elif arg.startswith('--spec='):
                     # fetcher data history option
                     options['option'] = arg.split('=')[1]
                 elif arg.startswith('--broker='):
-                    # fetch the data history from this broker name (fetcher, watcher)
+                    # broker name for fetcher, watcher, optimize, binarize
                     options['broker'] = arg.split('=')[1]
                 elif arg.startswith('--timeframe='):
-                    # fetch, binarize base timeframe
+                    # fetch, binarize, optimize base timeframe
                     options['timeframe'] = arg.split('=')[1]
                 elif arg.startswith('--cascaded='):
                     # fetch cascaded ohlc generation
@@ -287,9 +193,10 @@ def application(argv):
 
     if options.get('binarize'):
         if options.get('market') and options.get('from') and options.get('to') and options.get('broker'):
+            from tools.binarizer import do_binarizer
             do_binarizer(options, siis_logger)
         else:
-            display_cmd_line_help()
+            display_cli_help()
 
         sys.exit(0)
 
@@ -299,9 +206,36 @@ def application(argv):
 
     if options.get('fetch'):
         if options.get('market') and options.get('broker') and options.get('timeframe'):
+            from tools.fetcher import do_fetcher
             do_fetcher(options, siis_logger)
         else:
-            display_cmd_line_help()
+            display_cli_help()
+
+        sys.exit(0)
+
+    #
+    # optimizer mode
+    #
+
+    if options.get('optimize'):
+        if options.get('market') and options.get('from') and options.get('to') and options.get('broker') and options.get('timeframe'):
+            from tools.optimizer import do_optimizer
+            do_optimizer(options, siis_logger)
+        else:
+            display_cli_help()
+
+        sys.exit(0)
+
+    #
+    # sync mode
+    #
+
+    if options.get('sync'):
+        if options.get('broker'):
+            from tools.syncer import do_syncer
+            do_syncer(options, siis_logger)
+        else:
+            display_cli_help()
 
         sys.exit(0)
 
@@ -329,8 +263,10 @@ def application(argv):
     monitor_service = MonitorService(options)
     monitor_service.start()
 
-    # desktop notifier (@todo move as handler of the monitor service)
+    # desktop notifier
     desktop_service = DesktopNotifier()
+    # discord_service = DiscordNotifier()
+    view_service = ViewService()
 
     # database manager
     Database.create(options)
@@ -346,13 +282,15 @@ def application(argv):
     trader_service = TraderService(watcher_service, monitor_service, options)
     trader_service.start()
 
-    # want to display desktop notification
+    # want to display desktop notification and update views
     watcher_service.add_listener(desktop_service)
+    watcher_service.add_listener(view_service)
 
-    # want to display desktop notification
+    # want to display desktop notification and update views
     trader_service.add_listener(desktop_service)
+    trader_service.add_listener(view_service)
 
-    # trader service listen to watcher service
+    # trader service listen to watcher service and update views
     watcher_service.add_listener(trader_service)
 
     # strategy service
@@ -366,11 +304,15 @@ def application(argv):
     # strategy service listen to trader service
     trader_service.add_listener(strategy_service)
 
-    # want to display desktop notification
+    # want to display desktop notification, update view and notify on discord
+    # strategy_service.add_listener(notifier_service)
+    # @todo add notifier service and replace desktop service as desktop notifier into this service same for discord...
     strategy_service.add_listener(desktop_service)
+    strategy_service.add_listener(view_service)
 
-    # for display stats
+    # for display stats (@todo move to views)
     desktop_service.strategy_service = strategy_service
+    desktop_service.trader_service = trader_service
 
     # register terminal commands
     commands_handler = CommandsHandler()
@@ -380,6 +322,8 @@ def application(argv):
     register_general_commands(commands_handler)
     register_trading_commands(commands_handler, trader_service, strategy_service)
     register_region_commands(commands_handler, strategy_service)
+
+    setup_views(siis_logger, view_service, watcher_service, trader_service, strategy_service)
 
     Terminal.inst().message("Running main loop...")
 
@@ -413,6 +357,8 @@ def application(argv):
                     commands_handler.process_char(c, args)
 
                 if key:
+                    view_service.on_key_pressed(key)
+
                     if key == 'KEY_ESCAPE':
                         # cancel command
                         value = None
@@ -430,6 +376,8 @@ def application(argv):
                         value = ":" + ' '.join(args)
                         value_changed = True
                         command_timeout = 0
+
+                    desktop_service.on_key_pressed(key)
 
                 # @todo move the rest to command_handler
                 if c:
@@ -520,6 +468,10 @@ def application(argv):
 
                                 elif value == 'C':
                                     Terminal.inst().clear_content()
+                                elif value == 'D':
+                                    Terminal.inst().switch_view('debug')
+                                elif value == 'I':
+                                    Terminal.inst().switch_view('content')
                                 elif value == 'F':
                                     Terminal.inst().switch_view('strategy')
                                 elif value == 'S':
@@ -528,10 +480,6 @@ def application(argv):
                                     Terminal.inst().switch_view('perf')
                                 elif value == 'T':
                                     Terminal.inst().switch_view('trader')
-                                elif value == 'D':
-                                    Terminal.inst().switch_view('debug')
-                                elif value == 'I':
-                                    Terminal.inst().switch_view('content')
                                 elif value == 'A':
                                     Terminal.inst().switch_view('account')
                                 elif value == 'M':
@@ -571,17 +519,6 @@ def application(argv):
                         except Exception as e:
                             has_exception(siis_logger, e)
 
-                key = Terminal.inst().key()
-                if key:
-                    try:
-                        # todo improve could have event, or just a wrapper on a desktop service
-                        if key == 'KEY_PPAGE':
-                            desktop_service.prev_item()
-                        elif key == 'KEY_NPAGE':
-                            desktop_service.next_item()
-                    except Exception as e:
-                        has_exception(siis_logger, e)
-
             except IOError:
                 pass
             except Exception as e:
@@ -613,6 +550,8 @@ def application(argv):
                 strategy_service.sync()
                 monitor_service.sync()
                 desktop_service.sync()
+                view_service.sync()
+
                 Terminal.inst().update()
 
             except BaseException as e:
@@ -637,6 +576,8 @@ def application(argv):
     trader_service.terminate()
     watcher_service.terminate()
     desktop_service.terminate()
+    # discord_service.terminate()
+    view_service.terminate()
 
     Terminal.inst().info("Saving database...")
     Terminal.inst().flush() 

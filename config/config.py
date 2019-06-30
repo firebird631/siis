@@ -69,7 +69,7 @@ WATCHERS = {
     'bitmex.com': {
         'status': 'load',
         'classpath': 'watcher.connector.bitmex.watcher.BitMexWatcher',
-        'symbols': ['XBTUSD', 'ETHUSD', 'LTCH19', 'TRXH19', 'EOSH19', 'XRPH19', 'ADAH19', 'BCHH19', 'XBTH19'],
+        'symbols': ['XBTUSD', 'ETHUSD', 'LTCU19', 'TRXU19', 'EOSU19', 'XRPU19', 'ADAU19', 'BCHU19', 'XBTU19'],
     },
     'ig.com': {
         'status': 'load',
@@ -152,7 +152,7 @@ TRADERS = {
     'bitmex.com': {
         'status': 'load',
         'classpath': 'trader.connector.bitmex.trader.BitMexTrader',
-        'symbols': ['XBTUSD', 'ETHUSD', 'LTCH19', 'TRXH19', 'EOSH19', 'XRPH19', 'ADAH19', 'BCHH19', 'XBTH19'],  # , 'XBTH19'],
+        'symbols': ['XBTUSD', 'ETHUSD', 'LTCU19', 'TRXU19', 'EOSU19', 'XRPU19', 'ADAU19', 'BCHU19', 'XBTU19'],
         'paper-mode': {
             'currency': 'BTC',
             'currency-symbol': 'BTC',

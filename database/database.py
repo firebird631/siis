@@ -22,7 +22,7 @@ from trader.asset import Asset
 from config.utils import databases
 
 from .tickstorage import TickStorage, TickStreamer
-from .candlestorage import CandleStorage, CandleStreamer
+from .ohlcstorage import OhlcStorage, OhlcStreamer
 
 import logging
 logger = logging.getLogger('siis.database')
@@ -40,7 +40,7 @@ class Database(object):
     All markets information are stored in postgresql DB.
     User asset are stored in postgresql DB.
     User trades and stored in postgresl DB.
-    Candles are stored in posgresql DB.
+    OHLC are stored in posgresql DB.
 
     Ticks are run in exclusive read or write mode :
         - first case is when watcher or fetcher are writing some news data.
@@ -52,7 +52,7 @@ class Database(object):
     CREATE USER siis WITH ENCRYPTED PASSWORD 'siis';
     GRANT ALL PRIVILEGES ON DATABASE siis TO siis;
 
-    Candles
+    OHLCs
     =======
 
     Prefered ohlc of interest are 1m, 5m, 15m, 1h, 4h, daily, weekly.
@@ -139,6 +139,7 @@ class Database(object):
         self._last_ohlc_flush = 0
         self._last_ohlc_clean = 0
 
+        self._markets_path = None
         self._tick_storages = {}    # TickStorage per market
         self._pending_tick_insert = []
 
@@ -382,7 +383,7 @@ class Database(object):
         """
         Create a new tick streamer.
         """
-        return CandleStreamer(self._db, timeframe, broker_id, market_id, from_date, to_date, buffer_size)
+        return OhlcStreamer(self._db, timeframe, broker_id, market_id, from_date, to_date, buffer_size)
 
     #
     # User

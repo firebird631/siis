@@ -67,6 +67,7 @@ class View(object):
 
         self._table_first_row = 0
         self._table_first_col = 0
+        self._cur_table = (0, 0)
 
         self._parent_win = stdscr
 
@@ -134,7 +135,6 @@ class View(object):
                 self._first_row = 0
             elif self._mode == View.MODE_BLOCK:
                 self._content = []
-                # self._first_row = 0
 
             self._dirty = True
             self._win.erase()
@@ -534,6 +534,8 @@ class View(object):
                 df[k] = v[self._table_first_row:self._table_first_row+num_rows]
                 n += 1
 
+        # self._cur_table = (len(columns), len(data))
+
         table = tabulate(df, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
 
         # draw the table
@@ -546,29 +548,32 @@ class View(object):
         if not columns or data is None:
             return
 
-        HEADER_SIZE = 3
+        # HEADER_SIZE = 3
 
-        # count rows
-        data_rows = len(data)
+        # # count rows
+        # data_rows = len(data)
 
-        # count columns
-        num_columns = len(columns)
-        num_rows = min(self.height - HEADER_SIZE - 1, data_rows)
+        # # count columns
+        # num_columns = len(columns)
+        # num_rows = min(self.height - HEADER_SIZE - 1, data_rows)
 
-        if self._table_first_row >= num_rows:
-            self._table_first_row = 0
+        # if self._table_first_row >= num_rows:
+        #     self._table_first_row = 0
 
-        if self._table_first_col >= num_columns:
-            self._table_first_col = 0
-      
-        columns = columns[self._table_first_col:]
-        data_arr = []
+        # if self._table_first_col >= num_columns:
+        #     self._table_first_col = 0
 
-        for d in data[self._table_first_row:self._table_first_row+num_rows]:
-            # ignore some columns and some rows
-            data_arr.append(d[self._table_first_col:])
+        # columns = columns[self._table_first_col:]
+        # data_arr = []
 
-        table = tabulate(data, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
+        # for d in data[self._table_first_row:self._table_first_row+num_rows]:
+        #     # ignore some columns and some rows
+        #     data_arr.append(d[self._table_first_col:])
+
+        self._cur_table = (len(columns), len(data))
+
+        data_arr = data
+        table = tabulate(data_arr, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
 
         # draw the table
         self.draw('', table, True)
@@ -583,6 +588,9 @@ class View(object):
         if self._table_first_row < 0:
             self._table_first_row = 0
 
+        if self._table_first_row >= self._cur_table[1]:
+            self._table_first_row = self._cur_table[1] -1
+
     def table_scroll_cols(self, n):
         """
         Scroll n columnes (positive or negative) from current first columns.
@@ -592,6 +600,12 @@ class View(object):
         if self._table_first_col < 0:
             self._table_first_col = 0
 
+        if self._table_first_col > self._cur_table[0]:
+            self._table_first_col = self._cur_table[0]
+
+    def format(self):
+        return Terminal.inst().style(), self._table_first_row, self.height - 4, self._table_first_col
+  
 
 class Terminal(object):
     """
@@ -720,6 +734,9 @@ class Terminal(object):
             'content-head': View('content-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=True),
             'content': View('content', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=True, border=True),
 
+            'debug-head': View('debug-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
+            'debug': View('debug', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
+
             'trader-head': View('trader-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'trader': View('trader', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
@@ -741,11 +758,8 @@ class Terminal(object):
             'ticker-head': View('ticker-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'ticker': View('ticker', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
-            'panel-head': View('panel', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 2), active=True),
+            'panel-head': View('panel-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 2), active=True),
             'panel': View('panel', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w2, h1), active=True, border=True),
-
-            'debug-head': View('debug-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'debug': View('debug', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
             # bottom 
             'default': View('default', View.MODE_STREAM, self._stdscr, pos=(0, height-6), size=(width, free_h), active=True),
@@ -802,6 +816,12 @@ class Terminal(object):
 
     def active_view(self):
         return self._active_view
+
+    def active_content(self):
+        if self._active_content in self._views:
+            return self._views[self._active_content]
+        else:
+            return None
 
     def is_active(self, view):
         view = self._views.get(view)
@@ -944,7 +964,6 @@ class Terminal(object):
 
             # https://docs.python.org/2/library/curses.html keys list
             if c and c.startswith('KEY_'):
-                
                 if c == 'KEY_BACKSPACE':
                     self._key = c
                     return '\b'
@@ -968,40 +987,59 @@ class Terminal(object):
                             if view:
                                 view.redraw()
 
-                # shift + keys arrows for hard scrolling
+                # shift + keys arrows for table navigation
                 # ch == curses.KEY_SUP
-                elif c == 'KEY_SUP':
+                elif c == 'KEY_SR':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
-                            view.scroll(-1)
-                            view.redraw()
-                elif c == 'KEY_SDOWN':
-                    if self._active_content:
-                        view = self._views.get(self._active_content)
-                        if view:
-                            view.scroll(1)
-                            view.redraw()
+                            view.table_scroll_row(-1)
 
+                    self._key = c
+                elif c == 'KEY_SF':
+                    if self._active_content:
+                        view = self._views.get(self._active_content)
+                        if view:
+                            view.table_scroll_row(1)
+
+                    self._key = c
                 elif c == 'KEY_SLEFT':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
-                            view.hor_scroll(-1)
-                            view.redraw()
+                            view.table_scroll_cols(-1)
+
+                    self._key = c
                 elif c == 'KEY_SRIGHT':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
-                            view.hor_scroll(1)
-                            view.redraw()
+                            view.table_scroll_cols(1)
+
+                    self._key = c
+
+                # pageup/pagedown
+                elif c == 'KEY_PPAGE':
+                    if self._active_content:
+                        view = self._views.get(self._active_content)
+                        if view:
+                            view.table_scroll_row(-(view.height-4))
+
+                    self._key = c
+                elif c == 'KEY_NPAGE':
+                    if self._active_content:
+                        view = self._views.get(self._active_content)
+                        if view:
+                            view.table_scroll_row(view.height-4)
+
+                    self._key = c
 
                 # keys arrows
                 elif c in ('KEY_UP', 'KEY_DOWN', 'KEY_LEFT', 'KEY_RIGHT'):
                     self._key = c
 
-                # pageup/pagedown
-                elif c in ('KEY_PPAGE', 'KEY_NPAGE'):
+                # shift-pageup/shift-pagedown
+                elif c in ('KEY_SPPAGE', 'KEY_SNPAGE'):
                     self._key = c
 
                 # F1 to F24
@@ -1012,7 +1050,7 @@ class Terminal(object):
                 elif c == 'KEY_MOUSE':
                     # @todo
                     # @ref https://www.gnu.org/software/guile-ncurses/manual/html_node/Mouse-handling.html#Mouse-handling
-                    pass  
+                    pass
 
                 c = None
 

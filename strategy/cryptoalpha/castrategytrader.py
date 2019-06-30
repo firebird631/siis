@@ -148,7 +148,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         sma55_above_sma200 = 0
         sma_above_sma55 = 0
 
-        REF_TIMEFRAME = Instrument.TF_4HOUR
+        REF_TIMEFRAME = Instrument.TF_4H  # @todo need conf
+        TP_TIMEFRAME = Instrument.TF_1H   # @todo need conf
 
         last_price = self.timeframes[REF_TIMEFRAME].price.last
         sma = self.timeframes[REF_TIMEFRAME].sma.last
@@ -241,6 +242,11 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 sl = self.timeframes[parent_entry_tf].atr.stop_loss(entry.dir)
                 if sl < last_price:
                     entry.sl = sl
+
+            # defines a target
+            if not entry.tp:
+                if len(self.timeframes[TP_TIMEFRAME].pivotpoint.last_resistances) > 0:
+                    tp = self.timeframes[TP_TIMEFRAME].pivotpoint.last_resistances[2]
 
             retained_entries.append(entry)
 
