@@ -518,7 +518,6 @@ class Trader(Runnable):
 
         elif command_type == Trader.COMMAND_INFO:
             # info on the appliance
-            Terminal.inst().notice("Traders list", view='content')
             Terminal.inst().info("Trader %s is %s" % (self.name, ("active" if self._activity else "inactive")), view='content')
 
         elif command_type == Trader.COMMAND_LIST_ORDERS:

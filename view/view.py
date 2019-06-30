@@ -5,15 +5,28 @@
 
 import threading
 
+from terminal.terminal import Terminal
+
 
 class View(object):
     """
     View base class.
     """
 
-    def __init__(self):
-        self._id = ""
+    def __init__(self, _id):
+        self._id = _id
         self._mutex = threading.RLock()  # reentrant locker
+        self._item = 0  # in case of multiple item like more than a single appliance or trader
+        self._refresh = 0
+
+    def create(self):
+        Terminal.inst().create_content_view(self._id)
+
+    def destroy(self):
+        Terminal.inst().destroy_content_view(self._id)
+
+    def set_title(self, title):
+        Terminal.inst().set_title(self._id, title)
 
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)
@@ -21,11 +34,39 @@ class View(object):
     def unlock(self):
         self._mutex.release()
 
-    def on_key_pressed(self, key):
-        pass
-
     def refresh(self):
         pass
 
-    def fetch(self):
+    def is_active(self):
+        return Terminal.inst().is_active(self._id)
+
+    def width(self):
+        vt = Terminal.inst().view(self._id)
+        return vt.width if vt else 0
+
+    def height(self):
+        vt = Terminal.inst().view(self._id)
+        return vt.height if vt else 0
+
+    def scroll_row(self, n):
         pass
+
+    def scroll_col(self, n):
+        pass
+
+    def on_key_pressed(self, key):
+        if key == 'KEY_SPREVIOUS':
+            self.prev_item()
+        elif key == 'KEY_SNEXT':
+            self.prev_item()
+
+    def prev_item(self):
+        self._item -= 1
+        if self._item < 0:
+            self._item = 0
+
+        self._refresh = 0  # force refresh
+
+    def next_item(self):
+        self._item += 1
+        self._refresh = 0  # force refresh

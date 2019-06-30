@@ -74,7 +74,6 @@ class Strategy(Runnable):
 
         self._parameters = parameters
 
-        self._activity = True      # True means strategy apply the order on the trade (create_order and stop_loss)
         self._preset = False       # True once instrument are setup
         self._prefetched = False   # True once strategies are ready
 
@@ -117,7 +116,6 @@ class Strategy(Runnable):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY, "status", self.identifier)
 
         self._streamable.add_member(StreamMemberFloat('cpu-load'))
-        self._streamable.add_member(StreamMemberBool('activity'))
 
         self._last_call_ts = 0.0
 
@@ -133,7 +131,6 @@ class Strategy(Runnable):
         # once per second
         if now - self._last_call_ts >= 1.0:
             self._streamable.member('cpu-load').update(self._cpu_load)
-            self._streamable.member('activity').update(self._activity)
             self._streamable.push()
 
             for k, sub_trader in self._sub_traders.items():
@@ -271,15 +268,24 @@ class Strategy(Runnable):
         """
         return self._strategy_service.indicator(name)
 
-    @property
-    def activity(self):
-        return self._activity
-
-    def set_activity(self, status):
+    def set_activity(self, status, market_id=None):
         """
-        Enable/disable execution of orders (create_order, stop_loss).
+        Enable/disable execution of orders (create_order, stop_loss) for any of the strategy traders or 
+        a specific instrument if market_id is defined.
         """
-        self._activity = status
+        if market_id:
+            self.lock()
+            instrument = self.find_instrument(market_id)
+            if instrument:
+                sub_trader = self._sub_traders.get(instrument)
+                if sub_trader:
+                    sub_trader.set_activity(status)
+            self.unlock()
+        else:
+            self.lock()
+            for k, sub_trader in self._sub_traders.items():
+                sub_trader.set_activity(status)
+            self.unlock()
 
     def trader(self):
         """
@@ -752,9 +758,40 @@ class Strategy(Runnable):
 
         elif command_type == Strategy.COMMAND_INFO:
             # info on the appliance
-            Terminal.inst().notice("Appliances list", view='content')
-            Terminal.inst().info("Appliances %s identified by \\2%s\\0 is %s" % (
-                self.name, self.identifier, ("active" if self._activity else "inactive")), view='content')
+            if 'market-id' in data:
+                self.lock()
+
+                instrument = self._instruments.get(data['market-id'])
+                if instrument in self._sub_traders:
+                    sub_trader = self._sub_traders[instrument]
+                    if sub_trader:
+                        Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s" % (
+                            data['market-id'], self.name, self.identifier, "active" if sub_trader.activity else "paused"), view='content')
+
+                self.unlock()
+            else:
+                Terminal.inst().info("Appliances %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')
+
+                enabled = []
+                disabled = []
+
+                self.lock()
+
+                for k, sub_trader in self._sub_traders.items():
+                    if sub_trader.activity:
+                        enabled.append(k.market_id)
+                    else:
+                        disabled.append(k.market_id)
+
+                self.unlock()
+
+                if enabled:
+                    enabled = [e if i%10 else e+'\n' for i, e in enumerate(enabled)]
+                    Terminal.inst().info("Enabled instruments (%i): %s" % (len(enabled), " ".join(enabled)), view='content')
+
+                if disabled:
+                    disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
+                    Terminal.inst().info("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')
 
         elif command_type == Strategy.COMMAND_TRADE_ENTRY:
             # manually trade entry command (open a new trade limit/market)

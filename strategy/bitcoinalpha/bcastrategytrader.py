@@ -433,7 +433,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # create an order
         #
 
-        do_order = self.strategy.activity and self.activity
+        do_order = self.activity
 
         order_hedging = False
         order_quantity = 0.0
@@ -522,7 +522,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if trade is None:
             return
 
-        do_order = self.strategy.activity and self.activity
+        do_order = self.activity
 
         if do_order:
             # close at market as taker

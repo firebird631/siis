@@ -28,7 +28,6 @@ class ViewService(Notifiable):
     """
     View manager service.
     It support the refreh of actives views, receive signal from others services.
-
     @todo
     """
 
@@ -42,11 +41,7 @@ class ViewService(Notifiable):
         self._mutex = threading.RLock()  # reentrant locker
         self._signals = collections.deque()  # filtered received signals
 
-        self._refresh = 0
-        self._item = 0
-
-        self._views = []
-        self._active_view = None
+        self._views = {}
 
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)
@@ -60,24 +55,17 @@ class ViewService(Notifiable):
     def terminate(self):
         pass
 
-    def prev_item(self):
-        self._item -= 1
-        if self._item < 0:
-            self._item = 0
-
-        self._refresh = 0  # force refresh
-
-    def next_item(self):
-        self._item += 1
-        self._refresh = 0  # force refresh
-
     def set_active_view(self, view_id):
-        pass  # @todo or comes from the Terminal
+        Terminal.inst().switch_view(view_id)
 
     def on_key_pressed(self, key):
-        if key and self._active_view:
-            # progagate to active view
-            self._active_view.on_key_pressed(key)
+        # progagate to active view
+        if key:
+            vt = Terminal.inst().active_content()
+            if vt:
+                view = self._views.get(vt.name)
+                if view:
+                    self.view.on_key_pressed(key)
 
     def receiver(self, signal):
         pass
@@ -95,6 +83,12 @@ class ViewService(Notifiable):
             self.unlock()
             raise Exception("View %s already registred" % view.id)
 
+        try:
+            view.create()
+        except:
+            self.unlock()
+            raise
+
         self._views[view.id] = view
 
         self.unlock()
@@ -103,6 +97,10 @@ class ViewService(Notifiable):
         self.lock()
 
         if view_id in self._views:
+            view = self._views[view_id]
+            if view:
+                view.destroy()
+
             del self._views[view_id]
 
         self.unlock()

@@ -40,14 +40,20 @@ class PlayCommand(Command):
         elif args[0] == 'apps':
             if len(args) == 1:
                 self._strategy_service.set_activity(True)
-                Terminal.inst().action("Activated all appliances", view='status')
-                return True            
+                Terminal.inst().action("Activated any markets for all appliances", view='status')
+                return True
             elif len(args) == 2:
-                # @todo specific appliance
-                return False
+                appliance = self._strategy_service.appliance(args[1])
+                if appliance:
+                    appliance.set_activity(True)
+                    Terminal.inst().action("Activated any markets for appliances %s" % args[1], view='status')
+                return True
             elif len(args) == 3:
-                # @todo specific appliance instrument
-                return False
+                appliance = self._strategy_service.appliance(args[1])
+                if appliance:
+                    appliance.set_activity(True, args[2])
+                    Terminal.inst().action("Activated instrument %s for appliances %s" % (args[2], args[1]), view='status')
+                return True
 
         return False
 
@@ -96,14 +102,20 @@ class PauseCommand(Command):
         elif args[0] == 'apps':
             if len(args) == 1:
                 self._strategy_service.set_activity(False)
-                Terminal.inst().action("Paused all appliances", view='status')
+                Terminal.inst().action("Paused all any market for all appliances", view='status')
+                return True
+            elif len(args) == 2:
+                appliance = self._strategy_service.appliance(args[1])
+                if appliance:
+                    appliance.set_activity(False)
+                    Terminal.inst().action("Paused any markets for appliances %s" % args[1], view='status')
                 return True
             elif len(args) == 3:
-                # @todo specific appliance instrument
-                return False
-            elif len(args) == 2:
-                # @todo specific appliance
-                return False
+                appliance = self._strategy_service.appliance(args[1])
+                if appliance:
+                    appliance.set_activity(False, args[2])
+                    Terminal.inst().action("Paused instrument %s for appliances %s" % (args[2], args[1]), view='status')
+                return True
 
         return False
 
@@ -128,7 +140,7 @@ class PauseCommand(Command):
 
 class InfoCommand(Command):
 
-    SUMMARY = "[traders,apps] to get info on traders or appliances."
+    SUMMARY = "[traders,apps] <[appliance-id,trader-id]> <appliance-market-id> to get info on traders or appliances."
 
     def __init__(self, trader_service, strategy_service):
         super().__init__('info', None)
@@ -142,17 +154,43 @@ class InfoCommand(Command):
             return False
 
         if args[0] == 'traders':
-            self._trader_service.command(Trader.COMMAND_INFO, {})
-            return True
+            if len(args) == 1:
+                self._trader_service.command(Trader.COMMAND_INFO, {})
+                return True
+            elif len(args) == 2:
+                self._strategy_service.command(Trader.COMMAND_INFO, {'trader': args[1]})
+                return False
+            elif len(args) == 3:
+                self._strategy_service.command(Trader.COMMAND_INFO, {'trader': args[1], 'market-id': args[2]})
+                return False
         elif args[0] == 'apps':
-            self._strategy_service.command(Strategy.COMMAND_INFO, {})
-            return True
+            if len(args) == 1:
+                self._strategy_service.command(Strategy.COMMAND_INFO, {})
+                return True
+            elif len(args) == 2:
+                self._strategy_service.command(Strategy.COMMAND_INFO, {'appliance': args[1]})
+                return True
+            elif len(args) == 3:
+                self._strategy_service.command(Strategy.COMMAND_INFO, {'appliance': args[1], 'market-id': args[2]})
+                return True
 
         return False
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
             return self.iterate(0, ['apps', 'traders'], args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            # appliance/trader
+            if args[0] == "apps":
+                return self.iterate(1, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+            elif args[0] == "traders":
+                return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
+
+        elif len(args) <= 3:
+            if args[0] == 'apps':
+                # instrument
+                return self.iterate(2, self._strategy_service.appliance(args[1]).symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 

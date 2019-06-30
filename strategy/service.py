@@ -409,13 +409,17 @@ class StrategyService(Service):
         self._mutex.release()
 
     def command(self, command_type, data):
-        # global command
         if Strategy.COMMAND_SHOW_STATS <= command_type <= Strategy.COMMAND_INFO:
-            for k, appliance in self._appliances.items():
-                appliance.command(command_type, data)
+            appliance_identifier = data.get('appliance', "")
+
+            if appliance_identifier:
+                appliance = self._appliances.get(appliance_identifier)
+                if appliance:
+                    appliance.command(command_type, data)
+            else:
+                for k, appliance in self._appliances.items():
+                    appliance.command(command_type, data)
         else:
-            # or specific command,retrieve the appliance according to the command data
-            # or if unique take it by default
             appliance = None
             appliance_identifier = data.get('appliance', "")
 

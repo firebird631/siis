@@ -25,6 +25,7 @@ class TraderService(Service):
     Trade service is responsible of build, initialize, load configuration, start/stop traders.
 
     @note It os more safe to limit at 1 trader per running instance.
+    @todo Could limit to a single trader.
     """
 
     POLICY_COPY_EVERYWHERE = 0       # copy to from any watcher to any trader (as possible symbols)

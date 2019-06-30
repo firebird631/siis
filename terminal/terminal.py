@@ -651,13 +651,11 @@ class Terminal(object):
             'content': View('content', View.MODE_STREAM, False),
             'message': View('message', View.MODE_STREAM, False),
             'error': View('error', View.MODE_STREAM, False),
-            'debug': View('debug', View.MODE_STREAM, False),
-            'grid': View('grid', View.MODE_BLOCK, False),            
+            'debug': View('debug', View.MODE_STREAM, False)
         }
 
         self._fd = None
         self._stdscr = None
-        self._active_view = self._views['default']
         self._direct_draw = True
         self._active_content = 'content'
         self._old_default = None
@@ -737,6 +735,7 @@ class Terminal(object):
             'debug-head': View('debug-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'debug': View('debug', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
+            # @todo body content to be created by application View
             'trader-head': View('trader-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'trader': View('trader', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
@@ -758,6 +757,7 @@ class Terminal(object):
             'ticker-head': View('ticker-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'ticker': View('ticker', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
+            # right panel
             'panel-head': View('panel-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 2), active=True),
             'panel': View('panel', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w2, h1), active=True, border=True),
 
@@ -782,7 +782,6 @@ class Terminal(object):
 
         if self._stdscr:
             curses.nocbreak()
-            # curses.cbreak()
             curses.echo()
             curses.endwin()
             curses.curs_set(1)
@@ -792,7 +791,6 @@ class Terminal(object):
         if self._old_default:
             self._views = self._old_default
             self._old_default = None
-            self._active_view = self._views.get('default')
 
         self._direct_draw = True
 
@@ -800,22 +798,46 @@ class Terminal(object):
         if self._stdscr:
             self._stdscr.keypad(False)
 
-    def add_view(self, name, mode=View.MODE_STREAM):
-        if not name in self._views:
-            self._views[name] = View(name, mode)
+    def create_content_view(self, name):
+        if name in self._views:
+            raise Exception("View %s already exists" % name)
 
-    def remove_view(self, name):
-        if name == 'default':
+        if self._stdscr:
+            height, width = self._stdscr.getmaxyx()
+        else:
+            height, width = 0, 0
+
+        # @todo view must be in percent for reshape
+        w1 = int(width*0.9)
+        w2 = width-w1
+
+        free_h = 4
+        h1 = height - 2 - 2 - free_h
+
+        view = View(name, View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
+        head_view = View(name+'-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
+
+        self._views[name] = view
+        self._views[name+'-head'] = head_view
+
+        return view
+
+    def set_title(self, name, title):
+        self.info(title, view=name+'-head')
+
+    def destroy_content_view(self, name):
+        if name in ('content', 'debug'):
+            # system views, undeletable
             return
 
-        if self._active_view and self._active_view.name == name:
-            self._active_view = self._views['default']
+        # a content view has a head view
+        if name in self._views and name+'-head' in self._views:
+            if self._active_content == name:
+                # if active content switch to default content
+                self.switch_view('content')
 
-        if name in self._views:
             del self._views[name]
-
-    def active_view(self):
-        return self._active_view
+            del self._views[name+'-head']
 
     def active_content(self):
         if self._active_content in self._views:
@@ -826,6 +848,9 @@ class Terminal(object):
     def is_active(self, view):
         view = self._views.get(view)
         return view and view._active
+
+    def view(self, view):
+        return self._views.get(view)
 
     def clear(self):
         if self._fd and not self._stdscr:
@@ -845,18 +870,14 @@ class Terminal(object):
             return "uterm"
 
     def set_view(self, view='default'):
-        if self._active_view:
-            if view != self._active_view.name:
-                self._active_view = self._active_view.get(view)
-        else:
-            return
-
-        _view = self._views.get(view)
-        
+        _view = self._views.get(view)     
         if _view:
             _view.redraw()
 
     def switch_view(self, view):
+        """
+        Switch the active content + header-content views to another couple.
+        """
         self._mutex.acquire()
 
         if view != self._active_content:
@@ -866,7 +887,7 @@ class Terminal(object):
             bv = self._views.get(view)
             hbv = self._views.get(view + '-head')
 
-            if 1:#av and bv:
+            if av and bv and hav and hbv:
                 if av._active:
                     av._active = False
                     hav._active = False
@@ -874,7 +895,7 @@ class Terminal(object):
                     hbv._active = True
 
                     hbv.redraw()
-                    bv.redraw()                    
+                    bv.redraw()
                 else:
                     av._active = True
                     hav._active = True
@@ -1038,8 +1059,8 @@ class Terminal(object):
                 elif c in ('KEY_UP', 'KEY_DOWN', 'KEY_LEFT', 'KEY_RIGHT'):
                     self._key = c
 
-                # shift-pageup/shift-pagedown
-                elif c in ('KEY_SPPAGE', 'KEY_SNPAGE'):
+                # home/end key
+                elif c in ('KEY_HOME', 'KEY_END', 'KEY_SNEXT', 'KEY_SPREVIOUS'):
                     self._key = c
 
                 # F1 to F24

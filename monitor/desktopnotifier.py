@@ -91,9 +91,9 @@ class DesktopNotifier(Notifiable):
         self._mutex.release()
 
     def on_key_pressed(self, key):
-        if key == 'KEY_SPPAGE':
+        if key == 'KEY_SPREVIOUS':
             self.prev_item()
-        elif key == 'KEY_SNPAGE':
+        elif key == 'KEY_SNEXT':
             self.next_item()
         elif key in ('KEY_SR', 'KEY_SF', 'KEY_SLEFT', 'KEY_SRIGHT', 'KEY_PPAGE', 'KEY_NPAGE'):
             self._last_strategy_view = 0  # force refresh

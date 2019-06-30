@@ -386,7 +386,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         #
 
         # only if active
-        do_order = self.strategy.activity and self.activity
+        do_order = self.activity
 
         order_quantity = 0.0
         order_price = None
@@ -458,7 +458,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if trade is None:
             return
 
-        do_order = self.strategy.activity and self.activity
+        do_order = self.activity
 
         if do_order:
             # close at market as taker

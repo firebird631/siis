@@ -351,7 +351,9 @@ def application(argv):
 
                 if c:
                     # split the commande line
-                    args = value[1:].split(' ') if value and value.startswith(':') else []
+                    args = [arg for arg in (value[1:].split(' ') if value and value.startswith(':') else []) if arg]
+                    if value and value[-1] == ' ':
+                        args.append('')
 
                     # update the current type command
                     commands_handler.process_char(c, args)
@@ -366,7 +368,9 @@ def application(argv):
                         command_timeout = 0
 
                     # split the commande line
-                    args = value[1:].split(' ') if value and value.startswith(':') else []
+                    args = [arg for arg in (value[1:].split(' ') if value and value.startswith(':') else []) if arg]
+                    if value and value[-1] == ' ':
+                        args.append('')
 
                     # process on the arguments
                     args = commands_handler.process_key(key, args)

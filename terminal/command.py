@@ -217,7 +217,9 @@ class CommandsHandler(object):
         Process from advanced command line.
         """
         if command_line.startswith(':'):
-            args = command_line[1:].split(' ')
+            args = [arg for arg in command_line[1:].split(' ') if arg]
+            if command_line[-1] == ' ':
+                args.append('')
         else:
             args = []
 

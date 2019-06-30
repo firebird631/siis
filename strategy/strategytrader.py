@@ -66,6 +66,9 @@ class StrategyTrader(object):
 
     @property
     def activity(self):
+        """
+        Strategy trader Local state.
+        """
         return self._activity
 
     def set_activity(self, status):
