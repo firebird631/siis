@@ -97,6 +97,26 @@ class PgSql(Database):
                 quantity VARCHAR(32) NOT NULL, price VARCHAR(32) NOT NULL, quote_symbol VARCHAR(32) NOT NULL,
                 UNIQUE(broker_id, asset_id))""")
 
+        # trade table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_trade(
+                id SERIAL PRIMARY KEY,
+                broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, appliance_id VARCHAR(255) NOT NULL,
+                trade_id INTEGER NOT NULL,
+                data TEXT NOT NULL DEFAULT '{}',
+                operations TEXT NOT NULL DEFAULT '{}',
+                UNIQUE(broker_id, market_id, appliance_id, trade_id))""")
+
+        # trader table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_trader(
+                id SERIAL PRIMARY KEY,
+                broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, appliance_id VARCHAR(255) NOT NULL,
+                activity INTEGER NOT NULL DEFAULT 1,
+                data TEXT NOT NULL DEFAULT '{}',
+                regions TEXT NOT NULL DEFAULT '{}',
+                UNIQUE(broker_id, market_id, appliance_id))""")
+
         self._db.commit()
 
     def setup_ohlc_sql(self):
@@ -131,349 +151,52 @@ class PgSql(Database):
         #
 
         self.lock()
-        mki = copy.copy(self._pending_market_info_insert)
-        self._pending_market_info_insert.clear()
+        mki = self._pending_market_info_insert
+        self._pending_market_info_insert = []
         self.unlock()
 
-        try:
-            cursor = self._db.cursor()
-
-            for mi in mki:
-                if mi[16] is None:
-                    # margin factor is unavailable when market is down, so use previous value if available
-                    cursor.execute("""SELECT margin_factor FROM market WHERE broker_id = '%s' AND market_id = '%s'""" % (mi[0], mi[1]))
-                    row = cursor.fetchone()
-
-                    if row:
-                        # replace by previous margin factor from the DB
-                        margin_factor = row[0]
-                        mi = list(mi)
-                        mi[16] = margin_factor
-
-                cursor.execute("""INSERT INTO market(broker_id, market_id, symbol,
-                                    market_type, unit_type, contract_type,
-                                    trade_type, orders,
-                                    base, base_display, base_precision,
-                                    quote, quote_display, quote_precision,
-                                    expiry, timestamp,
-                                    lot_size, contract_size, base_exchange_rate,
-                                    value_per_pip, one_pip_means, margin_factor,
-                                    min_size, max_size, step_size,
-                                    min_notional, max_notional, step_notional,
-                                    min_price, max_price, step_price,
-                                    maker_fee, taker_fee, maker_commission, taker_commission) 
-                                VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                ON CONFLICT (broker_id, market_id) DO UPDATE SET symbol = %s,
-                                    market_type = %s, unit_type = %s, contract_type = %s,
-                                    trade_type = %s, orders = %s,
-                                    base = %s, base_display = %s, base_precision = %s,
-                                    quote = %s, quote_display = %s, quote_precision = %s,
-                                    expiry = %s, timestamp = %s,
-                                    lot_size = %s, contract_size = %s, base_exchange_rate = %s,
-                                    value_per_pip = %s, one_pip_means = %s, margin_factor = %s,
-                                    min_size = %s, max_size = %s, step_size = %s,
-                                    min_notional = %s, max_notional = %s, step_notional = %s,
-                                    min_price = %s, max_price = %s, step_price = %s,
-                                    maker_fee = %s, taker_fee = %s, maker_commission = %s, taker_commission = %s""",
-                                (*mi, *mi[2:]))
-
-            self._db.commit()
-        except Exception as e:
-            logger.error(repr(e))
-
-            # retry the next time
-            self.lock()
-            self._pending_market_info_insert = mki + self._pending_market_info_insert
-            self.unlock()
-
-        #
-        # select market info
-        #
-
-        self.lock()
-        mis = copy.copy(self._pending_market_info_select)
-        self._pending_market_info_select.clear()
-        self.unlock()
-
-        try:
-            cursor = self._db.cursor()
-
-            for mi in mis:
-                cursor.execute("""SELECT symbol,
-                                    market_type, unit_type, contract_type,
-                                    trade_type, orders,
-                                    base, base_display, base_precision,
-                                    quote, quote_display, quote_precision,
-                                    expiry, timestamp,
-                                    lot_size, contract_size, base_exchange_rate,
-                                    value_per_pip, one_pip_means, margin_factor,
-                                    min_size, max_size, step_size,
-                                    min_notional, max_notional, step_notional,
-                                    min_price, max_price, step_price,
-                                    maker_fee, taker_fee, maker_commission, taker_commission FROM market
-                                WHERE broker_id = '%s' AND market_id = '%s'""" % (
-                                    mi[1], mi[2]))
-
-                row = cursor.fetchone()
-
-                if row:
-                    market_info = Market(mi[2], row[0])
-
-                    market_info.is_open = True
-
-                    market_info.market_type = row[1]
-                    market_info.unit_type = row[2]
-                    market_info.contract_type = row[3]
-
-                    market_info.trade = row[4]
-                    market_info.orders = row[5]
-
-                    market_info.set_base(row[6], row[7], int(row[8]))
-                    market_info.set_quote(row[9], row[10], int(row[11]))
-
-                    market_info.expiry = row[12]
-                    market_info.last_update_time = row[13]
-
-                    market_info.lot_size = float(row[14])
-                    market_info.contract_size = float(row[15])
-                    market_info.base_exchange_rate = float(row[16])
-                    market_info.value_per_pip = float(row[17])
-                    market_info.one_pip_means = float(row[18])
-
-                    if row[19] is not None or row[19] is not 'None':
-                        if row[19] == '-':  # not defined mean 1.0 or no margin
-                            market_info.margin_factor = 1.0
-                        else:
-                            market_info.margin_factor = float(row[19])
-
-                    market_info.set_size_limits(float(row[20]), float(row[21]), float(row[22]))
-                    market_info.set_notional_limits(float(row[23]), float(row[24]), float(row[25]))
-                    market_info.set_price_limits(float(row[26]), float(row[27]), float(row[28]))
-
-                    market_info.maker_fee = float(row[29])
-                    market_info.taker_fee = float(row[30])
-
-                    market_info.maker_commission = float(row[31])
-                    market_info.taker_commission = float(row[32])
-                else:
-                    market_info = None
-
-                # notify
-                mi[0].notify(Signal.SIGNAL_MARKET_INFO_DATA, mi[1], (mi[2], market_info))
-        except Exception as e:
-            logger.error(repr(e))
-
-            # retry the next time
-            self.lock()
-            self._pending_market_info_select = mis + self._pending_market_info_select
-            self.unlock()
-
-        #
-        # select market list
-        #
-
-        self.lock()
-        mls = copy.copy(self._pending_market_list_select)
-        self._pending_market_list_select.clear()
-        self.unlock()
-
-        try:
-            cursor = self._db.cursor()
-
-            for m in mls:
-                cursor.execute("""SELECT market_id, symbol, base, quote FROM market WHERE broker_id = '%s'""" % (m[1],))
-
-                rows = cursor.fetchall()
-
-                market_list = []
-
-                for row in rows:
-                    market_list.append(row)
-
-                # notify
-                m[0].notify(Signal.SIGNAL_MARKET_LIST_DATA, m[1], market_list)
-        except Exception as e:
-            logger.error(repr(e))
-
-            # retry the next time
-            self.lock()
-            self._pending_market_list_select = mls + self._pending_market_list_select
-            self.unlock()
-
-    def process_userdata(self):
-        #
-        # inset asset
-        #
-        self.lock()
-        uai = copy.copy(self._pending_asset_insert)
-        self._pending_asset_insert.clear()
-        self.unlock()
-
-        try:
-            cursor = self._db.cursor()
-
-            for ua in uai:
-                cursor.execute("""
-                    INSERT INTO asset(broker_id, asset_id, last_trade_id, timestamp, quantity, price, quote_symbol)
-                        VALUES(%s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (broker_id, asset_id) DO UPDATE SET 
-                        last_trade_id = %s, timestamp = %s, quantity = %s, price = %s, quote_symbol = %s""", (*ua, *ua[2:]))
-
-            self._db.commit()
-        except Exception as e:
-            logger.error(repr(e))
-
-            # retry the next time
-            self.lock()
-            self._pending_asset_insert = uai + self._pending_asset_insert
-            self.unlock()
-
-        #
-        # select asset
-        #
-
-        self.lock()
-        uas = copy.copy(self._pending_asset_select)
-        self._pending_asset_select.clear()
-        self.unlock()
-
-        try:
-            cursor = self._db.cursor()
-
-            for ua in uas:
-                cursor.execute("""SELECT asset_id, last_trade_id, timestamp, quantity, price, quote_symbol FROM asset WHERE broker_id = '%s'""" % (ua[2]))
-
-                rows = cursor.fetchall()
-
-                assets = []
-
-                for row in rows:
-                    asset = Asset(ua[1], row[0])
-
-                    # only a sync will tell which quantity is free, which one is locked
-                    asset.update_price(float(row[2]) * 0.001, row[1], float(row[4]), row[5])
-                    asset.set_quantity(0.0, float(row[3]))
-
-                    assets.append(asset)
-
-                # notify
-                ua[0].notify(Signal.SIGNAL_ASSET_DATA_BULK, ua[2], assets)
-        except Exception as e:
-            # check database for valid ohlc and volumes
-            logger.error(repr(e))
-
-            # retry the next time
-            self.lock()
-            self._pending_asset_select = uas + self._pending_asset_select
-            self.unlock()
-
-    def process_ohlc(self):       
-        #
-        # select market ohlcs
-        #
-
-        self.lock()
-        mks = copy.copy(self._pending_ohlc_select)
-        self._pending_ohlc_select.clear()
-        self.unlock()
-
-        try:
-            cursor = self._db.cursor()
-
-            for mk in mks:
-                if mk[6]:
-                    # last n
-                    cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s""" % (mk[1], mk[2], mk[3]))
-                    count = int(cursor.fetchone()[0])
-                    offset = max(0, count - mk[6])
-
-                    # LIMIT should not be necessary then
-                    cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                                    WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (
-                                        mk[1], mk[2], mk[3], mk[6], offset))
-                elif mk[4] and mk[5]:
-                    # from to
-                    cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                                    WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                                        mk[1], mk[2], mk[3], mk[4], mk[5]))
-                elif mk[4]:
-                    # from to now
-                    cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                                    WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
-                                        mk[1], mk[2], mk[3], mk[4]))
-                elif mk[5]:
-                    # to now
-                    cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                                    WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                                        mk[1], mk[2], mk[3], mk[5]))
-                else:
-                    # all
-                    cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                                    WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
-                                        mk[1], mk[2], mk[3]))
-
-                rows = cursor.fetchall()
-
-                ohlcs = []
-
-                for row in rows:
-                    timestamp = float(row[0]) / 1000.0  # to float second timestamp
-                    ohlc = Candle(timestamp, mk[3])
-
-                    ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
-                    ohlc.set_ofr_ohlc(float(row[5]), float(row[6]), float(row[7]), float(row[8]))
-
-                    # if float(row[9]) <= 0:
-                    #   # prefer to ignore empty volume ohlc because it can broke volume signal and it is a no way but it could be
-                    #   # a lack of this information like on SPX500 of ig.com. So how to manage that cases...
-                    #   continue
-
-                    ohlc.set_volume(float(row[9]))
-
-                    ohlcs.append(ohlc)
-
-                # notify
-                mk[0].notify(Signal.SIGNAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
-        except Exception as e:
-            # check database for valide ohlc and volumes
-            logger.error(repr(e))
-
-            # retry the next time
-            self.lock()
-            self._pending_ohlc_select = mks + self._pending_ohlc_select
-            self.unlock()
-
-        #
-        # insert market ohlcs
-        #
-
-        if time.time() - self._last_ohlc_flush >= 60 or len(self._pending_ohlc_insert) > 500:
-            self.lock()
-            mkd = copy.copy(self._pending_ohlc_insert)
-            self._pending_ohlc_insert.clear()
-            self.unlock()
-
+        if mki:
             try:
                 cursor = self._db.cursor()
 
-                for mk in mkd:
-                    if mk[1]:  # replace
-                        cursor.execute("""INSERT INTO ohlc(broker_id, market_id, timestamp, timeframe,
-                                bid_open, bid_high, bid_low, bid_close,
-                                ask_open, ask_high, ask_low, ask_close,
-                                volume)
-                            VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            ON CONFLICT (broker_id, market_id, timestamp, timeframe) DO UPDATE SET 
-                                bid_open = %s, bid_high = %s, bid_low = %s, bid_close = %s,
-                                ask_open = %s, ask_high = %s, ask_low = %s, ask_close = %s,
-                                volume = %s""", (*mk[0], *mk[0][4:]))
-                    else:  # keep original (default)
-                        cursor.execute("""INSERT INTO ohlc(broker_id, market_id, timestamp, timeframe,
-                                bid_open, bid_high, bid_low, bid_close,
-                                ask_open, ask_high, ask_low, ask_close,
-                                volume)
-                            VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            ON CONFLICT DO NOTHING""", (*mk[0],))
+                for mi in mki:
+                    if mi[16] is None:
+                        # margin factor is unavailable when market is down, so use previous value if available
+                        cursor.execute("""SELECT margin_factor FROM market WHERE broker_id = '%s' AND market_id = '%s'""" % (mi[0], mi[1]))
+                        row = cursor.fetchone()
+
+                        if row:
+                            # replace by previous margin factor from the DB
+                            margin_factor = row[0]
+                            mi = list(mi)
+                            mi[16] = margin_factor
+
+                    cursor.execute("""INSERT INTO market(broker_id, market_id, symbol,
+                                        market_type, unit_type, contract_type,
+                                        trade_type, orders,
+                                        base, base_display, base_precision,
+                                        quote, quote_display, quote_precision,
+                                        expiry, timestamp,
+                                        lot_size, contract_size, base_exchange_rate,
+                                        value_per_pip, one_pip_means, margin_factor,
+                                        min_size, max_size, step_size,
+                                        min_notional, max_notional, step_notional,
+                                        min_price, max_price, step_price,
+                                        maker_fee, taker_fee, maker_commission, taker_commission) 
+                                    VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    ON CONFLICT (broker_id, market_id) DO UPDATE SET symbol = %s,
+                                        market_type = %s, unit_type = %s, contract_type = %s,
+                                        trade_type = %s, orders = %s,
+                                        base = %s, base_display = %s, base_precision = %s,
+                                        quote = %s, quote_display = %s, quote_precision = %s,
+                                        expiry = %s, timestamp = %s,
+                                        lot_size = %s, contract_size = %s, base_exchange_rate = %s,
+                                        value_per_pip = %s, one_pip_means = %s, margin_factor = %s,
+                                        min_size = %s, max_size = %s, step_size = %s,
+                                        min_notional = %s, max_notional = %s, step_notional = %s,
+                                        min_price = %s, max_price = %s, step_price = %s,
+                                        maker_fee = %s, taker_fee = %s, maker_commission = %s, taker_commission = %s""",
+                                    (*mi, *mi[2:]))
 
                 self._db.commit()
             except Exception as e:
@@ -481,10 +204,433 @@ class PgSql(Database):
 
                 # retry the next time
                 self.lock()
-                self._pending_ohlc_insert = mkd + self._pending_ohlc_insert
+                self._pending_market_info_insert = mki + self._pending_market_info_insert
                 self.unlock()
 
-            self._last_ohlc_flush = time.time()
+        #
+        # select market info
+        #
+
+        self.lock()
+        mis = self._pending_market_info_select
+        self._pending_market_info_select = []
+        self.unlock()
+
+        if mis:
+            try:
+                cursor = self._db.cursor()
+
+                for mi in mis:
+                    cursor.execute("""SELECT symbol,
+                                        market_type, unit_type, contract_type,
+                                        trade_type, orders,
+                                        base, base_display, base_precision,
+                                        quote, quote_display, quote_precision,
+                                        expiry, timestamp,
+                                        lot_size, contract_size, base_exchange_rate,
+                                        value_per_pip, one_pip_means, margin_factor,
+                                        min_size, max_size, step_size,
+                                        min_notional, max_notional, step_notional,
+                                        min_price, max_price, step_price,
+                                        maker_fee, taker_fee, maker_commission, taker_commission FROM market
+                                    WHERE broker_id = '%s' AND market_id = '%s'""" % (
+                                        mi[1], mi[2]))
+
+                    row = cursor.fetchone()
+
+                    if row:
+                        market_info = Market(mi[2], row[0])
+
+                        market_info.is_open = True
+
+                        market_info.market_type = row[1]
+                        market_info.unit_type = row[2]
+                        market_info.contract_type = row[3]
+
+                        market_info.trade = row[4]
+                        market_info.orders = row[5]
+
+                        market_info.set_base(row[6], row[7], int(row[8]))
+                        market_info.set_quote(row[9], row[10], int(row[11]))
+
+                        market_info.expiry = row[12]
+                        market_info.last_update_time = row[13]
+
+                        market_info.lot_size = float(row[14])
+                        market_info.contract_size = float(row[15])
+                        market_info.base_exchange_rate = float(row[16])
+                        market_info.value_per_pip = float(row[17])
+                        market_info.one_pip_means = float(row[18])
+
+                        if row[19] is not None or row[19] is not 'None':
+                            if row[19] == '-':  # not defined mean 1.0 or no margin
+                                market_info.margin_factor = 1.0
+                            else:
+                                market_info.margin_factor = float(row[19])
+
+                        market_info.set_size_limits(float(row[20]), float(row[21]), float(row[22]))
+                        market_info.set_notional_limits(float(row[23]), float(row[24]), float(row[25]))
+                        market_info.set_price_limits(float(row[26]), float(row[27]), float(row[28]))
+
+                        market_info.maker_fee = float(row[29])
+                        market_info.taker_fee = float(row[30])
+
+                        market_info.maker_commission = float(row[31])
+                        market_info.taker_commission = float(row[32])
+                    else:
+                        market_info = None
+
+                    # notify
+                    mi[0].notify(Signal.SIGNAL_MARKET_INFO_DATA, mi[1], (mi[2], market_info))
+            except Exception as e:
+                logger.error(repr(e))
+
+                # retry the next time
+                self.lock()
+                self._pending_market_info_select = mis + self._pending_market_info_select
+                self.unlock()
+
+        #
+        # select market list
+        #
+
+        self.lock()
+        mls = self._pending_market_list_select
+        self._pending_market_list_select = []
+        self.unlock()
+
+        if mls:
+            try:
+                cursor = self._db.cursor()
+
+                for m in mls:
+                    cursor.execute("""SELECT market_id, symbol, base, quote FROM market WHERE broker_id = '%s'""" % (m[1],))
+
+                    rows = cursor.fetchall()
+
+                    market_list = []
+
+                    for row in rows:
+                        market_list.append(row)
+
+                    # notify
+                    m[0].notify(Signal.SIGNAL_MARKET_LIST_DATA, m[1], market_list)
+            except Exception as e:
+                logger.error(repr(e))
+
+                # retry the next time
+                self.lock()
+                self._pending_market_list_select = mls + self._pending_market_list_select
+                self.unlock()
+
+    def process_userdata(self):
+        #
+        # inset asset
+        #
+        self.lock()
+        uai = self._pending_asset_insert
+        self._pending_asset_insert = []
+        self.unlock()
+
+        if uai:
+            try:
+                cursor = self._db.cursor()
+
+                for ua in uai:
+                    cursor.execute("""
+                        INSERT INTO asset(broker_id, asset_id, last_trade_id, timestamp, quantity, price, quote_symbol)
+                            VALUES(%s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (broker_id, asset_id) DO UPDATE SET 
+                            last_trade_id = %s, timestamp = %s, quantity = %s, price = %s, quote_symbol = %s""", (*ua, *ua[2:]))
+
+                self._db.commit()
+            except Exception as e:
+                logger.error(repr(e))
+
+                # retry the next time
+                self.lock()
+                self._pending_asset_insert = uai + self._pending_asset_insert
+                self.unlock()
+
+        #
+        # select asset
+        #
+
+        self.lock()
+        uas = self._pending_asset_select
+        self._pending_asset_select = []
+        self.unlock()
+
+        if uas:
+            try:
+                cursor = self._db.cursor()
+
+                for ua in uas:
+                    cursor.execute("""SELECT asset_id, last_trade_id, timestamp, quantity, price, quote_symbol FROM asset WHERE broker_id = '%s'""" % (ua[2]))
+
+                    rows = cursor.fetchall()
+
+                    assets = []
+
+                    for row in rows:
+                        asset = Asset(ua[1], row[0])
+
+                        # only a sync will tell which quantity is free, which one is locked
+                        asset.update_price(float(row[2]) * 0.001, row[1], float(row[4]), row[5])
+                        asset.set_quantity(0.0, float(row[3]))
+
+                        assets.append(asset)
+
+                    # notify
+                    ua[0].notify(Signal.SIGNAL_ASSET_DATA_BULK, ua[2], assets)
+            except Exception as e:
+                # check database for valid ohlc and volumes
+                logger.error(repr(e))
+
+                # retry the next time
+                self.lock()
+                self._pending_asset_select = uas + self._pending_asset_select
+                self.unlock()
+
+        #
+        # inset user_trade
+        #
+
+        self.lock()
+        uti = self._pending_user_trade_insert
+        self._pending_user_trade_insert = []
+        self.unlock()
+
+        if uti:
+            try:
+                cursor = self._db.cursor()           
+
+                query = ' '.join((
+                    "INSERT INTO user_trade(broker_id, market_id, appliance_id, trade_id, trade_type, data, operations) VALUES",
+                    ','.join(["('%s', '%s', %s, %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], str(ut[5]), str(ut[6])) for ut in uti]),
+                    "ON CONFLICT (broker_id, market_id, appliance_id, trade_id) DO UPDATE SET data = EXCLUDED.data, operations = EXCLUDED.operations"
+                ))
+
+                cursor.execute(query)
+
+                self._db.commit()
+            except Exception as e:
+                logger.error(repr(e))
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trade_insert = uti + self._pending_user_trade_insert
+                self.unlock()
+
+        #
+        # select user_trade
+        #
+
+        self.lock()
+        uts = self._pending_user_trade_select
+        self._pending_user_trade_select = []
+        self.unlock()
+
+        if uts:
+            try:
+                cursor = self._db.cursor()
+
+                for ut in uts:
+                    cursor.execute("""SELECT trade_id, trade_type, data, operations FROM user_trade WHERE
+                        appliance_id = '%s' AND broker_id = '%s' AND market_id = '%s'""" % (ut[2], ut[3], ut[4]))
+
+                    rows = cursor.fetchall()
+
+                    user_trades = []
+
+                    for row in rows:
+                        user_trades.append((row[0], row[1], json.loads(row[2]), json.loads(row[3])))
+
+                    # notify
+                    ut[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ut[2], user_trades)
+            except Exception as e:
+                # check database for valid ohlc and volumes
+                logger.error(repr(e))
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trade_select = uts + self._pending_user_trade_select
+                self.unlock()            
+
+        #
+        # insert user_trader
+        #
+
+        self.lock()
+        uti = self._pending_user_trader_insert
+        self._pending_user_trader_insert = []
+        self.unlock()
+
+        if uti:
+            try:
+                cursor = self._db.cursor()
+
+                query = ' '.join((
+                    "INSERT INTO user_trader(broker_id, market_id, appliance_id, activity, data, regions) VALUES",
+                    ','.join(["('%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], 1 if ut[3] else 0, str(ut[4]), str(ut[5])) for ut in uti]),
+                    "ON CONFLICT (broker_id, market_id, appliance_id) DO UPDATE SET activity = EXCLUDED.activity, data = EXCLUDED.data, regions = EXCLUDED.regions"
+                ))
+
+                cursor.execute(query)
+
+                self._db.commit()
+            except Exception as e:
+                logger.error(repr(e))
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trader_insert = uti + self._pending_user_trader_insert
+                self.unlock()
+
+        #
+        # select user_trader
+        #
+
+        self.lock()
+        uts = self._pending_user_trader_select
+        self._pending_user_trader_select = []
+        self.unlock()
+
+        if uts:
+            try:
+                cursor = self._db.cursor()
+
+                for ut in uts:
+                    cursor.execute("""SELECT activity, data, regions FROM user_trader WHERE
+                        appliance_id = '%s' AND broker_id = '%s' AND market_id = '%s'""" % (ut[2], ut[3], ut[4]))
+
+                    rows = cursor.fetchall()
+
+                    user_traders = []
+
+                    for row in rows:
+                        user_traders.append((row[0], row[1], activity, json.loads(row[2]), json.loads(row[3])))
+
+                    # notify
+                    ut[0].notify(Signal.SIGNAL_STRATEGY_TRADER_DATA, ut[2], user_traders)
+            except Exception as e:
+                # check database for valid ohlc and volumes
+                logger.error(repr(e))
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trade_select = uts + self._pending_user_trade_select
+                self.unlock()      
+
+    def process_ohlc(self):       
+        #
+        # select market ohlcs
+        #
+
+        self.lock()
+        mks = self._pending_ohlc_select
+        self._pending_ohlc_select = []
+        self.unlock()
+
+        if mks:
+            try:
+                cursor = self._db.cursor()
+
+                for mk in mks:
+                    if mk[6]:
+                        # last n
+                        cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s""" % (mk[1], mk[2], mk[3]))
+                        count = int(cursor.fetchone()[0])
+                        offset = max(0, count - mk[6])
+
+                        # LIMIT should not be necessary then
+                        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (
+                                            mk[1], mk[2], mk[3], mk[6], offset))
+                    elif mk[4] and mk[5]:
+                        # from to
+                        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3], mk[4], mk[5]))
+                    elif mk[4]:
+                        # from to now
+                        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3], mk[4]))
+                    elif mk[5]:
+                        # to now
+                        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3], mk[5]))
+                    else:
+                        # all
+                        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3]))
+
+                    rows = cursor.fetchall()
+
+                    ohlcs = []
+
+                    for row in rows:
+                        timestamp = float(row[0]) / 1000.0  # to float second timestamp
+                        ohlc = Candle(timestamp, mk[3])
+
+                        ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+                        ohlc.set_ofr_ohlc(float(row[5]), float(row[6]), float(row[7]), float(row[8]))
+
+                        # if float(row[9]) <= 0:
+                        #   # prefer to ignore empty volume ohlc because it can broke volume signal and it is a no way but it could be
+                        #   # a lack of this information like on SPX500 of ig.com. So how to manage that cases...
+                        #   continue
+
+                        ohlc.set_volume(float(row[9]))
+
+                        ohlcs.append(ohlc)
+
+                    # notify
+                    mk[0].notify(Signal.SIGNAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
+            except Exception as e:
+                # check database for valide ohlc and volumes
+                logger.error(repr(e))
+
+                # retry the next time
+                self.lock()
+                self._pending_ohlc_select = mks + self._pending_ohlc_select
+                self.unlock()
+
+        #
+        # insert market ohlcs
+        #
+
+        if time.time() - self._last_ohlc_flush >= 60 or len(self._pending_ohlc_insert) > 500:
+            self.lock()
+            mkd = self._pending_ohlc_insert
+            self._pending_ohlc_insert = []
+            self.unlock()
+
+            if mkd:
+                try:
+                    cursor = self._db.cursor()
+
+                    query = ' '.join((
+                        "INSERT INTO ohlc(broker_id, market_id, timestamp, timeframe, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume) VALUES",
+                        ','.join(["('%s', '%s', %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5], mk[6], mk[7], mk[8], mk[9], mk[10], mk[11], mk[12]) for mk in mkd]),
+                        "ON CONFLICT (broker_id, market_id, timestamp, timeframe) DO UPDATE SET bid_open = EXCLUDED.bid_open, bid_high = EXCLUDED.bid_high, bid_low = EXCLUDED.bid_low, bid_close = EXCLUDED.bid_close, ask_open = EXCLUDED.ask_open, ask_high = EXCLUDED.ask_high, ask_low = EXCLUDED.ask_low, ask_close = EXCLUDED.ask_close, volume = EXCLUDED.volume"
+                    ))
+
+                    cursor.execute(query)
+
+                    self._db.commit()
+                except Exception as e:
+                    logger.error(repr(e))
+
+                    # retry the next time
+                    self.lock()
+                    self._pending_ohlc_insert = mkd + self._pending_ohlc_insert
+                    self.unlock()
+
+                self._last_ohlc_flush = time.time()
 
         #
         # clean older ohlcs

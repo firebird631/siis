@@ -258,7 +258,7 @@ class IGWatcher(Watcher):
 
     def subscribe_market(self, instrument):
         """
-        Subscribe to an instrument. If timeframe is 0 then take the ticks.
+        Subscribe to an instrument.
         """
         fields = ["MARKET_STATE", "UPDATE_TIME", "BID", "OFFER"]
 
@@ -343,6 +343,10 @@ class IGWatcher(Watcher):
 
     def post_run(self):
         super().post_run()
+
+    #
+    # WS data
+    #
 
     @staticmethod
     def on_account_update(self, item_update):
@@ -542,8 +546,9 @@ class IGWatcher(Watcher):
                 if values.get('CONFIRMS'):
                     # not use them because we only want CRUD operations => OPU only so
                     data = json.loads(values.get('CONFIRMS'))
-                    epic = data.get('epic')
+                    logger.info("ig.com CONFIRMS %s" % str(data))
 
+                    epic = data.get('epic')
                     level = float(data['level']) if data.get('level') is not None else None
                     quantity = float(data['size']) if data.get('size') is not None else None
 
@@ -592,12 +597,12 @@ class IGWatcher(Watcher):
 
                 if values.get('WOU'):
                     data = json.loads(values.get('WOU'))
+                    logger.info("ig.com WOU %s" % str(data))
 
                     order_id = data['dealId']
                     ref_order_id = data['dealReference']
 
                     epic = data['epic']
-                    logger.warning("ig l608 'WOU' %s" % str(data))
 
                     # level = float(data['level']) if data.get('level') is not None else None
                     # stop_level = float(data['stopLevel']) if data.get('stopLevel') is not None else None
@@ -645,6 +650,7 @@ class IGWatcher(Watcher):
 
                 if values.get('OPU'):
                     data = json.loads(values.get('OPU'))
+                    logger.info("ig.com OPU %s" % str(data))
 
                     if data.get('direction', '') == 'BUY':
                         direction = Order.LONG
@@ -655,8 +661,6 @@ class IGWatcher(Watcher):
 
                     position_id = data['dealId']
                     ref_order_id = data['dealReference']
-
-                    logger.warning("ig 619 'OPU' %s" % str(data))
 
                     epic = data.get('epic')
                     quantity = float(data.get('size')) if data.get('size') is not None else 0.0
@@ -742,6 +746,10 @@ class IGWatcher(Watcher):
         except Exception as e:
             logger.error(repr(e))
             logger.error(traceback.format_exc())
+
+    #
+    # REST data
+    #
 
     def fetch_market(self, epic):
         """

@@ -42,3 +42,21 @@ CREATE TABLE IF NOT EXISTS ohlc(
     ask_open VARCHAR(32) NOT NULL, ask_high VARCHAR(32) NOT NULL, ask_low VARCHAR(32) NOT NULL, ask_close VARCHAR(32) NOT NULL,
     volume VARCHAR(48) NOT NULL,
     UNIQUE KEY(broker_id, market_id, timestamp, timeframe));
+
+-- user_trade
+CREATE TABLE IF NOT EXISTS user_trade(
+    id SERIAL PRIMARY KEY,
+    broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, appliance_id VARCHAR(255) NOT NULL,
+    trade_id INTEGER NOT NULL,
+    data TEXT NOT NULL DEFAULT '{}',
+    operations TEXT NOT NULL DEFAULT '{}',
+    UNIQUE KEY(broker_id, market_id, appliance_id, trade_id));
+
+-- user_trader
+CREATE TABLE IF NOT EXISTS user_trader(
+    id SERIAL PRIMARY KEY,
+    broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, appliance_id VARCHAR(255) NOT NULL,
+    activity INTEGER NOT NULL DEFAULT 1,
+    data TEXT NOT NULL DEFAULT '{}',    
+    regions TEXT NOT NULL DEFAULT '{}',
+    UNIQUE KEY(broker_id, market_id, appliance_id))

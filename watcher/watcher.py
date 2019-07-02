@@ -20,6 +20,8 @@ from instrument.instrument import Instrument, Candle
 class Watcher(Runnable):
     """
     Watcher base class.
+
+    @todo subscribe/unsubscribe
     """
 
     WATCHER_UNDEFINED = 0
@@ -62,7 +64,42 @@ class Watcher(Runnable):
 
     @property
     def watcher_type(self):
+        """
+        Type of watched data
+        """
         return self._watcher_type
+
+    @property
+    def has_prices_and_volumes(self):
+        """
+        This watchers looks for price and volumes data.
+        """
+        return self._watcher_type & Watcher.WATCHER_PRICE_AND_VOLUME == Watcher.WATCHER_PRICE_AND_VOLUME
+
+    @property
+    def has_buy_sell_signals(self):
+        """
+        This watcher looks for buy/sell signals data.
+        """
+        return self._watcher_type & Watcher.WATCHER_BUY_SELL_SIGNAL == Watcher.WATCHER_BUY_SELL_SIGNAL
+
+    def connect(self):
+        pass
+
+    def disconnect(self):
+        pass
+
+    @property
+    def connected(self):
+        return False
+
+    @property
+    def connector(self):
+        return None
+
+    #
+    # instruments
+    #
 
     def insert_watched_instrument(self, market_id, timeframes):
         """
@@ -124,27 +161,27 @@ class Watcher(Runnable):
         """
         return self._watched_instruments
 
-    @property
-    def has_prices_and_volumes(self):
-        return self._watcher_type & Watcher.WATCHER_PRICE_AND_VOLUME == Watcher.WATCHER_PRICE_AND_VOLUME
+    def subscribe(self, market_id, timeframe):
+        """
+        Subscribes for receiving data from price source for a market and a timeframe.
 
-    @property
-    def has_buy_sell_signals(self):
-        return self._watcher_type & Watcher.WATCHER_BUY_SELL_SIGNAL == Watcher.WATCHER_BUY_SELL_SIGNAL
-
-    def connect(self):
-        pass
-
-    def disconnect(self):
-        pass
-
-    @property
-    def connected(self):
+        @param market_id str Valid market identifier
+        @param timeframe int TF_xxx, 0 for tick/trade data
+        """
         return False
 
-    @property
-    def connector(self):
-        return None
+    def unsubscribe(self, market_id, timeframe):
+        """
+        Unsubscribes from receiving data for a market and a timeframe or any timeframe.
+
+        @param market_id str Valid market identifier
+        @param timeframe int TF_xxx or -1 for any
+        """
+        return False
+
+    #
+    # processing
+    #
 
     def receiver(self, signal):
         """
@@ -321,7 +358,6 @@ class Watcher(Runnable):
 
         # stored timeframes only
         if ended_ohlc and (tf in self.STORED_TIMEFRAMES):
-            # @todo REDIS cache too
             Database.inst().store_market_ohlc((
                 self.name, market_id, int(ended_ohlc.timestamp*1000), tf,
                 ended_ohlc.bid_open, ended_ohlc.bid_high, ended_ohlc.bid_low, ended_ohlc.bid_close,
@@ -339,9 +375,6 @@ class Watcher(Runnable):
             last_ohlc_by_timeframe = self._last_ohlc.get(market_id)
             if not last_ohlc_by_timeframe:
                 continue
-
-            # bid = self._last_tick[market_id].bid
-            # ofr = self._last_tick[market_id].ofr
 
             for tf, _ohlc in last_ohlc_by_timeframe.items():
                 # for closing candles, generate them

@@ -59,11 +59,27 @@ class Strategy(Runnable):
     COMMAND_TRADE_MODIFY = 11   # modify an existing trade
     COMMAND_TRADE_EXIT = 12     # exit (or eventually cancel if not again filled) an existing trade
     COMMAND_TRADE_INFO = 13     # get and display manual trade info (such as listing operations)
+    COMMAND_TRADE_ASSIGN = 14   # manually assign a quantity to a new trade
 
-    COMMAND_TRADER_MODIFY = 14
-    COMMAND_TRADER_INFO = 15
+    COMMAND_TRADER_MODIFY = 20
+    COMMAND_TRADER_INFO = 21
 
-    def __init__(self, name, strategy_service, watcher_service, trader_service, options, parameters=None):
+    @staticmethod
+    def merge_parameters(default, user):
+        def merge(a, b):
+            if isinstance(a, dict) and isinstance(b, dict):
+                d = dict(a)
+                d.update({k: merge(a.get(k, None), b[k]) for k in b})
+                return d
+
+            if isinstance(a, list) and isinstance(b, list):
+                return [merge(x, y) for x, y in itertools.zip_longest(a, b)]
+
+            return a if b is None else b
+
+        return merge(default, user)
+
+    def __init__(self, name, strategy_service, watcher_service, trader_service, options, default_parameters=None, user_parameters=None):
         super().__init__("st-%s" % name)
 
         self._name = name
@@ -72,7 +88,7 @@ class Strategy(Runnable):
         self._trader_service = trader_service
         self._identifier = None
 
-        self._parameters = parameters
+        self._parameters = Strategy.merge_parameters(default_parameters, user_parameters)
 
         self._preset = False       # True once instrument are setup
         self._prefetched = False   # True once strategies are ready
@@ -728,212 +744,77 @@ class Strategy(Runnable):
         """
         pass
 
+    def trade_command(self, label, data, func):
+        # manually trade modify a trade (add/remove an operation)
+        market_id = data.get('market-id')
+
+        # retrieve by market-id or mapped symbol
+        instrument = self.find_instrument(market_id)
+
+        if instrument:
+            sub_trader = self._sub_traders.get(instrument)
+            Terminal.inst().notice("Trade %s for strategy %s - %s" % (label, self.name, self.identifier), view='content')
+
+            # retrieve the trade and apply the modification
+            results = func(sub_trader, data)
+
+            if results:
+                if results['error']:
+                    Terminal.inst().info(results['messages'][0], view='status')
+                else:
+                    Terminal.inst().info("Done", view='status')
+
+                for message in results['messages']:
+                    Terminal.inst().info(message, view='content')
+
+    def trader_command(self, label, data, func):
+        # manually trade modify a trade (add/remove an operation)
+        market_id = data.get('market-id')
+
+        # retrieve by market-id or mapped symbol
+        instrument = self.find_instrument(market_id)
+
+        if instrument:
+            sub_trader = self._sub_traders.get(instrument)
+            Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, instrument.market_id), view='content')
+
+            # retrieve the trade and apply the modification
+            results = func(self, sub_trader, data)
+
+            if results:
+                if results['error']:
+                    Terminal.inst().info(results['messages'][0], view='status')
+                else:
+                    Terminal.inst().info("Done", view='status')
+
+                for message in results['messages']:
+                    Terminal.inst().info(message, view='content')
+
     def command(self, command_type, data):
         """
         Some parts are mutexed some others are not.
         @todo some command are only display, so could be moved to a displayer, and command could only return an object
         """
         if command_type == Strategy.COMMAND_SHOW_STATS:
-            results = self.get_stats()
-
-            if results:
-                Terminal.inst().notice("Active trades for strategy %s - %s" % (self.name, self.identifier), view='content')
-
-                # tabular formated text
-                arr1, arr2 = self.formatted_stats(results, style=Terminal.inst().style(), quantities=True)
-
-                Terminal.inst().info(arr1, view='content')
-                Terminal.inst().info(arr2, view='content')
-
+            self.cmd_trade_stats(data)
         elif command_type == Strategy.COMMAND_SHOW_HISTORY:
-            results = self.get_history_stats(50)
-
-            if results:
-                Terminal.inst().notice("Trade history for strategy %s - %s" % (self.name, self.identifier), view='content')
-
-                # tabular formated text
-                arr = self.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
-
-                Terminal.inst().info(arr, view='content')
-
+            self.cmd_trade_history(data)
         elif command_type == Strategy.COMMAND_INFO:
-            # info on the appliance
-            if 'market-id' in data:
-                self.lock()
-
-                instrument = self._instruments.get(data['market-id'])
-                if instrument in self._sub_traders:
-                    sub_trader = self._sub_traders[instrument]
-                    if sub_trader:
-                        Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s" % (
-                            data['market-id'], self.name, self.identifier, "active" if sub_trader.activity else "paused"), view='content')
-
-                self.unlock()
-            else:
-                Terminal.inst().info("Appliances %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')
-
-                enabled = []
-                disabled = []
-
-                self.lock()
-
-                for k, sub_trader in self._sub_traders.items():
-                    if sub_trader.activity:
-                        enabled.append(k.market_id)
-                    else:
-                        disabled.append(k.market_id)
-
-                self.unlock()
-
-                if enabled:
-                    enabled = [e if i%10 else e+'\n' for i, e in enumerate(enabled)]
-                    Terminal.inst().info("Enabled instruments (%i): %s" % (len(enabled), " ".join(enabled)), view='content')
-
-                if disabled:
-                    disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
-                    Terminal.inst().info("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')
-
+            self.cmd_trader_info(data)
         elif command_type == Strategy.COMMAND_TRADE_ENTRY:
-            # manually trade entry command (open a new trade limit/market)
-            market_id = data.get('market-id')
-
-            # retrieve by market-id or mapped symbol
-            instrument = self.find_instrument(market_id)
-
-            if instrument:
-                sub_trader = self._sub_traders.get(instrument)
-                Terminal.inst().notice("Trade entry for strategy %s - %s" % (self.name, self.identifier), view='content')
-
-                # create a new trade
-                results = self.cmd_trade_entry(sub_trader, data)
-
-                if results:
-                    if results['error']:
-                        Terminal.inst().info(results['messages'][0], view='status')
-                    else:
-                        Terminal.inst().info("Done", view='status')
-
-                    for message in results['messages']:
-                        Terminal.inst().info(message, view='content')
-
+            self.trade_command("entry", data, self.cmd_trade_entry)
         elif command_type == Strategy.COMMAND_TRADE_EXIT:
-            # manually trade exit command (completely close the trade)
-            market_id = data.get('market-id')
-            trade_id = data.get('trade-id')
-
-            # retrieve by market-id or mapped symbol
-            instrument = self.find_instrument(market_id)
-
-            if instrument and trade_id:
-                sub_trader = self._sub_traders.get(instrument)
-                Terminal.inst().notice("Trade exit for strategy %s - %s" % (self.name, self.identifier), view='content')
-
-                # retrieve the trade and close it
-                results = self.cmd_trade_exit(sub_trader, data)
-
-                if results:
-                    if results['error']:
-                        Terminal.inst().info(results['messages'][0], view='status')
-                    else:
-                        Terminal.inst().info("Done", view='status')
-
-                    for message in results['messages']:
-                        Terminal.inst().info(message, view='content')
-
+            self.trade_command("exit", data, self.cmd_trade_exit)
         elif command_type == Strategy.COMMAND_TRADE_MODIFY:
-            # manually trade modify a trade (add/remove an operation)
-            market_id = data.get('market-id')
-            trade_id = data.get('trade-id')
-
-            # retrieve by market-id or mapped symbol
-            instrument = self.find_instrument(market_id)
-
-            if instrument and trade_id:
-                sub_trader = self._sub_traders.get(instrument)
-                Terminal.inst().notice("Trade modify for strategy %s - %s" % (self.name, self.identifier), view='content')
-
-                # retrieve the trade and apply the modification
-                results = self.cmd_trade_modify(sub_trader, data)
-
-                if results:
-                    if results['error']:
-                        Terminal.inst().info(results['messages'][0], view='status')
-                    else:
-                        Terminal.inst().info("Done", view='status')
-
-                    for message in results['messages']:
-                        Terminal.inst().info(message, view='content')
-
+            self.trade_command("modify", data, self.cmd_trade_modify)
         elif command_type == Strategy.COMMAND_TRADE_INFO:
-            # display the detail of a trade and its operations
-            market_id = data.get('market-id')
-            trade_id = data.get('trade-id')
-
-            # retrieve by market-id or mapped symbol
-            instrument = self.find_instrument(market_id)
-
-            if instrument and trade_id:
-                sub_trader = self._sub_traders.get(instrument)
-                Terminal.inst().notice("Trade info for strategy %s - %s" % (self.name, self.identifier), view='content')
-
-                # retrieve the trade and display its info
-                results = self.cmd_trade_info(sub_trader, data)
-
-                if results:
-                    if results['error']:
-                        Terminal.inst().info(results['messages'][0], view='status')
-                    else:
-                        Terminal.inst().info("Done", view='status')
-
-                    for message in results['messages']:
-                        Terminal.inst().info(message, view='content')
-
+            self.trade_command("info", data, self.cmd_trade_info)
+        elif command_type == Strategy.COMMAND_TRADE_ASSIGN:
+            self.trade_command("assign", data, self.cmd_trade_assign)
         elif command_type == Strategy.COMMAND_TRADER_MODIFY:
-            # modify a sub-trade activity, or add/remove a trading region
-            market_id = data.get('market-id')
-
-            # retrieve by market-id or mapped symbol
-            instrument = self.find_instrument(market_id)
-
-            if instrument:
-                sub_trader = self._sub_traders.get(instrument)
-                Terminal.inst().notice("Strategy trader modify for strategy %s - %s %s" % (self.name, self.identifier, instrument.market_id), view='content')
-
-                # retrieve the trade and display its info
-                results = self.cmd_sub_trader_modify(sub_trader, data)
-
-                if results:
-                    if results['error']:
-                        Terminal.inst().info(results['messages'][0], view='status')
-                    else:
-                        Terminal.inst().info("Done", view='status')
-
-                    for message in results['messages']:
-                        Terminal.inst().info(message, view='content')
-
+            self.sub_trader_command("info", data, self.cmd_sub_trader_modify)
         elif command_type == Strategy.COMMAND_TRADER_INFO:
-            # display the details of a sub-trader (market, activity, regions, number of trades)
-            market_id = data.get('market-id')
-            detail = data.get('detail')
-
-            # retrieve by market-id or mapped symbol
-            instrument = self.find_instrument(market_id)
-
-            if instrument:
-                sub_trader = self._sub_traders.get(instrument)
-                Terminal.inst().notice("Trader info for strategy %s - %s %s" % (self.name, self.identifier, instrument.market_id), view='content')
-
-                # retrieve the sub-trader and display its info
-                results = self.cmd_sub_trader_info(sub_trader, data)
-
-                if results:
-                    if results['error']:
-                        Terminal.inst().info(results['messages'][0], view='status')
-                    else:
-                        Terminal.inst().info("Done", view='status')
-
-                    for message in results['messages']:
-                        Terminal.inst().info(message, view='content')
+            self.cmd_sub_trader_info("info", data, self.cmd_sub_trader_modify)
 
     def pre_run(self):
         Terminal.inst().info("Running appliance %s - %s..." % (self._name, self._identifier), view='content')
@@ -1153,8 +1034,8 @@ class Strategy(Runnable):
                 wt: worst hit price timestamp
 
         @note Its implementation could be overrided but respect at the the described informations.
-        @note This method is very slow, it need to go through all the sub-trader, and look for any trades,
-            it lock the sub-trader trades processing, can causing global latency when having lot of markets.
+        @note This method is slow, it need to go through all the sub-trader, and look for any trades,
+            it can lock the sub-trader trades processing, can causing global latency when having lot of markets.
         """
         results = []
         trader = self.trader()
@@ -1233,9 +1114,10 @@ class Strategy(Runnable):
 
         return results
 
-    def get_history_stats(self, limit=50):
+    def get_history_stats(self, offset=None, limit=None, col_ofs=None):
         """
         Like as get_stats but only return the array of the trade, and complete history.
+        @todo as table
         """
         results = []
         trader = self.trader()
@@ -1279,6 +1161,15 @@ class Strategy(Runnable):
             sub_trader.unlock()
 
         results.sort(key=lambda t: t['ts'])
+
+        if offset is None:
+            offset = 0
+
+        if limit is None:
+            limit = len(results)
+
+        limit = offset + limit
+
         return results[-limit:]
 
     #
@@ -1868,6 +1759,84 @@ class Strategy(Runnable):
 
         return results
 
+    def cmd_trade_assign(self, sub_trader, data):
+        """
+        Assign a free quantity of an asset to a newly created trade according data on given sub_trader.
+        """
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        # command data
+        direction = data.get('direction', Order.LONG)
+        entry_price = data.get('entry-price', 0.0)
+        quantity = data.get('quantity', 0.0)
+        stop_loss = data.get('stop-loss', 0.0)
+        take_profit = data.get('take-profit', 0.0)
+        timeframe = data.get('timeframe', Instrument.TF_4HOUR)
+
+        if quantity <= 0.0:
+            results['messages'].append("Missing or empty quantity.")
+            results['error'] = True
+
+        if entry_price <= 0:
+            results['messages'].append("Invalid entry price.")
+            results['error'] = True
+
+        if stop_loss and stop_loss > entry_price:
+            results['messages'].append("Stop-loss price must be lesser than entry price.")
+            results['error'] = True
+
+        if take_profit and take_profit < entry_price:
+            results['messages'].append("Take-profit price must be greater then entry price.")
+            results['error'] = True
+
+        if direction != Order.LONG:
+            results['messages'].append("Only trade long direction is allowed.")
+            results['error'] = True
+
+        trader = self.trader()
+        market = trader.market(sub_trader.instrument.market_id)
+
+        if not trader.has_quantity(market.base, quantity):
+            results['messages'].append("No enought free asset quantity.")
+            results['error'] = True
+
+        if market.trade != Market.TRADE_BUY_SELL:
+            results['messages'].append("Only allowed on a spot market.")
+            results['error'] = True
+
+        if results['error']:
+            return results
+
+        trade = StrategyAssetTrade(timeframe)
+
+        # user managed trade
+        trade.set_user_trade()
+
+        trade._entry_state = StrategyAssetTrade.STATE_FILLED
+        trade._exit_state = StrategyAssetTrade.STATE_NEW
+        
+        trade.dir = Order.LONG
+        trade.op = entry_price
+        trade.oq = quantity
+
+        trade.tp = take_profit
+        trade.sl = stop_loss        
+
+        trade.eot = time.time()
+
+        trade.aep = entry_price
+
+        trade.e = quantity
+
+        sub_trader.add_trade(trade)
+
+        results['messages'].append("Assigned trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
+
+        return results
+
     def cmd_trade_info(self, sub_trader, data):
         """
         Get trade info according data on given sub_trader.
@@ -1915,6 +1884,29 @@ class Strategy(Runnable):
         sub_trader.unlock()
 
         return results
+
+    def cmd_trade_stats(self, data):
+        results = self.get_stats()
+
+        if results:
+            Terminal.inst().notice("Active trades for strategy %s - %s" % (self.name, self.identifier), view='content')
+
+            # tabular formated text
+            arr1, arr2 = self.formatted_stats(results, style=Terminal.inst().style(), quantities=True)
+
+            Terminal.inst().info(arr1, view='content')
+            Terminal.inst().info(arr2, view='content')
+
+    def cmd_trade_history(self, data):
+        results = self.get_history_stats(0, data.get('limit', 50), None)
+
+        if results:
+            Terminal.inst().notice("Trade history for strategy %s - %s" % (self.name, self.identifier), view='content')
+
+            # tabular formated text
+            arr = self.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
+
+            Terminal.inst().info(arr, view='content')
 
     def cmd_sub_trader_modify(self, sub_trader, data):
         """
@@ -2083,3 +2075,40 @@ class Strategy(Runnable):
         sub_trader.unlock()
 
         return results
+
+    def cmd_trader_info(self, data):
+        # info on the appliance
+        if 'market-id' in data:
+            self.lock()
+
+            instrument = self._instruments.get(data['market-id'])
+            if instrument in self._sub_traders:
+                sub_trader = self._sub_traders[instrument]
+                if sub_trader:
+                    Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s" % (
+                        data['market-id'], self.name, self.identifier, "active" if sub_trader.activity else "paused"), view='content')
+
+            self.unlock()
+        else:
+            Terminal.inst().info("Appliances %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')
+
+            enabled = []
+            disabled = []
+
+            self.lock()
+
+            for k, sub_trader in self._sub_traders.items():
+                if sub_trader.activity:
+                    enabled.append(k.market_id)
+                else:
+                    disabled.append(k.market_id)
+
+            self.unlock()
+
+            if enabled:
+                enabled = [e if i%10 else e+'\n' for i, e in enumerate(enabled)]
+                Terminal.inst().info("Enabled instruments (%i): %s" % (len(enabled), " ".join(enabled)), view='content')
+
+            if disabled:
+                disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
+                Terminal.inst().info("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')

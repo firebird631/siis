@@ -426,10 +426,6 @@ def application(argv):
                                     Terminal.inst().action("Send replicate to market command for position %s" % (target,), view='status')
                                     trader_service.command(Trader.COMMAND_TRIGGER, {'key': target})
 
-                                else:
-                                    # unsupported command
-                                    Terminal.inst().action("Unsupported command %s" % (value[1:],), view='status')
-
                             # clear command value
                             value_changed = True
                             value = None

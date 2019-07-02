@@ -209,7 +209,7 @@ class LongCommand(Command):
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
-        # ie: ":long altbtc:BTCUSDT L@8500 SL@8300 TP@9600 1.0"
+        # ie: ":long altbtc BTCUSDT L@8500 SL@8300 TP@9600 1.0"
         appliance = None
         market_id = None
 
@@ -248,7 +248,7 @@ class LongCommand(Command):
                 elif value.startswith("TP@"):
                     take_profit = float(value[3:])
                 elif value.startswith("'"):
-                    take_profit = timeframe_from_str(value[1:])
+                    timeframe = timeframe_from_str(value[1:])
                 elif value.startswith("*"):
                     quantity_rate = float(value[1:])
                 elif value.endswith("%"):
@@ -263,7 +263,7 @@ class LongCommand(Command):
             return False
 
         if limit_price and take_profit and take_profit < limit_price:
-            Terminal.inst().action("Stop-loss must be greater than limit price", view='status')
+            Terminal.inst().action("Take-profit must be greater than limit price", view='status')
             return False
 
         if quantity_rate <= 0.0:
@@ -309,7 +309,7 @@ class ShortCommand(Command):
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
-        # ie: ":long altbtc:BTCUSDT L@8500 SL@8300 TP@9600 1.0"
+        # ie: ":long altbtc BTCUSDT L@8500 SL@8300 TP@9600 1.0"
         appliance = None
         market_id = None
 
@@ -363,7 +363,7 @@ class ShortCommand(Command):
             return False
 
         if limit_price and take_profit and take_profit > limit_price:
-            Terminal.inst().action("Stop-loss must be less than limit price", view='status')
+            Terminal.inst().action("Take-profit must be lesser than limit price", view='status')
             return False
 
         if quantity_rate <= 0.0:
@@ -745,6 +745,100 @@ class TradeInfoCommand(Command):
         return args, 0
 
 
+class AssignCommand(Command):
+
+    SUMMARY = "to manually assign a quantity of asset to a new trade in LONG direction"
+
+    def __init__(self, strategy_service):
+        super().__init__('assign', 'AS')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if not args:
+            Terminal.inst().action("Missing parameters", view='status')
+            return False
+
+        # ie: ":assign altbtc BTCUSDT EP@8500 SL@8300 TP@9600 0.521"
+        appliance = None
+        market_id = None
+
+        # direction base on command name
+        direction = 1
+        entry_price = None
+        stop_loss = 0.0
+        take_profit = 0.0
+        quantity = 0.0
+        timeframe = Instrument.TF_4HOUR
+
+        if len(args) < 4:
+            Terminal.inst().action("Missing parameters", view='status')
+            return False
+
+        try:
+            appliance, market_id = args[0], args[1]
+
+            if appliance == "_":
+                appliance = ""
+
+            for value in args[2:]:
+                if not value:
+                    continue
+
+                if value.startswith("EP@"):
+                    entry_price = float(value[3:])
+                elif value.startswith("SL@"):
+                    stop_loss = float(value[3:])
+                elif value.startswith("TP@"):
+                    take_profit = float(value[3:])
+                elif value.startswith("'"):
+                    timeframe = timeframe_from_str(value[1:])
+                else:
+                    quantity = float(value[:-1])
+
+        except Exception:
+            Terminal.inst().action("Invalid parameters", view='status')
+            return False
+
+        if entry_price <= 0.0:
+            Terminal.inst().action("Entry price must be specified", view='status')
+            return False
+
+        if stop_loss and stop_loss > entry_price:
+            Terminal.inst().action("Stop-loss must be lesser than entry price", view='status')
+            return False
+
+        if take_profit and take_profit < entry_price:
+            Terminal.inst().action("Take-profit must be greater than entry price", view='status')
+            return False
+
+        if quantity <= 0.0:
+            Terminal.inst().action("Quantity must be specified", view='status')
+            return False
+
+        self._strategy_service.command(Strategy.COMMAND_TRADE_ASSIGN, {
+            'appliance': appliance,
+            'market-id': market_id,
+            'direction': direction,
+            'entry-price': entry_price,
+            'quantity': quantity,
+            'stop-loss': stop_loss,
+            'take-profit': take_profit,
+            'timeframe': timeframe
+        })
+
+        return True
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 def register_trading_commands(commands_handler, trader_service, strategy_service):
     cmd = PlayCommand(trader_service, strategy_service)
     commands_handler.register(cmd)
@@ -772,7 +866,10 @@ def register_trading_commands(commands_handler, trader_service, strategy_service
     commands_handler.register(cmd)
 
     cmd = ModifyTakeProfitCommand(strategy_service)
-    commands_handler.register(cmd)    
+    commands_handler.register(cmd)
+
+    cmd = AssignCommand(strategy_service)
+    commands_handler.register(cmd)
 
     #
     # trade operations

@@ -64,6 +64,10 @@ class StrategyTrader(object):
     def unlock(self):
         self._mutex.release()
 
+    #
+    # processing
+    #
+
     @property
     def activity(self):
         """
@@ -77,6 +81,43 @@ class StrategyTrader(object):
         """
         self._activity = status   
 
+    def init(self, database):
+        """
+        Initials steps before processing goes here
+        """
+        self.lock()
+
+        # @todo loads and computes next ids
+        # self._next_trade_id =
+        # self._next_region_id = 
+
+        self.unlock()
+
+    def finalize(self, database):
+        """
+        Finals steps after last processing goes here.
+        Here you could define a stop-loss for any of the managed trade, the trade persistance goes here too.
+        """
+        self.lock()
+
+        trader = self.strategy.trader()
+
+        for trade in self.trades:
+            t_data = trade.dumps()
+            ops_data = [operation.dumps() for operation in trade.operations]
+        
+            # store per trade    
+            Database.inst().store_user_trade(trader.name, self.instrument.market_id, self.strategy.identifier,
+                    trade.id, trade.trade_type, t_data, ops_data)
+
+        # dumps of regions
+        regions_data = [region.dumps() for region in self.regions]
+
+        Database.inst().store_user_trader(trader.name, self.instrument.market_id, self.strategy.identifier,
+                self.activity, regions_data)
+
+        self.unlock()
+
     def process(self, timeframe, timestamp):
         """
         Override this method to do her all the strategy work. You must call the update_trades method
@@ -86,6 +127,10 @@ class StrategyTrader(object):
         @param timestamp Current timestamp (or past time in backtest).
         """
         pass
+
+    #
+    # order/position slot
+    #
 
     def order_signal(self, signal_type, data):
         """
@@ -126,6 +171,10 @@ class StrategyTrader(object):
             logger.error(repr(e))
 
         self.unlock()
+
+    #
+    # trade
+    #
 
     def add_trade(self, trade):
         """
@@ -405,16 +454,14 @@ class StrategyTrader(object):
                 if not trade.is_canceled():
                     # @todo all this part could be in an async method of another background service, because 
                     # it is not part of the trade managemnt neither strategy computing, its purely for reporting
-                    # and view
-                    # then we could add a list of the deleted trade (producer) and having another service (consumer)
-                    # doing the rest
+                    # and view then we could add a list of the deleted trade (producer) and having another service (consumer) doing the rest
 
                     # estimation on mid last price, but might be close market price
                     market = trader.market(self.instrument.market_id)
 
-                    rate = trade.pl
+                    rate = trade.profit_loss
 
-                    # estimed maker/taker fee rate for entry and exit
+                    # fee rate for entry and exit
                     if trade._stats['entry-maker']:
                         rate -= market.maker_fee
                     else:
@@ -434,7 +481,6 @@ class StrategyTrader(object):
                         self._stats['worst'] = min(self._stats['worst'], rate)
                         self._stats['best'] = max(self._stats['best'], rate)
 
-                    # @todo update
                     record = {
                         'id': trade.id,
                         'ts': trade.entry_open_time,
@@ -445,13 +491,13 @@ class StrategyTrader(object):
                         'x': market.format_quantity(trade.exec_exit_qty),
                         'tp': market.format_price(trade.take_profit),
                         'sl': market.format_price(trade.stop_loss),
-                        'rate': rate,
                         'tf': timeframe_to_str(trade.timeframe),
                         's': trade.state_to_str(),
                         'b': market.format_price(trade.best_price()),
                         'w': market.format_price(trade.worst_price()),
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
+                        'rate': rate,
                         'c': trade.get_conditions()
                     }
 
@@ -498,9 +544,12 @@ class StrategyTrader(object):
 
         return False
 
-    def check_regions(self, signal):
+    def check_regions(self, signal, allow=True):
         """
         Compare a signal to defined regions if somes are defineds.
+        @param signal Signal to check with any regions.
+        @param allow Default returned value if there is no defined region (default True).
+
         @note This method is not trade safe.
         """
         if self.regions:
@@ -512,7 +561,7 @@ class StrategyTrader(object):
             return False
         else:
             # no region always pass
-            return True
+            return allow
 
     #
     # miscs

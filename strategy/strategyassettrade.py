@@ -312,14 +312,14 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     self.e += filled
 
-                # commission asset is asset, have to reduce it from filled
-                if data['commission-asset'] == data['symbol']:
-                    self.e -= data['commission-amount']
-
                 if self.e >= self.oq:
                     self._entry_state = StrategyTrade.STATE_FILLED
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+                # commission asset is asset, have to reduce it from filled
+                if data['commission-asset'] == data['symbol']:
+                    self.e -= data['commission-amount']
 
             elif (data['id'] == self.sell_oid) and ('filled' in data or 'cumulative-filled' in data):
                 # but on the exit side, normal case will have a single order, but possibly to have a 
@@ -331,6 +331,8 @@ class StrategyAssetTrade(StrategyTrade):
                     filled = data['filled']
                 else:
                     filled = 0
+
+                # @todo check pl because in some case value is wrong
 
                 if data.get('avg-price') is not None and data['avg-price']:
                     # average price is directly given
@@ -352,14 +354,14 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     self.x += filled
 
-                # commission asset is asset, have to reduce it from filled
-                if data['commission-asset'] == data['symbol']:
-                    self.x -= data['commission-amount']
-
-                if self.x >= self.oq:
+                if self.x >= self.oq or (self._entry_state == StrategyTrade.STATE_FILLED and self.x >= self.e):
                     self._exit_state = StrategyTrade.STATE_FILLED
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+                # commission asset is asset, have to reduce it from filled
+                if data['commission-asset'] == data['symbol']:
+                    self.x -= data['commission-amount']
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price or qty modified

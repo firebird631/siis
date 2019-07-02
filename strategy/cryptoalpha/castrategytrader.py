@@ -53,7 +53,9 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.min_traded_timeframe = params['min-traded-timeframe']
         self.max_traded_timeframe = params['max-traded-timeframe']
 
-        for timeframe in strategy.timeframes_config:
+        self.region_allow = params['region-allow']
+
+        for k, timeframe in strategy.timeframes_config.items():
             if timeframe['mode'] == 'A':
                 sub = CryptoAlphaStrategySubA(self, timeframe)
                 self.timeframes[timeframe['timeframe']] = sub
@@ -203,7 +205,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 continue
 
             # trade region
-            if not self.check_regions(entry):
+            if not self.check_regions(entry, self.region_allow):
                 continue
 
             # EN.C5 (ignore if bear major trend for some timeframes only for BTC quote markets)
@@ -258,30 +260,28 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             self.lock()
 
             for trade in self.trades:
-                tf_match = False
                 retained_exit = None
 
-                # important, do not update user controlled trades here
-                if trade.is_user_trade():
+                # important, do not update user controlled trades if it have some operations
+                if trade.is_user_trade() and trade.has_operations():
                     continue
 
                 for signal in exits:
                     parent_signal_tf = self.parent_timeframe(signal.timeframe)
 
-                    # EX.C1 (receive an exit signal of the timeframe of the trade)
+                    # receive an exit signal of the timeframe of the trade
                     if signal.timeframe == trade.timeframe:
                         retained_exit = signal
-                        tf_match = True
                         break
 
-                    # EX.C2 (exit from parent timeframe signal)
+                    # exit from parent timeframe signal
                     # if parent_signal_tf == trade.timeframe: 
-                    #     tf_match = True
+                    #     retained_exit = signal
                     #     break
 
-                    # EX.C3 (exit from any parent timeframe signal)
+                    # exit from any parent timeframe signal
                     # if signal.timeframe > trade.timeframe:
-                    #     tf_match = True
+                    #     retained_exit = signal
                     #     break
 
                 # can cancel a non filled trade if exit signal occurs before timeout (timeframe)

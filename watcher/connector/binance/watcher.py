@@ -342,6 +342,7 @@ class BinanceWatcher(Watcher):
             account = self._acount_data
 
             if symbol and ticker and account and market:
+                market.is_open = symbol['status'] == "TRADING"
                 market.expiry = '-'
 
                 size_limits = ["1.0", "0.0", "1.0"]
@@ -410,7 +411,12 @@ class BinanceWatcher(Watcher):
             # market data
             #
 
-            ready = ticker['C'] > 0
+            update_time = ticker['C']*0.001
+
+            if not update_time:
+                # no tick for this symbol
+                continue
+
             bid = float(ticker['b'])
             ofr = float(ticker['a'])
             vol = float(ticker['v'])
@@ -423,49 +429,44 @@ class BinanceWatcher(Watcher):
             if vol24_quote is not None:
                 vol24_quote = float(vol24_quote)
 
-            if ready:
-                update_time = ticker['C'] / 1000.0
-                market_data = (symbol, True, update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
-            else:
-                update_time = 0
-                market_data = (symbol, False, 0, 0.0, 0.0, None, None, None, None, None)
-
-            # @todo aggreged signal
-            # @todo could only occurs each 5 minute else too many signals
+            # @todo could uses an aggregated signal
+            market_data = (symbol, update_time > 0, update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
             #
             # tick data
             #
 
-            tick = Tick(update_time)
+            if bid > 0.0 and ofr > 0.0 and update_time > 0:
+                tick = Tick(update_time)
 
-            tick.set_price(bid, ofr)
-            tick.set_volume(vol)
+                tick.set_price(bid, ofr)
+                tick.set_volume(vol)
 
-            # for candle's generation
-            self.lock()
-            self._last_tick[symbol] = tick
-            self.unlock()
-
-            # @todo aggreged signal
-            self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
-
-            # disabled for now
-            if not self._read_only:
-                Database.inst().store_market_trade((self.name, symbol, int(ticker['C']), ticker['b'], ticker['a'], ticker['v']))
-
-            for tf in Watcher.STORED_TIMEFRAMES:
-                # generate candle per each tf
+                # for candle's generation
                 self.lock()
-                candle = self.update_ohlc(symbol, tf, update_time, bid, ofr, vol)
+                self._last_tick[symbol] = tick
                 self.unlock()
 
-                if candle is not None:
-                    self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
+                # @todo could uses an aggregated signal
+                self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
+
+                if not self._read_only:
+                    Database.inst().store_market_trade((self.name, symbol, int(ticker['C']), ticker['b'], ticker['a'], ticker['v']))
+
+                for tf in Watcher.STORED_TIMEFRAMES:
+                    # generate candle per each tf
+                    self.lock()
+                    candle = self.update_ohlc(symbol, tf, update_time, bid, ofr, vol)
+                    self.unlock()
+
+                    if candle is not None:
+                        self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
 
     def __on_depth_data(self, data):
-        return  # @todo using binance.DepthCache
+        # @todo using binance.DepthCache
+        return
+
         if data['e'] == 'depthUpdate':
             symbol = data['s']
 
@@ -588,6 +589,8 @@ class BinanceWatcher(Watcher):
         event_type = data.get('e', '')
 
         if event_type == 'executionReport':
+            logger.info("binance.com executionReport %s", str(data))
+
             event_timestamp = float(data['E']) * 0.001
             symbol = data['s']
             cid = data['c']
@@ -659,7 +662,6 @@ class BinanceWatcher(Watcher):
                 }
 
                 self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
-                # logger.debug("executionReport trade: ", symbol, data['S'], float(data['q']), float(data['p']), float(data['L']), float(data['l']), float(data['z']), float(data['Y']))
 
             elif data['x'] == 'NEW' and data['X'] == 'NEW':
                 order_id = str(data['i'])

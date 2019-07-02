@@ -20,8 +20,8 @@ DEFAULT_PARAMS = {
     'need-update': True,      # only compute when update is waited
     'min-vol24h': 100,        # 300 BTC per 24h
     'min-price': 0.00000069,  # or 69 sats (to binary otherwise)
-    'timeframes': [
-        {
+    'timeframes': {
+        'weekly': {
             'timeframe': Instrument.TF_WEEK,
             'parent': None,
             'mode': 'C',
@@ -63,7 +63,7 @@ DEFAULT_PARAMS = {
                 'rsi_ema_trend_div_factor': (-0.04, -0.04),
             },
         },
-        {
+        'daily': {
             'timeframe': Instrument.TF_DAY,
             'parent': Instrument.TF_WEEK,
             'mode': 'A',
@@ -105,7 +105,7 @@ DEFAULT_PARAMS = {
                 'rsi_ema_trend_div_factor': (-0.04, -0.04),
             }
         },
-        {
+        '4hour': {
             'timeframe': Instrument.TF_4HOUR,
             'parent': Instrument.TF_DAY,
             'mode': 'A',
@@ -149,7 +149,7 @@ DEFAULT_PARAMS = {
                 'rsi_ema_trend_div_factor': (-0.04, -0.04),
             }   
         },
-        {
+        'hourly': {
             'timeframe': Instrument.TF_HOUR,
             'parent': Instrument.TF_4HOUR,
             'mode': 'A', 
@@ -191,7 +191,7 @@ DEFAULT_PARAMS = {
                 'rsi_ema_trend_div_factor': (-0.04, -0.04),
             }
         },
-        {
+        '15min': {
             'timeframe': Instrument.TF_15MIN,
             'parent': Instrument.TF_HOUR,
             'mode': 'A',
@@ -233,7 +233,7 @@ DEFAULT_PARAMS = {
                 'rsi_ema_trend_div_factor': (-0.04, -0.04),
             }
         },
-        {
+        '5min': {
             'timeframe': Instrument.TF_5MIN,
             'parent': Instrument.TF_15MIN,
             'mode': 'A',
@@ -275,7 +275,7 @@ DEFAULT_PARAMS = {
                 'rsi_ema_trend_div_factor': (-0.04, -0.04),
             }
         },
-        {
+        '1min': {
             'timeframe': Instrument.TF_MIN,
             'parent': Instrument.TF_5MIN,
             'mode': 'A',
@@ -324,7 +324,7 @@ DEFAULT_PARAMS = {
                 'rsi_ema_trend_div_factor': (-0.04, -0.04),
             }
         },
-        # {
+        # '10sec': {
         #     'timeframe': Instrument.TF_10SEC,
         #     'parent': Instrument.TF_MIN,
         #     'mode': 'A',
@@ -375,5 +375,5 @@ DEFAULT_PARAMS = {
         #         'rsi_ema_trend_div_factor': (-0.04, -0.04),
         #     }
         # }
-    ]
+    }
 }

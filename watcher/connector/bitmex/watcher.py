@@ -195,7 +195,7 @@ class BitMexWatcher(Watcher):
 
             elif data[1] == 'position':  # action
                 for ld in data[3]:
-                    # logger.info("bitmex l194 position > ", ld)
+                    logger.info("bitmex.com position %s" % str(ld))
 
                     ref_order_id = ""
                     symbol = ld['symbol']
@@ -256,11 +256,12 @@ class BitMexWatcher(Watcher):
 
             elif data[1] == 'order':
                 for ld in data[3]:
+                    logger.info("bitmex.com order %s" % str(ld))
+
                     symbol = ld.get('symbol')
                     status = ld.get('ordStatus', None)
 
                     if not status:  # updated
-                        # logger.info("> bitmex l249 Other", ld, message)
                         operation_time = self._parse_datetime(ld.get('timestamp')).timestamp()
 
                         # quantity or price modified
@@ -416,9 +417,7 @@ class BitMexWatcher(Watcher):
                         vol24h = instrument.get('volume24h')
                         vol24hquote = instrument.get('foreignNotional24h')
 
-                        # @todo not a good idea too many signals for nothing, could only occurs each 5 minutes
                         market_data = (market_id, tradeable, update_time, bid, ofr, base_exchange_rate, contract_size, value_per_pip, vol24h, vol24hquote)
-                        # if int(update_time / 5) * 5
                         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
                     #
@@ -482,8 +481,8 @@ class BitMexWatcher(Watcher):
                         # 'lastPrice': 6508.5,
                         # 'markPrice': 6510.71,
 
-                        # disable for now because trade are usefull for backtesting but bitmex does not provides historical API
                         if not self._read_only:
+                            # store trade/tick
                             Database.inst().store_market_trade((self.name, symbol, int(update_time*1000), bid, ofr, volume))
 
                     for tf in Watcher.STORED_TIMEFRAMES:

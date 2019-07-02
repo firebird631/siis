@@ -132,8 +132,8 @@ class Database(object):
         self._pending_user_trade_insert = []
         self._pending_user_trade_select = []
 
-        self._pending_strategy_traders_insert = []
-        self._pending_strategy_traders_select = []
+        self._pending_user_trader_insert = []
+        self._pending_user_trader_select = []
 
         self._last_tick_flush = 0
         self._last_ohlc_flush = 0
@@ -257,7 +257,7 @@ class Database(object):
         self.unlock()
         return n
 
-    def store_market_ohlc(self, data, replace=False):
+    def store_market_ohlc(self, data):
         """
         @param data is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
@@ -268,13 +268,13 @@ class Database(object):
             str ask_open, ask_high, ask_low, ask_close (>= 0)
             str volume (>= 0)
 
-        @param replace If exists replace the previous values. Default is false.
+        @note Replace if exists.
         """
         self.lock()
         if isinstance(data, list):
-            self._pending_ohlc_insert.extend([(d, replace) for d in data])
+            self._pending_ohlc_insert.extend(data)
         else:
-            self._pending_ohlc_insert.append((data, replace))
+            self._pending_ohlc_insert.append(data)
         self.unlock()
 
     def store_market_info(self, data):
@@ -425,7 +425,6 @@ class Database(object):
             integer trade_id (not empty)
             integer trade_type (not empty)
             dict data (to be json encoded)
-            dict conditions (to be json encoded)
             dict operations (to be json encoded)
         """
         self.lock()
@@ -435,13 +434,38 @@ class Database(object):
             self._pending_user_trade_insert.append(data)
         self.unlock()
 
-    def load_user_trades(self, service, appliance, appliance_id):
+    def load_user_trades(self, service, appliance, appliance_id, broker_id, market_id):
         """
-        Load all asset for a specific appliance_id
+        Load all asset for a specific appliance_id and market_id
         @param service to be notified once done
         """
         self.lock()
-        self._pending_user_trade_select.append((service, trader, broker_id))
+        self._pending_user_trade_select.append((service, appliance, appliance_id, broker_id, market_id))
+        self.unlock()
+
+    def store_user_trader(self, data):
+        """
+        @param data is a tuple or an array of tuples containing data in that order and format :
+            str broker_id (not empty)
+            str market_id (not empty)
+            str appliance_id (not empty)
+            dict data (to be json encoded)
+            dict regions (to be json encoded)
+        """
+        self.lock()
+        if isinstance(data, list):
+            self._pending_user_trader_insert.extend(data)
+        else:
+            self._pending_user_trader_insert.append(data)
+        self.unlock()
+
+    def load_user_traders(self, service, appliance, appliance_id, market_id):
+        """
+        Load all asset for a specific appliance_id and market_id
+        @param service to be notified once done
+        """
+        self.lock()
+        self._pending_user_trader_select.append((service, appliance, appliance_id, market_id))
         self.unlock()
 
     #

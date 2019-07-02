@@ -92,7 +92,7 @@ class ForexAlphaStrategy(Strategy):
                 watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
                 if watcher:
                     # query for most recent candles
-                    for timeframe in self.timeframes_config:
+                    for k, timeframe in self.timeframes_config.items():
                         if timeframe['timeframe'] > 0:
                             l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                             l_to = now
@@ -117,7 +117,7 @@ class ForexAlphaStrategy(Strategy):
             watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
             if watcher:
                 # query an history of candles per timeframe
-                for timeframe in self.timeframes_config:
+                for k, timeframe in self.timeframes_config.items():
                     if timeframe['timeframe'] > 0:
                         # preload some previous candles
                         l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe'])

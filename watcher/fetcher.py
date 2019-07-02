@@ -179,7 +179,7 @@ class Fetcher(object):
                     self.name, market_id, data[0], int(timeframe),
                     data[1], data[2], data[3], data[4],
                     data[5], data[6], data[7], data[8],
-                    data[9]), True)
+                    data[9]))
 
                 if generators:
                     candle = Candle(float(data[0]) * 0.001, timeframe)
@@ -237,4 +237,4 @@ class Fetcher(object):
             self.name, market_id, int(candle.timestamp*1000.0), int(timeframe),
             str(candle.bid_open), str(candle.bid_high), str(candle.bid_low), str(candle.bid_close),
             str(candle.ofr_open), str(candle.ofr_high), str(candle.ofr_low), str(candle.ofr_close),
-            str(candle.volume)), True)
+            str(candle.volume)))

@@ -163,7 +163,7 @@ class CommandsHandler(object):
             dump = json.dumps({
                 "commands": self._history,
                 "aliases": self._aliases,
-            })
+            }, indent=4)
             
             f.write(dump.encode('utf-8'))
 

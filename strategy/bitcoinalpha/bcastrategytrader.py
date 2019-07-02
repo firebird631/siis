@@ -54,7 +54,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.min_traded_timeframe = params['min-traded-timeframe']
         self.max_traded_timeframe = params['max-traded-timeframe']
 
-        for timeframe in strategy.timeframes_config:
+        for k, timeframe in strategy.timeframes_config.items():
             if timeframe['mode'] == 'A':
                 sub = BitcoinAlphaStrategySubA(self, timeframe)
                 self.timeframes[timeframe['timeframe']] = sub
@@ -255,6 +255,10 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             for trade in self.trades:
                 tf_match = False
                 retained_exit = None
+
+                # important, do not update user controlled trades if it have some operations
+                if trade.is_user_trade() and trade.has_operations():
+                    continue
 
                 for signal in exits:
                     #hi_signal_tf = self.parent_timeframe(signal.timeframe)

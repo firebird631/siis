@@ -1492,7 +1492,7 @@ class PaperTrader(Trader):
             # quote asset
             position_gain_loss_currency = self.__update_asset(order.order_type, quote_asset, quote_market, 0, quote_exec_price, quote_qty, True, self.timestamp)
 
-            gain_loss_rate = (close_exec_price - base_asset.price) / base_asset.price
+            gain_loss_rate = ((close_exec_price - base_asset.price) / base_asset.price) if base_asset.price else 0.0
             position_gain_loss = delta_price * base_qty
             position_gain_loss_currency *= gain_loss_rate
 

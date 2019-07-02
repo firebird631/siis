@@ -10,6 +10,8 @@ from common.utils import timeframe_to_str, timeframe_from_str
 class Region(object):
     """
     Startegy trade region base class.
+
+    @todo Could use market price formatter here in dumps and parameters methods
     """
 
     REGION_UNDEFINED = 0
@@ -163,10 +165,10 @@ class Region(object):
             'label': "undefined",
             'name': self.name(),
             'id': self.id(),
-            'stage': self._stage,
-            'direction': self._dir,
-            'timeframe': self._timeframe,
-            'expiry': self._expiry
+            'stage': self.stage_to_str(),
+            'direction': self.direction_to_str(),
+            'timeframe': self.timeframe_to_str(),
+            'expiry': self.expiry_to_str()
         }
 
     def dumps(self):
@@ -192,6 +194,16 @@ class Region(object):
         self._timeframe = data.get('timeframe')  # timeframe_from_str(data.get('timeframe', 't'))
         self._expiry = data.get('expiry', 0)  # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00'), '%Y-%m-%dT%H:%M:%S').timestamp()
 
+    def stage_to_str(self):
+        if self._stage == Region.STAGE_ENTRY:
+            return "entry"
+        elif self._stage == Region.STAGE_EXIT:
+            return "exit"
+        elif self._stage == Region.STAGE_BOTH:
+            return "both"
+        else:
+            return "both"
+
     def stage_from_str(self, stage_str):
         if stage_str == "entry":
             return Region.STAGE_ENTRY
@@ -202,6 +214,16 @@ class Region(object):
         else:
             return Region.STAGE_BOTH
 
+    def direction_to_str(self):
+        if self._dir == Region.LONG:
+            return "long"
+        elif self._dir == Region.SHORT:
+            return "short"
+        elif self._dir == Region.BOTH:
+            return "both"
+        else:
+            return "both"
+
     def direction_from_str(self, direction_str):
         if stage_str == "long":
             return Region.LONG
@@ -211,6 +233,18 @@ class Region(object):
             return Region.BOTH
         else:
             return Region.BOTH
+
+    def timeframe_to_str(self):
+        if self._timeframe > 0:
+            return timeframe_to_str(self._timeframe)
+        else:
+            return "any"
+
+    def expiry_to_str(self):
+        if self._expiry > 0:
+            return datetime.fromtimestamp(self._expiry).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            return "never"
 
 
 class RangeRegion(Region):
@@ -238,18 +272,18 @@ class RangeRegion(Region):
         return self._low <= signal.p <= self._high
 
     def str_info(self):
-        expiry = " until %s" % (datetime.fromtimestamp(self._expiry).strftime('%Y-%m-%d %H:%M:%S'),)
-        return "Range region from %s to %s%s" % (self._low, self._high, expiry if self._expiry else "")
+        return "Range region from %s to %s, stage %s, direction %s, timeframe %s, expiry %s" % (
+                self._low, self._high, self.stage_to_str(), self.direction_to_str(), self.timeframe_to_str(), self.expiry_to_str())
 
     def parameters(self):
         return {
             'label': "Range region",
             'name': self.name(),
             'id': self.id(),
-            'stage': self._stage,
-            'direction': self._dir,
-            'timeframe': self._timeframe,
-            'expiry': self._expiry,
+            'stage': self.stage_to_str(),
+            'direction': self.direction_to_str(),
+            'timeframe': self.timeframe_to_str(),
+            'expiry': self.expiry_to_str(),
             'low': self._low,
             'high': self._high
         }
@@ -310,19 +344,19 @@ class TrendRegion(Region):
         return False
 
     def str_info(self):
-        expiry = " until %s" % (datetime.fromtimestamp(self._expiry).strftime('%Y-%m-%d %H:%M:%S'),)
-        return "Trend region from low-a=%s low-b=%s to high-a=%s high-b=%s%s" % (
-            self._low_a, self._low_b, self._high_a, self._high_b, expiry if self._expiry else "")
+        return "Range region from %s/%s to %s/%s, stage %s, direction %s, timeframe %s, expiry %s" % (
+                self._low_a, self._high_a, self._low_b, self._high_b,
+                self.stage_to_str(), self.direction_to_str(), self.timeframe_to_str(), self.expiry_to_str())
 
     def parameters(self):
         return {
             'label': "Range region",
             'name': self.name(),
             'id': self.id(),
-            'stage': self._stage,
-            'direction': self._dir,
-            'timeframe': self._timeframe,
-            'expiry': self._expiry,
+            'stage': self.stage_to_str(),
+            'direction': self.direction_to_str(),
+            'timeframe': self.timeframe_to_str(),
+            'expiry': self.expiry_to_str(),
             'low-a': self._low_a,
             'low-b': self._low_b,
             'high-a': self._high_a,

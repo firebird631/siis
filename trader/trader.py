@@ -993,13 +993,14 @@ class Trader(Runnable):
             market = Market(market_id, market_id)
             self._markets[market_id] = market
 
-        market.bid = bid
-        market.ofr = ofr
+        if bid > 0.0 and ofr > 0.0:
+            market.bid = bid
+            market.ofr = ofr
 
         if base_exchange_rate is not None:
             market.base_exchange_rate = base_exchange_rate
 
-        if last_update_time is not None:
+        if last_update_time > 0:
             market.last_update_time = last_update_time
 
         if tradable is not None:

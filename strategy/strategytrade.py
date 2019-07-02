@@ -202,9 +202,15 @@ class StrategyTrade(object):
         """
         Because of the slippage once a trade is closed deletion can only be done once all the quantity of the
         asset or the position are executed.
+
+        @todo Cleanup the live of a trade.
         """
+        if self._entry_state == StrategyTrade.STATE_FILLED and self._exit_state == StrategyTrade.STATE_FILLED:
+            # entry and exit are fully filled
+            return True
+
         if self.e >= self.oq and (self.x >= self.e or self.x >= self.oq):
-            # entry fully filled and exit filled whats filled in entry
+            # in case of state not defined by qty are done : entry fully filled and exit filled whats filled in entry
             # but some cases filled entry is a bit more than orderer (binance...), but need to compare with initial quantity
             return True
 
@@ -350,9 +356,7 @@ class StrategyTrade(object):
 
     def state_to_str(self):
         """
-        Get a string for the state of the trade.
-
-        @note Its not a very precise indicator one some case because we could have partial entry + partial exit.
+        Get a string for the state of the trade (only for display usage).
         """
         if self._entry_state == StrategyTrade.STATE_NEW:
             # entry is new, not ordered
@@ -372,8 +376,8 @@ class StrategyTrade(object):
         elif self.e > 0 and self.x < self.e and (self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED or self._exit_state == StrategyTrade.STATE_OPENED):
             # exit order (close order, take-profit order, stop-loss order) are filling (or position take-profit or position stop-loss)
             return 'closing'
-        elif self.e > 0 and self.x >= self.e:
-            # exit quantity reached the entry quantity the trade is closed
+        elif (self.e > 0 and self.x >= self.e) or (self._entry_state == StrategyTrade.STATE_FILLED and self._exit_state == StrategyTrade.STATE_FILLED):
+            # exit quantity reached the entry quantity the trade is closed, or entry and exit state are set to filled
             return 'closed'
         elif self.e >= self.oq:
             # entry quantity reach ordered quantity the entry is filled
@@ -470,7 +474,6 @@ class StrategyTrade(object):
             'exit-state': self._exit_state,  # self.trade_state_to_str(self._exit_state),
             'timeframe': self._timeframe,  # self.timeframe_to_str(),
             'user-trade': self._user_trade,
-            'operations': [operation.dumps() for operation in self._operations],
             'avg-entry-price': self.aep,
             'avg-exit-price': self.axp,
             'take-profit-price': self.tp,
@@ -485,7 +488,7 @@ class StrategyTrade(object):
             'statistics': self._stats
         }
 
-    def loads(self, data, strategy_service):
+    def loads(self, data):
         """
         Override this method to make a loads for the persistance model.
         @return True if success.
@@ -500,15 +503,7 @@ class StrategyTrade(object):
         self._operations = []
         self._next_operation_id = -1
 
-        for op in data.get('operations', []):
-            operation = None
-
-            # @todo from type, service builder
-        #     self._operations.append(operation)
-        #     self._next_operation_id = max(self._next_operation_id, operation.id)
-
         self.dir = data.get('direction', 0)  # self.direction_from_str(data.get('direction', ''))
-
         self.oq = data.get('order-qty', 0.0)
 
         self.tp = data.get('take-profit-price', None)

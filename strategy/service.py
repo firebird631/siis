@@ -200,7 +200,7 @@ class StrategyService(Service):
                 strategy = appl.get('strategy')
 
                 # overrided strategy parameters
-                parameters = appl.get('parameters', {})
+                parameters = strategy.get('parameters', {})
 
                 if not strategy or not strategy.get('name'):
                     Terminal.inst().error("Invalid strategy configuration for appliance %s !" % k)

@@ -43,7 +43,7 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
         # if self.strategy.identifier == "binance-crystalball":
         #     self.min_traded_timeframe = Instrument.TF_5MIN
 
-        for timeframe in strategy.timeframes_config:
+        for k, timeframe in strategy.timeframes_config.items():
             if timeframe['mode'] == 'A':
                 sub = CrystalBallStrategySubA(self, timeframe)
                 self.timeframes[timeframe['timeframe']] = sub

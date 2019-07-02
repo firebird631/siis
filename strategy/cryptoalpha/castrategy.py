@@ -32,12 +32,8 @@ class CryptoAlphaStrategy(Strategy):
     Dedicated to crypto major or alt-coin for asset only (buy/sell), no margin, no short.
     """
 
-    def __init__(self, strategy_service, watcher_service, trader_service, options, parameters):
-        super().__init__("cryptoalpha", strategy_service, watcher_service, trader_service, options, DEFAULT_PARAMS)
-
-        if parameters:
-            # apply overrided parameters
-            self._parameters.update(parameters)
+    def __init__(self, strategy_service, watcher_service, trader_service, options, user_parameters):
+        super().__init__("cryptoalpha", strategy_service, watcher_service, trader_service, options, DEFAULT_PARAMS, user_parameters)
 
         self.reset()
 
@@ -86,7 +82,7 @@ class CryptoAlphaStrategy(Strategy):
                 watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
                 if watcher:
                     # query for most recent candles per timeframe
-                    for timeframe in self.timeframes_config:
+                    for k, timeframe in self.timeframes_config.items():
                         if timeframe['timeframe'] > 0:
                             l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                             l_to = now
@@ -110,7 +106,7 @@ class CryptoAlphaStrategy(Strategy):
             watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
             if watcher:
                 # query an history of candles per timeframe
-                for timeframe in self.timeframes_config:
+                for k, timeframe in self.timeframes_config.items():
                     if timeframe['timeframe'] > 0:
                         # preload some previous candles
                         l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
