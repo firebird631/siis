@@ -72,6 +72,9 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         self.setup_streaming()
 
+        self._wait_bless = 0
+        self._wait_timeout = 0
+
         # @todo remove (debug only) need subscriber command
         # if list(self.strategy._instruments.values())[0] == self.instrument:
         #     for tf in (Instrument.TF_15MIN, Instrument.TF_4HOUR):
@@ -145,50 +148,60 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # global indicators
         #
 
+        REF_TIMEFRAME = Instrument.TF_4H  # @todo need conf
+        TP_TIMEFRAME = Instrument.TF_1H #30M  # @todo need conf
+
+        last_price = self.timeframes[self.min_traded_timeframe].price.last
+
         price_above_slow_sma55 = 0
         price_above_slow_sma200 = 0
         sma55_above_sma200 = 0
         sma_above_sma55 = 0
 
-        REF_TIMEFRAME = Instrument.TF_4H  # @todo need conf
-        TP_TIMEFRAME = Instrument.TF_1H   # @todo need conf
-
-        last_price = self.timeframes[REF_TIMEFRAME].price.last
+        # sma200 = self.timeframes[REF_TIMEFRAME].sma200.last
+        sma55 = self.timeframes[REF_TIMEFRAME].sma55.last
         sma = self.timeframes[REF_TIMEFRAME].sma.last
         ema = self.timeframes[REF_TIMEFRAME].ema.last
-        sma55 = self.timeframes[REF_TIMEFRAME].sma55.last
-        sma200 = self.timeframes[REF_TIMEFRAME].sma200.last
-        rsi21 = self.timeframes[REF_TIMEFRAME].rsi.last
+        # rsi21 = self.timeframes[REF_TIMEFRAME].rsi.last
 
-        if last_price > sma55:
-            price_above_slow_sma55 = 1
-        elif last_price < sma55:
-            price_above_slow_sma55 = -1
+        # if last_price > sma55:
+        #     price_above_slow_sma55 = 1
+        # elif last_price < sma55:
+        #     price_above_slow_sma55 = -1
 
-        # if last_price > sma200:
-        #     price_above_slow_sma200 = 1
-        # elif last_price < sma200:
-        #     price_above_slow_sma200 = -1
+        # # if last_price > sma200:
+        # #     price_above_slow_sma200 = 1
+        # # elif last_price < sma200:
+        # #     price_above_slow_sma200 = -1
 
-        #
-        # major trend detection
-        #
+        # #
+        # # major trend detection
+        # #
 
-        major_trend = 0
+        # major_trend = 0
 
-        if (sma and sma55 and last_price and rsi21):
-            # not having main trend and at least 1 sample OR not in the trend
-            if ema < sma:
-                major_trend = -1
-                # Terminal.inst().info("Bear major trend SMA ema=%s sma=%s sma55=%s rsi21=%s" % (ema, sma, sma55, rsi21), view="default")
-            elif ema > sma:
-                major_trend = 1
+        # if (sma and sma55 and last_price and rsi21):
+        #     # not having main trend and at least 1 sample OR not in the trend
+        #     if ema < sma:
+        #         major_trend = -1
+        #         # Terminal.inst().info("Bear major trend SMA ema=%s sma=%s sma55=%s rsi21=%s" % (ema, sma, sma55, rsi21), view="default")
+        #     elif ema > sma:
+        #         major_trend = 1
 
-            # if price_above_slow_sma55 < 0:               
-            #     major_trend = -1
-            #     # Terminal.inst().message("Bear trend... rsi=%.2f ema=%.2f price=%s" % (rsi21, sma55, last_price), view='default')
-            # elif price_above_slow_sma55 > 0:
-            #     major_trend = 1
+        #     # if price_above_slow_sma55 < 0:               
+        #     #     major_trend = -1
+        #     #     # Terminal.inst().message("Bear trend... rsi=%.2f ema=%.2f price=%s" % (rsi21, sma55, last_price), view='default')
+        #     # elif price_above_slow_sma55 > 0:
+        #     #     major_trend = 1
+
+        if self._wait_bless == 1:
+            if self._wait_timeout > 0 and timestamp >= self._wait_timeout:
+                self._wait_bless = -1
+                self._wait_timeout = 0
+
+            # if sma > sma55:
+            #     self._wait_bless = -1  # blessed !
+            #     Terminal.inst().message("God bless %s (ema=%s sma=%s sma55=%s)!" % (self.instrument.market_id, ema, sma, sma55) , view='content')
 
         #
         # filters the entries
@@ -207,6 +220,23 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # trade region
             if not self.check_regions(entry, self.region_allow):
                 continue
+
+            # ref timeframe is bear don't take the risk
+            if not self.timeframes[TP_TIMEFRAME].can_long:
+                continue
+
+            # two consecutives loosing trade, stop the curse for a moment
+            if self._wait_bless == 1:
+                continue
+
+            if self._wait_bless == 0 and self._stats['cont-loss'] >= 3:
+                self._wait_bless = 1
+                self._wait_timeout = timestamp + 12*60*60  # 12h selfban
+                Terminal.inst().message("Curse !!! Wait fow god bless %s !" % self.instrument.market_id, view='content')
+                continue
+
+            if self._wait_bless == -1:
+                self._wait_bless = 0
 
             # EN.C5 (ignore if bear major trend for some timeframes only for BTC quote markets)
             # if major_trend < 0 and entry.timeframe >= Instrument.TF_15MIN:
@@ -241,14 +271,25 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             # TDST does not give us a stop, ok lets find one using parent ATR
             if not entry.sl:
-                sl = self.timeframes[parent_entry_tf].atr.stop_loss(entry.dir)
+                sl = self.timeframes[TP_TIMEFRAME].atr.stop_loss(entry.dir)
                 if sl < last_price:
                     entry.sl = sl
 
             # defines a target
             if not entry.tp:
-                if len(self.timeframes[TP_TIMEFRAME].pivotpoint.last_resistances) > 0:
-                    tp = self.timeframes[TP_TIMEFRAME].pivotpoint.last_resistances[2]
+                tp = self.timeframes[TP_TIMEFRAME].pivotpoint.last_resistances[2] * 1.0618
+
+                gain = (tp - entry.p) / entry.p
+                loss = (entry.p - entry.sl) / entry.p
+
+                if gain / loss < 1.0:
+                    continue
+
+                # not enought potential profit
+                if (tp - entry.p) / entry.p < 0.005:  # 0.5% min
+                    continue
+
+                entry.tp = tp
 
             retained_entries.append(entry)
 
@@ -285,11 +326,11 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     #     break
 
                 # can cancel a non filled trade if exit signal occurs before timeout (timeframe)
-                if trade.is_entry_timeout(timestamp, trade.timeframe):
-                    trader = self.strategy.trader()
-                    trade.cancel_open(trader)
-                    Terminal.inst().info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,), view='default')
-                    continue
+                # if trade.is_entry_timeout(timestamp, trade.timeframe):
+                #     trader = self.strategy.trader()
+                #     trade.cancel_open(trader)
+                #     Terminal.inst().info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,), view='default')
+                #     continue
 
                 if trade.is_opened() and not trade.is_valid(timestamp, trade.timeframe):
                     # @todo re-adjust entry
@@ -309,7 +350,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 # ATR stop-loss
                 trade_parent_tf = self.parent_timeframe(trade.timeframe)
 
-                sl = self.timeframes[trade_parent_tf].atr.stop_loss(trade.direction)
+                sl = self.timeframes[TP_TIMEFRAME].atr.stop_loss(trade.direction)
                 if (not trade.sl or last_price > trade.entry_price) and sl > stop_loss:
                     # if trade has no stop-loss or follow profit
                     stop_loss = sl
@@ -334,7 +375,36 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 #     stop_loss = level               
 
                 if stop_loss > trade.sl:
-                    trade.sl = stop_loss
+                    if stop_loss <= self.timeframes[TP_TIMEFRAME].pivotpoint.last_supports[0]:
+                        trade.sl = stop_loss
+
+                #
+                # target update
+                #
+
+                tp = self.timeframes[TP_TIMEFRAME].pivotpoint.last_resistances[2] * 1.0618
+
+                # enought potential profit (0.5% min target)
+                if (tp - last_price) / last_price > 0.005:
+                   trade.tp = tp
+
+                # gain = (trade.tp - trade.entry_price) / trade.entry_price
+                # loss = (trade.entry_price - trade.sl) / trade.entry_price
+
+                # gain = (trade.tp - last_price) / last_price
+                # loss = (last_price - trade.sl) / last_price
+
+                gain = (tp - last_price) / last_price
+                loss = (last_price - sl) / last_price
+
+                if gain / loss < 1.0:
+                    # not enough chance to win on this trade, cut the loss
+                    retained_exit = StrategySignal(TP_TIMEFRAME, timestamp)
+                    retained_exit.signal = StrategySignal.SIGNAL_EXIT
+                    retained_exit.dir = 1
+                    retained_exit.p = last_price
+
+                    Terminal.inst().info("No more chance to win cut the trade %s %s" % (trade.id, self.instrument.market_id,), view='content')
 
                 #
                 # exit trade if an exit signal retained
@@ -342,6 +412,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                 if retained_exit:
                     self.process_exit(timestamp, trade, retained_exit.price)
+                    Terminal.inst().info("Exit trade %s %s" % (self.instrument.symbol, trade.id), view='content')
 
             self.unlock()
 
@@ -418,9 +489,9 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 # no more than max simultaneous trades
                 do_order = False
 
-            for trade in self.trades:
-                if trade.timeframe == timeframe:
-                    do_order = False
+            # for trade in self.trades:
+            #     if trade.timeframe == timeframe:
+            #         do_order = False
 
             # if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].entry_open_time) < self.trade_delay):
             if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].entry_open_time) < timeframe):

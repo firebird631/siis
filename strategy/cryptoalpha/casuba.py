@@ -23,6 +23,9 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
     """
 
     def __init__(self, data, params):
+        self.atr = None
+        self.stochrsi = None
+
         super().__init__(data, params)
 
         self.rsi_low = params['constants']['rsi_low']
@@ -556,10 +559,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
         ema_sma_cross = 0
         ema_sma_height = 0
 
-        if self.tf == 4*60*60:
-            self.sma200.compute(last_timestamp, prices)
-            self.sma55.compute(last_timestamp, prices)
-
         if self.rsi:
             self.rsi.compute(last_timestamp, prices)
 
@@ -650,15 +649,10 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             signal.dir = 1
             signal.p = self.price.close[-1]
 
+            # Terminal.inst().info("Entry long %s %s" % (self.data.instrument.symbol, self.tf), view='content')
+
             if self.tomdemark.c.tdst:
                 signal.sl = self.tomdemark.c.tdst
-
-            # if len(self.pivotpoint.resistances[2]):
-            #     if signal.tp > signal.p:
-            #         signal.tp = np.max(self.pivotpoint.resistances[2])
-            #     # else:
-            #     #     # ignore this signal
-            #     #     signal = None
 
         elif bbawe < 0 and level1_signal < 0:
             # exit signal
@@ -666,96 +660,27 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             signal.signal = StrategySignal.SIGNAL_EXIT
             signal.dir = 1
             signal.p = self.price.close[-1]
-
-        # if signal and signal.signal == StrategySignal.SIGNAL_ENTRY:
-        #     # @todo optimize using market fee and ATR
-        #     min_profit = (0.00075*2 + 0.005) * signal.p
-
-        #     if signal.tp > 0.0 and (signal.tp - signal.p) < min_profit:
-        #         # if the target is lesser than a profit then ignore it
-        #         Terminal.inst().info("Ignore trade %s %s because TP is to low" % (self.data.instrument.symbol, self.tf), view='default')
-        #         signal = None
+            # signal = None
 
         if self.tomdemark:
             self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.close)
 
-            # # long entry on sell-setup
-            # if self.tomdemark.c.c >= 1 and self.tomdemark.c.c <= 6 and self.tomdemark.c.d < 0 and level1_signal > 0: ## and bb_break == 0: # and volume_signal > 0:
-            #     signal = StrategySignal(self.tf, timestamp)
-            #     signal.signal = StrategySignal.SIGNAL_ENTRY
-            #     signal.dir = 1
-            #     signal.p = self.price.close[-1]
-
-            #     # if len(self.pivotpoint.resistances[2]):
-            #     #     signal.tp = np.max(self.pivotpoint.resistances[2])
-
-            #     if self.tomdemark.c.tdst:
-            #         signal.sl = self.tomdemark.c.tdst
-
-            #     Terminal.inst().info("Entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
-
-            # # aggressive entry
-            # elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d > 0 and level1_signal > 0: ## and bb_break == 0: # and volume_signal > 0:
-            #     signal = StrategySignal(self.tf, timestamp)
-            #     signal.signal = StrategySignal.SIGNAL_ENTRY
-            #     signal.dir = 1
-            #     signal.p = self.price.close[-1]
-
-            #     # if len(self.pivotpoint.resistances[2]):
-            #     #     signal.tp = np.max(self.pivotpoint.resistances[2])
-
-            #     # td9 cannot provide us a SL, take it from ATR
-            #     signal.sl = self.atr.stop_loss(signal.dir)
-
-            #    Terminal.inst().info("Aggressive entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
-
-            #
-            # setup completed
-            #
-
             if self.tomdemark.c.c >= 9 and self.tomdemark.c.d < 0 and level1_signal < 0:
+                # setup complete and trend change
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT
                 signal.dir = 1
                 signal.p = self.price.close[-1]
-                
-                Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
-            #
-            # setup aborted
-            #
+                # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='content')
+                signal = None
 
-            # elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d < 0) and level1_signal < 0:
-            #     signal = StrategySignal(self.tf, timestamp)
-            #     signal.signal = StrategySignal.SIGNAL_EXIT
-            #     signal.dir = 1
-            #     signal.p = self.price.close[-1]
-
-            #     Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
-
-            # #
-            # # invalidation 2 of opposite setup
-            # #
-
-            # elif self.tomdemark.c.c > 2 and self.tomdemark.c.d > 0 and level1_signal < 0:
-            #     signal = StrategySignal(self.tf, timestamp)
-            #     signal.signal = StrategySignal.SIGNAL_EXIT
-            #     signal.dir = 1
-            #     signal.p = self.price.close[-1]
-
-            #     Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.data.instrument.symbol, signal.p, self.tf), view='default')
-
-        # if len(self.pivotpoint.supports[0]):
-        #     # cancel if not below a support
-        #     if self.price.last >= np.average(self.pivotpoint.supports[0]) and level1_signal > 0:
-        #         level1_signal = 0
-
-        # if signal and signal.signal == StrategySignal.SIGNAL_ENTRY:
-        #     if len(self.pivotpoint.supports[1]):
-        #         # cancel if not below a support
-        #         if self.price.last >= np.max(self.pivotpoint.supports[1]) and level1_signal > 0:
-        #             level1_signal = 0
-        #             signal = None
+            elif self.tomdemark.c.c >= 2 and self.tomdemark.c.d > 1:
+                # cancelation
+                signal = StrategySignal(self.tf, timestamp)
+                signal.signal = StrategySignal.SIGNAL_EXIT
+                signal.dir = 1
+                signal.p = self.price.close[-1]
 
         return signal
 

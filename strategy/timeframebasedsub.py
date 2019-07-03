@@ -27,6 +27,10 @@ class TimeframeBasedSub(object):
         # @todo distinct entry from exit signal (last)
         self.last_signal = None
 
+        self.trend = 0
+        self.can_long = False
+        self.can_short = False
+
     def init_candle_generator(self):
         if self.candles_gen and not self.candles_gen.current:
             last_candle = self.data.instrument.candle(self.tf)

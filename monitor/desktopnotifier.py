@@ -367,7 +367,7 @@ class DesktopNotifier(Notifiable):
         if Terminal.inst().is_active('stats'):
             Terminal.inst().info("Trade history for strategy %s - %s" % (appl.name, appl.identifier), view='stats-head')
 
-            results = appl.get_history_stats(25)
+            results = appl.get_history_stats(0, 50, None)
             if results:
                 # tabular formated text
                 arr = appl.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)

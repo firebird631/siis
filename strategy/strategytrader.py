@@ -30,8 +30,6 @@ class StrategyTrader(object):
         disable any others streaming capacities on the sub-traders excepted for debug purposes.
     """
 
-    MAX_TIME_UNIT = 18  # number of timeframe unit for a trade expiry, default to 18 units
-
     def __init__(self, strategy, instrument):
         self.strategy = strategy
         self.instrument = instrument
@@ -45,8 +43,6 @@ class StrategyTrader(object):
         self._mutex = threading.RLock()
         self._activity = True
 
-        self._expiry_max_time_unit = StrategyTrader.MAX_TIME_UNIT
-
         self._global_streamer = None
         self._timeframe_streamers = {}
 
@@ -57,6 +53,8 @@ class StrategyTrader(object):
             'failed': [],    # failed terminated trades
             'success': [],   # success terminated trades
             'roe': [],       # return to equity trades
+            'cont-win': 0,   # contigous win trades
+            'cont-loss': 0,  # contigous loss trades
         }
 
     def lock(self, blocking=True, timeout=-1):
@@ -191,28 +189,6 @@ class StrategyTrader(object):
         self.trades.remove(trade)
         self.unlock()
 
-    def update_timeout(self, timestamp, trade, local=True):
-        """
-        Aadjust the take-profit to current price (bid or ofr) and the stop-loss very tiny to protect the issue of the trade,
-        when the trade arrives to a validity expiration. Mostly depend ofthe timeframe of the trade.
-        """
-        if not trade:
-            return False
-
-        if not trade.is_opened() or trade.is_closing() or trade.is_closed():
-            return False
-
-        # more than max time unit of the timeframe then abort the trade
-        if (trade.entry_open_time > 0) and ((timestamp - trade.entry_open_time) / trade.timeframe) > self._expiry_max_time_unit:
-            if local:
-                trade.tp = self.instrument.close_exec_price(trade.dir)
-                trade.sl = self.instrument.close_exec_price(trade.dir)
-            else:
-                trade.modify_stop_loss()
-                trade.modify_take_profit()
-
-        return True
-
     def update_trades(self, timestamp):
         """
         Update managed trades per instruments and delete terminated trades.
@@ -248,8 +224,6 @@ class StrategyTrader(object):
             #
 
             if trade.is_active():
-                self.update_timeout(timestamp, trade)
-
                 # for statistics usage
                 trade.update_stats(self.instrument.close_exec_price(trade.direction), timestamp)
 
@@ -469,6 +443,14 @@ class StrategyTrader(object):
                         self._stats['perf'] += rate
                         self._stats['worst'] = min(self._stats['worst'], rate)
                         self._stats['best'] = max(self._stats['best'], rate)
+
+                    if rate <= 0.0:
+                        self._stats['cont-loss'] += 1
+                        self._stats['cont-win'] = 1
+
+                    elif rate > 0.0:
+                        self._stats['cont-loss'] = 0
+                        self._stats['cont-win'] += 1
 
                     record = {
                         'id': trade.id,

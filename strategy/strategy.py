@@ -170,6 +170,12 @@ class Strategy(Runnable):
 
         self.service.notify(Signal.SIGNAL_STRATEGY_ENTRY_EXIT, self._name, signal_data)
 
+    # def notify(self, notification_type, data):
+    # @todo more generic notifier for any trader action on a trade or for different sort of messages
+    #       but its fore few message per minute, the traders might diffuse only the strict minimum,
+    #       excepted for debug/profiling mode
+    #     self.service.notify(Signal.SIGNAL_STRATEGY_xxx, self._name, signal_data)
+
     def setup_streaming(self):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY, "status", self.identifier)
 
@@ -1176,7 +1182,7 @@ class Strategy(Runnable):
 
             sub_trader.unlock()
 
-        results.sort(key=lambda t: t['ts'])
+        results.sort(key=lambda t: -t['id'])
 
         if offset is None:
             offset = 0
@@ -1186,7 +1192,7 @@ class Strategy(Runnable):
 
         limit = offset + limit
 
-        return results[-limit:]
+        return results[offset:limit]
 
     #
     # display formatters

@@ -22,6 +22,13 @@ class CryptoAlphaStrategySubB(CryptoAlphaStrategySub):
     """
 
     def __init__(self, data, params):
+        # default indicators
+        self.sma55 = None
+        self.sma200 = None
+
+        self.atr = None
+        self.bollingerbands = None
+
         super().__init__(data, params)
 
         if 'scores' in params:
@@ -36,7 +43,7 @@ class CryptoAlphaStrategySubB(CryptoAlphaStrategySub):
             self.rsi_hma_trend_div_score_factor = params['scores']['rsi_hma_trend_div_factor']
 
         self.rsi_low = params['constants']['rsi_low']
-        self.rsi_high = params['constants']['rsi_high']      
+        self.rsi_high = params['constants']['rsi_high']
 
     def process(self, timestamp):
         # candles = self.data.instrument.last_candles(self.tf, self.depth)
@@ -113,6 +120,12 @@ class CryptoAlphaStrategySubB(CryptoAlphaStrategySub):
         # elif self.volume.last < volume_sma[-1]:
         #     volume_signal = -1
 
+        if self.sma200:
+            self.sma200.compute(last_timestamp, prices)
+
+        if self.sma55:
+            self.sma55.compute(last_timestamp, prices)
+
         if self.sma and self.ema:
             self.sma.compute(last_timestamp, prices)
             self.ema.compute(last_timestamp, prices)
@@ -125,20 +138,59 @@ class CryptoAlphaStrategySubB(CryptoAlphaStrategySub):
             elif self.ema.last < self.sma.last:
                 ema_sma_height = -1
 
-        if ema_sma_cross > 0 and rsi_30_70 > 0:
-            signal = StrategySignal(self.tf, timestamp)
-            signal.signal = StrategySignal.SIGNAL_ENTRY
-            signal.dir = 1
-            signal.p = candles[-1].close
+        bb_way = 0
 
-        elif ema_sma_cross < 0 and rsi_30_70 < 0:
+        if self.bollingerbands:
+            self.bollingerbands.compute(last_timestamp, prices)
+
+            if self.bollingerbands.last_ma < prices[-1] < self.bollingerbands.last_top:
+                bb_way = -1
+
+        # if ema_sma_cross > 0 and rsi_30_70 > 0:
+        #     self.trend = 1
+
+        # elif ema_sma_cross < 0 and rsi_30_70 < 0:
+        #     signal = StrategySignal(self.tf, timestamp)
+        #     signal.signal = StrategySignal.SIGNAL_EXIT
+        #     signal.dir = 1
+        #     signal.p = candles[-1].close
+        #     self.trend = -1
+        # else:
+        #     self.trend = 0
+
+        level1_signal = 0
+
+        if self.ema.last < self.sma.last:
+            # bear trend
+            if self.rsi.last > 0.5:  # initial: 0.5
+                level1_signal = -1
+            elif self.rsi.last < 0.2:  # initial: 0.2
+                level1_signal = 1
+        else:
+            # bull trend
+            if self.rsi.last > 0.8:  # initial: 0.8
+                level1_signal = -1
+            elif self.rsi.last < 0.6:  # initial: 0.6
+                level1_signal = 1            
+
+        if level1_signal < 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_EXIT
             signal.dir = 1
             signal.p = candles[-1].close
+            self.trend = -1
+        elif level1_signal > 0:
+            self.trend = 1
+        else:
+            self.trend = 0
+
+        self.can_long = self.trend >= 0
 
         if self.pivotpoint:
             self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
+
+        if self.atr:
+            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         return signal
 
