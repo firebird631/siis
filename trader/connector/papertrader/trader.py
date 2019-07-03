@@ -278,6 +278,10 @@ class PaperTrader(Trader):
         self._account = PaperTraderAccount(self)
 
     @property
+    def paper_mode(self):
+        return True
+
+    @property
     def authenticated(self):
         # always authenticated in paper-mode
         return True

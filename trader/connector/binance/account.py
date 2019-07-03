@@ -13,9 +13,6 @@ from notifier.signal import Signal
 
 from trader.account import Account
 
-from config import config
-from terminal.terminal import Terminal
-
 import logging
 logger = logging.getLogger('siis.trader.binance')
 
@@ -23,7 +20,9 @@ logger = logging.getLogger('siis.trader.binance')
 class BinanceAccount(Account):
     """
     Binance trader related account.
-    Account currency is in USDT.
+    Account currency is BTC and alternative currency is USDT.
+    
+    @note Done once per minute, but could be done more frequently using data get through WS and avoiding the extra API call.
     """
 
     CURRENCY = "BTC"
@@ -46,49 +45,85 @@ class BinanceAccount(Account):
 
         self._last_update = 0
 
+        # never change
+        self._email = ''
+        self._account_name = ''
+        self._username = self.parent.name
+
     def update(self, connector):
         if connector is None or not connector.connected:
             return
 
-        # initial update and then one per min
-        now = time.time()
-        if now - self._last_update >= 60.0:
-            self._last_update = now
-
-            self._username = self.parent.name
-            self._email = ''
-            self._account_name = ''
-
+        # update balance each second
+        if time.time() - self._last_update >= 1.0:
             # recompute the balance and free margin for each non-zero account balance
             self._balance = 0.0
             self._margin_balance = 0.0
 
-            account = connector.client.get_account()
+            asset_quantities = self.parent.asset_quantities()
 
-            self._currency_ratio = self.parent.price(self._currency+self._alt_currency)
-
+            self._currency_ratio = self.parent.last_price(self._currency+self._alt_currency)
             currency_market = self.parent.market(self._currency+self._alt_currency)
 
             if currency_market:
                 self._currency_precision = currency_market.base_precision
                 self._alt_currency_precision = currency_market.quote_precision
 
-            for balance in account.get('balances', []):
-                asset_name = balance['asset']
-                free = float(balance['free'])
-                locked = float(balance['locked'])
+            for balance in asset_quantities:
+                asset_name = balance[0]
+                locked = balance[1]
+                free = balance[2]
 
                 if free or locked:
                     # asset price in quote
                     if asset_name == self._alt_currency:
                         # asset USDT
-                        base_price = 1.0 / self.parent.price(self._currency+self._alt_currency)
+                        base_price = 1.0 / (self.parent.last_price(self._currency+self._alt_currency) or 1.0)
                     elif asset_name != self._currency:
                         # any asset except BTC
-                        base_price = self.parent.price(asset_name+self._currency) or 1.0
+                        base_price = self.parent.last_price(asset_name+self._currency) or 1.0
                     else:
                         # asset BTC itself
                         base_price = 1.0
 
                     self._balance += (free + locked) * base_price
                     self._margin_balance += free * base_price
+
+            self._last_update = time.time()
+
+        # @deprecated old way using a REST API call
+        # if time.time() - self._last_update >= 60.0:
+        #     # recompute the balance and free margin for each non-zero account balance
+        #     self._balance = 0.0
+        #     self._margin_balance = 0.0
+
+        #     account = connector.client.get_account()
+
+        #     self._currency_ratio = self.parent.last_price(self._currency+self._alt_currency)
+        #     currency_market = self.parent.market(self._currency+self._alt_currency)
+
+        #     if currency_market:
+        #         self._currency_precision = currency_market.base_precision
+        #         self._alt_currency_precision = currency_market.quote_precision
+
+        #     for balance in account.get('balances', []):
+        #         asset_name = balance['asset']
+        #         free = float(balance['free'])
+        #         locked = float(balance['locked'])
+
+        #         if free or locked:
+        #             # asset price in quote
+        #             if asset_name == self._alt_currency:
+        #                 # asset USDT
+        #                 base_price = 1.0 / self.parent.last_price(self._currency+self._alt_currency)
+        #             elif asset_name != self._currency:
+        #                 # any asset except BTC
+        #                 base_price = self.parent.last_price(asset_name+self._currency) or 1.0
+        #             else:
+        #                 # asset BTC itself
+        #                 base_price = 1.0
+
+        #             self._balance += (free + locked) * base_price
+        #             self._margin_balance += free * base_price
+
+        #     self._last_update = time.time()

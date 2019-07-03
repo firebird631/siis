@@ -449,6 +449,7 @@ class Database(object):
             str broker_id (not empty)
             str market_id (not empty)
             str appliance_id (not empty)
+            integer activity (not null)
             dict data (to be json encoded)
             dict regions (to be json encoded)
         """

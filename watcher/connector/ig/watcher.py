@@ -63,7 +63,12 @@ class IGWatcher(Watcher):
         - Day 15 years
 
     @todo get vol24 in base and quote unit
-    @todo update market info to be market info change and tradeable status update, hourly in REST : update
+    @todo base_exchange_rate must be updated as price changes
+
+    @todo could use endpoint marketnavigation to get all instruments but its hierarchically queries...
+        { "nodes": [{ "id": "668394", "name": "Crypto-monnaie" }, { "id": "5371876", ...
+        per nodes id we have then : {"nodes": [{ "id": "668997", "name": "Bitcoin" }, { "id": "1002200", ...
+        and finally when we found "markets": [{ "epic": "CS.D.AUDUSD.CFD.IP", ... }]
     """
 
     MAX_CONCURRENT_SUBSCRIPTIONS = 40
@@ -120,24 +125,14 @@ class IGWatcher(Watcher):
 
                 self._lightstreamer.connect()
 
+                # subscribe for account and trades to have a reactive feedback and don't saturate the REST API
+                self.subscribe_account(identity.get('account-id'))
+                self.subscribe_trades(identity.get('account-id'))
+
                 #
-                # instruments
+                # default watched instruments
                 #
 
-                # @todo could use endpoint marketnavigation to get all instruments but its hierarchically queries...
-                # {
-                #  "nodes": [{
-                #      "id": "668394",
-                #      "name": "Crypto-monnaie"
-                #  }, {
-                #      "id": "5371876", ...
-                # per nodes id we have then : {
-                #  "nodes": [{
-                #     "id": "668997",
-                #     "name": "Bitcoin"
-                #  }, {
-                #     "id": "1002200",
-                # and finally when we found "markets": [{ "epic": "CS.D.AUDUSD.CFD.IP", ... }]          
                 all_instruments = []
 
                 if '*' in self.configured_symbols():
@@ -145,10 +140,6 @@ class IGWatcher(Watcher):
                     instruments = all_instruments
                 else:
                     instruments = self.configured_symbols()
-
-                # subscribe for account and trades to have a reactive feedback and don't saturate the REST API
-                self.subscribe_account(identity.get('account-id'))
-                self.subscribe_trades(identity.get('account-id'))
 
                 # susbcribe for symbols
                 for symbol in instruments:
@@ -327,6 +318,9 @@ class IGWatcher(Watcher):
         if not super().update():
             return False
 
+        if not self.connected:
+            return False
+
         #
         # ohlc close/open
         #
@@ -334,6 +328,14 @@ class IGWatcher(Watcher):
         self.lock()
         self.update_from_tick()
         self.unlock()
+
+        #
+        # market info update (each 4h)
+        #
+
+        if time.time() - self._last_market_update >= IGWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
+            self.update_markets_info()
+            self._last_market_update = time.time()
 
         return True
 
@@ -753,7 +755,7 @@ class IGWatcher(Watcher):
 
     def fetch_market(self, epic):
         """
-        Fetch and cache it. It rarely changes so assume it once for all.
+        Fetch and cache it. It rarely changes, except for base exchange rate, so assume it once for all.
         """
         market_info = self._connector.market(epic)
 
@@ -852,9 +854,18 @@ class IGWatcher(Watcher):
 
         return market
 
-    def update_markets_info(self, markets):
+    def update_markets_info(self):
         """
-        Update market info.
-        @todo (very important because IG frequently changes lot or contract size)
+        Update market info (very important because IG frequently changes lot or contract size).
         """
-        pass  
+        for market_id in self._watched_instruments:
+            market = self.fetch_market(market_id)
+
+            if market.is_open:
+                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ofr,
+                        market.base_exchange_rate, market.contract_size, market.value_per_pip,
+                        market.vol24h_base, market.vol24h_quote)
+            else:
+                market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
+
+            self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)

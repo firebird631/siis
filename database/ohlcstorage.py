@@ -160,7 +160,7 @@ class OhlcStorage(object):
         ohlcs = []
 
         for row in rows:
-            timestamp = float(row[0]) / 1000.0  # to float second timestamp
+            timestamp = float(row[0]) * 0.001  # to float second timestamp
             ohlc = Candle(timestamp, timeframe)
 
             ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
@@ -319,7 +319,7 @@ class OhlcStreamer(object):
         ohlcs = []
 
         for row in rows:
-            timestamp = float(row[0]) / 1000.0  # to float second timestamp
+            timestamp = float(row[0]) * 0.001  # to float second timestamp
             ohlc = Candle(timestamp, timeframe)
 
             ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))

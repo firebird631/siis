@@ -39,7 +39,8 @@ class BinanceWatcher(Watcher):
 
     @todo Eeach day or 4h update/store markets info.
     @todo Soon support of margin trading, get position from REST API + WS events.
-    @todo Getting order book.
+    @todo Finish order book events.
+    @todo Update base_exchange_rate as price change.
     """
 
     BASE_QUOTE = 'BTC'
@@ -66,7 +67,6 @@ class BinanceWatcher(Watcher):
         super().__init__("binance.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
 
         self._connector = None
-        self._daily_volumes = {}  # daily volume for each market, pair (base asset volume, quote asset volume)
         self._depths = {}  # depth chart per symbol tuple (last_id, bids, ofrs)
 
         self._acount_data = {}
@@ -74,6 +74,7 @@ class BinanceWatcher(Watcher):
         self._tickers_data = {}
 
         self._init = False
+        self._last_trade_id = {}
 
     def connect(self):
         super().connect()
@@ -118,9 +119,12 @@ class BinanceWatcher(Watcher):
                         symbol = instrument['symbol'].lower()
 
                         # depth - order book
-                        multiplex.append(symbol + '@depth')
+                        # multiplex.append(symbol + '@depth')
 
-                        # ohlc (1m, 5m, 1h) (ignore, manage ourself using tickers, less traffic, and any tf as wanted)
+                        # aggreged trade
+                        multiplex.append(symbol + '@aggTrade')
+
+                        # ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
                         # multiplex.append('{}@kline_{}'.format(symbol, '1m'))
                         # multiplex.append('{}@kline_{}'.format(symbol, '5m'))
                         # multiplex.append('{}@kline_{}'.format(symbol, '1h'))
@@ -128,8 +132,8 @@ class BinanceWatcher(Watcher):
                         # one more watched instrument
                         self.insert_watched_instrument(instrument['symbol'], [0])
 
-                # all 24h mini tickers
-                multiplex.append('!miniTicker@arr')
+                # all 24h mini tickers (prefers ticker@arr)
+                # multiplex.append('!miniTicker@arr')
 
                 # all tickers
                 multiplex.append('!ticker@arr')
@@ -198,7 +202,8 @@ class BinanceWatcher(Watcher):
         if not super().update():
             return False
 
-        # __prefetch_markets()
+        if not self.connected:
+            return False
 
         #
         # ohlc close/open
@@ -207,6 +212,14 @@ class BinanceWatcher(Watcher):
         self.lock()
         self.update_from_tick()
         self.unlock()
+
+        #
+        # market info update (each 4h)
+        #
+
+        if time.time() - self._last_market_update >= BinanceWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
+            self.update_markets_info()
+            self._last_market_update = time.time()
 
         return True
 
@@ -330,55 +343,6 @@ class BinanceWatcher(Watcher):
 
         return market
 
-    def update_markets_info(self, markets):
-        """
-        Update market info.
-        """
-        self.__prefetch_markets()
-
-        for market in markets:
-            symbol = self._symbols_data.get(market.market_id)
-            ticker = self._tickers_data.get(market.market_id)
-            account = self._acount_data
-
-            if symbol and ticker and account and market:
-                market.is_open = symbol['status'] == "TRADING"
-                market.expiry = '-'
-
-                size_limits = ["1.0", "0.0", "1.0"]
-                notional_limits = ["1.0", "0.0", "0.0"]
-                price_limits = ["0.0", "0.0", "0.0"]
-
-                # size min/max/step
-                for afilter in symbol["filters"]:
-                    if afilter['filterType'] == "LOT_SIZE":
-                        size_limits = [afilter['minQty'], afilter['maxQty'], afilter['stepSize']]
-
-                    elif afilter['filterType'] == "MIN_NOTIONAL":
-                        notional_limits[0] = afilter['minNotional']
-
-                    elif afilter['filterType'] == "PRICE_FILTER":
-                        price_limits = [afilter['minPrice'], afilter['maxPrice'], afilter['tickSize']]
-
-                if float(size_limits[2]) < 1:
-                    # even if we respect the min step size it reject on some cases
-                    # so keep an higher precision for smallest step size
-                    size_limits[2] = str(float(size_limits[2]) * 10)
-
-                market.set_size_limits(float(size_limits[0]), float(size_limits[1]), float(size_limits[2]))
-                market.set_price_limits(float(price_limits[0]), float(price_limits[1]), float(price_limits[2]))
-                market.set_notional_limits(float(notional_limits[0]), 0.0, 0.0)
-
-                # @todo orders capacities
-                # symbol['orderTypes'] in ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT']
-                # market.orders = 
-
-                market.maker_fee = account['makerCommission'] * 0.0001
-                market.taker_fee = account['takerCommission'] * 0.0001
-
-                # market.buyer_commission = account['buyerCommission']
-                # market.seller_commission = account['sellerCommission']
-
     def fetch_order_book(self, market_id):
         # get_orderbook_tickers
         # get_order_book(market_id)
@@ -406,62 +370,34 @@ class BinanceWatcher(Watcher):
         # market data instrument by symbol
         for ticker in data:
             symbol = ticker['s']
+            last_trade_id = ticker['L']
 
-            #
-            # market data
-            #
+            if last_trade_id != self._last_trade_id.get(symbol, 0):
+                self._last_trade_id[symbol] = last_trade_id
 
-            update_time = ticker['C']*0.001
+                last_update_time = ticker['C'] * 0.001
 
-            if not update_time:
-                # no tick for this symbol
-                continue
+                bid = float(ticker['b'])
+                ofr = float(ticker['a'])
 
-            bid = float(ticker['b'])
-            ofr = float(ticker['a'])
-            vol = float(ticker['v'])
+                vol24_base = float(ticker['v']) if ticker['v'] else 0.0
+                vol24_quote = float(ticker['q']) if ticker['q'] else 0.0
 
-            vol24_base, vol24_quote = self._daily_volumes.get(symbol, (None, None))
+                # @todo compute base_exchange_rate
+                # base_exchange_rate = ...
 
-            if vol24_base is not None:
-                vol24_base = float(vol24_base)
+                # if quote_asset != self.BASE_QUOTE:
+                #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
+                #         market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
+                #     elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
+                #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
+                #     else:
+                #         market.base_exchange_rate = 1.0
+                # else:
+                #     market.base_exchange_rate = 1.0
 
-            if vol24_quote is not None:
-                vol24_quote = float(vol24_quote)
-
-            # @todo could uses an aggregated signal
-            market_data = (symbol, update_time > 0, update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
-            self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
-
-            #
-            # tick data
-            #
-
-            if bid > 0.0 and ofr > 0.0 and update_time > 0:
-                tick = Tick(update_time)
-
-                tick.set_price(bid, ofr)
-                tick.set_volume(vol)
-
-                # for candle's generation
-                self.lock()
-                self._last_tick[symbol] = tick
-                self.unlock()
-
-                # @todo could uses an aggregated signal
-                self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
-
-                if not self._read_only:
-                    Database.inst().store_market_trade((self.name, symbol, int(ticker['C']), ticker['b'], ticker['a'], ticker['v']))
-
-                for tf in Watcher.STORED_TIMEFRAMES:
-                    # generate candle per each tf
-                    self.lock()
-                    candle = self.update_ohlc(symbol, tf, update_time, bid, ofr, vol)
-                    self.unlock()
-
-                    if candle is not None:
-                        self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
+                market_data = (symbol, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
+                self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_depth_data(self, data):
         # @todo using binance.DepthCache
@@ -522,64 +458,92 @@ class BinanceWatcher(Watcher):
             return
 
         if data['stream'] == '!ticker@arr':
-            # redirect to tickers data handler
             self.__on_tickers_data(data['data'])
-
-        elif data['stream'] == '!miniTicker@arr':
-            # goes for market data update (total traded base volume, total traded quote volume)
-            for d in data['data']:
-                if d['e'] == '24hrMiniTicker':
-                    self._daily_volumes[d['s']] = (d['v'], d['q'])
-
+        elif data['stream'].endswith('@aggTrade'):
+            self.__on_trade_data(data['data'])
         elif data['stream'].endswith('@depth'):
-            # redirect to depth data handle
             self.__on_depth_data(data['data'])
-
         elif '@kline_' in data['stream']:
-            # kline (but should build them from ticker like in bitmex)
-            content = data.get('data')
+            self.__on_kline_data(data['data'])
 
-        # comment now we only uses tickers and build our own kline because it uses subscribers else
-        #   if content and content['e'] == 'kline':
-        #       k = content['k']
+    def __on_trade_data(self, data):
+        event_type = data.get('e', "")
 
-        #       symbol = k['s']
-        #       timestamp = k['t'] / 1000.0
+        if event_type == "aggTrade":
+            symbol = data['s']
+            trade_time = data['T'] * 0.001
 
-        #       tf = self.REV_TF_MAP[k['i']]
+            # trade_id = data['t']
+            # buyer_maker = data['m']
 
-        #       candle = Candle(timestamp, tf)
+            price = float(data['p'])
+            vol = float(data['q'])
 
-        #       # only price, no spread
-        #       candle.set_bid_ohlc(
-        #           float(k['o']),
-        #           float(k['h']),
-        #           float(k['l']),
-        #           float(k['c']))
+            bid = price
+            ofr = price
 
-        #       candle.set_ofr_ohlc(
-        #           float(k['o']),
-        #           float(k['h']),
-        #           float(k['l']),
-        #           float(k['c']))
+            tick = Tick(trade_time)
 
-        #       candle.set_volume(float(k['v']))
-        #       candle.set_consolidated(k['x'])
+            tick.set_price(bid, ofr)
+            tick.set_volume(vol)
 
-        #       # @todo trades id ? want that for ?
-        #       # "f": 77462, first trade id
-        #       # "L": 77465, last trade id
-        #       # "n": 4, number of trades
+            # store for generation of OHLCs
+            self.lock()
+            self._last_tick[symbol] = tick
+            self.unlock()
 
-        #       self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
+            self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
-        #       if k['x'] and not self._read_only:
-        #           # write only consolidated candles. values are string its perfect
-        #           Database.inst().store_market_ohlc((
-        #               self.name, symbol, int(k['t']), tf,
-        #               k['o'], k['h'], k['l'], k['c'],
-        #               k['o'], k['h'], k['l'], k['c'],
-        #               k['v']))
+            if not self._read_only:
+                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q']))
+
+            for tf in Watcher.STORED_TIMEFRAMES:
+                # generate candle per timeframe
+                self.lock()
+                candle = self.update_ohlc(symbol, tf, trade_time, bid, ofr, vol)
+                self.unlock()
+
+                if candle is not None:
+                    self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
+
+    def __on_kline_data(self, data):
+        event_type = data.get('e', '')
+
+        if event_type == 'kline':
+            k = data['k']
+
+            symbol = k['s']
+            timestamp = k['t'] * 0.001
+
+            tf = self.REV_TF_MAP[k['i']]
+
+            candle = Candle(timestamp, tf)
+
+            # only price, no spread
+            candle.set_bid_ohlc(
+              float(k['o']),
+              float(k['h']),
+              float(k['l']),
+              float(k['c']))
+
+            candle.set_ofr_ohlc(
+              float(k['o']),
+              float(k['h']),
+              float(k['l']),
+              float(k['c']))
+
+            candle.set_volume(float(k['v']))
+            candle.set_consolidated(k['x'])
+
+            self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
+
+            if k['x'] and not self._read_only:
+                # write only consolidated candles. values are string its perfect
+                Database.inst().store_market_ohlc((
+                    self.name, symbol, int(k['t']), tf,
+                    k['o'], k['h'], k['l'], k['c'],
+                    k['o'], k['h'], k['l'], k['c'],
+                    k['v']))
 
     def __on_user_data(self, data):
         """
@@ -736,6 +700,10 @@ class BinanceWatcher(Watcher):
                 # asset updated
                 self.service.notify(Signal.SIGNAL_ASSET_UPDATED, self.name, (asset_name, float(locked), float(free)))
 
+    #
+    # miscs
+    #
+
     def price_history(self, market_id, timestamp):
         """
         Retrieve the historical price for a specific market id.
@@ -746,3 +714,22 @@ class BinanceWatcher(Watcher):
         except Exception as e:
             logger.error("Cannot found price history for %s at %s" % (market_id, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
             return 0.0
+
+    def update_markets_info(self):
+        """
+        Update market info.
+        """
+        self.__prefetch_markets()
+
+        for market_id in self._watched_instruments:
+            market = self.fetch_market(market_id)
+            print(market_id)
+
+            if market.is_open:
+                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ofr,
+                        market.base_exchange_rate, market.contract_size, market.value_per_pip,
+                        market.vol24h_base, market.vol24h_quote)
+            else:
+                market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
+
+            self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)

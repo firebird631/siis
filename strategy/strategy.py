@@ -64,21 +64,6 @@ class Strategy(Runnable):
     COMMAND_TRADER_MODIFY = 20
     COMMAND_TRADER_INFO = 21
 
-    @staticmethod
-    def merge_parameters(default, user):
-        def merge(a, b):
-            if isinstance(a, dict) and isinstance(b, dict):
-                d = dict(a)
-                d.update({k: merge(a.get(k, None), b[k]) for k in b})
-                return d
-
-            if isinstance(a, list) and isinstance(b, list):
-                return [merge(x, y) for x, y in itertools.zip_longest(a, b)]
-
-            return a if b is None else b
-
-        return merge(default, user)
-
     def __init__(self, name, strategy_service, watcher_service, trader_service, options, default_parameters=None, user_parameters=None):
         super().__init__("st-%s" % name)
 
@@ -127,6 +112,63 @@ class Strategy(Runnable):
                     logger.error("Watcher %s not found during strategy __init__" % watcher_conf['name'])
 
         self.setup_streaming()
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def watcher_service(self):
+        return self._watcher_service
+    
+    @property
+    def trader_service(self):
+        return self._trader_service
+
+    @property
+    def service(self):
+        return self._strategy_service
+
+    @property
+    def identifier(self):
+        """Unique appliance identifier"""
+        return self._identifier
+
+    def set_identifier(self, identifier):
+        """Unique appliance identifier"""
+        self._identifier = identifier
+
+    @property
+    def parameters(self):
+        """Configuration default merge with users"""
+        return self._parameters
+
+    #
+    # monitoring notification (@todo to be cleanup)
+    #
+
+    def notify_order(self, trade_id, direction, symbol, price, timestamp, timeframe,
+            action='order', rate=None, stop_loss=None, take_profit=None):
+        """
+        Notify an order execution to the user. It must be called by the sub-trader.
+        @param trade_id If -1 then it notify a simple signal unrelated to a trade.
+        """
+        signal_data = {
+            'trade-id': trade_id,
+            'trader-name': self._name,
+            'identifier': self.identifier,
+            'action': action,
+            'timestamp': timestamp,
+            'timeframe': timeframe,
+            'direction': direction,
+            'symbol': symbol,
+            'price': price,
+            'rate': rate,
+            'stop-loss': stop_loss,
+            'take-profit': take_profit
+        }
+
+        self.service.notify(Signal.SIGNAL_STRATEGY_ENTRY_EXIT, self._name, signal_data)
 
     def setup_streaming(self):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY, "status", self.identifier)
@@ -184,6 +226,24 @@ class Strategy(Runnable):
 
         return sub_trader.unsubscribe(timeframe)
 
+    #
+    # processing
+    #
+
+    @property
+    def timestamp(self):
+        """
+        Current time or last time if backtesting
+        """
+        if self.service.backtesting:
+            return self._timestamp
+        else:
+            return time.time()
+
+    @property
+    def cpu_load(self):
+        return self._cpu_load
+
     def check_watchers(self):
         """
         Returns true if all watchers are retrieved and connected.
@@ -195,6 +255,45 @@ class Strategy(Runnable):
                 return False
 
         return True
+
+    def pre_run(self):
+        Terminal.inst().info("Running appliance %s - %s..." % (self._name, self._identifier), view='content')
+
+        # watcher can be already ready in some cases, try it now
+        if self.check_watchers() and not self._preset:
+            self.preset()
+
+    def post_run(self):
+        Terminal.inst().info("Joining appliance %s - %s..." % (self._name, self._identifier), view='content')
+
+    def post_update(self):
+        # load of the strategy
+        self._cpu_load = len(self._signals) / float(Strategy.MAX_SIGNALS)
+
+        # strategy must consume its signal else there is first a warning, and then some market data could be ignored
+        if len(self._signals) > Strategy.MAX_SIGNALS:
+            Terminal.inst().warning("Appliance %s has more than %s waiting signals, some market data could be ignored !" % (
+                self.name, Strategy.MAX_SIGNALS), view='debug')
+
+        # dont waste the CPU in live mode
+        if not self.service.backtesting:
+            time.sleep(0.0000001)  # 0.005 * max(1, self._cpu_load))
+
+        # stream call
+        self.lock()
+    
+        self.stream()
+        self.stream_call()
+
+        self.unlock()
+
+    def pong(self, msg):
+        # display appliance activity
+        Terminal.inst().action("Appliance worker %s - %s is alive %s" % (self._name, self._identifier, msg), view='content')
+
+    #
+    # sub-traders processing
+    #
 
     def create_trader(self, instrument):
         """
@@ -267,16 +366,17 @@ class Strategy(Runnable):
         else:
             self.setup_live()
 
-    @property
-    def identifier(self):
-        return self._identifier
+    def save(self):
+        """
+        For each sub-trader finalize only in live mode.
+        """
+        self.lock()
 
-    def set_identifier(self, identifier):
-        self._identifier = identifier
+        if not self.service.backtesting and not self.trader.paper_mode:
+            for k, sub_trader in self._sub_traders.items():
+                sub_trader.save()
 
-    @property
-    def parameters(self):
-        return self._parameters
+        self.unlock()
 
     def indicator(self, name):
         """
@@ -744,6 +844,10 @@ class Strategy(Runnable):
         """
         pass
 
+    #
+    # commands
+    #
+
     def trade_command(self, label, data, func):
         # manually trade modify a trade (add/remove an operation)
         market_id = data.get('market-id')
@@ -815,71 +919,6 @@ class Strategy(Runnable):
             self.sub_trader_command("info", data, self.cmd_sub_trader_modify)
         elif command_type == Strategy.COMMAND_TRADER_INFO:
             self.cmd_sub_trader_info("info", data, self.cmd_sub_trader_modify)
-
-    def pre_run(self):
-        Terminal.inst().info("Running appliance %s - %s..." % (self._name, self._identifier), view='content')
-
-        # watcher can be already ready in some cases, try it now
-        if self.check_watchers() and not self._preset:
-            self.preset()
-
-    def post_run(self):
-        Terminal.inst().info("Joining appliance %s - %s..." % (self._name, self._identifier), view='content')
-
-    def post_update(self):
-        # load of the strategy
-        self._cpu_load = len(self._signals) / float(Strategy.MAX_SIGNALS)
-
-        # strategy must consume its signal else there is first a warning, and then some market data could be ignored
-        if len(self._signals) > Strategy.MAX_SIGNALS:
-            Terminal.inst().warning("Appliance %s has more than %s waiting signals, some market data could be ignored !" % (
-                self.name, Strategy.MAX_SIGNALS), view='debug')
-
-        # dont waste the CPU in live mode
-        if not self.service.backtesting:
-            time.sleep(0.0000001)  # 0.005 * max(1, self._cpu_load))
-
-        # stream call
-        self.lock()
-    
-        self.stream()
-        self.stream_call()
-
-        self.unlock()
-
-    def pong(self, msg):
-        # display appliance activity
-        Terminal.inst().action("Appliance worker %s - %s is alive %s" % (self._name, self._identifier, msg), view='content')
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def watcher_service(self):
-        return self._watcher_service
-    
-    @property
-    def trader_service(self):
-        return self._trader_service
-
-    @property
-    def service(self):
-        return self._strategy_service
-
-    @property
-    def cpu_load(self):
-        return self._cpu_load
-
-    @property
-    def timestamp(self):
-        """
-        Current time or last time if backtesting
-        """
-        if self.service.backtesting:
-            return self._timestamp
-        else:
-            return time.time()
 
     #
     # signals/slots
@@ -987,31 +1026,8 @@ class Strategy(Runnable):
                 sub_trader.order_signal(signal_type, data)
 
     #
-    # helpers
+    # display views
     #
-
-    def notify_order(self, trade_id, direction, symbol, price, timestamp, timeframe,
-            action='order', rate=None, stop_loss=None, take_profit=None):
-        """
-        Notify an order execution to the user. It must be called by the sub-trader.
-        @param trade_id If -1 then it notify a simple signal unrelated to a trade.
-        """
-        signal_data = {
-            'trade-id': trade_id,
-            'trader-name': self._name,
-            'identifier': self.identifier,
-            'action': action,
-            'timestamp': timestamp,
-            'timeframe': timeframe,
-            'direction': direction,
-            'symbol': symbol,
-            'price': price,
-            'rate': rate,
-            'stop-loss': stop_loss,
-            'take-profit': take_profit
-        }
-
-        self.service.notify(Signal.SIGNAL_STRATEGY_ENTRY_EXIT, self._name, signal_data)
 
     def get_stats(self):
         """
@@ -2112,3 +2128,22 @@ class Strategy(Runnable):
             if disabled:
                 disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
                 Terminal.inst().info("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')
+
+    #
+    # static
+    #
+
+    @staticmethod
+    def merge_parameters(default, user):
+        def merge(a, b):
+            if isinstance(a, dict) and isinstance(b, dict):
+                d = dict(a)
+                d.update({k: merge(a.get(k, None), b[k]) for k in b})
+                return d
+
+            if isinstance(a, list) and isinstance(b, list):
+                return [merge(x, y) for x, y in itertools.zip_longest(a, b)]
+
+            return a if b is None else b
+
+        return merge(default, user)

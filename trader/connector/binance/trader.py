@@ -19,11 +19,9 @@ from .account import BinanceAccount
 from trader.asset import Asset
 from trader.position import Position
 from trader.order import Order
-from terminal.terminal import Terminal
 from trader.account import Account
 from trader.market import Market
 
-from config import config
 from database.database import Database
 
 from connector.binance.exceptions import *
@@ -43,8 +41,6 @@ class BinanceTrader(Trader):
     @todo Will support soon margin trading on majors pairs.
     """
 
-    UPDATE_MARKET_INFO_DELAY = 4*60*60  # update market info data from REST API each 4hours
-
     def __init__(self, service):
         super().__init__("binance.com", service)
 
@@ -55,7 +51,6 @@ class BinanceTrader(Trader):
 
         self._last_position_update = 0
         self._last_order_update = 0
-        self._last_market_update = 0
 
         self._ready = False
 
@@ -171,48 +166,13 @@ class BinanceTrader(Trader):
             return False
 
         #
-        # account data update
+        # account data update (normal case don't call REST)
         #
+
         try:
             self.lock()
             self._account.update(self._watcher.connector)
         except Exception as e:
-            Terminal.inst().error(repr(e))
-            logger.error(traceback.format_exc())
-        finally:
-            self.unlock()
-
-        #
-        # orders
-        #
-
-        # pulled from user-data websocket
-        # try:
-        #   self.lock()
-        #   now = time.time()
-        #   # only once per 5 seconds to avoid API excess
-        #   if now - self._last_order_update >= 5.0:
-        #       self.__fetch_orders()
-        #       self.__fetch_positions()
-        #       self._last_order_update = now
-        # except Exception as e:
-        #   Terminal.inst().error(repr(e))
-        #   logger.error(traceback.format_exc())
-        # finally:
-        #   self.unlock()
-
-        #
-        # markets details
-        #
-        try:
-            self.lock()
-            now = time.time()
-            # only once per 4h
-            if now - self._last_market_update >= BinanceTrader.UPDATE_MARKET_INFO_DELAY:
-                self.__update_markets_info()
-                self._last_market_update = now
-        except Exception as e:
-            Terminal.inst().error(repr(e))
             logger.error(traceback.format_exc())
         finally:
             self.unlock()
@@ -230,7 +190,7 @@ class BinanceTrader(Trader):
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
         """
         if not self.has_market(order.symbol):
-            Terminal.inst().error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id), view='trader')
+            logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
             return False
 
         if not self._activity:
@@ -254,8 +214,8 @@ class BinanceTrader(Trader):
 
         if order.quantity < market.min_size:
             # reject if lesser than min size
-            Terminal.inst().error(" %s refuse order because the min size is not reached (%.f<%.f) %s in order %s !" % (
-                self.name, order.quantity, market.min_size, symbol, order.order_id), view='trader')
+            logger.error(" %s refuse order because the min size is not reached (%.f<%.f) %s in order %s !" % (
+                self.name, order.quantity, market.min_size, symbol, order.order_id))
             return False
 
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
@@ -265,8 +225,8 @@ class BinanceTrader(Trader):
 
         if notional < market.min_notional:
             # reject if lesser than min notinal
-            Terminal.inst().error("%s refuse order because the min notional is not reached (%.f<%.f) %s in order %s !" % (
-                self.name, notional, market.min_notional, symbol, order.order_id), view='trader')
+            logger.error("%s refuse order because the min notional is not reached (%.f<%.f) %s in order %s !" % (
+                self.name, notional, market.min_notional, symbol, order.order_id))
             return False
 
         data = {
@@ -296,7 +256,7 @@ class BinanceTrader(Trader):
         data['newClientOrderId'] = order.ref_order_id
         # data['icebergQty'] = 0.0
 
-        Terminal.inst().notice("Trader %s order %s of %s %s" % (self.name, order.direction_to_str(), quantity, symbol), view='info')
+        # logger.notice("Trader %s order %s of %s %s" % (self.name, order.direction_to_str(), quantity, symbol))
 
         result = None
         reason = ""
@@ -312,14 +272,13 @@ class BinanceTrader(Trader):
             reason = str(e)
 
         if (result and result['status'] == Client.ORDER_STATUS_REJECTED) or reason:
-            Terminal.inst().error("%s rejected order %s of %s %s reason %s !" % (
-                self.name, order.direction_to_str(), quantity, symbol, reason), view='trader')
+            logger.error("%s rejected order %s of %s %s reason %s !" % (self.name, order.direction_to_str(), quantity, symbol, reason))
             return False
 
         order.set_order_id(result['orderId'])
 
-        order.created_time = result['transactTime'] / 1000.0
-        order.transact_time = result['transactTime'] / 1000.0
+        order.created_time = result['transactTime'] * 0.001
+        order.transact_time = result['transactTime'] * 0.001
 
         # commented because done in the order traded slot
         # if result['executedQty']:
@@ -348,7 +307,7 @@ class BinanceTrader(Trader):
             return False
 
         if not self.has_market(order.symbol):
-            Terminal.inst().error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id), view='trader')
+            logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
             return False
 
         # order type
@@ -401,7 +360,7 @@ class BinanceTrader(Trader):
             return False
 
         if not self.has_market(position.symbol):
-            Terminal.inst().error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id), view='trader')
+            logger.error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id))
             return False
 
         symbol = position.symbol
@@ -446,7 +405,7 @@ class BinanceTrader(Trader):
         # # data['newClientOrderId'] = 'xxx'  # if we want to set a specific client order id
         # # data['icebergQty'] = 0.0
 
-        # Terminal.inst().notice("%s order %s of %s %s" % (self.name, order.direction_to_str(), quantity, market_id), view='trader')
+        # logger.notice("%s order %s of %s %s" % (self.name, order.direction_to_str(), quantity, market_id))
 
         # result = None
         # reason = ""
@@ -462,12 +421,11 @@ class BinanceTrader(Trader):
         #     reason = str(e)
 
         # if (result and result['status'] == Client.ORDER_STATUS_REJECTED) or reason:
-        #     Terminal.inst().error("%s rejected close position %s of %s %s reason %s !" % (
-        #           self.name, order.direction_to_str(), quantity, symbol, reason), view='trader')
+        #     logger.error("%s rejected close position %s of %s %s reason %s !" % (self.name, order.direction_to_str(), quantity, symbol, reason))
         #     return False
 
         # order.set_order_id(result['orderId'])
-        # order.transact_time = result['transactTime'] / 1000.0
+        # order.transact_time = result['transactTime'] * 0.001
 
         # if result['executedQty']:
         #     # partially or totally executed quantity
@@ -1053,14 +1011,6 @@ class BinanceTrader(Trader):
 
         self.unlock()
 
-    def __update_markets_info(self):
-        """
-        Sychronous market details update.
-        """
-        if self._watcher:
-            markets = list(self._markets.values())
-            self._watcher.update_markets_info(markets)
-
     #
     # assets
     #
@@ -1267,3 +1217,17 @@ class BinanceTrader(Trader):
     #
 
     # @todo Soon support of margin trading.
+
+    #
+    # miscs
+    #
+
+    def asset_quantities(self):
+        """
+        Returns a list of triplet with (symbol, locked qty, free qty) for any of the non empty balance of assets.
+        """
+        self.lock()
+        balances = [(k, asset.locked, asset.free) for k, asset in self._assets.items()]
+        self.unlock()
+
+        return balances

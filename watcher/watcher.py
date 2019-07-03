@@ -24,6 +24,8 @@ class Watcher(Runnable):
     @todo subscribe/unsubscribe
     """
 
+    UPDATE_MARKET_INFO_DELAY = 4*60*60  # 4h between each market data info fetch
+
     WATCHER_UNDEFINED = 0
     WATCHER_PRICE_AND_VOLUME = 1
     WATCHER_BUY_SELL_SIGNAL = 2
@@ -59,8 +61,10 @@ class Watcher(Runnable):
         self._last_tick = {}  # last tick per market id
         self._last_ohlc = {}  # last ohlc per market id and then per timeframe
 
+        self._last_market_update = time.time()
+
         # listen to its service
-        self.service.add_listener(self)       
+        self.service.add_listener(self)
 
     @property
     def watcher_type(self):
@@ -211,6 +215,9 @@ class Watcher(Runnable):
         pass
 
     def update(self):
+        """
+        Nothing by default by you must call at least update_from_tick.
+        """
         return True
 
     @property
@@ -245,12 +252,9 @@ class Watcher(Runnable):
         """
         return None
 
-    def update_markets_info(self, markets):
+    def update_markets_info(self):
         """
-        Update a given list of markets details sychronously.
-        It only update the informational details of the market, NOT the price and related informations,
-        but info like market expiry, price filters, fees.
-
+        Update the market info from the API, for any of the followed markets.
         @note Could cost some REST API credits, don't need to call it often, once per 4h, or per day is sufficient.
         """
         pass

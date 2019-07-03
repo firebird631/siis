@@ -25,7 +25,7 @@
 
 #77 Comment bien gérer les gap de candles ? Car si low volume ok on a mettons un gap en 1m ou 5m, le add_candle va rajouter un volume vide avec les
 	prix la précédente candle. Mais quand le market ferme en forex ou stock, à l'ouverture il ne faut pas créer les candle manquantes,
-	donc il faut disctinguer les 2 cas, par example le status tradable peu servire...
+	donc il faut disctinguer les 2 cas, par example le status tradable peu servir...
 
 
 ##########
@@ -33,10 +33,6 @@
 ##########
 
 #86 Finir la TrendRegion
-
-#88 Persistance pour les région de chaque sub-trader pour une appaliance donnée
-	- appliance-id / market-id => liste de regions, état du sub-trader (actif)
-	=> table strategy_trader appliance_id varchar32, market_id varchar32, activity integer, regions text (JSON)
 
 #82 SL sont en market, mais on pourrait avoir en Limit avec un prix assez large
 

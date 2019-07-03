@@ -235,6 +235,10 @@ class StrategyService(Service):
             if appl.thread.is_alive():
                 appl.thread.join()
 
+            # and save state to database
+            if not self.backtesting and not appl.trader().paper_mode:
+                appl.save()
+
         # terminate the worker pool
         self._worker_pool.stop()
 

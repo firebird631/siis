@@ -15,6 +15,7 @@ from common.utils import timeframe_to_str
 from notifier.signal import Signal
 
 from trader.order import Order
+from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.strategy')
@@ -81,22 +82,9 @@ class StrategyTrader(object):
         """
         self._activity = status   
 
-    def init(self, database):
+    def save(self):
         """
-        Initials steps before processing goes here
-        """
-        self.lock()
-
-        # @todo loads and computes next ids
-        # self._next_trade_id =
-        # self._next_region_id = 
-
-        self.unlock()
-
-    def finalize(self, database):
-        """
-        Finals steps after last processing goes here.
-        Here you could define a stop-loss for any of the managed trade, the trade persistance goes here too.
+        Trader and trades persistance (might occurs only for live mode on real accounts).
         """
         self.lock()
 
@@ -105,16 +93,17 @@ class StrategyTrader(object):
         for trade in self.trades:
             t_data = trade.dumps()
             ops_data = [operation.dumps() for operation in trade.operations]
-        
+
             # store per trade    
-            Database.inst().store_user_trade(trader.name, self.instrument.market_id, self.strategy.identifier,
-                    trade.id, trade.trade_type, t_data, ops_data)
+            Database.inst().store_user_trade((trader.name, self.instrument.market_id, self.strategy.identifier,
+                    trade.id, trade.trade_type, t_data, ops_data))
 
         # dumps of regions
+        trader_data = {}
         regions_data = [region.dumps() for region in self.regions]
 
-        Database.inst().store_user_trader(trader.name, self.instrument.market_id, self.strategy.identifier,
-                self.activity, regions_data)
+        Database.inst().store_user_trader((trader.name, self.instrument.market_id, self.strategy.identifier,
+                self.activity, trader_data, regions_data))
 
         self.unlock()
 

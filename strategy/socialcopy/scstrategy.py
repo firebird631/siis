@@ -37,3 +37,23 @@ class SocialCopyStrategy(Strategy):
 
     def update_strategy(self, tf, instrument):
         pass
+
+    # def loads(self, trader_data):
+    #     # @deprecated Related to the social copy strategy.
+    #     positions = trader_data.get('positions', [])
+
+    #     for pos in positions:
+    #         # for each stored position insert it, could be deleted after the initial update is closed since
+    #         position = Position(self)
+
+    #         position.set_position_id(pos['position_id'])
+    #         position.set_copied_position_id(pos['copied_position_id'])
+    #         position.set_key(self.service.gen_key())
+    #         position.shared = pos['shared']
+
+    #         # retrieve the author from its id (could be none if lost or self)
+    #         author = self.service.watcher_service.find_author(pos['author_watcher'], pos['author_id'])
+    #         position.author = author
+
+    #         # append as to be updated position
+    #         self._positions[position.position_id] = position

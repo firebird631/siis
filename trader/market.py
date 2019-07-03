@@ -118,9 +118,10 @@ class Market(object):
 
         self._leverages = (1,)  # allowed leverages levels
 
+        self._last_update_time = time.time()
+
         self._bid = 0.0
         self._ofr = 0.0
-        self._last_update_time = time.time()
 
     @property
     def market_id(self):

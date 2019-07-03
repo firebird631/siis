@@ -37,9 +37,6 @@ class BitMexWatcher(Watcher):
 
     Month code = F (jan) G H J K M N Q U V X Z (dec)
 
-    @todo take care contract size and value per pip too... depends of the price, its not a good idea or have to update it
-    @todo update market info
-
     @ref https://www.bitmex.com/app/wsAPI#All-Commands
     """
 
@@ -129,6 +126,9 @@ class BitMexWatcher(Watcher):
         if not super().update():
             return False
 
+        if not self.connected:
+            return False
+
         #
         # ohlc close/open
         #
@@ -136,6 +136,14 @@ class BitMexWatcher(Watcher):
         self.lock()
         self.update_from_tick()
         self.unlock()
+
+        #
+        # market info update (each 4h)
+        #
+
+        if time.time() - self._last_market_update >= BitMexWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
+            self.update_markets_info()
+            self._last_market_update = time.time()
 
         return True
 
@@ -411,7 +419,6 @@ class BitMexWatcher(Watcher):
                         else:
                             contract_size = 1.0 / instrument.get('lastPrice', 1.0)
 
-                        # logger.debug(symbol, base_market_id, contract_size)
                         value_per_pip = contract_size / instrument.get('lastPrice', 1.0)
 
                         vol24h = instrument.get('volume24h')
@@ -419,13 +426,6 @@ class BitMexWatcher(Watcher):
 
                         market_data = (market_id, tradeable, update_time, bid, ofr, base_exchange_rate, contract_size, value_per_pip, vol24h, vol24hquote)
                         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
-
-                    #
-                    # notify a market info data update (commented because to often, do it only at connection)
-                    #
-
-                    # @todo look at fetch_market and how to only update when necessary ? so for now only done at reconnection
-                    # self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, market)
 
                     #
                     # notify a tick data update
@@ -450,7 +450,7 @@ class BitMexWatcher(Watcher):
                     if 'volume' in data[3][0] and data[3][0]['volume']:
                         last_vol = float(data[3][0]['volume'])
 
-                    # logger.info("bitmex l325 > ", market_id, bid, ofr, volume, " / ", last_bid, last_ofr, last_vol)
+                    logger.info("bitmex l325 > %s : %s %s %s / last %s %s %s" % (market_id, bid, ofr, volume, last_bid, last_ofr, last_vol))
 
                     if bid is not None and ofr is not None and volume is not None and last_vol:
                         # we have a tick when we have a volume in data content
@@ -466,25 +466,11 @@ class BitMexWatcher(Watcher):
                         # and notify
                         self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
-                        #
-                        # reconstruct candles for 1", 1', 5', 60' and clear olders ticks
-                        #
-
-                        # example of bin (candle) data
-                        # 'openingTimestamp': '2018-09-16T00:00:00.000Z',
-                        # 'closingTimestamp': '2018-09-16T02:00:00.000Z',
-                        # 'highPrice': 6568,
-                        # 'lowPrice': 6463.5,
-                        # 'bidPrice': 6508,
-                        # 'midPrice': 6508.25,
-                        # 'askPrice': 6508.5,
-                        # 'lastPrice': 6508.5,
-                        # 'markPrice': 6510.71,
-
                         if not self._read_only:
                             # store trade/tick
                             Database.inst().store_market_trade((self.name, symbol, int(update_time*1000), bid, ofr, volume))
 
+                    # @todo could check that, because might be done only when Tick
                     for tf in Watcher.STORED_TIMEFRAMES:
                         # generate candle per each timeframe
                         self.lock()
@@ -507,7 +493,7 @@ class BitMexWatcher(Watcher):
 
     def fetch_market(self, market_id):
         """
-        Fetch and cache it. It rarely changes so assume it once for all.
+        Fetch and cache it. It rarely changes, except for base exchange rate, so assume it once for all.
         @todo min/max/step/min_notional
         """
         instrument = self.connector.ws.get_instrument(market_id)
@@ -593,6 +579,7 @@ class BitMexWatcher(Watcher):
             market.value_per_pip = 1.0
             market.one_pip_means = instrument.get('tickSize', 1.0)
 
+            # contract_size need to be updated as price changes
             if quote_symbol == 'USD' and base_market_id == symbol:  # XBTUSD...
                 market.contract_size = 1.0 / instrument.get('lastPrice', 1.0)
             elif quote_symbol == 'USD' and base_market_id != symbol:  # ETHUSD...
@@ -623,9 +610,18 @@ class BitMexWatcher(Watcher):
 
         return market
 
-    def update_markets_info(self, markets):
+    def update_markets_info(self):
         """
         Update market info.
-        @todo (not very important because its seems it never changes)
         """
-        pass  
+        for market_id in self._watched_instruments:
+            market = self.fetch_market(market_id)
+
+            if market.is_open:
+                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ofr,
+                        market.base_exchange_rate, market.contract_size, market.value_per_pip,
+                        market.vol24h_base, market.vol24h_quote)
+            else:
+                market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
+
+            self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)

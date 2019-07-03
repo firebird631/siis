@@ -17,9 +17,14 @@ from terminal.terminal import Terminal
 
 
 class IGAccount(Account):
+    """
+    Done once per minute, but could be done more frequently using data get through WS and avoiding the extra API call.
+    """
 
     CURRENCY = "EUR"
     CURRENCY_SYMBOL = "€"
+
+    UPDATE_TIMEOUT = 60
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -37,10 +42,8 @@ class IGAccount(Account):
             return
 
         # initial update and then one per min, the live updated are done by signal and WS
-        now = time.time()
-        if now - self._last_update >= 1.0*60.0:
-            self._last_update = now
-
+        if time.time() - self._last_update >= IGAccount.UPDATE_TIMEOUT:
+            # cause a REST API query
             account = connector.funds()
             self._currency = account.get('currency')
 
@@ -67,3 +70,5 @@ class IGAccount(Account):
 
                 # cannot be computed because leverage depend of the instrument
                 self._risk_limit = balance.get('available')
+
+            self._last_update = time.time()

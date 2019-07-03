@@ -19,7 +19,6 @@ from .account import IGAccount
 
 from trader.position import Position
 from trader.order import Order
-from terminal.terminal import Terminal
 from trader.account import Account
 from trader.market import Market
 
@@ -35,12 +34,12 @@ logger = logging.getLogger('siis.trader.ig')
 class IGTrader(Trader):
     """
     IG market trader.
+
     @todo Improve wait between two similar order (avoid duplicate order need to wait 1sec)
-    @todo cancel_order
-    @todo modify_position
+    @todo Check that we have all our signals from WS and don't need forced sync during update
     """
 
-    USE_REST_API = False  # @todo uses signals and False that
+    REST_OR_WS = False  # True if REST API sync else do with the state returned by WS events
 
     def __init__(self, service):
         super().__init__("ig.com", service)
@@ -145,18 +144,17 @@ class IGTrader(Trader):
         if self._watcher is None or not self._watcher.connected:
             return True
 
-        if IGTrader.USE_REST_API or True:
-            # IG api sucks a lot ! missing update in WS so update here too !
+        if IGTrader.REST_OR_WS:  # or True:
             # only if not using WS live API
 
             #
-            # account data update
+            # account data update (each minute)
             #
+
             try:
                 self.lock()
                 self._account.update(self._watcher.connector)
             except Exception as e:
-                Terminal.inst().error(repr(e))
                 import traceback
                 logger.error(traceback.format_exc())
             finally:
@@ -165,15 +163,14 @@ class IGTrader(Trader):
             #
             # positions
             #
+
             try:
                 self.lock()
-                now = time.time()
-                # only once per 5 seconds to avoid API excess
-                if now - self._last_position_update >= 5.0:
+                # only once per 10 seconds to avoid API excess
+                if time.time() - self._last_position_update >= 10.0:
                     self.__fetch_positions()
-                    self._last_position_update = now
+                    self._last_position_update = time.time()
             except Exception as e:
-                Terminal.inst().error(repr(e))
                 import traceback
                 logger.error(traceback.format_exc())
             finally:
@@ -185,13 +182,11 @@ class IGTrader(Trader):
 
             try:
                 self.lock()
-                now = time.time()
                 # only once per 10 seconds to avoid API excess
-                if now - self._last_order_update >= 10.0:
+                if time.time() - self._last_order_update >= 10.0:
                     self.__fetch_orders()
-                    self._last_order_update = now
+                    self._last_order_update = time.time()
             except Exception as e:
-                Terminal.inst().error(repr(e))
                 import traceback
                 logger.error(traceback.format_exc())
             finally:
@@ -225,7 +220,7 @@ class IGTrader(Trader):
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
         """
         if not self.has_market(order.symbol):
-            Terminal.inst().error("Trader %s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id), view='trader')
+            logger.error("Trader %s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
             return False
 
         if not self._activity:
@@ -254,7 +249,7 @@ class IGTrader(Trader):
         quote_id = None
         deal_reference = order.ref_order_id
 
-        if IGTrader.USE_REST_API:
+        if IGTrader.REST_OR_WS:
             try:
                 # retrieve current epic position quantity only if not using WS API
                 self.__fetch_positions()
@@ -306,7 +301,7 @@ class IGTrader(Trader):
 
         size = str(size)
 
-        Terminal.inst().notice("Trader %s order %s of %s %s" % (self.name, order.direction_to_str(), size, epic), view='trader')
+        # logger.notice("Trader %s order %s of %s %s" % (self.name, order.direction_to_str(), size, epic))
 
         # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
         logger.info(self._previous_order)
@@ -359,12 +354,12 @@ class IGTrader(Trader):
                 # self._positions[position.position_id] = position
             else:
                 reason = results
-                Terminal.inst().error("%s rejected order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, reason), view='trader')
+                logger.error("%s rejected order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, reason))
 
                 return False
 
         except IGException as e:
-            Terminal.inst().error("%s except on order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, repr(e)), view='trader')
+            logger.error("%s except on order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, repr(e)))
             return False
 
         return True
@@ -384,7 +379,7 @@ class IGTrader(Trader):
         try:
             results = self._watcher.connector.ig.delete_working_order(deal_id)
         except IGException as e:
-            Terminal.inst().error("%s except on order %s cancelation - cause : %s !" % (self.name, deal_id, repr(e)), view='trader')
+            logger.error("%s except on order %s cancelation - cause : %s !" % (self.name, deal_id, repr(e)))
             return False
 
         return True
@@ -401,7 +396,7 @@ class IGTrader(Trader):
             return False
 
         if not self.has_market(position.symbol):
-            Terminal.inst().error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id), view='trader')
+            logger.error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id))
             return False
 
         epic = position.symbol
@@ -428,7 +423,7 @@ class IGTrader(Trader):
         # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
         logger.info(self._previous_order)
         if epic in self._previous_order and (self._previous_order[epic] == (expiry, size, direction)):
-            logger.debug("%s wait 1sec before passing a duplicate order..." % (self.name,))
+            logger.warning("%s wait 1sec before passing a duplicate order..." % (self.name,))
             time.sleep(1.0)
 
         try:
@@ -444,12 +439,12 @@ class IGTrader(Trader):
                 # del self._positions[position.position_id]
             else:
                 position.closing(limit_price)
-                Terminal.inst().error("%s rejected close position %s of %s %s !" % (self.name, direction, size, position.symbol), view='trader')
+                logger.error("%s rejected close position %s of %s %s !" % (self.name, direction, size, position.symbol))
 
                 return False
 
         except IGException as e:
-            Terminal.inst().error("%s except close position %s of %s %s !" % (self.name, direction, size, position.symbol), view='trader')
+            logger.error("%s except close position %s of %s %s !" % (self.name, direction, size, position.symbol))
             return False
 
         return True
@@ -478,16 +473,18 @@ class IGTrader(Trader):
         try:
             results = self._watcher.connector.ig.update_open_position(limit_level, stop_level, deal_id)
 
-            position.take_profit = take_profit_price
-            position.stop_loss = stop_loss_price
+            if results.get('dealStatus', '') == 'ACCEPTED':
+                position.take_profit = take_profit_price
+                position.stop_loss = stop_loss_price
 
-            logger.info(results)
-            # @todo check results status
+                return True
+            else:
+                logger.error("%s rejected modifiy position %s - %s - %s !" % (self.name, position.position_id, position.symbol))
 
             return True
 
         except IGException as e:
-            Terminal.inst().error("%s except close position %s of %s %s !" % (self.name, direction, size, position.symbol), view='trader')
+            logger.error("%s except close position %s of %s %s !" % (self.name, direction, size, position.symbol))
             return False
 
         return False

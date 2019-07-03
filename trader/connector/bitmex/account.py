@@ -69,7 +69,7 @@ class BitMexAccount(Account):
         self._currency = funds['currency']
         self._currency_display = funds['currency']
 
-        self._balance = funds['walletBalance']  # diff between walletBalanc and amount ??
+        self._balance = funds['walletBalance']  # diff between walletBalance and amount ??
 
         # net worth : balance + unrealized profit/loss
         self._net_worth = funds['amount'] + funds['prevUnrealisedPnl']
@@ -79,16 +79,17 @@ class BitMexAccount(Account):
 
         # we want account in BTC !
         if self._currency == 'XBt':
-            self._risk_limit /= 100000000
-            self._balance /= 100000000
-            self._net_worth /= 100000000
-            self._margin_balance /= 100000000
+            ratio = 1.0 / 100000000
+
+            self._risk_limit *= ratio
+            self._balance *= ratio
+            self._net_worth *= ratio
+            self._margin_balance *= ratio
 
             self._currency = 'BTC'
+
         elif self._currency != 'XBT' and self._currency == 'BTC':
             logger.warning("Unsupported bitmex.com account currency %s" % (self._currency,))
-
-        # @todo second currency
 
         now = time.time()
         self._last_update = now
@@ -96,9 +97,11 @@ class BitMexAccount(Account):
     def set_margin_balance(self, margin_balance):
         self._margin_balance = margin_balance
         # if self._currency == 'XBt':
-        #   self._margin_balance = margin_balance / 100000000
+        #   ratio = 1.0 / 100000000
+        #   self._margin_balance = margin_balance * ratio
 
     def set_unrealized_profit_loss(self, upnl):
         self._profit_loss = upnl
         # if self._currency == 'XBt':
-        #   self._margin_balance = upnl / 100000000
+        #   ratio = 1.0 / 100000000
+        #   self._margin_balance = upnl * ratio

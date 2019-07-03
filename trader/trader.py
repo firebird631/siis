@@ -24,7 +24,6 @@ from common.utils import matching_symbols_set
 
 from terminal.terminal import Terminal
 from terminal import charmap
-from config import config
 
 from tabulate import tabulate
 
@@ -119,6 +118,11 @@ class Trader(Runnable):
         return self._watcher
 
     @property
+    def paper_mode(self):
+        """True for not real trader"""
+        return False
+
+    @property
     def activity(self):
         """
         Return True if the order must be executed on the broker.
@@ -191,35 +195,6 @@ class Trader(Runnable):
                 return fn(self, *args, **kwargs)
     
         return wrapped
-
-    #
-    # persistence
-    #
-
-    def loads(self, trader_data):
-        # @todo using user DB table !
-        # @todo removed and set a social strategy level !
-        # load database and retrieve previous copied position and making link
-        # if not link possible then display a warning message saying the auto close could not
-        # be performed but the initial copier
-        # @deprecated Related to the social copy strategy.
-        positions = trader_data.get('positions', [])
-
-        for pos in positions:
-            # for each stored position insert it, could be deleted after the initial update is closed since
-            position = Position(self)
-
-            position.set_position_id(pos['position_id'])
-            position.set_copied_position_id(pos['copied_position_id'])
-            position.set_key(self.service.gen_key())
-            position.shared = pos['shared']
-
-            # retrieve the author from its id (could be none if lost or self)
-            author = self.service.watcher_service.find_author(pos['author_watcher'], pos['author_id'])
-            position.author = author
-
-            # append as to be updated position
-            self._positions[position.position_id] = position
 
     def log_report(self):
         pass
@@ -993,8 +968,10 @@ class Trader(Runnable):
             market = Market(market_id, market_id)
             self._markets[market_id] = market
 
-        if bid > 0.0 and ofr > 0.0:
+        if bid:
             market.bid = bid
+
+        if ofr:
             market.ofr = ofr
 
         if base_exchange_rate is not None:
@@ -1025,17 +1002,31 @@ class Trader(Runnable):
     # utils
     #
 
+    def last_price(self, market_id):
+        """
+        Return the last price for a specific market.
+        """
+        price = None
+
+        self.lock()
+        market = self.market(symbol)
+        if market:
+            price = market.price
+        self.unlock()
+
+        return price
+
     def price(self, symbol, timestamp=None):
         """
         Return the price of a particular market at current time or specific timestamp.
-        @note Do a REST API call if timestamp is defined and price was not found into the local market history.
+        @note Do an API request if timestamp is defined and price was not found into the local market history.
         """
         price = None
 
         if timestamp:
             market = self.market(symbol)
             if market:
-                # lookup into the memory local cache
+                # lookup into the local cache
                 price = market.recent_price(timestamp)
 
             if price is None and self._watcher:
@@ -1111,7 +1102,7 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets tickers.
         """
-        columns = ('Market', 'Symbol', 'Bid', 'Ofr', 'Spread', 'Vol24h base', 'Vol24h quote')
+        columns = ('Market', 'Symbol', 'Bid', 'Ofr', 'Spread', 'Vol24h base', 'Vol24h quote', 'Time')
         data = []
 
         self.lock()
@@ -1128,7 +1119,7 @@ class Trader(Runnable):
 
         markets.sort(key=lambda x: x.market_id)
         markets = markets[offset:limit]      
-        
+
         for market in markets:
             row = (
                 market.market_id,
@@ -1137,7 +1128,8 @@ class Trader(Runnable):
                 market.format_price(market.ofr, True, False),
                 market.format_price(market.spread, True, False),
                 market.format_quantity(market.vol24h_base) if market.vol24h_base else charmap.HOURGLASS,
-                ("%.2f" % market.vol24h_quote) if market.vol24h_quote else charmap.HOURGLASS)
+                ("%.2f" % market.vol24h_quote) if market.vol24h_quote else charmap.HOURGLASS,
+                datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S"))
 
             data.append(row[col_ofs:])
 

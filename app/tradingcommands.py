@@ -12,6 +12,7 @@ from common.utils import timeframe_from_str
 
 from instrument.instrument import Instrument
 
+# @todo replace Terminal... by a return str in addition of the status
 
 class PlayCommand(Command):
 

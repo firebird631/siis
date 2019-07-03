@@ -126,7 +126,7 @@ class Fetcher(object):
                 Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3]))
 
                 if generators:
-                    tick = Tick(float(data[0])/1000.0)
+                    tick = Tick(float(data[0]) * 0.001)
 
                     tick.set_price(float(data[1]), float(data[2]))
                     tick.set_volume(float(data[3]))

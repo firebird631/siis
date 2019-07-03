@@ -118,7 +118,7 @@ class TickStorage(object):
         n = 0
         try:
             for d in ticks:
-                date_utc = datetime.utcfromtimestamp(d[2] / 1000.0)
+                date_utc = datetime.utcfromtimestamp(d[2] * 0.001)
 
                 if self._curr_date and (self._curr_date.year != date_utc.year or self._curr_date.month != date_utc.month):
                     self.close()
@@ -132,7 +132,7 @@ class TickStorage(object):
 
                 if self._binary_file:
                     # convert to a struct
-                    f = [float(d[2])/1000.0, float(d[3]), float(d[4]), float(d[5])]  # t b o v (t in second)
+                    f = [float(d[2]) * 0.001, float(d[3]), float(d[4]), float(d[5])]  # t b o v (t in second)
                     s = struct.pack('<dddd', *f)
                     self._binary_file.write(s)
 
@@ -304,7 +304,7 @@ class TickStreamer(object):
 
                         ts, bid, ofr, vol = row.rstrip('\n').split('\t')
 
-                        ts = float(ts)/1000.0
+                        ts = float(ts) / 0.001
                         if ts < self._from_date.timestamp():
                             # ignore older than initial date
                             continue
@@ -399,7 +399,7 @@ class TextToBinary(object):
                 for row in self._text_file:
                     ts, bid, ofr, vol = row.rstrip('\n').split('\t')
 
-                    ts = float(ts)/1000.0
+                    ts = float(ts) * 0.001
 
                     # convert to a struct
                     f = [ts, float(bid), float(ofr), float(vol)]  # t b o v (t in second)

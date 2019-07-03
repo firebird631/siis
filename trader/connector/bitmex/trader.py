@@ -21,7 +21,6 @@ from .account import BitMexAccount
 
 from trader.position import Position
 from trader.order import Order
-from terminal.terminal import Terminal
 
 from connector.bitmex.connector import Connector
 
@@ -34,12 +33,11 @@ logger = logging.getLogger('siis.trader.bitmex')
 class BitMexTrader(Trader):
     """
     BitMex real or testnet trader based on the BitMexWatcher.
-    @todo verify concept for trades (base, quote, price computation)
-    @todo cancel_order
-    @todo modify_position
+
+    @todo verify than on_order_updated is working without the temporary fixture now it has signal from watchers
     """
 
-    USE_SIGNALS = True
+    REST_OR_WS = False  # True if REST API sync else do with the state returned by WS events
 
     def __init__(self, service):
         super().__init__("bitmex.com", service)
@@ -159,13 +157,12 @@ class BitMexTrader(Trader):
         if self._watcher is None or not self._watcher.connected:
             return True
 
-        if not BitMexTrader.USE_SIGNALS:
+        if BitMexTrader.REST_OR_WS:
             # account data update
             try:
                 self.lock()
                 self.__fetch_account()
             except Exception as e:
-                Terminal.inst().error(repr(e))
                 import traceback
                 logger.error(traceback.format_exc())
             finally:
@@ -179,7 +176,6 @@ class BitMexTrader(Trader):
                 now = time.time()
                 self._last_update = now
             except Exception as e:
-                Terminal.inst().error(repr(e))
                 import traceback
                 logger.error(traceback.format_exc())
             finally:
@@ -193,7 +189,6 @@ class BitMexTrader(Trader):
                 now = time.time()
                 self._last_update = now
             except Exception as e:
-                Terminal.inst().error(repr(e))
                 import traceback
                 logger.error(traceback.format_exc())
             finally:
@@ -210,7 +205,7 @@ class BitMexTrader(Trader):
     @Trader.mutexed
     def create_order(self, order):
         if not self.has_market(order.symbol):
-            Terminal.inst().error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id), view='trader')
+            logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
             return
 
         if not self._activity:
@@ -262,7 +257,7 @@ class BitMexTrader(Trader):
         if exec_inst:
             postdict['execInst'] = ','.join(exec_inst)
 
-        Terminal.inst().notice("Trader %s order %s of %s %s" % (self.name, order.direction_to_str(), order.quantity, order.symbol))
+        # logger.notice("Trader %s order %s of %s %s" % (self.name, order.direction_to_str(), order.quantity, order.symbol))
 
         try:
             result = self._watcher.connector.request(path="order", postdict=postdict, verb='POST', max_retries=15)
@@ -271,8 +266,8 @@ class BitMexTrader(Trader):
             return False
 
         if result.get('ordRejReason'):
-            Terminal.inst().notice("%s rejected order %s from %s %s - cause : %s !" % (
-                self.name, order.direction_to_str(), order.quantity, order.symbol, result['ordRejReason']), view='trader')
+            logger.error("%s rejected order %s from %s %s - cause : %s !" % (
+                self.name, order.direction_to_str(), order.quantity, order.symbol, result['ordRejReason']))
             return False
 
         # {'orderID': '2a89fff3-d39e-d690-9c79-69515fd4c5c5', 'clOrdID': 'siis_Ufy9iC1nSdCg2QVsFwu0MQ', 'clOrdLinkID': '', 'account': 513190, 'symbol': 'XBTUSD', 'side': 'Sell', 'simpleOrderQty': None,
@@ -321,8 +316,8 @@ class BitMexTrader(Trader):
             return False
 
         if result.get('ordRejReason'):
-            Terminal.inst().notice("%s rejected cancel order %s from %s - cause : %s !" % (
-                self.name, order.order_id, order.symbol, result['ordRejReason']), view='trader')
+            logger.error("%s rejected cancel order %s from %s - cause : %s !" % (
+                self.name, order.order_id, order.symbol, result['ordRejReason']))
             return False
 
         return True
@@ -338,8 +333,8 @@ class BitMexTrader(Trader):
             return False
 
         if not self.has_market(position.symbol):
-            Terminal.inst().error("%s does not support market %s on close position %s !" % (
-                self.name, position.symbol, position.position_id), view='trader')
+            logger.error("%s does not support market %s on close position %s !" % (
+                self.name, position.symbol, position.position_id))
             return False
 
         ref_order_id = "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
@@ -389,8 +384,8 @@ class BitMexTrader(Trader):
             return False
 
         if result.get('ordRejReason'):
-            Terminal.inst().notice("%s rejected closing order %s from %s %s - cause : %s !" % (
-                self.name, order.direction_to_str(), order.quantity, order.symbol, result['ordRejReason']), view='trader')
+            logger.error("%s rejected closing order %s from %s %s - cause : %s !" % (
+                self.name, order.direction_to_str(), order.quantity, order.symbol, result['ordRejReason']))
             return False
 
         # store the order with its order id
@@ -406,22 +401,7 @@ class BitMexTrader(Trader):
 
     @Trader.mutexed
     def modify_position(self, position_id, stop_loss_price=None, take_profit_price=None):
-        if not self._activity:
-            return False
-
-        position = self._positions.get(position_id)
-
-        if position is None or not position.is_opened():
-            return False
-
-        if take_profit_price:
-            # @todo modify position limit
-            return False
-
-        if stop_loss_price:
-            # not supported
-            return False
-
+        """Not supported"""        
         return False
 
     def positions(self, market_id):
@@ -453,20 +433,6 @@ class BitMexTrader(Trader):
         except Exception as e:
             logger.error(repr(e))
 
-    # @Trader.mutexed
-    # def on_position_updated(self, market_id, position_data, ref_order_id):
-    #   market = self._markets.get(market_id)
-    #   if market is None:
-    #       # not interested by this market
-    #       return
-
-    #   try:
-    #       # @todo temporary substitution
-    #       market = self._markets.get(market_id)
-    #       self.__update_positions(market_id, market)
-    #   except Exception as e:
-    #       logger.error(repr(e))
-
     #
     # private
     #
@@ -479,6 +445,7 @@ class BitMexTrader(Trader):
     #
 
     def __fetch_account(self):
+        # @todo use REST API to fetch account state
         self._account.update(self._watcher.connector)
 
     def __fetch_positions(self):
