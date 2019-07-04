@@ -121,7 +121,7 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
             bbawe = self.bbawe.compute(last_timestamp, self.price.high, self.price.low, self.price.prices)
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.prices)
+            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.prices)
 
         level1_signal = 0
 

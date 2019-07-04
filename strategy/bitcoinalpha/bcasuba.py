@@ -151,7 +151,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
                 ema_sma_height = -1
 
         if self.tomdemark:
-            td = self.tomdemark.compute(to_ts, candles)[-1]
+            td = self.tomdemark.compute(to_ts, self.price.timestamp, self.price.high, self.price.low, self.price.close)[-1]
 
             #
             # setup entry
@@ -558,7 +558,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
             bbawe = self.bbawe.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.prices)
+            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
         level1_signal = 0
 

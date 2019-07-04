@@ -139,7 +139,7 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
 
         # TD9 on 1m are not very pertinant on crypto
         # if self.tomdemark:
-        #     self.tomdemark.compute(last_timestamp, candles)
+        #     self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
         return signal
 
@@ -169,7 +169,7 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
     #   macd = [] # self.macd.compute(to_ts, prices)[-self.depth:]
     #   stochastic = [] # self.stochastic.compute(to_ts, prices)[-self.depth:]
 
-    #   self.tomdemark.compute(to_ts, candles)
+    #   self.tomdemark.compute(to_ts, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
     #   #
     #   # analysis of the results and scorify

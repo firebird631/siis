@@ -164,7 +164,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
             self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.close)
+            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
             #
             # setup entry
@@ -705,7 +705,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 level1_signal = 1
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.close)
+            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
             # long entry on sell-setup
             if self.tomdemark.c.c >= 1 and self.tomdemark.c.c <= 6 and self.tomdemark.c.d < 0 and level1_signal > 0:
@@ -1002,7 +1002,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
         #
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.close)
+            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
             # only on 5min timeframe, or could manage at strategy only for parent timeframe
 

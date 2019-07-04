@@ -505,13 +505,13 @@ class TomDemarkIndicator(Indicator):
             # TDST canceled too
             self._c.tdst = 0
 
-    def compute(self, timestamp, candles, high, low, close):
+    def compute(self, timestamp, timetamps, high, low, close):
         # delta of 0 mean overwrite the last
-        delta = min(int((timestamp - self._last_timestamp) / self._timeframe), len(candles))
+        delta = min(int((timestamp - self._last_timestamp) / self._timeframe), len(timetamps))
 
         # base index (minus one if update the current candle)
         base = (delta + 1 if timestamp == self._last_timestamp else delta)
-        num = len(candles)
+        num = len(timetamps)
 
         for b in range(num-base, num):
             # reset latest
@@ -522,7 +522,7 @@ class TomDemarkIndicator(Indicator):
             # continue with the next non processed candle or the current non closed
             self.__td9(b, high, low, close)
 
-            if candles[b].timestamp > self._last_timestamp:
+            if timetamps[b] > self._last_timestamp:
                 # validate last candle
                 self._prev_c = self._c
 
