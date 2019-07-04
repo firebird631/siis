@@ -13,9 +13,11 @@ DEFAULT_PARAMS = {
     'base-timeframe': Instrument.TF_TICK,   # process each time strategy receive a tick
     'min-traded-timeframe': Instrument.TF_MIN,
     'max-traded-timeframe': Instrument.TF_MIN,
+    'sltp-timeframe': Instrument.TF_1H,
+    'ref-timeframe': Instrument.TF_4H,
     'need-update': True,      # only compute when update is waited
-    'min-vol24h': 100,        # 300 BTC per 24h
-    'min-price': 0.00000069,  # or 69 sats (to binary otherwise)
+    'min-vol24h': 100,        # 100 BTC per 24h
+    'min-price': 0.00000069,  # or 69 sats
     'region-allow': False,    # don't trade if no defined region
     'timeframes': {
         'weely': {

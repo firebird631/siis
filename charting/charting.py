@@ -111,6 +111,7 @@ class SubChart(object):
 		self.axis = ax
 
 		plt.title(self.main_label)
+		plt.subplots_adjust(bottom=0.0, right=0.99, top=0.97, left=0.04, hspace=0.325)
 		# plt.xlabel('time')
 		# # ax.xaxis_date()
 
@@ -204,7 +205,7 @@ class SubChart(object):
 class Chart(object):
 
 	DEFAULT_W = 1400
-	DEFAULT_H = 1000*0.5
+	DEFAULT_H = 1000
 
 	def __init__(self, name="", uid=0):
 		self._name = name
@@ -271,7 +272,8 @@ class Chart(object):
 
 		self._fig, self._ax = plt.subplots(nrows=nrows, ncols=1)
 		self._fig.canvas.set_window_title(self._name)
-		self._fig.canvas.manager.window.setGeometry(0, Chart.DEFAULT_H-Chart.DEFAULT_H*(self._uid%2)+((1-(self._uid%2))*50), Chart.DEFAULT_W, Chart.DEFAULT_H)
+		# self._fig.canvas.manager.window.setGeometry(0, Chart.DEFAULT_H-Chart.DEFAULT_H*(self._uid%2)+((1-(self._uid%2))*50), Chart.DEFAULT_W, Chart.DEFAULT_H)
+		self._fig.canvas.manager.window.setGeometry(0, 0, Chart.DEFAULT_W, Chart.DEFAULT_H)
 		# self._fig.canvas.manager.window.wm_geometry("+%d+%d" % (0, Chart.DEFAULT_H*self._uid))
 
 		plt.figure(self._fig.number)
@@ -603,6 +605,9 @@ class Charting(threading.Thread):
 			del self._charts[chart.uid]
 			self.unlock()
 
+	def has_charts(self):
+		return len(self._charts) > 0
+
 	def render(self):
 		self._render = True
 
@@ -676,11 +681,9 @@ class Charting(threading.Thread):
 
 			if self._visible:
 			 	self.lock()
-
 			 	for k, chart in self._charts.items():
 			 		if chart.need_redraw:
 			 			chart.render()
-
 			 	self.unlock()
 
 			if self._visible:

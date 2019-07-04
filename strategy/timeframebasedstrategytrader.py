@@ -257,6 +257,8 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
     def stream(self):
         # global data
+        self.lock()
+
         self._global_streamer.push()
 
         # and per timeframe
@@ -264,6 +266,8 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             data = self.timeframes.get(tf)
             if data:
                 self.stream_timeframe_data(timeframe_streamer, data)
+
+        self.unlock()
 
     def stream_call(self):
         # timeframes list
@@ -276,7 +280,6 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         sub.setup_streamer(streamer)
 
-        streamer.last_timestamp = 0.0
         return streamer
 
     def stream_timeframe_data(self, streamer, sub):
@@ -284,3 +287,51 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         streamer.push()
 
         sub.stream(streamer)
+
+    def subscribe(self, timeframe):
+        """
+        Use or create a specific streamer.
+        """
+        self.lock()
+
+        if timeframe is not None and isinstance(timeframe, (float, int)):
+            timeframe = self.timeframes.get(timeframe)
+
+        if timeframe is None and self.timeframes:
+            tf = sorted(list(self.timeframes.keys()))[0]
+            timeframe = self.timeframes.get(tf)
+
+        if timeframe in self._timeframe_streamers:
+            self._timeframe_streamers[timeframe].use()
+            self.unlock()
+            return True
+        else:
+            streamer = self.create_chart_streamer(timeframe)
+
+            if streamer:
+                streamer.use()
+                self._timeframe_streamers[timeframe.tf] = streamer
+                self.unlock()
+                return True
+
+        self.unlock()
+
+        return False
+
+    def unsubscribe(self, timeframe):
+        """
+        Delete a specific streamer when no more subscribers.
+        """
+        self.lock()
+
+        if timeframe in self._timeframe_streamers:
+            self._timeframe_streamers[timeframe].unuse()
+            if self._timeframe_streamers[timeframe].is_free():
+                # delete if 0 subscribers
+                del self._timeframe_streamers[timeframe]
+    
+            self.unlock()
+            return True
+
+        self.unlock()
+        return False

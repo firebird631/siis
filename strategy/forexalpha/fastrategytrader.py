@@ -85,14 +85,6 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         self.setup_streaming()
 
-        # @todo remove (debug only) need subscriber command
-        # if list(self.strategy._instruments.values())[0] == self.instrument:
-        #     for tf in (Instrument.TF_15MIN, Instrument.TF_4HOUR):
-        #         if tf not in self._timeframe_streamers:
-        #             streamer = self.create_chart_streamer(self.timeframes[tf])
-        #             if streamer:
-        #                 self._timeframe_streamers[tf] = streamer
-
     def filter_market(self, timestamp):
         """
         The first boolean mean accept, the second compute.

@@ -2,8 +2,7 @@
 # EN COURS #
 ############
 
-#3 Monitor WebSocket avec Twisted + Web client car le FIFO+Matplotlib ce n'est pas génial
-	- PUBSUB+RPC (potasser la doc)
+#3 Monitor WebSocket avec asyncio compatible avec le nouveau protocol (V2)
 
 #24 Uniformiser l'order book (bitmex, binance) => avoir un object OrderBook facile à mettre à jour et à exploiter
 	- utiliser DepthCacheManager pour binance
@@ -13,6 +12,8 @@
 # BUG #
 #######
 
+#92 Charting client date time issue, pourtant les bonnes valeurs sont envoyées, à la réception c'est autre chose...
+
 #87 Problème sur le comptage de la quantité de sortie, et du prix moyen de sortie d'un trade
 	- En effet si la sortie est effectué par plusieurs ordres dans le cas du filled et exec-price, pas de problème,
 		tout s'ajoute, mais si on a que cumulative-filled et avg-price alors remplacer les valeurs comme sur
@@ -21,16 +22,21 @@
 			pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier orde)
 	- Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
 
-#71 vue latéral pour afficher les markets tradés de l'appliance séléctionné
+#71 vue latéral pour afficher les markets tradés de l'appliance séléctionné ?
 
 #77 Comment bien gérer les gap de candles ? Car si low volume ok on a mettons un gap en 1m ou 5m, le add_candle va rajouter un volume vide avec les
 	prix la précédente candle. Mais quand le market ferme en forex ou stock, à l'ouverture il ne faut pas créer les candle manquantes,
 	donc il faut disctinguer les 2 cas, par example le status tradable peu servir...
 
+#93 Command doit y avoir un prob avec self._word qui doit être parfois mal définit, donc la complétion initial du premier verbe déconne parfois
 
 ##########
 # URGENT #
 ##########
+
+#91 Finir de migrer les tables restantes dans strategies (hist et trade list) vers le format table
+
+#90 Avoir les timeframe en str sur la config et uniformiser la config au model de la V2 (json, fichier indépendants...)
 
 #86 Finir la TrendRegion
 
@@ -38,12 +44,9 @@
 
 #81 Imaginer un filtre de prix utilisé pour les SL/TP pour éviter qu'ils s'active sur une mêche pour rien, peut être attendre sur une close sinon ?
 
-#78 Sur le service monitor ajouter les 'notifiers' et les 'views'
+#78 Sur le monitor service avoir un gestionnaire des 'notifiers' (hangout, discord...)
 
 #75 TD9 countdown a debug et tester
-
-#74 Gestion de table pour les vues, avec un offset:limit pour les lignes ainsi que les colonnes, liés au scrolling par les flèches, et donc l'offset
-    est géré au niveau de chaque vue.
 
 #57 Enregistrer en DB les trades en cours des strategies et les recharger en vérifiant si les positions existent toujours (et au moins la quantité pour les assets)
 	- DB Model partiel, DB store/load partiel, model dumps/loads partiel
@@ -82,13 +85,15 @@
 #68 A propos du prefetching lorsqu'on lance ne live, même si on a fait un prefetch manuel, actuellement le Watcher ne récupère ni en DB ni depuis l'API du broker
 	la candle en cours pour les timeframes stoquées en DB. Quelle solution ? Car fetcher depuis le broker c'est le mieux, mais ça consomme des crédit, ou c'est long,
 	après ce n'est pas anormal que ça soit un peu long certes au démarrage.
+		- Il faut au minimum que le watcher récupère les last candles à compléter
+			mais le mieux sera la mécanique de subscribtion dynamique, et donc on fetchera selon le processus, par market
 
 
 #######
 # TOP #
 #######
 
-#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry
+#94 Bien vérifier si en fait mon fetching des ticks sur bitmex est correct
 
 #43 Mécanisme d'abonnement/desabonnement a un flux pour les chart par instrument (nécessite un socket bidir et donc l'API)
 	- Déjà on ne passe les flux de chart qu'en mode debug ou profilage
@@ -106,6 +111,8 @@
 # LESS #
 ########
 
+#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, si vraiment pertinant de les avoirs... enfin c'est vite fais
+
 #38 Fetcher et (REST) Watcher Tiingo
 
 #45 Pour le watcher AlphaVantage faire une liste cyclique avec priorité vers les marché qui n'ont pas été mis encore à jour
@@ -121,12 +128,8 @@
 # OPTIM #
 #########
 
-#42 Trop de signaux dans la queue de strategy si ont suit une centaine de markets.
-	De plus on a des signaux "doublons" entre TICK et MARKET DATA
-		- Cela demande un peu de réorganisation.
-		- En effet market-data peut être reçu pour un tick et donc envoyer 2 signaux aux stratégies au même moment.
-	- Aussi on pourrait envoyer directement les ohlc/ticks dans les instruments des strategy et juste avoir un signal aggrégé
-		a la place quand cela est possible dans le cas des tickers à la binance.
+#42 On pourrait aggréger les signaux OHLC, et que faire on a tjs un TICK + MARKET DATA signal en même temps
+	mais comme ce ne sont pas les même notions quoi faire ?
 
 
 #########################

@@ -3,13 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # streamable model
 
-import json
-import time
-
-from terminal.terminal import Terminal
-from .service import MonitorService
-
-
 class Streamable(object):
 	"""
 	Interface for an object having some variable to be monitored/streamed.
@@ -360,15 +353,15 @@ class StreamMemberFloatScatter(StreamMember):
 		return {'n': self._name, 'i': self._index, 't': self._type, 'v': self._value, 'b': self._timestamp, 'o': self._glyph}
 
 
-class StreamMemberCandleSerie(StreamMember):
+class StreamMemberOhlcSerie(StreamMember):
 	"""
-	Specialization for a signal candle value.
+	Specialization for a signal OHLC value.
 	"""
 
-	TYPE_CANDLE_SERIE = "cs"
+	TYPE_OHLC_SERIE = "os"
 
 	def __init__(self, name):
-		super().__init__(name, StreamMemberCandleSerie.TYPE_CANDLE_SERIE)
+		super().__init__(name, StreamMemberOhlcSerie.TYPE_OHLC_SERIE)
 
 		self._index = 0
 		self._value = (0.0, 0.0, 0.0, 0.0)

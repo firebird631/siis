@@ -63,6 +63,8 @@ class Strategy(Runnable):
 
     COMMAND_TRADER_MODIFY = 20
     COMMAND_TRADER_INFO = 21
+    COMMAND_TRADER_CHART = 22
+    COMMAND_TRADER_STREAM = 23
 
     def __init__(self, name, strategy_service, watcher_service, trader_service, options, default_parameters=None, user_parameters=None):
         super().__init__("st-%s" % name)
@@ -877,7 +879,7 @@ class Strategy(Runnable):
                 for message in results['messages']:
                     Terminal.inst().info(message, view='content')
 
-    def trader_command(self, label, data, func):
+    def sub_trader_command(self, label, data, func):
         # manually trade modify a trade (add/remove an operation)
         market_id = data.get('market-id')
 
@@ -889,7 +891,7 @@ class Strategy(Runnable):
             Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, instrument.market_id), view='content')
 
             # retrieve the trade and apply the modification
-            results = func(self, sub_trader, data)
+            results = func(sub_trader, data)
 
             if results:
                 if results['error']:
@@ -924,7 +926,11 @@ class Strategy(Runnable):
         elif command_type == Strategy.COMMAND_TRADER_MODIFY:
             self.sub_trader_command("info", data, self.cmd_sub_trader_modify)
         elif command_type == Strategy.COMMAND_TRADER_INFO:
-            self.cmd_sub_trader_info("info", data, self.cmd_sub_trader_modify)
+            self.sub_trader_command("info", data, self.cmd_sub_trader_info)
+        elif command_type == Strategy.COMMAND_TRADER_CHART:
+            self.sub_trader_command("chart", data, self.cmd_sub_trader_chart)
+        elif command_type == Strategy.COMMAND_TRADER_STREAM:
+            self.sub_trader_command("stream", data, self.cmd_sub_trader_stream)
 
     #
     # signals/slots
@@ -2134,6 +2140,55 @@ class Strategy(Runnable):
             if disabled:
                 disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
                 Terminal.inst().info("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')
+
+    def cmd_sub_trader_chart(self, sub_trader, data):
+        """
+        Open as possible a process with chart of a specific sub-tader.
+        """
+        results = {
+            'messages': [],
+            'error': False
+        }      
+
+        monitor_url = data.get('monitor-url')
+        timeframe = data.get('timeframe')
+
+        if results['error']:
+            return results
+
+        sub_trader.subscribe(timeframe)
+
+        import subprocess
+        import os
+        p = subprocess.Popen(["python", "-m", "monitor.client.client", monitor_url[0], monitor_url[1]],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE, preexec_fn=os.setsid)
+
+        return results
+
+    def cmd_sub_trader_stream(self, sub_trader, data):
+        """
+        Subscribe/Unsubscribe to a market.
+        """
+        results = {
+            'messages': [],
+            'error': False
+        }      
+
+        timeframe = data.get('timeframe')
+        action = data.get('action')
+
+        if action == 'subscribe':
+            sub_trader.subscribe(timeframe)
+            results['messages'].append("Subscribed for stream %s %s %s" % (self.identifier, sub_trader.instrument.market_id, timeframe or "default"))
+        elif action == 'unsubscribe':
+            sub_trader.unsubscribe(timeframe)
+            results['messages'].append("Unsubscribed from stream %s %s %s" % (self.identifier, sub_trader.instrument.market_id, timeframe or "any"))
+        else:
+             # unsupported action
+            results['error'] = True
+            results['messages'].append("Unsupported action on trader %i" % trade.id)
+
+        return results
 
     #
     # static

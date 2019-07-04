@@ -261,7 +261,6 @@ def application(argv):
     # monitoring service
     Terminal.inst().info("Starting monitor service...")
     monitor_service = MonitorService(options)
-    monitor_service.start()
 
     # desktop notifier
     desktop_service = DesktopNotifier()
@@ -320,10 +319,14 @@ def application(argv):
 
     # cli commands registration
     register_general_commands(commands_handler)
-    register_trading_commands(commands_handler, trader_service, strategy_service)
+    register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service)
     register_region_commands(commands_handler, strategy_service)
 
     setup_views(siis_logger, view_service, watcher_service, trader_service, strategy_service)
+
+    # setup and start the monitor service
+    monitor_service.setup(watcher_service, trader_service, strategy_service)
+    monitor_service.start()
 
     Terminal.inst().message("Running main loop...")
 

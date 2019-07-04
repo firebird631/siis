@@ -7,7 +7,7 @@ import numpy as np
 
 from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberCandleSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
 
 from terminal.terminal import Terminal
 
@@ -603,9 +603,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             elif self.ema.last < self.sma.last:
                 ema_sma_height = -1
 
-        if self.pivotpoint:
-            self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
-
         if self.bollingerbands:
             self.bollingerbands.compute(last_timestamp, prices)
 
@@ -687,7 +684,7 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
     def setup_streamer(self, streamer):
         streamer.add_member(StreamMemberSerie('begin'))
         
-        streamer.add_member(StreamMemberCandleSerie('candle'))
+        streamer.add_member(StreamMemberOhlcSerie('ohlc'))
         streamer.add_member(StreamMemberFloatSerie('price', 0))
         streamer.add_member(StreamMemberFloatBarSerie('volume', 1))
 
@@ -707,8 +704,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
 
         streamer.add_member(StreamMemberFloatSerie('perf', 3))
 
-        # stochastic, bollinger, triangle, score, pivotpoint, td9, fibonacci...
-
         streamer.add_member(StreamMemberSerie('end'))
 
         streamer.next_timestamp = self.next_timestamp
@@ -721,7 +716,7 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
 
             streamer.member('begin').update(ts)
 
-            streamer.member('candle').update((self.price.open[i], self.price.high[i], self.price.low[i], self.price.close[i]), ts)
+            streamer.member('ohlc').update((self.price.open[i], self.price.high[i], self.price.low[i], self.price.close[i]), ts)
 
             streamer.member('price').update(self.price.prices[i], ts)
             streamer.member('volume').update(self.volume.volumes[i], ts)

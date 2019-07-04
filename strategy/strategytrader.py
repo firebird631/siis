@@ -255,58 +255,60 @@ class StrategyTrader(object):
 
                     # close at market (taker fee)
                     if trade.close(trader, self.instrument.market_id):
+                        # only get it at the last moment
+                        market = trader.market(self.instrument.market_id)
+
+                        # estimed profit/loss rate
+                        profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
+
+                        # estimed maker/taker fee rate for entry and exit
+                        if trade.get_stats()['entry-maker']:
+                            profit_loss_rate -= market.maker_fee
+                        else:
+                            profit_loss_rate -= market.taker_fee
+
+                        if trade.get_stats()['exit-maker']:
+                            profit_loss_rate -= market.maker_fee
+                        else:
+                            profit_loss_rate -= market.taker_fee
+
+                        # notify
+                        self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
+                                market.format_price(close_exec_price), timestamp, trade.timeframe,
+                                'take-profit', profit_loss_rate)
+
+                        # streaming (but must be done with notify)
                         self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
-
-                    # only get it at the last moment
-                    market = trader.market(self.instrument.market_id)
-
-                    # estimed profit/loss rate
-                    profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
-
-                    # estimed maker/taker fee rate for entry and exit
-                    if trade.get_stats()['entry-maker']:
-                        profit_loss_rate -= market.maker_fee
-                    else:
-                        profit_loss_rate -= market.taker_fee
-
-                    if trade.get_stats()['exit-maker']:
-                        profit_loss_rate -= market.maker_fee
-                    else:
-                        profit_loss_rate -= market.taker_fee
-
-                    # notify
-                    self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
-                            market.format_price(close_exec_price), timestamp, trade.timeframe,
-                            'take-profit', profit_loss_rate)
 
                 elif trade.sl > 0 and (close_exec_price <= trade.sl):
                     # stop loss order
 
                     # close at market (taker fee)
                     if trade.close(trader, self.instrument.market_id):
+                        # only get it at the last moment
+                        market = trader.market(self.instrument.market_id)
+
+                        # estimed profit/loss rate
+                        profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
+
+                        # estimed maker/taker fee rate for entry and exit
+                        if trade.get_stats()['entry-maker']:
+                            profit_loss_rate -= market.maker_fee
+                        else:
+                            profit_loss_rate -= market.taker_fee
+
+                        if trade.get_stats()['exit-maker']:
+                            profit_loss_rate -= market.maker_fee
+                        else:
+                            profit_loss_rate -= market.taker_fee
+
+                        # notify
+                        self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
+                                market.format_price(close_exec_price), timestamp, trade.timeframe,
+                                'stop-loss', profit_loss_rate)
+
+                        # streaming (but must be done with notify)
                         self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
-
-                    # only get it at the last moment
-                    market = trader.market(self.instrument.market_id)
-
-                    # estimed profit/loss rate
-                    profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
-
-                    # estimed maker/taker fee rate for entry and exit
-                    if trade.get_stats()['entry-maker']:
-                        profit_loss_rate -= market.maker_fee
-                    else:
-                        profit_loss_rate -= market.taker_fee
-
-                    if trade.get_stats()['exit-maker']:
-                        profit_loss_rate -= market.maker_fee
-                    else:
-                        profit_loss_rate -= market.taker_fee
-
-                    # notify
-                    self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
-                            market.format_price(close_exec_price), timestamp, trade.timeframe,
-                            'stop-loss', profit_loss_rate)
 
             #
             # margin trade
@@ -509,6 +511,8 @@ class StrategyTrader(object):
         for region in self.regions:
             if region.id == region_id:
                 self.regions.remove(region)
+                
+                self.unlock()
                 return True
 
         self.unlock()
@@ -599,7 +603,7 @@ class StrategyTrader(object):
                 trade.modify_stop_loss(trader, market.market_id, stop_loss)
 
     #
-    # signal data streaming
+    # signal data streaming for profiling
     #
 
     def create_chart_streamer(self, timeframe):

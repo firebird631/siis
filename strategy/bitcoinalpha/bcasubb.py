@@ -7,7 +7,7 @@ from terminal.terminal import Terminal
 
 from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberCandleSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
 
 from .bcasub import BitcoinAlphaStrategySub
 
@@ -241,7 +241,7 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
     #     self.score.finalize()
 
     #     if candles:
-    #         # last processed candle timestamp (from last candle is non consolidated else from the next one)
+    #         # last processed ohlc timestamp (from last ohlc is non consolidated else from the next one)
     #         self.next_timestamp = candles[-1].timestamp if not candles[-1].ended else candles[-1].timestamp + self.tf
 
     #     return None  # @todo signal
@@ -249,7 +249,7 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
     def setup_streamer(self, streamer):
         streamer.add_member(StreamMemberSerie('begin'))
         
-        streamer.add_member(StreamMemberCandleSerie('candle'))
+        streamer.add_member(StreamMemberOhlcSerie('ohlc'))
         streamer.add_member(StreamMemberFloatSerie('price', 0))
         streamer.add_member(StreamMemberFloatBarSerie('volume', 1))
         
@@ -278,7 +278,7 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
 
             streamer.member('begin').update(ts)
 
-            streamer.member('candle').update((self.price.open[i], self.price.high[i], self.price.low[i], self.price.close[i]), ts)
+            streamer.member('ohlc').update((self.price.open[i], self.price.high[i], self.price.low[i], self.price.close[i]), ts)
 
             streamer.member('price').update(self.price.prices[i], ts)
             streamer.member('volume').update(self.volume.volumes[i], ts)

@@ -9,7 +9,7 @@ from terminal.terminal import Terminal
 
 from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberCandleSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
 
 from .cbsub import CrystalBallStrategySub
 
@@ -172,7 +172,7 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
     def setup_streamer(self, streamer):
         streamer.add_member(StreamMemberSerie('begin'))
         
-        streamer.add_member(StreamMemberCandleSerie('candle'))
+        streamer.add_member(StreamMemberOhlcSerie('ohlc'))
         streamer.add_member(StreamMemberFloatSerie('price', 0))
         streamer.add_member(StreamMemberFloatBarSerie('volume', 1))
 
@@ -196,7 +196,7 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
 
             streamer.member('begin').update(ts)
 
-            streamer.member('candle').update((self.price.open[i], self.price.high[i], self.price.low[i], self.price.close[i]), ts)
+            streamer.member('ohlc').update((self.price.open[i], self.price.high[i], self.price.low[i], self.price.close[i]), ts)
 
             streamer.member('price').update(self.price.prices[i], ts)
             streamer.member('volume').update(self.volume.volumes[i], ts)

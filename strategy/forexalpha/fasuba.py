@@ -7,7 +7,7 @@ import numpy as np
 
 from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberCandleSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
 from instrument.instrument import Instrument
 
 from terminal.terminal import Terminal
@@ -1043,7 +1043,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
     def setup_streamer(self, streamer):
         streamer.add_member(StreamMemberSerie('begin'))
         
-        streamer.add_member(StreamMemberCandleSerie('candle'))
+        streamer.add_member(StreamMemberOhlcSerie('ohlc'))
         streamer.add_member(StreamMemberFloatSerie('price', 0))
         streamer.add_member(StreamMemberFloatBarSerie('volume', 1))
 
@@ -1077,7 +1077,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
 
             streamer.member('begin').update(ts)
 
-            streamer.member('candle').update((float(self.price.open[i]),
+            streamer.member('ohlc').update((float(self.price.open[i]),
                     float(self.price.high[i]), float(self.price.low[i]), float(self.price.close[i])), ts)
 
             streamer.member('price').update(float(self.price.prices[i]), ts)

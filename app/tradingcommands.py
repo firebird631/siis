@@ -840,7 +840,63 @@ class AssignCommand(Command):
         return args, 0
 
 
-def register_trading_commands(commands_handler, trader_service, strategy_service):
+class ChartCommand(Command):
+
+    SUMMARY = "to display a chat for a specific stragegy and market"
+    
+    def __init__(self, strategy_service, monitor_service):
+        super().__init__('chart', 'V')
+
+        self._strategy_service = strategy_service
+        self._monitor_service = monitor_service
+
+    def execute(self, args):
+        if not args:
+            Terminal.inst().action("Missing parameters", view='status')
+            return False
+
+        # ie: ":chart altbtc BTCUSDT"
+        appliance = None
+        market_id = None
+
+        # optionnal timeframe (could depend of the strategy)
+        timeframe = None
+
+        if len(args) < 2:
+            Terminal.inst().action("Missing parameters", view='status')
+            return False
+
+        try:
+            appliance, market_id = args[0], args[1]
+
+            if appliance == "_":
+                appliance = ""
+
+            if len(args) == 3:
+                timeframe = timeframe_from_str(args[2])
+
+        except Exception:
+            Terminal.inst().action("Invalid parameters", view='status')
+            return False
+
+        self._strategy_service.command(Strategy.COMMAND_TRADER_CHART, {
+            'appliance': appliance,
+            'market-id': market_id,
+            'timeframe': timeframe,
+            'monitor-url': self._monitor_service.url()
+        })
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
+def register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service):
     cmd = PlayCommand(trader_service, strategy_service)
     commands_handler.register(cmd)
     
@@ -848,6 +904,9 @@ def register_trading_commands(commands_handler, trader_service, strategy_service
     commands_handler.register(cmd)
 
     cmd = InfoCommand(trader_service, strategy_service)
+    commands_handler.register(cmd)
+
+    cmd = ChartCommand(strategy_service, monitor_service)
     commands_handler.register(cmd)
 
     #

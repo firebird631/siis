@@ -15,6 +15,7 @@ import signal
 import pathlib
 import logging
 import traceback
+import posix
 
 from common.siislog import SiisLog
 from terminal.terminal import Terminal
@@ -26,12 +27,9 @@ from common.utils import fix_thread_set_name
 def display_help():
     pass
 
-def signal_handler(sig, frame):
-    Terminal.inst().action('> Press q to exit !')
-
-def has_exception(e):
-    siis_logger.error(repr(e))
-    siis_logger.error(traceback.format_exc())
+def has_exception(_logger, e):
+    _logger.error(repr(e))
+    _logger.error(traceback.format_exc())
 
 def install(options):
     config_path = "./"
@@ -85,41 +83,42 @@ def application(argv):
     install(options)
 
     siis_log = SiisLog(options)
-    siis_logger = logging.getLogger('client')
+    logger = logging.getLogger('siis.client')
     stream = ""
+    rpc = ""
     fifo = -1
+    fifo_rpc = -1
 
     if len(sys.argv) > 1:
         stream = sys.argv[1]
 
+    if len(sys.argv) > 2:
+        rpc = sys.argv[2]
+
     if not stream:
         Terminal.inst().error("- Missing stream url !")
 
+    if not rpc:
+        Terminal.inst().error("- Missing RPC url !")
+
     try:
-        fifo = os.open(stream, os.O_NONBLOCK + os.O_RDONLY)
+        fifo = os.open(stream, os.O_NONBLOCK | posix.O_RDONLY)
     except Exception as e:
         Terminal.inst().error(repr(e))
 
     if not fifo:
         Terminal.inst().error("- Cannot open the stream !")
 
-    Terminal.inst().info("Starting SIIS monitor...")
-    Terminal.inst().action("- (Press 'q' twice to terminate)")
-    Terminal.inst().action("- (Press 'h' for help)")
+    try:
+        fifo_rpc = os.open(rpc, os.O_NONBLOCK | posix.O_WRONLY)
+    except Exception as e:
+        Terminal.inst().error(repr(e))
+
+    if not fifo_rpc:
+        Terminal.inst().error("- Cannot open the RPC fifo !")
+
+    Terminal.inst().info("Starting SIIS simple chart client...")
     Terminal.inst().flush()
-
-    signal.signal(signal.SIGINT, signal_handler)
-    # signal.pause()
-    # install key grabber
-    fd = sys.stdin.fileno()
-
-    oldterm = termios.tcgetattr(fd)
-    newattr = termios.tcgetattr(fd)
-    newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
-    termios.tcsetattr(fd, termios.TCSANOW, newattr)
-
-    oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
 
     try:
         Charting.inst().start()
@@ -132,12 +131,8 @@ def application(argv):
 
     Terminal.inst().message("Running main loop...")
 
-    TIMER_TICK_FREQ_SEC = 0.005
-    value = None
-    key_counter = 0
-
     size = 32768
-    buf = []*size
+    buf = []
     content = ""
     cur = bytearray()
 
@@ -153,123 +148,54 @@ def application(argv):
             Charting.inst().show()
             Terminal.inst().action("Charting is now shown")
 
-    try:
-        while running:
-            # keyboard input commands
-            try:
-                c = sys.stdin.read(1)
+    while running:          
+        # read from fifo
+        try:
+            buf = os.read(fifo, size)
 
-                if c:
-                    if c == '\b':
-                        value = None
+            if buf:
+                for n in buf:
+                    if n == 10:  # new line as message termination
+                        try:
+                            msg = json.loads(cur.decode('utf8'))
+                            dispatcher.on_message(msg)
+                        except Exception as e:
+                            logger.error(repr(e))
 
-                    elif c == '\n' and value:
-                        # validated commands
-                        if c.startswith('s'):
-                            key = c[1:]
-                            # @todo subscribe
-                        elif c.startswith('u'):
-                            key = c[1:]
-                            # @todo unsubscribe
-
-                        value = None
-
-                    elif value and len(value) > 0:
-                        value += c
-
+                        cur = bytearray()
                     else:
-                        value = "" + c
+                        cur.append(n)
 
-                    # direct commands
+        except (BrokenPipeError, IOError):
+            pass
 
-                    if value == '+':
-                        value = None
-                        # @todo next strategy chart
+        if not Charting.inst().has_charts():
+            running = False
 
-                    elif value == '-':
-                        value = None
-                        # @todo previous strategy chart
+        time.sleep(0.01)
 
-                    if value == 'r':
-                        value = None
-                        # @todo list strategies
-
-                    elif value == 'm':
-                        value = None
-                        # @todo list strategies markets
-
-                    elif value == 'd':
-                        value = None
-
-                        if not Charting.inst().visible:
-                            if not Charting.inst().running:
-                                # charting service
-                                try:
-                                    Charting.inst().start()
-                                except Exception as e:
-                                    has_exception(e)
-
-                            if Charting.inst().running:
-                                Charting.inst().show()
-                                Terminal.inst().action("Charting is now shown")
-                        else:
-                            Charting.inst().hide()
-                            Terminal.inst().action("Charting is now hidden")
-
-                    if value == 'h':
-                        value = None
-                        display_help()
-
-                    if value == 'q':
-                        Terminal.inst().notice("Press another time 'q' to confirm exit")
-
-                    if value == 'qq':
-                        running = False
-
-                    key_counter = 0
-
-            except IOError:
-                pass
-            
-            # read from fifo
-            try:
-                buf = os.read(fifo, size)
-
-                if buf:
-                    for n in buf:
-                        if n == 10:
-                            try:
-                                msg = json.loads(cur.decode('utf8'))
-                                dispatcher.on_message(msg)
-                            except Exception as e:
-                                siis_logger.error(repr(e))
-
-                            cur = bytearray()
-                        else:
-                            cur.append(n)
-
-            except (BrokenPipeError, IOError):
-                pass
-
-            key_counter += 1
-
-            time.sleep(TIMER_TICK_FREQ_SEC)
-
-            # 15 sec clear input
-            if key_counter >= 1 * 200: # / TIMER_TICK_FREQ_SEC:
-                key_counter = 0
-
-                if value is not None:
-                    value = None
-                    Terminal.inst().info("Current typing canceled")
-
-    finally:
-        termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
-        fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
+    # close message
+    messages = dispatcher.close()
 
     if fifo:
         os.close(fifo)
         fifo = -1
+
+    if fifo_rpc:
+        for msg in messages:
+            try:
+                # write to fifo
+                posix.write(fifo_rpc, (json.dumps(msg) + '\n').encode('utf8'))
+            except (BrokenPipeError, IOError) as e:
+                logger.error(repr(e))
+            except (TypeError, ValueError) as e:
+                logger.error("Error sending message : %s" % repr(c))
+
+        fifo_rpc.flush()
+
+        # os.flush(fifo_rpc)
+        os.close(fifo_rpc)
+        fifo_rpc = -1
 
     Terminal.inst().info("Terminate...")
     Terminal.inst().flush()

@@ -819,7 +819,7 @@ class Instrument(object):
                 for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
                     if candles[i].timestamp - candles[i-1].timestamp != tf:
                         logger.error("Timestamp inconsistency from %s and %s candles at %s delta=(%s)" % (i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
-                        issues.append(('candle', tf, i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
+                        issues.append(('ohlc', tf, i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
 
         for tf, buy_sells in self._buy_sells.items():
             if buy_sells:

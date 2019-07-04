@@ -13,8 +13,6 @@ class PriceIndicator(Indicator):
     """
     Simple average price indicator using candle data.
     Always use the average of bid and ofr prices.
-    
-    @todo add OHLC distincts array to be used by some others indicators.
     """
 
     PRICE_CLOSE = 0   # return close price
