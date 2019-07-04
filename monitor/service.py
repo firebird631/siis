@@ -18,7 +18,6 @@ from twisted.python import log
 from twisted.internet import reactor
 
 from common.service import Service
-from terminal.terminal import Terminal
 
 from notifier.notifiable import Notifiable
 from notifier.signal import Signal
@@ -123,8 +122,6 @@ class MonitorService(Service):
                 # publish fifo
                 self._tmpdir = tempfile.mkdtemp()
                 self._filename = os.path.join(self._tmpdir, 'siis.stream')
-
-                Terminal.inst().info("- Open a monitoring FIFO at %s" % self._filename)
 
                 try:
                     os.mkfifo(self._filename, 0o600)

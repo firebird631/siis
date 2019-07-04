@@ -322,37 +322,35 @@ class StrategyAssetTrade(StrategyTrade):
                     self.e -= data['commission-amount']
 
             elif (data['id'] == self.sell_oid) and ('filled' in data or 'cumulative-filled' in data):
-                # but on the exit side, normal case will have a single order, but possibly to have a 
+                # @warning on the exit side, normal case will have a single order, but possibly to have a 
                 # partial limit TP, plus remaining in market, then in that case cumulative-filled and avg-price
                 # are not what we need exactly
-                if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                    filled = data['cumulative-filled'] - self.x  # compute filled qty
-                elif data.get('filled') is not None and data['filled'] > 0:
+                if data.get('filled') is not None and data['filled'] > 0:
                     filled = data['filled']
+                elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
+                    filled = data['cumulative-filled'] - self.x  # compute filled qty
                 else:
                     filled = 0
 
-                # @todo check pl because in some case value is wrong
-
-                if data.get('avg-price') is not None and data['avg-price']:
-                    # average price is directly given
-                    self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * self.e)) / (self.aep * self.e)
-
-                    # average exit price
-                    self.axp = data['avg-price']
-
-                elif data.get('exec-price') is not None and data['exec-price']:
+                if data.get('exec-price') is not None and data['exec-price']:
                     # profit/loss when reducing the trade (over executed entry qty)
                     self.pl += ((data['exec-price'] * filled) - (self.aep * self.e)) / (self.aep * self.e)
 
                     # average exit price
                     self.axp = ((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled)
 
+                elif data.get('avg-price') is not None and data['avg-price']:
+                    # average price is directly given
+                    self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * self.e)) / (self.aep * self.e)
+
+                    # average exit price
+                    self.axp = data['avg-price']
+
                 # cumulative filled exit qty
-                if data.get('cumulative-filled') is not None:
-                    self.x = data.get('cumulative-filled')
-                else:
-                    self.x += filled
+                # if data.get('cumulative-filled') is not None:
+                #     self.x = data.get('cumulative-filled')
+                # else:
+                self.x += filled
 
                 if self.x >= self.oq or (self._entry_state == StrategyTrade.STATE_FILLED and self.x >= self.e):
                     self._exit_state = StrategyTrade.STATE_FILLED

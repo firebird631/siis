@@ -392,11 +392,11 @@ class StrategyTrade(object):
         return timeframe_to_str(self._timeframe)
 
     def trade_type_to_str(self):
-        if self._trade_type == TRADE_ASSET:
+        if self._trade_type == StrategyTrade.TRADE_ASSET:
             return 'asset'
-        elif self._trade_type == TRADE_MARGIN:
+        elif self._trade_type == StrategyTrade.TRADE_MARGIN:
             return 'margin'
-        elif self._trade_type == TRADE_MARGIN:
+        elif self._trade_type == StrategyTrade.TRADE_MARGIN:
             return 'indisible-margin'
         else:
             return "undefined"
@@ -413,19 +413,19 @@ class StrategyTrade(object):
             return StrategyTrade.TRADE_UNDEFINED
 
     def trade_state_to_str(self, trade_state):
-        if trade_state == STATE_NEW:
+        if trade_state == StrategyTrade.STATE_NEW:
             return 'new'
-        elif self._trade_type == STATE_REJECTED:
+        elif self._trade_type == StrategyTrade.STATE_REJECTED:
             return 'rejected'
-        elif self._trade_type == STATE_DELETED:
+        elif self._trade_type == StrategyTrade.STATE_DELETED:
             return 'deleted'
-        elif self._trade_type == STATE_CANCELED:
+        elif self._trade_type == StrategyTrade.STATE_CANCELED:
             return 'canceled'
-        elif self._trade_type == STATE_OPENED:
+        elif self._trade_type == StrategyTrade.STATE_OPENED:
             return 'opened'
-        elif self._trade_type == STATE_PARTIALLY_FILLED:
+        elif self._trade_type == StrategyTrade.STATE_PARTIALLY_FILLED:
             return 'partially-filled'
-        elif self._trade_type == STATE_FILLED:
+        elif self._trade_type == StrategyTrade.STATE_FILLED:
             return 'filled'
         else:
             return "undefined"

@@ -415,13 +415,14 @@ class MySql(Database):
         self._pending_user_trade_insert = []
         self.unlock()
 
-       if uti:
+        if uti:
             try:
                 cursor = self._db.cursor()
 
                 query = ' '.join((
                     "INSERT INTO user_trade(broker_id, market_id, appliance_id, trade_id, trade_type, data, operations) VALUES",
-                    ','.join(["('%s', '%s', %s, %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], str(ut[5]), str(ut[6])) for ut in uti]),
+                    ','.join(["('%s', '%s', %s, %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4],
+                        str(ut[5]).replace("'", "\'"), str(ut[6]).replace("'", "\'")) for ut in uti]),
                     "ON DUPLICATE KEY UPDATE data = VALUES(data), operations = VALUES(operations)"
                 ))
 
@@ -447,23 +448,21 @@ class MySql(Database):
 
         if uts:
             try:
-                pass #cursor = self._db.cursor()
+                cursor = self._db.cursor()
 
-                # for ut in uts:
-                #     cursor.execute("""SELECT ... FROM user_trade WHERE broker_id = '%s'""" % (ua[2]))
+                for ut in uts:
+                    cursor.execute("""SELECT trade_id, trade_type, data, operations FROM user_trade WHERE
+                        appliance_id = '%s' AND broker_id = '%s' AND market_id = '%s'""" % (ut[2], ut[3], ut[4]))
 
-                #     rows = cursor.fetchall()
+                    rows = cursor.fetchall()
 
-                #     user_trades = []
+                    user_trades = []
 
-                #     for row in rows:
-                #         pass
-                #         trade = StrategyTrade(ua[1], row[0])
+                    for row in rows:
+                        user_trades.append((row[0], row[1], json.loads(row[2]), json.loads(row[3])))
 
-                #         trades.append(trade)
-
-                #     # notify
-                #     ua[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ua[2], user_trades)
+                    # notify
+                    ut[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ut[2], user_trades)
             except Exception as e:
                 # check database for valid ohlc and volumes
                 logger.error(repr(e))
@@ -488,7 +487,8 @@ class MySql(Database):
 
                 query = ' '.join((
                     "INSERT INTO user_trader(broker_id, market_id, appliance_id, activity, data, regions) VALUES",
-                    ','.join(["('%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], 1 if ut[3] else 0, str(ut[4]), str(ut[5])) for ut in uti]),
+                    ','.join(["('%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], 1 if ut[3] else 0,
+                            str(ut[4]).replace("'", "\'"), str(ut[5]).replace("'", "\'")) for ut in uti]),
                     "ON DUPLICATE KEY UPDATE activity = VALUES(activity), data = VALUES(data), regions = VALUES(regions)"
                 ))
 
@@ -512,7 +512,31 @@ class MySql(Database):
         self._pending_user_trader_select = []
         self.unlock()
 
-        # @todo
+        if uts:
+            try:
+                cursor = self._db.cursor()
+
+                for ut in uts:
+                    cursor.execute("""SELECT activity, data, regions FROM user_trader WHERE
+                        appliance_id = '%s' AND broker_id = '%s' AND market_id = '%s'""" % (ut[2], ut[3], ut[4]))
+
+                    rows = cursor.fetchall()
+
+                    user_traders = []
+
+                    for row in rows:
+                        user_traders.append((row[0], row[1], activity, json.loads(row[2]), json.loads(row[3])))
+
+                    # notify
+                    ut[0].notify(Signal.SIGNAL_STRATEGY_TRADER_DATA, ut[2], user_traders)
+            except Exception as e:
+                # check database for valid ohlc and volumes
+                logger.error(repr(e))
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trade_select = uts + self._pending_user_trade_select
+                self.unlock()
 
     def process_ohlc(self):       
         #

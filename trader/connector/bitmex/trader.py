@@ -257,7 +257,7 @@ class BitMexTrader(Trader):
         if exec_inst:
             postdict['execInst'] = ','.join(exec_inst)
 
-        # logger.notice("Trader %s order %s of %s %s" % (self.name, order.direction_to_str(), order.quantity, order.symbol))
+        logger.info("Trader %s order %s %s EP@%s %s" % (self.name, order.direction_to_str(), order.symbol, order.order_price, order.quantity))
 
         try:
             result = self._watcher.connector.request(path="order", postdict=postdict, verb='POST', max_retries=15)

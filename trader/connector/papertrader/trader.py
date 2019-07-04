@@ -1583,10 +1583,10 @@ class PaperTrader(Trader):
                 if self._watcher:
                     if self._watcher.has_instrument(market.quote+self._account.currency):
                         # direct
-                        quote_price = self.price(market.quote+self._account.currency, timestamp)  # REST call but cost API call and delay
+                        quote_price = self.history_price(market.quote+self._account.currency, timestamp)  # REST call but cost API call and delay
                     elif self._watcher.has_instrument(self._account.currency+market.quote):
                         # indirect
-                        quote_price = 1.0 / self.price(self._account.currency+market.quote, timestamp)  # REST call but cost API call and delay
+                        quote_price = 1.0 / self.history_price(self._account.currency+market.quote, timestamp)  # REST call but cost API call and delay
                     else:
                         quote_price = 0.0  # might not occurs
                         logger.warning("Unsupported quote asset " + market.quote)
@@ -1619,16 +1619,16 @@ class PaperTrader(Trader):
             if not curr_price and trade_qty > 0:
                 if asset.symbol == self._account.currency:
                     # last min default/alt price
-                    curr_price = self.price(asset.symbol+self.account.alt_currency, timestamp)
+                    curr_price = self.history_price(asset.symbol+self.account.alt_currency, timestamp)
                 else:
                     if self._watcher:
                         # base price in quote at trade time
                         if self._watcher.has_instrument(asset.symbol+self._account.currency):
                             # direct
-                            curr_price = self.price(asset.symbol+self._account.currency, timestamp)
+                            curr_price = self.history_price(asset.symbol+self._account.currency, timestamp)
                         elif self._watcher.has_instrument(self._account.currency+asset.symbol):
                             # indirect
-                            curr_price = 1.0 / self.price(self._account.currency+asset.symbol, timestamp)
+                            curr_price = 1.0 / self.history_price(self._account.currency+asset.symbol, timestamp)
                         else:
                             curr_price = 0.0  # might not occurs
                             logger.warning("Unsupported asset " + asset.symbol)

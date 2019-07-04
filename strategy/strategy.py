@@ -380,7 +380,7 @@ class Strategy(Runnable):
         """
         self.lock()
 
-        if not self.service.backtesting and not self.trader.paper_mode:
+        if not self.service.backtesting and not self.trader().paper_mode:
             for k, sub_trader in self._sub_traders.items():
                 sub_trader.save()
 
@@ -1060,6 +1060,11 @@ class Strategy(Runnable):
                 w: worst hit price
                 bt: best hit price timestamp
                 wt: worst hit price timestamp
+                q: ordered qty
+                e: executed entry qty
+                x: executed exit qty
+                aep: average entry price
+                axp: average exit price
 
         @note Its implementation could be overrided but respect at the the described informations.
         @note This method is slow, it need to go through all the sub-trader, and look for any trades,
@@ -1261,24 +1266,24 @@ class Strategy(Runnable):
                 continue
 
             if r['rate'] < 0:
-                cr = R + "%.2f" % (r['rate'] * 100,) + W
+                cr = R + ("%.2f" % ((r['rate']*100.0),)) + W
             elif r['rate'] > 0:
-                cr = G + "%.2f" % (r['rate'] * 100,) + W
+                cr = G + ("%.2f" % ((r['rate']*100.0),)) + W
             else:
                 cr = "0.0"
 
             if r['perf'] < 0:
-                cp = R + "%.2f" % (r['perf'] * 100,) + W
+                cp = R + ("%.2f" % ((r['perf']*100.0),)) + W
             elif r['perf'] > 0:
-                cp = G + "%.2f" % (r['perf'] * 100,) + W
+                cp = G + ("%.2f" % ((r['perf']*100.0),)) + W
             else:
                 cp = "0.0"
 
             markets.append(r['symbol'])
             pl.append(cr)
             perf.append(cp)
-            worst.append(r['worst'] * 100)
-            best.append(r['best'] * 100)
+            worst.append(r['worst']*100.0)
+            best.append(r['best']*100.0)
             success.append(r['success'])
             failed.append(r['failed'])
             roe.append(r['roe'])
@@ -1293,11 +1298,11 @@ class Strategy(Runnable):
 
             for t in r['trades']:
                 if t['rate'] < 0 and float(t['b']) > float(t['e']):  # have been profitable but loss
-                    cr = O + "%.2f" % (t['rate'] * 100,) + W
+                    cr = O + ("%.2f" % ((t['rate']*100.0),)) + W
                 elif t['rate'] < 0:  # loss
-                    cr = O + "%.2f" % (t['rate'] * 100,) + W
+                    cr = O + ("%.2f" % ((t['rate']*100.0),)) + W
                 elif t['rate'] > 0:  # profit
-                    cr = G + "%.2f" % (t['rate'] * 100,) + W
+                    cr = G + ("%.2f" % ((t['rate']*100.0),)) + W
                 else:  # equity
                     cr = "0.0"
 
@@ -1325,24 +1330,24 @@ class Strategy(Runnable):
 
         if summ:
             if pl_sum < 0:
-                cpl_sum = R + "%.2f" % (pl_sum * 100,) + W
+                cpl_sum = R + ("%.2f" % ((pl_sum*100.0),)) + W
             elif pl_sum > 0:
-                cpl_sum = G + "%.2f" % (pl_sum * 100,) + W
+                cpl_sum = G + ("%.2f" % ((pl_sum*100.0),)) + W
             else:
                 cpl_sum = "0.0"
 
             if perf_sum < 0:
-                cperf_sum = R + "%.2f" % (perf_sum * 100,) + W
+                cperf_sum = R + ("%.2f" % ((perf_sum*100.0),)) + W
             elif perf_sum > 0:
-                cperf_sum = G + "%.2f" % (perf_sum * 100,) + W
+                cperf_sum = G + ("%.2f" % ((perf_sum*100.0),)) + W
             else:
                 cperf_sum = "0.0"
 
             markets.append('Total')
             pl.append(cpl_sum)
             perf.append(cperf_sum)
-            worst.append(worst_sum * 100)
-            best.append(best_sum * 100)
+            worst.append(worst_sum*100.0)
+            best.append(best_sum*100.0)
             success.append(success_sum)
             failed.append(failed_sum)
             roe.append(roe_sum)
@@ -1397,6 +1402,65 @@ class Strategy(Runnable):
 
         return arr1, arr2
 
+    # def trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None):
+    #     """
+    #     Returns a table of any followed markets tickers.
+    #     """
+    #     columns = ('Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF')
+    #     data = []
+
+    #     self.lock()
+
+    #     for t in results:
+    #         if t['rate'] < 0 and float(t['b']) > float(t['e']):  # have been profitable but loss
+    #             cr = O + "%.2f" % ((t['rate']*100.0),) + W            
+    #         elif t['rate'] < 0:  # loss
+    #             cr = R + "%.2f" % ((t['rate']*100.0),) + W
+    #         elif t['rate'] > 0:  # profit
+    #             cr = G + "%.2f" % ((t['rate']*100.0),) + W
+    #         else:
+    #             cr = "0.0"
+
+    #         # per active trade
+    #         markets.append(t['symbol'])
+    #         trade_id.append(t['id'])
+    #         direction.append(t['d'])
+    #         price.append(t['p']),
+    #         sl.append(t['sl']),
+    #         tp.append(t['tp']),
+    #         rate.append(cr)
+    #         qty.append(t['q']),
+    #         eqty.append(t['e']),
+    #         xqty.append(t['x']),
+    #         status.append(t['s'])
+    #         bests.append(t['b'])
+    #         worsts.append(t['w'])
+    #         entry_times.append(datetime.fromtimestamp(t['ts']).strftime('%Y-%m-%d %H:%M:%S'))
+    #         timeframes.append(t['tf'])
+
+    #     markets = list(self._markets.values())
+
+    #     if offset is None:
+    #         offset = 0
+
+    #     if limit is None:
+    #         limit = len(markets)
+
+    #     limit = offset + limit
+
+    #     trades.sort(key=lambda x: x.market_id)
+    #     trades = markets[offset:limit]
+
+    #     for trade in trades:
+    #         row = (...
+    #         )
+
+    #         data.append(row[col_ofs:])
+
+    #     self.unlock()
+
+    #     return columns[col_ofs:], data
+
     def formatted_trade_stats(self, results, style='', quantities=False):
         markets = []
         trade_id = []
@@ -1433,11 +1497,11 @@ class Strategy(Runnable):
 
         for t in results:
             if t['rate'] < 0 and float(t['b']) > float(t['e']):  # have been profitable but loss
-                cr = O + "%.2f" % (t['rate'] * 100,) + W            
+                cr = O + "%.2f" % ((t['rate']*100.0),) + W            
             elif t['rate'] < 0:  # loss
-                cr = R + "%.2f" % (t['rate'] * 100,) + W
+                cr = R + "%.2f" % ((t['rate']*100.0),) + W
             elif t['rate'] > 0:  # profit
-                cr = G + "%.2f" % (t['rate'] * 100,) + W
+                cr = G + "%.2f" % ((t['rate']*100.0),) + W
             else:
                 cr = "0.0"
 
@@ -1602,7 +1666,8 @@ class Strategy(Runnable):
 
                 # notify @todo would we notify on that case ?
                 # self.notify_order(trade.id, trade.dir, sub_trader.instrument.market_id, market.format_price(price),
-                #         self.service.timestamp, trade.timeframe, 'entry', None, market.format_price(trade.sl), market.format_price(trade.tp))
+                #         self.service.timestamp, trade.timeframe, 'entry', None,
+                #          market.format_price(trade.sl), market.format_price(trade.tp))
 
                 # want it on the streaming (take care its only the order signal, no the real complete execution)
                 # @todo sub_trader._global_streamer.member('buy/sell-entry').update(price, self.timestamp)
@@ -1667,7 +1732,8 @@ class Strategy(Runnable):
                 trade.close(trader, sub_trader.instrument.market_id)
 
                 # add a success result message
-                results['messages'].append("Close trade %i on %s:%s at market price %s" % (trade.id, self.identifier, market.market_id, market.format_price(price)))
+                results['messages'].append("Close trade %i on %s:%s at market price %s" % (
+                    trade.id, self.identifier, market.market_id, market.format_price(price)))
 
                 # notify @todo would we notify on that case ?
                 # self.notify_order(trade.id, trade.dir, sub_trader.instrument.market_id, market.format_price(price),

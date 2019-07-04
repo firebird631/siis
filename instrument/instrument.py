@@ -432,6 +432,10 @@ class Instrument(object):
         self._market_ofr = ofr
 
     @property
+    def market_price(self):
+        return (self._market_bid + self._market_ofr) * 0.5
+
+    @property
     def update_time(self):
         return self._update_time
 

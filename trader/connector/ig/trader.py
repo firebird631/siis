@@ -301,7 +301,7 @@ class IGTrader(Trader):
 
         size = str(size)
 
-        # logger.notice("Trader %s order %s of %s %s" % (self.name, order.direction_to_str(), size, epic))
+        logger.info("Trader %s order %s %s EP@%s %s" % (self.name, order.direction_to_str(), epic, level, size))
 
         # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
         logger.info(self._previous_order)
@@ -354,12 +354,12 @@ class IGTrader(Trader):
                 # self._positions[position.position_id] = position
             else:
                 reason = results
-                logger.error("%s rejected order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, reason))
+                logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, reason))
 
                 return False
 
         except IGException as e:
-            logger.error("%s except on order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, repr(e)))
+            logger.error("Trader %s except on order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, repr(e)))
             return False
 
         return True

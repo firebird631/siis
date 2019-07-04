@@ -795,7 +795,7 @@ class AssignCommand(Command):
                 elif value.startswith("'"):
                     timeframe = timeframe_from_str(value[1:])
                 else:
-                    quantity = float(value[:-1])
+                    quantity = float(value)
 
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')

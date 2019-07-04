@@ -437,7 +437,7 @@ class StrategyTrader(object):
                     else:
                         rate -= market.taker_fee
 
-                    # estimed commission fee rate
+                    # estimed commission fee rate (futur, stocks)
                     # @todo
 
                     # perf sommed here it means that its not done during partial closing

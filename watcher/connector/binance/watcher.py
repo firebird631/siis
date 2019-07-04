@@ -277,9 +277,7 @@ class BinanceWatcher(Watcher):
                     price_limits = [afilter['minPrice'], afilter['maxPrice'], afilter['tickSize']]
 
             if float(size_limits[2]) < 1:
-                # even if we respect the min step size it reject on some cases
-                # so keep an higher precision for smallest step size
-                size_limits[2] = str(float(size_limits[2]) * 10)
+                size_limits[2] = str(float(size_limits[2]))  # * 10)
 
             market.set_size_limits(float(size_limits[0]), float(size_limits[1]), float(size_limits[2]))
             market.set_price_limits(float(price_limits[0]), float(price_limits[1]), float(price_limits[2]))
@@ -723,7 +721,6 @@ class BinanceWatcher(Watcher):
 
         for market_id in self._watched_instruments:
             market = self.fetch_market(market_id)
-            print(market_id)
 
             if market.is_open:
                 market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ofr,

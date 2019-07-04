@@ -398,13 +398,16 @@ class Market(object):
         return self._leverages
 
     def set_size_limits(self, min_size, max_size, step_size):
-        self._size_limits = (min_size, max_size, step_size)
+        size_precision = -int(math.log10(step_size)) if step_size > 0 else 0
+        self._size_limits = (min_size, max_size, step_size, size_precision)
 
     def set_notional_limits(self, min_notional, max_notional, step_notional):
-        self._notional_limits = (min_notional, max_notional, step_notional)
+        notional_precision = -int(math.log10(step_notional)) if step_notional > 0 else 0
+        self._notional_limits = (min_notional, max_notional, step_notional, notional_precision)
 
     def set_price_limits(self, min_price, max_price, step_price):
-        self._price_limits = (min_price, max_price, step_price)
+        price_precision = -int(math.log10(step_price)) if step_price > 0 else 0
+        self._price_limits = (min_price, max_price, step_price, price_precision)
 
     def set_leverages(self, leverages):
         self._leverages = tuple(leverages)
@@ -467,7 +470,7 @@ class Market(object):
         @param use_quote True use quote display or quote, False base, None no symbol only price.
         """
         if use_quote:
-            precision = self._quote_precision
+            precision = self._price_limits[3] or self._quote_precision  # uses tick price if defined else quote precision
         else:
             precision = self._base_precision
 
@@ -491,7 +494,7 @@ class Market(object):
         @param use_quote True use quote display or quote, False base, None no symbol only price.
         """
         if use_quote:
-            precision = self._quote_precision
+            precision = self._price_limits[3] or self._quote_precision  # uses tick price if defined else quote precision
         else:
             precision = self._base_precision
 

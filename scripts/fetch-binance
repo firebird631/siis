@@ -3,16 +3,16 @@ TO='2019-12-31T23:59:59'
 # mysql last '2019-04-01T00:00:00'
 # pgsql last '2019-06-24T00:00:00'
 
-FROM='2019-06-24T00:00:00'
+FROM='2019-07-01T00:00:00'
 python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=1w &
 
-FROM='2019-06-28T00:00:00'
+FROM='2019-07-04T00:00:00'
 python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=1d &
 
-FROM='2019-06-28T16:00:00'
+FROM='2019-7-04T04:00:00'
 python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=4h &
 
-FROM='2019-06-28T16:00:00'
+FROM='2019-07-04T04:00:00'
 python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=1h 
 
 # FROM='2019-06-24T12:00:00'

@@ -1005,44 +1005,51 @@ class Trader(Runnable):
     def last_price(self, market_id):
         """
         Return the last price for a specific market.
+        @param str market_id Valid market identifier
+        @return float Last watched price or None if missing market.
         """
         price = None
 
         self.lock()
-        market = self.market(symbol)
+        market = self.market(market_id)
         if market:
             price = market.price
         self.unlock()
 
         return price
 
-    def price(self, symbol, timestamp=None):
+    def history_price(self, market_id, timestamp=None):
         """
-        Return the price of a particular market at current time or specific timestamp.
-        @note Do an API request if timestamp is defined and price was not found into the local market history.
+        Return the price for a particular timestamp or the last if not defined.
+        @param str market_id Valid market identifier
+        @param float timestamp Valid second timetamp or if None then prefers the method last_price.
+        @return float Price or None if not found (market missing or unable to retrieve a price)
+
+        @note Cost an API request when timestamp is defined and if price
+            was not found into the local market history (only few values are kept in memory cache).
         """
         price = None
 
         if timestamp:
-            market = self.market(symbol)
+            market = self.market(market_id)
             if market:
                 # lookup into the local cache
                 price = market.recent_price(timestamp)
 
             if price is None and self._watcher:
                 # query the REST API
-                price = self._watcher.price_history(symbol, timestamp)
+                price = self._watcher.price_history(market_id, timestamp)
 
             if price is None:
                 logger.warning("Trader %s cannot found price history for %s at %s" % (self._name, market_id, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
         else:
             # last price
-            market = self.market(symbol)
+            market = self.market(market_id)
             if market:
                 price = market.price
 
             if price is None:
-                logger.warning("Trader %s cannot found last price for %s because no market was found" % (self._name, symbol,))
+                logger.warning("Trader %s cannot found last price for %s because no market was found" % (self._name, market_id,))
 
         return price
 
