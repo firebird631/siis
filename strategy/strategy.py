@@ -75,7 +75,7 @@ class Strategy(Runnable):
         self._trader_service = trader_service
         self._identifier = None
 
-        self._parameters = Strategy.merge_parameters(default_parameters, user_parameters)
+        self._parameters = Strategy.parse_parameters(Strategy.merge_parameters(default_parameters, user_parameters))
 
         self._preset = False       # True once instrument are setup
         self._prefetched = False   # True once strategies are ready
@@ -2284,3 +2284,47 @@ class Strategy(Runnable):
             return a if b is None else b
 
         return merge(default, user)
+
+    @staticmethod
+    def parse_parameters(parameters):
+        def convert(param, key):
+            param.setdefault(key, None)
+
+            if isinstance(param[key], str):
+                # convert timeframe code to float in second
+                param[key] = timeframe_from_str(param[key])
+            elif not isinstance(timeframe[key], (int, float)):
+                param[key] = None
+
+        # regulars parameters
+        parameters.setdefault('reversal', True)
+        parameters.setdefault('max-trades', 1)
+        parameters.setdefault('base-timeframe', '4h')
+        parameters.setdefault('min-traded-timeframe', '4h')
+        parameters.setdefault('max-traded-timeframe', '4h')
+        parameters.setdefault('need-update', True)
+        parameters.setdefault('min-vol24h', 0.0)
+        parameters.setdefault('min-price', 0.0)
+        parameters.setdefault('region-allow', True)
+
+        # parse timeframes based values
+        for k, param in parameters.items():
+            # each key ending with -timeframe
+            if k.endswith('-timeframe'):
+                convert(parameters, k)
+
+        # timeframes
+        parameters.setdefault('timeframes', {})
+
+        # for each timeframes
+        for k, timeframe in parameters['timeframes'].items():
+            timeframe.setdefault('depth', 0)
+            timeframe.setdefault('history', 0)
+
+            parameters.setdefault('timeframe', None)
+            parameters.setdefault('parent', None)
+
+            convert(timeframe, 'timeframe')
+            convert(timeframe, 'parent')
+
+        return parameters

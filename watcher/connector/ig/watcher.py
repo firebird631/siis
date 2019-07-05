@@ -21,7 +21,7 @@ from terminal.terminal import Terminal
 from connector.ig.connector import IGConnector
 from connector.ig.lightstreamer import LSClient, Subscription
 
-from instrument.instrument import Instrument, Candle, Tick
+from instrument.instrument import Instrument, Candle
 from database.database import Database
 
 from trader.order import Order

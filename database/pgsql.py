@@ -15,7 +15,7 @@ import psycopg2
 from watcher.service import WatcherService
 from notifier.signal import Signal
 
-from instrument.instrument import Candle, Tick
+from instrument.instrument import Candle
 
 from trader.market import Market
 from trader.asset import Asset

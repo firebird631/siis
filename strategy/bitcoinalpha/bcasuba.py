@@ -22,8 +22,8 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
     Bitcoin Alpha strategy, sub-strategy A.
     """
 
-    def __init__(self, data, params):
-        super().__init__(data, params)
+    def __init__(self, strategy_trader, params):
+        super().__init__(strategy_trader, params)
 
         if 'scores' in params:
             # for older method
@@ -48,8 +48,8 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
         self.last_signal = None
 
     def process(self, timestamp):
-        # candles = self.data.instrument.last_candles(self.tf, self.depth)
-        candles = self.data.instrument.candles_from(self.tf, self.next_timestamp - self.depth*self.tf)
+        # candles = self.strategy_trader.instrument.last_candles(self.tf, self.depth)
+        candles = self.strategy_trader.instrument.candles_from(self.tf, self.next_timestamp - self.depth*self.tf)
 
         if len(candles) < self.depth:
             # not enought samples
@@ -312,7 +312,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
 #         #   self.triangle.compute(to_ts, self.bollingerbands.last_bottom, self.bollingerbands.last_top)
 
 #         # if self.fibonacci:
-#         #   last_candles = self.data.instrument.last_candles(self.tf, self.depth)
+#         #   last_candles = self.strategy_trader.instrument.last_candles(self.tf, self.depth)
 #         #   self.fibonacci.compute(to_ts, candles)
 
 #         if self.pivotpoint:
@@ -325,7 +325,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
 
 #         if self.fibonacci:
 #             # remove previous N last time
-#             # @todo a ScatterWindowData(depth) .update(data) ... or maybe store a max depth in each indicator and remove .last_xyz
+#             # @todo a ScatterWindowData(depth) .update(strategy_trader) ... or maybe store a max depth in each indicator and remove .last_xyz
 
 #             while self.supports and self.supports[-1][0] >= timestamp - self.depth*self.tf:
 #                 self.supports.pop(-1)
@@ -712,7 +712,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
             # streamer.member('hma').update(self.hma.hmas[i], ts)
             # streamer.member('vwma').update(self.vwma.vwmas[i], ts)
 
-            streamer.member('perf').update(self.data._stats['perf']*100, ts)
+            streamer.member('perf').update(self.strategy_trader._stats['perf']*100, ts)
 
             streamer.member('end').update(ts)
 

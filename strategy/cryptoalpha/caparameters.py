@@ -3,25 +3,23 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Crypto Alpha strategy default parameters.
 
-from instrument.instrument import Instrument
-
 # magic 8,13,21,55,89,13
 DEFAULT_PARAMS = {
     'reversal': True,
     'max-trades': 3,    # max number of simultaned trades for a same market
     'trade-delay': 30,  # at least wait 30 seconds before sending another signal 
-    'base-timeframe': Instrument.TF_TICK,   # process each time strategy receive a tick
-    'min-traded-timeframe': Instrument.TF_MIN,
-    'max-traded-timeframe': Instrument.TF_MIN,
-    'sltp-timeframe': Instrument.TF_1H,
-    'ref-timeframe': Instrument.TF_4H,
+    'base-timeframe': 't',   # process each time strategy receive a tick
+    'min-traded-timeframe': '1m',
+    'max-traded-timeframe': '1m',
+    'sltp-timeframe': '1h',
+    'ref-timeframe': '4h',
     'need-update': True,      # only compute when update is waited
     'min-vol24h': 100,        # 100 BTC per 24h
     'min-price': 0.00000069,  # or 69 sats
     'region-allow': False,    # don't trade if no defined region
     'timeframes': {
         'weely': {
-            'timeframe': Instrument.TF_WEEK,
+            'timeframe': '1w',
             'parent': None,
             'mode': 'C',
             'depth': 22,
@@ -53,8 +51,8 @@ DEFAULT_PARAMS = {
             },
         },
         'daily': {
-            'timeframe': Instrument.TF_DAY,
-            'parent': Instrument.TF_WEEK,
+            'timeframe': '1d',
+            'parent': '1w',
             'mode': 'C',
             'depth': 22,
             'history': 22,
@@ -85,8 +83,8 @@ DEFAULT_PARAMS = {
             },
         },
         '4hour': {
-            'timeframe': Instrument.TF_4HOUR,
-            'parent': Instrument.TF_DAY,
+            'timeframe': '4h',
+            'parent': '1d',
             'mode': 'A',
             'depth': 56,
             'history': 56,
@@ -117,8 +115,8 @@ DEFAULT_PARAMS = {
             }   
         },
         'hourly': {
-            'timeframe': Instrument.TF_HOUR,
-            'parent': Instrument.TF_4HOUR,
+            'timeframe': '1h,'
+            'parent': '4h',
             'mode': 'A',
             'depth': 22,
             'history': 22,
@@ -149,8 +147,8 @@ DEFAULT_PARAMS = {
             }
         },
         '15min': {
-            'timeframe': Instrument.TF_15MIN,
-            'parent': Instrument.TF_HOUR,
+            'timeframe': '15m',
+            'parent': '1h',
             'mode': 'A',
             'depth': 22,
             'history': 22,
@@ -181,8 +179,8 @@ DEFAULT_PARAMS = {
             }
         },
         '5min': {
-            'timeframe': Instrument.TF_5MIN,
-            'parent': Instrument.TF_15MIN,
+            'timeframe': '5m',
+            'parent': '15m',
             'mode': 'A',
             'depth': 14,
             'history': 14,
@@ -212,41 +210,9 @@ DEFAULT_PARAMS = {
                 'rsi_high': 0.7,
             }
         },
-        '2min': {
-            'timeframe': Instrument.TF_2MIN,
-            'parent': Instrument.TF_5MIN,
-            'mode': 'A',
-            'depth': 20,
-            'history': 20,
-            'score-ratio': 0.5,
-            'score-level': 0.05,
-            'indicators': {
-                'price': ('price', 1,),
-                'volume': ('volume', 0,),
-                'rsi': ('rsi', 8,),
-                'stochrsi': ('stochrsi', 13, 13, 13),
-                'sma': ('sma', 20,),
-                'ema': ('ema', 8,),
-                'hma': ('hma', 8,),
-                'vwma': ('vwma', 8,),
-                'momentum': ('momentum', 20,),
-                'stochastic': None,
-                'macd': None,  # ('macd', 17,),
-                'bollingerbands': None, # ('bollingerbands', 26,),
-                'triangle': None,
-                'fibonacci': None,  # ('fibonacci', 15,),
-                'pivotpoint': ('pivotpoint', 3,),
-                'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 2.618),
-            },
-            'constants': {
-                'rsi_low': 0.3,
-                'rsi_high': 0.7,
-            }
-        },
         '1min': {
-            'timeframe': Instrument.TF_MIN,
-            'parent': Instrument.TF_MIN,
+            'timeframe': '1m,'
+            'parent': '5m,'
             'mode': 'A',
             'depth': 20,
             'history': 20,

@@ -19,7 +19,7 @@ from connector.bitmex.connector import Connector
 from trader.order import Order
 from trader.market import Market
 
-from instrument.instrument import Instrument, Candle, Tick
+from instrument.instrument import Instrument, Candle
 
 from config import config
 

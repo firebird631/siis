@@ -108,16 +108,15 @@ class Region(object):
     #
 
     def can_delete(self, timestamp):
-        return self._expiry and self._expiry <= timestamp
+        return self._expiry > 0 and timestamp >= self._expiry
 
-    def test_region(self, signal):
+    def test_region(self, timestamp, signal):
         """
         Each time the market price change perform to this test. If the test pass then
         it is executed and removed from the list or kept if its a persistent operation.
 
         @return True if the signal pass the test.
         """
-
         if self._stage == Region.STAGE_EXIT and signal.signal > 0:
             # cannot validate an exit region on the entry signal
             return False
@@ -126,7 +125,15 @@ class Region(object):
             # cannot validate an entry region on the exit signal
             return False
 
-        return self.test(signal)
+        if self._expiry > 0 and timestamp >= self._expiry:
+            # region expired
+            return False
+
+        if self._timeframe > 0 and signal.timeframe != self._timeframe:
+            # timeframe missmatch
+            return False
+
+        return self.test(timestamp, signal)
 
     #
     # overrides
@@ -145,7 +152,7 @@ class Region(object):
         """
         return True
 
-    def test(self, signal):
+    def test(self, timestamp, signal):
         """
         Perform the test of the region on the signal data.
         """
@@ -250,6 +257,15 @@ class Region(object):
 class RangeRegion(Region):
     """
     Rectangle region with two horizontal price limit (low/high).
+
+    low Absolute low price
+    high Absolute high price (high > low)
+    trigger Absolute price if reached the region is deleted
+
+    Trigger depends of the direction :
+        - in long if the price goes below trigger then delete the region
+        - in short if the price goes above trigger then delete the region
+        - if no trigger is defined there is no such deletion
     """
 
     NAME = "range"
@@ -261,6 +277,8 @@ class RangeRegion(Region):
         self._low = 0.0
         self._high = 0.0
 
+        self._cancelation = 0.0
+
     def init(self, parameters):
         self._low = parameters.get('low', 0.0)
         self._high = parameters.get('high', 0.0)
@@ -268,7 +286,8 @@ class RangeRegion(Region):
     def check(self):
         return self._low > 0 and self._high > 0 and self._high >= self._low
 
-    def test(self, signal):
+    def test(self, timestamp, signal):
+        # signal price is in low / high range
         return self._low <= signal.p <= self._high
 
     def str_info(self):
@@ -333,7 +352,9 @@ class TrendRegion(Region):
 
         return True
 
-    def test(self, signal):
+    def test(self, timestamp, signal):
+        timeframe = signal.timeframe
+
         # higher than low
         # y = ax + b
         # @todo

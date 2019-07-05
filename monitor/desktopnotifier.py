@@ -349,33 +349,32 @@ class DesktopNotifier(Notifiable):
         if Terminal.inst().is_active('strategy') or Terminal.inst().is_active('perf'):
             results = appl.get_stats()
 
-            if results:
-                # tabular formated text
-                arr1, arr2 = appl.formatted_stats(results, style=Terminal.inst().style(), quantities=True)
+            # tabular formated text
+            arr1, arr2 = appl.formatted_stats(results, style=Terminal.inst().style(), quantities=True)
 
-                # perf view
-                if Terminal.inst().is_active('perf'):
-                    Terminal.inst().info("Perf per market trades for strategy %s - %s" % (appl.name, appl.identifier), view='perf-head')
-                    Terminal.inst().info(arr1, view='perf')
+            # perf view
+            if Terminal.inst().is_active('perf'):
+                Terminal.inst().info("Perf per market trades for strategy %s - %s" % (appl.name, appl.identifier), view='perf-head')
+                Terminal.inst().info(arr1, view='perf')
 
-                # strategy view
-                if Terminal.inst().is_active('strategy'):
-                    Terminal.inst().info("Active trades for strategy %s - %s" % (appl.name, appl.identifier), view='strategy-head')
-                    Terminal.inst().info(arr2, view='strategy')
+            # strategy view
+            if Terminal.inst().is_active('strategy'):
+                Terminal.inst().info("Active trades for strategy %s - %s" % (appl.name, appl.identifier), view='strategy-head')
+                Terminal.inst().info(arr2, view='strategy')
 
         # stats view
         if Terminal.inst().is_active('stats'):
             Terminal.inst().info("Trade history for strategy %s - %s" % (appl.name, appl.identifier), view='stats-head')
 
             results = appl.get_history_stats(0, 50, None)
-            if results:
-                # tabular formated text
-                arr = appl.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
 
-                try:
-                    Terminal.inst().info(arr, view='stats')
-                except:
-                    pass
+            # tabular formated text
+            arr = appl.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
+
+            try:
+                Terminal.inst().info(arr, view='stats')
+            except:
+                pass
 
     def refresh_traders_stats(self):
         if not self.trader_service:

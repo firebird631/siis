@@ -3,8 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Forex Alpha strategy default parameters
 
-from instrument.instrument import Instrument
-
 DEFAULT_PARAMS = {
     'reversal': True,
     'pyramided': 0,
@@ -14,15 +12,15 @@ DEFAULT_PARAMS = {
     'score-trigger': 0.5,
     'score-increase-factor': 0.4,
     'score-regression-factor': 0.3,
-    'base-timeframe': Instrument.TF_TICK,   # process each time strategy receive a tick
-    'min-traded-timeframe': Instrument.TF_MIN,
-    'max-traded-timeframe': Instrument.TF_MIN,
+    'base-timeframe': 't',   # process each time strategy receive a tick
+    'min-traded-timeframe': '1m',
+    'max-traded-timeframe': '1m',
     'need-update': True,      # only compute when update is waited
     'min-vol24h': 100,        # 300 BTC per 24h
     'min-price': 0.00000069,  # or 69 sats (to binary otherwise)
     'timeframes': {
         'weekly': {
-            'timeframe': Instrument.TF_WEEK,
+            'timeframe': '1w',
             'parent': None,
             'mode': 'C',
             'depth': 22,
@@ -64,8 +62,8 @@ DEFAULT_PARAMS = {
             },
         },
         'daily': {
-            'timeframe': Instrument.TF_DAY,
-            'parent': Instrument.TF_WEEK,
+            'timeframe': '1d',
+            'parent': '1w',
             'mode': 'A',
             'depth': 41,
             'history': 41,
@@ -106,8 +104,8 @@ DEFAULT_PARAMS = {
             }
         },
         '4hour': {
-            'timeframe': Instrument.TF_4HOUR,
-            'parent': Instrument.TF_DAY,
+            'timeframe': '4h',
+            'parent': '1d',
             'mode': 'A',
             'depth': 56,
             'history': 56,
@@ -150,8 +148,8 @@ DEFAULT_PARAMS = {
             }   
         },
         'hourly': {
-            'timeframe': Instrument.TF_HOUR,
-            'parent': Instrument.TF_4HOUR,
+            'timeframe': '1h',
+            'parent': '4h',
             'mode': 'A', 
             'depth': 41,
             'history': 41,
@@ -192,8 +190,8 @@ DEFAULT_PARAMS = {
             }
         },
         '15min': {
-            'timeframe': Instrument.TF_15MIN,
-            'parent': Instrument.TF_HOUR,
+            'timeframe': '15m',
+            'parent': '1h',
             'mode': 'A',
             'depth': 41,
             'history': 41,
@@ -234,8 +232,8 @@ DEFAULT_PARAMS = {
             }
         },
         '5min': {
-            'timeframe': Instrument.TF_5MIN,
-            'parent': Instrument.TF_15MIN,
+            'timeframe': '5m',
+            'parent': '15m',
             'mode': 'A',
             'depth': 41,
             'history': 41,
@@ -276,8 +274,8 @@ DEFAULT_PARAMS = {
             }
         },
         '1min': {
-            'timeframe': Instrument.TF_MIN,
-            'parent': Instrument.TF_5MIN,
+            'timeframe': '1m',
+            'parent': '5m',
             'mode': 'A',
             'depth': 41,
             'history': 41,
@@ -325,8 +323,8 @@ DEFAULT_PARAMS = {
             }
         },
         # '10sec': {
-        #     'timeframe': Instrument.TF_10SEC,
-        #     'parent': Instrument.TF_MIN,
+        #     'timeframe': '10s',
+        #     'parent': '1m',
         #     'mode': 'A',
         #     'depth': 100,
         #     'history': 100,

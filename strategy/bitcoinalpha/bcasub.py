@@ -12,12 +12,12 @@ class BitcoinAlphaStrategySub(TimeframeBasedSub):
     Bitcoin Alpha sub computation.
     """
 
-    def __init__(self, data, params):
-        super().__init__(data, params['timeframe'], params['parent'], params['depth'], params['history'])
+    def __init__(self, strategy_trader, params):
+        super().__init__(strategy_trader, params['timeframe'], params['parent'], params['depth'], params['history'])
 
         # indicators
         for ind, param in params['indicators'].items():
             if param is not None:
-                setattr(self, ind, self.data.strategy.indicator(param[0])(self.tf, *param[1:]))
+                setattr(self, ind, self.strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:]))
             else:
                 setattr(self, ind, None)

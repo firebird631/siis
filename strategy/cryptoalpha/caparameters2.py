@@ -3,25 +3,23 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Crypto Alpha strategy default parameters.
 
-from instrument.instrument import Instrument
-
 # magic 8,13,21,55,89,13
 DEFAULT_PARAMS = {
     'reversal': True,
     'max-trades': 1,    # max number of simultaned trades for a same market
     'trade-delay': 30,  # at least wait 30 seconds before sending another signal 
-    'base-timeframe': Instrument.TF_TICK,   # process each time strategy receive a tick
-    'min-traded-timeframe': Instrument.TF_MIN,
-    'max-traded-timeframe': Instrument.TF_MIN,
-    'sltp-timeframe': Instrument.TF_1H,
-    'ref-timeframe': Instrument.TF_4H,
+    'base-timeframe': 't',   # process each time strategy receive a tick
+    'min-traded-timeframe': '1m',
+    'max-traded-timeframe': '1m',
+    'sltp-timeframe': '1h',
+    'ref-timeframe': '4h',
     'need-update': True,      # only compute when update is waited
     'min-vol24h': 100,        # 100 BTC per 24h
     'min-price': 0.00000069,  # or 69 sats
     'region-allow': True,     # can trade if no defined region
     'timeframes': {
         '4hour': {
-            'timeframe': Instrument.TF_4HOUR,
+            'timeframe': '4h',
             'parent': None,
             'mode': 'B',
             'depth': 56,
@@ -51,8 +49,8 @@ DEFAULT_PARAMS = {
             }   
         },
         'hourly': {
-            'timeframe': Instrument.TF_HOUR,
-            'parent': Instrument.TF_4HOUR,
+            'timeframe': '1h',
+            'parent': '4h',
             'mode': 'B', 
             'depth': 22,
             'history': 22,
@@ -82,8 +80,8 @@ DEFAULT_PARAMS = {
             }
         },
         '30min': {
-            'timeframe': Instrument.TF_30MIN,
-            'parent': Instrument.TF_HOUR,
+            'timeframe': '30m',
+            'parent': '1h',
             'mode': 'B',
             'depth': 22,
             'history': 22,
@@ -111,8 +109,8 @@ DEFAULT_PARAMS = {
             }
         },
         '1min': {
-            'timeframe': Instrument.TF_MIN,
-            'parent': Instrument.TF_30MIN,
+            'timeframe': '1m',
+            'parent': '30m',
             'mode': 'A',
             'depth': 36,
             'history': 36,

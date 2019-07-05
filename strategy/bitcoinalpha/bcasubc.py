@@ -18,8 +18,8 @@ class BitcoinAlphaStrategySubC(BitcoinAlphaStrategySub):
     Bitcoin Alpha strategy, sub-strategy C.
     """
 
-    def __init__(self, data, params):
-        super().__init__(data, params)
+    def __init__(self, strategy_trader, params):
+        super().__init__(strategy_trader, params)
 
         if 'scores' in params:
             # for older method
@@ -35,8 +35,8 @@ class BitcoinAlphaStrategySubC(BitcoinAlphaStrategySub):
         self.rsi_high = params['constants']['rsi_high']
 
     def process(self, timestamp):
-        # candles = self.data.instrument.last_candles(self.tf, self.depth)
-        candles = self.data.instrument.candles_from(self.tf, self.next_timestamp - self.depth*self.tf)
+        # candles = self.strategy_trader.instrument.last_candles(self.tf, self.depth)
+        candles = self.strategy_trader.instrument.candles_from(self.tf, self.next_timestamp - self.depth*self.tf)
 
         if len(candles) < self.depth:
             # not enought samples
@@ -191,7 +191,7 @@ class BitcoinAlphaStrategySubC(BitcoinAlphaStrategySub):
             # streamer.member('hma').update(self.hma.hmas[i], ts)
             # streamer.member('vwma').update(self.vwma.vwmas[i], ts)
 
-            streamer.member('perf').update(self.data._stats['perf']*100, ts)
+            streamer.member('perf').update(self.strategy_trader._stats['perf']*100, ts)
 
             streamer.member('end').update(ts)
 

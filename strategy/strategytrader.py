@@ -522,19 +522,42 @@ class StrategyTrader(object):
 
         return False
 
-    def check_regions(self, signal, allow=True):
+    def cleanup_regions(self, timestamp):
+        """
+        Regenerate the list of regions by removing the expired regions.
+        @warning Non thread-safe but must be protected.
+        """
+        regions = []
+
+        for region in self.regions:
+            if not region.can_delete(timestamp):
+                regions.append(region)
+
+        # replace the regions list
+        self.regions = regions
+
+    def check_regions(self, timestamp, signal, allow=True):
         """
         Compare a signal to defined regions if somes are defineds.
         @param signal Signal to check with any regions.
         @param allow Default returned value if there is no defined region (default True).
 
-        @note This method is not trade safe.
+        @warning Non thread-safe but must be protected.
         """
         if self.regions:
+            mutated = False
+
             # one ore many region, have to pass at least one test
             for region in self.regions:
-                if region.test_region(signal):
+                if region.can_delete(timestamp):
+                    mutated |= True
+
+                elif region.test_region(timestamp, signal):
+                    # match with at least one region
                     return True
+
+            if mutated:
+                self.cleanup_regions()
 
             return False
         else:

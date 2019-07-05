@@ -20,7 +20,7 @@ from config import config
 
 from terminal.terminal import Terminal
 
-from instrument.instrument import Instrument, Candle, Tick
+from instrument.instrument import Instrument, Candle
 from database.database import Database
 
 from trader.market import Market

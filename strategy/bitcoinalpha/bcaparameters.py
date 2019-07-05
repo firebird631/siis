@@ -3,23 +3,21 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Bitcoin Alpha strategy default parameters.
 
-from instrument.instrument import Instrument
-
 DEFAULT_PARAMS = {
     'reversal': True,
     'pyramided': 0,
     'hedging': False,
     'max-trades': 3,    # max number of simultaned trades for a same market
     'trade-delay': 30,  # at least wait 30 seconds before sending another signal 
-    'base-timeframe': Instrument.TF_TICK,   # process each time strategy receive a tick
-    'min-traded-timeframe': Instrument.TF_2MIN,
-    'max-traded-timeframe': Instrument.TF_15MIN,
+    'base-timeframe': 't',   # process each time strategy receive a tick
+    'min-traded-timeframe': '2m',
+    'max-traded-timeframe': '15m',
     'need-update': False,      # only compute when update is waited
     'min-vol24h': 100,        # 300 BTC per 24h
     'min-price': 0.00000069,  # or 69 sats (to binary otherwise)
     'timeframes': {
         'daily': {
-            'timeframe': Instrument.TF_DAY,
+            'timeframe': '1d',
             'parent': None,
             'mode': 'A',
             'depth': 41,
@@ -50,8 +48,8 @@ DEFAULT_PARAMS = {
             }
         },
         '4hour': {
-            'timeframe': Instrument.TF_4HOUR,
-            'parent': Instrument.TF_DAY,
+            'timeframe': '4h',
+            'parent': '1d',
             'mode': 'A',
             'depth': 56,
             'history': 56,
@@ -83,8 +81,8 @@ DEFAULT_PARAMS = {
             }
         },
         'hourly': {
-            'timeframe': Instrument.TF_HOUR,
-            'parent': Instrument.TF_4HOUR,
+            'timeframe': '1h',
+            'parent': '4h',
             'mode': 'A', 
             'depth': 41,
             'history': 41,
@@ -114,8 +112,8 @@ DEFAULT_PARAMS = {
             }
         },
         '15min': {
-            'timeframe': Instrument.TF_15MIN,
-            'parent': Instrument.TF_HOUR,
+            'timeframe': '15m',
+            'parent': '1h',
             'mode': 'A',
             'depth': 41,
             'history': 41,
@@ -145,8 +143,8 @@ DEFAULT_PARAMS = {
             }
         },
         '5min': {
-            'timeframe': Instrument.TF_5MIN,
-            'parent': Instrument.TF_15MIN,
+            'timeframe': '5m',
+            'parent': '15m',
             'mode': 'A',
             'depth': 41,
             'history': 41,
@@ -176,8 +174,8 @@ DEFAULT_PARAMS = {
             }
         },
         '2min': {
-            'timeframe': Instrument.TF_2MIN,
-            'parent': Instrument.TF_5MIN,
+            'timeframe': '2m',
+            'parent': '5m',
             'mode': 'A',
             'depth': 41,
             'history': 41,
@@ -208,26 +206,25 @@ DEFAULT_PARAMS = {
     }
 }
 
-
 # # magic 8,13,21,55,89,13
 # DEFAULT_PARAMS = {
 #     'reversal': True,
-# 	'pyramided': 0,
+#     'pyramided': 0,
 #     'max-trades': 3,    # max number of simultaned trades for a same market
 #     'trade-delay': 30,  # at least wait 30 seconds before sending another signal 
 #     'score-trigger': 0.5,
 #     'score-increase-factor': 0.4,
 #     'score-regression-factor': 0.3,
-#     'base-timeframe': Instrument.TF_TICK,   # process each time strategy receive a tick
-#     'min-traded-timeframe': Instrument.TF_MIN,
-#     'max-traded-timeframe': Instrument.TF_HOUR,
+#     'base-timeframe': 't',   # process each time strategy receive a tick
+#     'min-traded-timeframe': '1m',
+#     'max-traded-timeframe': '1h',
 #     'need-update': False,     # only compute when update is waited
 #     'min-vol24h': 100,        # 300 BTC per 24h
 #     'min-price': 0.00000069,  # or 69 sats (to binary otherwise)
 #     'timeframes': {
 #         'weekly': {
-#             'timeframe': Instrument.TF_WEEK,
-#             'sub-tf': Instrument.TF_DAY,
+#             'timeframe': '1w',
+#             'parent': None,
 #             'mode': 'C',
 #             'depth': 22,
 #             'history': 22,  #52,  # 1 year
@@ -267,8 +264,8 @@ DEFAULT_PARAMS = {
 #             },
 #         },
 #         'daily': {
-#             'timeframe': Instrument.TF_DAY,
-#             'sub-tf': Instrument.TF_4HOUR,
+#             'timeframe': '1d',
+#             'parent': '1w',
 #             'mode': 'C',
 #             'depth': 22,
 #             'history': 22,  #365,  # 365 days
@@ -308,8 +305,8 @@ DEFAULT_PARAMS = {
 #             },
 #         },
 #        '4hour': {
-#             'timeframe': Instrument.TF_4HOUR,
-#             'sub-tf': Instrument.TF_HOUR,
+#             'timeframe': '4h',
+#             'parent': '1d',
 #             'mode': 'A',
 #             'depth': 55,
 #             'history': 55,  # 252,  # 42 days
@@ -349,8 +346,8 @@ DEFAULT_PARAMS = {
 #             }   
 #         },
 #         'hourly': {
-#             'timeframe': Instrument.TF_HOUR,
-#             'sub-tf': Instrument.TF_15MIN,
+#             'timeframe': '1h',
+#             'parent': '4h',
 #             'mode': 'A',
 #             'depth': 22,
 #             'history': 22, # 504,  # 21 days
@@ -390,8 +387,8 @@ DEFAULT_PARAMS = {
 #             }
 #         },
 #         '15min': {
-#             'timeframe': Instrument.TF_15MIN,
-#             'sub-tf': Instrument.TF_5MIN,
+#             'timeframe': '15m',
+#             'parent': '1h',
 #             'mode': 'A',
 #             'depth': 22,
 #             'history': 22,  #504,  # 5.25 days
@@ -431,8 +428,8 @@ DEFAULT_PARAMS = {
 #             }
 #         },
 #         '5min': {
-#             'timeframe': Instrument.TF_5MIN,
-#             'sub-tf': Instrument.TF_MIN,
+#             'timeframe': '5m',
+#             'parent': '15m',
 #             'mode': 'A',
 #             'depth': 14,
 #             'history': 14, # 1152,  # 4 days
@@ -472,8 +469,8 @@ DEFAULT_PARAMS = {
 #             }
 #         },
 #         # '1min': {
-#         #     'timeframe': Instrument.TF_MIN,
-#         #     'sub-tf': Instrument.TF_TICK,
+#         #     'timeframe':'1m',
+#         #     'parent': '5m',
 #         #     'mode': 'B',
 #         #     'depth': 20,
 #         #     'history': 20,  # 1440,  # 1 day

@@ -23,8 +23,8 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
     Forex Alpha strategy, sub-strategy A.
     """
 
-    def __init__(self, data, params):
-        super().__init__(data, params)
+    def __init__(self, strategy_trader, params):
+        super().__init__(strategy_trader, params)
 
         if 'scores' in params:
             # for older method
@@ -40,8 +40,8 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
         self.rsi_high = params['constants']['rsi_high']
 
     def process(self, timestamp):
-        # candles = self.data.instrument.last_candles(self.tf, self.depth)
-        candles = self.data.instrument.candles_from(self.tf, self.next_timestamp - self.depth*self.tf)
+        # candles = self.strategy_trader.instrument.last_candles(self.tf, self.depth)
+        candles = self.strategy_trader.instrument.candles_from(self.tf, self.next_timestamp - self.depth*self.tf)
 
         if len(candles) < self.depth:
             # not enought samples
@@ -244,7 +244,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT  # CANCEL
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    # Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.data.instrument.symbol, signal.p, self.tf), view='default')
+                    # Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
 
             #
             # setup completed
@@ -256,7 +256,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                    # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
             #
             # setup aborted
@@ -269,7 +269,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    #Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.data.instrument.symbol, self.tf, td.c, 'p' if signal.p else ''), view='default')
+                    #Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, td.c, 'p' if signal.p else ''), view='default')
 
             #
             # CD entry
@@ -288,7 +288,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     signal.dir = 1
                     signal.p = self.price.last
                     signal.sl = self.tomdemark.c.tdst
-                    Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.data.instrument.symbol, self.tf, signal.sl,), view='default')
+                    Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.strategy_trader.instrument.symbol, self.tf, signal.sl,), view='default')
 
             #
             # CD13 setup
@@ -538,7 +538,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT  # CANCEL
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.data.instrument.symbol, signal.p, self.tf), view='default')
+                    Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
 
             #
             # setup completed
@@ -551,7 +551,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                    Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
             #
             # setup aborted
@@ -565,7 +565,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                    Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
             #
             # CD entry
@@ -580,7 +580,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                     signal.dir = 1
                     signal.p = self.price.close[-1]
                     signal.sl = self.tomdemark.c.tdst
-                    Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.data.instrument.symbol, self.tf, signal.sl,), view='default')
+                    Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.strategy_trader.instrument.symbol, self.tf, signal.sl,), view='default')
 
             #
             # CD13 setup
@@ -778,7 +778,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 signal.dir = 1
                 signal.p = self.price.close[-1]
 
-                # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
             # buy-setup
             elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d > 0 and level1_signal > 0:
@@ -787,7 +787,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 signal.dir = -1
                 signal.p = self.price.close[-1]
                 
-                # Terminal.inst().info("Exit short %s %s c8p-c9 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                # Terminal.inst().info("Exit short %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
             #
             # setup aborted (@todo how to in this long/short case)
@@ -799,7 +799,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 signal.dir = 1
                 signal.p = self.price.close[-1]
 
-                # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
             elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d > 0) and level1_signal > 0:
                 signal = StrategySignal(self.tf, timestamp)
@@ -807,7 +807,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 signal.dir = -1
                 signal.p = self.price.close[-1]
 
-                # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
             # #
             # # invalidation 2 of opposite setup
@@ -819,7 +819,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
             #     signal.dir = 1
             #     signal.p = self.price.close[-1]
 
-            #     Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.data.instrument.symbol, signal.p, self.tf), view='default')
+            #     Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
 
         if signal and signal.signal == StrategySignal.SIGNAL_ENTRY:
             # if level1_signal > 0 and len(self.pivotpoint.supports[1]):
@@ -1097,7 +1097,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
             # streamer.member('hma').update(float(self.hma.hmas[i]), ts)
             # streamer.member('vwma').update(float(self.vwma.vwmas[i]), ts)
 
-            streamer.member('perf').update(self.data._stats['perf']*100, ts)
+            streamer.member('perf').update(self.strategy_trader._stats['perf']*100, ts)
 
             streamer.member('end').update(ts)
 
