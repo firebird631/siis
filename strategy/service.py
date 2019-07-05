@@ -226,11 +226,17 @@ class StrategyService(Service):
             self._timestep_thread = None
 
         for k, appl in self._appliances.items():
+            if not appl:
+                continue
+
             # stop all workers
             if appl.running:
                 appl.stop()
 
         for k, appl in self._appliances.items():
+            if not appl:
+                continue
+
             # join them
             if appl.thread.is_alive():
                 appl.thread.join()

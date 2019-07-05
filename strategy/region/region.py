@@ -164,7 +164,7 @@ class Region(object):
         return {
             'label': "undefined",
             'name': self.name(),
-            'id': self.id(),
+            'id': self.id,
             'stage': self.stage_to_str(),
             'direction': self.direction_to_str(),
             'timeframe': self.timeframe_to_str(),
@@ -176,7 +176,7 @@ class Region(object):
         Override this method and add specific parameters for dumps parameters for persistance model.
         """
         return {
-            'id': self.id(),
+            'id': self.id,
             'type': self.name(),
             'stage': self._stage,  #  "entry" if self._stage == Region.STAGE_ENTRY else "exit" if self._stage == Region.STAGE_EXIT else "both",
             'direction': self._dir,  # "long" if self._dir == Region.LONG else "short" if self._dir == Region.SHORT else "both",
@@ -279,7 +279,7 @@ class RangeRegion(Region):
         return {
             'label': "Range region",
             'name': self.name(),
-            'id': self.id(),
+            'id': self.id,
             'stage': self.stage_to_str(),
             'direction': self.direction_to_str(),
             'timeframe': self.timeframe_to_str(),
@@ -289,7 +289,7 @@ class RangeRegion(Region):
         }
 
     def dumps(self):
-        data = super.dumps()
+        data = super().dumps()
         
         data['low'] = self._low
         data['high'] = self._high
@@ -297,7 +297,7 @@ class RangeRegion(Region):
         return data
 
     def loads(self, data):
-        super.loads(data)
+        super().loads(data)
 
         self._low = data.get('low', 0.0)
         self._high = data.get('high', 0.0)
@@ -352,7 +352,7 @@ class TrendRegion(Region):
         return {
             'label': "Range region",
             'name': self.name(),
-            'id': self.id(),
+            'id': self.id,
             'stage': self.stage_to_str(),
             'direction': self.direction_to_str(),
             'timeframe': self.timeframe_to_str(),
@@ -364,7 +364,7 @@ class TrendRegion(Region):
         }
 
     def dumps(self):
-        data = super.dumps()
+        data = super().dumps()
         
         data['low-a'] = self._low_a
         data['high-a'] = self._high_a
@@ -375,7 +375,7 @@ class TrendRegion(Region):
         return data
 
     def loads(self, data):
-        super.loads(data)
+        super().loads(data)
 
         self._low_a = data.get('low-a', 0.0)
         self._high_a = data.get('high-a', 0.0)

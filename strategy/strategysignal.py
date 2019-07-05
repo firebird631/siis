@@ -32,6 +32,7 @@ class StrategySignal(object):
     - sl for stop-loss price
     - tp for take-profit price
     - ts for timestamp (UTC)
+    - ptp for partial TP from 0 to 1
     """
 
     SIGNAL_NONE = 0   # signal type undefined (must be entry or exit else its informal)
@@ -47,6 +48,8 @@ class StrategySignal(object):
         self.p = 0
         self.sl = 0
         self.tp = 0
+
+        self.ptp = 1.0
 
     def base_time(self) -> float:
         """
@@ -96,6 +99,10 @@ class StrategySignal(object):
     def take_profit(self):
         return self.tp
 
+    @property
+    def partial_tp(self):
+        return self.ptp
+
     def direction_str(self) -> str:
         if self.dir > 0:
             return "long"
@@ -103,6 +110,16 @@ class StrategySignal(object):
             return "short"
         else:
             return ""
+
+    def dup(self, _from):
+        self.timeframe = _from.timeframe
+        self.ts = _from.ts
+        self.signal = _from.signal
+
+        self.dir = _from.dir
+        self.p = _from.p
+        self.sl = _from.sl
+        self.tp = _from.tp
 
     def compare(self, _to) -> bool:
         """

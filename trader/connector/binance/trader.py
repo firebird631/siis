@@ -265,8 +265,8 @@ class BinanceTrader(Trader):
         reason = ""
 
         try:
-            # result = self._watcher.connector.client.create_order(**data)
-            result = self._watcher.connector.client.create_test_order(**data)
+            result = self._watcher.connector.client.create_order(**data)
+            # result = self._watcher.connector.client.create_test_order(**data)
         except BinanceRequestException as e:
             reason = str(e)
         except BinanceAPIException as e:
@@ -276,17 +276,17 @@ class BinanceTrader(Trader):
 
         if (result and result['status'] == Client.ORDER_STATUS_REJECTED) or reason:
             logger.error("Trader %s rejected order %s %s %s reason %s !" % (self.name, order.direction_to_str(), quantity, symbol, reason))
-            return False
 
-        order.set_order_id(result['orderId'])
+        if result and 'orderId' in result:
+            order.set_order_id(result['orderId'])
 
-        order.created_time = result['transactTime'] * 0.001
-        order.transact_time = result['transactTime'] * 0.001
+            order.created_time = result['transactTime'] * 0.001
+            order.transact_time = result['transactTime'] * 0.001
 
-        # commented because done in the order traded slot
-        # if result['executedQty']:
-        #     # partially or fully executed quantity
-        #     order.executed = float(result['executedQty'])
+            # commented because done in the order traded slot
+            # if result['executedQty']:
+            #     # partially or fully executed quantity
+            #     order.executed = float(result['executedQty'])
 
         # store the order until fully completed or canceled
         self.lock()

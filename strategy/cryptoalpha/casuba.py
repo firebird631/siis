@@ -640,16 +640,16 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             elif self.rsi.last < 0.6:  # initial: 0.6
                 level1_signal = 1
 
-        if bbawe > 0 and level1_signal >= 0:
+        if bbawe > 0 and level1_signal > 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_ENTRY
             signal.dir = 1
             signal.p = self.price.close[-1]
 
-            # Terminal.inst().info("Entry long %s %s" % (self.data.instrument.symbol, self.tf), view='content')
-
             if self.tomdemark.c.tdst:
                 signal.sl = self.tomdemark.c.tdst
+
+            # Terminal.inst().info("Entry long %s %s" % (self.data.instrument.symbol, self.tf), view='content')
 
         elif bbawe < 0 and level1_signal < 0:
             # exit signal
@@ -657,27 +657,24 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             signal.signal = StrategySignal.SIGNAL_EXIT
             signal.dir = 1
             signal.p = self.price.close[-1]
-            # signal = None
 
         if self.tomdemark:
             self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
-
-            if self.tomdemark.c.c >= 9 and self.tomdemark.c.d < 0 and level1_signal < 0:
+            if 0:#self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and (level1_signal < 0 or bbawe < 0):
                 # setup complete and trend change
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT
                 signal.dir = 1
                 signal.p = self.price.close[-1]
-
                 # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='content')
-                signal = None
 
-            elif self.tomdemark.c.c >= 2 and self.tomdemark.c.d > 1:
+            elif 0:#2 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0 and (level1_signal < 0):
                 # cancelation
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT
                 signal.dir = 1
                 signal.p = self.price.close[-1]
+                Terminal.inst().info("Cancel long %s %s c8p-c9 (%s%s)" % (self.data.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='content')
 
         return signal
 

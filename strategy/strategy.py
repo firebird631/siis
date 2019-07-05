@@ -1127,6 +1127,8 @@ class Strategy(Runnable):
                         'w': market.format_price(trade.worst_price()),
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
+                        'aep': trade.entry_price,
+                        'axp': trade.exit_price
                     })
 
                     rate += trade_rate or trade.pl
@@ -1180,6 +1182,8 @@ class Strategy(Runnable):
                         'bt': trade['bt'],
                         'w': trade['w'],
                         'wt': trade['wt'],
+                        'aep': trade['aep'],
+                        'axp': trade['axp']
                     })
 
                 for trade in sub_trader._stats['success']:
@@ -1297,10 +1301,11 @@ class Strategy(Runnable):
             roe_sum += r['roe']
 
             for t in r['trades']:
-                if t['rate'] < 0 and float(t['b']) > float(t['e']):  # have been profitable but loss
+                # @todo direction
+                if t['rate'] < 0 and float(t['b']) > float(t['aep']):  # have been profitable but loss
                     cr = O + ("%.2f" % ((t['rate']*100.0),)) + W
                 elif t['rate'] < 0:  # loss
-                    cr = O + ("%.2f" % ((t['rate']*100.0),)) + W
+                    cr = R + ("%.2f" % ((t['rate']*100.0),)) + W
                 elif t['rate'] > 0:  # profit
                     cr = G + ("%.2f" % ((t['rate']*100.0),)) + W
                 else:  # equity
@@ -1496,7 +1501,8 @@ class Strategy(Runnable):
             O = ''
 
         for t in results:
-            if t['rate'] < 0 and float(t['b']) > float(t['e']):  # have been profitable but loss
+            # @todo direction
+            if t['rate'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
                 cr = O + "%.2f" % ((t['rate']*100.0),) + W            
             elif t['rate'] < 0:  # loss
                 cr = R + "%.2f" % ((t['rate']*100.0),) + W
@@ -1505,13 +1511,17 @@ class Strategy(Runnable):
             else:
                 cr = "0.0"
 
+            # color TP in green if hitted, similarely in red for SL
+            _tp = (G + t['tp'] + W) if float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']) else t['tp']
+            _sl = (R + t['sl'] + W) if float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']) else t['sl']
+
             # per active trade
             markets.append(t['symbol'])
             trade_id.append(t['id'])
             direction.append(t['d'])
             price.append(t['p']),
-            sl.append(t['sl']),
-            tp.append(t['tp']),
+            sl.append(_sl),
+            tp.append(_tp),
             rate.append(cr)
             qty.append(t['q']),
             eqty.append(t['e']),

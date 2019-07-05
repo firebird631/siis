@@ -77,6 +77,8 @@ class StrategyTrade(object):
 
         self.pl = 0.0    # once closed profit/loss in percent (valid once partially or fully closed)
 
+        self.ptp = 1.0   # partial take-profit rate (only during trade alive)
+
         self._stats = {
             'best-price': 0.0,
             'best-timestamp': 0.0,
@@ -162,6 +164,10 @@ class StrategyTrade(object):
         return self.pl
 
     @property
+    def partial_tp(self):
+        return self.ptp
+
+    @property
     def timeframe(self):
         return self._timeframe
 
@@ -170,6 +176,10 @@ class StrategyTrade(object):
 
     def is_user_trade(self):
         return self._user_trade
+
+    @partial_tp.setter
+    def partial_tp(self, ptp):
+        self.ptp = ptp
 
     #
     # processing

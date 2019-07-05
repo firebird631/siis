@@ -424,7 +424,8 @@ class StrategyTrader(object):
                     # estimation on mid last price, but might be close market price
                     market = trader.market(self.instrument.market_id)
 
-                    rate = trade.profit_loss
+                    # rate = (trade.best_price() - trade.entry_price) / trade.entry_price  # for best missed profit
+                    rate = trade.profit_loss  # realized profit/loss
 
                     # fee rate for entry and exit
                     if trade._stats['entry-maker']:
@@ -465,6 +466,8 @@ class StrategyTrader(object):
                         'tp': market.format_price(trade.take_profit),
                         'sl': market.format_price(trade.stop_loss),
                         'tf': timeframe_to_str(trade.timeframe),
+                        'aep': market.format_price(trade.entry_price),
+                        'axp': market.format_price(trade.exit_price),
                         's': trade.state_to_str(),
                         'b': market.format_price(trade.best_price()),
                         'w': market.format_price(trade.worst_price()),
