@@ -72,7 +72,7 @@ class TraderService(Service):
         self._activity = True
 
         # paper mode options
-        self._papermode = options.get('paper-mode', False)
+        self._paper_mode = options.get('paper-mode', False)
 
     @property
     def watcher_service(self):
@@ -149,7 +149,7 @@ class TraderService(Service):
                     # no auto-update -> no thread : avoid time deviation
                     self._traders[k] = inst_trader
 
-                elif self._papermode:
+                elif self._paper_mode:
                     inst_trader = PaperTrader(self, k)
                     paper_mode = trader.get('paper-mode', None)
 
@@ -310,8 +310,8 @@ class TraderService(Service):
         return self._backtesting
 
     @property
-    def papermode(self):
-        return self._papermode
+    def paper_mode(self):
+        return self._paper_mode
 
     def trader_config(self, name):
         """

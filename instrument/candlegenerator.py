@@ -103,14 +103,16 @@ class CandleGenerator(object):
         if from_tick is None:
             return None
 
-        if from_tick.timestamp <= self._last_timestamp:
+        if from_tick[0] <= self._last_timestamp:
             # already done (and what if two consecutives ticks have the same timestamp ?)
             return None
 
-        base_time = self.basetime(from_tick.timestamp)
+        # basetime can be slow, uses only to create a new candle
+        # base_time = self.basetime(from_tick[0])
         ended_candle = None
 
-        if self._candle and self._candle.timestamp+self._to_tf <= base_time:
+        # if self._candle and self._candle.timestamp+self._to_tf <= base_time:
+        if self._candle and from_tick[0] >= self._candle.timestamp+self._to_tf:
             # need to close the candle and to open a new one
             self._candle.set_consolidated(True)
             ended_candle = self._candle
@@ -119,37 +121,38 @@ class CandleGenerator(object):
 
         if self._candle is None:
             # open a new one
+            base_time = self.basetime(from_tick[0])  # from_tick[0] directly ?
             self._candle = Candle(base_time, self._to_tf)
 
             self._candle.set_consolidated(False)
 
             # all open, close, low high from the initial candle
-            self._candle.set_bid_ohlc(from_tick.bid, from_tick.bid, from_tick.bid, from_tick.bid)
-            self._candle.set_ofr_ohlc(from_tick.ofr, from_tick.ofr, from_tick.ofr, from_tick.ofr)
+            self._candle.set_bid(from_tick[1])
+            self._candle.set_ofr(from_tick[2])
 
         # update volumes
-        self._candle._volume += from_tick.volume
+        self._candle._volume += from_tick[3]
 
         # update bid prices
 
         # bid high/low
-        self._candle._bid_high = max(self._candle._bid_high, from_tick.bid)
-        self._candle._bid_low = min(self._candle._bid_low, from_tick.bid)
+        self._candle._bid_high = max(self._candle._bid_high, from_tick[1])
+        self._candle._bid_low = min(self._candle._bid_low, from_tick[1])
 
         # potential close
-        self._candle._bid_close = from_tick.bid
+        self._candle._bid_close = from_tick[1]
 
         # update ofr prices
 
         # ofr high/low
-        self._candle._ofr_high = max(self._candle._ofr_high, from_tick.ofr)
-        self._candle._ofr_low = min(self._candle._ofr_low, from_tick.ofr)
+        self._candle._ofr_high = max(self._candle._ofr_high, from_tick[2])
+        self._candle._ofr_low = min(self._candle._ofr_low, from_tick[2])
 
         # potential close
-        self._candle._ofr_close = from_tick.ofr
+        self._candle._ofr_close = from_tick[2]
 
         # keep last timestamp
-        self._last_timestamp = from_tick.timestamp
+        self._last_timestamp = from_tick[0]
 
         return ended_candle
 

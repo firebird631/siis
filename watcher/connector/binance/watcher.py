@@ -480,10 +480,7 @@ class BinanceWatcher(Watcher):
             bid = price
             ofr = price
 
-            tick = Tick(trade_time)
-
-            tick.set_price(bid, ofr)
-            tick.set_volume(vol)
+            tick = (trade_time, bid, ofr, vol)
 
             # store for generation of OHLCs
             self.lock()

@@ -454,10 +454,7 @@ class BitMexWatcher(Watcher):
 
                     if bid is not None and ofr is not None and volume is not None and last_vol:
                         # we have a tick when we have a volume in data content
-                        tick = Tick(update_time)
-
-                        tick.set_price(bid, ofr)
-                        tick.set_volume(volume)
+                        tick = (update_time, bid, ofr, volume)
 
                         self.lock()
                         self._last_tick[market_id] = tick

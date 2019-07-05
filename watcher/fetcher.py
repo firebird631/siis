@@ -122,16 +122,11 @@ class Fetcher(object):
 
         if timeframe == 0:
             for data in self.fetch_trades(market_id, from_date, to_date, n):
-                # store (timestamp, bid, ofr, volume)
+                # store (int timestamp in ms, str bid, str ofr, str volume)
                 Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3]))
 
                 if generators:
-                    tick = Tick(float(data[0]) * 0.001)
-
-                    tick.set_price(float(data[1]), float(data[2]))
-                    tick.set_volume(float(data[3]))
-
-                    self._last_ticks.append(tick)
+                    self._last_ticks.append((float(data[0]) * 0.001, float(data[1]), float(data[2]), float(data[3])))
 
                 # generate higher candles
                 for generator in generators:
@@ -174,7 +169,7 @@ class Fetcher(object):
 
         elif timeframe > 0:
             for data in self.fetch_candles(market_id, timeframe, from_date, to_date, n):
-                # store (timestamp, open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+                # store (int timestamp ms, str open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
                 Database.inst().store_market_ohlc((
                     self.name, market_id, data[0], int(timeframe),
                     data[1], data[2], data[3], data[4],

@@ -127,6 +127,18 @@ class Candle(object):
     def height(self):
         return self.high - self.low
 
+    def set_bid(self, bid):
+        self._bid_open = bid
+        self._bid_high = bid
+        self._bid_low = bid
+        self._bid_close = bid
+
+    def set_ofr(self, ofr):
+        self._ofr_open = ofr
+        self._ofr_high = ofr
+        self._ofr_low = ofr
+        self._ofr_close = ofr
+
     def set_bid_ohlc(self, o, h, l, c): 
         self._bid_open = o
         self._bid_high = h
@@ -226,52 +238,49 @@ class BuySellSignal(object):
 
 class Tick(object):
     """
-    Tick for an instrument.
+    A tick is a 4 floats tuple with (timestamp, bid, ofr, volume).
+    Because class instance take extra memory an CPU cost we uses a simple tuple.
+    Those constant of index are helpers/reminders.
     @note Ofr is a synonym for ask.
-
-    @note 4 floats
     """
 
-    def __init__(self, timestamp):
-        self._timestamp = timestamp
-        self._bid = 0
-        self._ofr = 0
-        self._volume = 0
+    TIMESTAMP = 0
+    BID = 1
+    OFR = 2
+    VOLUME = 3
 
-    @property
-    def timestamp(self):
-        return self._timestamp
+    TS = 0
+    ASK = 2
+    VOL = 3
 
-    @property
-    def timeframe(self):
-        return Instrument.TF_TICK
+    T = 0
+    B = 1
+    O = 2
+    V = 3
 
-    @property
-    def bid(self):
-        return self._bid
-    
-    @property
-    def ofr(self):
-        return self._ofr
-    
-    @property
-    def price(self):
-        return (self._bid + self._ofr) * 0.5
+    @staticmethod
+    def timestamp(tick):
+        return tick[TS]
 
-    @property
-    def volume(self):
-        return self._volume
+    @staticmethod
+    def bid(tick):
+        return tick[BID]
 
-    @property
-    def spread(self):
-        return abs(self._ofr - self._bid)
+    @staticmethod
+    def ofr(tick):
+        return tick[OFR]
 
-    def set_price(self, bid, ofr):  
-        self._bid = bid
-        self._ofr = ofr
+    @staticmethod
+    def volume(tick):
+        return tick[VOL]
 
-    def set_volume(self, ltv):
-        self._volume = ltv
+    @staticmethod
+    def price(tick):
+        return (tick[BID] + tick[OFR]) * 0.5
+
+    @staticmethod
+    def spread(tick):
+        return tick[OFR] - tick[BID]
 
 
 class Instrument(object):
@@ -366,9 +375,8 @@ class Instrument(object):
         self._wanted = []  # list of wanted timeframe before be ready
 
         self._ticks = []
-        # candles and buy/sell signals are array per timeframe
-        self._candles = {}
-        self._buy_sells = {}
+        self._candles = {}    # array per timeframe
+        self._buy_sells = {}  # array per timeframe
 
         # most of thoose informations comes from the broker, but can be manually defined
         self._currency = "USD"
@@ -540,7 +548,7 @@ class Instrument(object):
             if len(ticks) > 0:
                 for t in tick:
                     # for each tick only add it if more recent
-                    if t.timestamp > ticks[-1].timestamp:
+                    if t[0] > ticks[-1][0]:
                         ticks.append(t)
             else:
                 # initiate array
@@ -548,7 +556,7 @@ class Instrument(object):
         else:
             if len(self._ticks) > 0:
                 # ignore the tick if older than the last one
-                if tick.timestamp > self._ticks[-1].timestamp:
+                if tick[0] > self._ticks[-1][0]:
                     self._ticks.append(tick)
             else:
                 self._ticks.append(tick)
@@ -634,7 +642,7 @@ class Instrument(object):
             if ticks:
                 j = number - 1
                 for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
-                    prices[j] = (ticks[i].bid + ticks[i].ofr) * 0.5
+                    prices[j] = (ticks[i][1] + ticks[i][2]) * 0.5
                     j -= 1
         else:
             candles = self._candles.get(tf)
@@ -655,7 +663,7 @@ class Instrument(object):
             if ticks:
                 j = number - 1
                 for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
-                    volumes[j] = ticks[i].volume
+                    volumes[j] = ticks[i][3]
                     j -= 1
         else:
             candles = self._candles.get(tf)
@@ -790,9 +798,9 @@ class Instrument(object):
         ticks = self._ticks
         if ticks:
             # process for more recent to the past
-            for c in reversed(ticks):
-                if c.timestamp > after_ts:
-                    results.insert(0, c)
+            for t in reversed(ticks):
+                if t[0] > after_ts:
+                    results.insert(0, t)
                 else:
                     break
 
@@ -837,9 +845,9 @@ class Instrument(object):
         if ticks:
             number = len(ticks)
             for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
-                if ticks[i].timestamp - ticks[i-1].timestamp != tf:
-                    logger.error("Timestamp inconsistency from %s and %s ticks at %s delta=(%s)" % (i, i-1, ticks[i-1].timestamp, ticks[i].timestamp - ticks[i-1].timestamp))
-                    issues.append(('tick', 0, i, i-1, ticks[i-1].timestamp, ticks[i].timestamp - ticks[i-1].timestamp))
+                if ticks[i][0] - ticks[i-1][0] != tf:                    
+                    logger.error("Timestamp inconsistency from %s and %s ticks at %s delta=(%s)" % (i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
+                    issues.append(('tick', 0, i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
         
         return issues
 
@@ -849,7 +857,7 @@ class Instrument(object):
         @todo need to update market data
         """
         if self._ticks:
-            return self._ticks[-1].spread
+            return self._ticks[-1][2] - self._ticks[-1][1]
         else:
             candles = None
             if self._candles.get(Instrument.TF_SEC):
@@ -869,7 +877,7 @@ class Instrument(object):
         @param tf At desired timeframe or at the most precise found
         """
         if self._ticks:
-            return self._ticks[-1].bid
+            return self._ticks[-1][1]
         else:
             candles = None
             if tf and self._candles.get(tf):
@@ -890,7 +898,7 @@ class Instrument(object):
         @param tf At desired timeframe or at the most precise found
         """
         if self._ticks:
-            return self._ticks[-1].ofr
+            return self._ticks[-1][2]
         else:
             candles = None
             if tf and self._candles.get(tf):
@@ -911,7 +919,7 @@ class Instrument(object):
         @param tf At desired timeframe or at the most precise found
         """
         if self._ticks:
-            return self._ticks[-1].price
+            return (self._ticks[-1][1] + self._ticks[-1][2]) * 0.5
         else:
             candles = None
             if tf and self._candles.get(tf):
@@ -966,7 +974,7 @@ class Instrument(object):
         # on ticks
         m = 0
         for n, tick in enumerate(self._ticks):
-            if now - tick.timestamp < older_than:
+            if now - tick[0] < older_than:
                 m = n
                 break
 
@@ -1034,20 +1042,20 @@ class Instrument(object):
             if ticks:
                 if from_ts <= 0:
                     # from the older
-                    from_ts = ticks[0].timestamp
+                    from_ts = ticks[0][0]
 
                 if to_ts <= 0:
                     # to the latest
-                    to_ts = ticks[-1].timestamp
+                    to_ts = ticks[-1][0]
 
                 j = 0
                 for tick in ticks:
-                    if tick.timestamp < from_ts:
+                    if tick[0] < from_ts:
                         continue
-                    elif tick.timestamp > to_ts:
+                    elif tick[0] > to_ts:
                         break
 
-                    volumes[j] = tick.volume
+                    volumes[j] = tick[3]
                     j += 1
         else:
             candles = self._candles.get(tf)

@@ -431,10 +431,7 @@ class IGWatcher(Watcher):
                 # cache for when a value is not defined
                 self._cached_tick[market_id] = (utm, bid, ofr, ltv)
 
-                tick = Tick(float(utm) * 0.001)
-
-                tick.set_price(float(bid), float(ofr))
-                tick.set_volume(float(ltv or "0"))
+                tick = (float(utm) * 0.001, float(bid), float(ofr), float(ltv or "0"))
 
                 # keep last complete tick values for ohlc generation
                 self._last_tick[market_id] = tick
@@ -444,7 +441,7 @@ class IGWatcher(Watcher):
                 for tf in Watcher.STORED_TIMEFRAMES:
                     # generate candle per each tf
                     self.lock()
-                    candle = self.update_ohlc(market_id, tf, tick.timestamp, tick.bid, tick.ofr, tick.volume)
+                    candle = self.update_ohlc(market_id, tf, tick[0], tick[1], tick[2], tick[3])
                     self.unlock()
 
                     if candle is not None:

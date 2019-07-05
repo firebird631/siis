@@ -13,6 +13,8 @@ import pathlib
 import struct
 import collections
 
+import numpy as np
+
 from datetime import datetime
 from instrument.instrument import Tick
 
@@ -177,6 +179,7 @@ class TickStreamer(object):
         self._is_binary = False
 
         self._struct = struct.Struct('dddd')
+        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('o', 'float64'), ('v', 'float64')])
 
     def open(self):
         if self._file:
@@ -227,7 +230,7 @@ class TickStreamer(object):
             # # until timestamp
             # n = 0
             # for tick in self._buffer:
-            #   if tick.timestamp <= timestamp:
+            #   if tick[0] <= timestamp:
             #       n += 1
             #   else:
             #       break
@@ -240,11 +243,13 @@ class TickStreamer(object):
             #   self._buffer = self._buffer[n:]
 
             # until timestamp (pop version is 30% speedup)
-            while self._buffer and self._buffer[0].timestamp <= timestamp:
+            # while self._buffer and self._buffer[0].timestamp <= timestamp:
+            while self._buffer and self._buffer[0][0] <= timestamp:
                 # results.append(self._buffer.pop(0))
                 results.append(self._buffer.popleft())
 
-            if self.finished() or (self._buffer and self._buffer[0].timestamp > timestamp):
+            # if self.finished() or (self._buffer and self._buffer[0].timestamp > timestamp):
+            if self.finished() or (self._buffer and self._buffer[0][0] > timestamp):
                 break
 
         return results
@@ -257,11 +262,11 @@ class TickStreamer(object):
                 self.__bufferize()
 
             # until timestamp
-            while self._buffer and self._buffer[0].timestamp <= timestamp:
+            while self._buffer and self._buffer[0][0] <= timestamp:
                 dest.append(self._buffer.popleft())
                 n += 1
 
-            if self.finished() or (self._buffer and self._buffer[0].timestamp > timestamp):
+            if self.finished() or (self._buffer and self._buffer[0][0] > timestamp):
                 break
 
         return n
@@ -275,24 +280,22 @@ class TickStreamer(object):
 
             if self._file:
                 if self._is_binary:
-                    # no gain than the for version, why ?
-                    arr = self._file.read(4*8*self._buffer_size)  # read 4 float64 * n
-                    data = self._struct.iter_unpack(arr)
+                    # arr = self._file.read(4*8*self._buffer_size)  # read 4 float64 * n
+                    # data = self._struct.iter_unpack(arr)
 
-                    if len(arr) < self._buffer_size:
-                        file_end = True
+                    # if len(arr) < self._buffer_size:
+                    #    file_end = True
 
-                    for d in data:
-                        if d[0] < self._from_date.timestamp():
-                            # ignore older than initial date
-                            continue
+                    # speedup using numpy fromfile but its a one shot loads, ok for this case
+                    data = np.fromfile(self._file, dtype=self._tick_type)
+                    file_end = True
 
-                        tick = Tick(d[0])
+                    self._buffer.extend(data)
 
-                        tick.set_price(d[1], d[2])
-                        tick.set_volume(d[3])
-
-                        self._buffer.append(tick)
+                    # not really necessary, its slow
+                    # for d in data:
+                    #     if d[0] >= self._from_date.timestamp():
+                    #         self._buffer.append(d)
                 else:
                     # text
                     for n in range(0, self._buffer_size):
@@ -309,12 +312,7 @@ class TickStreamer(object):
                             # ignore older than initial date
                             continue
 
-                        tick = Tick(ts)
-
-                        tick.set_price(float(bid), float(ofr))
-                        tick.set_volume(float(vol))
-
-                        self._buffer.append(tick)
+                        self._buffer.append((ts, bid, ofr, vol))
             else:
                 file_end = True
 

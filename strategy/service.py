@@ -79,7 +79,7 @@ class StrategyService(Service):
             self._time_factor = options.get('time-factor', 0.0)
 
         # paper mode options
-        self._papermode = options.get('paper-mode', False)
+        self._paper_mode = options.get('paper-mode', False)
 
         self._next_key = 1
 
@@ -328,7 +328,7 @@ class StrategyService(Service):
                                 for trader in traders:
                                     trader.update()
 
-                                # time.sleep(0)  # yield
+                                time.sleep(0)  # yield
 
                                 if self.abort:
                                     break
@@ -367,7 +367,7 @@ class StrategyService(Service):
                                     for trader in traders:
                                         trader.update()
 
-                                # time.sleep(0)  # yield
+                                time.sleep(0)  # yield
 
                                 if self.abort:
                                     break

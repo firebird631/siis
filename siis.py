@@ -544,7 +544,13 @@ def application(argv):
             try:
                 # display strategy tarding time (update max once per second)
                 if strategy_service.timestamp - prev_timestamp >= 1.0:
-                    Terminal.inst().message(datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S'), view='notice')
+                    mode = "live"
+                    if trader_service.backtesting:
+                        mode = "backtesting"
+                    elif trader_service.paper_mode:
+                        mode = "paper-mode"
+
+                    Terminal.inst().message("%s - %s" % (mode, datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='notice')
                     prev_timestamp = strategy_service.timestamp
 
                 # synchronous operations here
