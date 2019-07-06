@@ -15,10 +15,14 @@ from curses.textpad import Textbox, rectangle
 from tabulate import tabulate
 
 
-class View(object):
+class Color(object):
 
-    MODE_STREAM = 0
-    MODE_BLOCK = 1
+    WHITE = '\033[0m'    # '\\0'
+    RED = '\033[31m'     # '\\1'
+    GREEN = '\033[32m'   # '\\5'
+    ORANGE = '\033[33m'  # '\\6'
+    BLUE = '\033[34m'    # '\\4'
+    PURPLE = '\033[35m'  # '\\2'
 
     UTERM_COLORS_MAP = {
         '\033[0m': '\\0',   # white (normal)
@@ -28,6 +32,22 @@ class View(object):
         '\033[34m': '\\4',  # blue
         '\033[35m': '\\2'   # purple
     }
+
+    @staticmethod
+    def colorize(value, color, style=None):
+        if style is None:
+            style = Terminal.inst().style()
+
+        if style == 'uterm' or style == 'curses':
+            return color + value + Color.WHITE
+
+        return value
+
+
+class View(object):
+
+    MODE_STREAM = 0
+    MODE_BLOCK = 1
 
     UTERM_COLORS = [
         colorama.Style.RESET_ALL,  # Terminal.DEFAULT
@@ -50,6 +70,7 @@ class View(object):
 
         if mode == View.MODE_STREAM:
             self._content = [""]
+
         elif mode == View.MODE_BLOCK:
             self._content = []
 
@@ -541,7 +562,7 @@ class View(object):
         # draw the table
         self.draw('', table)
 
-    def draw_table(self, columns, data):
+    def draw_table(self, columns, data, total_size=None):
         """
         Display a table with a header header and a body,
         """
@@ -570,10 +591,13 @@ class View(object):
         #     # ignore some columns and some rows
         #     data_arr.append(d[self._table_first_col:])
 
-        self._cur_table = (len(columns), len(data))
+        self._cur_table = total_size if total_size else (len(columns), len(data))
 
-        data_arr = data
-        table = tabulate(data_arr, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
+        table = tabulate(data, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
+
+        # replace color espace code before drawing
+        for k, v in Color.UTERM_COLORS_MAP.items():
+            table = table.replace(k, v)
 
         # draw the table
         self.draw('', table, True)
@@ -589,7 +613,7 @@ class View(object):
             self._table_first_row = 0
 
         if self._table_first_row >= self._cur_table[1]:
-            self._table_first_row = self._cur_table[1] -1
+            self._table_first_row = self._cur_table[1] - 1
 
     def table_scroll_cols(self, n):
         """
@@ -948,11 +972,11 @@ class Terminal(object):
     def action(self, message, endl=True, view='default'):
         self._append(Terminal.ACTION, message, endl, view)
 
-    def table(self, columns, data, view='content'):
+    def table(self, columns, data, total_size=None, view='content'):
         _view = self._views.get(view)
 
         if _view:
-            _view.draw_table(columns, data)
+            _view.draw_table(columns, data,  total_size)
 
             if self._direct_draw:
                 _view.refresh()

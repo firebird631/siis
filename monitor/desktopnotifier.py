@@ -390,8 +390,8 @@ class DesktopNotifier(Notifiable):
                 Terminal.inst().info("Account details for trader %s - %s" % (trader.name, trader.account.name), view='account-head')
 
                 try:
-                    columns, table = trader.account_table(*Terminal.inst().active_content().format())
-                    Terminal.inst().table(columns, table, view='account')
+                    columns, table, total_size = trader.account_table(*Terminal.inst().active_content().format())
+                    Terminal.inst().table(columns, table, total_size, view='account')
                 except:
                     pass
 
@@ -405,8 +405,8 @@ class DesktopNotifier(Notifiable):
                 Terminal.inst().info("Tickers list for tader %s on account %s" % (trader.name, trader.account.name), view='ticker-head')
 
                 try:
-                    columns, table = trader.markets_tickers_table(*Terminal.inst().active_content().format())
-                    Terminal.inst().table(columns, table, view='ticker')
+                    columns, table, total_size = trader.markets_tickers_table(*Terminal.inst().active_content().format())
+                    Terminal.inst().table(columns, table, total_size, view='ticker')
                 except:
                     pass
 
@@ -420,7 +420,7 @@ class DesktopNotifier(Notifiable):
                 Terminal.inst().info("Market list trader %s on account %s" % (trader.name, trader.account.name), view='market-head')
 
                 try:
-                    columns, table = trader.markets_table(*Terminal.inst().active_content().format())
-                    Terminal.inst().table(columns, table, view='market')
+                    columns, table, total_size = trader.markets_table(*Terminal.inst().active_content().format())
+                    Terminal.inst().table(columns, table, total_size, view='market')
                 except:
                     pass

@@ -5,11 +5,10 @@
 
 import math
 
-from common.keyed import Keyed
 from common.utils import truncate
 
 
-class Asset(Keyed):
+class Asset(object):
     """
     Asset define a symbol and a balance, with margin or not. It is initially created for
     use with binance.com but will be extended to any balance even for EUR or USD margin based broker,

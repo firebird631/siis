@@ -1464,7 +1464,7 @@ class Strategy(Runnable):
 
     #     self.unlock()
 
-    #     return columns[col_ofs:], data
+    #     return columns[col_ofs:], data, total_size
 
     def formatted_trade_stats(self, results, style='', quantities=False):
         markets = []

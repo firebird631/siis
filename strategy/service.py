@@ -395,7 +395,7 @@ class StrategyService(Service):
             total = self._end_ts - self._start_ts
             remaining = self._end_ts - progress
 
-            pc = 100.0 - (remaining / total * 100)
+            pc = 100.0 - (remaining / (total+0.001) * 100)
 
             if pc - self._backtest_progress >= 1.0 and pc < 100.0:
                 self._backtest_progress = pc

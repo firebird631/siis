@@ -1028,7 +1028,7 @@ class BinanceTrader(Trader):
 
             asset.set_quantity(locked, free)
 
-            if asset.symbol != asset.quote and asset.quote:
+            if asset.quote and asset.symbol != asset.quote:
                 prefered_market = self._markets.get(asset.symbol+asset.quote)
                 if prefered_market:
                     asset.update_profit_loss(prefered_market)
@@ -1110,7 +1110,7 @@ class BinanceTrader(Trader):
                 # maket, less locked
                 asset.set_quantity(max(0.0, asset.locked-trade_qty), asset.free)
 
-        if asset.symbol != asset.quote and asset.quote:
+        if asset.quote and asset.symbol != asset.quote:
             prefered_market = self._markets.get(asset.symbol+asset.quote)
             if prefered_market:
                 asset.update_profit_loss(prefered_market)
@@ -1173,8 +1173,8 @@ class BinanceTrader(Trader):
             quote_trade_qty = data['quote-transacted']  # or base_trade_qty * base_exec_price
             quote_exec_price = 1.0
 
-            if quote_asset.symbol != quote_asset.quote and quote_asset.quote:
-                # quote price do be fetched
+            if quote_asset.quote and quote_asset.symbol != quote_asset.quote:
+                # quote price to be fetched
                 if self._watcher.has_instrument(quote_asset.symbol+quote_asset.quote):
                     # direct, and get the related market
                     quote_market = self._markets.get(quote_asset.symbol+quote_asset.quote)                    
@@ -1196,12 +1196,21 @@ class BinanceTrader(Trader):
             else:
                 commission_asset = self.__get_or_add_asset(data['commission-asset'])
                 commission_asset_market = None
+                quote_exec_price = 1.0
 
-                if commission_asset.symbol != commission_asset.quote and commission_asset.quote:
-                    commission_asset_market = self.market(data['commission-asset']+commission_asset.quote)
+                if commission_asset.quote and commission_asset.symbol != commission_asset.quote:
+                    # commission asset price to be fetched
+                    if self._watcher.has_instrument(commission_asset.symbol+commission_asset.quote):
+                        # direct, and get the related market
+                        commission_asset_market = self.market(commission_asset.symbol+commission_asset.quote)
+                        quote_exec_price = commission_asset_market.price
+
+                    elif self._watcher.has_instrument(commission_asset.quote+commission_asset.symbol):
+                        # indirect, but cannot have the market
+                        quote_exec_price = 1.0 / self.history_price(commission_asset.quote+commission_asset.symbol, data['timestamp'])
 
                 self.__update_asset(Order.ORDER_MARKET, commission_asset, commission_asset_market, None,
-                    commission_asset_market.price, data['commission-amount'], False, data['timestamp'])
+                    quote_exec_price, data['commission-amount'], False, data['timestamp'])
 
     def on_order_deleted(self, market_id,  order_id, ref_order_id):
         self.lock()

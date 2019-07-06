@@ -22,7 +22,7 @@ from monitor.streamable import Streamable, StreamMemberSerie, StreamMemberFloatS
 from common.runnable import Runnable
 from common.utils import matching_symbols_set
 
-from terminal.terminal import Terminal
+from terminal.terminal import Terminal, Color
 from terminal import charmap
 
 from tabulate import tabulate
@@ -53,12 +53,12 @@ class Trader(Runnable):
     COMMAND_INFO = 1
 
     # bases command
-    COMMAND_LIST_ORDERS = 100                 # display list active orders
-    COMMAND_LIST_POSITIONS = 101              # display list current account positions
-    COMMAND_DISPLAY_ACCOUNT = 102             # display account details
-    COMMAND_LIST_MARKETS = 103                # display list active markets
-    COMMAND_LIST_ASSETS = 104                 # display list non empty assets
-    COMMAND_LIST_TICKERS = 105                # display list active markets tickers
+    COMMAND_DISPLAY_ACCOUNT = 100             # display account details
+    COMMAND_LIST_MARKETS = 101                # display list active markets
+    COMMAND_LIST_ASSETS = 102                 # display list non empty assets
+    COMMAND_LIST_TICKERS = 103                # display list active markets tickers
+    COMMAND_LIST_ORDERS = 104                 # display list active orders
+    COMMAND_LIST_POSITIONS = 105              # display list current account positions
 
     # order commands
     COMMAND_CLOSE_MARKET = 110                # close a managed or unmanaged position at market now
@@ -373,8 +373,8 @@ class Trader(Runnable):
 
                 Terminal.inst().notice("List %i markets for %s" % (len(self._markets), self._name), view='content')
 
-                columns, table = self.markets_table(style=Terminal.inst().style())
-                Terminal.inst().table(columns, table)
+                columns, table, total_size = self.markets_table(style=Terminal.inst().style())
+                Terminal.inst().table(columns, table, total_size, view='content')
 
         elif command_type == Trader.COMMAND_LIST_TICKERS:
             # display the list of markets tickers
@@ -383,7 +383,7 @@ class Trader(Runnable):
                 Terminal.inst().notice("List %i markets tickers for %s" % (len(self._markets), self._name), view='content')
 
                 columns, table = self.markets_tickers_table(style=Terminal.inst().style())
-                Terminal.inst().table(columns, table)
+                Terminal.inst().table(columns, table, total_size, view='content')
         
         elif command_type == Trader.COMMAND_LIST_POSITIONS:
             # display the list of ALL positions of the account (managed or not by a strategy)
@@ -394,8 +394,8 @@ class Trader(Runnable):
                 Terminal.inst().notice("List %i positions for %s" % (len(self._positions.items()), self._name), view='content')
 
                 if 0:  # @todo  
-                    columns, table = self.positions_table(style=Terminal.inst().style())
-                    Terminal.inst().table(columns, table)
+                    columns, table, total_size = self.positions_table(style=Terminal.inst().style())
+                    Terminal.inst().table(columns, table, total_size, view='content')
                 else:
                     self.lock()
 
@@ -460,28 +460,24 @@ class Trader(Runnable):
 
                     self.unlock()
 
+        elif command_type == Trader.COMMAND_LIST_ORDERS:
+            # display the active orders details
+            if self.connected and self._orders:
+                Terminal.inst().notice("List %i actives orders for %s" % (len(self._orders), self._name), view='content')
+                
+                # columns, table, total_size = trader.orders_table(*Terminal.inst().active_content().format())
+                # Terminal.inst().table(columns, table, total_size, view='content')
+
         elif command_type == Trader.COMMAND_LIST_ASSETS:
             # display the list of non empty assets
             if self.connected and self._assets:
                 if self.account is None:
                     return
 
-                count = 0
+                columns, table, total_size = self.assets_table(*Terminal.inst().active_content().format())
 
-                self.lock()
-                # count non empty
-                for k, a in self._assets.items():
-                    if a.quantity > 0:
-                        count += 1
-                self.unlock()
-
-                Terminal.inst().notice("List %i assets for %s" % (count, self._name), view='content')
-
-                # tabular formated text
-                arr1, arr2 = self.formatted_assets(style=Terminal.inst().style())
-
-                Terminal.inst().info(arr1, view='content')
-                Terminal.inst().info(arr2, view='content')
+                Terminal.inst().notice("List %i assets for %s" % (total_size[1], self._name), view='content')
+                Terminal.inst().table(columns, table, total_size, view='content')
 
         elif command_type == Trader.COMMAND_DISPLAY_ACCOUNT:
             # display the account details
@@ -489,19 +485,11 @@ class Trader(Runnable):
                 Terminal.inst().notice("Account details for %s" % (self._name,), view='content')
                
                 columns, table = self.account_table(style=Terminal.inst().style())
-                Terminal.inst().table(columns, table)
+                Terminal.inst().table(columns, table, total_size, view='content')
 
         elif command_type == Trader.COMMAND_INFO:
             # info on the appliance
             Terminal.inst().info("Trader %s is %s" % (self.name, ("active" if self._activity else "inactive")), view='content')
-
-        elif command_type == Trader.COMMAND_LIST_ORDERS:
-            # display the active orders details
-            if self.connected and self._orders:
-                Terminal.inst().notice("List %i actives orders for %s" % (len(self._orders), self._name), view='content')
-                
-                arr1 = self.formatted_orders(style=Terminal.inst().style())
-                Terminal.inst().info(arr1, view='content')
 
         elif command_type == Trader.COMMAND_CLOSE_MARKET:
             # manually close a specified position at market now
@@ -1074,6 +1062,7 @@ class Trader(Runnable):
         self.lock()
 
         markets = list(self._markets.values())
+        total_size = (len(columns), len(markets))
 
         if offset is None:
             offset = 0
@@ -1103,7 +1092,7 @@ class Trader(Runnable):
 
         self.unlock()
 
-        return columns[col_ofs:], data
+        return columns[col_ofs:], data, total_size
 
     def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None):
         """
@@ -1115,6 +1104,7 @@ class Trader(Runnable):
         self.lock()
 
         markets = list(self._markets.values())
+        total_size = (len(columns), len(markets))
 
         if offset is None:
             offset = 0
@@ -1142,213 +1132,99 @@ class Trader(Runnable):
 
         self.unlock()
 
-        return columns[col_ofs:], data
+        return columns[col_ofs:], data, total_size
 
-    def formatted_assets(self, style=''):
+    def assets_table(self, style='', offset=None, limit=None, col_ofs=None, filter_low=True):
         """
-        Retuns a table of the non empty assets.
-        @todo as data table
+        Returns a table of any non empty assets.
         """
-        assets = []
-        frees = []
-        totals = []
-        keys = []
-        entries = []
-        bids = []
-        ofrs = []
-        changes = []
-        changes_pc = []
-        pls = []
-        pls_pc = []
-        pls_br = []
-        m_pls = []
-        m_pls_pc = []
-        m_pls_br = []
-
-        if style == 'uterm' or style == 'curses':
-            W  = '\033[0m'   # '\\0'
-            R  = '\033[31m'  # '\\1'
-            G  = '\033[32m'  # '\\5'
-        elif style == 'markdown':
-            W  = ''
-            R  = ''
-            G  = ''
-        else:
-            W  = ''
-            R  = ''
-            G  = ''
+        columns = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'Change %',
+                'P/L %s' % self.account.currency, 'P/L %s' % self.account.alt_currency)
+        data = []
 
         self.lock()
 
-        for k, a in self._assets.items():
-            if a.quantity <= 0:
-                continue
+        assets = [asset for asset in self._assets.values() if asset.quantity > 0.0]
+        total_size = (len(columns), len(assets))
 
-            assets.append(a.symbol)
+        if offset is None:
+            offset = 0
 
+        if limit is None:
+            limit = len(assets)
+
+        limit = offset + limit
+
+        assets.sort(key=lambda x: x.symbol)
+        assets = assets[offset:limit]
+
+        for asset in assets:
             # use the most appropriate market
-            market = self.market(a.symbol+a.quote)
+            market = self.market(asset.symbol+asset.quote)
 
-            if market is not None:
-                frees.append(market.format_quantity(a.free))
-                totals.append(market.format_quantity(a.quantity))
-            else:
-                frees.append("%.8f" % a.free)
-                totals.append("%.8f" % a.quantity)
-
-            keys.append(a.key)
+            change = ""
+            change_percent = ""
+            profit_loss = ""
+            profit_loss_alt = ""
 
             if market:
+                locked = market.format_quantity(asset.locked)
+                free = market.format_quantity(asset.free)
+                quantity = market.format_quantity(asset.quantity)
+
                 base_exchange_rate = 1.0
+
+                change = market.format_price(market.bid - asset.price, True, True)
+                change_percent = (market.bid - asset.price) / asset.price * 100.0 if asset.price else 0.0
+
+                if change_percent > 0.0:
+                    change_percent = Color.colorize("%.2f" % change_percent, Color.GREEN, style)
+                elif change_percent < 0.0:
+                    change_percent = Color.colorize("%.2f" % change_percent, Color.RED, style)
+                else:
+                    change_percent = "%.2f" % change_percent
 
                 quote_market = self.market(market.quote+self.account.currency)
                 if quote_market:
                     base_exchange_rate = 1.0 / quote_market.price
 
-                change = market.format_price(market.bid - a.price, True, True)
-                change_pc = (market.bid - a.price) / a.price * 100.0 if a.price else 0.0
+                profit_loss = market.format_price(asset.profit_loss, True) if market.quote == self.account.currency else ""
+                profit_loss_alt = market.format_price(asset.profit_loss / base_exchange_rate, True) if market.quote == self.account.alt_currency else ""
 
-                if change_pc > 0:
-                    change_pc = G + "%.2f" % change_pc + W
-                    change = G + change + W
-                elif change_pc < 0:
-                    change_pc = R + "%.2f" % change_pc + W
-                    change = R + change + W
+                if asset.profit_loss > 0.0:
+                    if profit_loss:
+                        profit_loss = Color.colorize(profit_loss, Color.GREEN, style)
 
-                entries.append(market.format_price(a.price))
-                bids.append(market.format_price(market.bid))
-                ofrs.append(market.format_price(market.ofr))
-                changes.append(change)
-                changes_pc.append(change_pc)
+                    if profit_loss_alt:
+                        profit_loss_alt = Color.colorize(profit_loss_alt, Color.GREEN, style)
+                elif asset.profit_loss < 0.0:
+                    if profit_loss:
+                        profit_loss = Color.colorize(profit_loss, Color.RED, style)
 
-                pl = "0"
-                pl_pc = "0"
-
-                pl = market.format_price(a.profit_loss / base_exchange_rate, True, True)
-                pl_pc = "%.2f" % (a.profit_loss_rate * 100.0,)
-                pl_br = ""
-
-                m_pl = market.format_price(a.profit_loss_market / base_exchange_rate, True, False)
-                m_pl_pc = "%.2f" % (a.profit_loss_market_rate * 100.0,)
-                m_pl_br = ""                        
-
-                if a.symbol != self.account.currency:
-                    pl_br = self.account.format_price(a.profit_loss / base_exchange_rate * self.account.currency_ratio, True, True)
-                    m_pl_br = self.account.format_price(a.profit_loss_market / base_exchange_rate * self.account.currency_ratio, True, False)
-
-                if a.profit_loss > 0:
-                    pl = G + pl + W
-                    pl_pc = G + pl_pc + W
-                    pl_br = G + pl_br + W
-                elif a.profit_loss < 0:
-                    pl = R + pl + W
-                    pl_pc = R + pl_pc + W
-                    pl_br = R + pl_br + W
-
-                pls.append(pl)
-                pls_pc.append(pl_pc)
-                pls_br.append(pl_br)
-
-                if a.profit_loss_market > 0:
-                    m_pl = G + m_pl + W
-                    m_pl_pc = G + m_pl_pc + W
-                    m_pl_br = G + m_pl_br + W
-                elif a.profit_loss_market < 0:
-                    m_pl = R + m_pl + W
-                    m_pl_pc = R + m_pl_pc + W
-                    m_pl_br = R + m_pl_br + W
-                
-                m_pls.append(m_pl)
-                m_pls_pc.append(m_pl_pc)
-                m_pls_br.append(m_pl_br)
-
+                    if profit_loss_alt:
+                        profit_loss_alt = Color.colorize(profit_loss_alt, Color.RED, style)
             else:
-                entries.append("")
-                bids.append("")
-                ofrs.append("")
-                changes.append("")
-                changes_pc.append("")
+                locked = "%.8f" % asset.locked
+                free = "%.8f" % asset.free
+                quantity = "%.8f" % asset.quantity
 
-                pls.append("")
-                pls_pc.append("")
-                pls_br.append("")
+            row = (
+                asset.symbol,
+                locked,
+                free,
+                quantity,
+                asset.format_price(asset.price) if asset.price else charmap.HOURGLASS,
+                change or charmap.ROADBLOCK,
+                change_percent or charmap.ROADBLOCK,
+                profit_loss or charmap.ROADBLOCK,
+                profit_loss_alt or charmap.ROADBLOCK,
+            )
 
-                m_pls.append("")
-                m_pls_pc.append("")
-                m_pls_br.append("")
-
-        self.unlock()
-
-        df = {
-            'Asset': assets,
-            'Free': frees,
-            'Total': totals,
-            'Entry': entries,
-            'Bid': bids,
-            'Ofr': ofrs,
-            'Change': changes,
-            'Change %': changes_pc,
-        }
-
-        arr1 = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        if style == 'uterm' or style == 'curses':
-            arr1 = arr1.replace(R, '\\1').replace(G, '\\5').replace(W, '\\0')
-
-        df = {
-            'Asset': assets,
-            'P/L': pls,
-            'P/L %': pls_pc,
-            'P/L '+self.account.alt_currency: pls_br,
-            'P/L tk': m_pls,
-            'P/L tk '+self.account.alt_currency: m_pls_br,
-            'key': keys
-        }
-
-        arr2 = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        if style == 'uterm' or style == 'curses':
-            arr2 = arr2.replace(R, '\\1').replace(G, '\\5').replace(W, '\\0')
-
-        return arr1, arr2
-
-    def formatted_orders(self, style=''):
-        """
-        Return a table of the actives orders.
-
-        @todo To be continued.
-        @todo as data table
-        """
-        symbols = []
-        orders_types = []
-        limit_prices = []
-        quantities = []
-
-        self.lock()
-
-        for k, order in self._orders.items():
-            # use the most appropriate market
-            market = self.market(order.symbol)
-
-            symbols.append(order.symbol)
-            orders_types.append(order.order_type_to_str())
-            limit_prices.append(market.format_price(order.order_price))
-            quantities.append(market.format_quantity(order.quantity))
-            # @todo ...
+            data.append(row[col_ofs:])
 
         self.unlock()
 
-        df = {
-            'Market': symbols,
-            'Type': order_type,
-            'Limit': limit_prices,
-            'Quantity': quantities,
-            # @todo
-        }
-
-        arr = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        return arr
+        return columns[col_ofs:], data, total_size
 
     def account_table(self, style='', offset=None, limit=None, col_ofs=None):
         """
@@ -1398,7 +1274,7 @@ class Trader(Runnable):
    
         self.unlock()
 
-        return columns[col_ofs:], data
+        return columns[col_ofs:], data, (len(columns), 2)
 
     #
     # deprecated (previously used for social copy, but now prefer use the social copy strategy, to be removed once done)

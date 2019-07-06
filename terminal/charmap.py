@@ -4,3 +4,4 @@
 # terminal constant
 
 HOURGLASS = u"\u231B"
+ROADBLOCK = u"\u26DD"

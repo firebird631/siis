@@ -156,6 +156,8 @@ class TickStreamer(object):
     Streamer that read data from an initial position.
     """
 
+    TICK_SIZE = 4*8  # 32B
+
     def __init__(self, markets_path, broker_id, market_id, from_date, to_date=None, buffer_size=1000, binary=True):
         """
         @param from_date datetime Object
@@ -198,6 +200,44 @@ class TickStreamer(object):
             if os.path.isfile(pathname):
                 self._file = open(pathname, "rb")
                 self._is_binary = True
+
+                st = os.stat(pathname)
+                file_size = st.st_size
+
+                # direcrly seek to intial position to avoid useless parsing
+                timestamp = self._curr_date.timestamp()
+                prev_timestamp = 0
+                pos = 0
+                left = 0
+                right = file_size
+
+                while 1:
+                    data = self._file.read(TickStreamer.TICK_SIZE)  # read 4 float64
+
+                    if not data:
+                        break
+
+                    tick = self._struct.unpack(data)
+
+                    if right - left <= TickStreamer.TICK_SIZE:
+                        # found our starting offset
+                        self._file.seek(-TickStreamer.TICK_SIZE, 1)
+                        break
+
+                    if tick[0] < timestamp:
+                        # move forward
+                        left = pos + TickStreamer.TICK_SIZE
+                        prev_timestamp = timestamp
+
+                    elif tick[0] > timestamp:
+                        # move backward
+                        right = pos - TickStreamer.TICK_SIZE
+
+                    elif self._file.tell() == EOF:
+                        break
+
+                    pos = max(0, left + ((right - left) // TickStreamer.TICK_SIZE) // 2 * TickStreamer.TICK_SIZE)
+                    self._file.seek(pos, 0)
 
         # if not binary asked or binary not found try with text file
         if not self._file:
@@ -280,19 +320,20 @@ class TickStreamer(object):
 
             if self._file:
                 if self._is_binary:
-                    # arr = self._file.read(4*8*self._buffer_size)  # read 4 float64 * n
-                    # data = self._struct.iter_unpack(arr)
+                    arr = self._file.read(4*8*self._buffer_size)  # read 4 float64 * n
+                    data = self._struct.iter_unpack(arr)
 
-                    # if len(arr) < self._buffer_size:
-                    #    file_end = True
+                    if len(arr) < self._buffer_size:
+                       file_end = True
 
-                    # speedup using numpy fromfile but its a one shot loads, ok for this case
-                    data = np.fromfile(self._file, dtype=self._tick_type)
-                    file_end = True
+                    # speedup using numpy fromfile but its a one shot loads
+                    # data = np.fromfile(self._file, dtype=self._tick_type)
+                    # file_end = True
 
                     self._buffer.extend(data)
 
                     # not really necessary, its slow
+                    # no longer necessary because open() at the best initial position
                     # for d in data:
                     #     if d[0] >= self._from_date.timestamp():
                     #         self._buffer.append(d)
@@ -321,9 +362,9 @@ class TickStreamer(object):
 
                 # next month/year
                 if self._curr_date.month == 12:
-                    self._curr_date = self._curr_date.replace(year=self._curr_date.year+1, month=1)
+                    self._curr_date = self._curr_date.replace(year=self._curr_date.year+1, month=1, day=1)
                 else:
-                    self._curr_date = self._curr_date.replace(month=self._curr_date.month+1)
+                    self._curr_date = self._curr_date.replace(month=self._curr_date.month+1, day=1)
 
 
 class TextToBinary(object):

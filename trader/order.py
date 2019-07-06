@@ -3,10 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Trader order
 
-from common.keyed import Keyed
-
-
-class Order(Keyed):
+class Order(object):
     """
     Order for execution on a trader.
 
