@@ -43,6 +43,24 @@ class Color(object):
 
         return value
 
+    @staticmethod
+    def colorize_updn(value, v0, v1, style=None, up=GREEN, down=RED):
+        if style is None:
+            style = Terminal.inst().style()
+
+        if style == 'uterm' or style == 'curses':
+            if v0 is None or v1 is None:
+                return value
+
+            if v0 < v1:
+                return up + value + Color.WHITE
+            elif v0 > v1:
+                return down + value + Color.WHITE
+            else:
+                return value
+
+        return value
+
 
 class View(object):
 

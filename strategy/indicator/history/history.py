@@ -20,6 +20,8 @@ class HistoryIndicator(Indicator):
     values.
     """
 
+    __slots__ = '_length', '_values'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

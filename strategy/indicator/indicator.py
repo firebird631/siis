@@ -9,6 +9,8 @@ class Indicator(object):
     @todo https://www.centralcharts.com/fr/forums/12-analyse-technique/1366-indicateur-chande-kroll-stop
     """
 
+    __slots__ = '_name', '_timeframe', '_last_timestamp'
+
     TYPE_UNKNOWN = 0
     TYPE_AVERAGE_PRICE = 1
     TYPE_MOMENTUM = 2

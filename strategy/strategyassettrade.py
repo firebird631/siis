@@ -21,6 +21,8 @@ class StrategyAssetTrade(StrategyTrade):
     @todo fill the sell_trades and update the x and axp each time
     """
 
+    __slots__ = 'buy_ref_oid', 'sell_ref_oid', 'buy_oid', 'sell_oid', 'sell_order_type', 'sell_order_qty', 'sell_trades'
+
     SELL_ORDER_NONE = 0
     SELL_ORDER_MARKET = 1
     SELL_ORDER_STOP_LOSS = 1
@@ -38,6 +40,8 @@ class StrategyAssetTrade(StrategyTrade):
         self.sell_order_type = Order.ORDER_MARKET
         self.sell_order_qty = 0.0
 
+        self.sell_trades = []  # contain each executed exit trades tuple(qty, price)
+
     def open(self, trader, market_id, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
         """
         Open a position or buy an asset.
@@ -49,10 +53,10 @@ class StrategyAssetTrade(StrategyTrade):
         order.quantity = quantity
         order.leverage = leverage
 
-        # if need to retry
-        self._market_id = market_id
-        self._order_type = order_type
-        self._leverage = leverage
+        # if need to retry @todo or cancel
+        # self._market_id = market_id
+        # self._order_type = order_type
+        # self._leverage = leverage
 
         # generated a reference order id
         trader.set_ref_order_id(order)
@@ -65,8 +69,6 @@ class StrategyAssetTrade(StrategyTrade):
 
         self.tp = take_profit
         self.sl = stop_loss
-
-        self.sell_trades = []        # contain each executed exit trades tuple(qty, price)
 
         self._stats['entry-maker'] = not order.is_market()
 
@@ -270,7 +272,7 @@ class StrategyAssetTrade(StrategyTrade):
                 self.buy_oid = data['id']
 
                 # init created timestamp at the create order open
-                self.oet = data['timestamp']
+                self.eot = data['timestamp']
 
                 if data.get('stop-loss'):
                     self.sl = data['stop-loss']

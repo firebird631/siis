@@ -17,6 +17,8 @@ class HMAIndicator(Indicator):
     https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/hull-moving-average
     """
 
+    __slots__ = '_length', '_prev', '_last', '_hmas'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

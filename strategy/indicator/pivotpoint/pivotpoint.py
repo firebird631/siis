@@ -50,6 +50,8 @@ class PivotPointIndicator(Indicator):
     METHOD_WOODIE = 4
     METHOD_FIBONACCI = 5
 
+    __slots__ = '_method', '_pivot', '_supports', '_resistances', '_prev_supports', '_prev_resistances', '_prev_pivot', '_last_supports', '_last_resistances', '_last_pivot'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_VOLATILITY

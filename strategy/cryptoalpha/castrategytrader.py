@@ -425,11 +425,11 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # ajust max quantity according to free asset of quote, and convert in asset base quantity
         if trader.has_asset(market.quote):
             # quantity = min(quantity, trader.asset(market.quote).free) / market.ofr
-            if trader.has_quantity(market.quote, self.instrument.trader_quantity):
-                quantity = market.adjust_quantity(self.instrument.trader_quantity / price)  # and adjusted to 0/max/step
+            if trader.has_quantity(market.quote, self.instrument.trade_quantity):
+                quantity = market.adjust_quantity(self.instrument.trade_quantity / price)  # and adjusted to 0/max/step
             else:
                 Terminal.inst().notice("Not enought free quote asset %s, has %s but need %s" % (
-                    market.quote, market.format_quantity(trader.asset(market.quote).free), market.format_quantity(self.instrument.trader_quantity)), view='status')
+                    market.quote, market.format_quantity(trader.asset(market.quote).free), market.format_quantity(self.instrument.trade_quantity)), view='status')
 
         #
         # create an order

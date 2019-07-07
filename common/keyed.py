@@ -9,6 +9,8 @@ class Keyed(object):
 	Keyed object.
 	"""
 
+	__slots__ = '_key'
+
 	def __init__(self):
 		self._key = None
 

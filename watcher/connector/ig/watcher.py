@@ -27,6 +27,8 @@ from database.database import Database
 from trader.order import Order
 from trader.market import Market
 
+from common.utils import decimal_place
+
 import logging
 logger = logging.getLogger('siis.watcher.ig')
 
@@ -783,7 +785,7 @@ class IGWatcher(Watcher):
         market.set_quote(
             instrument["currencies"][0]["name"],
             instrument["currencies"][0]['symbol'],
-            -int(math.log10(market.one_pip_means)))  # "USD", "$" 
+            decimal_place(market.one_pip_means))  # "USD", "$" 
 
         if snapshot:
             market.is_open = snapshot["marketStatus"] == "TRADEABLE"

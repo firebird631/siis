@@ -11,6 +11,8 @@ from strategy.indicator import utils
 
 class Score(object):
 
+	__slots__ = '_current_score', '_last_score', '_sum_factor', '_scores', '_range', '_map'
+
 	def __init__(self, min_scores=2, max_scores=16):
 		self._current_score = 0.0
 		self._last_score = 0.0
@@ -108,6 +110,8 @@ class Scorify(object):
 	Merge the last score, get the trend, use an increase factor,
 	and use a temporal regression factor.
 	"""
+
+	__slots__ = '_trigger_level', '_increase_factor', '_regression_factor', '_buy_or_sell', '_score', '_last_score', '_score_accum', '_scalar', '_sum_factor'
 
 	def __init__(self, trigger_level, increase_factor=1.0, regression_factor=1.0):
 		"""

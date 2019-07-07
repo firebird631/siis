@@ -22,6 +22,8 @@ class ATRIndicator(Indicator):
         - ATR est une moyenne mobile (habituellement a 14 jours) de ces True Ranges
     """
 
+    __slots__ = '_length', '_coeff', '_atrs', '_last', '_prev', '_long_sl', '_short_sl'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

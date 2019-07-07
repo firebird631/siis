@@ -601,7 +601,7 @@ class BitMexWatcher(Watcher):
                     str(market.value_per_pip), str(market.one_pip_means), str(market.margin_factor),
                     str(market.min_size), str(market.max_size), str(market.step_size),  # size limits
                     str(market.min_notional), str(market.max_notional), str(market.step_notional),  # notional limits
-                    str(market.min_price), str(market.max_price), str(market.step_price),  # price limits
+                    str(market.min_price), str(market.max_price), str(market.tick_price),  # price limits
                     str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))  # fees
                 )
 

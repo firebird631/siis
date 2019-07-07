@@ -11,6 +11,8 @@ from instrument.instrument import Candle
 
 class CandleGenerator(object):
 
+    __slots__ = '_from_tf', '_to_tf', '_candle', '_last_timestamp', '_last_consumed'
+
     def __init__(self, from_tf, to_tf):
         """
         @param to_tf Generated candle time unit.

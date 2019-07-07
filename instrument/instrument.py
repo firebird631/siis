@@ -18,6 +18,8 @@ class Candle(object):
     @note 11 floats + 1 bool
     """
 
+    __slots__ = '_timestamp', '_timeframe', '_bid_open', '_bid_high', '_bid_low', '_bid_close', '_ofr_open', '_ofr_high', '_ofr_low', '_ofr_close', '_volume', '_ended'
+
     def __init__(self, timestamp, timeframe):
         self._timestamp = timestamp
         self._timeframe = timeframe
@@ -186,6 +188,8 @@ class BuySellSignal(object):
 
     ORDER_ENTRY = 0
     ORDER_EXIT = 1
+
+    __slots__ = '_timestamp', '_timeframe', '_strategy', '_order_type', '_direction', '_exec_price', '_params'
 
     def __init__(self, timestamp, timeframe):
         self._timestamp = timestamp
@@ -366,6 +370,9 @@ class Instrument(object):
     MAKER = 0
     TAKER = 1
 
+    __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_base_exchange_rate', '_tradeable', '_currency', '_trade_quantity', '_leverage', \
+                '_market_bid', '_market_ofr', '_last_update_time', '_vol24h_base', '_vol24h_quote', '_fees', '_ticks', '_candles', '_buy_sells', '_wanted'
+
     def __init__(self, name, symbol, market_id, alias=None):
         self._watchers = {}
         self._name =  name
@@ -381,9 +388,9 @@ class Instrument(object):
 
         self._market_bid = 0.0
         self._market_ofr = 0.0
-        self._update_time = 0.0
+        self._last_update_time = 0.0
 
-        self._vol24h = 0.0
+        self._vol24h_base = 0.0
         self._vol24h_quote = 0.0
 
         self._fees = ((0.0, 0.0), (0.0, 0.0))  # ((maker fee, taker fee), (maker commission, taker commission))
@@ -446,12 +453,12 @@ class Instrument(object):
         return (self._market_bid + self._market_ofr) * 0.5
 
     @property
-    def update_time(self):
-        return self._update_time
+    def last_update_time(self):
+        return self._last_update_time
 
-    @update_time.setter
-    def update_time(self, update_time):
-        self._update_time = update_time
+    @last_update_time.setter
+    def last_update_time(self, last_update_time):
+        self._last_update_time = last_update_time
 
     @property
     def vol24h_base(self):
@@ -488,12 +495,12 @@ class Instrument(object):
         return self._timestamp
 
     @property
-    def trader_quantity(self):
-        return self._trader_quantity
+    def trade_quantity(self):
+        return self._trade_quantity
 
-    @trader_quantity.setter
-    def trader_quantity(self, quantity):
-        self._trader_quantity = quantity
+    @trade_quantity.setter
+    def trade_quantity(self, quantity):
+        self._trade_quantity = quantity
 
     @property
     def currency(self):

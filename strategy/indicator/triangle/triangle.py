@@ -19,6 +19,8 @@ class TriangleIndicator(Indicator):
     Triangle indicator and trend detection.
     """
 
+    __slots__ = '_length', '_split_idx', '_bottom_partial_interp', '_top_partial_interp', '_bottom', '_top'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

@@ -17,6 +17,8 @@ class MACDIndicator(Indicator):
     https://fr.wikipedia.org/wiki/MACD
     """
 
+    __slots__ = '_short_l', '_long_l', '_signal_l', '_prev', '_last', '_macds'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

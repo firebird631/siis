@@ -348,7 +348,7 @@ class Strategy(Runnable):
                         instrument = Instrument(symbol, self.symbol_for_market_id(mapped_symbol) or symbol,
                                 market_id=mapped_symbol, alias=mapped_instrument.get('alias'))
 
-                        instrument.trader_quantity = mapped_instrument.get('size', 0.0)
+                        instrument.trade_quantity = mapped_instrument.get('size', 0.0)
                         instrument.leverage = mapped_instrument.get('leverage', 1.0)
 
                         # for account in EUR assumes a little hack to at least have an approximation in backtesting
@@ -664,10 +664,10 @@ class Strategy(Runnable):
                         continue
 
                     # update instrument data
-                    instrument.market_open = signal.data[1]
+                    instrument.tradeable = signal.data[1]
 
                     if signal.data[1]:
-                        instrument.update_time = signal.data[2]
+                        instrument.last_update_time = signal.data[2]
                         instrument.market_bid = signal.data[3]
                         instrument.market_ofr = signal.data[4]
 
@@ -759,10 +759,12 @@ class Strategy(Runnable):
 
             # update market at minor candles
             if updated:
-                # update the market instrument data before processing, but we does not have the exact base exchange rate so currency converted
-                # prices on backtesting are informals
-                # trader.on_update_market(instrument.market_id, True, timestamp, instrument.bid(updated[0]), instrument.ofr(updated[0]), instrument.base_exchange_rate)
-                trader.on_update_market(instrument.market_id, True, timestamp, instrument.market_bid, instrument.market_ofr, instrument.base_exchange_rate)
+                # update the market instrument data before processing, but we does not have the exact base exchange rate
+                # so currency converted prices on backtesting are approximative even more invalids
+
+                # the feeder update the instrument price data, so use them directly
+                trader.on_update_market(instrument.market_id, True, instrument.last_update_time,
+                        instrument.market_bid, instrument.market_ofr, instrument.base_exchange_rate)
 
         # update strategy as necessary
         if updated:
@@ -1634,7 +1636,7 @@ class Strategy(Runnable):
 
             # ajust max quantity according to free asset of quote, and convert in asset base quantity
             if trader.has_asset(market.quote):
-                qty = sub_trader.instrument.trader_quantity*quantity_rate
+                qty = sub_trader.instrument.trade_quantity*quantity_rate
 
                 if trader.has_quantity(market.quote, qty):
                     order_quantity = market.adjust_quantity(qty / price)  # and adjusted to 0/max/step
@@ -1646,20 +1648,20 @@ class Strategy(Runnable):
         elif market.trade == Market.TRADE_MARGIN:
             trade = StrategyMarginTrade(timeframe)
 
-            if not trader.has_margin(market.margin_cost(sub_trader.instrument.trader_quantity*quantity_rate)):
+            if not trader.has_margin(market.margin_cost(sub_trader.instrument.trade_quantity*quantity_rate)):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
-            order_quantity = market.adjust_quantity(sub_trader.instrument.trader_quantity*quantity_rate)
+            order_quantity = market.adjust_quantity(sub_trader.instrument.trade_quantity*quantity_rate)
 
         elif market.trade == Market.TRADE_IND_MARGIN:
             trade = StrategyIndMarginTrade(timeframe)
 
-            if not trader.has_margin(market.margin_cost(sub_trader.instrument.trader_quantity*quantity_rate)):
+            if not trader.has_margin(market.margin_cost(sub_trader.instrument.trade_quantity*quantity_rate)):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
-            order_quantity = market.adjust_quantity(sub_trader.instrument.trader_quantity*quantity_rate)
+            order_quantity = market.adjust_quantity(sub_trader.instrument.trade_quantity*quantity_rate)
 
         else:
             results['error'] = True
@@ -2307,7 +2309,7 @@ class Strategy(Runnable):
             if isinstance(param[key], str):
                 # convert timeframe code to float in second
                 param[key] = timeframe_from_str(param[key])
-            elif not isinstance(timeframe[key], (int, float)):
+            elif not isinstance(param[key], (int, float)):
                 param[key] = None
 
         # regulars parameters

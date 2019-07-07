@@ -19,6 +19,8 @@ class PriceIndicator(Indicator):
     PRICE_HLC3 = 1    # return (H+L+C)/3
     PRICE_OHLC4 = 2   # return (O+H+L+C)/4
 
+    __slots__ = '_method', '_prev', '_last', '_prices', '_min', '_max', '_open', '_high', '_low', '_close', '_timestamp'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

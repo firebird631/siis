@@ -7,7 +7,7 @@ import time
 import math
 
 from trader.position import Position
-from common.utils import truncate
+from common.utils import truncate, decimal_place
 
 
 class Market(object):
@@ -20,6 +20,8 @@ class Market(object):
     @todo availables margins levels for IG but its complicated to manage
     @todo rollover fee buts its complicated too
     @todo levarage persistance
+    @todo base and quote could be struct with symbol, display, precision, vol24h
+    @todo message market (out only)
     """
 
     TICK_PRICE_TIMEOUT = 60  # in seconds
@@ -33,16 +35,16 @@ class Market(object):
     TYPE_SECTOR = 6
     TYPE_CRYPTO = 7
 
+    UNIT_AMOUNT = 0
+    UNIT_CONTRACTS = 1
+    UNIT_SHARES = 2
+
     CONTRACT_SPOT = 0
     CONTRACT_CFD = 1
     CONTRACT_FUTUR = 2
     CONTRACT_OPTION = 3
     CONTRACT_WARRANT = 4
     CONTRACT_TURBO = 5
-
-    UNIT_AMOUNT = 0
-    UNIT_CONTRACTS = 1
-    UNIT_SHARES = 2
 
     TRADE_BUY_SELL = 0     # no margin no short, only buy (hold) and sell
     TRADE_ASSET = 0        # synonym for buy-sell/spot
@@ -75,6 +77,11 @@ class Market(object):
         'Z': 12
     }
 
+    __slots__ = '_market_id', '_symbol', '_trade', '_orders', '_base', '_base_display', '_base_precision', '_quote', '_quote_display', '_quote_precision', \
+                '_expiry', '_is_open', '_contract_size', '_lot_size', '_base_exchange_rate', '_value_per_pip', '_one_pip_means', '_margin_factor', \
+                '_size_limits', '_price_limits', '_notional_limits', '_market_type', '_unit_type', '_contract_type', '_vol24h_base', '_vol24h_quote', \
+                '_hedging', '_fees', '_previous', '_leverages', '_last_update_time', '_bid', '_ofr'
+
     def __init__(self, market_id, symbol):
         self._market_id = market_id
         self._symbol = symbol
@@ -100,9 +107,9 @@ class Market(object):
         self._one_pip_means = 1.0
         self._margin_factor = 1.0  # 1.0 / leverage
 
-        self._size_limits = (0.0, 0.0, 0.0)
-        self._price_limits = (0.0, 0.0, 0.0)
-        self._notional_limits = (0.0, 0.0, 0.0)
+        self._size_limits = (0.0, 0.0, 0.0, 0)
+        self._price_limits = (0.0, 0.0, 0.0, 0)
+        self._notional_limits = (0.0, 0.0, 0.0, 0)
 
         self._market_type = Market.TYPE_UNKNOWN
         self._unit_type = Market.UNIT_CONTRACTS
@@ -118,7 +125,7 @@ class Market(object):
 
         self._leverages = (1,)  # allowed leverages levels
 
-        self._last_update_time = time.time()
+        self._last_update_time = 0.0
 
         self._bid = 0.0
         self._ofr = 0.0
@@ -386,6 +393,10 @@ class Market(object):
         return self._price_limits[2]
 
     @property
+    def tick_price(self):
+        return self._price_limits[2]
+
+    @property
     def min_leverage(self):
         return min(self._leverages)
     
@@ -398,15 +409,15 @@ class Market(object):
         return self._leverages
 
     def set_size_limits(self, min_size, max_size, step_size):
-        size_precision = -int(math.log10(step_size)) if step_size > 0 else 0
+        size_precision = decimal_place(step_size) if step_size > 0 else 0
         self._size_limits = (min_size, max_size, step_size, size_precision)
 
     def set_notional_limits(self, min_notional, max_notional, step_notional):
-        notional_precision = -int(math.log10(step_notional)) if step_notional > 0 else 0
+        notional_precision = decimal_place(step_notional) if step_notional > 0 else 0
         self._notional_limits = (min_notional, max_notional, step_notional, notional_precision)
 
     def set_price_limits(self, min_price, max_price, step_price):
-        price_precision = -int(math.log10(step_price)) if step_price > 0 else 0
+        price_precision = decimal_place(step_price) if step_price > 0 else 0
         self._price_limits = (min_price, max_price, step_price, price_precision)
 
     def set_leverages(self, leverages):
@@ -477,16 +488,20 @@ class Market(object):
         if not precision:
             if use_quote:
                 # quote use value per pip
-                precision = -int(math.log10(self.value_per_pip))
+                precision = decimal_place(self.value_per_pip)
             else:
                 # base use one pip mean alias tick size
-                precision = -int(math.log10(self.one_pip_means))
+                precision = decimal_place(self.one_pip_means)
 
             if not precision:
                 precision = 8
 
+        tick_size = self._price_limits[2] or self.one_pip_means
+
         # adjusted price at precision and by step of pip meaning
-        return truncate(int(truncate(price, precision) / self.one_pip_means) * self.one_pip_means, precision)
+        return truncate(round(price / tick_size) * tick_size, precision)
+        # error in some cases, exemple 0.00000030 return 0.00000029, so try with above
+        # return truncate(int(truncate(price, precision) / tick_size) * tick_size, precision)
 
     def format_price(self, price, use_quote=True, display_symbol=False):
         """
@@ -501,16 +516,19 @@ class Market(object):
         if not precision:
             if use_quote:
                 # quote use value per pip
-                precision = -int(math.log10(self.value_per_pip))
+                precision = decimal_place(self.value_per_pip)
             else:
                 # base use one pip mean alias tick size
-                precision = -int(math.log10(self.one_pip_means))
+                precision = decimal_place(self.one_pip_means)
 
             if not precision:
                 precision = 8
 
+        tick_size = self._price_limits[2] or self.one_pip_means
+
         # adjusted price at precision and by step of pip meaning
-        adjusted_price = truncate(int(truncate(price, precision) / self.one_pip_means) * self.one_pip_means, precision)
+        # adjusted_price = truncate(int(truncate(price, precision) / tick_size) * tick_size, precision)
+        adjusted_price = truncate(round(price / tick_size) * tick_size, precision)
         formatted_price = "{:0.0{}f}".format(adjusted_price, precision)
 
         # remove tailing 0s and dot
@@ -524,6 +542,41 @@ class Market(object):
             return "%s%s" % (formatted_price, self._quote_display or self._quote)
         else:
             return "%s%s" % (formatted_price, self._base_display or self._base)
+
+    def format_spread(self, spread, shifted=False):
+        """
+        Format the spread according to the precision.
+        @param shifted Shift the spread value by power of 10 based on the tick size.
+        """
+        precision = self._price_limits[3] or self._quote_precision
+
+        if not precision:
+            if use_quote:
+                # quote use value per pip
+                precision = decimal_place(self.value_per_pip)
+            else:
+                # base use one pip mean alias tick size
+                precision = decimal_place(self.one_pip_means)
+
+            if not precision:
+                precision = 8
+
+        tick_size = self._price_limits[2] or self.one_pip_means
+
+        # adjusted spread at precision and by step of pip meaning
+        # adjusted_price = truncate(round(spread / tick_size) * tick_size, precision)
+        if shifted:
+            adjusted_spread = spread * 10**precision
+        else:
+            adjusted_spread = spread
+
+        formatted_spread = "{:0.0{}f}".format(adjusted_spread, precision)
+
+        # remove tailing 0s and dot
+        if '.' in formatted_spread:
+            formatted_spread = formatted_spread.rstrip('0').rstrip('.')
+
+        return formatted_spread
 
     def adjust_quantity(self, quantity, min_is_zero=True):
         """
@@ -542,10 +595,14 @@ class Market(object):
         if self.max_size > 0.0 and quantity > self.max_size:
             return self.max_size
 
-        if self.step_size > 0.0:
-            precision = -int(math.log10(self.step_size))
-            # return max(round(int(quantity / self.step_size) * self.step_size, precision), self.min_size)
+        if self.step_size > 0:
+            precision = self._size_limits[3]
             return max(round(self.step_size * round(quantity / self.step_size), precision), self.min_size)
+
+        # if self.step_size > 0.0:
+        #     precision = -int(math.log10(self.step_size))
+        #     # return max(round(int(quantity / self.step_size) * self.step_size, precision), self.min_size)
+        #     return max(round(self.step_size * round(quantity / self.step_size), precision), self.min_size)
 
         return quantity
 
@@ -553,7 +610,7 @@ class Market(object):
         """
         Return a quantity as str according to the precision of the step size.
         """
-        precision = -int(math.log10(self.step_size))
+        precision = self._size_limits[3] or self._quote_precision
         qty = "{:0.0{}f}".format(truncate(quantity, precision), precision)
 
         if '.' in qty:
@@ -567,30 +624,56 @@ class Market(object):
         Keep only TICK_PRICE_TIMEOUT of samples in memory.
         """
         for l in self._previous:
-            if self._last_update_time - l['t'] > self.TICK_PRICE_TIMEOUT:
+            if self._last_update_time - l[0] > self.TICK_PRICE_TIMEOUT:
                 self._previous.pop(0)
             else:
                 break
 
-        self._previous.append({
-            't': self._last_update_time,
-            'b': self._bid,
-            'o': self._ofr,
-            'e': self._base_exchange_rate
-        })
+        self._previous.append((
+            self._last_update_time,
+            self._bid,
+            self._ofr,
+            self._base_exchange_rate))
 
     def recent_price(self, timestamp):
         """
         One minute ticks price history.
-        @return Price at timestamp or None if not found.
+        @return Price at timestamp or None.
 
         @todo Could use a dichotomic search.
         """
         for l in self._previous:
-            if timestamp >= l['t']:
-                return (l['b'] + l['o']) * 0.5
+            if timestamp >= l[0]:
+                return (l[1] + l[2]) * 0.5
 
         return None
+
+    def recent(self, timestamp):
+        """
+        One minute ticks price history.
+        @return tuple(timestamp, bid, ofr, base-exchange-rate) or None
+
+        @todo Could use a dichotomic search.
+        """
+        for l in self._previous:
+            if timestamp >= l[0]:
+                return l
+
+        return None
+
+    def previous(self):
+        """
+        One minute ticks price history, return the previous entry.
+        @return tuple(timestamp, bid, ofr, base-exchange-rate) or None
+        """
+        return self._previous[-1] if self._previous else None
+
+    def previous_spread(self):
+        """
+        One minute ticks price history, return the previous entry spread.
+        @return float spread or None
+        """
+        return (self._previous[-1][2] - self._previous[-1][1]) if self._previous else None
 
     def unit_type_str(self):
         if self._unit_type == Market.UNIT_AMOUNT:

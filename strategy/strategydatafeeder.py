@@ -113,6 +113,7 @@ class StrategyDataFeeder(object):
                 updated.append(0)
 
                 # defines the last market price (prefer at tick if we have candles and ticks)
+                self.instrument.last_update_time = self._instrument._ticks[-1][0]
                 self.instrument.market_bid = self._instrument._ticks[-1][1]
                 self.instrument.market_ofr = self._instrument._ticks[-1][2]
 

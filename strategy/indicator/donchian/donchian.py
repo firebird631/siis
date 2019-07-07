@@ -15,6 +15,8 @@ class DonchianIndicator(Indicator):
     Donchian channel indicator using low and high prices.
     """
 
+    __slots__ = '_length', '_prev_low', '_prev_high', '_last_low', '_last_high', '_highs', '_lows'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_VOLATILITY

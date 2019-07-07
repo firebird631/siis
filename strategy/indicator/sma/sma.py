@@ -16,6 +16,8 @@ class SMAIndicator(Indicator):
     Simple Moving Average indicator
     """
 
+    __slots__ = '_length', '_prev', '_last', '_smas'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

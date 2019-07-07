@@ -15,6 +15,8 @@ class SARIndicator(Indicator):
     Parabolic SAR indicator
     """
 
+    __slots__ = '_acceleration', '_maximum', '_prev', '_last', '_sars'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

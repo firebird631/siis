@@ -256,7 +256,7 @@ class PgSql(Database):
                         market_info.set_quote(row[9], row[10], int(row[11]))
 
                         market_info.expiry = row[12]
-                        market_info.last_update_time = row[13]
+                        market_info.last_update_time = row[13] * 0.001
 
                         market_info.lot_size = float(row[14])
                         market_info.contract_size = float(row[15])

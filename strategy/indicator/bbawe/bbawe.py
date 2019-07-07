@@ -23,6 +23,8 @@ class BBAweIndicator(Indicator):
     @ref Squeeze Momentum Indicator [LazyBear]
     """
 
+    __slots__ = '_bb_L', '_base_multiplier', '_fast_MA_L', '_awesome_fast_L', '_awesome_slow_L', '_use_EMA', '_signal'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

@@ -16,6 +16,8 @@ class EMAIndicator(Indicator):
     Exponential Moving Average indicator
     """
 
+    __slots__ = '_length', '_prev', '_last', '_emas'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

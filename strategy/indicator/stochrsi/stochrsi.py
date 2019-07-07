@@ -17,6 +17,8 @@ class StochRSIIndicator(Indicator):
     https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/stochrsi
     """
 
+    __slots__ = '_length', '_len_K', '_len_D', '_prev_k', '_last_k', '_prev_d', '_last_d', '_ks', '_ds'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_MOMENTUM

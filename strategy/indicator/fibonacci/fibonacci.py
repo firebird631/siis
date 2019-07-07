@@ -18,6 +18,8 @@ class FibonacciIndicator(Indicator):
     @todo
     """
 
+    __slots__ = '_threshold', '_lowers', '_highers', '_pattern'
+
     PATTERN_UNKNOWN = 0
     PATTERN_PENNANT = 1
     PATTERN_FLAG = 2

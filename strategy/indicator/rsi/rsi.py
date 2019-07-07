@@ -16,6 +16,8 @@ class RSIIndicator(Indicator):
     Relative Strengh Index indicator
     """
 
+    __slots__ = '_length', '_prev', '_last', '_rsis'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_MOMENTUM

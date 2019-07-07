@@ -28,6 +28,9 @@ class StrategyTrade(object):
     then for a TP50% use two trade with half of the size, the first having a TP at 50% price.    
     """
 
+    __slots__ = '_trade_type', '_entry_state', '_exit_state', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
+        'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', 'ptp', '_stats'
+
     VERSION = "1.0.0"
 
     TRADE_UNDEFINED = -1

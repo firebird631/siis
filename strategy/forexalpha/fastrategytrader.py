@@ -438,11 +438,11 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         date_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
 
         # ajust max quantity according to free asset of quote, and convert in asset base quantity
-        if 0: # not trader.has_margin(self.market.margin_cost(self.instrument.trader_quantity)):
+        if 0: # not trader.has_margin(self.market.margin_cost(self.instrument.trade_quantity)):
             Terminal.inst().notice("Not enought free margin %s, has %s but need %s" % (
-                market.quote, market.format_quantity(trader.account.margin_balance), market.format_quantity(self.instrument.trader_quantity)), view='status')
+                market.quote, market.format_quantity(trader.account.margin_balance), market.format_quantity(self.instrument.trade_quantity)), view='status')
         else:
-            quantity = market.adjust_quantity(self.instrument.trader_quantity)
+            quantity = market.adjust_quantity(self.instrument.trade_quantity)
     
         #
         # create an order

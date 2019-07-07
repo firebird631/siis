@@ -352,9 +352,9 @@ class BoostedBlueSkyDayStrategy(Strategy):
 
             # create an order an post it
             if final_score > 0:
-                Terminal.inst().notice("> Strategy %s LONG %s%s at price %.4f on %s" % (self.name, instrument.trader_quantity, instrument.market_id, last_prices[-1], date_str))
+                Terminal.inst().notice("> Strategy %s LONG %s%s at price %.4f on %s" % (self.name, instrument.trade_quantity, instrument.market_id, last_prices[-1], date_str))
             else:
-                Terminal.inst().notice("> Strategy %s SHORT %s%s at price %.4f on %s" % (self.name, instrument.trader_quantity, instrument.market_id, last_prices[-1], date_str))
+                Terminal.inst().notice("> Strategy %s SHORT %s%s at price %.4f on %s" % (self.name, instrument.trade_quantity, instrument.market_id, last_prices[-1], date_str))
 
             trader = self.trader()
             if trader:
@@ -381,9 +381,9 @@ class BoostedBlueSkyDayStrategy(Strategy):
 
                 # trading quantity + what we have in opposite direction - what we already have in the same direction
                 if self._pyramided >= 1:
-                    order.quantity = instrument.trader_quantity + current_opposite_qty - current_same_qty  # @todo
+                    order.quantity = instrument.trade_quantity + current_opposite_qty - current_same_qty  # @todo
                 else:
-                    order.quantity = instrument.trader_quantity + current_opposite_qty - current_same_qty
+                    order.quantity = instrument.trade_quantity + current_opposite_qty - current_same_qty
 
                 if order.quantity > 0:
                     # @todo debug only

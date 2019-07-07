@@ -40,6 +40,8 @@ class TomDemarkIndicator(Indicator):
     @ref https://www.mql5.com/en/code/viewcode/8966/130033/MAB_TD_Sequential.mq4
     """
 
+    __slots__ =  '_length', '_c', '_prev_c', '_cd', '_prev_cd', '_agg_cd', '_prev_agg_cd', '_high_low'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

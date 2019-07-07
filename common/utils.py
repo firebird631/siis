@@ -22,6 +22,7 @@ class UTC(tzinfo):
         return timedelta(0)
 
 
+# timeframe to str map (double: str)
 TIMEFRAME_TO_STR_MAP = {
     0: 't',
     1: '1s',
@@ -117,3 +118,7 @@ def fix_thread_set_name():
 def truncate(number, digits) -> float:
     stepper = pow(10.0, digits)
     return math.trunc(stepper * number) / stepper
+
+
+def decimal_place(value):
+    return -int(math.floor(math.log10(value)))

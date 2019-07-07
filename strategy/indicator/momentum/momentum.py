@@ -16,6 +16,8 @@ class MomentumIndicator(Indicator):
     Momentum indicator
     """
 
+    __slots__ = '_length', '_prev', '_last', '_mmts'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

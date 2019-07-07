@@ -28,6 +28,8 @@ class StrategyIndMarginTrade(StrategyTrade):
         if we use cumulative-filled and avg-price we have the same probleme here too.
     """
 
+    __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', 'position_id', 'stop_order_qty', 'limit_order_qty'
+
     def __init__(self, timeframe):
         super().__init__(StrategyTrade.TRADE_IND_MARGIN, timeframe)
 

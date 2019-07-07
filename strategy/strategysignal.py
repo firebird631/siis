@@ -35,6 +35,8 @@ class StrategySignal(object):
     - ptp for partial TP from 0 to 1
     """
 
+    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'ptp'
+
     SIGNAL_NONE = 0   # signal type undefined (must be entry or exit else its informal)
     SIGNAL_ENTRY = 1  # entry signal (this does not mean long. @see dir)
     SIGNAL_EXIT = -1  # exit signal (this does not mean short. @see dir)

@@ -17,6 +17,8 @@ logger = logging.getLogger('siis.common.workerpool')
 
 class CountDown(object):
 
+    __slots__ = '_count', '_condition'
+
     def __init__(self, n):
         self._count = n
         self._condition = threading.Condition()
@@ -110,6 +112,8 @@ class Worker(threading.Thread):
 
 
 class WorkerPool(object):
+
+    __slots__ = '_num_workers', '_workers', '_queue', '_mutex'
 
     def __init__(self, num_workers=None):
         if not num_workers:

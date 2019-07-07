@@ -379,10 +379,9 @@ class Trader(Runnable):
         elif command_type == Trader.COMMAND_LIST_TICKERS:
             # display the list of markets tickers
             if self.connected and self._markets:
-
                 Terminal.inst().notice("List %i markets tickers for %s" % (len(self._markets), self._name), view='content')
 
-                columns, table = self.markets_tickers_table(style=Terminal.inst().style())
+                columns, table, total_size = self.markets_tickers_table(style=Terminal.inst().style())
                 Terminal.inst().table(columns, table, total_size, view='content')
         
         elif command_type == Trader.COMMAND_LIST_POSITIONS:
@@ -484,7 +483,7 @@ class Trader(Runnable):
             if self.connected and self._account:
                 Terminal.inst().notice("Account details for %s" % (self._name,), view='content')
                
-                columns, table = self.account_table(style=Terminal.inst().style())
+                columns, table, total_size = self.account_table(style=Terminal.inst().style())
                 Terminal.inst().table(columns, table, total_size, view='content')
 
         elif command_type == Trader.COMMAND_INFO:
@@ -1094,7 +1093,7 @@ class Trader(Runnable):
 
         return columns[col_ofs:], data, total_size
 
-    def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None):
+    def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None, last_time=None):
         """
         Returns a table of any followed markets tickers.
         """
@@ -1115,18 +1114,28 @@ class Trader(Runnable):
         limit = offset + limit
 
         markets.sort(key=lambda x: x.market_id)
-        markets = markets[offset:limit]      
+        markets = markets[offset:limit]
 
         for market in markets:
+            recent = market.recent(self.timestamp - 0.5 if not last_time else last_time)
+            if recent:
+                bid = Color.colorize_updn(market.format_price(market.bid, True, False), recent[1], market.bid, style=style)
+                ofr = Color.colorize_updn(market.format_price(market.ofr, True, False), recent[2], market.ofr, style=style)
+                spread = Color.colorize_updn(market.format_spread(market.spread), market.spread, recent[2] - recent[1], style=style)
+            else:
+                bid = market.format_price(market.bid, True, False)
+                ofr = market.format_price(market.ofr, True, False)
+                spread = market.format_price(market.spread, True, False)
+
             row = (
-                market.market_id,
-                market.symbol,
-                market.format_price(market.bid, True, False),
-                market.format_price(market.ofr, True, False),
-                market.format_price(market.spread, True, False),
-                market.format_quantity(market.vol24h_base) if market.vol24h_base else charmap.HOURGLASS,
-                ("%.2f" % market.vol24h_quote) if market.vol24h_quote else charmap.HOURGLASS,
-                datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S"))
+                 market.market_id,
+                 market.symbol,
+                 bid,
+                 ofr,
+                 spread,
+                 market.format_quantity(market.vol24h_base) if market.vol24h_base else charmap.HOURGLASS,
+                 ("%.2f" % market.vol24h_quote) if market.vol24h_quote else charmap.HOURGLASS,
+                 datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S"))
 
             data.append(row[col_ofs:])
 

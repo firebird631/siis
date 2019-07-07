@@ -16,6 +16,8 @@ class VolumeIndicator(Indicator):
 
     VOLUME_TICK = 0   # take the tick volume
 
+    __slots__ = '_method', '_volumes', '_prev', '_last'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_TREND

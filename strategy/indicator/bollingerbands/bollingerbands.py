@@ -19,6 +19,8 @@ class BollingerBandsIndicator(Indicator):
     https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/bollinger-band-width
     """
 
+    __slots__ = '_length', '_prev_bottom', '_prev_ma', '_prev_top', '_last_bottom', '_last_ma', '_last_top'
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_VOLATILITY

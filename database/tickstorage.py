@@ -348,7 +348,7 @@ class TickStreamer(object):
 
                         ts, bid, ofr, vol = row.rstrip('\n').split('\t')
 
-                        ts = float(ts) / 0.001
+                        ts = float(ts) * 0.001
                         if ts < self._from_date.timestamp():
                             # ignore older than initial date
                             continue
