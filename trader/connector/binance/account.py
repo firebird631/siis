@@ -45,17 +45,15 @@ class BinanceAccount(Account):
 
         self._last_update = 0
 
-        # never change
-        self._email = ''
-        self._account_name = ''
-        self._username = self.parent.name
-
     def update(self, connector):
         if connector is None or not connector.connected:
             return
 
         # update balance each second
         if time.time() - self._last_update >= 1.0:
+            # its all what we have... nothing just our internal mapping
+            self._name = connector.account_id
+
             # recompute the balance and free margin for each non-zero account balance
             self._balance = 0.0
             self._margin_balance = 0.0

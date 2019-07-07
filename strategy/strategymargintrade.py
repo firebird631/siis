@@ -15,13 +15,12 @@ logger = logging.getLogger('siis.strategy')
 
 class StrategyMarginTrade(StrategyTrade):
     """
-    Specialization for margin trading.
-    Its a bit complicated to modifiy the stop-loss and take-profit because there is two cases :
-        - IG for exemple permit to have a stop and a limit price defined per separate position.
-        - BitMex only having merged position per market without linked stop/limit.
-    
-    @todo do we store independently avg entry price from its exit price ?        
-    @todo refaire comme pour assettrade buy_ref_oid sell_ref_oid avant create_order !!!
+    Specialization for margin trading. 
+
+    This type of trade is related to margin trading market, allowing or not hedging.
+
+    @todo do we need like with asset trade an exit_trades list to compute the axp and x values, because
+        if we use cumulative-filled and avg-price we have the same probleme here too.
     """
 
     def __init__(self, timeframe):
@@ -573,7 +572,18 @@ class StrategyMarginTrade(StrategyTrade):
     def dumps(self):
         data = super().dumps()
 
-        # data[''] ... @todo
+        data['create-ref-oid'] = self.create_ref_oid
+        data['stop-ref-oid'] = self.stop_ref_oid
+        data['limit-ref-oid'] = self.limit_ref_oid
+
+        data['create-oid'] = self.create_oid
+        data['stop-oid'] = self.stop_oid
+        data['limit-oid'] = self.limit_oid
+
+        data['position-id'] = self.position_id
+
+        data['stop-order-qty'] = self.stop_order_qty
+        data['limit-order-qty'] = self.limit_order_qty
 
         return data
 
@@ -581,6 +591,17 @@ class StrategyMarginTrade(StrategyTrade):
         if not super().loads(data, strategy_service):
             return False
 
-        # @todo...
+        self.create_ref_oid = data.get('create-ref-oid')
+        self.stop_ref_oid = data.get('stop-ref-oid')
+        self.limit_ref_oid = data.get('limit-ref-oid')
+
+        self.create_oid = data.get('create-oid')
+        self.stop_oid = data.get('stop-oid')
+        self.limit_oid = data.get('limit-oid')
+
+        self.position_id = data.get('position-id')
+
+        self.stop_order_qty = data.get('stop-order-qty', 0.0)
+        self.limit_order_qty = data.get('limit-order-qty', 0.0)
 
         return True

@@ -53,17 +53,11 @@ TIMEFRAME_FROM_STR_MAP = {v: k for k, v in TIMEFRAME_TO_STR_MAP.items()}
 
 
 def timeframe_to_str(timeframe):
-    if timeframe in TIMEFRAME_TO_STR_MAP:
-        return TIMEFRAME_TO_STR_MAP[timeframe]
-    else:
-        return ""
+    return TIMEFRAME_TO_STR_MAP.get(timeframe, "")
 
 
 def timeframe_from_str(timeframe):
-    if timeframe in TIMEFRAME_FROM_STR_MAP:
-        return TIMEFRAME_FROM_STR_MAP[timeframe]
-    else:
-        return 0.0
+    return TIMEFRAME_FROM_STR_MAP.get(timeframe, 0.0)
 
 
 def matching_symbols_set(configured_symbols, available_symbols):

@@ -55,16 +55,7 @@ class BitMexAccount(Account):
         if not funds:
             return
 
-        # update currency ratio
-        xbtusd = connector.ws.get_instrument('XBTUSD')
-
-        if not xbtusd:
-            return
-
-        self._currency_ratio = xbtusd['lastPrice']
-
-        self._name = self._id = self._username = funds['account']
-        self._username = self._username = funds['account']
+        self._name = funds['account']
 
         self._currency = funds['currency']
         self._currency_display = funds['currency']
@@ -90,6 +81,14 @@ class BitMexAccount(Account):
 
         elif self._currency != 'XBT' and self._currency == 'BTC':
             logger.warning("Unsupported bitmex.com account currency %s" % (self._currency,))
+
+        # update currency ratio
+        xbtusd = connector.ws.get_instrument('XBTUSD')
+
+        if not xbtusd:
+            return
+
+        self._currency_ratio = xbtusd['lastPrice']
 
         now = time.time()
         self._last_update = now

@@ -393,6 +393,7 @@ class Database(object):
         """
         @param data is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
+            str account_id (not empty)
             str asset_id (not empty) identifier of the asset
             str last_trade_id (not empty) unique identifier when average price was updated
             int timestamp (or 0) of the last PRU update in (ms)
@@ -407,19 +408,20 @@ class Database(object):
             self._pending_asset_insert.append(data)
         self.unlock()
 
-    def load_assets(self, service, trader, broker_id):
+    def load_assets(self, service, trader, broker_id, account_id):
         """
         Load all asset for a specific broker_id
         @param service to be notified once done
         """
         self.lock()
-        self._pending_asset_select.append((service, trader, broker_id))
+        self._pending_asset_select.append((service, trader, broker_id, account_id))
         self.unlock()
 
     def store_user_trade(self, data):
         """
         @param data is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
+            str account_id (not empty)
             str market_id (not empty)
             str appliance_id (not empty)
             integer trade_id (not empty)
@@ -434,19 +436,20 @@ class Database(object):
             self._pending_user_trade_insert.append(data)
         self.unlock()
 
-    def load_user_trades(self, service, appliance, appliance_id, broker_id, market_id):
+    def load_user_trades(self, service, appliance, broker_id, account_id, market_id, appliance_id):
         """
         Load all asset for a specific appliance_id and market_id
         @param service to be notified once done
         """
         self.lock()
-        self._pending_user_trade_select.append((service, appliance, appliance_id, broker_id, market_id))
+        self._pending_user_trade_select.append((service, appliance, broker_id, account_id, market_id, appliance_id))
         self.unlock()
 
     def store_user_trader(self, data):
         """
         @param data is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
+            str account_id (not empty)
             str market_id (not empty)
             str appliance_id (not empty)
             integer activity (not null)
@@ -460,13 +463,13 @@ class Database(object):
             self._pending_user_trader_insert.append(data)
         self.unlock()
 
-    def load_user_traders(self, service, appliance, appliance_id, market_id):
+    def load_user_traders(self, service, appliance, broker_id, account_id, market_id, appliance_id):
         """
         Load all asset for a specific appliance_id and market_id
         @param service to be notified once done
         """
         self.lock()
-        self._pending_user_trader_select.append((service, appliance, appliance_id, market_id))
+        self._pending_user_trader_select.append((service, appliance, broker_id, account_id, market_id, appliance_id))
         self.unlock()
 
     #

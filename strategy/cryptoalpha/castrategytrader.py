@@ -176,7 +176,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 continue
 
             # trade region
-            if not self.check_regions(timestamp, entry, self.region_allow):
+            if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ofr, entry, self.region_allow):
                 continue
 
             # ref timeframe is bear don't take the risk

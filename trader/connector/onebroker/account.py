@@ -68,11 +68,11 @@ class OneBrokerAccount(Account):
 			Terminal.inst().error(repr(data))
 			raise Exception("API error")
 
-		self._balance = float(data['response']['balance'])
+		self._name = data['response']['email']
 		self._username = data['response']['username']
-		self._id = data['response']['email']  # @todo account id ?
 		self._email = data['response']['email']
-		self._name = self._username
+
+		self._balance = float(data['response']['balance'])
 
 		#
 		# overview

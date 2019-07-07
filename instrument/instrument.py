@@ -157,17 +157,17 @@ class Candle(object):
     def set_consolidated(self, cons):
         self._ended = cons
 
-    def copy_bid(self, candle):
-        self._bid_open = candle._bid_open
-        self._bid_high = candle._bid_high
-        self._bid_low = candle._bid_low
-        self._bid_close = candle._bid_close
+    def copy_bid(self, dup):
+        self._bid_open = dup._bid_open
+        self._bid_high = dup._bid_high
+        self._bid_low = dup._bid_low
+        self._bid_close = dup._bid_close
 
-    def copy_ofr(self, candle):
-        self._ofr_open = candle._ofr_open
-        self._ofr_high = candle._ofr_high
-        self._ofr_low = candle._ofr_low
-        self._ofr_close = candle._ofr_close
+    def copy_ofr(self, dup):
+        self._ofr_open = dup._ofr_open
+        self._ofr_high = dup._ofr_high
+        self._ofr_low = dup._ofr_low
+        self._ofr_close = dup._ofr_close
 
     def __repr__(self):
         return "%s bid %s/%s/%s/%s ofr %s/%s/%s/%s" % (
@@ -241,7 +241,8 @@ class Tick(object):
     A tick is a 4 floats tuple with (timestamp, bid, ofr, volume).
     Because class instance take extra memory an CPU cost we uses a simple tuple.
     Those constant of index are helpers/reminders.
-    @note Ofr is a synonym for ask.
+
+    @note ofr is a synonym for ask.
     """
 
     TIMESTAMP = 0
@@ -287,10 +288,12 @@ class Instrument(object):
     """
     name come from the broker usage name (could use the epic or market-id if none other).
     symbol is a common usual name (ex: EURUSD, BTCUSD).
-    market-id is a the unique broker identifier (market-id or sometime the epic).
+    market-id is a the unique broker identifier.
     alias is a only a secondary or display name.
-    base_exchance_rate is rate of symbol over its related account currency.
-    @note Ofr is a synonym for ask.
+    base_exchance_rate is the rate of the quote symbol over its related account currency.
+
+    @note ofr is a synonym for ask.
+    @todo set 24h vol, fee, commission from market info data signal
     """
 
     TF_TICK = 0
@@ -370,15 +373,8 @@ class Instrument(object):
         self._market_id = market_id
         self._alias = alias
         self._base_exchange_rate = 1.0
-        self._market_open = True
+        self._tradeable = True
 
-        self._wanted = []  # list of wanted timeframe before be ready
-
-        self._ticks = []
-        self._candles = {}    # array per timeframe
-        self._buy_sells = {}  # array per timeframe
-
-        # most of thoose informations comes from the broker, but can be manually defined
         self._currency = "USD"
         self._trade_quantity = 0.0
         self._leverage = 1.0  # 1 / margin_factor
@@ -390,7 +386,13 @@ class Instrument(object):
         self._vol24h = 0.0
         self._vol24h_quote = 0.0
 
-        self._fees = ((0.0, 0.0), (0.0, 0.0))  # maker/taker : fee/commission
+        self._fees = ((0.0, 0.0), (0.0, 0.0))  # ((maker fee, taker fee), (maker commission, taker commission))
+
+        self._ticks = []      # list of tuple(timestamp, bid, ofr, volume)
+        self._candles = {}    # list per timeframe
+        self._buy_sells = {}  # list per timeframe
+
+        self._wanted = []  # list of wanted timeframe before be ready (its only for initialization)
 
     def add_watcher(self, watcher_type, watcher):
         if watcher:
@@ -416,12 +418,12 @@ class Instrument(object):
         return self._market_id
     
     @property
-    def market_open(self):
-        return self._market_open
+    def tradeable(self):
+        return self._tradeable
 
-    @market_open.setter
-    def market_open(self, status):
-        self._market_open = status
+    @tradeable.setter
+    def tradeable(self, status):
+        self._tradeable = status
 
     @property
     def market_bid(self):
@@ -469,21 +471,13 @@ class Instrument(object):
 
     @property
     def base_exchange_rate(self):
-        if self._base_exchange_rate:
-            return self._base_exchange_rate
-
-        # for now this little hack map very approx so
-        # we have exacts lives values using Market on traders sides but not during backtesting.
-        CURRENCY_CONV = {  # for account is EUR
-            'BTC': 5400.0,
-            'EUR': 1.0,
-            'JPY': 129.31,
-            'USD': 1.0/0.86,
-            'CAD': 1.0/0.66,
-            'NZD': 1.0/0.56,
-        }
-
-        return CURRENCY_CONV.get(self._currency, 1.0)
+        """
+        Current base exchange rate from the quote to the account currency.
+        It is used to compute the profit/loss in account currency unit.
+        But in backtesting it is possible that we don't have this information,
+        and this ratio is non static.
+        """
+        return self._base_exchange_rate
 
     @base_exchange_rate.setter
     def base_exchange_rate(self, v):

@@ -40,11 +40,13 @@ IDENTITIES = {
 	},
 	'binance.com': {
 		'real': {
+			'account-id', '<generate-your-own-for-local-mapping>',
 			'api-key': '<api-key>',
 			'api-secret': '<api-secret>',
 			'host': 'binance.com'
 		},
 		'demo': {
+			'account-id', '<generate-another>',
 			'api-key': '<second-real-but-for-demo-api-key>',
 			'api-secret': '<second-real-but-for-demo-api-secret>',
 			'host': 'binance.com'

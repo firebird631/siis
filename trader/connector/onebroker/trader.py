@@ -229,7 +229,7 @@ class OneBrokerTrader(Trader):
     @Trader.mutexed
     def create_order(self, order):
         if not self.has_market(order.symbol):
-            Terminal.inst().error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id), view='trader')
+            logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
             return False
 
         if not self._activity:
@@ -578,7 +578,7 @@ class OneBrokerTrader(Trader):
                 self._positions[position.position_id] = position
 
                 # retrieve the copied position id from database @todo
-                Terminal.inst().info("Retrieve pos %s copied from position %s" % (position.position_id, position.copied_position_id), view='trader')
+                logger.info("Retrieve pos %s copied from position %s" % (position.position_id, position.copied_position_id))
 
         #
         # check for cleared position

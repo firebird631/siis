@@ -32,11 +32,13 @@ class Connector(object):
 		2592000: '1M'
 	}
 
-	def __init__(self, service, api_key, api_secret, host="api.binance.com", callback=None):
+	def __init__(self, service, account_id, api_key, api_secret, host="api.binance.com", callback=None):
 		self._protocol = "https://"
 		self._host = host or "api.binance.com"
 
 		self._base_url = "/api/"  # for REST
+
+		self._account_id = account_id
 
 		self.__api_key = api_key
 		self.__api_secret = api_secret
@@ -87,6 +89,10 @@ class Connector(object):
 	@property
 	def ws(self):
 		return self._ws
+
+	@property
+	def account_id(self):
+		return self._account_id
 
 	#
 	# Conveniances helpers

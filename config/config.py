@@ -41,7 +41,8 @@ WATCHERS = {
         'classpath': 'watcher.connector.onebroker.watcher.OneBrokerWatcher',
         'authors': [
             {
-                'id': '11531',  # wangzai888
+                'username': 'wangzai888',
+                'id': '11531',
                 'status': 'share',
                 'instruments': ['forex', 'stock', 'commodity'],
                 'confidence': [0, 0, 0, 5, 5, 5, 5, 3],
@@ -49,12 +50,6 @@ WATCHERS = {
             },
         ],
         'symbols': []  # @todo for watching using WS
-    },
-    '1fox.com': {
-        'status': None,
-        'classpath': 'watcher.connector.onebroker.watcher.OneFoxWatcher',
-        'authors': [],
-        'symbols': ['BTCUSD', 'BCHUSD']
     },
     'alphavantage.co': {
         'status': 'load',
@@ -130,11 +125,6 @@ TRADERS = {
             '(STOCKS)': [1, 15],
         },
     },
-    '1fox.com': {
-        'status': None,  # 'load', @todo api are not same version as 1broker.com
-        'classpath': 'trader.connector.onefox.trader.OneFoxTrader',
-        'symbols': ['BTCUSD', 'BCHUSD'],
-    },
     'binance.com': {
         'status': 'load',
         'classpath': 'trader.connector.binance.trader.BinanceTrader',
@@ -146,7 +136,7 @@ TRADERS = {
             'alt-currency': 'USDT',
             'alt-currency-symbol': 'USDT',
             'initial': 0.1,  # in currency in quote
-            'price': 3450
+            'price': 11350
         },
     },
     'bitmex.com': {

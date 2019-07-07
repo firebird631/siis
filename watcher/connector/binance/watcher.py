@@ -87,6 +87,7 @@ class BinanceWatcher(Watcher):
                 if not self._connector:
                     self._connector = Connector(
                         self.service,
+                        identity.get('account-id'),
                         identity.get('api-key'),
                         identity.get('api-secret'),
                         identity.get('host'))
@@ -150,6 +151,7 @@ class BinanceWatcher(Watcher):
                 # once market are init
                 self._init = True
 
+            # now we are ready
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
         except Exception as e:

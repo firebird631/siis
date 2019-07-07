@@ -36,14 +36,16 @@ def display_help(commands_handler, user_context=False):
         Terminal.inst().message(" - 'f' print appliance performance", view='content')
         Terminal.inst().message(" - 's' print appliance statistics", view='content')
 
+        Terminal.inst().message(" - 'A' show account view", view='content')
+        Terminal.inst().message(" - 'Q' show assets view", view='content')        
+        Terminal.inst().message(" - 'M' show markets view", view='content')
+        Terminal.inst().message(" - 'T' show tickers view", view='content')
         Terminal.inst().message(" - 'F' show strategy view", view='content')
         Terminal.inst().message(" - 'S' show statistic view", view='content')
         Terminal.inst().message(" - 'P' show performance view", view='content')
-        Terminal.inst().message(" - 'T' show trader view", view='content')
-        Terminal.inst().message(" - 'M' show monitor view", view='content')
+        Terminal.inst().message(" - 'I' show console view", view='content')
         Terminal.inst().message(" - 'D' show debug view", view='content')
-        Terminal.inst().message(" - 'I' show content view", view='content')
-        Terminal.inst().message(" - 'C' clear content view", view='content')
+        Terminal.inst().message(" - 'C' clear current view", view='content')
 
         for entry in commands_handler.get_summary():
             if entry[1]:

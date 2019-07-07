@@ -18,8 +18,7 @@ class StrategyAssetTrade(StrategyTrade):
     Specialization for asset buy/sell trading.
     Only an initial buy order, and a single, either a stop or a take-profit order.
 
-    @todo Add per exit order avg exit price and x qty and update axp and x with that,
-        its in case of exit in many orders, beside the entry is on a single order.
+    @todo fill the sell_trades and update the x and axp each time
     """
 
     SELL_ORDER_NONE = 0
@@ -66,6 +65,8 @@ class StrategyAssetTrade(StrategyTrade):
 
         self.tp = take_profit
         self.sl = stop_loss
+
+        self.sell_trades = []        # contain each executed exit trades tuple(qty, price)
 
         self._stats['entry-maker'] = not order.is_market()
 
@@ -405,7 +406,16 @@ class StrategyAssetTrade(StrategyTrade):
     def dumps(self):
         data = super().dumps()
 
-        # data[''] ... @todo
+        data['buy-ref-oid'] = self.buy_ref_oid
+        data['buy-oid'] = self.buy_oid
+
+        data['sell-ref-oid'] = self.sell_ref_oid
+        data['sell-oid'] = self.sell_oid
+
+        data['sell-order-type'] = self.sell_order_type
+        data['sell-order-qty'] = self.sell_order_qty
+
+        data['sell-trades'] = self.sell_trades
 
         return data
 
@@ -413,6 +423,15 @@ class StrategyAssetTrade(StrategyTrade):
         if not super().loads(data, strategy_service):
             return False
 
-        # @todo...
+        self.buy_ref_oid = data.get('buy-ref-oid', None)
+        self.buy_oid = data.get('buy-oid', None)
+
+        self.sell_ref_oid = data.get('sell-ref-oid', None)
+        self.sell_ref_oid = data.get('sell-oid', None)
+
+        self.sell_order_type = data.get('sell-order-type', Order.ORDER_MARKET)
+        self.sell_order_qty = data.get('sell_order_qty', 0.0)
+
+        self.sell_trades = data.get('sell-trades', [])
 
         return True

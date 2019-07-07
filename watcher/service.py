@@ -70,7 +70,7 @@ class WatcherService(Service):
 
             profile_watcher_config = self.profile(k)
             if not profile_watcher_config or not profile_watcher_config.get('status', None) or profile_watcher_config['status'] != 'enabled':
-                # ignore watcher missing or disable from the profile
+                # ignore watcher missing or disabled from the profile
                 continue
 
             if self._watchers.get(k) is not None:

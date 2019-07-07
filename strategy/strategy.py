@@ -348,8 +348,21 @@ class Strategy(Runnable):
                         instrument = Instrument(symbol, self.symbol_for_market_id(mapped_symbol) or symbol,
                                 market_id=mapped_symbol, alias=mapped_instrument.get('alias'))
 
-                        instrument.trader_quantity = mapped_instrument.get('size', 0)
-                        instrument.leverage = mapped_instrument.get('leverage', 1)
+                        instrument.trader_quantity = mapped_instrument.get('size', 0.0)
+                        instrument.leverage = mapped_instrument.get('leverage', 1.0)
+
+                        # for account in EUR assumes a little hack to at least have an approximation in backtesting
+                        # in case the market-quote/account-currency is not available
+                        CURRENCY_HACK = {
+                            'BTC': 11350.0,
+                            'EUR': 1.0,
+                            'JPY': 129.31,
+                            'USD': 1.0/0.86,
+                            'CAD': 1.0/0.66,
+                            'NZD': 1.0/0.56,
+                        }
+
+                        instrument.base_exchange_rate = CURRENCY_HACK.get(instrument.currency, 1.0)
 
                         self._instruments[mapped_symbol] = instrument
 
@@ -2040,7 +2053,8 @@ class Strategy(Runnable):
             try:
                 stage = int(data.get('stage', 0))
                 direction = int(data.get('direction', 0))
-                expiry = int(data.get('expiry', 0))
+                created = float(data.get('created', 0.0))
+                expiry = float(data.get('expiry', 0.0))
 
                 if 'timeframe' in data and type(data['timeframe']) is str:
                     timeframe = timeframe_from_str(data['timeframe'])
@@ -2053,7 +2067,7 @@ class Strategy(Runnable):
                 if region_name in self.service.regions:
                     try:
                         # instanciate the region
-                        region = self.service.regions[region_name](stage, direction, timeframe)
+                        region = self.service.regions[region_name](created, stage, direction, timeframe)
 
                         if expiry:
                             region.set_expiry(expiry)
@@ -2066,7 +2080,7 @@ class Strategy(Runnable):
                             sub_trader.add_region(region)
                         else:
                             results['error'] = True
-                            results['messages'].append("Region checking error %s" % (op_name,))
+                            results['messages'].append("Region checking error %s" % (region_name,))
 
                     except Exception as e:
                         results['error'] = True

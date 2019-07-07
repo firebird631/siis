@@ -1230,7 +1230,7 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets.
         """
-        columns = ('Account', 'Username', 'Email', 'Balance', 'Margin balance', 'Net wort', 'Risk limit', 'Unrealized P/L')
+        columns = ('Broker', 'Account', 'Username', 'Email', 'Balance', 'Margin balance', 'Net wort', 'Risk limit', 'Unrealized P/L')
         data = []
 
         self.lock()
@@ -1244,6 +1244,7 @@ class Trader(Runnable):
         limit = offset + limit
 
         row = (
+            self.name,
             self._account.name,
             self._account.username,
             self._account.email,
@@ -1259,6 +1260,7 @@ class Trader(Runnable):
         # in alt currency
         if self._account.currency != self._account.alt_currency:
             row = [
+                self.name,
                 self._account.name,
                 self._account.username,
                 self._account.email,

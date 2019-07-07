@@ -3,6 +3,8 @@
 # @license Copyright (c) 2018 Dream Overflow
 # terminal region commands and registration
 
+import time
+
 from datetime import datetime
 
 from terminal.command import Command
@@ -38,10 +40,12 @@ class RangeRegionCommand(Command):
         reg = "range"
         stage = 0
         direction = 0
-        expiry = 0
+        expiry = 0.0
+        created = self._strategy_service.timestamp
 
         low = 0.0
         high = 0.0
+        cancelation = 0.0
 
         # ie ":RR _ EURUSD 1.12 1.15"
         if len(args) < 4:
@@ -59,15 +63,9 @@ class RangeRegionCommand(Command):
 
             for value in args[4:]:
                 if value.startswith("'"):
-                    timeframe = timeframe_from_str(args[4][1:])
-                elif value in ("l", "L", "long", "LONG"):
-                    direction = 1
-                elif value in ("s", "S", "short", "SHORT"):
-                    direction = -1
-                elif value in ("e", "E", "entry", "ENTRY"):
-                    stage = 1
-                elif value in ("x", "X", "exit", "EXIT"):
-                    stage = -1
+                    timeframe = timeframe_from_str(value[1:])
+                elif value.startswith('C@'):
+                    cancelation = float(value[2:])
                 elif value.startswith('@'):
                     # expiry
                     if 'T' in value:
@@ -76,7 +74,15 @@ class RangeRegionCommand(Command):
                     else:
                         # relative to now
                         duration = timeframe_from_str(value[1:])
-                        expiry = time.time() + duration
+                        expiry = created + duration
+                elif value in ("l", "L", "long", "LONG"):
+                    direction = 1
+                elif value in ("s", "S", "short", "SHORT"):
+                    direction = -1
+                elif value in ("e", "E", "entry", "ENTRY"):
+                    stage = 1
+                elif value in ("x", "X", "exit", "EXIT"):
+                    stage = -1
 
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
@@ -88,12 +94,14 @@ class RangeRegionCommand(Command):
             'trade-id': trade_id,
             'action': action,
             'region': reg,
+            'created': created,
             'stage': stage,
             'direction': direction,
             'timeframe': timeframe,
             'expiry': expiry,
             'low': low,
-            'high': high
+            'high': high,
+            'cancelation': cancelation
         })
 
         return True
@@ -125,17 +133,23 @@ class TrendRegionCommand(Command):
         appliance = None
         market_id = None
         trade_id = None
+        timeframe = -1
 
         action = "add-region"
         reg = "trend"
+        stage = 0
+        direction = 0
+        expiry = 0.0
+        created = self._strategy_service.timestamp
 
         low_a = 0.0
         high_a = 0.0
         low_b = 0.0
         high_b = 0.0
+        cancelation = 0.0
 
         # ie ":TR _ EURUSD 4 1.12 1.15 1.15 1.2"
-        if len(args) != 5:
+        if len(args) < 7:
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
@@ -145,13 +159,35 @@ class TrendRegionCommand(Command):
             if appliance == "_":
                 appliance = ""
 
-            trade_id = int(args[2])
+            low_a = float(args[2])
+            high_a = float(args[3])
 
-            low_a = float(args[3])
-            high_a = float(args[4])
+            low_b = float(args[4])
+            high_b = float(args[5])
 
-            low_b = float(args[5])
-            high_b = float(args[6])
+            for value in args[6:]:
+                if value.startswith("'"):
+                    timeframe = timeframe_from_str(value[1:])
+                elif value.startswith('C@'):
+                    cancelation = float(value[2:])
+                elif value.startswith('@'):
+                    # expiry
+                    if 'T' in value:
+                        # as local datetime
+                        expiry = datetime.strptime(value[1:], '%Y-%m-%dT%H:%M:%S').timestamp()  # .replace(tzinfo=UTC())
+                    else:
+                        # relative to now
+                        duration = timeframe_from_str(value[1:])
+                        expiry = created + duration
+                elif value in ("l", "L", "long", "LONG"):
+                    direction = 1
+                elif value in ("s", "S", "short", "SHORT"):
+                    direction = -1
+                elif value in ("e", "E", "entry", "ENTRY"):
+                    stage = 1
+                elif value in ("x", "X", "exit", "EXIT"):
+                    stage = -1
+
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
             return False
@@ -162,10 +198,16 @@ class TrendRegionCommand(Command):
             'trade-id': trade_id,
             'action': action,
             'region': reg,
+            'created': created,
+            'stage': stage,
+            'direction': direction,
+            'timeframe': timeframe,
+            'expiry': expiry,
             'low-a': low_a,
             'high-a': high_a,
             'low-b': low_b,
-            'high-b': high_b
+            'high-b': high_b,
+            'cancelation': cancelation
         })
 
         return True

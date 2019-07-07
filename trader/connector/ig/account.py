@@ -45,6 +45,11 @@ class IGAccount(Account):
         if time.time() - self._last_update >= IGAccount.UPDATE_TIMEOUT:
             # cause a REST API query
             account = connector.funds()
+
+            self._name = account.get('accountName')
+            self._username = self._email = connector.username
+            self._account_type = account.get('accountType')  # CFD, PHYSICAL, SPREADBET
+
             self._currency = account.get('currency')
 
             # exchange rate from account currency to USD if possible
@@ -54,11 +59,6 @@ class IGAccount(Account):
             else:
                 # account is already in USD
                 self._currency = 1.0
-
-            self._username = self._email = connector.username
-            self._name = account.get('accountName')
-            self._account_type = account.get('accountType')  # CFD, PHYSICAL, SPREADBET
-            self._account_name = account.get('accountName')
 
             balance = account.get('balance')
             if balance:

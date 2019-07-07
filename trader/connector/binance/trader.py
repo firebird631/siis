@@ -131,7 +131,7 @@ class BinanceTrader(Trader):
         self.account.update(self._watcher.connector)
 
         # fetch the asset from the DB and after signal fetch from binance
-        Database.inst().load_assets(self.service, self, self.name)
+        Database.inst().load_assets(self.service, self, self.name, self.account.name)
 
         logger.info("Trader binance.com got data. Running.")
 
@@ -861,7 +861,8 @@ class BinanceTrader(Trader):
                             asset_name, curr_qty, quantity))
 
                 # store in database with the last computed entry price
-                Database.inst().store_asset((self._name, asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
+                Database.inst().store_asset((self._name, self.account.name,
+                        asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
                         asset.quantity, asset.format_price(asset.price), asset.quote))
             else:
                 # no more quantity at time just before the query was made
@@ -869,7 +870,9 @@ class BinanceTrader(Trader):
                 asset.set_quantity(0.0, 0.0)
 
                 # store in database with the last computed entry price
-                Database.inst().store_asset((self._name, asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0), 0.0, 0.0, asset.quote))
+                Database.inst().store_asset((self._name, self.account.name,
+                    asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
+                    0.0, 0.0, asset.quote))
 
     def __get_or_add_asset(self, asset_name, precision=8):
         if asset_name in self._assets:
@@ -1034,7 +1037,9 @@ class BinanceTrader(Trader):
                     asset.update_profit_loss(prefered_market)
 
             # store in database with the last update quantity
-            Database.inst().store_asset((self._name, asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0), asset.quantity, asset.price, asset.quote))
+            Database.inst().store_asset((self._name, self.account.name,
+                asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
+                asset.quantity, asset.price, asset.quote))
 
     def __update_asset(self, order_type, asset, market, trade_id, exec_price, trade_qty, buy_or_sell, timestamp):
         """
@@ -1116,7 +1121,9 @@ class BinanceTrader(Trader):
                 asset.update_profit_loss(prefered_market)
 
         # store in database with the last computed entry price
-        Database.inst().store_asset((self._name, asset.symbol, asset.last_trade_id, int(asset.last_update_time*1000.0), asset.quantity, asset.price, asset.quote))
+        Database.inst().store_asset((self._name, self.account.name,
+                asset.symbol, asset.last_trade_id, int(asset.last_update_time*1000.0),
+                asset.quantity, asset.price, asset.quote))
 
     #
     # order slots

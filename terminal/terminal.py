@@ -624,8 +624,8 @@ class View(object):
         if self._table_first_col < 0:
             self._table_first_col = 0
 
-        if self._table_first_col > self._cur_table[0]:
-            self._table_first_col = self._cur_table[0]
+        if self._table_first_col >= self._cur_table[0]:
+            self._table_first_col = self._cur_table[0] -1
 
     def format(self):
         return Terminal.inst().style(), self._table_first_row, self.height - 4, self._table_first_col
@@ -780,6 +780,9 @@ class Terminal(object):
 
             'ticker-head': View('ticker-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'ticker': View('ticker', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
+
+            'asset-head': View('asset-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
+            'asset': View('asset', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
             # right panel
             'panel-head': View('panel-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 2), active=True),

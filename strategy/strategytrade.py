@@ -28,6 +28,8 @@ class StrategyTrade(object):
     then for a TP50% use two trade with half of the size, the first having a TP at 50% price.    
     """
 
+    VERSION = "1.0.0"
+
     TRADE_UNDEFINED = -1
     TRADE_BUY_SELL = 0    # spot/asset trade
     TRADE_ASSET = 0
@@ -94,6 +96,10 @@ class StrategyTrade(object):
     #
     # getters
     #
+
+    @classmethod
+    def version(cls):
+        return cls.VERSION
 
     @property
     def trade_type(self):
@@ -478,6 +484,7 @@ class StrategyTrade(object):
         @return dict with at least as defined in this method.
         """
         return {
+            'version': self.version,
             'id': self.id,
             'type': self.trade_type_to_str(),
             'entry-state': self._entry_state,  #  self.trade_state_to_str(self._entry_state),

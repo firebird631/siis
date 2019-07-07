@@ -93,15 +93,15 @@ class StrategyTrader(object):
             ops_data = [operation.dumps() for operation in trade.operations]
 
             # store per trade    
-            Database.inst().store_user_trade((trader.name, self.instrument.market_id, self.strategy.identifier,
-                    trade.id, trade.trade_type, t_data, ops_data))
+            Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,
+                    self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
 
         # dumps of regions
         trader_data = {}
         regions_data = [region.dumps() for region in self.regions]
 
-        Database.inst().store_user_trader((trader.name, self.instrument.market_id, self.strategy.identifier,
-                self.activity, trader_data, regions_data))
+        Database.inst().store_user_trader((trader.name, trader.account.name, self.instrument.market_id,
+                self.strategy.identifier, self.activity, trader_data, regions_data))
 
         self.unlock()
 
@@ -243,7 +243,7 @@ class StrategyTrader(object):
                 if trade.is_closing():
                     continue
 
-                if not self.instrument.market_open:
+                if not self.instrument.tradeable:
                     continue
 
                 # potential order exec close price (always close a long)
@@ -326,7 +326,7 @@ class StrategyTrader(object):
                 if trade.is_closing():
                     continue
 
-                if not self.instrument.market_open:
+                if not self.instrument.tradeable:
                     continue
 
                 # potential order exec close price
@@ -522,7 +522,7 @@ class StrategyTrader(object):
 
         return False
 
-    def cleanup_regions(self, timestamp):
+    def cleanup_regions(self, timestamp, bid, ofr):
         """
         Regenerate the list of regions by removing the expired regions.
         @warning Non thread-safe but must be protected.
@@ -530,16 +530,18 @@ class StrategyTrader(object):
         regions = []
 
         for region in self.regions:
-            if not region.can_delete(timestamp):
+            if not region.can_delete(timestamp, bid, ofr):
                 regions.append(region)
 
         # replace the regions list
         self.regions = regions
 
-    def check_regions(self, timestamp, signal, allow=True):
+    def check_regions(self, timestamp, bid, ofr, signal, allow=True):
         """
         Compare a signal to defined regions if somes are defineds.
-        @param signal Signal to check with any regions.
+        @param signal float Signal to check with any regions.
+        @param bid float Last instrument bid price
+        @param ofr flaot Last instrument ofr price
         @param allow Default returned value if there is no defined region (default True).
 
         @warning Non thread-safe but must be protected.
@@ -549,7 +551,7 @@ class StrategyTrader(object):
 
             # one ore many region, have to pass at least one test
             for region in self.regions:
-                if region.can_delete(timestamp):
+                if region.can_delete(timestamp, bid, ofr):
                     mutated |= True
 
                 elif region.test_region(timestamp, signal):
@@ -557,7 +559,7 @@ class StrategyTrader(object):
                     return True
 
             if mutated:
-                self.cleanup_regions()
+                self.cleanup_regions(timestamp, bid, ofr)
 
             return False
         else:
@@ -568,7 +570,7 @@ class StrategyTrader(object):
     # miscs
     #
 
-    def update_trailing_stop(self, trade, market, distance, local=True, distance_in_percent=True):
+    def update_trailing_stop(self, trade, instrument, distance, local=True, distance_in_percent=True):
         """
         Update the stop price of a trade using a simple level distance or percent distance method.
         @param local boolean True mean only modify the stop-loss price on this side,
@@ -576,7 +578,7 @@ class StrategyTrader(object):
 
         @note This method is not a way to process a stop, it mostly failed, close for nothing at a wrong price.
         """
-        close_exec_price = market.price  #  market.close_exec_price(trade.direction)
+        close_exec_price = instrument.close_exec_price(trade.direction)
         stop_loss = trade.sl
 
         if trade.direction > 0:
@@ -626,7 +628,7 @@ class StrategyTrader(object):
             if local:
                 trade.sl = stop_loss
             else:
-                trade.modify_stop_loss(trader, market.market_id, stop_loss)
+                trade.modify_stop_loss(trader, instrument.market_id, stop_loss)
 
     #
     # signal data streaming for profiling

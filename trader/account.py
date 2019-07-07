@@ -45,7 +45,6 @@ class Account(object):
         self._parent = parent
 
         # account data
-        self._id = ""
         self._name = ""     
         self._username = ""
         self._email = ""
@@ -93,10 +92,6 @@ class Account(object):
     @property
     def parent(self):
         return self._parent
-
-    @property
-    def id(self):
-        return self._id
 
     @property
     def account_type(self):

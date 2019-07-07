@@ -482,13 +482,13 @@ def application(argv):
                                 elif value == 'P':
                                     Terminal.inst().switch_view('perf')
                                 elif value == 'T':
-                                    Terminal.inst().switch_view('trader')
+                                    Terminal.inst().switch_view('ticker')
                                 elif value == 'A':
                                     Terminal.inst().switch_view('account')
                                 elif value == 'M':
                                     Terminal.inst().switch_view('market')
-                                elif value == 'X':
-                                    Terminal.inst().switch_view('ticker')
+                                elif value == 'Q':
+                                    Terminal.inst().switch_view('asset')
 
                                 elif value == '?':
                                     # ping services and workers

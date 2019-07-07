@@ -424,3 +424,18 @@ class DesktopNotifier(Notifiable):
                     Terminal.inst().table(columns, table, total_size, view='market')
                 except:
                     pass
+
+        # assets view
+        if Terminal.inst().is_active('asset'):
+            traders = self.trader_service.get_traders()
+
+            if len(traders) > 0:
+                trader = next(iter(traders))
+
+                Terminal.inst().info("Asset list trader %s on account %s" % (trader.name, trader.account.name), view='asset-head')
+
+                try:
+                    columns, table, total_size = trader.assets_table(*Terminal.inst().active_content().format())
+                    Terminal.inst().table(columns, table, total_size, view='asset')
+                except:
+                    pass

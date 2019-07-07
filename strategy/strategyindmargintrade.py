@@ -16,9 +16,16 @@ logger = logging.getLogger('siis.strategy')
 class StrategyIndMarginTrade(StrategyTrade):
     """
     Specialization for indivisible margin position trade.
-    BitMex only having merged position per market without linked stop/limit.
-    So we cannot deal in opposite direction at the same time, but can evantually manage many trade on the same direction.
-    We preferes here update on trade order signal. A position deleted mean any related trade closed.
+
+    In this case we only have a single position per market without integrated stop/limit.
+
+    We cannot deal in opposite direction at the same time (no hedging),
+    but we can evantually manage many trade on the same direction.
+
+    We prefers here to update on trade order signal. A position deleted mean any related trade closed.
+
+    @todo do we need like with asset trade an exit_trades list to compute the axp and x values, because
+        if we use cumulative-filled and avg-price we have the same probleme here too.
     """
 
     def __init__(self, timeframe):
@@ -457,7 +464,18 @@ class StrategyIndMarginTrade(StrategyTrade):
     def dumps(self):
         data = super().dumps()
 
-        # data[''] ... @todo
+        data['create-ref-oid'] = self.create_ref_oid
+        data['stop-ref-oid'] = self.stop_ref_oid
+        data['limit-ref-oid'] = self.limit_ref_oid
+
+        data['create-oid'] = self.create_oid
+        data['stop-oid'] = self.stop_oid
+        data['limit-oid'] = self.limit_oid
+
+        data['position-id'] = self.position_id
+
+        data['stop-order-qty'] = self.stop_order_qty
+        data['limit-order-qty'] = self.limit_order_qty
 
         return data
 
@@ -465,6 +483,17 @@ class StrategyIndMarginTrade(StrategyTrade):
         if not super().loads(data, strategy_service):
             return False
 
-        # @todo...
+        self.create_ref_oid = data.get('create-ref-oid')
+        self.stop_ref_oid = data.get('stop-ref-oid')
+        self.limit_ref_oid = data.get('limit-ref-oid')
+
+        self.create_oid = data.get('create-oid')
+        self.stop_oid = data.get('stop-oid')
+        self.limit_oid = data.get('limit-oid')
+
+        self.position_id = data.get('position-id')
+
+        self.stop_order_qty = data.get('stop-order-qty', 0.0)
+        self.limit_order_qty = data.get('limit-order-qty', 0.0)
 
         return True

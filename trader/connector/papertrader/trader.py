@@ -592,16 +592,15 @@ class PaperTrader(Trader):
             return False
 
         if not self.has_market(order.symbol):
-            Terminal.inst().error("Trader %s does not support market %s in order %s !" % (
-                self.name, order.symbol, order.order_id), view='trader')
+            logger.error("Trader %s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
             return False
 
         market = self.market(order.symbol)
 
         if (market.min_size > 0.0) and (order.quantity < market.min_size):
             # reject if lesser than min size
-            Terminal.inst().error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in order %s" % (
-                self.name, order.quantity, market.min_size, order.symbol, order.order_id), view='trader')
+            logger.error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in order %s" % (
+                self.name, order.quantity, market.min_size, order.symbol, order.order_id))
             return False
 
         #
@@ -643,8 +642,8 @@ class PaperTrader(Trader):
 
         if notional < market.min_notional:
             # reject if lesser than min notinal
-            Terminal.inst().error("%s refuse order because the min notional is not reached (%.f<%.f) %s in order %s" % (
-                self.name, notional, market.min_notional, order.symbol, order.order_id), view='trader')
+            logger.error("%s refuse order because the min notional is not reached (%.f<%.f) %s in order %s" % (
+                self.name, notional, market.min_notional, order.symbol, order.order_id))
             return False
 
         if self._slippage > 0.0:

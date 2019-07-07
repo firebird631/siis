@@ -94,10 +94,10 @@ class MySql(Database):
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS asset(
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                broker_id VARCHAR(255) NOT NULL, asset_id VARCHAR(255) NOT NULL,
+                broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, asset_id VARCHAR(255) NOT NULL,
                 last_trade_id VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL, 
                 quantity VARCHAR(32) NOT NULL, price VARCHAR(32) NOT NULL, quote_symbol VARCHAR(32) NOT NULL,
-                UNIQUE KEY(broker_id, asset_id))""")
+                UNIQUE KEY(broker_id, account_id, asset_id))""")
 
         # trade table
         cursor.execute("SHOW TABLES LIKE 'user_trade'")
@@ -107,11 +107,12 @@ class MySql(Database):
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_trade(
                 id SERIAL PRIMARY KEY,
-                broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, appliance_id VARCHAR(255) NOT NULL,
+                broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+                appliance_id VARCHAR(255) NOT NULL,
                 trade_id INTEGER NOT NULL,
                 data TEXT NOT NULL DEFAULT '{}',
                 operations TEXT NOT NULL DEFAULT '{}',
-                UNIQUE KEY(broker_id, market_id, appliance_id, trade_id))""")
+                UNIQUE KEY(broker_id, account_id, market_id, appliance_id, trade_id))""")
 
         # trader table
         cursor.execute("SHOW TABLES LIKE 'user_trader'")
@@ -121,11 +122,12 @@ class MySql(Database):
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_trader(
                 id SERIAL PRIMARY KEY,
-                broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, appliance_id VARCHAR(255) NOT NULL,
+                broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+                appliance_id VARCHAR(255) NOT NULL,
                 activity INTEGER NOT NULL DEFAULT 1,
                 data TEXT NOT NULL DEFAULT '{}',
                 regions TEXT NOT NULL DEFAULT '{}',
-                UNIQUE KEY(broker_id, market_id, appliance_id))""")
+                UNIQUE KEY(broker_id, account_id, market_id, appliance_id))""")
 
         self._db.commit()
 
@@ -352,10 +354,10 @@ class MySql(Database):
 
                 for ua in uai:
                     cursor.execute("""
-                        INSERT INTO asset(broker_id, asset_id, last_trade_id, timestamp, quantity, price, quote_symbol)
-                            VALUES(%s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO asset(broker_id, account_id, asset_id, last_trade_id, timestamp, quantity, price, quote_symbol)
+                            VALUES(%s, %s, %s, %s, %s, %s, %s, %s)
                         ON DUPLICATE KEY UPDATE 
-                            last_trade_id = %s, timestamp = %s, quantity = %s, price = %s, quote_symbol = %s""", (*ua, *ua[2:]))
+                            last_trade_id = %s, timestamp = %s, quantity = %s, price = %s, quote_symbol = %s""", (*ua, *ua[3:]))
 
                 self._db.commit()
             except Exception as e:
@@ -380,7 +382,8 @@ class MySql(Database):
                 cursor = self._db.cursor()
 
                 for ua in uas:
-                    cursor.execute("""SELECT asset_id, last_trade_id, timestamp, quantity, price, quote_symbol FROM asset WHERE broker_id = '%s'""" % (ua[2]))
+                    cursor.execute("""SELECT asset_id, last_trade_id, timestamp, quantity, price, quote_symbol FROM asset
+                        WHERE broker_id = '%s' AND account_id = '%s'""" % (ua[2], ua[3]))
 
                     rows = cursor.fetchall()
 
@@ -420,9 +423,9 @@ class MySql(Database):
                 cursor = self._db.cursor()
 
                 query = ' '.join((
-                    "INSERT INTO user_trade(broker_id, market_id, appliance_id, trade_id, trade_type, data, operations) VALUES",
-                    ','.join(["('%s', '%s', %s, %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4],
-                        str(ut[5]).replace("'", "\'"), str(ut[6]).replace("'", "\'")) for ut in uti]),
+                    "INSERT INTO user_trade(broker_id, account_id, market_id, appliance_id, trade_id, trade_type, data, operations) VALUES",
+                    ','.join(["('%s', '%s', '%s', %s, %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], ut[5],
+                        str(ut[6]).replace("'", "\'"), str(ut[7]).replace("'", "\'")) for ut in uti]),
                     "ON DUPLICATE KEY UPDATE data = VALUES(data), operations = VALUES(operations)"
                 ))
 
@@ -452,7 +455,7 @@ class MySql(Database):
 
                 for ut in uts:
                     cursor.execute("""SELECT trade_id, trade_type, data, operations FROM user_trade WHERE
-                        appliance_id = '%s' AND broker_id = '%s' AND market_id = '%s'""" % (ut[2], ut[3], ut[4]))
+                        broker_id = '%s' AND account_id = '%s' AND market_id = '%s' AND appliance_id = '%s'""" % (ut[2], ut[3], ut[4], ut[5]))
 
                     rows = cursor.fetchall()
 
@@ -462,7 +465,7 @@ class MySql(Database):
                         user_trades.append((row[0], row[1], json.loads(row[2]), json.loads(row[3])))
 
                     # notify
-                    ut[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ut[2], user_trades)
+                    ut[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ut[5], user_trades)
             except Exception as e:
                 # check database for valid ohlc and volumes
                 logger.error(repr(e))
@@ -473,7 +476,7 @@ class MySql(Database):
                 self.unlock()
 
         #
-        # insert trader
+        # insert user_trader
         #
 
         self.lock()
@@ -486,9 +489,9 @@ class MySql(Database):
                 cursor = self._db.cursor()
 
                 query = ' '.join((
-                    "INSERT INTO user_trader(broker_id, market_id, appliance_id, activity, data, regions) VALUES",
-                    ','.join(["('%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], 1 if ut[3] else 0,
-                            str(ut[4]).replace("'", "\'"), str(ut[5]).replace("'", "\'")) for ut in uti]),
+                    "INSERT INTO user_trader(broker_id, account_id, market_id, appliance_id, activity, data, regions) VALUES",
+                    ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
+                            str(ut[5]).replace("'", "\'"), str(ut[6]).replace("'", "\'")) for ut in uti]),
                     "ON DUPLICATE KEY UPDATE activity = VALUES(activity), data = VALUES(data), regions = VALUES(regions)"
                 ))
 
@@ -504,7 +507,7 @@ class MySql(Database):
                 self.unlock()
 
         #
-        # select trader
+        # select user_trader
         #
 
         self.lock()
@@ -518,7 +521,7 @@ class MySql(Database):
 
                 for ut in uts:
                     cursor.execute("""SELECT activity, data, regions FROM user_trader WHERE
-                        appliance_id = '%s' AND broker_id = '%s' AND market_id = '%s'""" % (ut[2], ut[3], ut[4]))
+                        broker_id = '%s' AND account_id = '%s' AND market_id = '%s' AND appliance_id = '%s'""" % (ut[2], ut[3], ut[4], ut[5]))
 
                     rows = cursor.fetchall()
 
@@ -528,7 +531,7 @@ class MySql(Database):
                         user_traders.append((row[0], row[1], activity, json.loads(row[2]), json.loads(row[3])))
 
                     # notify
-                    ut[0].notify(Signal.SIGNAL_STRATEGY_TRADER_DATA, ut[2], user_traders)
+                    ut[0].notify(Signal.SIGNAL_STRATEGY_TRADER_DATA, ut[5], user_traders)
             except Exception as e:
                 # check database for valid ohlc and volumes
                 logger.error(repr(e))
