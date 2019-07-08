@@ -62,9 +62,6 @@ class RangeRegionCommand(Command):
         try:
             appliance, market_id = args[0], args[1]
 
-            if appliance == "_":
-                appliance = ""
-
             low = float(args[2])
             high = float(args[3])
 
@@ -118,7 +115,9 @@ class RangeRegionCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -169,9 +168,6 @@ class TrendRegionCommand(Command):
 
         try:
             appliance, market_id = args[0], args[1]
-
-            if appliance == "_":
-                appliance = ""
 
             low_a = float(args[2])
             high_a = float(args[3])
@@ -231,7 +227,9 @@ class TrendRegionCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -265,9 +263,6 @@ class RemoveRegionCommand(Command):
         try:
             appliance, market_id = args[0], args[1]
 
-            if appliance == "_":
-                appliance = ""
-
             region_id = int(args[2])   
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
@@ -287,7 +282,9 @@ class RemoveRegionCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -313,9 +310,6 @@ class RegionInfoCommand(Command):
         if len(args) >= 2:
             try:
                 appliance, market_id = args[0], args[1]
-
-                if appliance == "_":
-                    appliance = ""
 
                 if len(args) >= 3:
                     region_id = int(args[2])
@@ -345,7 +339,9 @@ class RegionInfoCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 

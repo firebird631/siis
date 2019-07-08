@@ -71,7 +71,11 @@ class ViewService(Notifiable):
         pass
 
     def sync(self):
-        pass
+        vt = Terminal.inst().active_content()
+        if vt:
+            view = self._views.get(vt.name)
+            if view:
+                self.view.refreh()
 
     def add_view(self, view):
         if not view:

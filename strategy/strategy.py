@@ -3,6 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy interface
 
+import os
 import threading
 import time
 import collections
@@ -25,6 +26,8 @@ from trader.order import Order
 from strategy.strategyassettrade import StrategyAssetTrade
 from strategy.strategymargintrade import StrategyMarginTrade
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
+
+from database.database import Database
 
 from tabulate import tabulate
 
@@ -2278,7 +2281,6 @@ class Strategy(Runnable):
         strategy_trader.subscribe(timeframe)
 
         import subprocess
-        import os
         p = subprocess.Popen(["python", "-m", "monitor.client.client", monitor_url[0], monitor_url[1]],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE, preexec_fn=os.setsid)
 

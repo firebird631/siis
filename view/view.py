@@ -3,6 +3,7 @@
 # @license Copyright (c) 2019 Dream Overflow
 # View manager service.
 
+import time
 import threading
 
 from terminal.terminal import Terminal
@@ -12,6 +13,8 @@ class View(object):
     """
     View base class.
     """
+
+    REFRESH_RATE = 0.5
 
     def __init__(self, _id):
         self._id = _id
@@ -33,6 +36,15 @@ class View(object):
 
     def unlock(self):
         self._mutex.release()
+
+    def need_refresh(self):
+        if self._refresh < 0:
+            return False
+
+        return time.time() - self._refresh >= View.REFRESH_RATE
+
+    def on_update(self, signal):
+        pass
 
     def refresh(self):
         pass

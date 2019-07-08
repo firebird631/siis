@@ -420,23 +420,24 @@ class StrategyService(Service):
 
     def command(self, command_type, data):
         if Strategy.COMMAND_SHOW_STATS <= command_type <= Strategy.COMMAND_INFO:
-            appliance_identifier = data.get('appliance', "")
+            # any or specific commands
+            appliance_identifier = data.get('appliance')
 
             if appliance_identifier:
+                # for a specific appliance
                 appliance = self._appliances.get(appliance_identifier)
                 if appliance:
                     appliance.command(command_type, data)
             else:
+                # or any
                 for k, appliance in self._appliances.items():
                     appliance.command(command_type, data)
         else:
+            # specific commands
+            appliance_identifier = data.get('appliance')
             appliance = None
-            appliance_identifier = data.get('appliance', "")
 
-            if not appliance_identifier:
-                if len(self._appliances) == 1:
-                    k, appliance = next(iter(self._appliances.items()))
-            else:
+            if appliance_identifier:
                 appliance = self._appliances.get(appliance_identifier)
 
             if appliance:

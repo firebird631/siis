@@ -72,7 +72,9 @@ class PlayCommand(Command):
         elif len(args) <= 3:
             if args[0] == 'apps':
                 # instrument
-                return self.iterate(2, self._strategy_service.appliance(args[1]).symbols_ids(), args, tab_pos, direction)
+                appliance = self._strategy_service.appliance(args[1])
+                if appliance:
+                    return self.iterate(2, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -134,7 +136,9 @@ class PauseCommand(Command):
         elif len(args) <= 3:
             if args[0] == 'apps':
                 # instrument
-                return self.iterate(2, self._strategy_service.appliance(args[1]).symbols_ids(), args, tab_pos, direction)
+                appliance = self._strategy_service.appliance(args[1])
+                if appliance:
+                    return self.iterate(2, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -191,7 +195,9 @@ class InfoCommand(Command):
         elif len(args) <= 3:
             if args[0] == 'apps':
                 # instrument
-                return self.iterate(2, self._strategy_service.appliance(args[1]).symbols_ids(), args, tab_pos, direction)
+                appliance = self._strategy_service.appliance(args[1])
+                if appliance:
+                    return self.iterate(2, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -230,9 +236,6 @@ class LongCommand(Command):
 
         try:
             appliance, market_id = args[0], args[1]
-
-            if appliance == "_":
-                appliance = ""
 
             for value in args[2:]:
                 if not value:
@@ -291,7 +294,9 @@ class LongCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -330,9 +335,6 @@ class ShortCommand(Command):
 
         try:
             appliance, market_id = args[0], args[1]
-
-            if appliance == "_":
-                appliance = ""
 
             for value in args[2:]:
                 if not value:
@@ -391,7 +393,9 @@ class ShortCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -424,9 +428,6 @@ class CloseCommand(Command):
             appliance, market_id = args[0], args[1]
             trade_id = int(args[2])
 
-            if appliance == "_":
-                appliance = ""
-
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
             return False
@@ -445,7 +446,9 @@ class CloseCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -483,9 +486,6 @@ class DynamicStopLossOperationCommand(Command):
         try:
             appliance, market_id = args[0], args[1]
 
-            if appliance == "_":
-                appliance = ""
-
             trade_id = int(args[2])
 
             trigger = float(args[3])
@@ -511,7 +511,9 @@ class DynamicStopLossOperationCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -545,9 +547,6 @@ class RemoveOperationCommand(Command):
         try:
             appliance, market_id = args[0], args[1]
 
-            if appliance == "_":
-                appliance = ""
-
             trade_id = int(args[2])
             operation_id = int(args[3])   
         except Exception:
@@ -569,7 +568,9 @@ class RemoveOperationCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -602,9 +603,6 @@ class ModifyStopLossCommand(Command):
         try:
             appliance, market_id = args[0], args[1]
 
-            if appliance == "_":
-                appliance = ""
-
             trade_id = int(args[2])
             stop_loss = float(args[3])   
         except Exception:
@@ -626,7 +624,9 @@ class ModifyStopLossCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -660,9 +660,6 @@ class ModifyTakeProfitCommand(Command):
         try:
             appliance, market_id = args[0], args[1]
 
-            if appliance == "_":
-                appliance = ""
-
             trade_id = int(args[2])
             take_profit = float(args[3])
         except Exception:
@@ -684,7 +681,9 @@ class ModifyTakeProfitCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -710,9 +709,6 @@ class TradeInfoCommand(Command):
         if len(args) >= 2:
             try:
                 appliance, market_id = args[0], args[1]
-
-                if appliance == "_":
-                    appliance = ""
 
                 if len(args) >= 3:
                     trade_id = int(args[2])
@@ -741,7 +737,9 @@ class TradeInfoCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -778,9 +776,6 @@ class AssignCommand(Command):
 
         try:
             appliance, market_id = args[0], args[1]
-
-            if appliance == "_":
-                appliance = ""
 
             for value in args[2:]:
                 if not value:
@@ -835,7 +830,9 @@ class AssignCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -869,9 +866,6 @@ class ChartCommand(Command):
         try:
             appliance, market_id = args[0], args[1]
 
-            if appliance == "_":
-                appliance = ""
-
             if len(args) == 3:
                 timeframe = timeframe_from_str(args[2])
 
@@ -891,7 +885,9 @@ class ChartCommand(Command):
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 2:
-            return self.iterate(1, self._strategy_service.appliance(args[0]).symbols_ids(), args, tab_pos, direction)
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
