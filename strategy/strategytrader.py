@@ -154,7 +154,7 @@ class StrategyTrader(object):
                 ref_order_id = data[2] if (len(data) > 2 and type(data[2]) is str) else None
 
                 if trade.is_target_order(order_id, ref_order_id):
-                    trade.order_signal(signal_type, data[1], data[2] if len(data) > 2 else None)
+                    trade.order_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
 
         except Exception as e:
             logger.error(repr(e))
@@ -174,7 +174,7 @@ class StrategyTrader(object):
                 ref_order_id = data[2] if (len(data) > 2 and type(data[2]) is str) else None
 
                 if trade.is_target_position(position_id, ref_order_id):
-                    trade.position_signal(signal_type, data[1], data[2] if len(data) > 2 else None)
+                    trade.position_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
 
         except Exception as e:
             logger.error(repr(e))

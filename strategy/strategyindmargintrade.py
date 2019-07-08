@@ -261,7 +261,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         return True
 
-    def order_signal(self, signal_type, data, ref_order_id):
+    def order_signal(self, signal_type, data, ref_order_id, instrument):
         if signal_type == Signal.SIGNAL_ORDER_OPENED:
             # already get at the return of create_order
             if ref_order_id == self.create_ref_oid:
@@ -417,7 +417,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-    def position_signal(self, signal_type, data, ref_order_id):
+    def position_signal(self, signal_type, data, ref_order_id, instrument):
         if signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position, have to cleanup any related trades in case of manual close, liquidation
             self.position_id = None

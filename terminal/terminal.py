@@ -61,6 +61,19 @@ class Color(object):
 
         return value
 
+    @staticmethod
+    def colorize_cond(value, cond, style=None, true=GREEN, false=WHITE):
+        if style is None:
+            style = Terminal.inst().style()
+
+        if style == 'uterm' or style == 'curses':
+            if cond:
+                return true + value + Color.WHITE
+            else:
+                return false + value + Color.WHITE
+
+        return value
+
 
 class View(object):
 

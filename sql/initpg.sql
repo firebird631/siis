@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS user_trade(
     broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL,
     appliance_id VARCHAR(255) NOT NULL,
     trade_id INTEGER NOT NULL,
+    trade_type INTEGER NOT NULL,
     data TEXT NOT NULL DEFAULT '{}',
     operations TEXT NOT NULL DEFAULT '{}',
     UNIQUE(broker_id, account_id, market_id, appliance_id, trade_id))

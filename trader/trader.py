@@ -434,13 +434,16 @@ class Trader(Runnable):
 
                         Terminal.inst().info("Stop loss %s / Trailing stop %s" % (p.stop_loss, p.trailing_stop), view='content')
 
-                        profit_loss_msg = "Profit/Loss %s (%.2f%%) [%.4f%s]" % (
-                            market.format_price(p.profit_loss, use_quote=False), p.profit_loss_rate*100.0,
-                            p.profit_loss / market.base_exchange_rate, self.account.currency)
+                        # display unrealized P/L
+                        profit_loss_msg = "Profit/Loss %s%s (%.2f%%) [%s%s]" % (
+                            market.format_price(p.profit_loss), market.quote_display or market.quote,
+                            p.profit_loss_rate*100.0,
+                            self.account.format_price(p.profit_loss / market.base_exchange_rate), self.account.currency_display or self.account.currency)
 
-                        profit_loss_msg_at_market = "Profit/Loss at market %s (%.2f%%) [%.4f%s]" % (
-                            market.format_price(p.profit_loss_market, use_quote=False), p.profit_loss_market_rate*100.0,
-                            p.profit_loss_market / market.base_exchange_rate, self.account.currency)
+                        profit_loss_msg_at_market = "Profit/Loss at market %s%s (%.2f%%) [%s%s]" % (
+                            market.format_price(p.profit_loss_market), market.quote_display or market.quote,
+                            p.profit_loss_market_rate*100.0,
+                            self.account.format_price(p.profit_loss_market / market.base_exchange_rate), self.account.currency_display or self.account.currency)
 
                         if p.profit_loss > 0.0:
                             Terminal.inst().high(profit_loss_msg, view='content')
@@ -1119,13 +1122,13 @@ class Trader(Runnable):
         for market in markets:
             recent = market.recent(self.timestamp - 0.5 if not prev_timestamp else prev_timestamp)
             if recent:
-                bid = Color.colorize_updn(market.format_price(market.bid, True, False), recent[1], market.bid, style=style)
-                ofr = Color.colorize_updn(market.format_price(market.ofr, True, False), recent[2], market.ofr, style=style)
+                bid = Color.colorize_updn(market.format_price(market.bid), recent[1], market.bid, style=style)
+                ofr = Color.colorize_updn(market.format_price(market.ofr), recent[2], market.ofr, style=style)
                 spread = Color.colorize_updn(market.format_spread(market.spread), market.spread, recent[2] - recent[1], style=style)
             else:
-                bid = market.format_price(market.bid, True, False)
-                ofr = market.format_price(market.ofr, True, False)
-                spread = market.format_price(market.spread, True, False)
+                bid = market.format_price(market.bid)
+                ofr = market.format_price(market.ofr)
+                spread = market.format_price(market.spread)
 
             row = (
                  market.market_id,
@@ -1183,7 +1186,7 @@ class Trader(Runnable):
 
                 base_exchange_rate = 1.0
 
-                change = market.format_price(market.bid - asset.price, True, True)
+                change = market.format_price(market.bid - asset.price) + market.quote_display or market.quote
                 change_percent = (market.bid - asset.price) / asset.price * 100.0 if asset.price else 0.0
 
                 if change_percent > 0.0:
@@ -1197,8 +1200,8 @@ class Trader(Runnable):
                 if quote_market:
                     base_exchange_rate = 1.0 / quote_market.price
 
-                profit_loss = market.format_price(asset.profit_loss, True) if market.quote == self.account.currency else ""
-                profit_loss_alt = market.format_price(asset.profit_loss / base_exchange_rate, True) if market.quote == self.account.alt_currency else ""
+                profit_loss = market.format_price(asset.profit_loss) if market.quote == self.account.currency else ""
+                profit_loss_alt = market.format_price(asset.profit_loss / base_exchange_rate) if market.quote == self.account.alt_currency else ""
 
                 if asset.profit_loss > 0.0:
                     if profit_loss:
@@ -1257,13 +1260,13 @@ class Trader(Runnable):
             self._account.name,
             self._account.username,
             self._account.email,
-            self.account.format_price(self._account.balance, False, True),
-            self.account.format_price(self._account.margin_balance, False, True),
-            self.account.format_price(self._account.net_worth, False, True),
-            self.account.format_price(self._account.net_worth * self._account.currency_ratio, True, True),
-            self.account.format_price(self._account.risk_limit, False, True),
-            self.account.format_price(self._account.profit_loss, False, True),
-            self.account.format_price(self._account.profit_loss * self._account.currency_ratio, True, True)
+            self.account.format_price(self._account.balance) + self.account.currency_display or self.account.currency,
+            self.account.format_price(self._account.margin_balance) + self.account.currency_display or self.account.currency,
+            self.account.format_price(self._account.net_worth) + self.account.currency_display or self.account.currency,
+            self.account.format_alt_price(self._account.net_worth * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency,
+            self.account.format_price(self._account.risk_limit) + self.account.currency_display or self.account.currency,
+            self.account.format_price(self._account.profit_loss) + self.account.currency_display or self.account.currency,
+            self.account.format_alt_price(self._account.profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
         )
 
         if offset < 1 and limit > 0:

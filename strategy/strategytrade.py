@@ -341,10 +341,10 @@ class StrategyTrade(object):
         """
         return False
 
-    def order_signal(self, signal_type, data, ref_order_id):
+    def order_signal(self, signal_type, data, ref_order_id, instrument):
         pass
 
-    def position_signal(self, signal_type, data, ref_order_id):
+    def position_signal(self, signal_type, data, ref_order_id, instrument):
         pass
 
     def is_target_order(self, order_id, ref_order_id):

@@ -475,59 +475,34 @@ class Market(object):
         else:
             return self._bid
 
-    def adjust_price(self, price, use_quote=True):
+    #
+    # format/adjust
+    #
+
+    def adjust_price(self, price):
         """
         Format the price according to the precision.
         @param use_quote True use quote display or quote, False base, None no symbol only price.
         """
-        if use_quote:
-            precision = self._price_limits[3] or self._quote_precision  # uses tick price if defined else quote precision
-        else:
-            precision = self._base_precision
-
+        precision = self._price_limits[3] or self._quote_precision
         if not precision:
-            if use_quote:
-                # quote use value per pip
-                precision = decimal_place(self.value_per_pip)
-            else:
-                # base use one pip mean alias tick size
-                precision = decimal_place(self.one_pip_means)
-
-            if not precision:
-                precision = 8
+            precision = decimal_place(self.value_per_pip) or 8
 
         tick_size = self._price_limits[2] or self.one_pip_means
 
         # adjusted price at precision and by step of pip meaning
         return truncate(round(price / tick_size) * tick_size, precision)
-        # error in some cases, exemple 0.00000030 return 0.00000029, so try with above
-        # return truncate(int(truncate(price, precision) / tick_size) * tick_size, precision)
 
-    def format_price(self, price, use_quote=True, display_symbol=False):
+    def format_base_price(self, price):
         """
-        Format the price according to the precision.
-        @param use_quote True use quote display or quote, False base, None no symbol only price.
+        Format the base price according to its precision.
         """
-        if use_quote:
-            precision = self._price_limits[3] or self._quote_precision  # uses tick price if defined else quote precision
-        else:
-            precision = self._base_precision
-
+        precision = self._base_precision
         if not precision:
-            if use_quote:
-                # quote use value per pip
-                precision = decimal_place(self.value_per_pip)
-            else:
-                # base use one pip mean alias tick size
-                precision = decimal_place(self.one_pip_means)
+            precision = decimal_place(self.one_pip_means) or 8
 
-            if not precision:
-                precision = 8
+        tick_size = self.one_pip_means or 1.0
 
-        tick_size = self._price_limits[2] or self.one_pip_means
-
-        # adjusted price at precision and by step of pip meaning
-        # adjusted_price = truncate(int(truncate(price, precision) / tick_size) * tick_size, precision)
         adjusted_price = truncate(round(price / tick_size) * tick_size, precision)
         formatted_price = "{:0.0{}f}".format(adjusted_price, precision)
 
@@ -535,13 +510,27 @@ class Market(object):
         if '.' in formatted_price:
             formatted_price = formatted_price.rstrip('0').rstrip('.')
 
-        if not display_symbol:
-            return formatted_price
+        return formatted_price
 
-        if use_quote:
-            return "%s%s" % (formatted_price, self._quote_display or self._quote)
-        else:
-            return "%s%s" % (formatted_price, self._base_display or self._base)
+    def format_price(self, price):
+        """
+        Format the price according to its precision.
+        """
+        precision = self._price_limits[3] or self._quote_precision
+        if not precision:
+            precision = decimal_place(self.value_per_pip) or 8
+
+        tick_size = self._price_limits[2] or self.one_pip_means
+
+        # adjusted price at precision and by step of tick size
+        adjusted_price = truncate(round(price / tick_size) * tick_size, precision)
+        formatted_price = "{:0.0{}f}".format(adjusted_price, precision)
+
+        # remove tailing 0s and dot
+        if '.' in formatted_price:
+            formatted_price = formatted_price.rstrip('0').rstrip('.')
+
+        return formatted_price
 
     def format_spread(self, spread, shifted=False):
         """
@@ -618,6 +607,10 @@ class Market(object):
 
         return qty
 
+    #
+    # ticks local history cache
+    #
+
     def push_price(self):
         """
         Push the last bid/ofr price, base exchange rate and timestamp.
@@ -680,6 +673,19 @@ class Market(object):
         """
         return (self._previous[-1][2] - self._previous[-1][1]) if self._previous else None
 
+    #
+    # helpers
+    #
+
+    def margin_cost(self, quantity):
+        realized_position_cost = quantity * (self._lot_size * self._contract_size)  # in base currency
+        margin_cost = realized_position_cost * self._margin_factor / self._base_exchange_rate
+
+        return margin_cost
+
+    def clamp_leverage(self, leverage):
+        return max(self._leverages, min(self.self._leverages, leverage))
+
     def unit_type_str(self):
         if self._unit_type == Market.UNIT_AMOUNT:
             return "amount"
@@ -723,15 +729,6 @@ class Market(object):
             return "turbo"
 
         return "undefined"
-
-    def margin_cost(self, quantity):
-        realized_position_cost = quantity * (self._lot_size * self._contract_size)  # in base currency
-        margin_cost = realized_position_cost * self._margin_factor / self._base_exchange_rate
-
-        return margin_cost
-
-    def clamp_leverage(self, leverage):
-        return max(self._leverages, min(self.self._leverages, leverage))
 
     #
     # persistance

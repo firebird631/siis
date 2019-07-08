@@ -10,7 +10,8 @@ import collections
 
 from datetime import datetime
 
-from terminal.terminal import Terminal
+from terminal.terminal import Terminal, Color
+
 from common.runnable import Runnable
 from monitor.streamable import Streamable, StreamMemberFloat, StreamMemberBool
 from common.utils import timeframe_to_str, timeframe_from_str
@@ -1294,39 +1295,12 @@ class Strategy(Runnable):
         failed_sum = 0
         roe_sum = 0
 
-        if style == 'uterm' or style == 'curses':
-            W = '\033[0m'   # '\\0'
-            R = '\033[31m'  # '\\1'
-            G = '\033[32m'  # '\\5'
-            O = '\033[33m'  # '\\6'
-        elif style == 'markdown':
-            W = ''
-            R = ''
-            G = ''
-            O = ''
-        else:
-            W = ''
-            R = ''
-            G = ''
-            O = ''
-
         for r in results:
             if r['perf'] == 0.0 and not r['trades']:
                 continue
 
-            if r['rate'] < 0:
-                cr = R + ("%.2f" % ((r['rate']*100.0),)) + W
-            elif r['rate'] > 0:
-                cr = G + ("%.2f" % ((r['rate']*100.0),)) + W
-            else:
-                cr = "0.0"
-
-            if r['perf'] < 0:
-                cp = R + ("%.2f" % ((r['perf']*100.0),)) + W
-            elif r['perf'] > 0:
-                cp = G + ("%.2f" % ((r['perf']*100.0),)) + W
-            else:
-                cp = "0.0"
+            cr = Color.colorize_updn("%.2f" % (r['rate']*100.0), 0.0, r['rate'], style=style)
+            cp = Color.colorize_updn("%.2f" % (r['perf']*100.0), 0.0, r['perf'], style=style)
 
             markets.append(r['symbol'])
             pl.append(cr)
@@ -1346,13 +1320,14 @@ class Strategy(Runnable):
             roe_sum += r['roe']
 
             for t in r['trades']:
-                # @todo direction
-                if t['rate'] < 0 and float(t['b']) > float(t['aep']):  # have been profitable but loss
-                    cr = O + ("%.2f" % ((t['rate']*100.0),)) + W
+                # @todo direction and colorize
+                if t['rate'] < 0 and ((t['d'] == 'long' and float(t['b']) > float(t['aep'])) or (t['d'] == 'short' and float(t['b']) < float(t['aep']))):
+                    # have been profitable but loss
+                    Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
                 elif t['rate'] < 0:  # loss
-                    cr = R + ("%.2f" % ((t['rate']*100.0),)) + W
+                    Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
                 elif t['rate'] > 0:  # profit
-                    cr = G + ("%.2f" % ((t['rate']*100.0),)) + W
+                    Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
                 else:  # equity
                     cr = "0.0"
 
@@ -1379,25 +1354,14 @@ class Strategy(Runnable):
         #
 
         if summ:
-            if pl_sum < 0:
-                cpl_sum = R + ("%.2f" % ((pl_sum*100.0),)) + W
-            elif pl_sum > 0:
-                cpl_sum = G + ("%.2f" % ((pl_sum*100.0),)) + W
-            else:
-                cpl_sum = "0.0"
-
-            if perf_sum < 0:
-                cperf_sum = R + ("%.2f" % ((perf_sum*100.0),)) + W
-            elif perf_sum > 0:
-                cperf_sum = G + ("%.2f" % ((perf_sum*100.0),)) + W
-            else:
-                cperf_sum = "0.0"
+            cpl_sum = Color.colorize_updn("%.2f" % (pl_sum*100.0), 0.0, pl_sum, style=style)
+            cperf_sum = Color.colorize_updn("%.2f" % (perf_sum*100.0), 0.0, perf_sum, style=style)
 
             markets.append('Total')
             pl.append(cpl_sum)
             perf.append(cperf_sum)
-            worst.append(worst_sum*100.0)
-            best.append(best_sum*100.0)
+            worst.append("%.2f" % (worst_sum*100.0))
+            best.append("%.2f" % (best_sum*100.0))
             success.append(success_sum)
             failed.append(failed_sum)
             roe.append(roe_sum)
@@ -1416,7 +1380,7 @@ class Strategy(Runnable):
         arr1 = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f")
 
         if style == 'uterm' or style == 'curses':
-            arr1 = arr1.replace(R, '\\1').replace(G, '\\5').replace(W, '\\0')
+            arr1 = arr1.replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
 
         #
         # per trades
@@ -1448,47 +1412,18 @@ class Strategy(Runnable):
         arr2 = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
 
         if style == 'uterm' or style == 'curses':
-            arr2 = arr2.replace(O, '\\6').replace(R, '\\1').replace(G, '\\5').replace(W, '\\0')
+            arr2 = arr2.replace(Color.ORANGE, '\\6').replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
 
         return arr1, arr2
 
     # def trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None):
     #     """
-    #     Returns a table of any followed markets tickers.
+    #     Returns a table of any active trades plus a resume per market.
     #     """
     #     columns = ('Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF')
     #     data = []
 
     #     self.lock()
-
-    #     for t in results:
-    #         if t['rate'] < 0 and float(t['b']) > float(t['e']):  # have been profitable but loss
-    #             cr = O + "%.2f" % ((t['rate']*100.0),) + W            
-    #         elif t['rate'] < 0:  # loss
-    #             cr = R + "%.2f" % ((t['rate']*100.0),) + W
-    #         elif t['rate'] > 0:  # profit
-    #             cr = G + "%.2f" % ((t['rate']*100.0),) + W
-    #         else:
-    #             cr = "0.0"
-
-    #         # per active trade
-    #         markets.append(t['symbol'])
-    #         trade_id.append(t['id'])
-    #         direction.append(t['d'])
-    #         price.append(t['p']),
-    #         sl.append(t['sl']),
-    #         tp.append(t['tp']),
-    #         rate.append(cr)
-    #         qty.append(t['q']),
-    #         eqty.append(t['e']),
-    #         xqty.append(t['x']),
-    #         status.append(t['s'])
-    #         bests.append(t['b'])
-    #         worsts.append(t['w'])
-    #         entry_times.append(datetime.fromtimestamp(t['ts']).strftime('%Y-%m-%d %H:%M:%S'))
-    #         timeframes.append(t['tf'])
-
-    #     markets = list(self._markets.values())
 
     #     if offset is None:
     #         offset = 0
@@ -1512,6 +1447,9 @@ class Strategy(Runnable):
     #     return columns[col_ofs:], data, total_size
 
     def formatted_trade_stats(self, results, style='', quantities=False):
+        """
+        Formatted list of terminated trades.
+        """
         markets = []
         trade_id = []
         direction = []
@@ -1529,36 +1467,23 @@ class Strategy(Runnable):
         exit_times = []
         timeframes = []
 
-        if style == 'uterm' or style == 'curses':
-            W = '\033[0m'   # '\\0'
-            R = '\033[31m'  # '\\1'
-            G = '\033[32m'  # '\\5'
-            O = '\033[33m'  # '\\6'
-        elif style == 'markdown':
-            W = ''
-            R = ''
-            G = ''
-            O = ''
-        else:
-            W = ''
-            R = ''
-            G = ''
-            O = ''
-
         for t in results:
             # @todo direction
             if t['rate'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
-                cr = O + "%.2f" % ((t['rate']*100.0),) + W            
+                cr = Color.ORANGE + "%.2f" % ((t['rate']*100.0),) + Color.WHITE
             elif t['rate'] < 0:  # loss
-                cr = R + "%.2f" % ((t['rate']*100.0),) + W
+                cr = Color.RED + "%.2f" % ((t['rate']*100.0),) + Color.WHITE
             elif t['rate'] > 0:  # profit
-                cr = G + "%.2f" % ((t['rate']*100.0),) + W
+                cr = Color.GREEN + "%.2f" % ((t['rate']*100.0),) + Color.WHITE
             else:
                 cr = "0.0"
 
             # color TP in green if hitted, similarely in red for SL
-            _tp = (G + t['tp'] + W) if float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']) else t['tp']
-            _sl = (R + t['sl'] + W) if float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']) else t['sl']
+            _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']), style=style, true=Color.GREEN)
+            _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']), style=style, true=Color.RED)
+
+            # _tp = (Color.GREEN + t['tp'] + Color.WHITE) if float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']) else t['tp']
+            # _sl = (Color.RED + t['sl'] + Color.WHITE) if float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']) else t['sl']
 
             # per active trade
             markets.append(t['symbol'])
@@ -1600,7 +1525,7 @@ class Strategy(Runnable):
         arr = tabulate(data, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
 
         if style == 'uterm' or style == 'curses':
-            arr = arr.replace(O, '\\6').replace(R, '\\1').replace(G, '\\5').replace(W, '\\0')
+            arr = arr.replace(Color.ORANGE, '\\6').replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
 
         return arr
 

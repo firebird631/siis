@@ -122,3 +122,15 @@ def truncate(number, digits) -> float:
 
 def decimal_place(value):
     return -int(math.floor(math.log10(value)))
+
+
+def format_quantity(self, quantity, precision):
+    """
+    Return a str version of the float quantity truncated to the precision.
+    """
+    qty = "{:0.0{}f}".format(truncate(quantity, precision), precision)
+
+    if '.' in qty:
+        qty = qty.rstrip('0').rstrip('.')
+
+    return qty

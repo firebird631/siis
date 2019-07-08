@@ -265,7 +265,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         return False
 
-    def order_signal(self, signal_type, data, ref_order_id):
+    def order_signal(self, signal_type, data, ref_order_id, instrument):
         if signal_type == Signal.SIGNAL_ORDER_OPENED:
             # already get at the return of create_order
             if ref_order_id == self.buy_ref_oid:  # data['direction'] > 0: 

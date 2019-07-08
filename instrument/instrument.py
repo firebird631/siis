@@ -4,7 +4,7 @@
 # Instrument symbol
 
 from datetime import datetime, timedelta
-from common.utils import UTC, timeframe_to_str
+from common.utils import UTC, timeframe_to_str, truncate, decimal_place
 
 import logging
 logger = logging.getLogger('siis.strategy.instrument')
@@ -290,11 +290,15 @@ class Tick(object):
 
 class Instrument(object):
     """
-    name come from the broker usage name (could use the epic or market-id if none other).
-    symbol is a common usual name (ex: EURUSD, BTCUSD).
-    market-id is a the unique broker identifier.
-    alias is a only a secondary or display name.
-    base_exchance_rate is the rate of the quote symbol over its related account currency.
+    Instrument is the strategy side of the market model.
+    Its a denormalized model because it duplicate some members used during strategy processing,
+    to avoid dealing with the trader thread/process.
+
+    @member name str Comes from the broker usage name (could use the epic or market-id if none other).
+    @member symbol str Common usual name (ex: EURUSD, BTCUSD).
+    @member market_id str Unique broker identifier.
+    @member alias str A secondary or display name.
+    @member base_exchance_rate float Rate of the quote symbol over its related account currency.
 
     @note ofr is a synonym for ask.
     @todo set 24h vol, fee, commission from market info data signal
@@ -371,7 +375,8 @@ class Instrument(object):
     TAKER = 1
 
     __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_base_exchange_rate', '_tradeable', '_currency', '_trade_quantity', '_leverage', \
-                '_market_bid', '_market_ofr', '_last_update_time', '_vol24h_base', '_vol24h_quote', '_fees', '_ticks', '_candles', '_buy_sells', '_wanted'
+                '_market_bid', '_market_ofr', '_last_update_time', '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
+                '_ticks', '_candles', '_buy_sells', '_wanted'
 
     def __init__(self, name, symbol, market_id, alias=None):
         self._watchers = {}
@@ -394,6 +399,10 @@ class Instrument(object):
         self._vol24h_quote = 0.0
 
         self._fees = ((0.0, 0.0), (0.0, 0.0))  # ((maker fee, taker fee), (maker commission, taker commission))
+
+        self._size_limits = (0.0, 0.0, 0.0, 0)
+        self._price_limits = (0.0, 0.0, 0.0, 0)
+        self._notional_limits = (0.0, 0.0, 0.0, 0)
 
         self._ticks = []      # list of tuple(timestamp, bid, ofr, volume)
         self._candles = {}    # list per timeframe
@@ -510,6 +519,50 @@ class Instrument(object):
     def currency(self, currency):
         self._currency = currency
     
+    #
+    # limits
+    #
+
+    @property
+    def min_size(self):
+        return self._size_limits[0]
+
+    @property
+    def max_size(self):
+        return self._size_limits[1]
+
+    @property
+    def step_size(self):
+        return self._size_limits[2]
+
+    @property
+    def min_notional(self):
+        return self._notional_limits[0]
+
+    @property
+    def max_notional(self):
+        return self._notional_limits[1]
+
+    @property
+    def step_notional(self):
+        return self._notional_limits[2]
+
+    @property
+    def min_price(self):
+        return self._price_limits[0]
+
+    @property
+    def max_price(self):
+        return self._price_limits[1]
+
+    @property
+    def step_price(self):
+        return self._price_limits[2]
+
+    @property
+    def tick_price(self):
+        return self._price_limits[2]
+
     @property
     def leverage(self):
         """
@@ -520,6 +573,18 @@ class Instrument(object):
     @leverage.setter
     def leverage(self, leverage):
         self._leverage = leverage
+
+    def set_size_limits(self, min_size, max_size, step_size):
+        size_precision = decimal_place(step_size) if step_size > 0 else 0
+        self._size_limits = (min_size, max_size, step_size, size_precision)
+
+    def set_notional_limits(self, min_notional, max_notional, step_notional):
+        notional_precision = decimal_place(step_notional) if step_notional > 0 else 0
+        self._notional_limits = (min_notional, max_notional, step_notional, notional_precision)
+
+    def set_price_limits(self, min_price, max_price, step_price):
+        price_precision = decimal_place(step_price) if step_price > 0 else 0
+        self._price_limits = (min_price, max_price, step_price, price_precision)
 
     #
     # ticks and candles
@@ -1135,6 +1200,71 @@ class Instrument(object):
             return self._market_ofr
         else:
             return self._market_bid
+
+    #
+    # format/adjust
+    #
+
+    def adjust_price(self, price):
+        """
+        Format the price according to the precision.
+        """
+        precision = self._price_limits[3] or 8
+        tick_size = self._price_limits[2] or 0.00000001
+
+        # adjusted price at precision and by step of pip meaning
+        return truncate(round(price / tick_size) * tick_size, precision)
+
+    def format_price(self, price):
+        """
+        Format the price according to the precision.
+        """
+        precision = self._price_limits[3] or 8
+        tick_size = self._price_limits[2] or 0.00000001
+
+        adjusted_price = truncate(round(price / tick_size) * tick_size, precision)
+        formatted_price = "{:0.0{}f}".format(adjusted_price, precision)
+
+        # remove tailing 0s and dot
+        if '.' in formatted_price:
+            formatted_price = formatted_price.rstrip('0').rstrip('.')
+
+        return formatted_price
+
+    def adjust_quantity(self, quantity, min_is_zero=True):
+        """
+        From quantity return the floor tradable quantity according to min, max and rounded to step size.
+        To make a precise value for trade use format_value from this returned value.
+
+        @param quantity float Quantity to adjust
+        @param min_is_zero boolean Default True. If quantity is lesser than min returns 0 else return min size.
+        """
+        if self.min_size > 0.0 and quantity < self.min_size:
+            if min_is_zero:
+                return 0.0
+
+            return self.min_size
+
+        if self.max_size > 0.0 and quantity > self.max_size:
+            return self.max_size
+
+        if self.step_size > 0:
+            precision = self._size_limits[3]
+            return max(round(self.step_size * round(quantity / self.step_size), precision), self.min_size)
+
+        return quantity
+
+    def format_quantity(self, quantity):
+        """
+        Return a quantity as str according to the precision of the step size.
+        """
+        precision = self._size_limits[3] or 8
+        qty = "{:0.0{}f}".format(truncate(quantity, precision), precision)
+
+        if '.' in qty:
+            qty = qty.rstrip('0').rstrip('.')
+
+        return qty
 
     #
     # fee/commission

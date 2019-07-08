@@ -827,8 +827,11 @@ class IGWatcher(Watcher):
         market.contract_type = Market.CONTRACT_CFD
         market.trade = Market.TRADE_MARGIN
 
+        # take minDealSize as tick size
         market.set_size_limits(dealing_rules["minDealSize"]["value"], 0.0, dealing_rules["minDealSize"]["value"])
+        # @todo there is some limits in contract size
         market.set_notional_limits(0.0, 0.0, 0.0)
+        # @todo maybe decimal_place of onePipMeans for tick_size
         market.set_price_limits(0.0, 0.0, 0.0)
 
         # commission for stocks

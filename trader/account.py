@@ -279,25 +279,28 @@ class Account(object):
     # helpers
     #
 
-    def format_price(self, price, use_alt=True, display_symbol=False):
+    def format_price(self, price):
         """
         Format the price according to the precision.
-        @param use_quote True use currency display or alt currency, False base, None no symbol only price.
         """
-        if use_alt:
-            precision = self._alt_currency_precision
-        else:
-            precision = self._currency_precision
+        precision = self._currency_precision
 
         formatted_price = "{:0.0{}f}".format(truncate(price, precision), precision)
 
         if '.' in formatted_price:
             formatted_price = formatted_price.rstrip('0').rstrip('.')
 
-        if not display_symbol:
-            return formatted_price
+        return formatted_price
 
-        if use_alt:
-            return "%s%s" % (formatted_price, self._alt_currency_display or self._alt_currency)
-        else:
-            return "%s%s" % (formatted_price, self._currency_display or self._currency)
+    def format_alt_price(self, price):
+        """
+        Format the price according to the precision.
+        """
+        precision = self._alt_currency_precision
+
+        formatted_price = "{:0.0{}f}".format(truncate(price, precision), precision)
+
+        if '.' in formatted_price:
+            formatted_price = formatted_price.rstrip('0').rstrip('.')
+
+        return formatted_price

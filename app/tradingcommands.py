@@ -892,6 +892,20 @@ class ChartCommand(Command):
         return args, 0
 
 
+class UserSaveCommand(Command):
+
+    # @todo
+    SUMMARY = "to save user data now (strategy traders states, options, regions, trades)"
+
+    def __init__(self, strategy_service):
+        super().__init__('save', 's')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        return False
+
+
 def register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service):
     cmd = PlayCommand(trader_service, strategy_service)
     commands_handler.register(cmd)
@@ -903,6 +917,9 @@ def register_trading_commands(commands_handler, trader_service, strategy_service
     commands_handler.register(cmd)
 
     cmd = ChartCommand(strategy_service, monitor_service)
+    commands_handler.register(cmd)
+
+    cmd = UserSaveCommand(strategy_service)
     commands_handler.register(cmd)
 
     #

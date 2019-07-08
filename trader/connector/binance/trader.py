@@ -243,17 +243,17 @@ class BinanceTrader(Trader):
 
         # limit order need timeInForce
         if order.order_type == Order.ORDER_LIMIT:
-            data['price'] = market.format_price(order.order_price, False)
+            data['price'] = market.format_price(order.order_price)
             data['timeInForce'] = time_in_force
         elif order.order_type == Order.ORDER_STOP:
-            data['stopPrice'] = market.format_price(order.order_price, False)
+            data['stopPrice'] = market.format_price(order.order_price)
         elif order.order_type == Order.ORDER_STOP_LIMIT:
-            data['stopPrice'] = market.format_price(order.order_price, False)
+            data['stopPrice'] = market.format_price(order.order_price)
             data['timeInForce'] = time_in_force
         elif order.order_type == Order.ORDER_TAKE_PROFIT:
-            data['stopPrice'] = market.format_price(order.order_price, False)
+            data['stopPrice'] = market.format_price(order.order_price)
         elif order.order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
-            data['stopPrice'] = market.format_price(order.order_price, False)
+            data['stopPrice'] = market.format_price(order.order_price)
             data['timeInForce'] = time_in_force
 
         data['newClientOrderId'] = order.ref_order_id
@@ -376,75 +376,6 @@ class BinanceTrader(Trader):
         # @todo
 
         return False
-
-        # time_in_force = Client.TIME_IN_FORCE_GTC
-
-        # # adjust quantity to step min and max, and round to decimal place of min size
-        # quantity = market.adjust_quantity(position.quantity)
-
-        # if market:
-        #     order_type = Client.ORDER_TYPE_MARKET
-        #     price = None
-        # else:
-        #     order_type = Client.ORDER_TYPE_LIMIT
-        #     price = limit_price
-
-        # side = Client.SIDE_SELL if position.direction == Position.LONG else Client.SIDE_BUY
-
-        # data = {
-        #     'symbol': symbol,
-        #     'side': side,
-        #     'type': order_type,
-        #     'quantity': quantity,
-        #     'newOrderRespType': Client.ORDER_RESP_TYPE_RESULT,
-        #     'recvWindow': 10000
-        # }
-
-        # if not market:
-        #     # limit order need price and timeInForce
-        #     data['price'] = market.format_price(order.order_price, False)
-        #     data['timeInForce'] = time_in_force
-
-        # # data['newClientOrderId'] = 'xxx'  # if we want to set a specific client order id
-        # # data['icebergQty'] = 0.0
-
-        # logger.notice("%s order %s of %s %s" % (self.name, order.direction_to_str(), quantity, market_id))
-
-        # result = None
-        # reason = ""
-
-        # try:
-        #     result = self._watcher.connector.client.create_order(**data)
-        #     # result = self._watcher.connector.client.create_test_order(**data)
-        # except BinanceRequestException as e:
-        #     reason = str(e)
-        # except BinanceAPIException as e:
-        #     reason = str(e)
-        # except BinanceOrderException as e:
-        #     reason = str(e)
-
-        # if (result and result['status'] == Client.ORDER_STATUS_REJECTED) or reason:
-        #     logger.error("%s rejected close position %s of %s %s reason %s !" % (self.name, order.direction_to_str(), quantity, symbol, reason))
-        #     return False
-
-        # order.set_order_id(result['orderId'])
-        # order.transact_time = result['transactTime'] * 0.001
-
-        # if result['executedQty']:
-        #     # partially or totally executed quantity
-        #     order.executed = float(result['executedQty'])
-
-        #     position.closing(limit_price)
-        #     position.quantity -= order.executed
-
-        #     # del the position if qty reach 0
-        #     if position.quantity == 0:
-        #         del self._positions[position.position_id]
-
-        # # store the order until fully completed
-        # self._orders[order.order_id] = order
- 
-        # return True
 
     @Trader.mutexed
     def modify_position(self, position_id, stop_loss_price=None, take_profit_price=None):
