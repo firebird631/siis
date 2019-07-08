@@ -20,6 +20,13 @@ from instrument.instrument import Instrument
 class RangeRegionCommand(Command):
 
     SUMMARY = "to manually add a range region on a strategy"
+    HELP = (":range-region <appliance-id> <market-id> <low> <high>",
+            "optional parameters:",
+            "- C@<price> : cancelation price",
+            "- @<timestamp|duration> : expiry",
+            "- '<timeframe> : timeframe",
+            "- L|l|long|LONG|S|s|short|SHORT : direction",
+            "- E|e|entry|ENTRY|X|x|exit|EXIT : stage")
     
     def __init__(self, strategy_service):
         super().__init__('range-region', 'RR')
@@ -119,7 +126,14 @@ class RangeRegionCommand(Command):
 class TrendRegionCommand(Command):
 
     SUMMARY = "to manually add a trend region on a strategy"
-    
+    HELP = (":trend-region <appliance-id> <market-id> <low-a> <high-a> <low-b> <high-b>",
+            "optional parameters:",
+            "- C@<price> : cancelation price",
+            "- @<timestamp|duration> : expiry",
+            "- '<timeframe> : timeframe",
+            "- L|l|long|LONG|S|s|short|SHORT : direction",
+            "- E|e|entry|ENTRY|X|x|exit|EXIT : stage")
+
     def __init__(self, strategy_service):
         super().__init__('trend-region', 'TR')
 

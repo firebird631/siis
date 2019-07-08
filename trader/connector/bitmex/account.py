@@ -23,10 +23,9 @@ logger = logging.getLogger('siis.trader.bitmex')
 class BitMexAccount(Account):
     """
     BitMex trader related account.
-    Currency prefered is BTC. Conversion must be done prior and during update.
     """
 
-    CURRENCY = "BTC"
+    CURRENCY = "XBT"
     CURRENCY_SYMBOL = "₿"
     ALT_CURRENCY = "USD"
     ALT_CURRENCY_SYMBOL = "$"
@@ -44,6 +43,7 @@ class BitMexAccount(Account):
         self._currency_precision = 8
         self._alt_currency_precision = 2
 
+        self._ratio = 1.0 / 100000000
         self._last_update = 0
 
     def update(self, connector):
@@ -55,10 +55,8 @@ class BitMexAccount(Account):
         if not funds:
             return
 
-        self._name = funds['account']
-
         self._currency = funds['currency']
-        self._currency_display = funds['currency']
+        self._name = funds['account']
 
         self._balance = funds['walletBalance']  # diff between walletBalance and amount ??
 
@@ -68,19 +66,15 @@ class BitMexAccount(Account):
         self._margin_balance = funds['marginBalance']   # free margin
         self._risk_limit = funds['riskLimit']  # risk limit
 
-        # we want account in BTC !
-        if self._currency == 'XBt':
-            ratio = 1.0 / 100000000
-
-            self._risk_limit *= ratio
-            self._balance *= ratio
-            self._net_worth *= ratio
-            self._margin_balance *= ratio
-
-            self._currency = 'BTC'
-
-        elif self._currency != 'XBT' and self._currency == 'BTC':
-            logger.warning("Unsupported bitmex.com account currency %s" % (self._currency,))
+        # we want account in XBt
+        if funds['currency'] == 'XBt':
+            self._ratio = 1.0 / 100000000
+            self._risk_limit *= self._ratio
+            self._balance *= self._ratio
+            self._net_worth *= self._ratio
+            self._margin_balance *= self._ratio
+        else:
+            logger.error("Unsupported bitmex.com account currency %s" % funds['currency'])
 
         # update currency ratio
         xbtusd = connector.ws.get_instrument('XBTUSD')
@@ -93,14 +87,18 @@ class BitMexAccount(Account):
         now = time.time()
         self._last_update = now
 
+    def set_currency(self, currency, currency_display=""):
+        self._currency = currency
+
+        if currency == BitMexAccount.CURRENCY:
+            self._currency_display = BitMexAccount.CURRENCY_SYMBOL
+
     def set_margin_balance(self, margin_balance):
         self._margin_balance = margin_balance
         # if self._currency == 'XBt':
-        #   ratio = 1.0 / 100000000
-        #   self._margin_balance = margin_balance * ratio
+        #   self._margin_balance = margin_balance * self._ratio
 
     def set_unrealized_profit_loss(self, upnl):
         self._profit_loss = upnl
         # if self._currency == 'XBt':
-        #   ratio = 1.0 / 100000000
-        #   self._margin_balance = upnl * ratio
+        #   self._margin_balance = upnl * self._ratio

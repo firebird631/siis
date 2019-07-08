@@ -75,12 +75,14 @@ class ForexAlphaStrategy(Strategy):
         return ForexAlphaStrategyTrader(self, instrument, self.parameters)
 
     def update_strategy(self, tf, instrument):
-        sub_trader = self._sub_traders.get(instrument)
-        if sub_trader:
+        strategy_trader = self._strategy_traders.get(instrument)
+        if strategy_trader:
             # and process instrument update
-            sub_trader.process(tf, self.timestamp)
+            strategy_trader.process(tf, self.timestamp)
 
     def setup_live(self):
+        super().setup_live()
+
         # pre-feed in live mode only
         Terminal.inst().info("In appliance %s retrieves last data history..." % self.name, view='status')
 
@@ -102,9 +104,8 @@ class ForexAlphaStrategy(Strategy):
                             instrument.want_timeframe(timeframe['timeframe'])
 
             except Exception as e:
-                logger.error(repr(e), True)
-                import traceback
-                logger.error(traceback.format_exc())
+                logger.error(repr(e))
+                logger.debug(traceback.format_exc())
 
         Terminal.inst().info("Appliance data retrieved", view='status')
 

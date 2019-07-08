@@ -623,11 +623,8 @@ class Market(object):
         Push the last bid/ofr price, base exchange rate and timestamp.
         Keep only TICK_PRICE_TIMEOUT of samples in memory.
         """
-        for l in self._previous:
-            if self._last_update_time - l[0] > self.TICK_PRICE_TIMEOUT:
-                self._previous.pop(0)
-            else:
-                break
+        while self._previous and (self._last_update_time - self._previous[0][0]) > self.TICK_PRICE_TIMEOUT:
+            self._previous.pop(0)
 
         self._previous.append((
             self._last_update_time,
@@ -642,9 +639,13 @@ class Market(object):
 
         @todo Could use a dichotomic search.
         """
-        for l in self._previous:
-            if timestamp >= l[0]:
-                return (l[1] + l[2]) * 0.5
+        if self._previous:
+            if self._previous[0][0] > timestamp:
+                return None
+
+            for l in self._previous:
+                if timestamp >= l[0]:
+                    return (l[1] + l[2]) * 0.5
 
         return None
 
@@ -655,9 +656,13 @@ class Market(object):
 
         @todo Could use a dichotomic search.
         """
-        for l in self._previous:
-            if timestamp >= l[0]:
-                return l
+        if self._previous:
+            if self._previous[0][0] > timestamp:
+                return None
+
+            for l in self._previous:
+                if timestamp >= l[0]:
+                    return l
 
         return None
 

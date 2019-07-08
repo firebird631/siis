@@ -27,7 +27,7 @@ class StrategyTrader(object):
 
     @todo _global_streamer must be improved. streaming functionnalities must be only connected to the
         notification receiver (only then keep notify_order calls), streaming will be done on a distinct service.
-        disable any others streaming capacities on the sub-traders excepted for debug purposes.
+        disable any others streaming capacities on the strategy-traders excepted for debug purposes.
     """
 
     def __init__(self, strategy, instrument):
@@ -80,6 +80,20 @@ class StrategyTrader(object):
         """
         self._activity = status   
 
+    def process(self, timeframe, timestamp):
+        """
+        Override this method to do her all the strategy work. You must call the update_trades method
+        during the process.
+
+        @param timeframe Update timeframe unit.
+        @param timestamp Current timestamp (or past time in backtest).
+        """
+        pass
+
+    #
+    # persistance
+    #
+
     def save(self):
         """
         Trader and trades persistance (might occurs only for live mode on real accounts).
@@ -105,15 +119,23 @@ class StrategyTrader(object):
 
         self.unlock()
 
-    def process(self, timeframe, timestamp):
-        """
-        Override this method to do her all the strategy work. You must call the update_trades method
-        during the process.
-
-        @param timeframe Update timeframe unit.
-        @param timestamp Current timestamp (or past time in backtest).
-        """
+    def loads(self, data, region):
         pass
+
+    def loads_trade(self, trade_id, trade_type, data, region):
+        pass
+
+        # instanciate the trade and add it
+        # trade = StrategyTrade(...)
+        # trade.loads(data[1])
+
+        # for op in data[2]:
+        #     operation = self.service.tradeops[op_name]()
+        #     operation.loads(op)
+
+        #     trade.add_operation(operation)
+
+        # self.add_trade(trade)
 
     #
     # order/position slot

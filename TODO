@@ -101,7 +101,7 @@
 
 #43 Mécanisme d'abonnement/desabonnement a un flux pour les chart par instrument (nécessite un socket bidir et donc l'API)
 	- Déjà on ne passe les flux de chart qu'en mode debug ou profilage
-	- Et on notify les trade event par la stratégie, et on ne passe pas ainsi directement par le streamer au niveau sub-trader
+	- Et on notify les trade event par la stratégie, et on ne passe pas ainsi directement par le streamer au niveau strategy-trader
 		- Entrée, sortie, modification (SL/TP,operation)
 			-> Attention il risque de manquer une fermeture depuis l'extérieur
 				-> Donc comment notifier de ce qui revient sur les StrategyTrade correctement ?

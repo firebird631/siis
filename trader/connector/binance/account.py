@@ -87,6 +87,7 @@ class BinanceAccount(Account):
                     self._balance += (free + locked) * base_price
                     self._margin_balance += free * base_price
 
+            self._net_worth = self._balance
             self._last_update = time.time()
 
         # @deprecated old way using a REST API call

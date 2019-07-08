@@ -58,7 +58,7 @@ class TimeframeBasedSub(object):
     @property
     def timeframe(self):
         """
-        Timeframe of this sub-trader in second.
+        Timeframe of this strategy-trader in second.
         """
         return self.tf
 

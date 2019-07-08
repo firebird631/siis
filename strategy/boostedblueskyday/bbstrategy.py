@@ -5,6 +5,7 @@
 
 import time
 import copy
+import traceback
 
 import numpy as np
 
@@ -95,12 +96,9 @@ class BoostedBlueSkyDayStrategy(Strategy):
             # apply overrided parameters
             self._parameters.update(parameters)
 
-        # per instrument strategy data analyser
-        self._sub_traders = {}
-
     def reset(self):
-        # per instrument strategy sub-trader
-        self._sub_traders = {}
+        # per instrument strategy-trader
+        self._strategy_traders = {}
         self._last_done_ts = 0
 
         # reversal mode is default, else need to define how to prefer entry or exit
@@ -144,6 +142,8 @@ class BoostedBlueSkyDayStrategy(Strategy):
         return BoostedBlueSkyDayStrategyTrader(self, instrument, self.parameters)
 
     def setup_live(self):
+        super().setup_live()
+
         # pre-feed en live mode only
         Terminal.inst().info("> In appliance %s retrieves last data history..." % self.name, True)
         max_retry = 30
@@ -161,8 +161,7 @@ class BoostedBlueSkyDayStrategy(Strategy):
                     # buy/sells signals
                     # @todo
             except Exception as e:
-                Terminal.inst().error(repr(e))
-                import traceback
+                logger.error(repr(e))
                 logger.error(traceback.format_exc())
 
         Terminal.inst().info("> Appliance data retrieved")
@@ -190,7 +189,7 @@ class BoostedBlueSkyDayStrategy(Strategy):
         # @todo a plot of the account balance and % gain/loss of each trade
 
         # process in 1 minute, retrieve analysis data instrument
-        sub_trader = self._sub_traders.get(instrument)
+        strategy_trader = self._strategy_traders.get(instrument)
 
         # compute with the max samples
         num_samples = instrument.num_samples(Instrument.TF_MIN)
@@ -208,10 +207,10 @@ class BoostedBlueSkyDayStrategy(Strategy):
             # not enought samples
             return
 
-        rsi = sub_trader.rsi.compute(last_prices)
-        sma = sub_trader.sma.compute(last_prices)
-        ema = sub_trader.ema.compute(last_prices)
-        vwma = sub_trader.vwma.compute(last_prices, last_volumes)
+        rsi = strategy_trader.rsi.compute(last_prices)
+        sma = strategy_trader.sma.compute(last_prices)
+        ema = strategy_trader.ema.compute(last_prices)
+        vwma = strategy_trader.vwma.compute(last_prices, last_volumes)
 
         #
         # scorify
@@ -224,16 +223,16 @@ class BoostedBlueSkyDayStrategy(Strategy):
         ema_vwma_bonus_score = 0
         price_vwma_score = 0
 
-        if sub_trader.blueskyday:
-            if sub_trader.blueskyday[-1].direction == Position.LONG:
+        if strategy_trader.blueskyday:
+            if strategy_trader.blueskyday[-1].direction == Position.LONG:
                 bsd_score = BSD_SCORE_FACTOR
-            elif sub_trader.blueskyday[-1].direction == Position.SHORT:
+            elif strategy_trader.blueskyday[-1].direction == Position.SHORT:
                 bsd_score = -BSD_SCORE_FACTOR
 
-        if sub_trader.channelbreakout:
-            if sub_trader.channelbreakout[-1].direction == Position.LONG:
+        if strategy_trader.channelbreakout:
+            if strategy_trader.channelbreakout[-1].direction == Position.LONG:
                 cbo_score = CBO_SCORE_FACTOR
-            elif sub_trader.channelbreakout[-1].direction == Position.SHORT:
+            elif strategy_trader.channelbreakout[-1].direction == Position.SHORT:
                 cbo_score = -CBO_SCORE_FACTOR
 
         # rsi 30/70, gives strong signals
@@ -274,9 +273,9 @@ class BoostedBlueSkyDayStrategy(Strategy):
         price_vwma_score = (last_prices[-1]-vwma[-1]) / last_prices[-1] * VWMA_PRICE_CROSS_SCORE_FACTOR
 
         # if last_prices[-1] > vwma[-1]:
-        #   sub_trader.scores[-1] += 1
+        #   strategy_trader.scores[-1] += 1
         # elif last_prices[-1] < vwma[-1]:
-        #   sub_trader.scores[-1] -= 1
+        #   strategy_trader.scores[-1] -= 1
 
         # ema/vwma crossing and vwmap/price more score !!
         if ema[-1] > vwma[-1] and last_prices[-1] > vwma[-1]:
@@ -298,41 +297,41 @@ class BoostedBlueSkyDayStrategy(Strategy):
         #
 
         # store the total score
-        sub_trader.scores[-1] = total_score
+        strategy_trader.scores[-1] = total_score
         final_score = total_score
 
         # average of the two last score and increase the last, score is exp if signals are in the trend
-        if len(sub_trader.scores) > 2:
-            final_score = np.average(sub_trader.scores[-2:])
-            final_score += sub_trader.scores[-2]
+        if len(strategy_trader.scores) > 2:
+            final_score = np.average(strategy_trader.scores[-2:])
+            final_score += strategy_trader.scores[-2]
 
         # and store it
-        sub_trader.scores[-1] = final_score
+        strategy_trader.scores[-1] = final_score
 
         # handle a score convergence to avoid multiple signals
-        if (sub_trader.cur_score > 0 and final_score > 0) or (sub_trader.cur_score < 0 and final_score < 0):
+        if (strategy_trader.cur_score > 0 and final_score > 0) or (strategy_trader.cur_score < 0 and final_score < 0):
             # cancel all
-            # sub_trader.scores = [0]
+            # strategy_trader.scores = [0]
 
             # or ignore
-            # sub_trader.scores[-1] = 0
+            # strategy_trader.scores[-1] = 0
 
             # or take 75% of the previous score to minimize its impact progressively
-            # sub_trader.scores[-1] = sub_trader.scores[-2] * TIME_SCORE_REGRESSION_FACTOR
+            # strategy_trader.scores[-1] = strategy_trader.scores[-2] * TIME_SCORE_REGRESSION_FACTOR
 
             # or keep only 37.5% of it
-            sub_trader.scores[-1] *= TIME_SCORE_REGRESSION_FACTOR * 0.5
+            strategy_trader.scores[-1] *= TIME_SCORE_REGRESSION_FACTOR * 0.5
 
             # keep as final score or nullify
-            final_score = sub_trader.scores[-1]
+            final_score = strategy_trader.scores[-1]
 
         # handle a score divergence
         # if (rsi_score > 0 and ema_vwma_score < 0) or (rsi_score < 0 and ema_vwma_bonus_score > 0):
         #       total_score *= 0.25
 
-        # limit sub_trader.scores len to max depth
-        if len(sub_trader.scores) > self.depth:
-            sub_trader.scores = sub_trader.scores[len(sub_trader.scores)-self.depth:]
+        # limit strategy_trader.scores len to max depth
+        if len(strategy_trader.scores) > self.depth:
+            strategy_trader.scores = strategy_trader.scores[len(strategy_trader.scores)-self.depth:]
 
         #
         # pass an order if score is accepted
@@ -340,12 +339,12 @@ class BoostedBlueSkyDayStrategy(Strategy):
 
         if abs(final_score) >= MIN_SCORE:
             # keep apart the current score
-            sub_trader.cur_score = final_score
+            strategy_trader.cur_score = final_score
 
             if final_score > 0:
-                sub_trader.longs.append((timestamp, last_prices[-1]))
+                strategy_trader.longs.append((timestamp, last_prices[-1]))
             elif final_score < 0:
-                sub_trader.shorts.append((timestamp, last_prices[-1]))
+                strategy_trader.shorts.append((timestamp, last_prices[-1]))
 
             date_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
             direction = Position.LONG if final_score > 0 else Position.SHORT
@@ -392,51 +391,51 @@ class BoostedBlueSkyDayStrategy(Strategy):
 
             # consumes buy sell signals
             # @todo could put previous scores into history
-            # sub_trader.scores = [0]
-            sub_trader.blueskyday = []
-            sub_trader.channelbreakout = []
+            # strategy_trader.scores = [0]
+            strategy_trader.blueskyday = []
+            strategy_trader.channelbreakout = []
         else:
             # append the next score entry at 0
-            sub_trader.scores.append(0)
+            strategy_trader.scores.append(0)
 
         #
         # charting
         #
 
-        if sub_trader.chart is None and Charting.inst():
+        if strategy_trader.chart is None and Charting.inst():
             # create the chart if necessary
-            sub_trader.chart = Charting.inst().chart("%s on %s" % (self.name, instrument.symbol))
+            strategy_trader.chart = Charting.inst().chart("%s on %s" % (self.name, instrument.symbol))
 
-        rechart = sub_trader.chart.can_redraw
+        rechart = strategy_trader.chart.can_redraw
 
         if rechart:
             longs = []
             shorts = []
 
             # take only in depth longs and shorts
-            for long in sub_trader.longs:
+            for long in strategy_trader.longs:
                 if long[0] + depth*Instrument.TF_MIN >= timestamp:
                     longs.append(((long[0] + depth*Instrument.TF_MIN - timestamp) / Instrument.TF_MIN, long[1]))
 
-            for short in sub_trader.shorts:
+            for short in strategy_trader.shorts:
                 if short[0] + depth*Instrument.TF_MIN >= timestamp:
                     shorts.append(((short[0] + depth*Instrument.TF_MIN - timestamp) / Instrument.TF_MIN, short[1]))
 
             # @todo send a stream with the last values or/and updated ranges/objects
-            sub_trader.chart.set_range(0, depth)
+            strategy_trader.chart.set_range(0, depth)
 
-            sub_trader.chart.plot_price_serie(0, last_prices)
-            sub_trader.chart.plot_price_serie(1, sma)
-            sub_trader.chart.plot_price_serie(2, ema)
-            sub_trader.chart.plot_price_serie(3, vwma)
-            sub_trader.chart.annotate_price(0, longs, 'g^')
-            sub_trader.chart.annotate_price(1, shorts, 'r^')
+            strategy_trader.chart.plot_price_serie(0, last_prices)
+            strategy_trader.chart.plot_price_serie(1, sma)
+            strategy_trader.chart.plot_price_serie(2, ema)
+            strategy_trader.chart.plot_price_serie(3, vwma)
+            strategy_trader.chart.annotate_price(0, longs, 'g^')
+            strategy_trader.chart.annotate_price(1, shorts, 'r^')
 
-            sub_trader.chart.plot_serie(1, 0, rsi)
-            sub_trader.chart.plot_serie(1, 1, [30]*len(rsi))
-            sub_trader.chart.plot_serie(1, 2, [70]*len(rsi))
-            # sub_trader.chart.plot_serie(2, 0, mmt)
-            sub_trader.chart.draw()
+            strategy_trader.chart.plot_serie(1, 0, rsi)
+            strategy_trader.chart.plot_serie(1, 1, [30]*len(rsi))
+            strategy_trader.chart.plot_serie(1, 2, [70]*len(rsi))
+            # strategy_trader.chart.plot_serie(2, 0, mmt)
+            strategy_trader.chart.draw()
 
     def __update_entry_exit(self, instrument):
         s1 = "blueskyday"
@@ -470,8 +469,8 @@ class BoostedBlueSkyDayStrategy(Strategy):
         ready = True
 
         for market_id, instrument in self._instruments.items():
-            sub_trader = self._sub_traders.get(instrument)
-            if not sub_trader.ready():
+            strategy_trader = self._strategy_traders.get(instrument)
+            if not strategy_trader.ready():
                 ready = False
                 break
 
@@ -483,7 +482,7 @@ class BoostedBlueSkyDayStrategy(Strategy):
 
         # prealod data for any supported instruments
         for market_id, instrument in self._instruments.items():
-            sub_trader = self._sub_traders.get(instrument)
+            strategy_trader = self._strategy_traders.get(instrument)
 
             watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
 
@@ -500,43 +499,43 @@ class BoostedBlueSkyDayStrategy(Strategy):
             # buy_sells_hour = []
 
             # init next candle index
-            sub_trader.next_candle[Instrument.TF_MIN] = 0
-            sub_trader.next_candle[Instrument.TF_5MIN] = 0
-            sub_trader.next_candle[Instrument.TF_HOUR] = 0
+            strategy_trader.next_candle[Instrument.TF_MIN] = 0
+            strategy_trader.next_candle[Instrument.TF_5MIN] = 0
+            strategy_trader.next_candle[Instrument.TF_HOUR] = 0
 
-            sub_trader.count = 0
+            strategy_trader.count = 0
 
     def backtest_update(self, timestamp, total_ts):
         for market_id, instrument in self._instruments.items():
-            sub_trader = self._sub_traders.get(instrument)
+            strategy_trader = self._strategy_traders.get(instrument)
             do_update = False
 
-            if sub_trader.next_candle.get(Instrument.TF_MIN) is not None and sub_trader.candles.get(Instrument.TF_MIN):
-                while sub_trader.next_candle[Instrument.TF_MIN] < len(sub_trader.candles[Instrument.TF_MIN]):
-                    if sub_trader.candles[Instrument.TF_MIN][sub_trader.next_candle[Instrument.TF_MIN]].timestamp <= timestamp:
-                        instrument.add_candle(sub_trader.candles[Instrument.TF_MIN][sub_trader.next_candle[Instrument.TF_MIN]])
+            if strategy_trader.next_candle.get(Instrument.TF_MIN) is not None and strategy_trader.candles.get(Instrument.TF_MIN):
+                while strategy_trader.next_candle[Instrument.TF_MIN] < len(strategy_trader.candles[Instrument.TF_MIN]):
+                    if strategy_trader.candles[Instrument.TF_MIN][strategy_trader.next_candle[Instrument.TF_MIN]].timestamp <= timestamp:
+                        instrument.add_candle(strategy_trader.candles[Instrument.TF_MIN][strategy_trader.next_candle[Instrument.TF_MIN]])
 
-                        sub_trader.next_candle[Instrument.TF_MIN] += 1
+                        strategy_trader.next_candle[Instrument.TF_MIN] += 1
                         do_update = True
                     else:
                         break
 
-            if sub_trader.next_candle.get(Instrument.TF_5MIN) is not None and sub_trader.candles.get(Instrument.TF_5MIN):                       
-                while sub_trader.next_candle[Instrument.TF_5MIN] < len(sub_trader.candles[Instrument.TF_5MIN]):
-                    if sub_trader.candles[Instrument.TF_5MIN][sub_trader.next_candle[Instrument.TF_5MIN]].timestamp <= timestamp:
-                        instrument.add_candle(sub_trader.candles[Instrument.TF_5MIN][sub_trader.next_candle[Instrument.TF_5MIN]])
+            if strategy_trader.next_candle.get(Instrument.TF_5MIN) is not None and strategy_trader.candles.get(Instrument.TF_5MIN):                       
+                while strategy_trader.next_candle[Instrument.TF_5MIN] < len(strategy_trader.candles[Instrument.TF_5MIN]):
+                    if strategy_trader.candles[Instrument.TF_5MIN][strategy_trader.next_candle[Instrument.TF_5MIN]].timestamp <= timestamp:
+                        instrument.add_candle(strategy_trader.candles[Instrument.TF_5MIN][strategy_trader.next_candle[Instrument.TF_5MIN]])
 
-                        sub_trader.next_candle[Instrument.TF_5MIN] += 1
+                        strategy_trader.next_candle[Instrument.TF_5MIN] += 1
                         do_update = True
                     else:
                         break                   
 
-            if sub_trader.next_candle.get(Instrument.TF_HOUR) is not None and sub_trader.candles.get(Instrument.TF_HOUR):
-                while sub_trader.next_candle[Instrument.TF_HOUR] < len(sub_trader.candles[Instrument.TF_HOUR]):
-                    if sub_trader.candles[Instrument.TF_HOUR][sub_trader.next_candle[Instrument.TF_HOUR]].timestamp <= timestamp:
-                        instrument.add_candle(sub_trader.candles[Instrument.TF_HOUR][sub_trader.next_candle[Instrument.TF_HOUR]])
+            if strategy_trader.next_candle.get(Instrument.TF_HOUR) is not None and strategy_trader.candles.get(Instrument.TF_HOUR):
+                while strategy_trader.next_candle[Instrument.TF_HOUR] < len(strategy_trader.candles[Instrument.TF_HOUR]):
+                    if strategy_trader.candles[Instrument.TF_HOUR][strategy_trader.next_candle[Instrument.TF_HOUR]].timestamp <= timestamp:
+                        instrument.add_candle(strategy_trader.candles[Instrument.TF_HOUR][strategy_trader.next_candle[Instrument.TF_HOUR]])
 
-                        sub_trader.next_candle[Instrument.TF_HOUR] += 1
+                        strategy_trader.next_candle[Instrument.TF_HOUR] += 1
                         do_update = True
                     else:
                         break                   

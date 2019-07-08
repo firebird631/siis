@@ -180,7 +180,7 @@ class BitMexWatcher(Watcher):
                 # convert XBt to BTC
                 if currency == 'XBt':
                     ratio = 1.0 / 100000000.0
-                    currency = 'BTC'
+                    currency = 'XBT'
 
                 # walletBalance or amount, riskLimit is max leverage
                 account_data = (

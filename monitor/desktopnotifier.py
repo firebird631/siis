@@ -59,6 +59,7 @@ class DesktopNotifier(Notifiable):
         self._last_stats = 0
 
         self._last_strategy_view = 0
+        self._last_strategy_update = 0
         self._displayed_strategy = 0
 
         self._discord_webhook = {
@@ -405,7 +406,9 @@ class DesktopNotifier(Notifiable):
                 Terminal.inst().info("Tickers list for tader %s on account %s" % (trader.name, trader.account.name), view='ticker-head')
 
                 try:
-                    columns, table, total_size = trader.markets_tickers_table(*Terminal.inst().active_content().format())
+                    columns, table, total_size = trader.markets_tickers_table(*Terminal.inst().active_content().format(),
+                            prev_timestamp=self._last_strategy_update)
+
                     Terminal.inst().table(columns, table, total_size, view='ticker')
                 except:
                     pass
@@ -439,3 +442,5 @@ class DesktopNotifier(Notifiable):
                     Terminal.inst().table(columns, table, total_size, view='asset')
                 except:
                     pass
+
+        self._last_strategy_update = self.strategy_service.timestamp

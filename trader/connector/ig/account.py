@@ -63,10 +63,10 @@ class IGAccount(Account):
             balance = account.get('balance')
             if balance:
                 self._balance = balance.get('balance')
-                self._net_worth = balance.get('available')
+                self._margin_balance = balance.get('available')
                 self._profit_loss = balance.get('profitLoss')
 
-                self._margin_balance = self._net_worth
+                self._net_worth = self._balance + self._profit_loss
 
                 # cannot be computed because leverage depend of the instrument
                 self._risk_limit = balance.get('available')

@@ -87,9 +87,9 @@ class Strategy(Runnable):
 
         self._signals = collections.deque()  # filtered received signals
 
-        self._instruments = {}  # mapped instruments
-        self._feeders = {}      # feeders mapped by market id
-        self._sub_traders = {}  # per instrument strategy data analyser
+        self._instruments = {}       # mapped instruments
+        self._feeders = {}           # feeders mapped by market id
+        self._strategy_traders = {}  # per instrument strategy data analyser
 
         # used during backtesting
         self._last_done_ts = 0
@@ -152,7 +152,7 @@ class Strategy(Runnable):
     def notify_order(self, trade_id, direction, symbol, price, timestamp, timeframe,
             action='order', rate=None, stop_loss=None, take_profit=None):
         """
-        Notify an order execution to the user. It must be called by the sub-trader.
+        Notify an order execution to the user. It must be called by the strategy-trader.
         @param trade_id If -1 then it notify a simple signal unrelated to a trade.
         """
         signal_data = {
@@ -199,8 +199,8 @@ class Strategy(Runnable):
             self._streamable.member('cpu-load').update(self._cpu_load)
             self._streamable.push()
 
-            for k, sub_trader in self._sub_traders.items():
-                sub_trader.stream_call()
+            for k, strategy_trader in self._strategy_traders.items():
+                strategy_trader.stream_call()
 
             self._last_call_ts = now
 
@@ -212,12 +212,12 @@ class Strategy(Runnable):
             return False
 
         instrument = self._instruments[market_id]
-        sub_trader = self._sub_traders.get(instrument)
+        strategy_trader = self._strategy_traders.get(instrument)
 
-        if not sub_trader:
+        if not strategy_trader:
             return False
 
-        return sub_trader.subscribe(timeframe)
+        return strategy_trader.subscribe(timeframe)
 
     def unsubscribe(self, market_id, timeframe):
         """
@@ -227,12 +227,12 @@ class Strategy(Runnable):
             return False
 
         instrument = self._instruments[market_id]
-        sub_trader = self._sub_trader.get(instrument)
+        strategy_trader = self._strategy_traders.get(instrument)
 
-        if not sub_trader:
+        if not strategy_trader:
             return False
 
-        return sub_trader.unsubscribe(timeframe)
+        return strategy_trader.unsubscribe(timeframe)
 
     #
     # processing
@@ -300,7 +300,7 @@ class Strategy(Runnable):
         Terminal.inst().action("Appliance worker %s - %s is alive %s" % (self._name, self._identifier, msg), view='content')
 
     #
-    # sub-traders processing
+    # strategy-trader processing
     #
 
     def create_trader(self, instrument):
@@ -366,10 +366,10 @@ class Strategy(Runnable):
 
                         self._instruments[mapped_symbol] = instrument
 
-                        # and create the sub_trader analyser per instrument
+                        # and create the strategy-trader analyser per instrument
                         strategy_trader = self.create_trader(instrument)
                         if strategy_trader:
-                            self._sub_traders[instrument] = strategy_trader
+                            self._strategy_traders[instrument] = strategy_trader
                     else:
                         instrument = self._instruments.get(mapped_symbol)
 
@@ -389,13 +389,13 @@ class Strategy(Runnable):
 
     def save(self):
         """
-        For each sub-trader finalize only in live mode.
+        For each strategy-trader finalize only in live mode.
         """
         self.lock()
 
         if not self.service.backtesting and not self.trader().paper_mode:
-            for k, sub_trader in self._sub_traders.items():
-                sub_trader.save()
+            for k, strategy_trader in self._strategy_traders.items():
+                strategy_trader.save()
 
         self.unlock()
 
@@ -414,14 +414,14 @@ class Strategy(Runnable):
             self.lock()
             instrument = self.find_instrument(market_id)
             if instrument:
-                sub_trader = self._sub_traders.get(instrument)
-                if sub_trader:
-                    sub_trader.set_activity(status)
+                strategy_trader = self._strategy_traders.get(instrument)
+                if strategy_trader:
+                    strategy_trader.set_activity(status)
             self.unlock()
         else:
             self.lock()
-            for k, sub_trader in self._sub_traders.items():
-                sub_trader.set_activity(status)
+            for k, strategy_trader in self._strategy_traders.items():
+                strategy_trader.set_activity(status)
             self.unlock()
 
     def trader(self):
@@ -583,9 +583,23 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_LIST:
                     # for each trade, add the trade to the corresponding instrument sub
-                    for trade in signal.data:
-                        # @todo
-                        pass
+                    for data in signal.data:
+                        instrument = self.find_instrument(data[0])
+                        if instrument:
+                            strategy_trader = self._strategy_traders.get(instrument)
+
+                            # instantiate the trade and add it
+                            strategy_trader.loads_trade(data[1], data[2], data[3], data[4])
+
+                elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADER_LIST:
+                    for data in signal.data:
+                        instrument = self.find_instrument(data[0])
+                        if instrument:
+                            strategy_trader = self._strategy_traders.get(instrument)
+
+                            # load strategy-trader data
+                            strategy_trader.set_activity(data[1])
+                            strategy_trader.loads(data[2], data[3])
 
             elif signal.source == Signal.SOURCE_WATCHER:
                 if signal.signal_type == Signal.SIGNAL_TICK_DATA:
@@ -648,7 +662,7 @@ class Strategy(Runnable):
 
                         # initials candles loaded
                         if initial:
-                            sub = self._sub_traders.get(instrument)
+                            sub = self._strategy_traders.get(instrument)
                             if sub:
                                 sub.on_received_initial_candles(signal.data[1])
 
@@ -865,7 +879,15 @@ class Strategy(Runnable):
         Override this method to implement your live strategy data setup.
         Do it here dataset preload and other stuff before update be called.
         """
-        pass
+
+        # load the strategy-traders and traders for this appliance/account
+        trader = self.trader()
+
+        Database.inst().load_user_trades(self.service, self, trader.name,
+                trader.account.name, self.identifier)
+
+        Database.inst().load_user_traders(self.service, self, trader.name,
+                trader.account.name, self.identifier)
 
     #
     # commands
@@ -879,11 +901,11 @@ class Strategy(Runnable):
         instrument = self.find_instrument(market_id)
 
         if instrument:
-            sub_trader = self._sub_traders.get(instrument)
+            strategy_trader = self._strategy_traders.get(instrument)
             Terminal.inst().notice("Trade %s for strategy %s - %s" % (label, self.name, self.identifier), view='content')
 
             # retrieve the trade and apply the modification
-            results = func(sub_trader, data)
+            results = func(strategy_trader, data)
 
             if results:
                 if results['error']:
@@ -894,7 +916,7 @@ class Strategy(Runnable):
                 for message in results['messages']:
                     Terminal.inst().info(message, view='content')
 
-    def sub_trader_command(self, label, data, func):
+    def strategy_trader_command(self, label, data, func):
         # manually trade modify a trade (add/remove an operation)
         market_id = data.get('market-id')
 
@@ -902,11 +924,11 @@ class Strategy(Runnable):
         instrument = self.find_instrument(market_id)
 
         if instrument:
-            sub_trader = self._sub_traders.get(instrument)
+            strategy_trader = self._strategy_traders.get(instrument)
             Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, instrument.market_id), view='content')
 
             # retrieve the trade and apply the modification
-            results = func(sub_trader, data)
+            results = func(strategy_trader, data)
 
             if results:
                 if results['error']:
@@ -939,13 +961,13 @@ class Strategy(Runnable):
         elif command_type == Strategy.COMMAND_TRADE_ASSIGN:
             self.trade_command("assign", data, self.cmd_trade_assign)
         elif command_type == Strategy.COMMAND_TRADER_MODIFY:
-            self.sub_trader_command("info", data, self.cmd_sub_trader_modify)
+            self.strategy_trader_command("info", data, self.cmd_strategy_trader_modify)
         elif command_type == Strategy.COMMAND_TRADER_INFO:
-            self.sub_trader_command("info", data, self.cmd_sub_trader_info)
+            self.strategy_trader_command("info", data, self.cmd_strategy_trader_info)
         elif command_type == Strategy.COMMAND_TRADER_CHART:
-            self.sub_trader_command("chart", data, self.cmd_sub_trader_chart)
+            self.strategy_trader_command("chart", data, self.cmd_strategy_trader_chart)
         elif command_type == Strategy.COMMAND_TRADER_STREAM:
-            self.sub_trader_command("stream", data, self.cmd_sub_trader_stream)
+            self.strategy_trader_command("stream", data, self.cmd_strategy_trader_stream)
 
     #
     # signals/slots
@@ -977,6 +999,11 @@ class Strategy(Runnable):
 
             # filter by instrument for buy/sell signal
             elif signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:
+                if signal.data[0] not in self._instruments:
+                    # non interested by this instrument/symbol
+                    return
+
+            elif signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                 if signal.data[0] not in self._instruments:
                     # non interested by this instrument/symbol
                     return
@@ -1038,9 +1065,9 @@ class Strategy(Runnable):
         """
         instrument = self._instruments.get(data[0])
         if instrument:
-            sub_trader = self._sub_traders.get(instrument)
-            if sub_trader:
-                sub_trader.position_signal(signal_type, data)
+            strategy_trader = self._strategy_traders.get(instrument)
+            if strategy_trader:
+                strategy_trader.position_signal(signal_type, data)
 
     def order_signal(self, signal_type, data):
         """
@@ -1048,9 +1075,9 @@ class Strategy(Runnable):
         """
         instrument = self._instruments.get(data[0])
         if instrument:
-            sub_trader = self._sub_traders.get(instrument)
-            if sub_trader:
-                sub_trader.order_signal(signal_type, data)
+            strategy_trader = self._strategy_traders.get(instrument)
+            if strategy_trader:
+                strategy_trader.order_signal(signal_type, data)
 
     #
     # display views
@@ -1082,30 +1109,30 @@ class Strategy(Runnable):
                 axp: average exit price
 
         @note Its implementation could be overrided but respect at the the described informations.
-        @note This method is slow, it need to go through all the sub-trader, and look for any trades,
-            it can lock the sub-trader trades processing, can causing global latency when having lot of markets.
+        @note This method is slow, it need to go through all the strategy-trader, and look for any trades,
+            it can lock the strategy-trader trades processing, can causing global latency when having lot of markets.
         """
         results = []
         trader = self.trader()
 
-        for k, sub_trader in self._sub_traders.items():
+        for k, strategy_trader in self._strategy_traders.items():
             rate = 0.0
             trades = []
             perf = 0.0
 
-            sub_trader.lock()
+            strategy_trader.lock()
 
-            perf = sub_trader._stats['perf']
-            best = sub_trader._stats['best']
-            worst = sub_trader._stats['worst']
+            perf = strategy_trader._stats['perf']
+            best = strategy_trader._stats['best']
+            worst = strategy_trader._stats['worst']
 
-            success = len(sub_trader._stats['success'])
-            failed = len(sub_trader._stats['failed'])
-            roe = len(sub_trader._stats['roe'])
+            success = len(strategy_trader._stats['success'])
+            failed = len(strategy_trader._stats['failed'])
+            roe = len(strategy_trader._stats['roe'])
 
-            market = trader.market(sub_trader.instrument.market_id) if trader else None
+            market = trader.market(strategy_trader.instrument.market_id) if trader else None
             if market:
-                for trade in sub_trader.trades:
+                for trade in strategy_trader.trades:
                     # estimation at close price
                     if trade.direction > 0 and trade.entry_price:
                         trade_rate = (market.close_exec_price(trade.direction) - trade.entry_price) / trade.entry_price
@@ -1148,10 +1175,10 @@ class Strategy(Runnable):
 
                     rate += trade_rate or trade.pl
 
-            sub_trader.unlock()
+            strategy_trader.unlock()
 
             results.append({
-                'symbol': sub_trader.instrument.market_id,
+                'symbol': strategy_trader.instrument.market_id,
                 'rate': rate,
                 'perf': perf,
                 'trades': trades,
@@ -1172,14 +1199,14 @@ class Strategy(Runnable):
         results = []
         trader = self.trader()
 
-        for k, sub_trader in self._sub_traders.items():
-            sub_trader.lock()
+        for k, strategy_trader in self._strategy_traders.items():
+            strategy_trader.lock()
 
-            market = trader.market(sub_trader.instrument.market_id) if trader else None
+            market = trader.market(strategy_trader.instrument.market_id) if trader else None
             if market:
                 def append_trade(market, trades, trade):
                     trades.append({
-                        'symbol': sub_trader.instrument.market_id,
+                        'symbol': strategy_trader.instrument.market_id,
                         'id': trade['id'],
                         'ts': trade['ts'],
                         'd': trade['d'],
@@ -1201,16 +1228,16 @@ class Strategy(Runnable):
                         'axp': trade['axp']
                     })
 
-                for trade in sub_trader._stats['success']:
+                for trade in strategy_trader._stats['success']:
                     append_trade(market, results, trade)
 
-                for trade in sub_trader._stats['failed']:
+                for trade in strategy_trader._stats['failed']:
                     append_trade(market, results, trade)
 
-                for trade in sub_trader._stats['roe']:
+                for trade in strategy_trader._stats['roe']:
                     append_trade(market, results, trade)
 
-            sub_trader.unlock()
+            strategy_trader.unlock()
 
         results.sort(key=lambda t: -t['id'])
 
@@ -1578,9 +1605,9 @@ class Strategy(Runnable):
     # trade commands
     #
 
-    def cmd_trade_entry(self, sub_trader, data):
+    def cmd_trade_entry(self, strategy_trader, data):
         """
-        Create a new trade according data on given sub_trader.
+        Create a new trade according data on given strategy_trader.
         """
         results = {
             'messages': [],
@@ -1625,7 +1652,7 @@ class Strategy(Runnable):
         order_leverage = 1.0
 
         trader = self.trader()
-        market = trader.market(sub_trader.instrument.market_id)
+        market = trader.market(strategy_trader.instrument.market_id)
 
         # need a valid price to compute the quantity
         price = limit_price or market.open_exec_price(direction)
@@ -1636,7 +1663,7 @@ class Strategy(Runnable):
 
             # ajust max quantity according to free asset of quote, and convert in asset base quantity
             if trader.has_asset(market.quote):
-                qty = sub_trader.instrument.trade_quantity*quantity_rate
+                qty = strategy_trader.instrument.trade_quantity*quantity_rate
 
                 if trader.has_quantity(market.quote, qty):
                     order_quantity = market.adjust_quantity(qty / price)  # and adjusted to 0/max/step
@@ -1648,20 +1675,20 @@ class Strategy(Runnable):
         elif market.trade == Market.TRADE_MARGIN:
             trade = StrategyMarginTrade(timeframe)
 
-            if not trader.has_margin(market.margin_cost(sub_trader.instrument.trade_quantity*quantity_rate)):
+            if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
-            order_quantity = market.adjust_quantity(sub_trader.instrument.trade_quantity*quantity_rate)
+            order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
         elif market.trade == Market.TRADE_IND_MARGIN:
             trade = StrategyIndMarginTrade(timeframe)
 
-            if not trader.has_margin(market.margin_cost(sub_trader.instrument.trade_quantity*quantity_rate)):
+            if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
-            order_quantity = market.adjust_quantity(sub_trader.instrument.trade_quantity*quantity_rate)
+            order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
         else:
             results['error'] = True
@@ -1681,23 +1708,23 @@ class Strategy(Runnable):
             trade.set_user_trade()
 
             # the new trade must be in the trades list if the event comes before, and removed after only it failed
-            sub_trader.add_trade(trade)
+            strategy_trader.add_trade(trade)
 
-            if trade.open(trader, sub_trader.instrument.market_id, direction, order_type, order_price, order_quantity,
+            if trade.open(trader, strategy_trader.instrument.market_id, direction, order_type, order_price, order_quantity,
                           take_profit, stop_loss, leverage=order_leverage, hedging=True):
 
                 # add a success result message
                 results['messages'].append("Created trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
 
                 # notify @todo would we notify on that case ?
-                # self.notify_order(trade.id, trade.dir, sub_trader.instrument.market_id, market.format_price(price),
+                # self.notify_order(trade.id, trade.dir, strategy_trader.instrument.market_id, market.format_price(price),
                 #         self.service.timestamp, trade.timeframe, 'entry', None,
                 #          market.format_price(trade.sl), market.format_price(trade.tp))
 
                 # want it on the streaming (take care its only the order signal, no the real complete execution)
-                # @todo sub_trader._global_streamer.member('buy/sell-entry').update(price, self.timestamp)
+                # @todo strategy_trader._global_streamer.member('buy/sell-entry').update(price, self.timestamp)
             else:
-                sub_trader.remove_trade(trade)
+                strategy_trader.remove_trade(trade)
 
                 # add an error result message
                 results['error'] = True
@@ -1705,9 +1732,9 @@ class Strategy(Runnable):
 
         return results
 
-    def cmd_trade_exit(self, sub_trader, data):
+    def cmd_trade_exit(self, strategy_trader, data):
         """
-        Exit a new trade according data on given sub_trader.
+        Exit a new trade according data on given strategy_trader.
 
         @note If trade-id is -1 assume the last trade.
         """
@@ -1731,14 +1758,14 @@ class Strategy(Runnable):
         trade = None
 
         trader = self.trader()
-        market = trader.market(sub_trader.instrument.market_id)
+        market = trader.market(strategy_trader.instrument.market_id)
 
-        sub_trader.lock()
+        strategy_trader.lock()
 
-        if trade_id == -1 and sub_trader.trades:
-            trade = sub_trader.trades[-1]
+        if trade_id == -1 and strategy_trader.trades:
+            trade = strategy_trader.trades[-1]
         else:
-            for t in sub_trader.trades:
+            for t in strategy_trader.trades:
                 if t.id == trade_id:
                     trade = t
                     break
@@ -1754,30 +1781,30 @@ class Strategy(Runnable):
                 results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
             else:
                 # close or cancel
-                trade.close(trader, sub_trader.instrument.market_id)
+                trade.close(trader, strategy_trader.instrument.market_id)
 
                 # add a success result message
                 results['messages'].append("Close trade %i on %s:%s at market price %s" % (
                     trade.id, self.identifier, market.market_id, market.format_price(price)))
 
                 # notify @todo would we notify on that case ?
-                # self.notify_order(trade.id, trade.dir, sub_trader.instrument.market_id, market.format_price(price),
+                # self.notify_order(trade.id, trade.dir, strategy_trader.instrument.market_id, market.format_price(price),
                 #         self.service.timestamp, trade.timeframe, 'exit', None, None, None)
 
                 # want it on the streaming (take care its only the order signal, no the real complete execution)
                 # @todo its not really a perfect way...
-                # sub_trader._global_streamer.member('buy/sell-exit').update(price, self.timestamp)
+                # strategy_trader._global_streamer.member('buy/sell-exit').update(price, self.timestamp)
         else:
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)
 
-        sub_trader.unlock()
+        strategy_trader.unlock()
 
         return results
 
-    def cmd_trade_modify(self, sub_trader, data):
+    def cmd_trade_modify(self, strategy_trader, data):
         """
-        Modify a trade according data on given sub_trader.
+        Modify a trade according data on given strategy_trader.
 
         @note If trade-id is -1 assume the last trade.
         """
@@ -1802,12 +1829,12 @@ class Strategy(Runnable):
 
         trade = None
 
-        sub_trader.lock()
+        strategy_trader.lock()
 
-        if trade_id == -1 and sub_trader.trades:
-            trade = sub_trader.trades[-1]
+        if trade_id == -1 and strategy_trader.trades:
+            trade = strategy_trader.trades[-1]
         else:
-            for t in sub_trader.trades:
+            for t in strategy_trader.trades:
                 if t.id == trade_id:
                     trade = t
                     break
@@ -1874,13 +1901,13 @@ class Strategy(Runnable):
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)
 
-        sub_trader.unlock()
+        strategy_trader.unlock()
 
         return results
 
-    def cmd_trade_assign(self, sub_trader, data):
+    def cmd_trade_assign(self, strategy_trader, data):
         """
-        Assign a free quantity of an asset to a newly created trade according data on given sub_trader.
+        Assign a free quantity of an asset to a newly created trade according data on given strategy_trader.
         """
         results = {
             'messages': [],
@@ -1916,7 +1943,7 @@ class Strategy(Runnable):
             results['error'] = True
 
         trader = self.trader()
-        market = trader.market(sub_trader.instrument.market_id)
+        market = trader.market(strategy_trader.instrument.market_id)
 
         if not trader.has_quantity(market.base, quantity):
             results['messages'].append("No enought free asset quantity.")
@@ -1950,15 +1977,15 @@ class Strategy(Runnable):
 
         trade.e = quantity
 
-        sub_trader.add_trade(trade)
+        strategy_trader.add_trade(trade)
 
         results['messages'].append("Assigned trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
 
         return results
 
-    def cmd_trade_info(self, sub_trader, data):
+    def cmd_trade_info(self, strategy_trader, data):
         """
-        Get trade info according data on given sub_trader.
+        Get trade info according data on given strategy_trader.
 
         @note If trade-id is -1 assume the last trade.
         """        
@@ -1980,12 +2007,12 @@ class Strategy(Runnable):
 
         trade = None
 
-        sub_trader.lock()
+        strategy_trader.lock()
 
-        if trade_id == -1 and sub_trader.trades:
-            trade = sub_trader.trades[-1]
+        if trade_id == -1 and strategy_trader.trades:
+            trade = strategy_trader.trades[-1]
         else:
-            for t in sub_trader.trades:
+            for t in strategy_trader.trades:
                 if t.id == trade_id:
                     trade = t
                     break
@@ -2000,7 +2027,7 @@ class Strategy(Runnable):
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)
 
-        sub_trader.unlock()
+        strategy_trader.unlock()
 
         return results
 
@@ -2027,9 +2054,9 @@ class Strategy(Runnable):
 
             Terminal.inst().info(arr, view='content')
 
-    def cmd_sub_trader_modify(self, sub_trader, data):
+    def cmd_strategy_trader_modify(self, strategy_trader, data):
         """
-        Modify a sub-trader region or state.
+        Modify a strategy-trader region or state.
         """        
         results = {
             'messages': [],
@@ -2040,7 +2067,7 @@ class Strategy(Runnable):
         expiry = 0
         timeframe = 0
 
-        sub_trader.lock()
+        strategy_trader.lock()
 
         try:
             region_id = int(data.get('region-id', -1))
@@ -2079,7 +2106,7 @@ class Strategy(Runnable):
 
                         if region.check():
                             # append the region to the trade
-                            sub_trader.add_region(region)
+                            strategy_trader.add_region(region)
                         else:
                             results['error'] = True
                             results['messages'].append("Region checking error %s" % (region_name,))
@@ -2099,19 +2126,19 @@ class Strategy(Runnable):
                 results['messages'].append("Invalid region identifier")
 
             if region_id >= 0:
-                if not sub_trader.remove_region(region_id):
+                if not strategy_trader.remove_region(region_id):
                     results['messages'].append("Invalid region identifier")
 
         elif action == "enable":
-            if not sub_trader.activity:
-                sub_trader.set_activity(True)
+            if not strategy_trader.activity:
+                strategy_trader.set_activity(True)
                 results['messages'].append("Enabled strategy trader for market %s" % sub.instrument.market_id)
             else:
                 results['messages'].append("Already enabled strategy trader for market %s" % sub.instrument.market_id)
 
         elif action == "disable":
-            if sub_trader.activity:
-                sub_trader.set_activity(False)
+            if strategy_trader.activity:
+                strategy_trader.set_activity(False)
                 results['messages'].append("Disabled strategy trader for market %s" % sub.instrument.market_id)
             else:
                 results['messages'].append("Already disabled strategy trader for market %s" % sub.instrument.market_id)
@@ -2120,13 +2147,13 @@ class Strategy(Runnable):
             results['error'] = True
             results['messages'].append("Invalid action")
 
-        sub_trader.unlock()
+        strategy_trader.unlock()
 
         return results
 
-    def cmd_sub_trader_info(self, sub_trader, data):
+    def cmd_strategy_trader_info(self, strategy_trader, data):
         """
-        Get sub-trader info or specific element if detail defined.
+        Get strategy-trader info or specific element if detail defined.
         """        
         results = {
             'messages': [],
@@ -2148,51 +2175,51 @@ class Strategy(Runnable):
 
         trade = None
 
-        sub_trader.lock()
+        strategy_trader.lock()
 
         if detail == "region":
             if region_id >= 0:
                 region = None
 
-                for r in sub_trader.regions:
+                for r in strategy_trader.regions:
                     if r.id == region_id:
                         region = r
                         break
 
                 if region:
-                    results['messages'].append("Stragegy trader %s region details:" % sub_trader.instrument.market_id)
+                    results['messages'].append("Stragegy trader %s region details:" % strategy_trader.instrument.market_id)
                     results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
                 else:
                     results['error'] = True
                     results['messages'].append("Invalid region identifier %i" % region_id)
 
             else:
-                results['messages'].append("Stragegy trader %s, list %i regions:" % (sub_trader.instrument.market_id, len(sub_trader.regions)))
+                results['messages'].append("Stragegy trader %s, list %i regions:" % (strategy_trader.instrument.market_id, len(strategy_trader.regions)))
 
-                for region in sub_trader.regions:
+                for region in strategy_trader.regions:
                     results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
 
         elif detail == "status":
             # status
-            results['messages'].append("Activity : %s" % ("enabled" if sub_trader.activity else "disabled"))
+            results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
 
         elif not detail:
             # no specific detail
-            results['messages'].append("Stragegy trader %s details:" % sub_trader.instrument.market_id)
+            results['messages'].append("Stragegy trader %s details:" % strategy_trader.instrument.market_id)
 
             # status
-            results['messages'].append("Activity : %s" % ("enabled" if sub_trader.activity else "disabled"))
+            results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
 
             # regions
-            results['messages'].append("List %i regions:" % len(sub_trader.regions))
+            results['messages'].append("List %i regions:" % len(strategy_trader.regions))
 
-            for region in sub_trader.regions:
+            for region in strategy_trader.regions:
                 results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
         else:
             results['error'] = True
             results['messages'].append("Invalid detail type name %s" % detail)
 
-        sub_trader.unlock()
+        strategy_trader.unlock()
 
         return results
 
@@ -2202,11 +2229,11 @@ class Strategy(Runnable):
             self.lock()
 
             instrument = self._instruments.get(data['market-id'])
-            if instrument in self._sub_traders:
-                sub_trader = self._sub_traders[instrument]
-                if sub_trader:
+            if instrument in self._strategy_traders:
+                strategy_trader = self._strategy_traders[instrument]
+                if strategy_trader:
                     Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s" % (
-                        data['market-id'], self.name, self.identifier, "active" if sub_trader.activity else "paused"), view='content')
+                        data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused"), view='content')
 
             self.unlock()
         else:
@@ -2217,8 +2244,8 @@ class Strategy(Runnable):
 
             self.lock()
 
-            for k, sub_trader in self._sub_traders.items():
-                if sub_trader.activity:
+            for k, strategy_trader in self._strategy_traders.items():
+                if strategy_trader.activity:
                     enabled.append(k.market_id)
                 else:
                     disabled.append(k.market_id)
@@ -2233,7 +2260,7 @@ class Strategy(Runnable):
                 disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
                 Terminal.inst().info("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')
 
-    def cmd_sub_trader_chart(self, sub_trader, data):
+    def cmd_strategy_trader_chart(self, strategy_trader, data):
         """
         Open as possible a process with chart of a specific sub-tader.
         """
@@ -2248,7 +2275,7 @@ class Strategy(Runnable):
         if results['error']:
             return results
 
-        sub_trader.subscribe(timeframe)
+        strategy_trader.subscribe(timeframe)
 
         import subprocess
         import os
@@ -2257,7 +2284,7 @@ class Strategy(Runnable):
 
         return results
 
-    def cmd_sub_trader_stream(self, sub_trader, data):
+    def cmd_strategy_trader_stream(self, strategy_trader, data):
         """
         Subscribe/Unsubscribe to a market.
         """
@@ -2270,11 +2297,11 @@ class Strategy(Runnable):
         action = data.get('action')
 
         if action == 'subscribe':
-            sub_trader.subscribe(timeframe)
-            results['messages'].append("Subscribed for stream %s %s %s" % (self.identifier, sub_trader.instrument.market_id, timeframe or "default"))
+            strategy_trader.subscribe(timeframe)
+            results['messages'].append("Subscribed for stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "default"))
         elif action == 'unsubscribe':
-            sub_trader.unsubscribe(timeframe)
-            results['messages'].append("Unsubscribed from stream %s %s %s" % (self.identifier, sub_trader.instrument.market_id, timeframe or "any"))
+            strategy_trader.unsubscribe(timeframe)
+            results['messages'].append("Unsubscribed from stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "any"))
         else:
              # unsupported action
             results['error'] = True

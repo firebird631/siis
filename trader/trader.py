@@ -1093,7 +1093,7 @@ class Trader(Runnable):
 
         return columns[col_ofs:], data, total_size
 
-    def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None, last_time=None):
+    def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None, prev_timestamp=None):
         """
         Returns a table of any followed markets tickers.
         """
@@ -1117,7 +1117,7 @@ class Trader(Runnable):
         markets = markets[offset:limit]
 
         for market in markets:
-            recent = market.recent(self.timestamp - 0.5 if not last_time else last_time)
+            recent = market.recent(self.timestamp - 0.5 if not prev_timestamp else prev_timestamp)
             if recent:
                 bid = Color.colorize_updn(market.format_price(market.bid, True, False), recent[1], market.bid, style=style)
                 ofr = Color.colorize_updn(market.format_price(market.ofr, True, False), recent[2], market.ofr, style=style)
@@ -1239,7 +1239,7 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets.
         """
-        columns = ('Broker', 'Account', 'Username', 'Email', 'Balance', 'Margin balance', 'Net wort', 'Risk limit', 'Unrealized P/L')
+        columns = ('Broker', 'Account', 'Username', 'Email', 'Balance', 'Margin', 'Net worth', 'Net w. alt', 'Risk limit', 'Unrealized P/L', 'U. P/L alt')
         data = []
 
         self.lock()
@@ -1248,7 +1248,7 @@ class Trader(Runnable):
             offset = 0
 
         if limit is None:
-            limit = 2 if self._account.currency != self._account.alt_currency else 1
+            limit = 1
 
         limit = offset + limit
 
@@ -1260,32 +1260,18 @@ class Trader(Runnable):
             self.account.format_price(self._account.balance, False, True),
             self.account.format_price(self._account.margin_balance, False, True),
             self.account.format_price(self._account.net_worth, False, True),
+            self.account.format_price(self._account.net_worth * self._account.currency_ratio, True, True),
             self.account.format_price(self._account.risk_limit, False, True),
-            self.account.format_price(self._account.profit_loss, False, True))
+            self.account.format_price(self._account.profit_loss, False, True),
+            self.account.format_price(self._account.profit_loss * self._account.currency_ratio, True, True)
+        )
 
         if offset < 1 and limit > 0:
             data.append(row[col_ofs:])
 
-        # in alt currency
-        if self._account.currency != self._account.alt_currency:
-            row = [
-                self.name,
-                self._account.name,
-                self._account.username,
-                self._account.email,
-                self.account.format_price(self._account.balance * self._account.currency_ratio, True, True),
-                self.account.format_price(self._account.margin_balance * self._account.currency_ratio, True, True),
-                self.account.format_price(self._account.net_worth * self._account.currency_ratio, False, True),
-                self.account.format_price(self._account.risk_limit, False, True),
-                self.account.format_price(self._account.profit_loss * self._account.currency_ratio, True, True)
-            ]
-
-            if offset < 2 and limit > 1:
-                data.append(row[col_ofs:])
-   
         self.unlock()
 
-        return columns[col_ofs:], data, (len(columns), 2)
+        return columns[col_ofs:], data, (len(columns), 1)
 
     #
     # deprecated (previously used for social copy, but now prefer use the social copy strategy, to be removed once done)
