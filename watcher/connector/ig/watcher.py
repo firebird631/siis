@@ -17,7 +17,6 @@ from notifier.signal import Signal
 
 from config import config
 
-from terminal.terminal import Terminal
 from connector.ig.connector import IGConnector
 from connector.ig.lightstreamer import LSClient, Subscription
 
@@ -31,6 +30,8 @@ from common.utils import decimal_place
 
 import logging
 logger = logging.getLogger('siis.watcher.ig')
+exec_logger = logging.getLogger('siis.exec.watcher.ig')
+error_logger = logging.getLogger('siis.error.watcher.ig')
 
 
 class IGWatcher(Watcher):
@@ -113,7 +114,7 @@ class IGWatcher(Watcher):
 
                 # from CST and XST
                 password = "CST-%s|XST-%s" % (self._connector.cst, self._connector.xst)
-                # logger.info(self._connector.cst, self._connector.xst, self._connector.lightstreamer_endpoint, identity.get('account-id'), self._connector.client_id)
+                # logger.debug(self._connector.cst, self._connector.xst, self._connector.lightstreamer_endpoint, identity.get('account-id'), self._connector.client_id)
 
                 if self._lightstreamer:
                     # destroy previous connection
@@ -161,8 +162,8 @@ class IGWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
         except Exception as e:
-            logger.error(repr(e))
-            logger.error(traceback.format_exc())
+            logger.debug(repr(e))
+            error_logger.error(traceback.format_exc())
 
             self._connector = None
             self._lightstreamer = None
@@ -298,8 +299,9 @@ class IGWatcher(Watcher):
                 self._connector.disconnect()
                 self._connector = None
 
-        except Exception:
-            logger.error(traceback.format_exc())
+        except Exception as e:
+            logger.error(repr(e))
+            error_logger.error(traceback.format_exc())
         finally:
             self.unlock()
 
@@ -364,8 +366,8 @@ class IGWatcher(Watcher):
                 account_data = (float(values['FUNDS']), float(values['AVAILABLE_TO_DEAL']), float(values['PNL']), None, None)
                 self.service.notify(Signal.SIGNAL_ACCOUNT_DATA, self.name, account_data)
         except Exception as e:
-            logger.error(repr(e))
-            logger.error(traceback.format_exc())                
+            logger.debug(repr(e))
+            error_logger.error(traceback.format_exc())
 
     @staticmethod
     def on_market_update(self, item_update):
@@ -389,8 +391,8 @@ class IGWatcher(Watcher):
 
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
         except Exception as e:
-            logger.error(repr(e))
-            logger.error(traceback.format_exc())                
+            logger.debug(repr(e))
+            error_logger.error(traceback.format_exc())
 
     @staticmethod
     def on_tick_update(self, item_update):
@@ -454,8 +456,8 @@ class IGWatcher(Watcher):
                     Database.inst().store_market_trade((self.name, market_id, int(utm), bid, ofr, ltv or 0))
 
         except Exception as e:
-            logger.error(repr(e))
-            logger.error(traceback.format_exc())                    
+            logger.debug(repr(e))
+            error_logger.error(traceback.format_exc())
 
     # @staticmethod
     # def on_ohlc_update(self, item_update):
@@ -528,8 +530,8 @@ class IGWatcher(Watcher):
     #             self._cached_ohlc[name[1]][tf] = (utm, bid_open, bid_high, bid_low, bid_close, ofr_open, ofr_high, ofr_low, ofr_close, ltv)
 
     #     except Exception as e:
-    #         logger.error(repr(e))
-    #         logger.error(traceback.format_exc())
+    #         logger.debug(repr(e))
+    #         error_logger.error(traceback.format_exc())
 
     @staticmethod
     def on_trade_update(self, item_update):
@@ -547,7 +549,7 @@ class IGWatcher(Watcher):
                 if values.get('CONFIRMS'):
                     # not use them because we only want CRUD operations => OPU only so
                     data = json.loads(values.get('CONFIRMS'))
-                    logger.info("ig.com CONFIRMS %s" % str(data))
+                    exec_logger.info("ig.com CONFIRMS %s" % str(data))
 
                     epic = data.get('epic')
                     level = float(data['level']) if data.get('level') is not None else None
@@ -566,7 +568,7 @@ class IGWatcher(Watcher):
                         order_id = data['dealId']
                         ref_order_id = data['dealReference']
 
-                        logger.warning("ig 538 'CONFIRMS' %s" % str(data))
+                        exec_logger.info("ig 538 'CONFIRMS' %s" % str(data))
 
                         # date 2018-09-13T20:36:01.096 without Z
                         event_time = datetime.strptime(data['date'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
@@ -598,7 +600,7 @@ class IGWatcher(Watcher):
 
                 if values.get('WOU'):
                     data = json.loads(values.get('WOU'))
-                    logger.info("ig.com WOU %s" % str(data))
+                    exec_logger.info("ig.com WOU %s" % str(data))
 
                     order_id = data['dealId']
                     ref_order_id = data['dealReference']
@@ -651,7 +653,7 @@ class IGWatcher(Watcher):
 
                 if values.get('OPU'):
                     data = json.loads(values.get('OPU'))
-                    logger.info("ig.com OPU %s" % str(data))
+                    exec_logger.info("ig.com OPU %s" % str(data))
 
                     if data.get('direction', '') == 'BUY':
                         direction = Order.LONG
@@ -742,11 +744,11 @@ class IGWatcher(Watcher):
 
                         self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (epic, position_data, ref_order_id))
                     else:
-                        logger.warning("ig l695 'OPU' %s" % str(data))
+                        exec_logger.info("ig l695 'OPU' %s" % str(data))
 
         except Exception as e:
-            logger.error(repr(e))
-            logger.error(traceback.format_exc())
+            logger.debug(repr(e))
+            exec_logger.error(traceback.format_exc())
 
     #
     # REST data
@@ -824,8 +826,8 @@ class IGWatcher(Watcher):
         elif instrument['type'] == 'SECTORS':
             market.market_type = Market.TYPE_SECTOR
 
-        market.contract_type = Market.CONTRACT_CFD
         market.trade = Market.TRADE_MARGIN
+        market.contract_type = Market.CONTRACT_CFD
 
         # take minDealSize as tick size
         market.set_size_limits(dealing_rules["minDealSize"]["value"], 0.0, dealing_rules["minDealSize"]["value"])

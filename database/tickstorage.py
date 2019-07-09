@@ -353,7 +353,7 @@ class TickStreamer(object):
                             # ignore older than initial date
                             continue
 
-                        self._buffer.append((ts, bid, ofr, vol))
+                        self._buffer.append((ts, float(bid), float(ofr), float(vol)))
             else:
                 file_end = True
 

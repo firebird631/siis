@@ -19,8 +19,6 @@ import traceback
 from urllib.request import urlopen as _urlopen
 from urllib.parse import urlparse as parse_url, urljoin, urlencode
 
-from terminal.terminal import Terminal
-
 try:
 	from systemd.daemon import notify
 except ImportError:
@@ -52,7 +50,8 @@ ERROR_CMD = "ERROR"
 SYNC_ERROR_CMD = "SYNC ERROR"
 OK_CMD = "OK"
 
-log = logging.getLogger("siis.connector.ig.lightstreamer")
+logger = logging.getLogger("siis.connector.ig.lightstreamer")
+error_logger = logging.getLogger("siis.error.connector.ig.lightstreamer")
 
 
 class Subscription(object):
@@ -245,7 +244,7 @@ class LSClient(object):
 		else:
 			lines = self._stream_connection.readlines()
 			lines.insert(0, stream_line)
-			log.error("Server response error: \n{0}".format("".join([str(x) for x in lines])))
+			logger.error("Server response error: \n{0}".format("".join([str(x) for x in lines])))
 			raise IOError()
 
 	def _join(self):
@@ -253,13 +252,13 @@ class LSClient(object):
 		Await the natural STREAM-CONN-THREAD termination.
 		"""
 		if self._stream_connection_thread:
-			log.debug("Waiting for thread to terminate")
+			logger.debug("Waiting for thread to terminate")
 
 			if self._stream_connection_thread.is_alive():
 				self._stream_connection_thread.join()
 
 			self._stream_connection_thread = None
-			log.debug("Thread terminated")
+			logger.debug("Thread terminated")
 
 	def disconnect(self):
 		"""
@@ -271,10 +270,9 @@ class LSClient(object):
 			# Want the thread terminate !
 			self._terminate = True
 			
-			log.debug("Connection closed")
-			Terminal.inst().info("Disconnected from LightStreamer")
+			logger.info("Disconnected from LightStreamer")
 		else:
-			log.warning("No connection to Lightstreamer")
+			logger.warning("No connection to Lightstreamer")
 
 	@property
 	def connected(self):
@@ -291,7 +289,7 @@ class LSClient(object):
 				# since it is handled by thread completion.
 				self._join()
 			else:
-				log.warning("No connection to Lightstreamer")
+				logger.warning("No connection to Lightstreamer")
 
 	def subscribe(self, subscription):
 		""""
@@ -315,7 +313,7 @@ class LSClient(object):
 
 		self.unlock()
 
-		# log.debug("Server response ---> <{0}>".format(server_response))
+		# logger.debug("Server response ---> <{0}>".format(server_response))
 		return self._current_subscription_key
 
 	def unsubscribe(self, subcription_key):
@@ -329,15 +327,15 @@ class LSClient(object):
 				"LS_Table": subcription_key,
 				"LS_op": OP_DELETE
 			})
-			# log.debug("Server response ---> <{0}>".format(server_response))
+			# logger.debug("Server response ---> <{0}>".format(server_response))
 
 			if server_response == OK_CMD:
 				del self._subscriptions[subcription_key]
-				log.debug("Unsubscribed successfully")
+				logger.debug("Unsubscribed successfully")
 			else:
-				log.warning("Server error")
+				logger.warning("Server error")
 		else:
-			log.warning("No subscription key {0} found!".format(subcription_key))
+			logger.warning("No subscription key {0} found!".format(subcription_key))
 
 		self.unlock()
 
@@ -346,7 +344,7 @@ class LSClient(object):
 		Forwards the real time update to the relative
 		Subscription instance for further dispatching to its listeners.
 		"""
-		#log.debug("Received update message ---> <{0}>".format(update_message))
+		#logger.debug("Received update message ---> <{0}>".format(update_message))
 		tok = update_message.split(',', 1)
 
 		if (not tok[0] or not tok[1]):
@@ -356,23 +354,23 @@ class LSClient(object):
 		if table in self._subscriptions:
 			self._subscriptions[table].notifyupdate(item)
 		else:
-			log.warning("No subscription found!")
+			logger.warning("No subscription found!")
 
 	def _receive(self):
 		rebind = False
 		receive = True
 
 		while receive:
-			#log.debug("Waiting for a new message")
+			#logger.debug("Waiting for a new message")
 			try:
 				message = self._read_from_stream()
 
 				# if message:
-				# 	log.debug("Received message ---> <{0}>".format(message))
+				# 	logger.debug("Received message ---> <{0}>".format(message))
 
 			except Exception:
-				log.error("LightSreamer communication error")
-				Terminal.inst().error(traceback.format_exc())
+				logger.error("LightSreamer communication error")
+				error_logger.error(traceback.format_exc())
 				message = None
 
 			if notify:
@@ -380,35 +378,35 @@ class LSClient(object):
 
 			if message is None:
 				receive = False
-				log.warning("No new message received")
+				logger.warning("No new message received")
 			elif message == PROBE_CMD:
 				# Skipping the PROBE message, keep on receiving messages.
-				# log.debug("PROBE message")
+				# logger.debug("PROBE message")
 				pass
 			elif message.startswith(ERROR_CMD):
 				# Terminate the receiving loop on ERROR message
 				receive = False
-				log.error("ERROR")
+				logger.error("ERROR")
 			elif message.startswith(LOOP_CMD):
 				# Terminate the receiving loop on LOOP message.
 				# A complete implementation should proceed with a rebind of the session.
-				# log.debug("LOOP")
+				# logger.debug("LOOP")
 				receive = False
 				rebind = True
 			elif message.startswith(SYNC_ERROR_CMD):
 				# Terminate the receiving loop on SYNC ERROR message.
 				# A complete implementation should create a new session and re-subscribe to all the old items and relative fields.
-				log.error("SYNC ERROR")
+				logger.error("SYNC ERROR")
 				receive = False
 			elif message.startswith(END_CMD):
 				# Terminate the receiving loop on END message.
 				# The session has been forcibly closed on the server side.
 				# A complete implementation should handle the "cause_code" if present.
-				log.info("Connection closed by the server")
+				logger.info("Connection closed by the server")
 				receive = False
 			elif message.startswith("Preamble"):
 				# Skipping Preamble message, keep on receiving messages.
-				log.debug("Preamble")
+				logger.debug("Preamble")
 			else:
 				self._forward_update_message(message)
 
@@ -417,7 +415,7 @@ class LSClient(object):
 
 		# self._stream_connection = None commented its not logic...
 		if not rebind:
-			log.debug("Closing connection")
+			logger.debug("Closing connection")
 			# Clear internal data structures for session
 			# and subscriptions management.
 			self.lock()
@@ -433,7 +431,7 @@ class LSClient(object):
 
 			self.unlock()
 		else:
-			log.debug("Binding to this active session")
+			logger.debug("Binding to this active session")
 			self.bind()
 
 

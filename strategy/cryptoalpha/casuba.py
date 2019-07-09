@@ -9,8 +9,6 @@ from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
 
-from terminal.terminal import Terminal
-
 from .casub import CryptoAlphaStrategySub
 
 import logging
@@ -201,8 +199,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     if self.tomdemark.c.tdst:
                         signal.sl = self.tomdemark.c.tdst
 
-                    # Terminal.inst().info("Entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
-
             # aggressive entry
             if ((self.tomdemark.c.c == 9 or (self.tomdemark.c.c == 8 and self.tomdemark.c.p)) and self.tomdemark.c.d > 0):
                 # if stochrsi_20_80 > 0 and rsi_30_70 > 0 and candles[-1].close > candles[-2].close:  # C1 -
@@ -218,8 +214,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_ENTRY
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-
-                    # Terminal.inst().info("Aggressive entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
 
             #
             # invalidation 2 of opposite setup
@@ -238,12 +232,10 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                 # if 1:  # C1 +
                 # if (bb_break == 0 and bb_ma < 0):  # C3 ++
                 if ema_sma_height < 0:  #  and volume_signal > 0:
-                    # Terminal.inst().info("rsi_30_70 %s / rsi_40_60 %s / ema_sma_height %s / volume_signal %s" % (rsi_30_70, rsi_40_60, ema_sma_height, volume_signal), view='default')
                     signal = StrategySignal(self.tf, timestamp)
                     signal.signal = StrategySignal.SIGNAL_EXIT  # CANCEL
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    # Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
 
             #
             # setup completed
@@ -255,7 +247,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
             #
             # setup aborted
@@ -268,18 +259,13 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    #Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, td.c, 'p' if signal.p else ''), view='default')
 
             #
             # CD entry
             #
 
-            if self.tomdemark.cd.c > 1:
-                Terminal.inst().info("CD%s" % self.tomdemark.cd.c)
-
             if self.tomdemark.cd.c == 1:
                 # count-down buy-setup + rsi oversell
-                Terminal.inst().info("CD1")
                 if self.tomdemark.c.d < 0:  # and candles[-1].close > candles[-2].high:
                     # if rsi_30_70 > 0:
                     signal = StrategySignal(self.tf, timestamp)
@@ -287,7 +273,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     signal.dir = 1
                     signal.p = self.price.last
                     signal.sl = self.tomdemark.c.tdst
-                    Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.strategy_trader.instrument.symbol, self.tf, signal.sl,), view='default')
 
             #
             # CD13 setup
@@ -300,7 +285,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.p = self.price.close[-1]
                     signal.dir = 1
-                    Terminal.inst().info("Exit long cd13", view='default')
 
         return signal
 
@@ -436,8 +420,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     if self.tomdemark.c.tdst:
                         signal.sl = self.tomdemark.c.tdst
 
-                    Terminal.inst().info("Entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
-
             # aggressive entry
             if self.tomdemark.c.c == 9 and self.tomdemark.c.d > 0:
                 # if ((self.tomdemark.c.c == 9 or (self.tomdemark.c.c == 8 and self.tomdemark.c.p)) and self.tomdemark.c.d > 0):
@@ -457,8 +439,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     signal.dir = 1
                     signal.p = self.price.close[-1]
 
-                    Terminal.inst().info("Aggressive entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
-
             #
             # invalidation 2 of opposite setup
             #
@@ -477,12 +457,10 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                 if 1:  # C1 +
                     # if level1_signal < 0:
                     # if (bb_break == 0 and bb_ma < 0):  # C3 ++
-                    # Terminal.inst().info("rsi_30_70 %s / rsi_40_60 %s / ema_sma_height %s / volume_signal %s" % (rsi_30_70, rsi_40_60, ema_sma_height, volume_signal), view='default')
                     signal = StrategySignal(self.tf, timestamp)
                     signal.signal = StrategySignal.SIGNAL_EXIT  # CANCEL
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
 
             #
             # setup completed
@@ -495,7 +473,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
             #
             # setup aborted
@@ -509,7 +486,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.dir = 1
                     signal.p = self.price.close[-1]
-                    Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
             #
             # CD entry
@@ -524,7 +500,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     signal.dir = 1
                     signal.p = self.price.close[-1]
                     signal.sl = self.tomdemark.c.tdst
-                    Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.strategy_trader.instrument.symbol, self.tf, signal.sl,), view='default')
 
             #
             # CD13 setup
@@ -537,7 +512,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.p = self.price.close[-1]
                     signal.dir = 1
-                    Terminal.inst().info("Exit long cd13", view='default')
 
         return signal
 
@@ -649,8 +623,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             if self.tomdemark.c.tdst:
                 signal.sl = self.tomdemark.c.tdst
 
-            # Terminal.inst().info("Entry long %s %s" % (self.strategy_trader.instrument.symbol, self.tf), view='content')
-
         elif bbawe < 0 and level1_signal < 0:
             # exit signal
             signal = StrategySignal(self.tf, timestamp)
@@ -660,13 +632,13 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
 
         if self.tomdemark:
             self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
+
             if 0:#self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and (level1_signal < 0 or bbawe < 0):
                 # setup complete and trend change
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT
                 signal.dir = 1
                 signal.p = self.price.close[-1]
-                # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='content')
 
             elif 0:#2 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0 and (level1_signal < 0):
                 # cancelation
@@ -674,7 +646,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                 signal.signal = StrategySignal.SIGNAL_EXIT
                 signal.dir = 1
                 signal.p = self.price.close[-1]
-                Terminal.inst().info("Cancel long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='content')
 
         return signal
 

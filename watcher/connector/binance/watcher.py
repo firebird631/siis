@@ -29,6 +29,8 @@ from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.watcher.binance')
+exec_logger = logging.getLogger('siis.exec.binance')
+error_logger = logging.getLogger('siis.error.binance')
 
 
 class BinanceWatcher(Watcher):
@@ -155,8 +157,8 @@ class BinanceWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
         except Exception as e:
-            Terminal.inst().error(repr(e))
-            logger.error(traceback.format_exc())
+            logger.debug(repr(e))
+            error_logger.error(traceback.format_exc())
         finally:
             self.unlock()
 
@@ -173,8 +175,8 @@ class BinanceWatcher(Watcher):
             self._init = False
 
         except Exception as e:
-            Terminal.inst().error(repr(e))
-            logger.error(traceback.format_exc())
+            logger.debug(repr(e))
+            error_logger.error(traceback.format_exc())
         finally:
             self.unlock()
 
@@ -550,7 +552,7 @@ class BinanceWatcher(Watcher):
         event_type = data.get('e', '')
 
         if event_type == 'executionReport':
-            logger.info("binance.com executionReport %s", str(data))
+            exec_logger.info("binance.com executionReport %s", str(data))
 
             event_timestamp = float(data['E']) * 0.001
             symbol = data['s']

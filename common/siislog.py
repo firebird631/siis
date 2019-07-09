@@ -41,40 +41,6 @@ class ColoredFormatter(logging.Formatter):
         #         'HIGHLIGHT': colorama.Style.BRIGHT
         #     }
 
-        # elif style == 'curses':
-        #     return {
-        #         'DEFAULT': '',
-        #         'ERROR': '',
-        #         'WARNING': '',
-        #         'ACTION': '',
-        #         'NOTICE': '',
-        #         'HIGH': '',
-        #         'LOW': '',
-        #         'NEUTRAL': '',
-        #         'HIGHLIGHT': '',            
-        #         # 'DEFAULT': curses.COLOR_WHITE,
-        #         # 'ERROR': curses.COLOR_RED,
-        #         # 'WARNING': curses.COLOR_MAGENTA,
-        #         # 'ACTION': curses.COLOR_MAGENTA,
-        #         # 'NOTICE': curses.COLOR_MAGENTA,
-        #         # 'HIGH': curses.COLOR_GREEN,
-        #         # 'LOW': curses.COLOR_RED,
-        #         # 'NEUTRAL': curses.COLOR_WHITE,
-        #         # 'HIGHLIGHT': curses.COLOR_WHITE
-        #     }
-        # else:
-        #     return {
-        #         'DEFAULT': '',
-        #         'ERROR': '',
-        #         'WARNING': '',
-        #         'ACTION': '',
-        #         'NOTICE': '',
-        #         'HIGH': '',
-        #         'LOW': '',
-        #         'NEUTRAL': '',
-        #         'HIGHLIGHT': '',
-        #     }
-
     def format(self, record):
         colors = self.colors(Terminal.inst().style())
 
@@ -116,12 +82,15 @@ class TerminalHandler(logging.StreamHandler):
 
         if record.levelno == logging.ERROR:
             Terminal.inst().error(str(msg), view='default')
+            Terminal.inst().error(str(msg), view='debug')
         elif record.levelno == logging.WARNING:
             Terminal.inst().warning(str(msg), view='default')
+            Terminal.inst().error(str(msg), view='debug')
         elif record.levelno == logging.INFO:
             Terminal.inst().info(str(msg), view='default')
+            Terminal.inst().info(str(msg), view='content')
         elif record.levelno == logging.DEBUG:
-            Terminal.inst().message(str(msg), view='default')
+            Terminal.inst().message(str(msg), view='debug')
         else:
             Terminal.inst().message(str(msg), view='default')
 
@@ -149,19 +118,34 @@ class SiisLog(object):
         # default log file formatter
         self.file_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
-        # and a siis logger with siis.log
+        # a siis logger with siis.log
         self.file_logger = logging.FileHandler(options['log-path'] + '/' + options['log-name'])
         self.file_logger.setFormatter(self.file_formatter)
+        self.file_logger.setLevel(logging.DEBUG)
 
-        # err_logger = logging.FileHandler(options['log-path'] + '/' + 'error')
-        # err_logger.setFormatter(self.file_formatter)        
+        self.add_file_logger('siis', self.file_logger)
 
-        my_logger = self.add_file_logger('siis')
+        # a siis logger with exec.siis.log
+        self.exec_file_logger = logging.FileHandler(options['log-path'] + '/' + "exec." + options['log-name'])
+        self.exec_file_logger.setFormatter(self.file_formatter)
+        self.exec_file_logger.setLevel(logging.INFO)
 
-    def add_file_logger(self, name, level=logging.DEBUG):
+        # don't propagate execution to siis logger
+        self.add_file_logger('siis.exec', self.exec_file_logger, False)
+
+        # a siis logger with error.siis.log
+        self.error_file_logger = logging.FileHandler(options['log-path'] + '/' + "error." + options['log-name'])
+        self.error_file_logger.setFormatter(self.file_formatter)
+        self.error_file_logger.setLevel(logging.INFO)
+
+        # don't propagate error trade to siis logger
+        self.add_file_logger('siis.error', self.error_file_logger, False)
+
+    def add_file_logger(self, name, handler, level=logging.DEBUG, propagate=True):
         my_logger = logging.getLogger(name)
 
-        my_logger.addHandler(self.file_logger)
+        my_logger.addHandler(handler)
         my_logger.setLevel(level)
+        my_logger.propagate = propagate
 
         return my_logger

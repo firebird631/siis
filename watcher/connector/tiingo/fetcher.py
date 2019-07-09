@@ -17,6 +17,7 @@ from terminal.terminal import Terminal
 
 import logging
 logger = logging.getLogger('siis.fetcher.tiingo')
+logger = logging.getLogger('siis.error.fetcher.tiingo')
 
 
 class TiingoFetcher(Fetcher):
@@ -63,7 +64,7 @@ class TiingoFetcher(Fetcher):
 				self._connector = None
 
 		except Exception:
-			logger.error(traceback.format_exc())
+			error_logger.error(traceback.format_exc())
 
 	@property
 	def authenticated(self):

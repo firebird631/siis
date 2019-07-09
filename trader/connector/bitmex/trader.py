@@ -477,6 +477,11 @@ class BitMexTrader(Trader):
 
                 position.entry(direction, symbol, quantity)
 
+                position.leverage = pos['leverage']
+
+                position.entry_price = pos['avgEntryPrice']
+                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()  # .%fZ")
+
                 # id is symbol
                 self._positions[symbol] = position
 
@@ -485,7 +490,6 @@ class BitMexTrader(Trader):
                 del self._positions[symbol]
 
             if position:
-                position.entry_price = pos['avgEntryPrice']
 
                 # absolute value because we work with positive quantity + direction information
                 position.quantity = abs(float(pos['currentQty']))
@@ -494,6 +498,7 @@ class BitMexTrader(Trader):
                 position.leverage = pos['leverage']
 
                 # position.market_close = pos['market_close']
+                position.entry_price = pos['avgEntryPrice']
                 position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()  # .%fZ")
 
                 # XBt to XBT

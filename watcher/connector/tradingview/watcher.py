@@ -8,6 +8,7 @@ import socketserver
 import json
 import threading
 import time
+import traceback
 
 import urllib.parse
 
@@ -20,6 +21,10 @@ from config import config
 
 from terminal.terminal import Terminal
 from instrument.instrument import BuySellSignal
+
+import logging
+logger = logging.getLogger("siis.connector.tradingview")
+error_logger = logging.getLogger("siis.error.connector.tradingview")
 
 
 class MyThread(threading.Thread):
@@ -128,9 +133,10 @@ class TradingViewWatcher(Watcher):
 
 			self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
-			Terminal.inst().info("Started tradingview HTTP proxy listener", view='status')
+			logger.info("Started tradingview HTTP proxy listener")
 		except Exception as e:
-			pass #Terminal.inst().error(repr(e))
+			logger.error(repr(e))
+			error_logger.error(traceback.format_exc())
 
 	def disconnect(self):
 		super().disconnect()

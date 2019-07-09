@@ -13,8 +13,6 @@ from common.service import Service
 
 from notifier.signal import Signal
 
-from terminal.terminal import Terminal
-
 
 class WatcherService(Service):
 
@@ -74,7 +72,7 @@ class WatcherService(Service):
                 continue
 
             if self._watchers.get(k) is not None:
-                Terminal.inst().error("Watcher %s already started" % k)
+                logger.error("Watcher %s already started" % k)
                 continue
 
             if watcher.get("status") is not None and watcher.get("status") == "load":

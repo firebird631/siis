@@ -16,7 +16,6 @@ from notifier.notifiable import Notifiable
 from notifier.signal import Signal
 
 from terminal.terminal import Terminal
-
 from strategy.strategy import Strategy
 
 from notifier.signal import Signal
@@ -192,7 +191,7 @@ class StrategyService(Service):
                 continue
 
             if self._appliances.get(k) is not None:
-                Terminal.inst().error("Strategy appliance %s already started" % k)
+                logger.error("Strategy appliance %s already started" % k)
                 continue
 
             if appl.get("status") is not None and appl.get("status") == "enabled":
@@ -203,11 +202,11 @@ class StrategyService(Service):
                 parameters = strategy.get('parameters', {})
 
                 if not strategy or not strategy.get('name'):
-                    Terminal.inst().error("Invalid strategy configuration for appliance %s !" % k)
+                    logger.error("Invalid strategy configuration for appliance %s !" % k)
 
                 Clazz = self._strategies.get(strategy['name'])
                 if not Clazz:
-                    Terminal.inst().error("Unknown strategy name for appliance %s !" % k)
+                    logger.error("Unknown strategy name for appliance %s !" % k)
 
                 appl_inst = Clazz(self, self.watcher_service, self.trader_service, appl, parameters)
                 appl_inst.set_identifier(k)
@@ -242,7 +241,7 @@ class StrategyService(Service):
                 appl.thread.join()
 
             # and save state to database
-            if not self.backtesting and not appl.trader().paper_mode:
+            if not self.backtesting and (appl.trader() and not appl.trader().paper_mode):
                 appl.save()
 
         # terminate the worker pool

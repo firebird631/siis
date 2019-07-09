@@ -11,6 +11,7 @@ from terminal.terminal import Terminal
 
 import logging
 logger = logging.getLogger('siis.common.runnable')
+error_logger = logging.getLogger('siis.error.common.runnable')
 
 
 class Runnable(object):
@@ -123,10 +124,12 @@ class Runnable(object):
         try:
             self.pre_run()
         except Exception as e:
-            logger.error(traceback.format_exc())
-            Terminal.inst().error(repr(e))
+            logger.error(repr(e))
+            error_logger.error(traceback.format_exc())
+            
             self._error = e
             self._running = False
+
             return
 
         # don't waste with try/catch, do it only at last level
@@ -137,8 +140,8 @@ class Runnable(object):
                     while self._running:
                         self.__process_once_bench()
                 except Exception as e:
-                    logger.error(traceback.format_exc())
-                    Terminal.inst().error(repr(e))
+                    logger.error(repr(e))
+                    error_logger.error(traceback.format_exc())
                     self._error = e
         else:
             while self._running:
@@ -146,15 +149,15 @@ class Runnable(object):
                     while self._running:
                         self.__process_once()
                 except Exception as e:
-                    logger.error(traceback.format_exc())
-                    Terminal.inst().error(repr(e))
+                    logger.error(repr(e))
+                    error_logger.error(traceback.format_exc())
                     self._error = e
 
         try:
             self.post_run()
         except Exception as e:
-            logger.error(traceback.format_exc())
-            Terminal.inst().error(repr(e))
+            logger.error(repr(e))
+            error_logger.error(traceback.format_exc())
             self._error = e
 
         self._running = False

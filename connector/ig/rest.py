@@ -8,15 +8,13 @@ Modified by Femto Trader - 2014-2015 - https://github.com/femtotrader/
 """
 
 import json
+import time
 
 from requests import Session
 
-import logging
-import time
-
 from .utils import conv_datetime, conv_to_ms
 
-
+import logging
 logger = logging.getLogger("siis.connector.ig.rest")
 
 
@@ -377,9 +375,7 @@ class IGService:
         for i in range(5):
             response = self._req(action, endpoint, params, session)
             if response.status_code == 404:
-                logger.info(
-                    "Deal reference %s not found, retrying." % deal_reference
-                )
+                logger.info("Deal reference %s not found, retrying." % deal_reference)
                 time.sleep(1)
             else:
                 break

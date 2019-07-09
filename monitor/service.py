@@ -156,7 +156,7 @@ class MonitorService(Service):
                     self._thread.start()
 
             elif self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
-                # log.startLogging(sys.stdout)
+                # logger.startLogging(sys.stdout)
 
                 self._factory = WebSocketServerFactory(u"ws://%s:%i" % (self._host, self._port))
                 self._factory.protocol = ServerProtocol

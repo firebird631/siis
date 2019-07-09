@@ -17,6 +17,7 @@ from terminal.terminal import Terminal
 
 import logging
 logger = logging.getLogger('siis.fetcher.alphavantage')
+error_logger = logging.getLogger('siis.error.fetcher.alphavantage')
 
 
 class AlphaVantageFetcher(Fetcher):
@@ -77,7 +78,7 @@ class AlphaVantageFetcher(Fetcher):
 				self._connector = None
 
 		except Exception:
-			logger.error(traceback.format_exc())
+			error_logger.error(traceback.format_exc())
 
 	@property
 	def authenticated(self):

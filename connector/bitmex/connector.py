@@ -9,7 +9,6 @@ import base64
 import requests
 
 from datetime import datetime
-from terminal.terminal import Terminal
 from config import config
 from common.utils import UTC
 
@@ -150,7 +149,6 @@ class Connector(object):
             if response.status_code == 401:
                 logger.error("API Key or Secret incorrect, please check and restart.")
                 logger.error("Error: " + response.text, True)
-                Terminal.inst().error("API Key or Secret incorrect, please check and restart.")
             
                 if postdict:
                     # fatal error...
@@ -159,11 +157,11 @@ class Connector(object):
             # 404, can be thrown if order canceled or does not exist.
             elif response.status_code == 404:
                 if verb == 'DELETE':
-                    # Terminal.inst().error("Order not found: %s" % postdict['orderID'])
+                    # logger.error("Order not found: %s" % postdict['orderID'])
                     # return
+
                     logger.error("Unable to contact the BitMEX API (404). ")
                     logger.error("Request: %s \n %s" % (url, json.dumps(postdict)))
-                    Terminal.inst().error("Unable to contact the BitMEX API (404)")
                     raise e
 
             # 429, ratelimit; cancel orders & wait until X-RateLimit-Reset
@@ -171,8 +169,6 @@ class Connector(object):
                 logger.error("Ratelimited on current request (contact support@bitmex.com to raise your limits). ")
                 logger.error("Request: %s \n %s" % (url, json.dumps(postdict)))
                 
-                Terminal.inst().error("Ratelimited on current request (contact support@bitmex.com to raise your limits).")
-
                 # Figure out how long we need to wait.
                 ratelimit_reset = response.headers['X-RateLimit-Reset']
                 to_sleep = int(ratelimit_reset) - int(time.time()) + 1.0  # add 1.0 more second be we still have issues
@@ -180,13 +176,12 @@ class Connector(object):
 
                 # We're ratelimited, and we may be waiting for a long time. Cancel orders.
                 # logger.warning("Canceling all known orders in the meantime.")
-                # Terminal.inst().warning("Canceling all known orders in the meantime.")
 
                 # for o in self.open_orders():
                 #     if 'orderID' in o:
                 #         self.cancel(o['orderID'])
 
-                Terminal.inst().error("Your ratelimit will reset at %s. Sleeping for %d seconds." % (reset_str, to_sleep))
+                logger.error("Sleeping for %d seconds." % (reset_str, to_sleep))
                 time.sleep(to_sleep)
 
                 # Retry the request
@@ -197,7 +192,6 @@ class Connector(object):
                 logger.warning("Unable to contact the BitMEX API (503), retrying.")
                 logger.warning("Request: %s \n %s" % (url, json.dumps(postdict)))
 
-                Terminal.inst().warning("Unable to contact the BitMEX API (503), retrying.")
                 time.sleep(5)
 
                 return retry()
@@ -228,15 +222,11 @@ class Connector(object):
 
                 elif 'insufficient available balance' in message:
                     logger.error('BitMex Account out of funds. The message: %s' % error['message'])
-                    Terminal.inst().error('BitMex Account out of funds.')
                     raise Exception('BitMex Insufficient Funds')
 
                 # If we haven't returned or re-raised yet, we get here.
                 logger.error("BitMex unhandled Error: %s: %s" % (e, response.text))
                 logger.error("Endpoint was: %s %s: %s" % (verb, path, json.dumps(postdict)))
-
-                Terminal.inst().error("BitMex unhandled Error: %s: %s" % (e, response.text))
-                Terminal.inst().error("Endpoint was: %s %s: %s" % (verb, path, json.dumps(postdict)))
 
                 raise e
 
@@ -248,8 +238,6 @@ class Connector(object):
         except requests.exceptions.ConnectionError as e:
             logger.warning("Unable to contact the BitMEX API (%s). Please check the URL. Retrying. ")
             logger.warning("Request: %s %s \n %s" % (e, url, json.dumps(postdict)))
-
-            Terminal.inst().warning("Unable to contact the BitMEX API (%s). Please check the URL. Retrying. ")
 
             time.sleep(2)
             return retry()

@@ -27,6 +27,7 @@ from trader.market import Market
 
 import logging
 logger = logging.getLogger('siis.watcher.tiingo')
+error_logger = logging.getLogger('siis.error.watcher.tiingo')
 
 
 class TiingoWatcher(Watcher):
@@ -94,7 +95,7 @@ class TiingoWatcher(Watcher):
 				self._connector = None
 
 		except Exception:
-			logger.error(traceback.format_exc())
+			error_logger.error(traceback.format_exc())
 		finally:
 			self.unlock()
 

@@ -9,9 +9,6 @@ from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, Stream
 
 from .casub import CryptoAlphaStrategySub
 
-from terminal.terminal import Terminal
-
-
 import logging
 logger = logging.getLogger('siis.strategy.cryptoalpha')
 

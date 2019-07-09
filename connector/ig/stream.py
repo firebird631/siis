@@ -4,11 +4,12 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 import traceback
-import logging
 
 from .lightstreamer import LSClient
 
-logger = logging.getLogger(__name__)
+import logging
+logger = logging.getLogger("siis.connector.ig.stream")
+error_logger = logging.getLogger("siis.error.connector.ig.stream")
 
 
 class IGStreamService(object):
@@ -40,7 +41,7 @@ class IGStreamService(object):
 			return
 		except Exception:
 			logger.error("Unable to connect to Lightstreamer Server")
-			logger.error(traceback.format_exc())
+			error_logger.error(traceback.format_exc())
 			sys.exit(1)
 
 	def unsubscribe_all(self):

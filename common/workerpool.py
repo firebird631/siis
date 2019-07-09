@@ -13,6 +13,7 @@ from terminal.terminal import Terminal
 
 import logging
 logger = logging.getLogger('siis.common.workerpool')
+error_logger = logging.getLogger('siis.error.common.workerpool')
 
 
 class CountDown(object):
@@ -90,8 +91,9 @@ class Worker(threading.Thread):
                 while self._running:
                     self.__process_once()
             except Exception as e:
-                logger.error(traceback.format_exc())
-                Terminal.inst().error(repr(e))
+                logger.error(repr(e))
+                error_logger.error(traceback.format_exc())
+
                 self._error = e
 
         self._running = False
@@ -108,7 +110,7 @@ class Worker(threading.Thread):
         self._ping = True
 
     def pong(self, msg):
-        Terminal.inst().action("From the pool of worker, worker %s is alive %s" % (self._uid, msg), view='content')
+        Terminal.inst().action("WokerPool::Worker %s is alive %s" % (self._uid, msg), view='content')
 
 
 class WorkerPool(object):

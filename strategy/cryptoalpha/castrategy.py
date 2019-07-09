@@ -22,9 +22,6 @@ from strategy.strategydatafeeder import StrategyDataFeeder
 from .castrategytrader import CryptoAlphaStrategyTrader
 from .caparameters2 import DEFAULT_PARAMS
 
-import logging
-logger = logging.getLogger('siis.strategy.cryptoalpha')
-
 
 class CryptoAlphaStrategy(Strategy):
     """

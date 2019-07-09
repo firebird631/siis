@@ -15,7 +15,6 @@ import logging
 from .apikeyauth import generate_nonce, generate_signature
 from urllib.parse import urlparse, urlunparse
 
-from terminal.terminal import Terminal
 from decimal import Decimal
 
 import logging
@@ -110,8 +109,7 @@ class BitMEXWebsocket():
 			if self.should_auth:
 				self.__wait_for_account()
 
-			logger.debug('- BitMex got account and market data. Running.')
-			Terminal.inst().info('- BitMex got account and market data. Running.')
+			logger.info('- BitMex got account and market data. Running.')
 
 	#
 	# Data methods
@@ -180,7 +178,7 @@ class BitMEXWebsocket():
 		return (buys, sells)
 
 	def open_orders(self, clOrdIDPrefix):
-		orders = self.data['order']
+		orders = self.data.get('order', [])
 		# Filter to only open orders (leavesQty > 0) and those that we actually placed
 		return [o for o in orders if str(o['clOrdID']).startswith(clOrdIDPrefix) and o['leavesQty'] > 0]
 

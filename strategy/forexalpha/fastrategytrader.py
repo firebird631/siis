@@ -172,13 +172,11 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # not having main trend and at least 1 sample OR not in the trend
             if ema < sma:
                 major_trend = -1
-                # Terminal.inst().info("Bear major trend SMA ema=%s sma=%s sma55=%s rsi21=%s" % (ema, sma, sma55, rsi21), view="default")
             elif ema > sma:
                 major_trend = 1
 
             # if price_above_slow_sma55 < 0:               
             #     major_trend = -1
-            #     # Terminal.inst().message("Bear trend... rsi=%.2f ema=%.2f price=%s" % (rsi21, sma55, last_price), view='default')
             # elif price_above_slow_sma55 > 0:
             #     major_trend = 1
 
@@ -216,34 +214,11 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             #     continue
             # < ENTRY.C5
 
-            # > ENTRY.C2 (discutable, redondant)
-            # if exits and exits[-1].timeframe > entry.timeframe and major_trend < 0:
-            # if exits and exits[-1].timeframe > entry.timeframe:
-            #     # good entry but higher timeframe say to exit, don't take the entry
-            #     Terminal.inst().message("Reject this entry: exit from higher timeframe ! %s" % str(entry), view='default')
-            #     continue
-            # < ENTRY.C2
-
-            # > ENTRY.C3
-            # signal upper timeframe trend (pas tres pertinant au final)
-            # # upper_tf = self.parent_timeframe(entry.timeframe)
-            # upper_tf, low, high, trend = self.higher_timeframe_low_high_trend(entry.timeframe)
-
-            # # ignore if parent timeframe not recently confirm the entry
-            # if self.timeframes[upper_tf].last_signal:
-            #     if not entry.compare(self.timeframes[upper_tf].last_signal):
-            #         Terminal.inst().message("Reject this entry: from parent timeframe ! %s" % str(retained_entry), view='default')
-            #         continue
-            #     else:
-            #         Terminal.inst().message("Reject this entry: not parent timeframe confirmation ! %s" % str(entry), view='default')
-            #         continue
-            # < ENTRY.C3
-
             # > ENTRY.C4
             # for exit in exits:
             #     if parent_entry_tf == exit.timeframe:
             #         retained_entry = None
-            #         Terminal.inst().message("Reject this entry ! %s" % str(retained_entry), view='default')
+            #         logger.info("Reject this entry ! %s" % str(retained_entry))
             #         continue
             # < ENTRY.C4
 
@@ -353,7 +328,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 # if trade.is_entry_timeout(timestamp, trade.timeframe):
                 #     trader = self.strategy.trader()
                 #     trade.cancel_open(trader)
-                #     # Terminal.inst().info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,), view='default')
+                #     # logger.info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,))
                 #     continue
 
                 # ROE (long/short) @todo or optimize ATR, we need volatility index
@@ -376,7 +351,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                 if trade.is_opened() and not trade.is_valid(timestamp, trade.timeframe):
                     # @todo re-adjust entry
-                    Terminal.inst().info("Update order %s trade %s TODO" % (trade.id, self.instrument.market_id,), view='default')
+                    logger.info("Update order %s trade %s TODO" % (trade.id, self.instrument.market_id,))
                     continue
 
                 # only for active and currently not closing trades

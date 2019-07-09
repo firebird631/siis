@@ -28,6 +28,8 @@ from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.watcher.bitmex')
+exec_logger = logging.getLogger('siis.exec.bitmex')
+error_logger = logging.getLogger('siis.error.bitmex')
 
 
 class BitMexWatcher(Watcher):
@@ -81,8 +83,8 @@ class BitMexWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
         except Exception as e:
-            Terminal.inst().error(repr(e))
-            logger.error(traceback.format_exc())
+            logger.debug(repr(e))
+            error_logger.error(traceback.format_exc())
         finally:
             self.unlock()
 
@@ -96,8 +98,8 @@ class BitMexWatcher(Watcher):
                 self._connector.disconnect()
                 self._connector = None
         except Exception as e:
-            Terminal.inst().error(repr(e))
-            logger.error(traceback.format_exc())
+            logger.debug(repr(e))
+            error_logger.error(traceback.format_exc())
         finally:
             self.unlock()
 
@@ -195,7 +197,7 @@ class BitMexWatcher(Watcher):
             
             if data[1] == 'execution' and data[2]:
                 for ld in data[3]:
-                    logger.info("bitmex l185 execution > ", ld)
+                    exec_logger.info("bitmex l185 execution > ", ld)
 
             #
             # positions
@@ -203,7 +205,7 @@ class BitMexWatcher(Watcher):
 
             elif data[1] == 'position':  # action
                 for ld in data[3]:
-                    logger.info("bitmex.com position %s" % str(ld))
+                    exec_logger.info("bitmex.com position %s" % str(ld))
 
                     ref_order_id = ""
                     symbol = ld['symbol']
@@ -264,7 +266,7 @@ class BitMexWatcher(Watcher):
 
             elif data[1] == 'order':
                 for ld in data[3]:
-                    logger.info("bitmex.com order %s" % str(ld))
+                    exec_logger.info("bitmex.com order %s" % str(ld))
 
                     symbol = ld.get('symbol')
                     status = ld.get('ordStatus', None)
@@ -450,7 +452,7 @@ class BitMexWatcher(Watcher):
                     if 'volume' in data[3][0] and data[3][0]['volume']:
                         last_vol = float(data[3][0]['volume'])
 
-                    logger.info("bitmex l325 > %s : %s %s %s / last %s %s %s" % (market_id, bid, ofr, volume, last_bid, last_ofr, last_vol))
+                    # exec_logger.info("bitmex l325 > %s : %s %s %s / last %s %s %s" % (market_id, bid, ofr, volume, last_bid, last_ofr, last_vol))
 
                     if bid is not None and ofr is not None and volume is not None and last_vol:
                         # we have a tick when we have a volume in data content
@@ -577,6 +579,7 @@ class BitMexWatcher(Watcher):
             market.one_pip_means = instrument.get('tickSize', 1.0)
 
             # contract_size need to be updated as price changes
+            # @todo this is wrong... same on update part above
             if quote_symbol == 'USD' and base_market_id == symbol:  # XBTUSD...
                 market.contract_size = 1.0 / instrument.get('lastPrice', 1.0)
             elif quote_symbol == 'USD' and base_market_id != symbol:  # ETHUSD...
