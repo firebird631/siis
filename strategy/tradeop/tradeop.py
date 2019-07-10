@@ -11,6 +11,8 @@ class TradeOp(object):
     Startegy trade operation base class.
     """
 
+    VERSION = "1.0.0"
+
     OP_UNDEFINED = 0
     OP_DYNAMIC_STOP_LOSS = 1
     OP_SINGLE_VAR_CONDITION = 2
@@ -134,8 +136,42 @@ class TradeOp(object):
         return {
             'label': "undefined",
             'name': self.name(),
-            'id': self.id(),
+            'id': self._id,
+            'stage': self.stage_to_str(),
+            'count': self._count
         }
+
+    #
+    # persistance
+    #
+
+    def stage_to_str(self):
+        if self._stage == TradeOp.STAGE_ENTRY:
+            return "entry"
+        elif self._stage == TradeOp.STAGE_EXIT:
+            return "exit"
+        else:
+            return "undefined"
+
+    def dumps(self):
+        """
+        Override this method and add specific parameters for dumps parameters for persistance model.
+        """
+        return {
+            'version': self.version,
+            'op': self.op(),
+            'id': self._id,
+            'stage': self._stage,
+            'count': self._count
+        }
+
+    def loads(self, data):
+        """
+        Override this method and add specific parameters for loads parameters from persistance model.
+        """
+        self._id = data.get('id', -1)
+        self._stage = data.get('stage', 0)  # self.stage_from_str(data.get('stage', ''))
+        self._count = data.get('count', 0)
 
 
 class TradeOpDynamicStopLoss(TradeOp):
@@ -143,7 +179,7 @@ class TradeOpDynamicStopLoss(TradeOp):
     Dynamic stop-loss level. Each time a target is reached the stop-loss is set to a specific price.
     """
 
-    ID = TradeOp.OP_DYNAMIC_STOP_LOSS
+    OP = TradeOp.OP_DYNAMIC_STOP_LOSS
     NAME = 'dynamic-stop-loss'
 
     def __init__(self):
@@ -202,6 +238,20 @@ class TradeOpDynamicStopLoss(TradeOp):
             'trigger': self._trigger
         }
 
+    def dumps(self):
+        data = super().dumps()
+
+        data['trigger'] = self._trigger
+        data['stop-loss'] = self._stop_loss
+
+        return data
+
+    def loads(self, data):
+        super().loads(data)
+
+        self._trigger = data.get('trigger', 0.0)
+        self._stop_loss = data.get('stop-loss', 0.0)
+
 
 class TradeSingleVarOpCondStopLoss(TradeOp):
     """
@@ -215,8 +265,8 @@ class TradeSingleVarOpCondStopLoss(TradeOp):
     COND_GTE = 3
     COND_LT = 4
     COND_LTE = 5
-    
-    ID = TradeOp.OP_SINGLE_VAR_CONDITION
+
+    OP = TradeOp.OP_SINGLE_VAR_CONDITION
     NAME = '1var-cond-stop-loss'
 
     def __init__(self, condition, variable):
@@ -236,8 +286,20 @@ class TradeSingleVarOpCondStopLoss(TradeOp):
             'label': "Single variable conditionned stop-loss",
             'name': self.name(),
             'id': self.id(),
-            # ...
+            'variable': self._variable,
         }
+
+    def dumps(self):
+        data = super().dumps()
+
+        data['variable'] = self._variable
+
+        return data
+
+    def loads(self, data):
+        super().loads(data)
+
+        self._variable = data.get('variable', 0.0)
 
 
 class TradeTwoVarsOpCondStopLoss(TradeOp):
@@ -254,7 +316,7 @@ class TradeTwoVarsOpCondStopLoss(TradeOp):
     COND_LTE = 5
     COND_CROSS = 6
     
-    ID = TradeOp.OP_TWO_VARS_CONDITION
+    OP = TradeOp.OP_TWO_VARS_CONDITION
     NAME = '2vars-cond-stop-loss'
 
     def __init__(self, condition, variable):
@@ -276,3 +338,15 @@ class TradeTwoVarsOpCondStopLoss(TradeOp):
             'id': self.id(),
             # ...
         }
+
+    def dumps(self):
+        data = super().dumps()
+
+        data['variable'] = self._variable
+
+        return data
+
+    def loads(self, data):
+        super().loads(data)
+
+        self._variable = data.get('variable', 0.0)

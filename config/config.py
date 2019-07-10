@@ -304,6 +304,18 @@ INDICATORS = {
         'options': {
         }
     },
+    'sinewave': {
+        'status': 'load',
+        'classpath': 'strategy.indicator.sinewave.sinewave.SineWaveIndicator',
+        'options': {
+        }
+    },
+    'zigzag': {
+        'status': 'load',
+        'classpath': 'strategy.indicator.zigzag.zigzag.ZigZagIndicator',
+        'options': {
+        }
+    },
 }
 
 TRADEOPS = {

@@ -152,14 +152,3 @@ class Position(Keyed):
     @property
     def exit_date(self):
         return self._exit_date
-
-    def mapped_dir(self, if_long="Long", if_short="Short", default=None):
-        """
-        Map the direction to one of the given object or string parameters.
-        """
-        if self._direction == Position.LONG:
-            return if_long
-        elif self._direction == Position.SHORT:
-            return if_short
-
-        return default

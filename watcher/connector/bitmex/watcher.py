@@ -205,8 +205,6 @@ class BitMexWatcher(Watcher):
 
             elif data[1] == 'position':  # action
                 for ld in data[3]:
-                    exec_logger.info("bitmex.com position %s" % str(ld))
-
                     ref_order_id = ""
                     symbol = ld['symbol']
                     position_id = symbol
@@ -216,6 +214,8 @@ class BitMexWatcher(Watcher):
                     if ld['currentQty'] is None:
                         # no position
                         continue
+
+                    exec_logger.info("bitmex.com position %s" % str(ld))
 
                     if ld.get('currentQty', 0) != 0:
                         direction = Order.SHORT if ld['currentQty'] < 0 else Order.LONG
@@ -242,12 +242,13 @@ class BitMexWatcher(Watcher):
                         'exec-price': None,
                         'stop-loss': None,
                         'take-profit': None,
-                        'profit-currency': ld.get('currency'),
-                        'profit-loss': ld.get('unrealisedPnl'),
                         'cumulative-filled': quantity,
                         'filled': None,  # no have
                         'liquidation-price': ld.get('liquidationPrice'),
-                        'commission': ld.get('commission', 0.0)
+                        'commission': ld.get('commission', 0.0),
+                        'profit-currency': ld.get('currency'),
+                        'profit-loss': ld.get('unrealisedPnl'),
+                        'profit-loss-rate': ld.get('unrealisedPnlPcnt')
                     }
 
                     if (ld.get('openOrderSellQty', 0) or ld.get('openOrderSellQty', 0)) and quantity == 0.0:
@@ -607,6 +608,9 @@ class BitMexWatcher(Watcher):
                     str(market.min_price), str(market.max_price), str(market.tick_price),  # price limits
                     str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))  # fees
                 )
+
+            # notify for strategy
+            self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
 
         return market
 

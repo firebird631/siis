@@ -412,7 +412,7 @@ class PgSql(Database):
                 query = ' '.join((
                     "INSERT INTO user_trade(broker_id, account_id, market_id, appliance_id, trade_id, trade_type, data, operations) VALUES",
                     ','.join(["('%s', '%s', '%s', %s, %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], ut[5],
-                            str(ut[6]).replace("'", "\'"), str(ut[7]).replace("'", "\'")) for ut in uti]),
+                            json.dumps(ut[6]).replace("'", "\'"), json.dumps(ut[7]).replace("'", "\'")) for ut in uti]),
                     "ON CONFLICT (broker_id, account_id, market_id, appliance_id, trade_id) DO UPDATE SET data = EXCLUDED.data, operations = EXCLUDED.operations"
                 ))
 
@@ -478,7 +478,7 @@ class PgSql(Database):
                 query = ' '.join((
                     "INSERT INTO user_trader(broker_id, account_id, market_id, appliance_id, activity, data, regions) VALUES",
                     ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
-                            str(ut[5]).replace("'", "\'"), str(ut[6]).replace("'", "\'")) for ut in uti]),
+                            json.dumps(ut[5]).replace("'", "\'"), json.dumps(ut[6]).replace("'", "\'")) for ut in uti]),
                     "ON CONFLICT (broker_id, market_id, appliance_id) DO UPDATE SET activity = EXCLUDED.activity, data = EXCLUDED.data, regions = EXCLUDED.regions"
                 ))
 

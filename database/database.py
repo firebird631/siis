@@ -137,7 +137,7 @@ class Database(object):
 
         self._last_tick_flush = 0
         self._last_ohlc_flush = 0
-        self._last_ohlc_clean = 0
+        self._last_ohlc_clean = time.time()
 
         self._markets_path = None
         self._tick_storages = {}    # TickStorage per market

@@ -856,6 +856,9 @@ class IGWatcher(Watcher):
                 "0.0", "0.0", commission, commission)  # fees
             )
 
+        # notify for strategy
+        self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (epic, market))
+
         return market
 
     def update_markets_info(self):

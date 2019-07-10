@@ -102,7 +102,7 @@ class Strategy(Runnable):
         self._next_backtest_update = None
 
         self._cpu_load = 0.0   # global CPU for all the instruments managed by a strategy
-        
+
         if options.get('trader'):
             trader_conf = options['trader']
             if trader_conf.get('name'):
@@ -562,10 +562,9 @@ class Strategy(Runnable):
         while self._signals:
             signal = self._signals.popleft()
 
-            # if source of the signal is itself then it might be for backtesting
             if signal.source == Signal.SOURCE_STRATEGY:
                 if signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
-                    # incoming market info when backtesting
+                    # incoming market info if backtesting
                     instrument = self.instrument(signal.data[0])
                     if instrument is None:
                         continue
@@ -573,17 +572,34 @@ class Strategy(Runnable):
                     market = signal.data[1]
 
                     if market:
-                        # in backtesting mode set the market object to the paper trader directly
+                        # in backtesting mode set the market object to the paper trader directly,
+                        # because there is no watcher
                         if self.service.backtesting:
                             trader = self.trader_service.trader(self._trader_conf['name'])
                             if trader:
                                 trader.set_market(market)
 
-                    # retrieve the feeder by the relating instrument market_id or symbol
-                    feeder = self._feeders.get(instrument.market_id) or self._feeders.get(instrument.symbol)
-                    if feeder:
-                        # set instrument once market data are fetched
-                        feeder.set_instrument(instrument)
+                            # put interesting market data into the instrument
+                            instrument.trade = market.trade
+                            instrument.orders = market.orders
+                            instrument.hedging = market.hedging
+                            instrument.tradeable = market.is_open
+                            instrument.set_base(market.base)
+                            instrument.set_quote(market.quote)
+
+                            instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
+                            instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
+                            instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
+
+                            instrument.set_fees(market.maker_fee, market.taker_fee)
+                            instrument.set_commissions(market.maker_commission, market.taker_commission)
+
+                    if self.service.backtesting:
+                        # retrieve the feeder by the relating instrument market_id or symbol
+                        feeder = self._feeders.get(instrument.market_id) or self._feeders.get(instrument.symbol)
+                        if feeder:
+                            # set instrument once market data are fetched
+                            feeder.set_instrument(instrument)
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_LIST:
                     # for each trade, add the trade to the corresponding instrument sub
@@ -676,7 +692,7 @@ class Strategy(Runnable):
                             do_update[instrument] = min(signal.data[1], do_update[instrument])
 
                 elif signal.signal_type == Signal.SIGNAL_MARKET_DATA:
-                    # update market data state
+                    # update market data
                     instrument = self.instrument(signal.data[0])
                     if instrument is None:
                         continue
@@ -692,6 +708,30 @@ class Strategy(Runnable):
                         instrument.base_exchange_rate = signal.data[5]
                         instrument.vol24h_base = signal.data[8]
                         instrument.vol24h_quote = signal.data[9]
+
+                elif signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
+                    # update market info data
+                    instrument = self.instrument(signal.data[0])
+                    if instrument is None:
+                        continue
+
+                    market = signal.data[1]
+
+                    if market:
+                        # put interesting market data into the instrument
+                        instrument.trade = market.trade
+                        instrument.orders = market.orders
+                        instrument.hedging = market.hedging
+                        instrument.tradeable = market.is_open
+                        instrument.set_base(market.base)
+                        instrument.set_quote(market.quote)
+
+                        instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
+                        instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
+                        instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
+
+                        instrument.set_fees(market.maker_fee, market.taker_fee)
+                        instrument.set_commissions(market.maker_commission, market.taker_commission)
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_CONNECTED:
                     # initiate the strategy prefetch initial data, only once all watchers are ready
@@ -1023,7 +1063,7 @@ class Strategy(Runnable):
             # filter by instrument for tick data
             if signal.signal_type == Signal.SIGNAL_TICK_DATA:
                 if Instrument.TF_TICK != self.base_timeframe():
-                    # non interested by this tick data
+                    # must be equal to the base timeframe only
                     return
 
                 if signal.data[0] not in self._instruments:
@@ -1032,9 +1072,15 @@ class Strategy(Runnable):
 
             elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA:
                 if signal.data[1].timeframe != self.base_timeframe():
-                    # non interested by this candle data
+                    # must be of equal to the base timeframe only
                     return
 
+                if signal.data[0] not in self._instruments:
+                    # non interested by this instrument/symbol
+                    return
+
+            # filter by instrument for buy/sell signal
+            elif signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:
                 if signal.data[0] not in self._instruments:
                     # non interested by this instrument/symbol
                     return
@@ -1044,8 +1090,7 @@ class Strategy(Runnable):
                     # non interested by this instrument/symbol
                     return
 
-            # filter by instrument for buy/sell signal
-            elif signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:
+            elif signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                 if signal.data[0] not in self._instruments:
                     # non interested by this instrument/symbol
                     return
@@ -1320,14 +1365,13 @@ class Strategy(Runnable):
             roe_sum += r['roe']
 
             for t in r['trades']:
-                # @todo direction and colorize
                 if t['rate'] < 0 and ((t['d'] == 'long' and float(t['b']) > float(t['aep'])) or (t['d'] == 'short' and float(t['b']) < float(t['aep']))):
                     # have been profitable but loss
-                    Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
+                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
                 elif t['rate'] < 0:  # loss
-                    Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
+                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
                 elif t['rate'] > 0:  # profit
-                    Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
+                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
                 else:  # equity
                     cr = "0.0"
 
@@ -1470,20 +1514,18 @@ class Strategy(Runnable):
         for t in results:
             # @todo direction
             if t['rate'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
-                cr = Color.ORANGE + "%.2f" % ((t['rate']*100.0),) + Color.WHITE
+                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
             elif t['rate'] < 0:  # loss
-                cr = Color.RED + "%.2f" % ((t['rate']*100.0),) + Color.WHITE
+                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
             elif t['rate'] > 0:  # profit
-                cr = Color.GREEN + "%.2f" % ((t['rate']*100.0),) + Color.WHITE
+                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
             else:
                 cr = "0.0"
 
             # color TP in green if hitted, similarely in red for SL
+            # @todo not really true, could store the exit reason in trade stats
             _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']), style=style, true=Color.GREEN)
             _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']), style=style, true=Color.RED)
-
-            # _tp = (Color.GREEN + t['tp'] + Color.WHITE) if float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']) else t['tp']
-            # _sl = (Color.RED + t['sl'] + Color.WHITE) if float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']) else t['sl']
 
             # per active trade
             markets.append(t['symbol'])

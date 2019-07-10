@@ -52,7 +52,6 @@ class Market(object):
     TRADE_MARGIN = 1       # margin, long and short
     TRADE_IND_MARGIN = 2   # indivisible position, margin, long and short
 
-    # or could have a OrderPolicy because not everywhere same concepts
     ORDER_MARKET = 0
     ORDER_LIMIT = 1
     ORDER_STOP_MARKET = 2

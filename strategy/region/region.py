@@ -186,7 +186,7 @@ class Region(object):
         return {
             'label': "undefined",
             'name': self.name(),
-            'id': self.id,
+            'id': self._id,
             'created': self.created_to_str(),
             'stage': self.stage_to_str(),
             'direction': self.direction_to_str(),
@@ -200,7 +200,8 @@ class Region(object):
         """
         return {
             'version': self.version,
-            'id': self.id,
+            'region': self.region(),
+            'id': self._id,
             'created': self._created,
             'type': self.name(),
             'stage': self._stage,  #  "entry" if self._stage == Region.STAGE_ENTRY else "exit" if self._stage == Region.STAGE_EXIT else "both",

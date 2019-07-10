@@ -79,9 +79,8 @@ class StrategyIndMarginTrade(StrategyTrade):
 
             return True
         else:
-            self.create_ref_oid = None
-
-        return False
+            self._entry_state = StrategyTrade.STATE_REJECTED
+            return False
 
     def remove(self, trader):
         """
@@ -93,7 +92,12 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self.create_ref_oid = None
                 self.create_oid = None
 
-                self._entry_state = StrategyTrade.STATE_CANCELED
+                if self.e <= 0:
+                    # no entry qty processed, entry canceled
+                    self._entry_state = StrategyTrade.STATE_CANCELED
+                else:
+                    # cancel a partially filled trade means it is then fully filled
+                    self._entry_state = StrategyTrade.STATE_FILLED
 
         if self.stop_oid:
             # cancel the stop order
@@ -102,12 +106,28 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self.stop_oid = None
                 self.stop_order_qty = 0.0
 
+                if self.e <= 0 and self.x <= 0:
+                    # no exit qty
+                    self._exit_state = StrategyTrade.STATE_CANCELED
+                elif self.x >= self.e:
+                    self._exit_state = StrategyTrade.STATE_FILLED
+                else:
+                    self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
         if self.limit_oid:
             # cancel the limit order
             if trader.cancel_order(self.limit_oid):
                 self.limit_ref_oid = None
                 self.limit_oid = None
                 self.limit_order_qty = 0.0
+
+                if self.e <= 0 and self.x <= 0:
+                    # no exit qty
+                    self._exit_state = StrategyTrade.STATE_CANCELED
+                elif self.x >= self.e:
+                    self._exit_state = StrategyTrade.STATE_FILLED
+                else:
+                    self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
     def cancel_open(self, trader):
         if self.create_oid:
@@ -116,7 +136,12 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self.create_ref_oid = None
                 self.create_oid = None
 
-                self._entry_state = StrategyTrade.STATE_CANCELED
+                if self.e <= 0:
+                    # cancel a just opened trade means it is canceled
+                    self._entry_state = StrategyTrade.STATE_CANCELED
+                else:
+                    # cancel a partially filled trade means it is then fully filled
+                    self._entry_state = StrategyTrade.STATE_FILLED
             else:
                 return False
 
@@ -132,15 +157,7 @@ class StrategyIndMarginTrade(StrategyTrade):
             else:
                 return False
 
-        if self.e == self.x:
-            # all entry qty is filled
-            return True
-
-        if self.e < self.x:
-            # something wrong but its ok
-            return False
-
-        if self.e > 0:
+        if self.e - self.x > 0.0:
             # only if filled entry partially or totally
             order = Order(self, market_id)
             order.direction = self.direction
@@ -176,15 +193,7 @@ class StrategyIndMarginTrade(StrategyTrade):
             else:
                 return False
 
-        if self.e == self.x:
-            # all entry qty is filled
-            return True
-
-        if self.e < self.x:
-            # something wrong but its ok
-            return False
-
-        if self.e > 0:
+        if self.e - self.x > 0.0:
             # only if filled entry partially or totally
             order = Order(self, market_id)
             order.direction = self.direction
@@ -260,6 +269,25 @@ class StrategyIndMarginTrade(StrategyTrade):
             return False
 
         return True
+
+    def is_closing(self):
+        return (self.limit_ref_oid or self.stop_ref_oid) or self._exit_state == StrategyTrade.STATE_OPENED or self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED
+
+    def has_stop_order(self):
+        """
+        Overrides, must return true if the trade have a broker side stop order, else local trigger stop.
+        """
+        return self.stop_oid != None and self.stop_oid != ""
+
+    def has_limit_order(self):
+        """
+        Overrides, must return true if the trade have a broker side limit order, else local take-profit stop
+        """
+        return self.limit_oid != None and self.limit_oid != ""
+
+    #
+    # signals
+    #
 
     def order_signal(self, signal_type, data, ref_order_id, instrument):
         if signal_type == Signal.SIGNAL_ORDER_OPENED:
@@ -346,7 +374,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 elif data.get('exec-price') is not None and data['exec-price'] > 0:
                     # compute the average entry price
-                    self.aep = ((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
+                    self.aep = instrument.adjust_price(((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled))
                 else:
                     self.aep = self.op
 
@@ -354,7 +382,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                 if data.get('cumulative-filled') is not None:
                     self.e = data.get('cumulative-filled')
                 else:
-                    self.e += filled
+                    self.e = instrument.adjust_quantity(self.e + filled)
 
                 # logger.info("Entry avg-price=%s cum-filled=%s" % (self.aep, self.e))
 
@@ -362,8 +390,8 @@ class StrategyIndMarginTrade(StrategyTrade):
                     self._entry_state = StrategyTrade.STATE_FILLED
 
                     # bitmex does not send ORDER_DELETED signal, cleanup here
-                    self._create_oid = None
-                    self._create_ref_oid = None
+                    self.create_oid = None
+                    self.create_ref_oid = None
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
@@ -394,26 +422,39 @@ class StrategyIndMarginTrade(StrategyTrade):
                         self.pl += ((self.aep * self.e) - (data['exec-price'] * filled)) / (self.aep * self.e)
 
                     # compute the average exit price
-                    self.axp = ((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled)
+                    self.axp = instrument.adjust_price(((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled))
 
                 # cumulative filled exit qty
                 if data.get('cumulative-filled') is not None:
                     self.x = data.get('cumulative-filled')
                 else:
-                    self.x += filled
+                    self.x = instrument.adjust_quantity(self.x + filled)
 
                 logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
 
-                if self.x >= self.oq:
-                    self._exit_state = StrategyTrade.STATE_FILLED
+                if self._entry_state == StrategyTrade.STATE_FILLED:
+                    if self.x >= self.e:
+                        # entry fully filled, exit filled the entry qty => exit fully filled
+                        self._exit_state = StrategyTrade.STATE_FILLED
+                    else:
+                        # some of the entry qty is not filled at this time
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                else:
+                    if (self.stop_oid or self.limit_oid) and self.e < self.oq:
+                        # the entry part is not fully filled, the entry order still exists
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                    else:
+                        # there is no longer entry order, then we have fully filled the exit
+                        self._exit_state = StrategyTrade.STATE_FILLED
 
+                if self.x >= self.e:
                     # bitmex does not send ORDER_DELETED signal, cleanup here
                     if data['id'] == self.limit_oid:
-                        self._limit_oid = None
-                        self._limit_ref_oid = None
+                        self.limit_oid = None
+                        self.limit_ref_oid = None
                     elif data['id'] == self.stop_oid:
-                        self._stop_oid = None
-                        self._stop_ref_oid = None
+                        self.stop_oid = None
+                        self.stop_ref_oid = None
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
@@ -422,14 +463,9 @@ class StrategyIndMarginTrade(StrategyTrade):
             # no longer related position, have to cleanup any related trades in case of manual close, liquidation
             self.position_id = None
 
-            # it depends of the order of the position deleted...
-            # @todo in some case not a good idea
-            self.create_oid = None
-            self.create_ref_oid = None
-
             if self.x < self.e:
                 # mean fill the rest (because qty can concerns many trades...)
-                filled = self.e - self.x
+                filled = instrument.adjust_quantity(self.e - self.x)
 
                 if data.get('exec-price') is not None and data['exec-price'] > 0:
                     # increase/decrease profit/loss (over entry executed quantity)
@@ -455,9 +491,6 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         if ref_order_id and (ref_order_id == self.create_ref_oid):
             return True
-
-    def is_closing(self):
-        return (self.limit_ref_oid or self.stop_ref_oid) or self._exit_state == StrategyTrade.STATE_OPENED or self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED
 
     #
     # persistance

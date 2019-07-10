@@ -189,6 +189,23 @@ class CryptoAlphaStrategySubB(CryptoAlphaStrategySub):
         if self.atr:
             self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
+        if self.tomdemark:
+            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
+
+            if self.tomdemark.c.c == 9 and self.tomdemark.c.d < 0:
+                # setup complete and trend change
+                signal = StrategySignal(self.tf, timestamp)
+                signal.signal = StrategySignal.SIGNAL_EXIT
+                signal.dir = 1
+                signal.p = self.price.close[-1]
+
+            elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0:  # and (level1_signal < 0):
+                # cancelation
+                signal = StrategySignal(self.tf, timestamp)
+                signal.signal = StrategySignal.SIGNAL_EXIT
+                signal.dir = 1
+                signal.p = self.price.close[-1]
+
         return signal
 
     # def process_old(self, timestamp, last_timestamp, candles, prices, volumes):

@@ -44,6 +44,7 @@ def display_help(commands_handler, user_context=False):
         Terminal.inst().message(" - 'S' show statistic view", view='content')
         Terminal.inst().message(" - 'P' show performance view", view='content')
         Terminal.inst().message(" - 'I' show console view", view='content')
+        Terminal.inst().message(" - 'N' show notification/signal view", view='content')
         Terminal.inst().message(" - 'D' show debug view", view='content')
         Terminal.inst().message(" - 'C' clear current view", view='content')
 

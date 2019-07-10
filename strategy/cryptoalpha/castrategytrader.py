@@ -16,8 +16,6 @@ from instrument.instrument import Instrument
 
 from strategy.indicator import utils
 
-from common.utils import timeframe_to_str
-
 from .casuba import CryptoAlphaStrategySubA
 from .casubb import CryptoAlphaStrategySubB
 from .casubc import CryptoAlphaStrategySubC
@@ -58,7 +56,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.region_allow = params['region-allow']
 
         self.sltp_timeframe = params.setdefault('sltp-timeframe', Instrument.TF_1H)
-        self.ref_timeframe = params.setdefault('ref-timeframe', Instrument.TF_4H)
+        self.ref_timeframe = params.setdefault('ref-timeframe', Instrument.TF_1D)
 
         for k, timeframe in strategy.timeframes_config.items():
             if timeframe['mode'] == 'A':
@@ -88,34 +86,20 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if timestamp - self._last_filter_cache[0] < 60*60:  # only once per hour
             return self._last_filter_cache[1], self._last_filter_cache[2]
 
-        trader = self.strategy.trader()
-
-        if not trader:
-            self._last_filter_cache = (timestamp, False, False)
-            return False, False
-
-        market = trader.market(self.instrument.market_id)
-
-        if not market:
-            self._last_filter_cache = (timestamp, False, False)
-            return False, False
-
-        if market.trade != market.TRADE_BUY_SELL:
+        if self.instrument.trade != self.instrument.TRADE_BUY_SELL:
             # only allow buy/sell markets
             self._last_filter_cache = (timestamp, False, False)
             return False, False
 
-        # if there is no actives trades we can avoid computation on some ininteresting markets
-        if not self.trades:
-            if market.price is not None and market.price < self.min_price:
-                # accepted but price is very small (too binary but maybe interesting)
-                self._last_filter_cache = (timestamp, True, False)
-                return True, False
+        if self.instrument.market_price is not None and self.instrument.market_price < self.min_price:
+            # accepted but price is very small (too binary but maybe interesting)
+            self._last_filter_cache = (timestamp, True, False)
+            return True, False
 
-            if market.vol24h_quote is not None and market.vol24h_quote < self.min_vol24h:
-                # accepted but 24h volume is very small (rare possibilities of exit)
-                self._last_filter_cache = (timestamp, True, False)
-                return True, False
+        if self.instrument.vol24h_quote is not None and self.instrument.vol24h_quote < self.min_vol24h:
+            # accepted but 24h volume is very small (rare possibilities of exit)
+            self._last_filter_cache = (timestamp, True, False)
+            return True, False
 
         self._last_filter_cache = (timestamp, True, True)
         return True, True
@@ -159,7 +143,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             if ref_sma > ref_sma55:
                 self._wait_bless = -1
-                Terminal.inst().message("SMA > SMA55 %s (price=%s ema=%s sma=%s sma55=%s)!" % (self.instrument.market_id, ref_price, ref_ema, ref_sma, ref_sma55) , view='content')
+                Terminal.inst().message("SMA > SMA55 %s (price=%s ema=%s sma=%s sma55=%s)!" % (self.instrument.market_id, ref_price, ref_ema, ref_sma, ref_sma55) , view='debug')
 
         #
         # filters the entries
@@ -193,27 +177,28 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             if self._wait_bless == 0 and self._stats['cont-loss'] > self.max_trades:
                 self._wait_bless = 1
                 self._wait_timeout = timestamp + 12*60*60  # 12h self-ban
-                Terminal.inst().message("Curse !!! Wait a moment, or a favorable trend %s !" % self.instrument.market_id, view='content')
+                Terminal.inst().message("Curse !!! Wait a moment, or a favorable trend %s !" % self.instrument.market_id, view='debug')
                 continue
 
             if self._wait_bless == -1:
                 self._wait_bless = 0
 
             # TDST does not give us a stop, ok lets find one using ATR
-            if not entry.sl:
+            if 1: # not entry.sl:
                 sl = self.timeframes[self.sltp_timeframe].atr.stop_loss(entry.dir)
                 if sl < self.instrument.open_exec_price(entry.dir):
                     entry.sl = sl
 
             # defines a target
             if not entry.tp:
-                tp = self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[2]  #* 1.05
+                tp = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2] or self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[2]  #* 1.05
 
                 gain = (tp - entry.p) / entry.p
                 loss = (entry.p - entry.sl) / entry.p
 
-                # if loss != 0 and (gain / loss < 1.0):
-                #    continue
+                if loss != 0 and (gain / loss < 0.5):  # 0.75
+                    Terminal.inst().message("%s %s %s %s" % (entry.p, entry.sl, tp, (gain/loss)), view="debug")
+                    continue
 
                 # not enought potential profit
                 if (tp - entry.p) / entry.p < 0.005:  # 0.5% min
@@ -221,6 +206,13 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                 entry.tp = tp
                 entry.ptp = 1.0
+
+            if (entry.price - entry.sl) / entry.price < -0.035:
+                # max loss at x%
+                entry.sl = entry.price * (1-0.035)
+                # or do not do the trade to risky
+                entry = None
+                continue
 
             retained_entries.append(entry)
 
@@ -242,6 +234,9 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             for trade in self.trades:
                 retained_exit = None
 
+                # important if we dont want to update user controlled trades if it have some operations
+                user_mgmt = trade.is_user_trade() and trade.has_operations()
+
                 # important, do not update user controlled trades if it have some operations
                 if trade.is_user_trade() and trade.has_operations():
                     continue
@@ -251,6 +246,11 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                     # receive an exit signal of the timeframe of the trade
                     if signal.timeframe == trade.timeframe:
+                        retained_exit = signal
+                        break
+
+                    # exit signal on reference timeframe
+                    if signal.timeframe == self.ref_timeframe:
                         retained_exit = signal
                         break
 
@@ -271,6 +271,9 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 #     Terminal.inst().info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,), view='default')
                 #     continue
 
+                if user_mgmt:
+                    retained_exit = None
+
                 if trade.is_opened() and not trade.is_valid(timestamp, trade.timeframe):
                     # @todo re-adjust entry
                     Terminal.inst().info("Update order %s trade %s TODO" % (trade.id, self.instrument.market_id,), view='default')
@@ -289,83 +292,57 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 stop_loss = trade.sl
 
                 # ATR stop-loss
-                sl = self.timeframes[self.sltp_timeframe].atr.stop_loss(trade.direction)
-                # if (not trade.sl or close_exec_price > trade.entry_price) and sl > stop_loss:
-                if sl > stop_loss:
-                    stop_loss = sl
+                atr_stop = self.timeframes[self.sltp_timeframe].atr.stop_loss(trade.direction)
+                # if (not trade.sl or close_exec_price > trade.entry_price) and atr_stop > stop_loss:
+                if atr_stop > stop_loss:
+                    stop_loss = atr_stop
 
                 if 0:#not trade.sl:
                     trade.sl = stop_loss
 
-                # increase in-profit stop-loss in long direction
-                # @todo howto ?
-                # for resistances in self.timeframes[trade.timeframe].pivotpoint.resistances:
-                #     if len(resistances):
-                #         level = resistances[-1]
-                #         if level < close_exec_price and level > stop_loss:
-                #             stop_loss = level
-
-                # pivots = self.timeframes[trade.timeframe].pivotpoint.pivots:
-                # if len(pivots):
-                #     level = pivots[-1]
-                #     if level < close_exec_price and level > stop_loss:
-                #         stop_loss = level
-
-                # a try using bbands
-                # level = self.timeframes[trade.timeframe].bollingerbands.last_ma
-                # if level >= stop_loss:
-                #     stop_loss = level               
-
-                if self.timeframes[self.sltp_timeframe].pivotpoint.last_pivot > 0.0:
+                if self.timeframes[self.ref_timeframe].pivotpoint.last_pivot > 0.0:
                     update_tp = False
 
-                    if close_exec_price > self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[2]:
-                        #Terminal.inst().info("Price above R2 %s %s" % (trade.id, self.instrument.market_id), view='content')
+                    if close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]:
                         update_tp = True
-                        if stop_loss < self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[1]:
-                            trade.sl = self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[1]
+                        if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
+                            trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
 
-                    elif close_exec_price > self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[1]:
-                        #Terminal.inst().info("Price above R1 %s %s" % (trade.id, self.instrument.market_id), view='content')
+                    elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
                         update_tp = True
-                        if stop_loss < self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[0]:
-                           trade.sl = self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[0]
+                        if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
+                           trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
 
-                    elif close_exec_price > self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[0]:
-                        #Terminal.inst().info("Price above R0 %s %s" % (trade.id, self.instrument.market_id), view='content')
+                    elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
                         update_tp = True
-                        #if stop_loss < self.timeframes[self.sltp_timeframe].pivotpoint.last_pivot:
-                        #    trade.sl = self.timeframes[self.sltp_timeframe].pivotpoint.last_pivot
+                        if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
+                            trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_pivot
 
-                    elif close_exec_price > self.timeframes[self.sltp_timeframe].pivotpoint.last_pivot:
-                        #Terminal.inst().info("Price above pivot %s %s" % (trade.id, self.instrument.market_id), view='content')
+                    elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
                         update_tp = True
-                        #if stop_loss < self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[0]:
-                        #    trade.sl = self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[0]
+                        if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
+                            trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]
 
-                    elif close_exec_price > self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[0]:
-                        #Terminal.inst().info("Price above S0 %s %s" % (trade.id, self.instrument.market_id), view='content')
+                    elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
                         update_tp = True
-                        #if trade.sl < self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[1]:
-                        #   trade.sl = self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[1]
+                        if trade.sl < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
+                           trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]
 
-                    elif close_exec_price > self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[1]:
-                        Terminal.inst().info("Price above S1 %s %s" % (trade.id, self.instrument.market_id), view='content')
+                    elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
                         update_tp = True
-                        #if trade.sl < self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[2]:
-                        #    trade.sl = self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[2]
+                        if trade.sl < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
+                            trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
 
-                    elif close_exec_price > self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[2]:
-                        #Terminal.inst().info("Price above S2 %s %s" % (trade.id, self.instrument.market_id), view='content')
+                    elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
                         update_tp = True
-                        # if close_exec_price < self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[2]:
-                        #    trade.sl = sl  #self.timeframes[self.sltp_timeframe].pivotpoint.last_supports[2]
+                        if close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
+                            trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
 
                     #
                     # target update
                     #
 
-                    tp = self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[int(2*trade.partial_tp)] # * 1.05
+                    tp = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.partial_tp)]  # * 1.05
 
                     # enought potential profit (0.5% min target)
                     if (tp - close_exec_price) / close_exec_price > 0.005 and update_tp: # and tp > trade.tp:
@@ -377,17 +354,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     gain = (trade.tp - trade.entry_price) / trade.entry_price
                     loss = (trade.entry_price - trade.sl) / trade.entry_price
 
-                pl = (close_exec_price - trade.entry_price) / trade.entry_price
-
-                # if loss != 0 and gain / loss < 1.0 or pl < -0.035: # and close_exec_price < trade.entry_price:
-                # @todo or at max loss config and as initial sl (worst value)
-                if pl < -0.035: # and close_exec_price < trade.entry_price:
-                    # not enough chance to win on this trade, cut the loss
-                    retained_exit = StrategySignal(self.sltp_timeframe, timestamp)
-                    retained_exit.signal = StrategySignal.SIGNAL_EXIT
-                    retained_exit.dir = 1
-                    retained_exit.p = close_exec_price
-                    Terminal.inst().info("No more chance to win cut the trade %s %s %s" % (trade.id, self.instrument.market_id, gain / loss), view='content')
+                    # reevaluate the R:R
+                    # @todo
 
                 #
                 # exit trade if an exit signal retained
@@ -395,7 +363,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                 if retained_exit:
                     self.process_exit(timestamp, trade, retained_exit.price)
-                    Terminal.inst().info("Exit trade %s %s" % (self.instrument.symbol, trade.id), view='content')
+                    Terminal.inst().info("Exit trade %s %s" % (self.instrument.symbol, trade.id), view='debug')
 
             self.unlock()
 
@@ -411,25 +379,26 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
     def process_entry(self, timestamp, price, take_profit, stop_loss, timeframe, partial_tp):
         trader = self.strategy.trader()
-        market = trader.market(self.instrument.market_id)
 
         quantity = 0.0
         direction = Order.LONG   # entry is always a long
 
         # large limit price because else miss the pumping markets
-        price = price + market.spread * (1 if trader.paper_mode else 5)  # signal price + spread
+        price = price + self.instrument.market_spread * (1 if trader.paper_mode else 5)  # signal price + spread
 
         # date_time = datetime.fromtimestamp(timestamp)
         # date_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
 
         # ajust max quantity according to free asset of quote, and convert in asset base quantity
-        if trader.has_asset(market.quote):
-            # quantity = min(quantity, trader.asset(market.quote).free) / market.ofr
-            if trader.has_quantity(market.quote, self.instrument.trade_quantity):
-                quantity = market.adjust_quantity(self.instrument.trade_quantity / price)  # and adjusted to 0/max/step
+        if trader.has_asset(self.instrument.quote):
+            # quantity = min(quantity, trader.asset(self.instrument.quote).free) / self.instrument.market_ofr
+            if trader.has_quantity(self.instrument.quote, self.instrument.trade_quantity):
+                quantity = self.instrument.adjust_quantity(self.instrument.trade_quantity / price)  # and adjusted to 0/max/step
             else:
                 Terminal.inst().notice("Not enought free quote asset %s, has %s but need %s" % (
-                    market.quote, market.format_quantity(trader.asset(market.quote).free), market.format_quantity(self.instrument.trade_quantity)), view='status')
+                    self.instrument.quote,
+                    self.instrument.format_quantity(trader.asset(self.instrument.quote).free),
+                    self.instrument.format_quantity(self.instrument.trade_quantity)), view='status')
 
         #
         # create an order
@@ -450,14 +419,14 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         order_type = Order.ORDER_LIMIT
 
         # limit price
-        order_price = float(market.format_price(price))
-        # order_price = market.adjust_price(price)
+        order_price = float(self.instrument.format_price(price))
+        # order_price = self.instrument.adjust_price(price)
 
         #
         # cancelation of the signal
         #
 
-        if order_quantity <= 0 or order_quantity * price < market.min_notional:
+        if order_quantity <= 0 or order_quantity * price < self.instrument.min_notional:
             # min notional not reached
             do_order = False
 
@@ -493,8 +462,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             if trade.open(trader, self.instrument.market_id, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage):
                 # notify
-                self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, market.format_price(price),
-                        timestamp, trade.timeframe, 'entry', None, market.format_price(trade.sl), market.format_price(trade.tp))
+                self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
+                        timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
 
                 # want it on the streaming
                 self._global_streamer.member('buy-entry').update(price, timestamp)
@@ -503,8 +472,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         else:
             # notify a signal only
-            self.strategy.notify_order(-1, Order.LONG, self.instrument.market_id, market.format_price(price),
-                    timestamp, timeframe, 'entry', None, market.format_price(stop_loss), market.format_price(take_profit))
+            self.strategy.notify_order(-1, Order.LONG, self.instrument.market_id, self.instrument.format_price(price),
+                    timestamp, timeframe, 'entry', None, self.instrument.format_price(stop_loss), self.instrument.format_price(take_profit))
 
     def process_exit(self, timestamp, trade, exit_price):
         if trade is None:
@@ -519,22 +488,20 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             self._global_streamer.member('buy-exit').update(exit_price, timestamp)
 
-            market = trader.market(self.instrument.market_id)
-
             # estimed profit/loss rate
             profit_loss_rate = (exit_price - trade.entry_price) / trade.entry_price
 
             # estimed maker/taker fee rate for entry and exit
             if trade.get_stats()['entry-maker']:
-                profit_loss_rate -= market.maker_fee
+                profit_loss_rate -= self.instrument.maker_fee
             else:
-                profit_loss_rate -= market.taker_fee
+                profit_loss_rate -= self.instrument.taker_fee
 
             if trade.get_stats()['exit-maker']:
-                profit_loss_rate -= market.maker_fee
+                profit_loss_rate -= self.instrument.maker_fee
             else:
-                profit_loss_rate -= market.taker_fee
+                profit_loss_rate -= self.instrument.taker_fee
 
             # notify
-            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, market.format_price(exit_price),
+            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(exit_price),
                     timestamp, trade.timeframe, 'exit', profit_loss_rate)

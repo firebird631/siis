@@ -27,6 +27,7 @@ class TimeframeBasedSub(object):
         self.last_signal = None
 
         self.trend = 0
+
         self.can_long = False
         self.can_short = False        
 

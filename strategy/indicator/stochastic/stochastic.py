@@ -90,6 +90,14 @@ class StochasticIndicator(Indicator):
     def ds(self):
         return self._ds
 
+    def cross(self):
+        if (self._prev_k > self._prev_d and self._last_k < self._last_d):
+            return -1
+        elif (self._prev_k < self._prev_d and self._last_k > self._prev_d):
+            return 1
+
+        return 0
+
     @staticmethod
     def Stochastic(N, data, N_D=3):
         K = np.zeros(len(data))

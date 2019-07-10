@@ -611,7 +611,7 @@ class IGTrader(Trader):
             position.trailing_stop = pos.get('trailingStep', 0.0)
             position.trailing_stop_dst = pos.get('trailingStopDistance', 0.0)
 
-            if market is not None:
+            if market:
                 position.update_profit_loss(market)
 
         # remove empty positions, but this can be too done by DELETED signal
@@ -658,9 +658,7 @@ class IGTrader(Trader):
         market = self.market(market_id)
 
         # market must be valid and currently tradeable
-        if market is None:
-            return
-
-        for k, position in self._positions.items():
-            if position.symbol == market.market_id:
-                position.update_profit_loss(market)
+        if market:
+            for k, position in self._positions.items():
+                if position.symbol == market.market_id:
+                    position.update_profit_loss(market)

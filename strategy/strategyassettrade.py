@@ -44,8 +44,11 @@ class StrategyAssetTrade(StrategyTrade):
 
     def open(self, trader, market_id, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
         """
-        Open a position or buy an asset.
+        Buy an asset.
         """
+        if self._entry_state != StrategyTrade.STATE_NEW:
+            return False
+
         order = Order(trader, market_id)
         order.direction = direction
         order.order_price = order_price
@@ -89,7 +92,13 @@ class StrategyAssetTrade(StrategyTrade):
                 # returns true, no need to wait signal confirmation
                 self.buy_ref_oid = None
                 self.buy_oid = None
-                self._entry_state = StrategyTrade.STATE_DELETED
+
+                if self.e <= 0:
+                    # no entry qty processed, entry canceled
+                    self._entry_state = StrategyTrade.STATE_CANCELED
+                else:
+                    # cancel a partially filled trade means it is then fully filled
+                    self._entry_state = StrategyTrade.STATE_FILLED
 
         if self.sell_oid:
             # cancel the sell order and create a new one
@@ -97,7 +106,14 @@ class StrategyAssetTrade(StrategyTrade):
                 # returns true, no need to wait signal confirmation
                 self.sell_ref_oid = None
                 self.sell_oid = None
-                self._exit_state =StrategyTrade.STATE_DELETED
+
+                if self.e <= 0 and self.x <= 0:
+                    # no exit qty
+                    self._exit_state = StrategyTrade.STATE_CANCELED
+                elif self.x >= self.e:
+                    self._exit_state = StrategyTrade.STATE_FILLED
+                else:
+                    self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
     def cancel_open(self, trader):
         if self.buy_oid:
@@ -106,8 +122,13 @@ class StrategyAssetTrade(StrategyTrade):
                 # returns true, no need to wait signal confirmation
                 self.buy_oid = None
                 self.buy_ref_oid = None
-                
-                self._entry_state = StrategyTrade.STATE_CANCELED
+
+                if self.e <= 0:
+                    # cancel a just opened trade means it is canceled
+                    self._entry_state = StrategyTrade.STATE_CANCELED
+                else:
+                    # cancel a partially filled trade means it is then fully filled
+                    self._entry_state = StrategyTrade.STATE_FILLED
             else:
                 return False
 
@@ -115,6 +136,10 @@ class StrategyAssetTrade(StrategyTrade):
 
     def modify_take_profit(self, trader, market_id, price):
         self.tp = price
+
+        if self._exit_state == StrategyTrade.STATE_FILLED:
+            # exit already fully filled
+            return False
 
         if self.sell_oid:
             # cancel the sell order and create a new one
@@ -124,15 +149,9 @@ class StrategyAssetTrade(StrategyTrade):
                 self.sell_order_type = Order.ORDER_MARKET
                 self.sell_order_qty = 0.0
 
-                self._exit_state = StrategyTrade.STATE_DELETED
-
-        if self.e == self.x:
+        if self.x >= self.e:
             # all entry qty is filled
             return True
-
-        if self.e < self.x:
-            # something wrong but its ok
-            return False
 
         if price:
             order = Order(trader, market_id)
@@ -152,12 +171,18 @@ class StrategyAssetTrade(StrategyTrade):
 
                 return True
             else:
+                # rejected
+                self.sell_ref_oid = None
                 return False
 
         return True
 
     def modify_stop_loss(self, trader, market_id, price):
         self.sl = price
+
+        if self._exit_state == StrategyTrade.STATE_FILLED:
+            # exit already fully filled
+            return False
 
         if self.sell_oid:
             # cancel the sell order and create a new one
@@ -168,15 +193,9 @@ class StrategyAssetTrade(StrategyTrade):
                 self.sell_order_type = Order.ORDER_MARKET
                 self.sell_order_qty = 0.0
 
-                self._exit_state = StrategyTrade.STATE_DELETED
-
-        if self.e == self.x:
+        if self.x >= self.e:
             # all entry qty is filled
             return True
-
-        if self.e < self.x:
-            # something wrong but its ok
-            return False
 
         if price:
             order = Order(trader, market_id)
@@ -196,6 +215,8 @@ class StrategyAssetTrade(StrategyTrade):
 
                 return True
             else:
+                # rejected
+                self.sell_ref_oid = None
                 return False
 
         return True
@@ -211,8 +232,6 @@ class StrategyAssetTrade(StrategyTrade):
                 self.buy_ref_oid = None
                 self.buy_oid = None
 
-                self._entry_state = StrategyTrade.STATE_CANCELED
-
         if self.sell_oid:
             # cancel the sell order and create a new one
             if trader.cancel_order(self.sell_oid):
@@ -221,15 +240,9 @@ class StrategyAssetTrade(StrategyTrade):
                 self.sell_order_type = Order.ORDER_MARKET
                 self.sell_order_qty = 0.0
 
-                self._exit_state = StrategyTrade.STATE_CANCELED
-
-        if self.e == self.x:
-            # all entry qty is filled
+        if self.x >= self.e:
+            # all qty is filled
             return True
-
-        if self.e < self.x:
-            # something wrong but its ok
-            return False
 
         order = Order(trader, market_id)
         order.direction = -self.dir  # neg dir
@@ -250,11 +263,26 @@ class StrategyAssetTrade(StrategyTrade):
         else:
             # rejected
             self.sell_ref_oid = None
-
             return False
 
     def is_closing(self):
-        return self.sell_ref_oid is not None or self._exit_state == StrategyTrade.STATE_OPENED or self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED
+        return self.sell_ref_oid or self._exit_state == StrategyTrade.STATE_OPENED or self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED
+
+    def has_stop_order(self):
+        """
+        Overrides, must return true if the trade have a broker side stop order, else local trigger stop.
+        """
+        return self.sell_oid != None and self.sell_oid != ""
+
+    def has_limit_order(self):
+        """
+        Overrides, must return true if the trade have a broker side limit order, else local take-profit stop
+        """
+        return self.sell_oid != None and self.sell_oid != ""
+
+    #
+    # signals
+    #
 
     def is_target_order(self, order_id, ref_order_id):
         if order_id and (order_id == self.buy_oid or order_id == self.sell_oid):
@@ -307,27 +335,26 @@ class StrategyAssetTrade(StrategyTrade):
 
                 elif data.get('exec-price') is not None and data['exec-price']:
                     # compute the average entry price whe increasing the trade
-                    self.aep = ((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
+                    self.aep = instrument.adjust_price(((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled))
 
                 # cumulative filled entry qty
                 if data.get('cumulative-filled') is not None:
                     self.e = data.get('cumulative-filled')
                 else:
-                    self.e += filled
+                    self.e = instrument.adjust_quantity(self.e + filled)
 
                 if self.e >= self.oq:
                     self._entry_state = StrategyTrade.STATE_FILLED
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-                # commission asset is asset, have to reduce it from filled
                 if data['commission-asset'] == data['symbol']:
-                    self.e -= data['commission-amount']
+                    # commission asset is itself, have to reduce it from filled
+                    self.e = instrument.adjust_quantity(self.e - data['commission-amount'])
 
             elif (data['id'] == self.sell_oid) and ('filled' in data or 'cumulative-filled' in data):
                 # @warning on the exit side, normal case will have a single order, but possibly to have a 
-                # partial limit TP, plus remaining in market, then in that case cumulative-filled and avg-price
-                # are not what we need exactly
+                # partial limit TP, plus remaining in market
                 if data.get('filled') is not None and data['filled'] > 0:
                     filled = data['filled']
                 elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -340,29 +367,39 @@ class StrategyAssetTrade(StrategyTrade):
                     self.pl += ((data['exec-price'] * filled) - (self.aep * self.e)) / (self.aep * self.e)
 
                     # average exit price
-                    self.axp = ((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled)
+                    self.axp = instrument.adjust_price(((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled))
 
-                elif data.get('avg-price') is not None and data['avg-price']:
-                    # average price is directly given
-                    self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * self.e)) / (self.aep * self.e)
+                # elif data.get('avg-price') is not None and data['avg-price']:
+                #     # average price is directly given
+                #     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * self.e)) / (self.aep * self.e)
 
-                    # average exit price
-                    self.axp = data['avg-price']
+                #     # average exit price
+                #     self.axp = data['avg-price']
 
                 # cumulative filled exit qty
                 # if data.get('cumulative-filled') is not None:
                 #     self.x = data.get('cumulative-filled')
                 # else:
-                self.x += filled
+                self.x = instrument.adjust_quantity(self.x + filled)
 
-                if self.x >= self.oq or (self._entry_state == StrategyTrade.STATE_FILLED and self.x >= self.e):
-                    self._exit_state = StrategyTrade.STATE_FILLED
+                if self._entry_state == StrategyTrade.STATE_FILLED:
+                    if self.x >= self.e:
+                        # entry fully filled, exit filled the entry qty => exit fully filled
+                        self._exit_state = StrategyTrade.STATE_FILLED
+                    else:
+                        # some of the entry qty is not filled at this time
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
                 else:
-                    self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                    if self.buy_oid and self.e < self.oq:
+                        # the entry part is not fully filled, the entry order still exists
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                    else:
+                        # there is no longer entry order, then we have fully filled the exit
+                        self._exit_state = StrategyTrade.STATE_FILLED
 
                 # commission asset is asset, have to reduce it from filled
                 if data['commission-asset'] == data['symbol']:
-                    self.x -= data['commission-amount']
+                    self.x = instrument.adjust_quantity(self.x - data['commission-amount'])
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price or qty modified
@@ -374,36 +411,40 @@ class StrategyAssetTrade(StrategyTrade):
             if data == self.buy_oid:
                 self.buy_ref_oid = None
                 self.buy_oid = None
-                self._entry_state = StrategyTrade.STATE_DELETED
+
+                if self.e > 0:
+                    # entry order deleted but some qty exists means entry is fully filled
+                    self._entry_state = StrategyTrade.STATE_FILLED
 
             elif data == self.sell_oid:
                 self.sell_ref_oid = None
                 self.sell_oid = None
-                self._exit_state = StrategyTrade.STATE_DELETED
 
         elif signal_type == Signal.SIGNAL_ORDER_REJECTED:
             # order is rejected
             if data == self.buy_ref_oid:
                 self.buy_ref_oid = None
                 self.buy_oid = None
+
                 self._entry_state = StrategyTrade.STATE_REJECTED
 
             elif data == self.sell_ref_oid:
                 self.sell_ref_oid = None
                 self.sell_oid = None
-                self._exit_state = StrategyTrade.STATE_REJECTED
 
         elif signal_type == Signal.SIGNAL_ORDER_CANCELED:
             # order is not longer active
             if data == self.buy_oid:
                 self.buy_ref_oid = None
                 self.buy_oid = None
-                self._entry_state = StrategyTrade.STATE_CANCELED
+
+                if self.e > 0:
+                    # entry order canceled but some qty exists means entry is fully filled
+                    self._entry_state = StrategyTrade.STATE_FILLED
 
             elif data == self.sell_oid:
                 self.sell_ref_oid = None
                 self.sell_oid = None
-                self._exit_state = StrategyTrade.STATE_CANCELED
 
     def dumps(self):
         data = super().dumps()

@@ -489,6 +489,8 @@ def application(argv):
                                     Terminal.inst().switch_view('market')
                                 elif value == 'Q':
                                     Terminal.inst().switch_view('asset')
+                                elif value == 'N':
+                                    Terminal.inst().switch_view('signal')
 
                                 elif value == '?':
                                     # ping services and workers

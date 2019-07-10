@@ -234,8 +234,8 @@ class DesktopNotifier(Notifiable):
                         send_to_discord(self._discord_webhook['signals'], 'CryptoBot', '```' + message + '```')
 
                 # log them to the content view
-                Terminal.inst().notice(label, view="content")
-                Terminal.inst().notice(message, view="content")
+                Terminal.inst().notice(label, view="signal")
+                Terminal.inst().notice(message, view="signal")
 
             # elif signal.signal_type == Signal.SIGNAL_STRATEGY_MODIFY:
             #     pass

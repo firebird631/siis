@@ -30,7 +30,7 @@ class FibonacciIndicator(Indicator):
 
     @classmethod
     def indicator_class(cls):
-        return Indicator.CLS_OSCILLATOR
+        return Indicator.CLS_OVERLAY
 
     def __init__(self, timeframe):
         super().__init__("fibonacci", timeframe)

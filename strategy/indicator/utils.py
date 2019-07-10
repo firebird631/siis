@@ -92,6 +92,10 @@ def trend_extremum(data):
 def cross(p, n):
     """
     Check of two lines cross from previous and new data couples.
+
+    @param p couple with the previous two values
+    @param n couple with the last two values
+
     @return 0 if no cross, 1 if first cross up second, -1 for down.
     """
     # return (p[0] > p[1] and n[0] < n[1]) or (p[0] < p[1] and n[0] > n[1])

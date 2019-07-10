@@ -301,7 +301,8 @@ class Instrument(object):
     @member base_exchance_rate float Rate of the quote symbol over its related account currency.
 
     @note ofr is a synonym for ask.
-    @todo set 24h vol, fee, commission from market info data signal
+
+    @todo may we need hedging, leverage limits, contract_size, lot_size, one_pip_mean, value_per_pip ?
     """
 
     TF_TICK = 0
@@ -374,9 +375,23 @@ class Instrument(object):
     MAKER = 0
     TAKER = 1
 
+    TRADE_BUY_SELL = 0     # no margin no short, only buy (hold) and sell
+    TRADE_ASSET = 0        # synonym for buy-sell/spot
+    TRADE_SPOT = 0         # synonym for buy-sell/asset
+    TRADE_MARGIN = 1       # margin, long and short
+    TRADE_IND_MARGIN = 2   # indivisible position, margin, long and short
+
+    ORDER_MARKET = 0
+    ORDER_LIMIT = 1
+    ORDER_STOP_MARKET = 2
+    ORDER_STOP_LIMIT = 4
+    ORDER_TAKE_PROFIT_MARKET = 8
+    ORDER_TAKE_PROFIT_LIMIT = 16
+    ORDER_ALL = 32-1
+
     __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_base_exchange_rate', '_tradeable', '_currency', '_trade_quantity', '_leverage', \
                 '_market_bid', '_market_ofr', '_last_update_time', '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
-                '_ticks', '_candles', '_buy_sells', '_wanted'
+                '_ticks', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging',
 
     def __init__(self, name, symbol, market_id, alias=None):
         self._watchers = {}
@@ -387,6 +402,14 @@ class Instrument(object):
         self._base_exchange_rate = 1.0
         self._tradeable = True
 
+        self._base = ""
+        self._quote = ""
+
+        self._trade = 0
+        self._orders = 0
+
+        self._hedging = False
+
         self._currency = "USD"
         self._trade_quantity = 0.0
         self._leverage = 1.0  # 1 / margin_factor
@@ -395,10 +418,10 @@ class Instrument(object):
         self._market_ofr = 0.0
         self._last_update_time = 0.0
 
-        self._vol24h_base = 0.0
-        self._vol24h_quote = 0.0
+        self._vol24h_base = None
+        self._vol24h_quote = None
 
-        self._fees = ((0.0, 0.0), (0.0, 0.0))  # ((maker fee, taker fee), (maker commission, taker commission))
+        self._fees = ([0.0, 0.0], [0.0, 0.0])  # ((maker fee, taker fee), (maker commission, taker commission))
 
         self._size_limits = (0.0, 0.0, 0.0, 0)
         self._price_limits = (0.0, 0.0, 0.0, 0)
@@ -442,6 +465,68 @@ class Instrument(object):
         self._tradeable = status
 
     @property
+    def trade(self):
+        return self._trade
+
+    @trade.setter
+    def trade(self, trade):
+        self._trade = trade
+
+    @property
+    def orders(self):
+        return self._orders
+
+    @orders.setter
+    def orders(self, flags):
+        self._orders = flags
+
+    def set_quote(self, symbol):
+        self._quote = symbol
+
+    @property
+    def quote(self):
+        return self._quote
+
+    def set_base(self, symbol):
+        self._base = symbol
+
+    @property
+    def base(self):
+        return self._base
+
+    @property
+    def hedging(self):
+        return self._hedging
+    
+    @hedging.setter
+    def hedging(self, hedging):
+        self._hedging = hedging
+
+    @property
+    def currency(self):
+        return self._currency
+
+    @currency.setter
+    def currency(self, currency):
+        self._currency = currency
+
+    #
+    # options
+    #
+
+    @property
+    def trade_quantity(self):
+        return self._trade_quantity
+
+    @trade_quantity.setter
+    def trade_quantity(self, quantity):
+        self._trade_quantity = quantity
+
+    #
+    # price/volume
+    #
+
+    @property
     def market_bid(self):
         return self._market_bid
 
@@ -460,6 +545,10 @@ class Instrument(object):
     @property
     def market_price(self):
         return (self._market_bid + self._market_ofr) * 0.5
+
+    @property
+    def market_spread(self):
+        return (self._market_ofr - self._market_bid)
 
     @property
     def last_update_time(self):
@@ -498,27 +587,7 @@ class Instrument(object):
     @base_exchange_rate.setter
     def base_exchange_rate(self, v):
         self._base_exchange_rate = v
-
-    @property
-    def timestamp(self):
-        return self._timestamp
-
-    @property
-    def trade_quantity(self):
-        return self._trade_quantity
-
-    @trade_quantity.setter
-    def trade_quantity(self, quantity):
-        self._trade_quantity = quantity
-
-    @property
-    def currency(self):
-        return self._currency
-
-    @currency.setter
-    def currency(self, currency):
-        self._currency = currency
-    
+ 
     #
     # limits
     #
@@ -1278,15 +1347,19 @@ class Instrument(object):
         self._fees[Instrument.MAKER][1] = maker
         self._fees[Instrument.TAKER][1] = taker
 
+    @property
     def maker_fee(self):
         return self._fees[Instrument.MAKER][0]
 
+    @property
     def taker_fee(self):
-        return self._fees[Instrument.MAKER][0]
+        return self._fees[Instrument.TAKER][0]
 
+    @property
     def maker_commission(self):
-        return self._fees[Instrument.TAKER][1]
+        return self._fees[Instrument.MAKER][1]
 
+    @property
     def taker_commission(self):
         return self._fees[Instrument.TAKER][1]
 

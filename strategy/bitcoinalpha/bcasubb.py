@@ -11,6 +11,9 @@ from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, Stream
 
 from .bcasub import BitcoinAlphaStrategySub
 
+import logging
+logger = logging.getLogger('siis.strategy.bitcoinalpha')
+
 
 class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
     """
@@ -18,6 +21,13 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
+        # default indicators
+        self.sma55 = None
+        self.sma200 = None
+
+        self.atr = None
+        self.bollingerbands = None
+
         super().__init__(strategy_trader, params)
 
         if 'scores' in params:
@@ -106,6 +116,12 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
         # elif self.volume.last < volume_sma[-1]:
         #     volume_signal = -1
 
+        if self.sma200:
+            self.sma200.compute(last_timestamp, prices)
+
+        if self.sma55:
+            self.sma55.compute(last_timestamp, prices)
+
         if self.sma and self.ema:
             self.sma.compute(last_timestamp, prices)
             self.ema.compute(last_timestamp, prices)
@@ -118,133 +134,100 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
             elif self.ema.last < self.sma.last:
                 ema_sma_height = -1
 
-        if ema_sma_cross > 0 and rsi_30_70 > 0:
-            signal = StrategySignal(self.tf, timestamp)
-            signal.signal = StrategySignal.SIGNAL_ENTRY
-            signal.dir = 1
-            signal.p = candles[-1].close
+        bb_way = 0
 
-        elif ema_sma_cross < 0 and rsi_30_70 < 0:
+        if self.bollingerbands:
+            self.bollingerbands.compute(last_timestamp, prices)
+
+            if self.bollingerbands.last_ma < prices[-1] < self.bollingerbands.last_top:
+                bb_way = -1
+
+        # if ema_sma_cross > 0 and rsi_30_70 > 0:
+        #     self.trend = 1
+
+        # elif ema_sma_cross < 0 and rsi_30_70 < 0:
+        #     signal = StrategySignal(self.tf, timestamp)
+        #     signal.signal = StrategySignal.SIGNAL_EXIT
+        #     signal.dir = 1
+        #     signal.p = candles[-1].close
+        #     self.trend = -1
+        # else:
+        #     self.trend = 0
+
+        level1_signal = 0
+
+        if self.ema.last < self.sma.last:
+            # bear trend
+            if self.rsi.last > 0.5:  # initial: 0.5
+                level1_signal = -1
+            elif self.rsi.last < 0.2:  # initial: 0.2
+                level1_signal = 1
+        else:
+            # bull trend
+            if self.rsi.last > 0.8:  # initial: 0.8
+                level1_signal = -1
+            elif self.rsi.last < 0.6:  # initial: 0.6
+                level1_signal = 1            
+
+        if level1_signal < 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_EXIT
             signal.dir = 1
             signal.p = candles[-1].close
 
+            self.trend = -1
+
+        elif level1_signal > 0:
+            signal = StrategySignal(self.tf, timestamp)
+            signal.signal = StrategySignal.SIGNAL_EXIT
+            signal.dir = -1
+            signal.p = candles[-1].close
+
+            self.trend = 1
+        else:
+            self.trend = 0
+
+        self.can_long = self.trend >= 0
+        self.can_short = self.trend <= 0
+
         if self.pivotpoint:
             self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
 
+        if self.atr:
+            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
+
+        if self.tomdemark:
+            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
+
+            if self.tomdemark.c.c == 9 and self.tomdemark.c.d < 0:
+                # setup complete and trend change
+                signal = StrategySignal(self.tf, timestamp)
+                signal.signal = StrategySignal.SIGNAL_EXIT
+                signal.dir = 1
+                signal.p = self.price.close[-1]
+
+            elif self.tomdemark.c.c == 9 and self.tomdemark.c.d > 0:
+                # setup complete and trend change
+                signal = StrategySignal(self.tf, timestamp)
+                signal.signal = StrategySignal.SIGNAL_EXIT
+                signal.dir = -1
+                signal.p = self.price.close[-1]
+
+            elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0:  # and (level1_signal < 0):
+                # cancelation
+                signal = StrategySignal(self.tf, timestamp)
+                signal.signal = StrategySignal.SIGNAL_EXIT
+                signal.dir = 1
+                signal.p = self.price.close[-1]
+
+            elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d < 0:  # and (level1_signal > 0):
+                # cancelation
+                signal = StrategySignal(self.tf, timestamp)
+                signal.signal = StrategySignal.SIGNAL_EXIT
+                signal.dir = -1
+                signal.p = self.price.close[-1]                
+
         return signal
-
-    # def process2(self, timestamp):
-    #     # candles = self.strategy_trader.instrument.last_candles(self.tf, self.depth)
-    #     candles = self.strategy_trader.instrument.candles_from(self.tf, self.next_timestamp-self.depth*self.tf)[-self.depth:]
-
-    #     if len(candles) < self.depth:
-    #         # not enought samples
-    #         return None
-
-    #     to_ts = candles[-1].timestamp
-
-    #     prices = self.price.compute(to_ts, candles)[-self.depth:]
-    #     volumes = self.volume.compute(to_ts, candles)[-self.depth:]
-
-    #     #
-    #     # signals analysis
-    #     #
-
-    #     rsi = self.rsi.compute(to_ts, prices)[-self.depth:]
-    #     sma = self.sma.compute(to_ts, prices)[-self.depth:]
-    #     ema = self.ema.compute(to_ts, prices)[-self.depth:]
-    #     vwma = self.vwma.compute(to_ts, prices, volumes)[-self.depth:]
-    #     hma = self.hma.compute(to_ts, prices)[-self.depth:]
-    #     mmt = [] # self.mmt.compute(to_ts, prices)[-self.depth:]
-    #     macd = [] # self.macd.compute(to_ts, prices)[-self.depth:]
-    #     stochastic = [] # self.stochastic.compute(to_ts, prices)[-self.depth:]
-
-    #     #
-    #     # analysis of the results and scorify
-    #     #
-
-    #     self.score.initialize()
-
-    #     if len(rsi):
-    #         # trend of the rsi
-    #         rsi_trend = utils.trend_extremum(rsi)
-
-    #         # 30/70 @todo use Comparator, cross + strength by distance
-    #         if rsi[-1] < self.rsi_low:
-    #             rsi_score = (self.rsi_low-rsi[-1])  # ++
-    #         elif rsi[-1] > self.rsi_high:
-    #             rsi_score = (self.rsi_high-rsi[-1])
-    #         else:
-    #             rsi_score = 0
-
-    #         self.score.add(rsi_score*100, self.rsi_score_factor)
-
-    #         # if trend > 0.33 score it else ignore
-    #         #if abs(rsi_trend) > 0.33:
-    #         self.score.add(rsi_trend, self.rsi_trend_score_factor)
-
-    #     # ema/vwma distance and crossing
-    #     if len(ema) and len(vwma):
-    #         # ema-vwma normalized distance
-    #         ema_vwma_score = (ema[-1]-vwma[-1]) / prices[-1]
-    #         self.score.add(ema_vwma_score, self.ema_vwma_cross_score_factor)
-
-    #         # @todo ema cros vwma using Comparator
-    #         # ema_vwma_cross_score = (hma[-1]-sma[-1]) / prices[-1]
-    #         # self.score.add(ema_vwma_cross_score, self.ema_vwma_cross_score_factor)
-    #         # utils.cross((ema[-1] > vwma[-1]), ())
-
-    #         # ema-vwma + price-vwma give a bonus (@todo is it usefull ?)
-    #         if ema[-1] > vwma[-1] and prices[-1] > vwma[-1]:
-    #             self.score.add(1, self.ema_vwma_score_bonus)
-    #         elif ema[-1] < vwma[-1] and prices[-1] < vwma[-1]:
-    #             self.score.add(-1, self.ema_vwma_score_bonus)
-
-    #     # vwma/price distance and crossing
-    #     if len(vwma):
-    #         # price-vwma normalized distance
-    #         price_vwma_score = (prices[-1]-vwma[-1]) / prices[-1]
-    #         self.score.add(price_vwma_score, self.price_vwma_cross_score_factor)
-
-    #     # sma/hma distance and crossing
-    #     if len(sma) and len(hma):
-    #         hma_sma_score = (hma[-1]-sma[-1]) / prices[-1]
-    #         self.score.add(hma_sma_score, self.hma_sma_cross_score_factor)
-
-    #     # hma/vwma distance and crossing
-    #     if len(hma) and len(vwma):
-    #         hma_vwma_score = (hma[-1]-vwma[-1]) / prices[-1]
-    #         self.score.add(hma_vwma_score, self.hma_vwma_cross_score_factor)
-
-    #     # hma trend is a fast signal
-    #     if len(hma):
-    #         # hma trend @todo
-    #         hma_trend = utils.trend_extremum(hma)
-    #         # self.score.add(hma_trend, self.hma_trend_factor)
-
-    #     # rsi trend and hma divergence
-    #     if utils.divergence(rsi_trend, hma_trend):
-    #         rsi_hma_div = True
-    #         # self.score.add(rsi_trend + hma_trend, -self.rsi_hma_trend_div_score_factor)
-    #         # self.score.add(rsi_trend-hma_trend, -self.rsi_hma_trend_div_score_factor)
-    #         self.score.add(abs(rsi_trend-hma_trend), self.rsi_hma_trend_div_score_factor)
-    #         # self.score.scale(0.2)  # score is weaken (good result)
-    #     else:
-    #         # self.score.add(rsi_trend + hma_trend, self.rsi_hma_trend_div_score_factor)
-    #         rsi_hma_div = False
-
-    #     if self.volume.last > volume_sma[-1]:
-    #         self.score.scale(2.0)
-
-    #     self.score.finalize()
-
-    #     if candles:
-    #         # last processed ohlc timestamp (from last ohlc is non consolidated else from the next one)
-    #         self.next_timestamp = candles[-1].timestamp if not candles[-1].ended else candles[-1].timestamp + self.tf
-
-    #     return None  # @todo signal
 
     def setup_streamer(self, streamer):
         streamer.add_member(StreamMemberSerie('begin'))

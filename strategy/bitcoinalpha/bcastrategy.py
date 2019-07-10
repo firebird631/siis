@@ -16,8 +16,6 @@ from instrument.instrument import Instrument
 from watcher.watcher import Watcher
 from database.database import Database
 
-from strategy.indicator import utils
-from strategy.indicator.score import Score, Scorify
 from strategy.strategydatafeeder import StrategyDataFeeder
 
 from .bcastrategytrader import BitcoinAlphaStrategyTrader
@@ -33,12 +31,8 @@ class BitcoinAlphaStrategy(Strategy):
     Dedicaded to top 3 crypto in margin trading (long/short).
     """
 
-    def __init__(self, strategy_service, watcher_service, trader_service, options, parameters):
-        super().__init__("bitcoinalpha", strategy_service, watcher_service, trader_service, options, DEFAULT_PARAMS)
-
-        if parameters:
-            # apply overrided parameters
-            self._parameters.update(parameters)
+    def __init__(self, strategy_service, watcher_service, trader_service, options, user_parameters):
+        super().__init__("bitcoinalpha", strategy_service, watcher_service, trader_service, options, DEFAULT_PARAMS, user_parameters)
 
         self.reset()
 

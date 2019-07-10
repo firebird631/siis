@@ -26,6 +26,7 @@ class Indicator(object):
     CLS_INDEX = 2
     CLS_OSCILLATOR = 3
     CLS_OVERLAY = 4
+    CLS_CYCLE = 5
 
     @classmethod
     def indicator_type(cls):

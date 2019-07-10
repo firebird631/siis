@@ -221,31 +221,16 @@ class StrategyTrade(object):
         """
         Because of the slippage once a trade is closed deletion can only be done once all the quantity of the
         asset or the position are executed.
-
-        @todo Cleanup the live of a trade.
         """
         if self._entry_state == StrategyTrade.STATE_FILLED and self._exit_state == StrategyTrade.STATE_FILLED:
             # entry and exit are fully filled
             return True
 
-        if self.e >= self.oq and (self.x >= self.e or self.x >= self.oq):
-            # in case of state not defined by qty are done : entry fully filled and exit filled whats filled in entry
-            # but some cases filled entry is a bit more than orderer (binance...), but need to compare with initial quantity
+        if self._entry_state == StrategyTrade.STATE_REJECTED or (self._entry_state == StrategyTrade.STATE_CANCELED and self.e <= 0):
+            # entry rejected or canceled (canceled in the mean of no quantity processed at all)
             return True
 
-        if self.e > 0 and self.x < self.e:
-            # entry quantity but exit quantity not fully filled
-            return False
-
-        if self._entry_state == StrategyTrade.STATE_NEW or self._entry_state == StrategyTrade.STATE_OPENED:
-            # buy order not opened or opened but trade still valid till expiry or cancelation
-            return False
-
-        if self.e > 0 and (self._exit_state == StrategyTrade.STATE_NEW or self._exit_state == StrategyTrade.STATE_OPENED):
-            # have quantity but sell order not filled
-            return False
-
-        return True
+        return False
 
     def is_active(self):
         """
@@ -254,8 +239,7 @@ class StrategyTrade(object):
         if self._exit_state == StrategyTrade.STATE_FILLED:
             return False
 
-        if self.e > 0 and self.x < self.e:
-            return True
+        return self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED or self._entry_state == StrategyTrade.STATE_FILLED
 
     def is_opened(self):
         """
@@ -271,9 +255,6 @@ class StrategyTrade(object):
             return True
 
         if self._entry_state == StrategyTrade.STATE_CANCELED and self.e <= 0:
-            return True
-
-        if self._exit_state == StrategyTrade.STATE_CANCELED and self.x <= 0:
             return True
 
         return False
@@ -294,7 +275,7 @@ class StrategyTrade(object):
         """
         Is trade fully closed (all qty sold).
         """
-        return self._exit_state == StrategyTrade.STATE_FILLED and self.x >= self.e
+        return self._exit_state == StrategyTrade.STATE_FILLED
 
     def is_entry_timeout(self, timestamp, timeout):
         """
@@ -308,8 +289,7 @@ class StrategyTrade(object):
         """
         Return true if the trade is not expired (signal still acceptable) and entry quantity not fully filled.
         """
-        return ((self._entry_state == StrategyTrade.STATE_OPENED or self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED) and
-                (self.e < self.oq) and ((timestamp - self.entry_open_time) <= validity))
+        return ((self._entry_state == StrategyTrade.STATE_OPENED or self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED) and ((timestamp - self.entry_open_time) <= validity))
 
     def cancel_open(self, trader):
         """
@@ -340,6 +320,22 @@ class StrategyTrade(object):
         Close the position or sell the asset.
         """
         return False
+
+    def has_stop_order(self):
+        """
+        Overrides, must return true if the trade have a broker side stop order, else local trigger stop.
+        """
+        return False
+
+    def has_limit_order(self):
+        """
+        Overrides, must return true if the trade have a broker side limit order, else local take-profit stop
+        """
+        return False
+
+    #
+    # signals
+    #
 
     def order_signal(self, signal_type, data, ref_order_id, instrument):
         pass
@@ -387,20 +383,20 @@ class StrategyTrade(object):
             # the entry order is rejected, trade must be deleted
             return 'rejected'
         elif self._exit_state == StrategyTrade.STATE_REJECTED and self.e > self.x:
-            # an exit order is rejectect but the exit quantity is not fully filled (x < e), this case must be managed
+            # exit order is rejectect but the exit quantity is not fully filled (x < e), this case must be managed
             return 'problem'
-        elif self.e < self.oq and (self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED or self._entry_state == StrategyTrade.STATE_OPENED):
-            # entry order filling until be fully filled or closed (cancel the rest of the entry order, exiting)
+        elif self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED:
+            # entry order filling until complete
             return 'filling'
-        elif self.e > 0 and self.x < self.e and (self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED or self._exit_state == StrategyTrade.STATE_OPENED):
-            # exit order (close order, take-profit order, stop-loss order) are filling (or position take-profit or position stop-loss)
-            return 'closing'
-        elif (self.e > 0 and self.x >= self.e) or (self._entry_state == StrategyTrade.STATE_FILLED and self._exit_state == StrategyTrade.STATE_FILLED):
-            # exit quantity reached the entry quantity the trade is closed, or entry and exit state are set to filled
-            return 'closed'
-        elif self.e >= self.oq:
-            # entry quantity reach ordered quantity the entry is filled
+        elif self._entry_state == StrategyTrade.STATE_FILLED:
+            # entry order completed
             return 'filled'
+        elif self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED:
+            # exit order filling until complete
+            return 'closing'           
+        elif self._entry_state == StrategyTrade.STATE_FILLED and self._exit_state == StrategyTrade.STATE_FILLED:
+            # entry and exit are completed
+            return 'closed'
         elif self._entry_state == StrategyTrade.STATE_CANCELED and self.e <= 0: 
             return 'canceled'
         else:

@@ -623,24 +623,24 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             if self.tomdemark.c.tdst:
                 signal.sl = self.tomdemark.c.tdst
 
-        elif bbawe < 0 and level1_signal < 0:
-            # exit signal
-            signal = StrategySignal(self.tf, timestamp)
-            signal.signal = StrategySignal.SIGNAL_EXIT
-            signal.dir = 1
-            signal.p = self.price.close[-1]
+        # elif bbawe < 0 and level1_signal < 0:
+        #     # exit signal
+        #     signal = StrategySignal(self.tf, timestamp)
+        #     signal.signal = StrategySignal.SIGNAL_EXIT
+        #     signal.dir = 1
+        #     signal.p = self.price.close[-1]
 
         if self.tomdemark:
             self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
-            if 0:#self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and (level1_signal < 0 or bbawe < 0):
+            if 0: # self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and (level1_signal < 0 or bbawe < 0):
                 # setup complete and trend change
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT
                 signal.dir = 1
                 signal.p = self.price.close[-1]
 
-            elif 0:#2 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0 and (level1_signal < 0):
+            elif 0: #2 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0 and (level1_signal < 0):
                 # cancelation
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT

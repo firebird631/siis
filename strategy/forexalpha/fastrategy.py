@@ -37,12 +37,8 @@ class ForexAlphaStrategy(Strategy):
     @todo Implement with a LIMIT (maker/taker) and a LIMIT (maker only) versions.
     """
 
-    def __init__(self, strategy_service, watcher_service, trader_service, options, parameters=None):
-        super().__init__("forexalpha", strategy_service, watcher_service, trader_service, options, DEFAULT_PARAMS)
-
-        if parameters:
-            # apply overrided parameters
-            self._parameters.update(parameters)
+    def __init__(self, strategy_service, watcher_service, trader_service, options, user_parameters):
+        super().__init__("forexalpha", strategy_service, watcher_service, trader_service, options, DEFAULT_PARAMS, user_parameters)
 
         self.reset()
 

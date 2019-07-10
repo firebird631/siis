@@ -343,6 +343,9 @@ class BinanceWatcher(Watcher):
                     str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))
                 )
 
+            # notify for strategy
+            self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
+
         return market
 
     def fetch_order_book(self, market_id):

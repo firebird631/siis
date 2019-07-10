@@ -773,16 +773,15 @@ class Trader(Runnable):
 
         market = self.market(position.symbol)
         if market:
-            # if not leverage get it from market info
-            if not position.leverage:
-                position.leverage = 1.0 / market.margin_factor
-
             position.update_profit_loss(market)
-        # else:
-        #     position.profit_loss = position_data['profit-loss']
-        #     position.profit_loss_rate = position_data['profit-loss-rate']
-        #     position.profit_loss_market = position_data['profit-loss']
-        #     position.profit_loss_market_rate = position_data['profit-loss-rate']
+
+        if position_data.get('profit-loss') is not None:
+            position._profit_loss = position_data.get('profit-loss')
+            position._profit_market_loss = position_data.get('profit-loss')
+
+        if position_data.get('profit-loss-rate') is not None:
+            position._profit_loss_rate = position_data.get('profit-loss-rate')
+            position._profit_loss_market_rate = position_data.get('profit-loss-rate')
 
     @Runnable.mutexed
     def on_position_updated(self, market_id, position_data, ref_order_id):
@@ -831,16 +830,15 @@ class Trader(Runnable):
 
         market = self.market(position.symbol)
         if market:
-            # if no leverage defined get it from market info
-            if not position.leverage:
-                position.leverage = 1.0 / market.margin_factor
-
             position.update_profit_loss(market)
-        # else:
-        #     position.profit_loss = position_data['profit-loss']
-        #     position.profit_loss_rate = position_data['profit-loss-rate']
-        #     position.profit_loss_market = position_data['profit-loss']
-        #     position.profit_loss_market_rate = position_data['profit-loss-rate']
+
+        if position_data.get('profit-loss') is not None:
+            position._profit_loss = position_data.get('profit-loss')
+            position._profit_market_loss = position_data.get('profit-loss')
+
+        if position_data.get('profit-loss-rate') is not None:
+            position._profit_loss_rate = position_data.get('profit-loss-rate')
+            position._profit_loss_market_rate = position_data.get('profit-loss-rate')
 
     @Runnable.mutexed
     def on_position_amended(self, market_id, position_data, ref_order_id):

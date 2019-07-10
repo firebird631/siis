@@ -20,8 +20,12 @@ class Position(Keyed):
     @todo A currency string formatter, using the currency_symbol if defined and with the correct decimal
     and position of the symbol (ex: $1000.01 or 1175.37€ or 11.3751B)
 
-    @deprecated copied_position_id must be managed at social strategy level.
+    @deprecated author and copied_position_id must be managed at social strategy level.
     """
+
+    __slots_ = '_trader', '_position_id', '_state', '_symbol', '_shared', '_symbol', '_quantity', '_profit_loss', '_profit_loss_rate', \
+               '_profit_loss_market', '_profit_loss_market_rate', '_created_time', '_market_close', '_leverage', '_entry_price', \
+               '_stop_loss', '_take_profit', '_trailing_stop', '_direction', '_author', '_copied_position_id'
 
     LONG = 1    # long direction
     SHORT = -1  # short direction
@@ -47,8 +51,6 @@ class Position(Keyed):
         
         self._profit_loss_market = 0.0
         self._profit_loss_market_rate = 0.0
-
-        self._prev_profit_loss_rate = [0,0]
 
         self._created_time = None
         self._market_close = False
@@ -244,22 +246,11 @@ class Position(Keyed):
     def stop_loss(self, sl):
         self._stop_loss = sl
 
-    def mapped_dir(self, if_long="Long", if_short="Short", default=None):
-        """
-        Map the direction to one of the given object or string parameters.
-        """
-        if self._direction == Position.LONG:
-            return if_long
-        elif self._direction == Position.SHORT:
-            return if_short
-
-        return default
-
     def change_rate(self, market):
         """
         Compute and return the gained rate related to the entry and market price.
-        Its only the change of the price in percent, does not take care of the quantiy, margin, leverage, meaning of a pip...
-        @return Profit or loss rate (ex: 0.45 means 0.45%)
+        Its only the change of the price in percent (does not take care of the size of the position)
+        @return Profit/loss rate
         """
         if market is None:
             return 0.0
@@ -285,38 +276,18 @@ class Position(Keyed):
         if self.entry_price is None:
             return
 
-        # delta price if closing at market
-        if self.direction == Position.LONG:
-            delta_price = market.bid - self.entry_price
-        elif self.direction == Position.SHORT:
-            delta_price = self.entry_price - market.ofr
-        else:
-            delta_price = 0.0
+        delta_price = self.price_diff(market)
+        position_cost = self.position_cost(market)
 
-        # cost of the position in base currency
-        position_cost = self.quantity * (market.contract_size * market.lot_size)
         raw_profit_loss = self.quantity * (delta_price / market.one_pip_means) * market.value_per_pip
 
         # use maker fee and commission
         self._profit_loss = raw_profit_loss - (position_cost * market.maker_fee) - (position_cost * market.maker_commission)
-        self._profit_loss_rate = (self._profit_loss / position_cost) if self._profit_loss != 0.0 else 0.0
+        self._profit_loss_rate = (self._profit_loss / position_cost) if position_cost != 0.0 else 0.0
 
         # use taker fee and commission
         self._profit_loss_market = raw_profit_loss - (position_cost * market.taker_fee) - (position_cost * market.taker_commission)
-        self._profit_loss_market_rate = (self._profit_loss_market / position_cost) if self._profit_loss_market != 0.0 else 0.0
-
-    def update_trend(self, max_periods=60):
-        """
-        Add one more sample and return the trend of the position for the last N periods.
-        """
-        # history of profit for 
-        self._prev_profit_loss_rate.append(self.profit_loss_rate)
-
-        # keep only max periods
-        self._prev_profit_loss_rate = self._prev_profit_loss_rate[-max_periods:]
-
-        # compute the profit loss trend
-        return utils.trend(self._prev_profit_loss_rate)
+        self._profit_loss_market_rate = (self._profit_loss_market / position_cost) if position_cost != 0.0 else 0.0
 
     def close_direction(self):
         """
@@ -324,6 +295,20 @@ class Position(Keyed):
         It does not invert the position ! Its just a syntaxic sugar.
         """
         return Position.LONG if self.direction == Position.SHORT else Position.SHORT
+
+    def price_diff(self, market):
+        """
+        Difference of price from entry to current market price, depending of the direction.
+        """
+        if market is None:
+            return 0.0
+
+        if self.direction == Position.LONG:
+            return market.bid - self.entry_price
+        elif self.direction == Position.SHORT:
+            return self.entry_price - market.ofr
+
+        return 0.0
 
     def position_cost(self, market):
         """

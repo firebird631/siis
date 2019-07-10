@@ -1194,7 +1194,8 @@ class PaperTrader(Trader):
                     # 'avg-price': current_position.entry_price,
                     'exec-price': exec_price,
                     'stop-loss': current_position.stop_loss,
-                    'take-profit': current_position.take_profit
+                    'take-profit': current_position.take_profit,
+                    # 'profit-loss': @todo here
                 }
 
                 self.service.watcher_service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (order.symbol, position_data, order.ref_order_id))
