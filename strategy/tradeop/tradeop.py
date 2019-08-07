@@ -41,6 +41,10 @@ class TradeOp(object):
     def op(cls):
         return cls.OP
 
+    @classmethod
+    def version(cls):
+        return cls.VERSION
+
     @property
     def id(self):
         return self._id
@@ -158,7 +162,7 @@ class TradeOp(object):
         Override this method and add specific parameters for dumps parameters for persistance model.
         """
         return {
-            'version': self.version,
+            'version': self.version(),
             'op': self.op(),
             'id': self._id,
             'stage': self._stage,
@@ -215,13 +219,20 @@ class TradeOpDynamicStopLoss(TradeOp):
         if trade.direction > 0:
             # long
             if instrument.close_exec_price(trade.direction) >= self._trigger:
-                trade.sl = self._stop_loss
+                if trade.has_stop_order():
+                    trade.modify_stop_loss(trader, instrument.market_id, self._stop_loss)
+                else:
+                    trade.sl = self._stop_loss
+
                 return True
 
         elif trade.direction < 0:
             # short
             if instrument.close_exec_price(trade.direction) <= self._trigger:
-                trade.sl = self._stop_loss
+                if trade.has_stop_order():
+                    trade.modify_stop_loss(trader, instrument.market_id, self._stop_loss)
+                else:
+                    trade.sl = self._stop_loss
                 return True
 
         return False

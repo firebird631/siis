@@ -226,13 +226,25 @@ class IGTrader(Trader):
         if not self._activity:
             return False
 
+        level = None
         force_open = False  # can be used to hedge force_open = order.hedging
+
+        if order.order_type == Order.ORDER_MARKET:
+            order_type = 'MARKET'
+
+            if order.hedging:
+                force_open = True
 
         if order.order_type == Order.ORDER_LIMIT:
             order_type = 'LIMIT'
-            force_open = True
+            level = order.price
+
+            if order.hedging:
+                force_open = True
+
         elif order.order_type == Order.ORDER_STOP:
-            order_type = 'MARKET'  # 'QUOTE' what is it ?
+            order_type = 'MARKET'
+
         else:
             order_type = 'MARKET'
 
@@ -259,39 +271,37 @@ class IGTrader(Trader):
         currency_code = market_info.quote
         expiry = market_info.expiry
 
-        # @todo depends of the account setting and look at "dealingRules" to find min stop level/distance
+        # take-profit
+        limit_distance = None
+        limit_level = None
+
+        if order.take_profit:
+            limit_level = order.take_profit
+            force_open = True
+
+        # stop-loss
         stop_distance = None
         stop_level = None
         guaranteed_stop = False
 
-        if self._account.has_guaranteed_stop:
-            guaranteed_stop = True
-
-            if self._account.guaranteed_stop_mode == Account.STOP_VALUE_DISTANCE:
-                # distance in pips
+        if order.stop_loss:
+            if self._account.guaranteed_stop:
+                # @todo depends of the account setting and look at "dealingRules" to adjust to min stop level
                 guaranteed_stop = True
-                stop_distance = self._account.guaranteed_stop_value
-            elif self._account.guaranteed_stop_mode == Account.STOP_VALUE_DISTANCE_PCT:
-                # @todo compute the percent in pips
-                guaranteed_stop = False
-            elif self._account.guaranteed_stop_mode == Account.STOP_VALUE_LEVEL:
-                # level in account currency
-                guaranteed_stop = True
-                stop_level = self._account.guaranteed_stop_value
-            elif self._account.guaranteed_stop_mode == Account.STOP_VALUE_LEVEL_PCT:
-                # @todo compute the percent of account avalaible balance (in account currency)
-                guaranteed_stop = False
-                stop_level = None
-
-        level = None  # only for limit order
-        limit_distance = None
-        limit_level = None
-
+                stop_level = order.stop_loss
+                force_open = True
+            else:
+                stop_level = order.stop_loss
+                force_open = True
+   
+        # trailing-stop
         trailing_stop = False
         trailing_stop_increment = None
+        # @todo
 
+        # time in force
         time_in_force = 'EXECUTE_AND_ELIMINATE'
-    
+
         if order.time_in_force == Order.TIME_IN_FORCE_GTC:
             time_in_force = 'EXECUTE_AND_ELIMINATE'
         elif order.time_in_force == Order.TIME_IN_FORCE_IOC:
@@ -301,7 +311,7 @@ class IGTrader(Trader):
 
         size = str(size)
 
-        logger.info("Trader %s order %s %s EP@%s %s" % (self.name, order.direction_to_str(), epic, level, size))
+        logger.info("Trader %s order %s %s EP@%s %s" % (self.name, order.direction_to_str(), epic, limit_level, size))
 
         # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
         logger.info(self._previous_order)

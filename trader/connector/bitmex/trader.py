@@ -226,13 +226,14 @@ class BitMexTrader(Trader):
 
         # order type
         # @todo Order.ORDER_STOP_LIMIT
-        if order.order_type == Order.ORDER_MARKET or order.order_type == Order.ORDER_TAKE_PROFIT:
+        if order.order_type == Order.ORDER_MARKET:
             postdict['ordType'] = 'Market'
             postdict['orderQty'] = qty
-        elif order.order_type == Order.ORDER_LIMIT or order.order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
+
+        elif order.order_type == Order.ORDER_LIMIT:
             postdict['ordType'] = 'Limit'
             postdict['orderQty'] = qty
-            postdict['price'] = order.order_price
+            postdict['price'] = order.price
 
             # only possible with limit order
             if order.post_only:
@@ -241,7 +242,25 @@ class BitMexTrader(Trader):
         elif order.order_type == Order.ORDER_STOP:
             postdict['ordType'] = 'Stop'
             postdict['orderQty'] = qty
-            postdict['stopPx'] = order.order_price
+            postdict['stopPx'] = order.stop_price
+
+        elif order.order_type == Order.ORDER_STOP_LIMIT:
+            postdict['ordType'] = 'StopLimit'
+            postdict['orderQty'] = qty
+            postdict['price'] = order.price
+            postdict['stopPx'] = order.stop_price
+
+        elif order.order_type == Order.ORDER_TAKE_PROFIT:
+            postdict['ordType'] = 'MarketIfTouched'
+            postdict['orderQty'] = qty
+            postdict['stopPx'] = order.stop_price
+
+        elif order.order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
+            postdict['ordType'] = 'LimitIfTouched'
+            postdict['orderQty'] = qty
+            postdict['price'] = order.price
+            postdict['stopPx'] = order.stop_price
+
         else:
             postdict['ordType'] = 'Market'
             postdict['orderQty'] = qty
@@ -257,7 +276,7 @@ class BitMexTrader(Trader):
         if exec_inst:
             postdict['execInst'] = ','.join(exec_inst)
 
-        logger.info("Trader %s order %s %s EP@%s %s" % (self.name, order.direction_to_str(), order.symbol, order.order_price, order.quantity))
+        logger.info("Trader %s order %s %s @%s %s" % (self.name, order.direction_to_str(), order.symbol, order.price, order.quantity))
 
         try:
             result = self._watcher.connector.request(path="order", postdict=postdict, verb='POST', max_retries=15)
@@ -265,16 +284,10 @@ class BitMexTrader(Trader):
             logger.error(str(e))
             return False
 
-        if result.get('ordRejReason'):
+        if result and result.get('ordRejReason'):
             logger.error("%s rejected order %s from %s %s - cause : %s !" % (
                 self.name, order.direction_to_str(), order.quantity, order.symbol, result['ordRejReason']))
             return False
-
-        # {'orderID': '2a89fff3-d39e-d690-9c79-69515fd4c5c5', 'clOrdID': 'siis_Ufy9iC1nSdCg2QVsFwu0MQ', 'clOrdLinkID': '', 'account': 513190, 'symbol': 'XBTUSD', 'side': 'Sell', 'simpleOrderQty': None,
-        # 'orderQty': 10, 'price': 6503.5, 'displayQty': None, 'stopPx': None, 'pegOffsetValue': None, 'pegPriceType': '', 'currency': 'USD', 'settlCurrency': 'XBt',
-        # 'ordType': 'Market', 'timeInForce': 'ImmediateOrCancel', 'execInst': '', 'contingencyType': '', 'exDestination': 'XBME', 'ordStatus': 'Filled', 'triggered': '',
-        # 'workingIndicator': False, 'ordRejReason': '', 'simpleLeavesQty': 0, 'leavesQty': 0, 'simpleCumQty': 0.0015376, 'cumQty': 10, 'avgPx': 6503.5, 'multiLegReportingType': 'SingleSecurity',
-        # 'text': 'Submitted via API.', 'transactTime': '2018-08-23T23:28:54.736Z', 'timestamp': '2018-08-23T23:28:54.736Z'}
 
         # store the order with its order id
         order.set_order_id(result['orderID'])
@@ -300,10 +313,15 @@ class BitMexTrader(Trader):
         if order is None:
             return False
 
-        endpoint = "order/" + order.order_id
+        order_id = order.order_id if order else order_or_id
+        symbol = order.symbol or ""
+
+        postdict = {
+            'orderID': order_id,
+        }
 
         try:
-            result = self._watcher.connector.request(path=endpoint, verb='DELETE', max_retries=15)
+            result = self._watcher.connector.request(path="order", postdict=postdict, verb='DELETE', max_retries=15)
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
                 # no longer exist, accepts as ok
@@ -315,10 +333,10 @@ class BitMexTrader(Trader):
             logger.error(str(e))
             return False
 
-        if result.get('ordRejReason'):
-            logger.error("%s rejected cancel order %s from %s - cause : %s !" % (
-                self.name, order.order_id, order.symbol, result['ordRejReason']))
-            return False
+        # if result and result.get('ordRejReason'):
+        #     logger.error("%s rejected cancel order %s from %s - cause : %s !" % (
+        #         self.name, order_id, symbol, result['ordRejReason']))
+        #     return False
 
         return True
 
@@ -368,10 +386,10 @@ class BitMexTrader(Trader):
             postdict['orderQty'] = qty
         else:
             order.order_type = Order.ORDER_LIMIT
-            order.order_price = limit_price
+            order.price = limit_price
 
             postdict['ordType'] = "Limit"
-            postdict['price'] = order.order_price
+            postdict['price'] = order.price
             postdict['orderQty'] = qty
 
         if qty is None:
@@ -383,7 +401,7 @@ class BitMexTrader(Trader):
             logger.error(str(e))
             return False
 
-        if result.get('ordRejReason'):
+        if result and result.get('ordRejReason'):
             logger.error("%s rejected closing order %s from %s %s - cause : %s !" % (
                 self.name, order.direction_to_str(), order.quantity, order.symbol, result['ordRejReason']))
             return False
@@ -458,6 +476,9 @@ class BitMexTrader(Trader):
         return self.__update_orders()
 
     def __update_positions(self, symbol, market):
+        if not self.connected:
+            return
+
         # position for each configured market
         for symbol, market in self._markets.items():
             pos = self._watcher.connector.ws.position(symbol)
@@ -515,9 +536,13 @@ class BitMexTrader(Trader):
                 # position.profit_loss_market_rate = float(pos['unrealisedPnlPcnt'])
 
                 # compute profit loss in base currency
-                position.update_profit_loss(market)
+                # @todo disabled for now util fix contract_size and value_per_pip calculation
+                # position.update_profit_loss(market)
 
     def __update_orders(self):
+        if not self.connected:
+            return
+
         # filters only siis managed orders
         src_orders = self._watcher.connector.ws.open_orders("") # "siis_")
 
@@ -571,15 +596,28 @@ class BitMexTrader(Trader):
 
             if src_order['ordType'] == "Market":
                 order.order_type = Order.ORDER_MARKET
+
             elif src_order['ordType'] == "Limit":
                 order.order_type = Order.ORDER_LIMIT
-                order.order_price = src_order.get('price')
+                order.price = src_order.get('price')
+
             elif src_order['ordType'] == "Stop":
                 order.order_type = Order.ORDER_STOP
-                order.order_price = src_order.get('stopPx')
-            else:
-                # stop limit, trigger marke, tripgger limit
-                logger.info("bitmex trader l577 ", src_order['ordType'])
+                order.stop_price = src_order.get('stopPx')
+
+            elif src_order['ordType'] == "StopLimit":
+                order.order_type = Order.ORDER_STOP_LIMIT
+                order.price = src_order.get('price')
+                order.stop_price = src_order.get('stopPx')
+
+            elif src_order['ordType'] == "MarketIfTouched":
+                order.order_type = Order.ORDER_TAKE_PROFIT
+                order.stop_price = src_order.get('stopPx')
+
+            elif src_order['ordType'] == "LimitIfTouched":
+                order.order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                order.price = src_order.get('price')
+                order.stop_price = src_order.get('stopPx')
 
             if src_order['timeInForce'] == 'GoodTillCancel':
                 order.time_in_force = Order.TIME_IN_FORCE_GTC

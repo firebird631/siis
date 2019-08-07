@@ -21,7 +21,7 @@ class StrategyAssetTrade(StrategyTrade):
     @todo fill the sell_trades and update the x and axp each time
     """
 
-    __slots__ = 'buy_ref_oid', 'sell_ref_oid', 'buy_oid', 'sell_oid', 'sell_order_type', 'sell_order_qty', 'sell_trades'
+    __slots__ = 'buy_ref_oid', 'sell_ref_oid', 'buy_oid', 'sell_oid', 'sell_order_type', 'sell_order_qty'
 
     SELL_ORDER_NONE = 0
     SELL_ORDER_MARKET = 1
@@ -40,8 +40,6 @@ class StrategyAssetTrade(StrategyTrade):
         self.sell_order_type = Order.ORDER_MARKET
         self.sell_order_qty = 0.0
 
-        self.sell_trades = []  # contain each executed exit trades tuple(qty, price)
-
     def open(self, trader, market_id, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
         """
         Buy an asset.
@@ -51,7 +49,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         order = Order(trader, market_id)
         order.direction = direction
-        order.order_price = order_price
+        order.price = order_price
         order.order_type = order_type
         order.quantity = quantity
         order.leverage = leverage
@@ -67,8 +65,8 @@ class StrategyAssetTrade(StrategyTrade):
 
         self.dir = order.direction
 
-        self.op = order.order_price  # retains the order price
-        self.oq = order.quantity     # ordered quantity
+        self.op = order.price     # retains the order price
+        self.oq = order.quantity  # ordered quantity
 
         self.tp = take_profit
         self.sl = stop_loss
@@ -135,8 +133,6 @@ class StrategyAssetTrade(StrategyTrade):
         return True
 
     def modify_take_profit(self, trader, market_id, price):
-        self.tp = price
-
         if self._exit_state == StrategyTrade.STATE_FILLED:
             # exit already fully filled
             return False
@@ -144,6 +140,7 @@ class StrategyAssetTrade(StrategyTrade):
         if self.sell_oid:
             # cancel the sell order and create a new one
             if trader.cancel_order(self.sell_oid):
+                # REST sync
                 self.sell_ref_oid = None
                 self.sell_oid = None
                 self.sell_order_type = Order.ORDER_MARKET
@@ -157,6 +154,7 @@ class StrategyAssetTrade(StrategyTrade):
             order = Order(trader, market_id)
             order.direction = -self.dir  # neg dir
             order.order_type = Order.ORDER_LIMIT
+            order.price = price
             order.quantity = self.e - self.x  # remaining
 
             self._stats['exit-maker'] = not order.is_market()
@@ -166,8 +164,12 @@ class StrategyAssetTrade(StrategyTrade):
             self.sell_ref_oid = order.ref_order_id
 
             if trader.create_order(order):
+                # REST sync
                 self.sell_order_type = order.order_type
                 self.sell_order_qty = order.quantity
+                self.last_tp_ot = order.created_time
+
+                self.tp = price
 
                 return True
             else:
@@ -177,9 +179,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         return True
 
-    def modify_stop_loss(self, trader, market_id, price):
-        self.sl = price
-
+    def modify_stop_loss(self, trader, market_id, stop_price):
         if self._exit_state == StrategyTrade.STATE_FILLED:
             # exit already fully filled
             return False
@@ -187,6 +187,7 @@ class StrategyAssetTrade(StrategyTrade):
         if self.sell_oid:
             # cancel the sell order and create a new one
             if trader.cancel_order(self.sell_oid):
+                # REST sync
                 # returns true, no need to wait signal confirmation
                 self.sell_ref_oid = None
                 self.sell_oid = None
@@ -197,10 +198,11 @@ class StrategyAssetTrade(StrategyTrade):
             # all entry qty is filled
             return True
 
-        if price:
+        if stop_price:
             order = Order(trader, market_id)
             order.direction = -self.dir  # neg dir
             order.order_type = Order.ORDER_STOP
+            order.stop_price = stop_price
             order.quantity = self.e - self.x  # remaining
 
             self._stats['exit-maker'] = not order.is_market()
@@ -210,8 +212,12 @@ class StrategyAssetTrade(StrategyTrade):
             self.sell_ref_oid = order.ref_order_id
 
             if trader.create_order(order):
+                # REST sync
                 self.sell_order_type = order.order_type
                 self.sell_order_qty = order.quantity
+                self.last_sl_ot = order.created_time
+
+                self.sl = stop_price
 
                 return True
             else:

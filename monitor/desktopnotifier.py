@@ -110,13 +110,13 @@ class DesktopNotifier(Notifiable):
         self._displayed_strategy += 1
         self._last_strategy_view = 0  # force refresh
 
+    @property
+    def backtesting(self):
+        return self.strategy_service and self.strategy_service.backtesting
+
     def receiver(self, signal):
         if signal.signal_type in (
                 Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT, Signal.SIGNAL_STRATEGY_ENTRY_EXIT):
-
-            # not during a backtesting
-            if self.strategy_service and self.strategy_service.backtesting:
-                return
 
             self._signals.append(signal)
 
@@ -197,6 +197,7 @@ class DesktopNotifier(Notifiable):
             #         signal.data.profit_loss_rate * 100.0)
 
             elif signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
+                # @todo in addition of entry/exit, modification and a reason of the exit/modification
                 icon = "contact-new"
                 direction = "long" if signal.data['direction'] == Position.LONG else "short"
                 audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
@@ -233,15 +234,11 @@ class DesktopNotifier(Notifiable):
                     else:
                         send_to_discord(self._discord_webhook['signals'], 'CryptoBot', '```' + message + '```')
 
-                # log them to the content view
-                Terminal.inst().notice(label, view="signal")
+                # log them to the signal view
                 Terminal.inst().notice(message, view="signal")
 
-            # elif signal.signal_type == Signal.SIGNAL_STRATEGY_MODIFY:
-            #     pass
-
             # process sound
-            if self.audible and audio_alert:
+            if not self.backtesting and self.audible and audio_alert:
                 # if repeat
                 for i in range(0, self._alerts[audio_alert[1]]):
                     subprocess.Popen(['aplay', '-D', self._audio_device, self._alerts[audio_alert[0]]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -250,7 +247,7 @@ class DesktopNotifier(Notifiable):
                 # freq = 440  # Hz
                 # os.system('play --no-show-progress --null --channels 1 synth %s sine %f' % (duration, freq))
 
-            if self.popups and message:
+            if not self.backtesting and self.popups and message:
                 n = notify2.Notification(
                     label,
                     message,

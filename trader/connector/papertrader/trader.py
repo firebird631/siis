@@ -277,6 +277,8 @@ class PaperTrader(Trader):
         self._history = PaperTraderHistory(self)  # trades history for reporting
         self._account = PaperTraderAccount(self)
 
+        self._ordering = []  # pending list of orders operation (create, cancel, modify)
+
     @property
     def paper_mode(self):
         return True
@@ -425,6 +427,10 @@ class PaperTrader(Trader):
             self.lock()
 
             for k, position in self._positions.items():
+                # simulate liquidation of positions
+                # @todo but its complex
+
+                # remove empty and closed positions
                 if position.quantity <= 0.0:
                     rm_list.append(k)
                 else:
@@ -443,14 +449,16 @@ class PaperTrader(Trader):
         # update account balance and margin
         #
 
-        if self._account.account_type == PaperTraderAccount.TYPE_MARGIN:
-            # margin account type
+        self.lock()
+        self._account.update(None)
+        self.unlock()
+
+        if self._account.account_type & PaperTraderAccount.TYPE_MARGIN:
+            # support margin
             used_margin = 0
             profit_loss = 0
 
             self.lock()
-
-            self._account.update(None)
 
             for k, position in self._positions.items():
                 market = self._markets.get(position.symbol)
@@ -458,24 +466,21 @@ class PaperTrader(Trader):
                 # only for non empty positions
                 if market and position.quantity > 0.0:
                     # manually compute here because of paper trader
-                    if self._account.account_type == PaperTraderAccount.TYPE_MARGIN:
-                        profit_loss += position.profit_loss_market / market.base_exchange_rate
-                        used_margin += position.margin_cost(market) / market.base_exchange_rate
+                    profit_loss += position.profit_loss_market / market.base_exchange_rate
+                    used_margin += position.margin_cost(market) / market.base_exchange_rate
 
             self.unlock()
 
             self.account.set_used_margin(used_margin+profit_loss)
             self.account.set_unrealized_profit_loss(profit_loss)
 
-        elif self._account.account_type == PaperTraderAccount.TYPE_ASSET:
-            # assets account type
+        if self._account.account_type & PaperTraderAccount.TYPE_ASSET:
+            # support spot
             balance = 0.0
             margin_balance = 0.0
             profit_loss = 0.0
 
             self.lock()
-
-            self._account.update(None)
 
             for k, asset in self._assets.items():
                 asset_name = asset.symbol
@@ -523,55 +528,91 @@ class PaperTrader(Trader):
         #
         # limit/trigger orders executions
         #
-
         if self._orders:
+            rm_list = []
+
             self.lock()
+            orders = list(self._orders.values())
+            self.unlock()
 
-            # simulation of slippage on orders
-            # @todo
+            for order in orders:
+                market = self._markets.get(order.symbol)
+                if market is None:
+                    # unsupported market
+                    rm_list.append(order.order_id)
+                    continue
 
-            # simulate liquidation of positions
-            # but its complicated... depends of the broker strategy and lot of things so for now let negate
+                # slippage emulation
+                # @todo deferred execution, could make a rand delay around the slippage factor
 
-            for k, order in self._orders.items():
+                # open long are executed on bid and short on ofr, close the inverse
+                if order.direction == Position.LONG:
+                    open_exec_price = market.ofr
+                    close_exec_price = market.bid
+                elif order.direction == Position.SHORT:
+                    open_exec_price = market.bid
+                    close_exec_price = market.ofr
+                else:
+                    # unsupported direction
+                    rm_list.append(order.order_id)
+                    continue
+
                 if order.order_type == Order.ORDER_LIMIT:
-                    market = self._markets.get(order.symbol)
-                    if market is None:
-                        continue
+                    if ((order.direction == Position.LONG and open_exec_price <= order.price) or
+                        (order.direction == Position.SHORT and open_exec_price >= order.price)):
 
-                    if market.trade == market.TRADE_BUY_SELL:
-                        self.__limit_buy_sell(order, market)
-                    elif market.trade == market.TRADE_MARGIN:
-                        self.__limit_margin(order, market)
-                    elif market.trade == market.TRADE_IND_MARGIN:
-                        # @todo might me be more specific to indivisible position
-                        self.__limit_margin(order, market)
+                        if market.trade == market.TRADE_BUY_SELL:
+                            self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
+                        elif market.trade == market.TRADE_MARGIN:
+                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                        elif market.trade == market.TRADE_IND_MARGIN:
+                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+
+                        # fully executed
+                        rm_list.append(order.order_id)
+
+                elif order.order_type == Order.ORDER_STOP:
+                    # opposite trigger + market
+                    if ((order.direction == Position.LONG and close_exec_price <= order.stop_price) or
+                        (order.direction == Position.SHORT and close_exec_price >= order.stop_price)):
+
+                        if market.trade == market.TRADE_BUY_SELL:
+                            self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
+                        elif market.trade == market.TRADE_MARGIN:
+                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                        elif market.trade == market.TRADE_IND_MARGIN:
+                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+
+                        # fully executed
+                        rm_list.append(order.order_id)
+
+                elif order.order_type == Order.ORDER_TAKE_PROFIT:
+                    # trigger + market
+                    # @todo
+
+                    # fully executed
+                    rm_list.append(order.order_id)
 
                 elif order.order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
-                    market = self._markets.get(order.symbol)
-                    if market is None:
-                        continue
+                    # trigger + limit
+                    # @todo
 
-                    if market.trade == market.TRADE_BUY_SELL:
-                        self.__take_profit_buy_sell(order, market)
-                    elif market.trade == market.TRADE_MARGIN:
-                        self.__take_profit_margin(order, market)
-                    elif market.trade == market.TRADE_IND_MARGIN:
-                        # @todo might me be more specific to indivisible position
-                        self.__take_profit_margin(order, market)
+                    # fully executed
+                    rm_list.append(order.order_id)
 
                 elif order.order_type == Order.ORDER_STOP_LIMIT:
-                    market = self._markets.get(order.symbol)
-                    if market is None:
-                        continue
+                    # opposite trigger + limit
+                    # @todo
 
-                    if market.trade == market.TRADE_BUY_SELL:
-                        self.__stop_limit_buy_sell(order, market)
-                    elif market.trade == market.TRADE_MARGIN:
-                        self.__stop_limit_margin(order, market)
-                    elif market.trade == market.TRADE_IND_MARGIN:
-                        # @todo might me be more specific to indivisible position
-                        self.__stop_limit_margin(order, market)
+                    # fully executed
+                    rm_list.append(order.order_id)
+
+            self.lock()
+
+            for rm in rm_list:
+                # remove fully executed orders
+                if rm in self._orders:
+                    del self._orders[rm]
 
             self.unlock()
 
@@ -592,15 +633,15 @@ class PaperTrader(Trader):
             return False
 
         if not self.has_market(order.symbol):
-            logger.error("Trader %s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
+            logger.error("Trader %s does not support market %s in ref order %s !" % (self.name, order.symbol, order.ref_order_id))
             return False
 
         market = self.market(order.symbol)
 
         if (market.min_size > 0.0) and (order.quantity < market.min_size):
             # reject if lesser than min size
-            logger.error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in order %s" % (
-                self.name, order.quantity, market.min_size, order.symbol, order.order_id))
+            logger.error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in ref order %s" % (
+                self.name, order.quantity, market.min_size, order.symbol, order.ref_order_id))
             return False
 
         #
@@ -611,23 +652,20 @@ class PaperTrader(Trader):
         ofr_price = 0
 
         if order.order_type in (Order.ORDER_LIMIT, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT_LIMIT):
-            # @todo spread on some instruments (look on market for an average spread)
-            bid_price = order.order_price
-            ofr_price = order.order_price
+            bid_price = order.price
+            ofr_price = order.price
 
         elif order.order_type in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT):
             bid_price = market.bid
             ofr_price = market.ofr
 
-        # logger.info("- Market bid/ofr %s %s %s" % (bid_price, ofr_price, bid_price < ofr_price))
-
         # open long are executed on bid and short on ofr, close the inverse
         if order.direction == Position.LONG:
-            open_exec_price = ofr_price  # bid_price
-            close_exec_price = bid_price  # ofr_price
+            open_exec_price = ofr_price
+            close_exec_price = bid_price
         elif order.direction == Position.SHORT:
-            open_exec_price = bid_price  # ofr_price
-            close_exec_price = ofr_price  # bid_price
+            open_exec_price = bid_price
+            close_exec_price = ofr_price
         else:
             logger.error("Unsupported direction")
             return False
@@ -642,29 +680,30 @@ class PaperTrader(Trader):
 
         if notional < market.min_notional:
             # reject if lesser than min notinal
-            logger.error("%s refuse order because the min notional is not reached (%.f<%.f) %s in order %s" % (
-                self.name, notional, market.min_notional, order.symbol, order.order_id))
+            logger.error("%s refuse order because the min notional is not reached (%.f<%.f) %s in ref order %s" % (
+                self.name, notional, market.min_notional, order.symbol, order.ref_order_id))
             return False
 
-        if self._slippage > 0.0:
-            # @todo
-            return False
-        else:
-            # immediate execution of the order
+        # unique order id
+        order_id =  "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
+        order.set_order_id(order_id)
+
+        if order.order_type == Order.ORDER_MARKET:
+            # immediate execution of the order at market
+            # @todo or add to orders for emulate the slippage
             if market.trade == market.TRADE_BUY_SELL:
-                # buy/sell market
-                res = self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
-                return res
-
+                return self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
             elif market.trade == market.TRADE_MARGIN:
-                # margin position
-                res = self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
-                return res
-
+                return self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
             elif market.trade == market.TRADE_IND_MARGIN:
-                # @todo more specific for ind margin position
-                res = self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
-                return res                
+                return self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+        else:
+            # create accepted, add to orders
+            self.lock()
+            self._orders[order_id] = order
+            self.unlock()
+
+            return True
 
         return False
 
@@ -707,7 +746,7 @@ class PaperTrader(Trader):
 
             if market and limit_price:
                 order.order_type = Order.ORDER_LIMIT
-                order.order_price = limit_price
+                order.price = limit_price
             else:
                 order.order_type = Order.ORDER_MARKET
 
@@ -729,9 +768,8 @@ class PaperTrader(Trader):
             ofr_price = 0
 
             if order.order_type == Order.ORDER_LIMIT:
-                # @todo limit execution when limit reach bid or ofr price (depend of the direction)
-                bid_price = order.order_price
-                ofr_price = order.order_price
+                bid_price = order.price
+                ofr_price = order.price
 
             elif order.order_type == Order.ORDER_MARKET:
                 bid_price = market.bid
@@ -907,457 +945,15 @@ class PaperTrader(Trader):
 
         return asset
 
-    def __exec_margin_order(self, order, market, open_exec_price, close_exec_price):
-        """
-        Execute the order for margin position.
-
-        @todo need to make two cases :
-          * one for indivisible position (bitmex...)
-             => always have a single position per market, increase decrease it (take care of the status)
-          * a second for independants positions (ig...)
-             => more complicated, could close a position easy case, if not forced position first we have to cut/reduce 
-                position that are in the opposite direction
-        """
-        order_id =  "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
-
-        current_position = None
-        positions = []
-
-        self.lock()
-
-        if order.position_id:
-            # @todo if TRADE_IND_MARGIN do we have position_id == market_id ?
-            current_position = self._positions.get(order.position_id)
-        else:
-            if market.trade == market.TRADE_MARGIN:
-                pass
-                # @todo for independants positions
-                # # position of the same market on any directions
-                # for k, pos in self._positions.items():
-                #     if pos.symbol == order.symbol:
-                #         positions.append(pos)
-
-                # if order.hedging and market.hedging:
-                #     pass
-                # else:
-                #     current_position = positions[-1] if positions else None
-            elif market.trade == market.TRADE_IND_MARGIN:
-                pass
-
-        if current_position and current_position.is_opened():
-            # increase or reduce the current position
-            org_quantity = current_position.quantity
-            exec_price = 0.0
-
-            #
-            # and adjust the position quantity (no hedging)
-            #
-
-            # price difference depending of the direction
-            delta_price = 0
-            if current_position.direction == Position.LONG:
-                delta_price = close_exec_price - current_position.entry_price
-                # logger.debug("cl", delta_price, " use ", close_exec_price, " other ", open_exec_price, close_exec_price < open_exec_price)
-            elif current_position.direction == Position.SHORT:
-                delta_price = current_position.entry_price - close_exec_price
-                # logger.debug("cs", delta_price, " use ", close_exec_price, " other ", open_exec_price, close_exec_price < open_exec_price)
-
-            # keep for percent calculation
-            prev_entry_price = current_position.entry_price or close_exec_price
-            leverage = order.leverage
-
-            # most of thoose data rarely change except the base_exchange_rate
-            value_per_pip = market.value_per_pip
-            contract_size = market.contract_size
-            lot_size = market.lot_size
-            one_pip_means = market.one_pip_means
-            base_exchange_rate = market.base_exchange_rate
-            margin_factor = market.margin_factor
-
-            # logger.debug(order.symbol, bid_price, ofr_price, open_exec_price, close_exec_price, delta_price, current_position.entry_price, order.order_price)
-            realized_position_cost = 0.0  # realized cost of the position in base currency
-
-            # effective meaning of delta price in base currency
-            effective_price = (delta_price / one_pip_means) * value_per_pip
-
-            # in base currency
-            position_gain_loss = 0.0
-
-            if order.direction == current_position.direction:
-                # first, same direction, increase the position
-                # it's what we have really buy
-                realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
-
-                # check available margin
-                margin_cost = realized_position_cost * margin_factor / base_exchange_rate
-
-                if not self.has_margin(margin_cost):
-                    # and then rejected order
-                    self.unlock()
-
-                    self.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (order.symbol, order.ref_order_id))
-
-                    logger.error("Not enought free margin for %s need %s but have %s!" % (order.symbol, margin_cost, self.account.margin_balance))
-                    return False
-
-                # still in long, position size increase and adjust the entry price
-                entry_price = ((current_position.entry_price * current_position.quantity) + (open_exec_price * order.quantity)) / 2
-                current_position.entry_price = entry_price
-                current_position.quantity += order.quantity
-
-                # directly executed quantity
-                order.executed = order.quantity
-                exec_price = open_exec_price
-
-                # increase used margin
-                self.account.add_used_margin(margin_cost)
-            else:
-                # different direction
-                if current_position.quantity > order.quantity:
-                    # first case the direction still the same, reduce the position and the margin
-                    # take the profit/loss from the difference by order.quantity and adjust the entry price and quantity
-                    position_gain_loss = effective_price * order.quantity
-
-                    # it's what we have really closed
-                    realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
-
-                    # and decrease used margin
-                    self.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
-
-                    # entry price might not move...
-                    # current_position.entry_price = ((current_position.entry_price * current_position.quantity) - (close_exec_price * order.quantity)) / 2
-                    current_position.quantity -= order.quantity
-                    exec_price = close_exec_price
-
-                    # directly executed quantity
-                    order.executed = order.quantity
-
-                elif current_position.quantity == order.quantity:
-                    # second case the position is closed, exact quantity in the opposite direction
-
-                    position_gain_loss = effective_price * current_position.quantity
-                    current_position.quantity = 0.0
-
-                    # it's what we have really closed
-                    realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
-
-                    # directly executed quantity
-                    order.executed = order.quantity
-                    exec_price = close_exec_price
-
-                    # and decrease used margin
-                    self.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
-                else:
-                    # third case the position is reversed
-                    # 1) get the profit loss
-                    position_gain_loss = effective_price * current_position.quantity
-
-                    # it's what we have really closed
-                    realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
-
-                    # first decrease of released margin
-                    self.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
-
-                    # 2) adjust the position entry
-                    current_position.quantity = order.quantity - current_position.quantity
-                    current_position.entry_price = open_exec_price
-
-                    # 3) the direction is now at opposite
-                    current_position.direction = order.direction
-
-                    # directly executed quantity
-                    order.executed = order.quantity
-                    exec_price = open_exec_price
-
-                    # next increase margin of the new volume
-                    self.account.add_used_margin((order.quantity * lot_size * contract_size * margin_factor) / base_exchange_rate)
-
-            # transaction time is current timestamp
-            order.created_time = self.timestamp
-            order.transact_time = self.timestamp
-
-            #order.set_position_id(current_position.position_id)
-            order.set_order_id(order_id)
-
-            if position_gain_loss != 0.0 and realized_position_cost > 0.0:
-                # ratio
-                gain_loss_rate = position_gain_loss / realized_position_cost
-                relative_gain_loss_rate = delta_price / prev_entry_price
-
-                # if maker close (limit+post-order) (for now same as market)
-                current_position.profit_loss = position_gain_loss
-                current_position.profit_loss_rate = gain_loss_rate
-
-                # if taker close (market)
-                current_position.profit_loss_market = position_gain_loss
-                current_position.profit_loss_market_rate = gain_loss_rate
-
-                self.account.add_realized_profit_loss(position_gain_loss / base_exchange_rate)
-
-                # display only for debug
-                if position_gain_loss > 0.0:
-                    Terminal.inst().high("Close profitable position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
-                        position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
-                elif position_gain_loss < 0.0:
-                    Terminal.inst().low("Close loosing position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
-                        position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
-
-                Terminal.inst().info("Account balance %.2f / Margin balance %.2f" % (self.account.balance, self.account.margin_balance), view='debug')
-            else:
-                gain_loss_rate = 0.0
-
-            #
-            # history
-            #
-
-            # and keep for history (backtesting reporting)
-            history = PaperTraderHistoryEntry(order, self.account.balance, self.account.margin_balance, delta_price/one_pip_means,
-                    gain_loss_rate, position_gain_loss, position_gain_loss/base_exchange_rate)
-
-            self._history.add(history)
-
-            # unlock before notify signals
-            self.unlock()
-
-            result = True
-
-            #
-            # order signal (SIGNAL_ORDER_OPENED+DELETED because we assume fully completed)
-            #
-
-            order_data = {
-                'id': order.order_id,
-                'symbol': order.symbol,
-                'type': order.order_type,
-                'direction': order.direction,
-                'timestamp': order.transact_time,
-                'quantity': order.quantity,
-                'order-price': order.order_price,
-                'stop-loss': order.stop_loss,
-                'take-profit': order.take_profit,
-                'time-in-force': order.time_in_force
-            }
-
-            # signal as watcher service (opened + fully traded qty)
-            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (order.symbol, order_data, order.ref_order_id))
-
-            order_data = {
-                'id': order.order_id,
-                'symbol': order.symbol,
-                'type': order.order_type,
-                'trade-id': 0,
-                'direction': order.direction,
-                'timestamp': order.transact_time,
-                'quantity': order.quantity,
-                'order-price': order.order_price,
-                'exec-price': exec_price,
-                'avg-price': current_position.entry_price,
-                'filled': order.executed,
-                'cumulative-filled': order.executed,
-                'quote-transacted': realized_position_cost,  # its margin
-                'stop-loss': order.stop_loss,
-                'take-profit': order.take_profit,
-                'time-in-force': order.time_in_force,
-                'commission-amount': 0,  # @todo
-                'commission-asset': self.account.currency
-            }
-
-            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (order.symbol, order_data, order.ref_order_id))
-
-            #
-            # position signal
-            #
-
-            # signal as watcher service
-            if current_position.quantity <= 0:
-                # closed position
-                position_data = {
-                    'id': current_position.position_id,
-                    'symbol': current_position.symbol,
-                    'direction': current_position.direction,
-                    'timestamp': order.transact_time,
-                    'quantity': 0,
-                    'exec-price': exec_price,
-                    'stop-loss': None,
-                    'take-profit': None
-                }
-
-                self.service.watcher_service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (order.symbol, position_data, order.ref_order_id))
-            else:
-                # updated position
-                position_data = {
-                    'id': current_position.position_id,
-                    'symbol': current_position.symbol,
-                    'direction': current_position.direction,
-                    'timestamp': order.transact_time,
-                    'quantity': current_position.quantity,
-                    # 'avg-price': current_position.entry_price,
-                    'exec-price': exec_price,
-                    'stop-loss': current_position.stop_loss,
-                    'take-profit': current_position.take_profit,
-                    # 'profit-loss': @todo here
-                }
-
-                self.service.watcher_service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (order.symbol, position_data, order.ref_order_id))
-
-            # and then deleted order
-            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (order.symbol, order.order_id, ""))
-
-            # if position is empty -> closed -> delete it
-            if current_position.quantity <= 0.0:
-                self.lock()
-
-                # take care this does not make issues with IND_MARGIN markets                
-                current_position.exit(None)
-
-                if current_position.position_id in self._positions:
-                    del self._positions[current_position.position_id]
-
-                self.unlock()
-        else:
-            # gen a new position id
-            if market.trade == market.TRADE_IND_MARGIN:
-                # unique position per market
-                position_id = market.market_id
-            elif market.trade == market.TRADE_MARGIN:
-                # distinct positions
-                position_id = "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
-
-            # it's what we have really buy
-            realized_position_cost = order.quantity * (market.lot_size * market.contract_size)  # in base currency
-
-            # check available margin
-            margin_cost = realized_position_cost * market.margin_factor / market.base_exchange_rate
-
-            if not self.has_margin(margin_cost):
-                # and then rejected order
-                self.unlock()
-
-                self.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (order.symbol, order.ref_order_id))
-
-                logger.error("Not enought free margin for %s need %s but have %s!" % (order.symbol, margin_cost, self.account.margin_balance))
-                return False
-
-            # create a new position at market
-            position = Position(self)
-            position.symbol = order.symbol
-
-            position.set_position_id(position_id)
-            position.set_key(self.service.gen_key())
-
-            position.entry(order.direction, order.symbol, order.quantity)
-            position.leverage = order.leverage
-
-            position.created_time = self.timestamp
-
-            account_currency = self.account.currency
-
-            # long are open on ofr and short on bid
-            position.entry_price = market.open_exec_price(order.direction)
-            # logger.debug("el" if position.direction==0 else "es", position.entry_price, market.bid, market.ofr, market.bid < market.ofr)
-
-            # transaction time is creation position date time
-            order.transact_time = position.created_time
-            order.set_order_id(order_id)
-            order.set_position_id(position_id)
-
-            # directly executed quantity
-            order.executed = order.quantity
-
-            # @todo stop loss, take profit, order type (limit, market...)
-
-            self._positions[position_id] = position
-
-            # increase used margin
-            self.account.add_used_margin(margin_cost)
-
-            #
-            # history
-            #
-
-            history = PaperTraderHistoryEntry(order, self.account.balance, self.account.margin_balance)
-            self._history.add(history)
-
-            # unlock before notify signals
-            self.unlock()
-
-            result = True
-
-            #
-            # order signal (SIGNAL_ORDER_OPENED+TRADED+DELETED, fully completed)
-            #
-
-            order_data = {
-                'id': order.order_id,
-                'symbol': order.symbol,
-                'type': order.order_type,
-                'direction': order.direction,
-                'timestamp': order.transact_time,
-                'quantity': order.quantity,
-                'order-price': order.order_price,
-                'stop-loss': order.stop_loss,
-                'take-profit': order.take_profit,
-                'time-in-force': order.time_in_force
-            }
-
-            # signal as watcher service (opened + fully traded qty)
-            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (order.symbol, order_data, order.ref_order_id))
-
-            order_data = {
-                'id': order.order_id,
-                'symbol': order.symbol,
-                'type': order.order_type,
-                'trade-id': 0,
-                'direction': order.direction,
-                'timestamp': order.transact_time,
-                'quantity': order.quantity,
-                'order-price': order.order_price,
-                'exec-price': position.entry_price,
-                'avg-price': position.entry_price,
-                'filled': order.executed,
-                'cumulative-filled': order.executed,
-                'quote-transacted': realized_position_cost,  # its margin
-                'stop-loss': order.stop_loss,
-                'take-profit': order.take_profit,
-                'time-in-force': order.time_in_force,
-                'commission-amount': 0,  # @todo
-                'commission-asset': self.account.currency
-            }
-
-            #logger.info("%s %s %s" % (position.entry_price, position.quantity, order.direction))
-            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (order.symbol, order_data, order.ref_order_id))
-
-            #
-            # position signal
-            #
-
-            position_data = {
-                'id': position.position_id,
-                'symbol': position.symbol,
-                'direction': position.direction,
-                'timestamp': order.transact_time,
-                'quantity': position.quantity,
-                'exec-price': position.entry_price,
-                'stop-loss': position.stop_loss,
-                'take-profit': position.take_profit
-            }
-
-            # signal as watcher service (position opened fully completed)
-            self.service.watcher_service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (order.symbol, position_data, order.ref_order_id))
-
-            # and then deleted order
-            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (order.symbol, order.order_id, ""))
-
-        return result
+    #
+    # spot
+    #
 
     def __exec_buysell_order(self, order, market, open_exec_price, close_exec_price):
         """
         Execute the order for buy&sell of asset.
         """
         result = False
-
-        # more unique id
-        order_id =  "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
 
         self.lock()
 
@@ -1399,7 +995,6 @@ class PaperTrader(Trader):
 
             # directly executed quantity
             order.executed = base_qty
-            order.set_order_id(order_id)
 
             # transaction time is current timestamp
             order.created_time = self.timestamp
@@ -1429,7 +1024,8 @@ class PaperTrader(Trader):
                 'direction': order.direction,
                 'timestamp': order.transact_time,
                 'quantity': order.quantity,
-                'order-price': order.order_price,
+                'price': order.price,
+                'stop-price': order.stop_price,
                 'stop-loss': order.stop_loss,
                 'take-profit': order.take_profit,
                 'time-in-force': order.time_in_force
@@ -1446,7 +1042,8 @@ class PaperTrader(Trader):
                 'direction': order.direction,
                 'timestamp': order.transact_time,
                 'quantity': order.quantity,
-                'order-price': order.order_price,
+                'price': order.price,
+                'stop-price': order.stop_price,
                 'exec-price': open_exec_price,
                 'filled': base_qty,
                 'cumulative-filled': base_qty,
@@ -1502,7 +1099,6 @@ class PaperTrader(Trader):
 
             # directly executed quantity
             order.executed = base_qty
-            order.set_order_id(order_id)
 
             # transaction time is current timestamp
             order.created_time = self.timestamp
@@ -1533,7 +1129,8 @@ class PaperTrader(Trader):
                 'direction': order.direction,
                 'timestamp': order.transact_time,
                 'quantity': order.quantity,
-                'order-price': order.order_price,
+                'price': order.price,
+                'stop-price': order.stop_price,
                 'stop-loss': order.stop_loss,
                 'take-profit': order.take_profit,
                 'time-in-force': order.time_in_force
@@ -1550,7 +1147,8 @@ class PaperTrader(Trader):
                 'direction': order.direction,
                 'timestamp': order.transact_time,
                 'quantity': order.quantity,
-                'order-price': order.order_price,
+                'price': order.price,
+                'stop-price': order.stop_price,
                 'exec-price': close_exec_price,
                 'filled': base_qty,
                 'cumulative-filled': base_qty,
@@ -1666,44 +1264,854 @@ class PaperTrader(Trader):
 
         return quote_price * trade_qty
 
-    def __limit_buy_sell(self, order, market):
-        if order.direction == Position.LONG:
-            pass  # @todo
+    #
+    # margin (possible hedging)
+    #
 
-        elif order.direction == Position.SHORT:
-            pass  # @todo
+    def __exec_margin_order(self, order, market, open_exec_price, close_exec_price):
+        """
+        Execute the order for margin position.
+        @todo support of hedging else reduce first the opposite direction positions (FIFO method)
+        """
+        current_position = None
+        positions = []
 
-    def __limit_margin(self, order, market):
-        if order.direction == Position.LONG:
-            pass  # @todo
+        self.lock()
 
-        elif order.direction == Position.SHORT:
-            pass  # @todo
+        if order.position_id:
+            current_position = self._positions.get(order.position_id)
+        else:
+            # @todo
+            pass
+            # # position of the same market on any directions
+            # for k, pos in self._positions.items():
+            #     if pos.symbol == order.symbol:
+            #         positions.append(pos)
 
-    def __take_profit_buy_sell(self, order, market):
-        if order.direction == Position.LONG:
-            pass  # @todo
+            # if order.hedging and market.hedging:
+            #     pass
+            # else:
+            #     current_position = positions[-1] if positions else None
 
-        elif order.direction == Position.SHORT:
-            pass  # @todo
+        if current_position and current_position.is_opened():
+            # increase or reduce the current position
+            org_quantity = current_position.quantity
+            exec_price = 0.0
 
-    def __take_profit_margin(self, order, market):
-        if order.direction == Position.LONG:
-            pass  # @todo
+            #
+            # and adjust the position quantity (no hedging)
+            #
 
-        elif order.direction == Position.SHORT:
-            pass  # @todo
+            # price difference depending of the direction
+            delta_price = 0
+            if current_position.direction == Position.LONG:
+                delta_price = close_exec_price - current_position.entry_price
+                # logger.debug("cl", delta_price, " use ", close_exec_price, " other ", open_exec_price, close_exec_price < open_exec_price)
+            elif current_position.direction == Position.SHORT:
+                delta_price = current_position.entry_price - close_exec_price
+                # logger.debug("cs", delta_price, " use ", close_exec_price, " other ", open_exec_price, close_exec_price < open_exec_price)
 
-    def __stop_limit_buy_sell(self, order, market):
-        if order.direction == Position.LONG:
-            pass  # @todo
+            # keep for percent calculation
+            prev_entry_price = current_position.entry_price or close_exec_price
+            leverage = order.leverage
 
-        elif order.direction == Position.SHORT:
-            pass  # @todo
+            # most of thoose data rarely change except the base_exchange_rate
+            value_per_pip = market.value_per_pip
+            contract_size = market.contract_size
+            lot_size = market.lot_size
+            one_pip_means = market.one_pip_means
+            base_exchange_rate = market.base_exchange_rate
+            margin_factor = market.margin_factor
 
-    def __stop_limit_margin(self, order, market):
-        if order.direction == Position.LONG:
-            pass  # @todo
+            # logger.debug(order.symbol, bid_price, ofr_price, open_exec_price, close_exec_price, delta_price, current_position.entry_price, order.price)
+            realized_position_cost = 0.0  # realized cost of the position in base currency
 
-        elif order.direction == Position.SHORT:
-            pass  # @todo
+            # effective meaning of delta price in base currency
+            effective_price = (delta_price / one_pip_means) * value_per_pip
+
+            # in base currency
+            position_gain_loss = 0.0
+
+            if order.direction == current_position.direction:
+                # first, same direction, increase the position
+                # it's what we have really buy
+                realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+
+                # check available margin
+                margin_cost = realized_position_cost * margin_factor / base_exchange_rate
+
+                if not self.has_margin(margin_cost):
+                    # and then rejected order
+                    self.unlock()
+
+                    self.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (order.symbol, order.ref_order_id))
+
+                    logger.error("Not enought free margin for %s need %s but have %s!" % (order.symbol, margin_cost, self.account.margin_balance))
+                    return False
+
+                # still in long, position size increase and adjust the entry price
+                entry_price = ((current_position.entry_price * current_position.quantity) + (open_exec_price * order.quantity)) / 2
+                current_position.entry_price = entry_price
+                current_position.quantity += order.quantity
+
+                # directly executed quantity
+                order.executed = order.quantity
+                exec_price = open_exec_price
+
+                # increase used margin
+                self.account.add_used_margin(margin_cost)
+            else:
+                # different direction
+                if current_position.quantity > order.quantity:
+                    # first case the direction still the same, reduce the position and the margin
+                    # take the profit/loss from the difference by order.quantity and adjust the entry price and quantity
+                    position_gain_loss = effective_price * order.quantity
+
+                    # it's what we have really closed
+                    realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+
+                    # and decrease used margin
+                    self.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
+
+                    # entry price might not move...
+                    # current_position.entry_price = ((current_position.entry_price * current_position.quantity) - (close_exec_price * order.quantity)) / 2
+                    current_position.quantity -= order.quantity
+                    exec_price = close_exec_price
+
+                    # directly executed quantity
+                    order.executed = order.quantity
+
+                elif current_position.quantity == order.quantity:
+                    # second case the position is closed, exact quantity in the opposite direction
+
+                    position_gain_loss = effective_price * current_position.quantity
+                    current_position.quantity = 0.0
+
+                    # it's what we have really closed
+                    realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+
+                    # directly executed quantity
+                    order.executed = order.quantity
+                    exec_price = close_exec_price
+
+                    # and decrease used margin
+                    self.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
+                else:
+                    # third case the position is reversed
+                    # 1) get the profit loss
+                    position_gain_loss = effective_price * current_position.quantity
+
+                    # it's what we have really closed
+                    realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+
+                    # first decrease of released margin
+                    self.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
+
+                    # 2) adjust the position entry
+                    current_position.quantity = order.quantity - current_position.quantity
+                    current_position.entry_price = open_exec_price
+
+                    # 3) the direction is now at opposite
+                    current_position.direction = order.direction
+
+                    # directly executed quantity
+                    order.executed = order.quantity
+                    exec_price = open_exec_price
+
+                    # next increase margin of the new volume
+                    self.account.add_used_margin((order.quantity * lot_size * contract_size * margin_factor) / base_exchange_rate)
+
+            # transaction time is current timestamp
+            order.created_time = self.timestamp
+            order.transact_time = self.timestamp
+
+            #order.set_position_id(current_position.position_id)
+
+            if position_gain_loss != 0.0 and realized_position_cost > 0.0:
+                # ratio
+                gain_loss_rate = position_gain_loss / realized_position_cost
+                relative_gain_loss_rate = delta_price / prev_entry_price
+
+                # if maker close (limit+post-order) (for now same as market)
+                current_position.profit_loss = position_gain_loss
+                current_position.profit_loss_rate = gain_loss_rate
+
+                # if taker close (market)
+                current_position.profit_loss_market = position_gain_loss
+                current_position.profit_loss_market_rate = gain_loss_rate
+
+                self.account.add_realized_profit_loss(position_gain_loss / base_exchange_rate)
+
+                # display only for debug
+                if position_gain_loss > 0.0:
+                    Terminal.inst().high("Close profitable position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
+                        position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
+                elif position_gain_loss < 0.0:
+                    Terminal.inst().low("Close loosing position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
+                        position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
+
+                Terminal.inst().info("Account balance %.2f / Margin balance %.2f" % (self.account.balance, self.account.margin_balance), view='debug')
+            else:
+                gain_loss_rate = 0.0
+
+            #
+            # history
+            #
+
+            # and keep for history (backtesting reporting)
+            history = PaperTraderHistoryEntry(order, self.account.balance, self.account.margin_balance, delta_price/one_pip_means,
+                    gain_loss_rate, position_gain_loss, position_gain_loss/base_exchange_rate)
+
+            self._history.add(history)
+
+            # unlock before notify signals
+            self.unlock()
+
+            result = True
+
+            #
+            # order signal (SIGNAL_ORDER_OPENED+DELETED because we assume fully completed)
+            #
+
+            order_data = {
+                'id': order.order_id,
+                'symbol': order.symbol,
+                'type': order.order_type,
+                'direction': order.direction,
+                'timestamp': order.transact_time,
+                'quantity': order.quantity,
+                'price': order.price,
+                'stop-price': order.stop_price,
+                'stop-loss': order.stop_loss,
+                'take-profit': order.take_profit,
+                'time-in-force': order.time_in_force
+            }
+
+            # signal as watcher service (opened + fully traded qty)
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (order.symbol, order_data, order.ref_order_id))
+
+            order_data = {
+                'id': order.order_id,
+                'symbol': order.symbol,
+                'type': order.order_type,
+                'trade-id': 0,
+                'direction': order.direction,
+                'timestamp': order.transact_time,
+                'quantity': order.quantity,
+                'price': order.price,
+                'stop-price': order.stop_price,
+                'exec-price': exec_price,
+                'avg-price': current_position.entry_price,
+                'filled': order.executed,
+                'cumulative-filled': order.executed,
+                'quote-transacted': realized_position_cost,  # its margin
+                'stop-loss': order.stop_loss,
+                'take-profit': order.take_profit,
+                'time-in-force': order.time_in_force,
+                'commission-amount': 0,  # @todo
+                'commission-asset': self.account.currency
+            }
+
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (order.symbol, order_data, order.ref_order_id))
+
+            #
+            # position signal
+            #
+
+            # signal as watcher service
+            if current_position.quantity <= 0:
+                # closed position
+                position_data = {
+                    'id': current_position.position_id,
+                    'symbol': current_position.symbol,
+                    'direction': current_position.direction,
+                    'timestamp': order.transact_time,
+                    'quantity': 0,
+                    'exec-price': exec_price,
+                    'stop-loss': None,
+                    'take-profit': None
+                }
+
+                self.service.watcher_service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (order.symbol, position_data, order.ref_order_id))
+            else:
+                # updated position
+                position_data = {
+                    'id': current_position.position_id,
+                    'symbol': current_position.symbol,
+                    'direction': current_position.direction,
+                    'timestamp': order.transact_time,
+                    'quantity': current_position.quantity,
+                    # 'avg-price': current_position.entry_price,
+                    'exec-price': exec_price,
+                    'stop-loss': current_position.stop_loss,
+                    'take-profit': current_position.take_profit,
+                    # 'profit-loss': @todo here
+                }
+
+                self.service.watcher_service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (order.symbol, position_data, order.ref_order_id))
+
+            # and then deleted order
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (order.symbol, order.order_id, ""))
+
+            # if position is empty -> closed -> delete it
+            if current_position.quantity <= 0.0:
+                self.lock()
+
+                current_position.exit(None)
+
+                if current_position.position_id in self._positions:
+                    del self._positions[current_position.position_id]
+
+                self.unlock()
+        else:
+            # get a new distinct position id
+            position_id = "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
+
+            # it's what we have really buy
+            realized_position_cost = order.quantity * (market.lot_size * market.contract_size)  # in base currency
+
+            # check available margin
+            margin_cost = realized_position_cost * market.margin_factor / market.base_exchange_rate
+
+            if not self.has_margin(margin_cost):
+                # and then rejected order
+                self.unlock()
+
+                self.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (order.symbol, order.ref_order_id))
+
+                logger.error("Not enought free margin for %s need %s but have %s!" % (order.symbol, margin_cost, self.account.margin_balance))
+                return False
+
+            # create a new position at market
+            position = Position(self)
+            position.symbol = order.symbol
+
+            position.set_position_id(position_id)
+            position.set_key(self.service.gen_key())
+
+            position.entry(order.direction, order.symbol, order.quantity)
+            position.leverage = order.leverage
+
+            position.created_time = self.timestamp
+
+            account_currency = self.account.currency
+
+            # long are open on ofr and short on bid
+            position.entry_price = market.open_exec_price(order.direction)
+            # logger.debug("el" if position.direction==0 else "es", position.entry_price, market.bid, market.ofr, market.bid < market.ofr)
+
+            # transaction time is creation position date time
+            order.transact_time = position.created_time
+            order.set_position_id(position_id)
+
+            # directly executed quantity
+            order.executed = order.quantity
+
+            # @todo stop loss, take profit, order type (limit, market...)
+
+            self._positions[position_id] = position
+
+            # increase used margin
+            self.account.add_used_margin(margin_cost)
+
+            #
+            # history
+            #
+
+            history = PaperTraderHistoryEntry(order, self.account.balance, self.account.margin_balance)
+            self._history.add(history)
+
+            # unlock before notify signals
+            self.unlock()
+
+            result = True
+
+            #
+            # order signal (SIGNAL_ORDER_OPENED+TRADED+DELETED, fully completed)
+            #
+
+            order_data = {
+                'id': order.order_id,
+                'symbol': order.symbol,
+                'type': order.order_type,
+                'direction': order.direction,
+                'timestamp': order.transact_time,
+                'quantity': order.quantity,
+                'price': order.price,
+                'stop-price': order.stop_price,
+                'stop-loss': order.stop_loss,
+                'take-profit': order.take_profit,
+                'time-in-force': order.time_in_force
+            }
+
+            # signal as watcher service (opened + fully traded qty)
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (order.symbol, order_data, order.ref_order_id))
+
+            order_data = {
+                'id': order.order_id,
+                'symbol': order.symbol,
+                'type': order.order_type,
+                'trade-id': 0,
+                'direction': order.direction,
+                'timestamp': order.transact_time,
+                'quantity': order.quantity,
+                'price': order.price,
+                'stop-price': order.stop_price,
+                'exec-price': position.entry_price,
+                'avg-price': position.entry_price,
+                'filled': order.executed,
+                'cumulative-filled': order.executed,
+                'quote-transacted': realized_position_cost,  # its margin
+                'stop-loss': order.stop_loss,
+                'take-profit': order.take_profit,
+                'time-in-force': order.time_in_force,
+                'commission-amount': 0,  # @todo
+                'commission-asset': self.account.currency
+            }
+
+            #logger.info("%s %s %s" % (position.entry_price, position.quantity, order.direction))
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (order.symbol, order_data, order.ref_order_id))
+
+            #
+            # position signal
+            #
+
+            position_data = {
+                'id': position.position_id,
+                'symbol': position.symbol,
+                'direction': position.direction,
+                'timestamp': order.transact_time,
+                'quantity': position.quantity,
+                'exec-price': position.entry_price,
+                'stop-loss': position.stop_loss,
+                'take-profit': position.take_profit
+            }
+
+            # signal as watcher service (position opened fully completed)
+            self.service.watcher_service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (order.symbol, position_data, order.ref_order_id))
+
+            # and then deleted order
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (order.symbol, order.order_id, ""))
+
+        return result
+
+    #
+    # indivisible margin (not heding possible, single merged position)
+    #
+
+    def __exec_ind_margin_order(self, order, market, open_exec_price, close_exec_price):
+        """
+        Execute the order for indivisable margin position.
+        @todo update to support only indivisible margin order
+        """
+        current_position = None
+        positions = []
+
+        self.lock()
+
+        if order.market_id:
+            # in that case position is identifier by its market
+            current_position = self._positions.get(order.market_id)
+ 
+        if current_position and current_position.is_opened():
+            # increase or reduce the current position
+            org_quantity = current_position.quantity
+            exec_price = 0.0
+
+            #
+            # and adjust the position quantity (no possible hedging)
+            #
+
+            # price difference depending of the direction
+            delta_price = 0
+            if current_position.direction == Position.LONG:
+                delta_price = close_exec_price - current_position.entry_price
+                # logger.debug("cl", delta_price, " use ", close_exec_price, " other ", open_exec_price, close_exec_price < open_exec_price)
+            elif current_position.direction == Position.SHORT:
+                delta_price = current_position.entry_price - close_exec_price
+                # logger.debug("cs", delta_price, " use ", close_exec_price, " other ", open_exec_price, close_exec_price < open_exec_price)
+
+            # keep for percent calculation
+            prev_entry_price = current_position.entry_price or close_exec_price
+            leverage = order.leverage
+
+            # most of thoose data rarely change except the base_exchange_rate
+            value_per_pip = market.value_per_pip
+            contract_size = market.contract_size
+            lot_size = market.lot_size
+            one_pip_means = market.one_pip_means
+            base_exchange_rate = market.base_exchange_rate
+            margin_factor = market.margin_factor
+
+            # logger.debug(order.symbol, bid_price, ofr_price, open_exec_price, close_exec_price, delta_price, current_position.entry_price, order.price)
+            realized_position_cost = 0.0  # realized cost of the position in base currency
+
+            # effective meaning of delta price in base currency
+            effective_price = (delta_price / one_pip_means) * value_per_pip
+
+            # in base currency
+            position_gain_loss = 0.0
+
+            if order.direction == current_position.direction:
+                # first, same direction, increase the position
+                # it's what we have really buy
+                realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+
+                # check available margin
+                margin_cost = realized_position_cost * margin_factor / base_exchange_rate
+
+                if not self.has_margin(margin_cost):
+                    # and then rejected order
+                    self.unlock()
+
+                    self.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (order.symbol, order.ref_order_id))
+
+                    logger.error("Not enought free margin for %s need %s but have %s!" % (order.symbol, margin_cost, self.account.margin_balance))
+                    return False
+
+                # still in long, position size increase and adjust the entry price
+                entry_price = ((current_position.entry_price * current_position.quantity) + (open_exec_price * order.quantity)) / 2
+                current_position.entry_price = entry_price
+                current_position.quantity += order.quantity
+
+                # directly executed quantity
+                order.executed = order.quantity
+                exec_price = open_exec_price
+
+                # increase used margin
+                self.account.add_used_margin(margin_cost)
+            else:
+                # different direction
+                if current_position.quantity > order.quantity:
+                    # first case the direction still the same, reduce the position and the margin
+                    # take the profit/loss from the difference by order.quantity and adjust the entry price and quantity
+                    position_gain_loss = effective_price * order.quantity
+
+                    # it's what we have really closed
+                    realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+
+                    # and decrease used margin
+                    self.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
+
+                    # entry price might not move...
+                    # current_position.entry_price = ((current_position.entry_price * current_position.quantity) - (close_exec_price * order.quantity)) / 2
+                    current_position.quantity -= order.quantity
+                    exec_price = close_exec_price
+
+                    # directly executed quantity
+                    order.executed = order.quantity
+
+                elif current_position.quantity == order.quantity:
+                    # second case the position is closed, exact quantity in the opposite direction
+
+                    position_gain_loss = effective_price * current_position.quantity
+                    current_position.quantity = 0.0
+
+                    # it's what we have really closed
+                    realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+
+                    # directly executed quantity
+                    order.executed = order.quantity
+                    exec_price = close_exec_price
+
+                    # and decrease used margin
+                    self.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
+                else:
+                    # third case the position is reversed
+                    # 1) get the profit loss
+                    position_gain_loss = effective_price * current_position.quantity
+
+                    # it's what we have really closed
+                    realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+
+                    # first decrease of released margin
+                    self.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
+
+                    # 2) adjust the position entry
+                    current_position.quantity = order.quantity - current_position.quantity
+                    current_position.entry_price = open_exec_price
+
+                    # 3) the direction is now at opposite
+                    current_position.direction = order.direction
+
+                    # directly executed quantity
+                    order.executed = order.quantity
+                    exec_price = open_exec_price
+
+                    # next increase margin of the new volume
+                    self.account.add_used_margin((order.quantity * lot_size * contract_size * margin_factor) / base_exchange_rate)
+
+            # transaction time is current timestamp
+            order.created_time = self.timestamp
+            order.transact_time = self.timestamp
+
+            #order.set_position_id(current_position.position_id)
+
+            if position_gain_loss != 0.0 and realized_position_cost > 0.0:
+                # ratio
+                gain_loss_rate = position_gain_loss / realized_position_cost
+                relative_gain_loss_rate = delta_price / prev_entry_price
+
+                # if maker close (limit+post-order) (for now same as market)
+                current_position.profit_loss = position_gain_loss
+                current_position.profit_loss_rate = gain_loss_rate
+
+                # if taker close (market)
+                current_position.profit_loss_market = position_gain_loss
+                current_position.profit_loss_market_rate = gain_loss_rate
+
+                self.account.add_realized_profit_loss(position_gain_loss / base_exchange_rate)
+
+                # display only for debug
+                if position_gain_loss > 0.0:
+                    Terminal.inst().high("Close profitable position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
+                        position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
+                elif position_gain_loss < 0.0:
+                    Terminal.inst().low("Close loosing position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
+                        position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
+
+                Terminal.inst().info("Account balance %.2f / Margin balance %.2f" % (self.account.balance, self.account.margin_balance), view='debug')
+            else:
+                gain_loss_rate = 0.0
+
+            #
+            # history
+            #
+
+            # and keep for history (backtesting reporting)
+            history = PaperTraderHistoryEntry(order, self.account.balance, self.account.margin_balance, delta_price/one_pip_means,
+                    gain_loss_rate, position_gain_loss, position_gain_loss/base_exchange_rate)
+
+            self._history.add(history)
+
+            # unlock before notify signals
+            self.unlock()
+
+            result = True
+
+            #
+            # order signal (SIGNAL_ORDER_OPENED+DELETED because we assume fully completed)
+            #
+
+            order_data = {
+                'id': order.order_id,
+                'symbol': order.symbol,
+                'type': order.order_type,
+                'direction': order.direction,
+                'timestamp': order.transact_time,
+                'quantity': order.quantity,
+                'price': order.price,
+                'stop-price': order.stop_price,
+                'stop-loss': order.stop_loss,
+                'take-profit': order.take_profit,
+                'time-in-force': order.time_in_force
+            }
+
+            # signal as watcher service (opened + fully traded qty)
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (order.symbol, order_data, order.ref_order_id))
+
+            order_data = {
+                'id': order.order_id,
+                'symbol': order.symbol,
+                'type': order.order_type,
+                'trade-id': 0,
+                'direction': order.direction,
+                'timestamp': order.transact_time,
+                'quantity': order.quantity,
+                'price': order.price,
+                'stop-price': order.stop_price,
+                'exec-price': exec_price,
+                'avg-price': current_position.entry_price,
+                'filled': order.executed,
+                'cumulative-filled': order.executed,
+                'quote-transacted': realized_position_cost,  # its margin
+                'stop-loss': order.stop_loss,
+                'take-profit': order.take_profit,
+                'time-in-force': order.time_in_force,
+                'commission-amount': 0,  # @todo
+                'commission-asset': self.account.currency
+            }
+
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (order.symbol, order_data, order.ref_order_id))
+
+            #
+            # position signal
+            #
+
+            # signal as watcher service
+            if current_position.quantity <= 0:
+                # closed position
+                position_data = {
+                    'id': current_position.position_id,
+                    'symbol': current_position.symbol,
+                    'direction': current_position.direction,
+                    'timestamp': order.transact_time,
+                    'quantity': 0,
+                    'exec-price': exec_price,
+                    'stop-loss': None,
+                    'take-profit': None
+                }
+
+                self.service.watcher_service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (order.symbol, position_data, order.ref_order_id))
+            else:
+                # updated position
+                position_data = {
+                    'id': current_position.position_id,
+                    'symbol': current_position.symbol,
+                    'direction': current_position.direction,
+                    'timestamp': order.transact_time,
+                    'quantity': current_position.quantity,
+                    # 'avg-price': current_position.entry_price,
+                    'exec-price': exec_price,
+                    'stop-loss': current_position.stop_loss,
+                    'take-profit': current_position.take_profit,
+                    # 'profit-loss': @todo here
+                }
+
+                self.service.watcher_service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (order.symbol, position_data, order.ref_order_id))
+
+            # and then deleted order
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (order.symbol, order.order_id, ""))
+
+            # if position is empty -> closed -> delete it
+            if current_position.quantity <= 0.0:
+                self.lock()
+
+                # take care this does not make an issue
+                current_position.exit(None)
+
+                if current_position.position_id in self._positions:
+                    del self._positions[current_position.position_id]
+
+                self.unlock()
+        else:
+            # unique position per market
+            position_id = market.market_id
+
+            # it's what we have really buy
+            realized_position_cost = order.quantity * (market.lot_size * market.contract_size)  # in base currency
+
+            # check available margin
+            margin_cost = realized_position_cost * market.margin_factor / market.base_exchange_rate
+
+            if not self.has_margin(margin_cost):
+                # and then rejected order
+                self.unlock()
+
+                self.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (order.symbol, order.ref_order_id))
+
+                logger.error("Not enought free margin for %s need %s but have %s!" % (order.symbol, margin_cost, self.account.margin_balance))
+                return False
+
+            # create a new position at market
+            position = Position(self)
+            position.symbol = order.symbol
+
+            position.set_position_id(position_id)
+            position.set_key(self.service.gen_key())
+
+            position.entry(order.direction, order.symbol, order.quantity)
+            position.leverage = order.leverage
+
+            position.created_time = self.timestamp
+
+            account_currency = self.account.currency
+
+            # long are open on ofr and short on bid
+            position.entry_price = market.open_exec_price(order.direction)
+            # logger.debug("el" if position.direction==0 else "es", position.entry_price, market.bid, market.ofr, market.bid < market.ofr)
+
+            # transaction time is creation position date time
+            order.transact_time = position.created_time
+            order.set_position_id(position_id)
+
+            # directly executed quantity
+            order.executed = order.quantity
+
+            # @todo stop loss, take profit, order type (limit, market...)
+
+            self._positions[position_id] = position
+
+            # increase used margin
+            self.account.add_used_margin(margin_cost)
+
+            #
+            # history
+            #
+
+            history = PaperTraderHistoryEntry(order, self.account.balance, self.account.margin_balance)
+            self._history.add(history)
+
+            # unlock before notify signals
+            self.unlock()
+
+            result = True
+
+            #
+            # order signal (SIGNAL_ORDER_OPENED+TRADED+DELETED, fully completed)
+            #
+
+            order_data = {
+                'id': order.order_id,
+                'symbol': order.symbol,
+                'type': order.order_type,
+                'direction': order.direction,
+                'timestamp': order.transact_time,
+                'quantity': order.quantity,
+                'price': order.price,
+                'stop-price': order.stop_price,
+                'stop-loss': order.stop_loss,
+                'take-profit': order.take_profit,
+                'time-in-force': order.time_in_force
+            }
+
+            # signal as watcher service (opened + fully traded qty)
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (order.symbol, order_data, order.ref_order_id))
+
+            order_data = {
+                'id': order.order_id,
+                'symbol': order.symbol,
+                'type': order.order_type,
+                'trade-id': 0,
+                'direction': order.direction,
+                'timestamp': order.transact_time,
+                'quantity': order.quantity,
+                'price': order.price,
+                'stop-price': order.stop_price,
+                'exec-price': position.entry_price,
+                'avg-price': position.entry_price,
+                'filled': order.executed,
+                'cumulative-filled': order.executed,
+                'quote-transacted': realized_position_cost,  # its margin
+                'stop-loss': order.stop_loss,
+                'take-profit': order.take_profit,
+                'time-in-force': order.time_in_force,
+                'commission-amount': 0,  # @todo
+                'commission-asset': self.account.currency
+            }
+
+            #logger.info("%s %s %s" % (position.entry_price, position.quantity, order.direction))
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (order.symbol, order_data, order.ref_order_id))
+
+            #
+            # position signal
+            #
+
+            position_data = {
+                'id': position.position_id,
+                'symbol': position.symbol,
+                'direction': position.direction,
+                'timestamp': order.transact_time,
+                'quantity': position.quantity,
+                'exec-price': position.entry_price,
+                'stop-loss': position.stop_loss,
+                'take-profit': position.take_profit
+            }
+
+            # signal as watcher service (position opened fully completed)
+            self.service.watcher_service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (order.symbol, position_data, order.ref_order_id))
+
+            # and then deleted order
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (order.symbol, order.order_id, ""))
+
+        return result

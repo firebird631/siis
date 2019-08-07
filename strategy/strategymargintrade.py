@@ -49,7 +49,7 @@ class StrategyMarginTrade(StrategyTrade):
         """
         order = Order(trader, market_id)
         order.direction = direction
-        order.order_price = order_price
+        order.price = order_price
         order.order_type = order_type
         order.quantity = quantity
         order.leverage = leverage
@@ -63,8 +63,8 @@ class StrategyMarginTrade(StrategyTrade):
 
         self.dir = order.direction
 
-        self.op = order.order_price  # retains the order price
-        self.oq = order.quantity     # ordered quantity
+        self.op = order.price     # retains the order price
+        self.oq = order.quantity  # ordered quantity
 
         self.tp = take_profit
         self.sl = stop_loss
@@ -149,7 +149,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         return True
 
-    def modify_take_profit(self, trader, market_id, price):
+    def modify_take_profit(self, trader, market_id, limit_price):
         if self.limit_oid:
             # cancel the limit order and create a new one
             if trader.cancel_order(self.limit_oid):
@@ -169,18 +169,18 @@ class StrategyMarginTrade(StrategyTrade):
 
         if self.position_id:
             # if not accepted as modification do it as limit order
-            if trader.modify_position(self.position_id, take_profit_price=price):
-                self.tp = price
+            if trader.modify_position(self.position_id, take_profit_price=limit_price):
+                self.tp = limit_price
                 return True
 
         elif self.e > 0:
             # only if filled entry partially or totally
             order = Order(self, market_id)
-            order.direction = self.direction
-            order.order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+            order.direction = -self.direction
+            order.order_type = Order.ORDER_LIMIT
             order.reduce_only = True
             order.quantity = self.e - self.x  # remaining
-            order.order_price = price
+            order.price = limit_price
 
             trader.set_ref_order_id(order)
             self.limit_ref_oid = order.ref_order_id
@@ -190,8 +190,9 @@ class StrategyMarginTrade(StrategyTrade):
             if trader.create_order(order):
                 self.limit_oid = order.order_id
                 self.limit_order_qty = order.quantity
+                self.last_tp_ot = order.created_time
 
-                self.tp = price
+                self.tp = limit_price
 
                 return True
             else:
@@ -200,7 +201,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         return False
 
-    def modify_stop_loss(self, trader, market_id, price):
+    def modify_stop_loss(self, trader, market_id, stop_price):
         if self.stop_oid:
             # cancel the stop order and create a new one
             if trader.cancel_order(self.stop_oid):
@@ -219,18 +220,18 @@ class StrategyMarginTrade(StrategyTrade):
 
         if self.position_id:
             # if not accepted as modification do it as stop order
-            if trader.modify_position(self.position_id, stop_loss_price=price):
-                self.sl = price
+            if trader.modify_position(self.position_id, stop_loss_price=stop_price):
+                self.sl = stop_price
                 return True
 
         elif self.e > 0:
             # only if filled entry partially or totally
             order = Order(self, market_id)
-            order.direction = self.direction
+            order.direction = -self.direction
             order.order_type = Order.ORDER_STOP
             order.reduce_only = True
             order.quantity = self.e - self.x  # remaining
-            order.order_price = price
+            order.stop_price = stop_price
 
             trader.set_ref_order_id(order)
             self.stop_ref_oid = order.ref_order_id
@@ -240,8 +241,9 @@ class StrategyMarginTrade(StrategyTrade):
             if trader.create_order(order):  
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
+                self.last_sl_ot = order.created_time
 
-                self.sl = price
+                self.sl = stop_price
 
                 return True
             else:
@@ -273,14 +275,6 @@ class StrategyMarginTrade(StrategyTrade):
             if trader.cancel_order(self.limit_oid):
                 self.limit_ref_oid = None
 
-        if self.e == self.x:
-            # all entry qty is filled
-            return True
-
-        if self.e < self.x:
-            # something wrong but its ok
-            return False
-
         if self.position_id:
             # most of the margin broker case we have a position id
             if self._exit_state != StrategyTrade.STATE_PARTIALLY_FILLED:
@@ -288,7 +282,8 @@ class StrategyMarginTrade(StrategyTrade):
                     return True
                 else:
                     return False
-        else:
+
+        elif self.e - self.x > 0.0:
             # bitmex case no have position id
             order = Order(trader, market_id)
             order.direction = -self.dir  # neg dir
@@ -310,19 +305,13 @@ class StrategyMarginTrade(StrategyTrade):
         return True
 
     def is_closing(self):
-        return (self.limit_ref_oid or self.stop_ref_oid) or self._exit_state == StrategyTrade.STATE_OPENED or self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED
+        return (self.limit_ref_oid is True or self.stop_ref_oid is True) or self._exit_state == StrategyTrade.STATE_OPENED or self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED
 
     def has_stop_order(self):
-        """
-        Overrides, must return true if the trade have a broker side stop order, else local trigger stop.
-        """
-        return self.stop_oid != None and self.stop_oid != ""
+        return self.stop_oid is not None and self.stop_oid != ""
 
     def has_limit_order(self):
-        """
-        Overrides, must return true if the trade have a broker side limit order, else local take-profit stop
-        """
-        return self.limit_oid != None and self.limit_oid != ""
+        return self.limit_oid is not None and self.limit_oid != ""
 
     #
     # signal

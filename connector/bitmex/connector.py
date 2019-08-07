@@ -181,7 +181,7 @@ class Connector(object):
                 #     if 'orderID' in o:
                 #         self.cancel(o['orderID'])
 
-                logger.error("Sleeping for %d seconds." % (reset_str, to_sleep))
+                logger.error("Sleeping from %s for %d seconds." % (reset_str, to_sleep))
                 time.sleep(to_sleep)
 
                 # Retry the request

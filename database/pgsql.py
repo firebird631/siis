@@ -28,7 +28,8 @@ from .ohlcstorage import OhlcStorage, OhlcStreamer
 from .database import Database
 
 import logging
-logger = logging.getLogger('siis.database')
+logger = logging.getLogger('siis.database.pgsql')
+error_logger = logging.getLogger('siis.error.database.pgsql')
 
 
 class PgSql(Database):
@@ -407,12 +408,12 @@ class PgSql(Database):
 
         if uti:
             try:
-                cursor = self._db.cursor()           
+                cursor = self._db.cursor()
 
                 query = ' '.join((
                     "INSERT INTO user_trade(broker_id, account_id, market_id, appliance_id, trade_id, trade_type, data, operations) VALUES",
-                    ','.join(["('%s', '%s', '%s', %s, %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], ut[5],
-                            json.dumps(ut[6]).replace("'", "\'"), json.dumps(ut[7]).replace("'", "\'")) for ut in uti]),
+                    ','.join(["('%s', '%s', '%s', '%s', %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], ut[5],
+                            json.dumps(ut[6]).replace("'", "''"), json.dumps(ut[7]).replace("'", "''")) for ut in uti]),
                     "ON CONFLICT (broker_id, account_id, market_id, appliance_id, trade_id) DO UPDATE SET data = EXCLUDED.data, operations = EXCLUDED.operations"
                 ))
 
@@ -421,6 +422,7 @@ class PgSql(Database):
                 self._db.commit()
             except Exception as e:
                 logger.error(repr(e))
+                error_logger.error(traceback.format_exc())
 
                 # retry the next time
                 self.lock()
@@ -478,7 +480,7 @@ class PgSql(Database):
                 query = ' '.join((
                     "INSERT INTO user_trader(broker_id, account_id, market_id, appliance_id, activity, data, regions) VALUES",
                     ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
-                            json.dumps(ut[5]).replace("'", "\'"), json.dumps(ut[6]).replace("'", "\'")) for ut in uti]),
+                            json.dumps(ut[5]).replace("'", "''"), json.dumps(ut[6]).replace("'", "''")) for ut in uti]),
                     "ON CONFLICT (broker_id, market_id, appliance_id) DO UPDATE SET activity = EXCLUDED.activity, data = EXCLUDED.data, regions = EXCLUDED.regions"
                 ))
 
@@ -487,6 +489,7 @@ class PgSql(Database):
                 self._db.commit()
             except Exception as e:
                 logger.error(repr(e))
+                error_logger.error(traceback.format_exc())
 
                 # retry the next time
                 self.lock()
@@ -619,11 +622,23 @@ class PgSql(Database):
                 try:
                     cursor = self._db.cursor()
 
-                    query = ' '.join((
-                        "INSERT INTO ohlc(broker_id, market_id, timestamp, timeframe, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume) VALUES",
-                        ','.join(["('%s', '%s', %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5], mk[6], mk[7], mk[8], mk[9], mk[10], mk[11], mk[12]) for mk in mkd]),
-                        "ON CONFLICT (broker_id, market_id, timestamp, timeframe) DO UPDATE SET bid_open = EXCLUDED.bid_open, bid_high = EXCLUDED.bid_high, bid_low = EXCLUDED.bid_low, bid_close = EXCLUDED.bid_close, ask_open = EXCLUDED.ask_open, ask_high = EXCLUDED.ask_high, ask_low = EXCLUDED.ask_low, ask_close = EXCLUDED.ask_close, volume = EXCLUDED.volume"
-                    ))
+                    elts = []
+                    data = set()
+
+                    for mk in mkd:
+                        if (mk[0], mk[1], mk[2], mk[3]) not in data:
+                            elts.append("('%s', '%s', %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5], mk[6], mk[7], mk[8], mk[9], mk[10], mk[11], mk[12]))
+                            data.add((mk[0], mk[1], mk[2], mk[3]))
+
+                    query = ' '.join(("INSERT INTO ohlc(broker_id, market_id, timestamp, timeframe, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume) VALUES",
+                                ','.join(elts),
+                                "ON CONFLICT (broker_id, market_id, timestamp, timeframe) DO UPDATE SET bid_open = EXCLUDED.bid_open, bid_high = EXCLUDED.bid_high, bid_low = EXCLUDED.bid_low, bid_close = EXCLUDED.bid_close, ask_open = EXCLUDED.ask_open, ask_high = EXCLUDED.ask_high, ask_low = EXCLUDED.ask_low, ask_close = EXCLUDED.ask_close, volume = EXCLUDED.volume"))
+
+                    # query = ' '.join((
+                    #     "INSERT INTO ohlc(broker_id, market_id, timestamp, timeframe, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume) VALUES",
+                    #     ','.join(["('%s', '%s', %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5], mk[6], mk[7], mk[8], mk[9], mk[10], mk[11], mk[12]) for mk in mkd]),
+                    #     "ON CONFLICT (broker_id, market_id, timestamp, timeframe) DO UPDATE SET bid_open = EXCLUDED.bid_open, bid_high = EXCLUDED.bid_high, bid_low = EXCLUDED.bid_low, bid_close = EXCLUDED.bid_close, ask_open = EXCLUDED.ask_open, ask_high = EXCLUDED.ask_high, ask_low = EXCLUDED.ask_low, ask_close = EXCLUDED.ask_close, volume = EXCLUDED.volume"
+                    # ))
 
                     cursor.execute(query)
 

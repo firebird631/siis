@@ -266,8 +266,8 @@ class OneBrokerTrader(Trader):
             'shared': "true" if self.account.shared else "false"
         }
 
-        if order.order_price:
-            var['order_type_parameter'] = order.order_price  # can be null for market
+        if order.price:
+            var['order_type_parameter'] = order.price  # can be null for market
 
         if order.stop_loss:
             var['stop_loss'] = order.stop_loss   # can be null

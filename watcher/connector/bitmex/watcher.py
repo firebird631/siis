@@ -211,7 +211,7 @@ class BitMexWatcher(Watcher):
 
                     # 'leverage': 10, 'crossMargin': False
 
-                    if ld['currentQty'] is None:
+                    if ld.get('currentQty') is None:
                         # no position
                         continue
 
@@ -282,7 +282,8 @@ class BitMexWatcher(Watcher):
                                 'symbol': symbol,
                                 'timestamp': operation_time,
                                 'quantity': ld.get('orderQty', None),
-                                'order-price': ld.get('price', ld.get('stopPx', None)),  # limit or stop @todo but if we have stop_limit... ?
+                                'price': ld.get('price'),
+                                'stop-price': ld.get('stopPx'),
                                 'stop-loss': None,
                                 'take-profit': None
                             }
@@ -298,9 +299,14 @@ class BitMexWatcher(Watcher):
                             order_type = Order.ORDER_LIMIT
                         elif ld['ordType'] == 'Stop':
                             order_type = Order.ORDER_STOP
+                        elif ld['ordType'] == 'StopLimit':
+                            order_type = Order.ORDER_STOP_LIMIT
+                        elif ld['ordType'] == 'MarketIfTouched':
+                            order_type = Order.ORDER_TAKE_PROFIT
+                        elif ld['ordType'] == 'LimitIfTouched':
+                            order_type = Order.ORDER_TAKE_PROFIT_LIMIT
                         else:
                             order_type = Order.ORDER_MARKET
-                        # ... @todo other kind but not really necessary the others
 
                         if ld['timeInForce'] == 'GoodTillCancel':
                             time_in_force = Order.TIME_IN_FORCE_GTC
@@ -331,13 +337,15 @@ class BitMexWatcher(Watcher):
                             'type': order_type,
                             'timestamp': transact_time,
                             'quantity': ld.get('orderQty', 0),
-                            'order-price': ld.get('price', ld.get('stopPx', None)),  # limit or stop @todo but if we have stop_limit... ?
-                            'stop-loss': None,
+                            'price': ld.get('price'),
+                            'stop-price': ld.get('stopPx'),
                             'time-in-force': time_in_force,
                             'post-only': 'ParticipateDoNotInitiate' in exec_inst,  # maker only (not taker)
                             'close-only': 'Close' in exec_inst,
                             'reduce-only': 'ReduceOnly' in exec_inst,
-                            'price-type': price_type
+                            'price-type': price_type,
+                            'stop-loss': None,
+                            'take-profit': None
                         }
 
                         self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, ld.get('clOrdID', "")))

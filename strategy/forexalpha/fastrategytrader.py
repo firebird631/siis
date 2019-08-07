@@ -431,7 +431,6 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         order_type = None
         order_leverage = 1.0
 
-        # @todo check self.hedging (supported by IG using compensate position)
         if self.hedging:
             order_hedging = True
 

@@ -77,20 +77,38 @@ class TerminalHandler(logging.StreamHandler):
     def __init__(self):
         logging.StreamHandler.__init__(self)
 
+    def filter(self, record):
+        if record.pathname.startswith('siis.exec.'):
+            return False
+
+        return True
+
     def emit(self, record):
         msg = self.format(record)
 
         if record.levelno == logging.ERROR:
-            Terminal.inst().error(str(msg), view='default')
-            Terminal.inst().error(str(msg), view='debug')
+            if record.pathname.startswith('siis.error.'):
+                Terminal.inst().error(str(msg), view='debug')
+            else:
+                # Terminal.inst().error(str(msg), view='default')
+                Terminal.inst().error(str(msg), view='content')
+
         elif record.levelno == logging.WARNING:
-            Terminal.inst().warning(str(msg), view='default')
-            Terminal.inst().error(str(msg), view='debug')
+            if record.pathname.startswith('siis.error.'):
+                Terminal.inst().error(str(msg), view='debug')
+            else:
+                # Terminal.inst().warning(str(msg), view='default')
+                Terminal.inst().warning(str(msg), view='content')
+
         elif record.levelno == logging.INFO:
-            Terminal.inst().info(str(msg), view='default')
-            Terminal.inst().info(str(msg), view='content')
+            if record.pathname.startswith('siis.error.'):
+                Terminal.inst().info(str(msg), view='debug')
+            else:
+                Terminal.inst().info(str(msg), view='content')
+
         elif record.levelno == logging.DEBUG:
             Terminal.inst().message(str(msg), view='debug')
+
         else:
             Terminal.inst().message(str(msg), view='default')
 

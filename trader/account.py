@@ -18,27 +18,11 @@ class Account(object):
     @todo currency string formatter ?
     """
 
-    TYPE_ASSET = 0
-    TYPE_MARGIN = 1
-
-    STOP_NONE = 0
-    STOP_LIMIT = 1
-    STOP_MARKET = 2
-    STOP_GUARANTEED = 3
-
-    STOP_VALUE_NONE = 0          # no stop value specified
-    STOP_VALUE_LEVEL = 1         # in account currency max loss
-    STOP_VALUE_LEVEL_PCT = 2     # in account currency max loss rate of account current available balance
-    STOP_VALUE_DISTANCE = 3      # in instrument unit (ie in pips for a forex)
-    STOP_VALUE_DISTANCE_PCT = 4  # in instrument unit rate (ie rate of pips for a forex)
-
-    TAKE_PROFIT_NONE = 0
-    TAKE_PROFIT_LIMIT = 1
-    TAKE_PROFIT_MARKET = 2
-
-    TAKE_PROFIT_NONE = 0
-    TAKE_PROFIT_DISTANCE = 1
-    TAKE_PROFIT_LEVEL = 2
+    TYPE_UNDEFINED = 0
+    TYPE_ASSET = 1
+    TYPE_STOP = 1
+    TYPE_MARGIN = 2
+    TYPE_SPREADBET = 4
 
     def __init__(self, parent):
         self._mutex = threading.Lock()
@@ -80,11 +64,11 @@ class Account(object):
         self._default_take_profit_rate = 0.5  # when no take profit assume at 50%
         self._default_risk_ratio = 2.0        # mean take profit -2x the stop loss
 
-        self._guaranteed_stop = None
+        self._guaranteed_stop = False
 
         trader_config = parent.service.trader_config(self._parent.name)
         if trader_config:
-            self._guaranteed_stop = trader_config.get('guaranteed_stop', None)
+            self._guaranteed_stop = trader_config.get('guaranteed-stop', False)
 
     def update(self, connector):
         pass
@@ -182,8 +166,8 @@ class Account(object):
         return self._risk_limit
 
     @property
-    def has_guaranteed_stop(self):
-        return self._guaranteed_stop and self._guaranteed_stop.get('status', False)
+    def guaranteed_stop(self):
+        return self._guaranteed_stop
 
     @account_type.setter
     def account_type(self, account_type):
@@ -235,28 +219,6 @@ class Account(object):
     @currency_ratio.setter
     def currency_ratio(self, currency_ratio):
         self._currency_ratio = currency_ratio
-
-    @property
-    def guaranteed_stop_mode(self):
-        if self._guaranteed_stop:
-            mode = self._guaranteed_stop.get('mode', '')
-            if mode and mode == 'level':
-                return Account.STOP_VALUE_LEVEL
-            elif mode and mode == 'level-percent':
-                return Account.STOP_VALUE_LEVEL_PCT         
-            elif mode and mode == 'distance':
-                return Account.STOP_VALUE_DISTANCE
-            elif mode and mode == 'distance-percent':
-                return Account.STOP_VALUE_DISTANCE_PCT
-
-        return Account.STOP_VALUE_NONE
-
-    @property
-    def guaranteed_stop_value(self):
-        if self._guaranteed_stop:
-            return self._guaranteed_stop.get('value', 0)
-        else:
-            return 0
 
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)

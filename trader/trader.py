@@ -883,14 +883,19 @@ class Trader(Runnable):
 
             order.direction = order_data['direction']
             order.order_type = order_data['type']
-            order.time_in_force = order_data['time-in-force']
 
             order.quantity = order_data['quantity']
-            order.order_price = order_data['order-price']
-            order.stop_loss = order_data['stop-loss']
+
+            # depending of the type
+            order.price = order_data.get('price')
+            order.stop_price = order_data.get('stop-price')
+            order.time_in_force = order_data.get('time-in-force')
 
             order.close_only = order_data.get('close-only', False)
             order.reduce_only = order_data.get('reduce-only', False)
+
+            order.stop_loss = order_data.get('stop-loss')
+            order.take_profit = order_data.get('take-profit')
 
             self._orders[order_data['id']] = order
 
@@ -898,8 +903,14 @@ class Trader(Runnable):
     def on_order_updated(self, market_id, order_data, ref_order_id):
         order = self._orders.get(order_data['id'])
         if order:
-            # @todo update price, qty if necessarry
-            pass
+            # update price, stop-price, stop-loss, take-profit, quantity if necessarry
+            order.quantity = order_data['quantity']
+
+            order.price = order_data.get('price')
+            order.stop_price = order_data.get('stop-price')
+
+            order.stop_loss = order_data.get('stop-loss')
+            order.take_profit = order_data.get('take-profit')
 
     @Runnable.mutexed
     def on_order_deleted(self, market_id, order_id, ref_order_id):

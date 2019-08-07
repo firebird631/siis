@@ -43,6 +43,7 @@ class BinanceWatcher(Watcher):
     @todo Soon support of margin trading, get position from REST API + WS events.
     @todo Finish order book events.
     @todo Update base_exchange_rate as price change.
+    @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/margin-api.md
     """
 
     BASE_QUOTE = 'BTC'
@@ -581,20 +582,38 @@ class BinanceWatcher(Watcher):
 
                 timestamp = float(data['T']) * 0.001  # transaction time
 
+                price = None
+                stop_price = None
+
                 if data['o'] == 'LIMIT':
                     order_type = Order.ORDER_LIMIT
+                    price = float(data['p'])
+
                 elif data['o'] == 'MARKET':
                     order_type = Order.ORDER_MARKET
+
                 elif data['o'] == 'STOP_LOSS':
                     order_type = Order.ORDER_STOP
+                    stop_price = float(data['P'])
+
                 elif data['o'] == 'STOP_LOSS_LIMIT':
                     order_type = Order.ORDER_STOP_LIMIT
+                    price = float(data['p'])
+                    stop_price = float(data['P'])
+
                 elif data['o'] == 'TAKE_PROFIT':
                     order_type = Order.ORDER_TAKE_PROFIT
+                    stop_price = float(data['P'])
+
                 elif data['o'] == 'TAKE_PROFIT_LIMIT':
                     order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    price = float(data['p'])
+                    stop_price = float(data['P'])
+
                 elif data['o'] == 'LIMIT_MAKER':
                     order_type = Order.ORDER_LIMIT
+                    price = float(data['p'])
+
                 else:
                     order_type = Order.ORDER_LIMIT
 
@@ -615,13 +634,14 @@ class BinanceWatcher(Watcher):
                     'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
                     'timestamp': timestamp,
                     'quantity': float(data['q']),
-                    'order-price': float(data['p']),
+                    'price': price,
+                    'stop-price': stop_price,
                     'exec-price': float(data['L']),
                     'filled': float(data['l']),
                     'cumulative-filled': float(data['z']),
                     'quote-transacted': float(data['Y']),  # similar as float(data['Z']) for cumulative
-                    'stop-loss': float(data['P']),
-                    'take-profit': 0,
+                    'stop-loss': None,
+                    'take-profit': None,
                     'time-in-force': time_in_force,
                     'commission-amount': float(data['n']),
                     'commission-asset': data['N']
@@ -636,20 +656,38 @@ class BinanceWatcher(Watcher):
 
                 iceberg_qty = float(data['F'])
 
+                price = None
+                stop_price = None
+
                 if data['o'] == 'LIMIT':
                     order_type = Order.ORDER_LIMIT
+                    price = float(data['p'])
+
                 elif data['o'] == 'MARKET':
                     order_type = Order.ORDER_MARKET
+
                 elif data['o'] == 'STOP_LOSS':
                     order_type = Order.ORDER_STOP
+                    stop_price = float(data['P'])
+
                 elif data['o'] == 'STOP_LOSS_LIMIT':
                     order_type = Order.ORDER_STOP_LIMIT
+                    price = float(data['p'])
+                    stop_price = float(data['P'])
+
                 elif data['o'] == 'TAKE_PROFIT':
                     order_type = Order.ORDER_TAKE_PROFIT
+                    stop_price = float(data['P'])
+
                 elif data['o'] == 'TAKE_PROFIT_LIMIT':
                     order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    price = float(data['p'])
+                    stop_price = float(data['P'])
+
                 elif data['o'] == 'LIMIT_MAKER':
                     order_type = Order.ORDER_LIMIT
+                    price = float(data['p'])
+
                 else:
                     order_type = Order.ORDER_LIMIT
 
@@ -669,9 +707,11 @@ class BinanceWatcher(Watcher):
                     'type': order_type,
                     'timestamp': event_timestamp,
                     'quantity': float(data['q']),
-                    'order-price': float(data['p']),
-                    'stop-loss': float(data['P']),
-                    'time-in-force': time_in_force
+                    'price': price,
+                    'stop-price': stop_price,
+                    'time-in-force': time_in_force,
+                    'stop-loss': None,
+                    'take-profit': None
                 }
 
                 self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))

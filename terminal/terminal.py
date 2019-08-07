@@ -790,10 +790,6 @@ class Terminal(object):
             'debug-head': View('debug-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'debug': View('debug', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
-            # @todo body content to be created by application View
-            'trader-head': View('trader-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'trader': View('trader', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
             'stats-head': View('stats-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'stats': View('stats', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
@@ -816,7 +812,7 @@ class Terminal(object):
             'asset': View('asset', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
             'signal-head': View('signal-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'signal': View('signal', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
+            'signal': View('signal', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
             # right panel
             'panel-head': View('panel-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 2), active=True),
@@ -830,8 +826,9 @@ class Terminal(object):
             'notice': View('notice', View.MODE_BLOCK, self._stdscr, pos=(width//2+1, height-1), size=(width//2, 1), active=True, right_align=True),
         }
 
-        Terminal.inst().info("Content", view='content-head')
+        Terminal.inst().info("Console", view='content-head')  # console/content
         Terminal.inst().info("Debug", view='debug-head')
+        Terminal.inst().info("Signal", view='signal-head')
 
         self.set_view('default')
         self._active_content = 'content'

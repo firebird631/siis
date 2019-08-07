@@ -50,7 +50,7 @@ class PivotPointIndicator(Indicator):
     METHOD_WOODIE = 4
     METHOD_FIBONACCI = 5
 
-    __slots__ = '_method', '_pivot', '_supports', '_resistances', '_prev_supports', '_prev_resistances', '_prev_pivot', '_last_supports', '_last_resistances', '_last_pivot'
+    __slots__ = '_method', '_pivot', '_supports', '_resistances', '_last_supports', '_last_resistances', '_last_pivot'
 
     @classmethod
     def indicator_type(cls):
@@ -68,10 +68,6 @@ class PivotPointIndicator(Indicator):
         self._pivot = np.array([])
         self._supports = [np.array([]), np.array([]), np.array([])]
         self._resistances = [np.array([]), np.array([]), np.array([])]
-
-        self._prev_supports = [0.0]*3
-        self._prev_resistances = [0.0]*3
-        self._prev_pivot = 0.0
 
         self._last_supports = [0.0]*3
         self._last_resistances = [0.0]*3
@@ -129,113 +125,141 @@ class PivotPointIndicator(Indicator):
     def resistances(self):
         return self._resistances
     
-    @staticmethod
-    def PivotPoint(method, _open, high, low, close):
+    # @staticmethod
+    # def PivotPoint(method, _open, high, low, close):
+    #     """ 
+    #     Retrouve les niveaux plus haut et plus bas et retrouve les niveaux fibo.
+    #     """
+    #     if method == PivotPointIndicator.METHOD_CAMARILLA:
+    #         pivot = close
+
+    #         s1 = close - (high - low)*1.1/12
+    #         s2 = close - (high - low)*1.1/6
+    #         s3 = close - (high - low)*1.1/4
+
+    #         r1 = close + (high - low)*1.1/12
+    #         r2 = close + (high - low)*1.1/6
+    #         r3 = close + (high - low)*1.1/4
+
+    #     elif method == PivotPointIndicator.METHOD_FIBONACCI:
+    #         pivot = close
+
+    #         s1 = close - (high - low)*0.382
+    #         s2 = close - (high - low)*0.618
+    #         s3 = close - (high - low)*0.764
+
+    #         r1 = close + (high - low)*0.382
+    #         r2 = close + (high - low)*0.618
+    #         r3 = close + (high - low)*0.764
+
+    #     else:  # classical or woodie
+    #         if method == PivotPointIndicator.METHOD_CLASSICAL:
+    #             pivot = (high + low + close) / 3.0
+    #         elif method == PivotPointIndicator.METHOD_CLASSICAL_OHLC:
+    #             pivot = (high + low + close + _open) / 4.0
+    #         elif method == PivotPointIndicator.METHOD_CLASSICAL_OHL:
+    #             pivot = (high + low + _open) / 3.0
+    #         elif method == PivotPointIndicator.METHOD_WOODIE:
+    #             pivot = (high + low + 2.0 * close) / 4.0
+
+    #         s1 = (2.0 * pivot) - high
+    #         s2 = pivot - (high - low)
+    #         s3 = low - 2.0 * (high - pivot)
+            
+    #         r1 = (2.0 * pivot) - low
+    #         r2 = pivot + (high - low)
+    #         r3 = high + 2.0 * (pivot - low)
+
+    #     return pivot, (s1, s2, s3), (r1, r2, r3)
+
+    def _pivotpoint3(self, _open, high, low, close):
         """ 
-        Retrouve les niveaux plus haut et plus bas et retrouve les niveaux fibo.
+        Compute pivot, 3 supports and 3 resistances
         """
-        if method == PivotPointIndicator.METHOD_CAMARILLA:
-            pivot = close
+        size = len(close)
 
-            s1 = close - (high - low)*1.1/12
-            s2 = close - (high - low)*1.1/6
-            s3 = close - (high - low)*1.1/4
+        if len(self._pivot) != size:
+            self._pivot = np.zeros(size)
 
-            r1 = close + (high - low)*1.1/12
-            r2 = close + (high - low)*1.1/6
-            r3 = close + (high - low)*1.1/4
+            for i in range(0, 3):
+                self._supports[i] = np.zeros(size)
+                self._resistances[i] = np.zeros(size)
 
-        elif method == PivotPointIndicator.METHOD_FIBONACCI:
-            pivot = close
+        if self._method == PivotPointIndicator.METHOD_CAMARILLA:
+            for i in range(0, size-1):
+                self._pivot[i+1] = close[i]
 
-            s1 = close - (high - low)*0.382
-            s2 = close - (high - low)*0.618
-            s3 = close - (high - low)*0.764
+                self._supports[0][i+1] = close[i] - (high[i] - low[i])*1.1/12
+                self._supports[1][i+1] = close[i] - (high[i] - low[i])*1.1/6
+                self._supports[2][i+1] = close[i] - (high[i] - low[i])*1.1/4
 
-            r1 = close + (high - low)*0.382
-            r2 = close + (high - low)*0.618
-            r3 = close + (high - low)*0.764
+                self._resistances[0][i+1] = close[i] + (high[i] - low[i])*1.1/12
+                self._resistances[1][i+1] = close[i] + (high[i] - low[i])*1.1/6
+                self._resistances[2][i+1] = close[i] + (high[i] - low[i])*1.1/4
+
+        elif self._method == PivotPointIndicator.METHOD_FIBONACCI:
+            for i in range(0, size-1):
+                self._pivot[i+1] = close[i]
+
+                self._supports[0][i+1] = close[i] - (high[i] - low[i])*0.382
+                self._supports[1][i+1] = close[i] - (high[i] - low[i])*0.618
+                self._supports[2][i+1] = close[i] - (high[i] - low[i])*0.764
+
+                self._resistances[0][i+1] = close[i] + (high[i] - low[i])*0.382
+                self._resistances[1][i+1] = close[i] + (high[i] - low[i])*0.618
+                self._resistances[2][i+1] = close[i] + (high[i] - low[i])*0.764
 
         else:  # classical or woodie
-            if method == PivotPointIndicator.METHOD_CLASSICAL:
-                pivot = (high + low + close) / 3.0
-            elif method == PivotPointIndicator.METHOD_CLASSICAL_OHLC:
-                pivot = (high + low + close + _open) / 4.0
-            elif method == PivotPointIndicator.METHOD_CLASSICAL_OHL:
-                pivot = (high + low + _open) / 3.0
-            elif method == PivotPointIndicator.METHOD_WOODIE:
-                pivot = (high + low + 2.0 * close) / 4.0
+            if self._method == PivotPointIndicator.METHOD_CLASSICAL:
+                for i in range(0, size-1):
+                    self._pivot[i+1] = (high[i] + low[i] + close[i]) / 3.0
 
-            s1 = (2.0 * pivot) - high
-            s2 = pivot - (high - low)
-            s3 = low - 2.0 * (high - pivot)
-            
-            r1 = (2.0 * pivot) - low
-            r2 = pivot + (high - low)
-            r3 = high + 2.0 * (pivot - low)
+                    self._supports[0][i+1] = (2.0 * self._pivot[i+1]) - high[i]
+                    self._supports[1][i+1] = self._pivot[i+1] - (high[i] - low[i])
+                    self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
 
-        return pivot, (s1, s2, s3), (r1, r2, r3)
+                    self._resistances[0][i+1] = (2.0 * self._pivot[i+1]) - low[i]
+                    self._resistances[1][i+1] = self._pivot[i+1] + (high[i] - low[i])
+                    self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
 
-    @staticmethod
-    def PivotPoint_sf(method, _open, high, low, close, step=1, filtering=False):
-        """ 
-        Retrouve les niveaux plus haut et plus bas et retrouve les niveaux fibo.
-        """
-        lsub_data = down_sample(low, step) if filtering else np.array(low[::step])
-        hsub_data = down_sample(high, step) if filtering else np.array(high[::step])
-        csub_data = down_sample(close, step) if filtering else np.array(close[::step])
+            elif self._method == PivotPointIndicator.METHOD_CLASSICAL_OHLC:
+                for i in range(0, size-1):
+                    self._pivot[i+1] = (high[i] + low[i] + close[i] + _open[i]) / 4.0
 
-        if method == PivotPointIndicator.METHOD_CLASSICAL_OHLC or method == PivotPointIndicator.METHOD_CLASSICAL_HLO:
-            osub_data = down_sample(_open, step) if filtering else np.array(_open[::step])
+                    self._supports[0][i+1] = (2.0 * self._pivot[i+1]) - high[i]
+                    self._supports[1][i+1] = self._pivot[i+1] - (high[i] - low[i])
+                    self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
 
-        if method == PivotPointIndicator.METHOD_CAMARILLA:
-            pivot = csub_data
+                    self._resistances[0][i+1] = (2.0 * self._pivot[i+1]) - low[i]
+                    self._resistances[1][i+1] = self._pivot[i+1] + (high[i] - low[i])
+                    self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
 
-            s1 = csub_data - (hsub_data - lsub_data)*1.1/12
-            s2 = csub_data - (hsub_data - lsub_data)*1.1/6
-            s3 = csub_data - (hsub_data - lsub_data)*1.1/4
+            elif self._method == PivotPointIndicator.METHOD_CLASSICAL_OHL:
+                for i in range(0, size-1):
+                    self._pivot[i+1] = (high[i] + low[i] + _open[i]) / 3.0
 
-            r1 = csub_data + (hsub_data - lsub_data)*1.1/12
-            r2 = csub_data + (hsub_data - lsub_data)*1.1/6
-            r3 = csub_data + (hsub_data - lsub_data)*1.1/4
+                    self._supports[0][i+1] = (2.0 * self._pivot[i+1]) - high[i]
+                    self._supports[1][i+1] = self._pivot[i+1] - (high[i] - low[i])
+                    self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
 
-        elif method == PivotPointIndicator.METHOD_FIBONACCI:
-            pivot = csub_data
+                    self._resistances[0][i+1] = (2.0 * self._pivot[i+1]) - low[i]
+                    self._resistances[1][i+1] = self._pivot[i+1] + (high[i] - low[i])
+                    self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
 
-            s1 = csub_data - (hsub_data - lsub_data)*0.382
-            s2 = csub_data - (hsub_data - lsub_data)*0.618
-            s3 = csub_data - (hsub_data - lsub_data)*0.764
+            elif self._method == PivotPointIndicator.METHOD_WOODIE:
+                for i in range(0, size-1):
+                    self._pivot[i+1] = (high[i] + low[i] + 2.0 * close[i]) / 4.0
 
-            r1 = csub_data + (hsub_data - lsub_data)*0.382
-            r2 = csub_data + (hsub_data - lsub_data)*0.618
-            r3 = csub_data + (hsub_data - lsub_data)*0.764
+                    self._supports[0][i+1] = (2.0 * self._pivot[i+1]) - high[i]
+                    self._supports[1][i+1] = self._pivot[i+1] - (high[i] - low[i])
+                    self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
 
-        else:  # classical or woodie
-            if method == PivotPointIndicator.METHOD_CLASSICAL:
-                pivot = (hsub_data + lsub_data + csub_data) / 3.0
-            elif method == PivotPointIndicator.METHOD_CLASSICAL_OHLC:
-                pivot = (hsub_data + lsub_data + csub_data + osub_data) / 4.0
-            elif method == PivotPointIndicator.METHOD_CLASSICAL_OHL:
-                pivot = (hsub_data + lsub_data + osub_data) / 3.0
-            elif method == PivotPointIndicator.METHOD_WOODIE:
-                pivot = (hsub_data + lsub_data + 2.0 * csub_data) / 4.0
-
-            s1 = (2.0 * pivot) - hsub_data
-            s2 = pivot - (hsub_data - lsub_data)
-            s3 = lsub_data - 2.0 * (hsub_data - pivot)
-            
-            r1 = (2.0 * pivot) - lsub_data
-            r2 = pivot + (hsub_data - lsub_data)
-            r3 = hsub_data + 2.0 * (pivot - lsub_data)
-
-        return pivot, (s1, s2, s3), (r1, r2, r3)
+                    self._resistances[0][i+1] = (2.0 * self._pivot[i+1]) - low[i]
+                    self._resistances[1][i+1] = self._pivot[i+1] + (high[i] - low[i])
+                    self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
 
     def compute(self, timestamp, _open, high, low, close):
-        self._prev_supports = copy.copy(self._last_supports)
-        self._prev_resistances = copy.copy(self._last_resistances)
-        self._prev_pivot = self._last_pivot
-
-        self._pivot, self._supports, self._resistances = PivotPointIndicator.PivotPoint(self._method, _open, high, low, close)  # , self._step, self._filtering)
+        self._pivotpoint3(_open, high, low, close)
 
         self._last_supports = (self._supports[0][-1], self._supports[1][-1], self._supports[2][-1])
         self._last_resistances = (self._resistances[0][-1], self._resistances[1][-1], self._resistances[2][-1])

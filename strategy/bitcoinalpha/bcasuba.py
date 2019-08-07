@@ -338,9 +338,6 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
             elif self.ema.last < self.sma.last:
                 ema_sma_height = -1
 
-        if self.pivotpoint:
-            self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
-
         if self.bollingerbands:
             self.bollingerbands.compute(last_timestamp, prices)
 

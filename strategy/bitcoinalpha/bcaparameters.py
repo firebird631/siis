@@ -15,9 +15,9 @@ DEFAULT_PARAMS = {
     'sltp-timeframe': '1h',
     'ref-timeframe': '1d', # '4h',
     'need-update': True,      # only compute when update is waited
-    'min-vol24h': 100,        # 100 BTC per 24h
-    'min-price': 0.00000069,  # or 69 sats
-    'region-allow': False,     # can trade if no defined region
+    'min-vol24h': 1000,       # 1000 BTC per 24h
+    'min-price': 0.00000500,  # or 500 sats
+    'region-allow': True,     # can trade if no defined regions
     'timeframes': {
         'daily': {
             'timeframe': '1d',
@@ -73,7 +73,7 @@ DEFAULT_PARAMS = {
                 'bollingerbands': ('bollingerbands', 20,),
                 'triangle': None,
                 'pivotpoint': ('pivotpoint', 0,),
-                'atr': ('atr', 21, 3.5),
+                'atr': ('atr', 21, 2.5),
                 'tomdemark': ('tomdemark', 9),
             },
             'constants': {
@@ -103,7 +103,7 @@ DEFAULT_PARAMS = {
                 'triangle': None,
                 'pivotpoint': ('pivotpoint', 0,),
                 'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 3.0),
+                'atr': ('atr', 14, 2.5),
             },
             'constants': {
                 'rsi_low': 0.3,

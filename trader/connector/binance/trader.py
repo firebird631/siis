@@ -205,6 +205,7 @@ class BinanceTrader(Trader):
         elif order.order_type == Order.ORDER_STOP:
             order_type = Client.ORDER_TYPE_STOP_LOSS
         else:
+            # @todo others
             order_type = Client.ORDER_TYPE_MARKET
 
         self.lock()
@@ -224,7 +225,7 @@ class BinanceTrader(Trader):
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
         # quantity = market.format_quantity(market.adjust_quantity(order.quantity))
         quantity = market.adjust_quantity(order.quantity)
-        notional = quantity * (order.order_price or market.ofr)
+        notional = quantity * (order.price or market.ofr)
 
         if notional < market.min_notional:
             # reject if lesser than min notinal
@@ -243,17 +244,19 @@ class BinanceTrader(Trader):
 
         # limit order need timeInForce
         if order.order_type == Order.ORDER_LIMIT:
-            data['price'] = market.format_price(order.order_price)
+            data['price'] = market.format_price(order.price)
             data['timeInForce'] = time_in_force
         elif order.order_type == Order.ORDER_STOP:
-            data['stopPrice'] = market.format_price(order.order_price)
+            data['stopPrice'] = market.format_price(order.stop_price)
         elif order.order_type == Order.ORDER_STOP_LIMIT:
-            data['stopPrice'] = market.format_price(order.order_price)
+            data['price'] = market.format_price(order.price)
+            data['stopPrice'] = market.format_price(order.stop_price)
             data['timeInForce'] = time_in_force
         elif order.order_type == Order.ORDER_TAKE_PROFIT:
-            data['stopPrice'] = market.format_price(order.order_price)
+            data['stopPrice'] = market.format_price(order.stop_price)
         elif order.order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
-            data['stopPrice'] = market.format_price(order.order_price)
+            data['price'] = market.format_price(order.price)
+            data['stopPrice'] = market.format_price(order.stop_price)
             data['timeInForce'] = time_in_force
 
         data['newClientOrderId'] = order.ref_order_id
@@ -870,17 +873,32 @@ class BinanceTrader(Trader):
 
                 if data['type'] == 'LIMIT':
                     order.order_type = Order.ORDER_LIMIT
+                    order.price = data['price']
+
+                elif data['type'] == 'LIMIT_MAKER':
+                    order.order_type = Order.ORDER_LIMIT # _MAKER
+                    order.price = data['price']
+
                 elif data['type'] == 'MARKET':
                     order.order_type = Order.ORDER_MARKET
+
+                elif data['type'] == 'STOP_LOSS':
+                    order.order_type = Order.ORDER_STOP
+                    order.stop_price = data['stopPrice']
+
                 elif data['type'] == 'STOP_LOSS_LIMIT':
                     order.order_type = Order.ORDER_STOP_LIMIT
-                    order.close_only = True
-                elif data['type'] == 'TAKE_PROFIT_LIMIT':
-                    order.order_type = Order.ORDER_LIMIT
-                    order.close_only = True
+                    order.price = data['price']
+                    order.stop_price = data['stopPrice']
 
-                order.order_price = data['price']
-                order.stop_loss = data['stopPrice']
+                elif data['type'] == 'TAKE_PROFIT':
+                    order.order_type = Order.ORDER_TAKE_PROFIT
+                    order.stop_price = data['stopPrice']
+
+                elif data['type'] == 'TAKE_PROFIT_LIMIT':
+                    order.order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    order.price = data['price']
+                    order.stop_price = data['stopPrice']
 
                 order.created_time = data['time']
                 order.transact_time = data['updateTime']
@@ -1092,8 +1110,9 @@ class BinanceTrader(Trader):
             order.time_in_force = data['time-in-force']
 
             order.quantity = data['quantity']
-            order.order_price = data['order-price']
-            order.stop_loss = data['stop-loss']
+
+            order.price = data.get('price')
+            order.stop_price = data.get('stop-price')
 
             self._orders[data['id']] = order
 

@@ -28,7 +28,8 @@ from .ohlcstorage import OhlcStorage, OhlcStreamer
 from .database import Database
 
 import logging
-logger = logging.getLogger('siis.database')
+logger = logging.getLogger('siis.database.mysql')
+error_logger = logging.getLogger('siis.error.database.mysql')
 
 
 class MySql(Database):
@@ -425,8 +426,8 @@ class MySql(Database):
 
                 query = ' '.join((
                     "INSERT INTO user_trade(broker_id, account_id, market_id, appliance_id, trade_id, trade_type, data, operations) VALUES",
-                    ','.join(["('%s', '%s', '%s', %s, %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], ut[5],
-                        json.dumps(ut[6]).replace("'", "\'"), json.dumps(ut[7]).replace("'", "\'")) for ut in uti]),
+                    ','.join(["('%s', '%s', '%s', '%s', %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], ut[5],
+                        json.dumps(ut[6]).replace("'", "''"), json.dumps(ut[7]).replace("'", "''")) for ut in uti]),
                     "ON DUPLICATE KEY UPDATE data = VALUES(data), operations = VALUES(operations)"
                 ))
 
@@ -492,7 +493,7 @@ class MySql(Database):
                 query = ' '.join((
                     "INSERT INTO user_trader(broker_id, account_id, market_id, appliance_id, activity, data, regions) VALUES",
                     ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
-                            json.dumps(ut[5]).replace("'", "\'"), json.dumps(ut[6]).replace("'", "\'")) for ut in uti]),
+                            json.dumps(ut[5]).replace("'", "''"), json.dumps(ut[6]).replace("'", "''")) for ut in uti]),
                     "ON DUPLICATE KEY UPDATE activity = VALUES(activity), data = VALUES(data), regions = VALUES(regions)"
                 ))
 

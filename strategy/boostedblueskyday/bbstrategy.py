@@ -359,7 +359,7 @@ class BoostedBlueSkyDayStrategy(Strategy):
             if trader:
                 order = Order(trader, instrument.market_id)
                 order.direction = direction
-                order.order_price = last_prices[-1]
+                order.price = last_prices[-1]
 
                 # depends of the instrument and the account, and not always necessary, but always in paper trader
                 order.leverage = instrument.leverage

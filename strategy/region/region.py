@@ -199,11 +199,10 @@ class Region(object):
         Override this method and add specific parameters for dumps parameters for persistance model.
         """
         return {
-            'version': self.version,
+            'version': self.version(),
             'region': self.region(),
             'id': self._id,
             'created': self._created,
-            'type': self.name(),
             'stage': self._stage,  #  "entry" if self._stage == Region.STAGE_ENTRY else "exit" if self._stage == Region.STAGE_EXIT else "both",
             'direction': self._dir,  # "long" if self._dir == Region.LONG else "short" if self._dir == Region.SHORT else "both",
             'timeframe': self._timeframe,  # timeframe_to_str(self._timeframe),

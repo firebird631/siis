@@ -54,8 +54,8 @@ class Order(object):
 
         self._direction = 0
         self._order_type = Order.ORDER_MARKET
-        self._order_price = None    # for limit, stop-limit, take-profit-limit
-        self._trigger_price = None  # for trigger market/limit/stop
+        self._price = None       # limit price
+        self._stop_price = None  # stop price (for stop, stop limit, take profit, take profit limit orders types)
 
         self._stop_mode = Order.STOP_NONE
         self._stop_loss = None
@@ -124,12 +124,12 @@ class Order(object):
         return self._stop_loss
     
     @property
-    def order_price(self):
-        return self._order_price
+    def price(self):
+        return self._price
 
     @property
-    def trigger_price(self):
-        return self._trigger_price
+    def stop_price(self):
+        return self._stop_price
 
     @property
     def trailing_stop(self):
@@ -207,13 +207,13 @@ class Order(object):
     def stop_loss(self, stop_loss):
         self._stop_loss = stop_loss
 
-    @order_price.setter
-    def order_price(self, order_price):
-        self._order_price = order_price
+    @price.setter
+    def price(self, price):
+        self._price = price
 
-    @trigger_price.setter
-    def trigger_price(self, trigger_price):
-        self._trigger_price = trigger_price
+    @stop_price.setter
+    def stop_price(self, stop_price):
+        self._stop_price = stop_price
 
     @leverage.setter
     def leverage(self, leverage):

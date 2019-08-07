@@ -29,7 +29,8 @@ class StrategyTrade(object):
     """
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
-        'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', 'ptp', '_stats'
+                'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', 'ptp', '_stats', 'last_tp_ot', 'last_sl_ot', \
+                'exit_trades'
 
     VERSION = "1.0.0"
 
@@ -83,6 +84,11 @@ class StrategyTrade(object):
         self.pl = 0.0    # once closed profit/loss in percent (valid once partially or fully closed)
 
         self.ptp = 1.0   # partial take-profit rate (only during trade alive)
+
+        self.last_tp_ot = [0, 0]
+        self.last_sl_ot = [0, 0]
+
+        self.exit_trades = {}  # contain each executed exit trades {<orderId< : (<qty<, <price>)}
 
         self._stats = {
             'best-price': 0.0,
@@ -189,6 +195,16 @@ class StrategyTrade(object):
     @partial_tp.setter
     def partial_tp(self, ptp):
         self.ptp = ptp
+
+    @property
+    def last_take_profit(self):
+        """Last take-profit order creation/modification timestamp"""
+        return self.last_tp_ot
+
+    @property
+    def last_stop_loss(self):
+        """Last stop-loss order creation/modification timestamp"""
+        return self.last_sl_ot
 
     #
     # processing
@@ -483,9 +499,9 @@ class StrategyTrade(object):
         @return dict with at least as defined in this method.
         """
         return {
-            'version': self.version,
+            'version': self.version(),
             'id': self.id,
-            'type': self.trade_type_to_str(),
+            'trade': self._trade_type,  #  self.trade_type_to_str(),
             'entry-state': self._entry_state,  #  self.trade_state_to_str(self._entry_state),
             'exit-state': self._exit_state,  # self.trade_state_to_str(self._exit_state),
             'timeframe': self._timeframe,  # self.timeframe_to_str(),
@@ -501,6 +517,9 @@ class StrategyTrade(object):
             'filled-entry-qty': self.e,
             'filled-exit-qty': self.x,
             'profit-loss-rate': self.pl,
+            'exit-trades': self.exit_trades,
+            'last-take-profit-order-time': self.last_tp_ot,
+            'last-stop-loss-order-time': self.last_sl_ot,
             'statistics': self._stats
         }
 
@@ -510,7 +529,7 @@ class StrategyTrade(object):
         @return True if success.
         """
         self.id = data.get('id', -1)
-        self._trade_type = data.get('type', 0)  # self.trade_type_from_str(data.get('type', ''))
+        self._trade_type = data.get('trade', 0)  # self.trade_type_from_str(data.get('type', ''))
         self._entry_state = data.get('entry-state', 0)  # self.trade_state_from_str(data.get('entry-state', ''))
         self._exit_state = data.get('exit-state', 0)  # self.trade_state_from_str(data.get('exit-state', ''))
         self._timeframe =  data.get('timeframe', 0)  # timeframe_from_str(data.get('timeframe', '4h'))
@@ -535,6 +554,11 @@ class StrategyTrade(object):
         self.x = data.get('filled-exit-qty', 0.0)
 
         self.pl = data.get('profit-loss-rate', 0.0)
+
+        self.last_tp_ot = data.get('last-take-profit-order-time')
+        self.last_sl_ot = data.get('last-stop-loss-order-time')
+
+        self.exit_trades = data.get('exit-trades', {})
 
         self._stats = data.get('statistics', {
             'best-price': 0.0,

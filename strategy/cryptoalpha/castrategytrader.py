@@ -171,41 +171,38 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # consecutives loosing trade, stop the curse for a moment
             #
 
-            if self._wait_bless == 1:
+            # if self._wait_bless == 1:
+            #     continue
+
+            # if self._wait_bless == 0 and self._stats['cont-loss'] > self.max_trades:
+            #     self._wait_bless = 1
+            #     self._wait_timeout = timestamp + 12*60*60  # 12h self-ban
+            #     Terminal.inst().message("Curse !!! Wait a moment, or a favorable trend %s !" % self.instrument.market_id, view='debug')
+            #     continue
+
+            # if self._wait_bless == -1:
+            #    self._wait_bless = 0
+
+            atr_stop = self.timeframes[self.sltp_timeframe].atr.stop_loss(entry.dir)
+            if atr_stop < self.instrument.open_exec_price(entry.dir):
+                entry.sl = atr_stop
+
+            # and a target
+            take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]
+
+            gain = (take_profit - entry.p) / entry.p
+            loss = (entry.p - entry.sl) / entry.p
+
+            if loss != 0 and (gain / loss < 0.5):  # 0.75
+                Terminal.inst().message("%s %s %s %s" % (entry.p, entry.sl, take_profit, (gain/loss)), view="debug")
                 continue
 
-            if self._wait_bless == 0 and self._stats['cont-loss'] > self.max_trades:
-                self._wait_bless = 1
-                self._wait_timeout = timestamp + 12*60*60  # 12h self-ban
-                Terminal.inst().message("Curse !!! Wait a moment, or a favorable trend %s !" % self.instrument.market_id, view='debug')
+            # not enought potential profit
+            if (take_profit - entry.p) / entry.p < 0.005:  # 0.5% min
                 continue
 
-            if self._wait_bless == -1:
-                self._wait_bless = 0
-
-            # TDST does not give us a stop, ok lets find one using ATR
-            if 1: # not entry.sl:
-                sl = self.timeframes[self.sltp_timeframe].atr.stop_loss(entry.dir)
-                if sl < self.instrument.open_exec_price(entry.dir):
-                    entry.sl = sl
-
-            # defines a target
-            if not entry.tp:
-                tp = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2] or self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[2]  #* 1.05
-
-                gain = (tp - entry.p) / entry.p
-                loss = (entry.p - entry.sl) / entry.p
-
-                if loss != 0 and (gain / loss < 0.5):  # 0.75
-                    Terminal.inst().message("%s %s %s %s" % (entry.p, entry.sl, tp, (gain/loss)), view="debug")
-                    continue
-
-                # not enought potential profit
-                if (tp - entry.p) / entry.p < 0.005:  # 0.5% min
-                    continue
-
-                entry.tp = tp
-                entry.ptp = 1.0
+            entry.tp = take_profit
+            entry.ptp = 1.0
 
             if (entry.price - entry.sl) / entry.price < -0.035:
                 # max loss at x%
@@ -243,6 +240,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                 for signal in exits:
                     parent_signal_tf = self.parent_timeframe(signal.timeframe)
+
+                    # @todo how to managed exit region ?
 
                     # receive an exit signal of the timeframe of the trade
                     if signal.timeframe == trade.timeframe:
@@ -289,64 +288,89 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 # stop-loss update
                 #
 
+                update_tp = not trade.tp  # always need a target, even if user trade
+                update_sl = not trade.sl  # and a stop
+
+                # current sl/tp
                 stop_loss = trade.sl
+                take_profit = trade.tp
 
                 # ATR stop-loss
                 atr_stop = self.timeframes[self.sltp_timeframe].atr.stop_loss(trade.direction)
-                # if (not trade.sl or close_exec_price > trade.entry_price) and atr_stop > stop_loss:
                 if atr_stop > stop_loss:
                     stop_loss = atr_stop
 
-                if 0:#not trade.sl:
-                    trade.sl = stop_loss
-
                 if self.timeframes[self.ref_timeframe].pivotpoint.last_pivot > 0.0:
-                    update_tp = False
-
                     if close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]:
-                        update_tp = True
+                        if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[2]):
+                            update_tp = True
+
                         if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
-                            trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
+                            update_sl = True
+                            # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
 
                     elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
-                        update_tp = True
+                        if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[1]):
+                            update_tp = True
+
                         if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
-                           trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
+                            update_sl = True
+                            # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
 
                     elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
-                        update_tp = True
+                        if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[0]):
+                            update_tp = True
+
                         if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
-                            trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_pivot
+                            update_sl = True
+                            # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_pivot
 
                     elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
-                        update_tp = True
+                        if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.pivot):
+                            update_tp = True
+
                         if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
-                            trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]
+                            update_sl = True
+                            # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]
 
                     elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
-                        update_tp = True
+                        if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[0]):
+                            update_tp = True
+
                         if trade.sl < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
-                           trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]
+                            update_sl = True
+                            # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]
 
                     elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
-                        update_tp = True
+                        if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[1]):
+                            update_tp = True
+
                         if trade.sl < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
-                            trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
+                            update_sl = True
+                            # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
 
                     elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
-                        update_tp = True
+                        if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[2]):
+                            update_tp = True
+
                         if close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
-                            trade.sl = stop_loss  # self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
+                            update_sl = True
+                            # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
 
                     #
                     # target update
                     #
 
-                    tp = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.partial_tp)]  # * 1.05
+                    take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.partial_tp)]
 
-                    # enought potential profit (0.5% min target)
-                    if (tp - close_exec_price) / close_exec_price > 0.005 and update_tp: # and tp > trade.tp:
-                       trade.tp = tp
+                    # if update_tp and trade.best_price() > take_profit and close_exec_price > trade.entry_price:
+                    #     # best price reached this take-profit, close as soon as possible
+                    #     Terminal.inst().info("%s bestPrice>TP close" % timestamp, view="debug")
+                    #     trade.tp = close_exec_price
+
+                    # higher TP need at least 5% more
+                    if update_tp and (take_profit - close_exec_price) / close_exec_price < 0.005:
+                       update_tp = False
 
                     #gain = (trade.tp - close_exec_price) / close_exec_price
                     #loss = (close_exec_price - trade.sl) / close_exec_price
@@ -356,6 +380,20 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                     # reevaluate the R:R
                     # @todo
+
+                sl_treshold = 0.005  # 0.5%
+                tp_treshold = 0.001  # 0.5%
+
+                if update_sl and trade.sl != stop_loss:
+                    delta_sl = (abs(stop_loss - trade.sl) / trade.sl) if trade.sl else sl_treshold
+                    if delta_sl > sl_treshold:
+                        trade.sl = stop_loss
+                        Terminal.inst().info("%s updateSL d=%s" % (timestamp, delta_sl), view="debug")
+
+                if update_tp and trade.tp != take_profit:
+                    delta_tp = (abs(take_profit - trade.tp) / trade.tp) if trade.tp else tp_treshold
+                    if delta_tp > tp_treshold:
+                        Terminal.inst().info("%s updateTP d=%s" % (timestamp, delta_tp), view="debug")
 
                 #
                 # exit trade if an exit signal retained

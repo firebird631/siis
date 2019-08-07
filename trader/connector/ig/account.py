@@ -48,7 +48,14 @@ class IGAccount(Account):
 
             self._name = account.get('accountName')
             self._username = self._email = connector.username
-            self._account_type = account.get('accountType')  # CFD, PHYSICAL, SPREADBET
+
+            account_type = account.get('accountType', '')
+            if account_type == "CFD":
+                self._account_type = IGAccount.TYPE_MARGIN
+            elif account_type == "PHYSICAL":
+                self._account_type = IGAccount.TYPE_ASSET
+            elif account_type == "SPREADBET":
+                self._account_type = IGAccount.TYPE_SPREADBET
 
             self._currency = account.get('currency')
 
