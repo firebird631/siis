@@ -1,14 +1,12 @@
 SIIS Strategy/Scalper Indicator Information System
 ==================================================
 
-**The redaction of this document is in progress.**
-
 Abstract
 --------
 
 SiiS is a autotrading bot for forex, indices and crypto currencies markets.
-It also support semi-automated trading in way to manage your entry and exits
-with more possibilities than an exchanges allow.
+It also support semi-automated trading in way to manage your entries and exits
+with more possibilities than exchanges allows.
 
 This version is more a functionnal prototype than a final professional trading tool.
 It is developped in Python3, using TA-lib, numpy and matplotlib for the basic charting client.
@@ -25,42 +23,49 @@ Features
     * Bitmex
     * IG
     * 1broker (obsolete)
+    * Help for others are welcome :-)
 * Some others data-source in way to gets prices/volumes data
    * HistData (only to import manually downloaded files)
    * AlphaVantage (WIP)
    * Tiingo (WIP)
-* Fetching OHLC and ticks history data in PostgreSQL or MySQL DB
-* Multiple instance can run at the same time
-* Many strategies and markets can run on a same instance (test with 100+ markets on a single instance)
+* Fetching OHLC and ticks history data in a PostgreSQL or MySQL database
+* Multiples instances can run at the same time
+* Many strategies and markets can run on a same instance (tested with 100+ markets on a single instance)
 * Connection with API key (open-source you can check than yours API keys are safe with SiiS)
 * Configuration of multiple accounts identities
 * Configuration of multiple profiles and appliances (an appliance is a context of a strategy)
-    * Combine one or more appliance to a profiles
+    * Combine one or more appliances per profile
     * Configure multiple appliances and profiles with different options
 * Backtesting
-* Paper-mode (simulate a broker for spot and margin)
+* Paper-mode (simulate a broker for spot and margin trading)
 * Live-mode trading on your broker account
-* Interactive command lien interface
-    * Backtesting with a slow down or real time factor allowing you to replay an history
+* Interactive command line interface
+    * Backtesting with a slow down or real-time factor allowing you to replay an history
       and doing manual and semi-automated trading
 * Try as possible to take-care of the spread of the market and the commissions
 * Compute the average unit price of owned assets on Binance
 * Display account detail and assets quantities
 * Display tickers and markets informations
 * Display per strategy current (active or pending) trades, trades history and performance
-* Manage multiple timeframe
-* Common indicators are supported (RSI, SMA, BBANDS, ATR...)
-* Pure signal strategies are possibles in way to only generating some signal
+* Manage multiple timeframes
+* Common indicators are supported (RSI, SMA, BBANDS, ATR, STOCH, ask if you want more...)
+* Pure signal strategies are possibles in way to only generating some signals/alerts
 * Desktop notification on Linux via dbus
 * Audible notification on Linux via aplay
 * Basic Discord WebHook notifier (have to be redone)
-* 3 initials strategies (1 for bitcoin/etherum, 1 for forex, 1 for majors altcoins)
-* WebHook of TradingView strategies with an example of a such strategy (need an extra JS plugin on the browser)
-* SocialCopy capacities (deprecated for now, was done initially on 1broker, some works have to be redone)
-* Manual per trade directive (more directive will be coming)
-* Manual regions of interest per market strategy to help the bot filtering some signals (WIP)
-    * Range region
-    * Trend channel region
+* 3 initials strategies (1 for bitcoin/ethereum, 1 for forex, 1 for majors altcoins)
+* WebHook of TradingView strategies with an example of a such strategy (uses of TamperMonkey with a JS script, watch the strategy trade last)
+* Social copy capacities (deprecated for now, was done initially on 1broker, some works have to be redone)
+* Manual per trade directives
+    * Add many dynamic stop-loss (trigger level + stop price), useful to schedule how to follow the price
+    * Many exits conditions to be implemented
+* Manual regions of interest per market strategy to help the bot filtering some signals
+    * Define a region for trade entry|exit|both in long|short|both direction
+    * The strategy then can filters signal to only be processed in your regions of interest
+    * Actually two type of regions :
+        * Range region : parallels horizontals low and high prices
+        * Trend channel region : oblics symetrics or asymmetrics low and high trends
+    * Auto-expiration after a predefined delay, or after than a trigger price is reached
 
 ### Donation ###
 
@@ -71,7 +76,7 @@ Features
 Installation
 ------------
 
-Need Python3.6 or Python3.7 on your system.
+Need Python 3.6 or Python 3.7 on your system.
 Tested on Debian, Ubuntu and Fedora.
 
 ### Create a PIP virtual env ###
@@ -81,7 +86,7 @@ python -m venv siis.venv
 source siis.venv/bin/activate
 ```
 
-You need to active it each time you open your terminal before running SiiS.
+You need to activate it each time you open your terminal before running SiiS.
 
 From deps/ directory, first install TA-Lib :
 
@@ -114,11 +119,10 @@ export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 ### Database ###
 
-Prefers the PostgreSQL database server. For now SiiS does not bulk data insert, the performance
-with PostgreSQL are OK, but lesser on MySQL.
+Prefers the PostgreSQL database server for performance and because I have mostly tested with it.
 
-The sql/ directory contains the SQL script for the two databases and the first line of comment
-in these files describe a possible way to install them.
+The sql/ directory contains the initial SQL script for creations of the tables.
+The first line of comment in these files describe a possible way to install them.
 
 
 Configuration
@@ -132,7 +136,7 @@ First running will try to create a data structure on your local user.
 The directory will contains 4 sub-directories:
 
 * config/ contains important configurations files (described belows)
-* log/ contains siis.log the main log and evantually some others logs files (client.log...)
+* log/ contains siis.log the main log and eventually some others logs files (client.log, error.siis.log, exec.siis.log...)
 * markets/ contains sub-directories for each configured brokers (detailes belows)
 * reports/ contains the reports of the backtesting, per datetime, broker name, 3 files per reports (data.py, report.log, trades.log)
 
@@ -140,7 +144,7 @@ The directory will contains 4 sub-directories:
 
 #### <.siis/config/>config.py ####
 
-You have an initial file in config/config.py. Do not modifiy the original.
+You have an initial file in config/config.py. Do not modify the original.
 
 This file comes from the beginning of the project, would need some reorganization, but it looks like :
 
@@ -160,9 +164,9 @@ This file comes from the beginning of the project, would need some reorganizatio
             * either the full name of the market
             * either a wildchar prefixed value. For example *BTC to filter any BTC quoted paires
             * either a ! prefixed value (meaning not) for avoiding this particular market
-            * you could have ['*BTC', '!BCHABCBTC'] for exemple to watching any BTC quote paires excpted the BCHABCBTC.
+            * you could have ['*BTC', '!BCHABCBTC'] for exemple to watching any BTC quote paires excepted the BCHABCBTC.
     * there is some more specific options on the tradingview webhock server (host and port of your listening server).
-* INDICATORS Like for fetcher you might not have to modifiy this part or if you create your own indicators.
+* INDICATORS Like for fetcher you might not have to modify this part or if you create your own indicators.
 * TRADEOPS Again likes indictors, except if you create your own trade operations.
 * STRATEGIES Contains the default built-ins strategies, you'll need to add yours here.
 * TRADERS Must contains 1 entry per broker to have the capacity to enable the trading feature for the live-mode
@@ -259,7 +263,7 @@ Each broker have its own usage name, creating if directory. Then you have 1 sub-
 The market is identified by the unique broker market name.
 
 Then you will have a sub-directory T/ meaning tick or trade. All filed then found defines data at the tick
-or trade level. For binance or bitmex this is at aggregate trade level, for IG its ticks.
+or trade level. For Binance this is a aggregate trade level, BitMex at trade, IG at tick.
 
 There is one file per month, there is a binary and a tabular version of the file at this time. But maybe later
 the tabular version will be disabled and not stored by default.
@@ -275,6 +279,8 @@ the related broker identifier, and suffixed by :
 * data.py some Python data array (possibles evolution of this file)
 * report.log this is a summary
 * trades.log this a tabular file containing each trades with profit/loss and balance
+
+These files are subjects to evolves.
 
 
 Running
@@ -307,21 +313,21 @@ python siis.py <identity> [--help, --options...]
 * --fetch Process the data fetcher.
 * --binarize Process to text file to binary conversion for a market (text version of data could be removed on the futur).
 
-You need to define the name of the identity to used. This is related to the name defined into the identities.py file.
-Then the next option must be the name of the profile of appliance to use --profile=<profilename>.
+You need to define the name of the identity to use. This is related to the name defined into the identities.py file.
+Excepted for fetch/binarize/check-data the name of the profile of appliances to use --profile=<profilename> must be specified.
 
 ```
 Important, about performance and stability :
 
-The nature of SiiS is to uses distinct thread per watcher, per websocket, per trader, plus a pool of worker
+The nature of SiiS is to uses distinct thread per watcher, per websocket, per trader, plus a pool of workers
 for the strategies instances, and potentially some others thread for notification and communication extra services.
 
-Because of the Python GIL, thread are not as efficient as in Java or C++ programs. In Python using thread is good for IO, but not for computing where the GILcan be solicited too often and degrading the global performance of the program instance.
+Because of the Python GIL, thread are not as efficient as in Java or C++ programs. In Python using thread is good for IO, but not for computing where the GIL can be solicited too often and degrading the global performance of the program instance.
 
-In addition, to have a better stability it is more efficient to have distinct account, instance and profiles with the minimalist configuration.
-The lesser you have market to watch and to trade, the more the instance will be fast.
+In addition, to have a better stability it is more efficient to have distinct accounts, instance and profiles with the minimalist configuration.
+The lesser you have markets to watch and to trade, the more the instance will be fast.
 
-This version as a prototype is monolithic, the connector and the watcher is in the same instance as the strategies. Then stopping an instance mean stopping to watch and to store in local DB the related market data. This is no longer a problem in the revisited version where connector are standalones processes configured per broket and account.
+This version as a prototype is monolithic, the connector and the watcher is in the same instance as the strategies. Then stopping an instance mean stopping to watch and to store in local DB the related market data. This will be no longer a problem in the revisited version where connectors are standalones processes configured per broker and account.
 ```
 
 So you have different running mode, the normal mode, will start the watching, trading capacity (paper-mode, live or backtesting) and offering an interactive terminal session or you can run only the fetcher or the binarizer functions.
@@ -330,64 +336,190 @@ So you have different running mode, the normal mode, will start the watching, tr
 Fetcher : importing some historical market data
 -----------------------------------------------
 
-...
+Fetching is for getting historcal market data of OHLC, and also of trade/tick data.
+OHLC goes into the SQL database, trades/ticks data goes to binary files, organized into the markets/ directory.
+
+Starting by example will be more easy, so :
+
+```
+python siis.py real --fetch --broker=binance.com --market=\*USDT,\*BTC --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=1w
+```
+
+This example will fetch any weekly OHLC of pairs based on USDT and BTC, from 2017-08-01 to 2019-08-31.
+Common timeframes are formed of number plus a letter (s for second, m for minute, h for hour, d for day, w for week, M for month).
+Here we want only the weekly OHLC, then --timeframe=1w.
+
+Defines the range of datetime using --from=<datetime> and --to=<datetime>.
+The format of the datetime is 4 digits year, 2 digits month, 2 digts day of month, a T separator (meaning time),
+2 digits hour, 2 digits minutes, 2 digits seconds. The datetime is interpreted as UTC.
+
+The optionnal option --cascaded=<max-timeframe> will generate the higher multiple of OHLC until one of (1m, 5m, 15m, 1h, 4h, 1d, 1w).
+
+For example, this will fetch from 5m OHLC from the broker, and then generate 15m, 1h, 4h and 1d from them :
+
+```
+python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=5m --cascaded=1d
+```
+
+Market must be the unique market id of the broker, not the common usual name. The comma act as a separator. Wildchar * can be placed at the beginning of
+the market identifier. Negation ! can be placed at the beginning of the market identifier to avoid a specific market when a wildchar filter is also used.
+Example of --market=\*USDT,!BCHUSDT will fetch for any USDT based excepted for BCHUSDT
+
+Common usage is to fetch only a certain number of recent OHLC, using the --last=<number> option.
+
+The --spec optionnal option could be necessary for some fetchers, like with alphavantage.co where you have to specify the type of the market (--spec=STOCK).
+
+Getting trade/tick level imply to defines --timeframe=t. 
+
+```
+python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=t
+```
+
+In the scripts/ directory there is some examples of how you can fetch your data using a bash script. Even these scripts could be added in a crontab entry.
+
+Take care than some brokers have limitations. For example IG will limits to 10000 candles per week. This limit is easy to reach.
+Some other like BitMex limit to 30 queries per second in non auth mode or 60 in auth mode.
+Concretely thats mean get months of data of trades could take more than a day.
 
 
 Backtesting
 -----------
 
-...
+Lets start with an example :
+
+```
+python siis.py real --profile=my-backtest1 --backtest --from=2017-08-01T00:00:00 --to=2017-12-31T23:59:59 --timestep=15
+```
+
+Backtesting, like live and paper-mode need to know which profile to use. Lets defines a profile named my-backtest1 in .siis/config/appliance.py file.
+
+The datetime range must be defined, --from and --to, and a timestep must be precised.
+This will be the minimal increment of time - in second - beetwen two iterations.
+The lesser the timestep is the more longer the computation will take, but if you have a strategy that work at the tick/trade level then the backtesting
+will be more accurate.
+
+The C++ version (WIP) have no performance issue (can run 1000x to 10000x faster than the Python version).
+
+Imagine your strategy works on close of 4h OHLC, you can run your backtesting with a --timestep=4h. Or imagine your strategy works on close of 5m, 
+but you want the exit of a trade be more reactive than 5m, because if the price move fastly in few seconds, then you'll probably have differents results
+using a lesser timestep.
+
+Ideally a timestep of 0.1 will give accurate results, but the computations will take many hours. Some optimizations to only recompute the only last value
+for indicators will probably give a bit a performance, but the main problem rest the nature of the Python, without C/C++ sub modules I have no idea
+how to optimize it : GIL is slow, Python list are very slow, list slicing is horribly slow, even a simple loop take too many times compared to C/C++.
+
+Originally I've developped this backtesting feature to be focused to replay multiples markets, on a virtual account, not only oriented to backtest the raw
+performance of the strategy.
+
+Adding the --time-factor=<factor> will add a supplementary dealy during the backtesting. The idea is if you want to replay a recent period,
+and have the time to interact manually, like replaying a semi-automated day of scalping. The factor is a multiple of the time : 1 meaning real-time,
+and then 60 mean 1 minute of simulation per second.
+
+
+How to create or modify a strategy
+----------------------------------
+
+A guide explaning how to create or modify an existing strategy will be added into the doc/ directory.
 
 
 Paper-mode
 ----------
 
-...
+Trading with live data but on a virtual local simulated trading account.
+
+Example :
+
+```
+python siis.py real --profile=bitmex-xbteth1 --paper-mode
+```
+
+Here 'real' mean for the name of the identity to use, related to API key.
+
+Adding the --paper-mode will create a paper-trader instance in place of a connector to your real broker account.
+Initials amounts of margin or quantity of assets must be configured into the profiles.
+
+At this time the slippage is not simulated. Orders are executed at bid/ofr price according to the direction.
+The order book is not used to look for the real offered quantities, then order are filled in one trade without slippage.
+
+A slippage factor will be implemented sooner.
+
+In that case the watchers are running and stores OHLC and ticks/trade data (or not if --read-only is specified).
 
 
 Live-mode
 ---------
 
-...
+Trading with live data using your real or demo trading account.
+
+Example :
+
+```
+python siis.py real --profile=bitmex-xbteth1
+```
+
+Trades will be executed on your trading account.
+
+I'll suggest in a first time to test with a demo account or a testnet.
+Then once your are ok with your strategy, with the interface, and the stability, to try a second time try with small amount/quantity,
+on real account, before finally letting the bot playing with biggers amount/quantity. Please read the disclaimer at the bottom of this file.
+
+In that case the watchers are running and stores OHLC and ticks/trade data (or not if --read-only is specified).
+
+
+Interaction / CLI
+-----------------
+
+SiiS offers a basic but auto suffisent set of commands and keyboard shortcuts to manage and control your trades,
+looking your account status, markets status, tickers, and strategies performances.
+
+In addition there is a charting feature using matplotlib.
+The goal is to finish the monitoring service, and to realise a Web client to monitor and manage each instance.
+
+During the execution of the program you can type a command starting by a semicolumn : plus the name of the command.
+Lets first type the :help command.
+
+There is some direct keys, not using the semicolumn, and some complex commands.
+
+Integrated help should be suffisent, but later more content here will be added in the doc/ directory,
+in way to describes the differents panels and commands.
 
 
 About data storage
 ------------------
 
 The tick or trade data (price, volume) are stored during the running or when fetching data at the tick timeframe.
-The OHLC data are stored in the PostgreSQL database. But only the 4h, 1D, 1W candle are kept forever :
+The OHLC data are stored in the SQL database. But only the 4h, 1D, 1W candle are kept forever :
 
-* Weekly, daily, 4h and 3h ohlc are always kept and store in the SQL DB.
-* 2h, 1h and 45m ohlc are kept for 90 days (if the cleaner is executed).
+* Weekly, daily, 4h and 3h OHLC are always kept and store in the SQL DB.
+* 2h, 1h and 45m OHLC are kept for 90 days (if the cleaner is executed).
 * 30m, 15m, 10m are kept for 21 days.
 * 5m, 3m, 1m are kept for 8 days.
 * 1s, 10s are never kept.
 
-The cleaner is executed frequently by running instance of SiiS. It is necessary to clean some candle, else the DB
+The cleaner is executed frequently by running instance of SiiS. It is necessary to clean some OHLC, else the DB
 will become to big. In addition OHLC are used for live mode, to initially feed the indicators of the strategies,
 and to avoid to request the broker API for data history.
 
 Why not requesting the broker API ? Because depending of the broker, but it take lot of time, especially when you have
-a lot of markets, it could consume lot of API call credits, or your are candle count limited like with IG (10k candles per week per account).
+a lot of markets, it could consumes lot of API call credits, or your are candles count limited like with IG (10k candles per week per account).
 Maybe this will not be longer a problem with the revisited version of SiiS because the connector are standalone
 then they don't have to be stopped each time you have to try some changes on your strategy.
 
-For conveniance I'm made some bash script to frequently fetch OHLC, and some others script (look at the scripts/ directory for examples)
-that I run juste before starting a live instance to make a prefetching (only the last N candles).
-I know there is more work that could be done on this part, but remember this version acts more as a prototype, but fonctionnal.
+For conveniance I've made some bash scripts to frequently fetch OHLC, and some others script (look at the scripts/ directory for examples)
+that I run just before starting a live instance to make a prefetching (only the last N candles).
+I know there is more works that could be done on this part, but remember this version acts more as a prototype, but fonctionnal.
 
 About the file containing the ticks, there is bad effect of that design. The good effect is the high performance, but because of Python
 performance this is not very impressive, but the C++ version could read millions of tick per seconds, its more performant than any
-timestamp based DB engine. So the bad side is I've choosen to have 1 file per month (per market), and I've not implemented file initial
-seeking method, so its linear (but its not really a problem because when backtesting we not only do it for the last day of the month, and
-this optimization could be part of a futur developpement. The big problem is the temporal consistency of the data. I don't made any
-check of the timestamp before appending, then fetching could append to a file containing some more recent data, maybe with some lacks.
-I know, its really bad, for now if I need clean data set, I delete the month of the market I want to be clean, and I fetch them.
+timestamp based DB engine. So the bad side is that I've choosen to have 1 file per month (per market), and the problem is about temporal consistency
+of the data. I don't made any check of the timestamp before appending, then fetching could append to a file containing some more recent data,
+and maybe with some gaps. I know, its not the best design, for now if I need correct data set, I delete the months of the markets I want to be clean,
+and I fetch them completely.
 
-Where it is more problematic its for IG broker, where it's impossible to get history at tick level. So missed data are forever missing.
-For this case I realize the backtesting on other dataset. A cool solution could be to run an instance with a profile having only
+Where it is more problematic its with IG broker, where it's impossible to get history at tick level. So missed data are forever missing.
+For this case I realize the backtesting using other dataset. A cool solution could be to run an instance with a profile having only
 the watchers, (using your demo account for the IG broker case), always running, then you will have all data from live. And then
-when you run the others instances to avoid multiple writting, use the --read-only option (will not work generated candle, neither ticks in files).
+when you run the others instances to avoid multiple writting, use the --read-only option (will not write generated OHLC, neither ticks in files).
 
 All that to say, this part is far from be perfect, but I can deal with, so you could too.
 
@@ -402,11 +534,10 @@ Disclaimer
 ----------
 
 The authors are not responsible of the losses on your trading accounts you will made using SiiS,
-nethier of the data loss, corruption, computer crash or physicial dommages on your computers or on the cloud you uses.
+neither of the data losses, corruptions, computers crashs or physicial dommages on your computers or on the cloud you use.
 
-The authors are not responsible of the loss due to the lack of the security of your systems.
+The authors are not responsible of the losses due to the lack of the security of your systems.
 
 Use SiiS at your own risk, backtest strategies many time before running them on a live account. Test the stability,
 test the efficiency, take in account the potential execution slippage and latency caused by the network, the broker or
 by having an inadequate system.
-

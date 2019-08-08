@@ -412,7 +412,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 # @todo
 
                 if update_sl and stop_loss > 0 and trade.sl != stop_loss:
-                    logger.info("%s %s %s" % (update_sl, stop_loss, trade.sl))
+                    logger.info("SL %s %s %s" % (update_sl, stop_loss, trade.sl))
                     stop_loss = self.instrument.adjust_price(stop_loss)
 
                     delta_time = timestamp - trade.last_stop_loss[0]
@@ -434,7 +434,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         trade.sl = stop_loss
 
                 if update_tp and take_profit > 0 and trade.tp != take_profit:
-                    logger.info("%s %s %s" % (update_tp, take_profit, trade.tp))
+                    logger.info("TP %s %s %s" % (update_tp, take_profit, trade.tp))
                     take_profit = self.instrument.adjust_price(take_profit)
 
                     delta_time = timestamp - trade.last_take_profit[0]

@@ -558,9 +558,11 @@ class PaperTrader(Trader):
                     continue
 
                 if order.order_type == Order.ORDER_LIMIT:
+                    # limit
                     if ((order.direction == Position.LONG and open_exec_price <= order.price) or
                         (order.direction == Position.SHORT and open_exec_price >= order.price)):
 
+                        # does not support the really offered qty, take all at current price in one shot
                         if market.trade == market.TRADE_BUY_SELL:
                             self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
                         elif market.trade == market.TRADE_MARGIN:
@@ -572,9 +574,9 @@ class PaperTrader(Trader):
                         rm_list.append(order.order_id)
 
                 elif order.order_type == Order.ORDER_STOP:
-                    # opposite trigger + market
-                    if ((order.direction == Position.LONG and close_exec_price <= order.stop_price) or
-                        (order.direction == Position.SHORT and close_exec_price >= order.stop_price)):
+                    # trigger + market
+                    if ((order.direction == Position.LONG and close_exec_price >= order.stop_price) or
+                        (order.direction == Position.SHORT and close_exec_price <= order.stop_price)):
 
                         if market.trade == market.TRADE_BUY_SELL:
                             self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
@@ -586,23 +588,49 @@ class PaperTrader(Trader):
                         # fully executed
                         rm_list.append(order.order_id)
 
+                elif order.order_type == Order.ORDER_STOP_LIMIT:
+                    # trigger + limit
+                    if ((order.direction == Position.LONG and close_exec_price >= order.stop_price) or
+                        (order.direction == Position.SHORT and close_exec_price <= order.stop_price)):
+
+                        # does not support the really offered qty, take all at current price in one shot
+                        if market.trade == market.TRADE_BUY_SELL:
+                            self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
+                        elif market.trade == market.TRADE_MARGIN:
+                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                        elif market.trade == market.TRADE_IND_MARGIN:
+                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+
+                    # fully executed
+                    rm_list.append(order.order_id)
+
                 elif order.order_type == Order.ORDER_TAKE_PROFIT:
-                    # trigger + market
-                    # @todo
+                    # opposite trigger + market
+                    if ((order.direction == Position.LONG and close_exec_price <= order.stop_price) or
+                        (order.direction == Position.SHORT and close_exec_price >= order.stop_price)):
+
+                        if market.trade == market.TRADE_BUY_SELL:
+                            self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
+                        elif market.trade == market.TRADE_MARGIN:
+                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                        elif market.trade == market.TRADE_IND_MARGIN:
+                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
 
                     # fully executed
                     rm_list.append(order.order_id)
 
                 elif order.order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
-                    # trigger + limit
-                    # @todo
-
-                    # fully executed
-                    rm_list.append(order.order_id)
-
-                elif order.order_type == Order.ORDER_STOP_LIMIT:
                     # opposite trigger + limit
-                    # @todo
+                    if ((order.direction == Position.LONG and close_exec_price <= order.stop_price) or
+                        (order.direction == Position.SHORT and close_exec_price >= order.stop_price)):
+
+                        # does not support the really offered qty, take all at current price in one shot
+                        if market.trade == market.TRADE_BUY_SELL:
+                            self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
+                        elif market.trade == market.TRADE_MARGIN:
+                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                        elif market.trade == market.TRADE_IND_MARGIN:
+                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
 
                     # fully executed
                     rm_list.append(order.order_id)
@@ -716,15 +744,22 @@ class PaperTrader(Trader):
 
         result = False
 
+        order_symbol = ""
+
         self.lock()
-        if order_id in self._orders:
+
+        order = self._orders.get(order_id)
+        if order:
+            order_symbol = order.symbol
             del self._orders[order_id]
+            order = None
             result = True
+
         self.unlock()
 
         if result:
             # signal of canceled order
-            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (order.symbol, order.order_id, ""))
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (order_symbol, order_id, ""))
 
         return result
 
@@ -1709,9 +1744,9 @@ class PaperTrader(Trader):
 
         self.lock()
 
-        if order.market_id:
+        if order.symbol:
             # in that case position is identifier by its market
-            current_position = self._positions.get(order.market_id)
+            current_position = self._positions.get(order.symbol)
  
         if current_position and current_position.is_opened():
             # increase or reduce the current position

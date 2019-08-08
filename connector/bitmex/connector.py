@@ -284,15 +284,13 @@ class Connector(object):
 
         start = 0
         last_datetime = from_date
+        last_trade_id = ""
 
         while 1:
             if last_datetime:
                 params['startTime'] = self._format_datetime(last_datetime)
 
-            params['start'] = start
-
-            # reset for next query
-            start = 0
+            params['start'] = start  # offset if timestamp are same
 
             results = self.request(path=endpoint, query=params, verb='GET')
 
@@ -302,16 +300,24 @@ class Connector(object):
                     break
 
                 if dt < last_datetime:
-                    # ignore because cannot fetch more precise than second
+                    start += 1
                     continue
 
-                if int(dt.timestamp()) == int(last_datetime.timestamp()):
+                if last_trade_id == c['trdMatchID']:
+                    # could be in case of the last trade of the prev query is the first of the current query
+                    continue
+
+                # increase offset when similar timestamp, else reset
+                if dt == last_datetime:
                     start += 1
+                else:
+                    start = 0
 
                 yield (int(dt.timestamp()*1000),  # integer ms
                     c['price'], c['price'], c['size'])
 
                 last_datetime = dt
+                last_trade_id = c['trdMatchID']
 
             if (to_date and last_datetime > to_date) or len(results) < 500:
                 break
