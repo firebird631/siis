@@ -1,4 +1,5 @@
 #!/bin/bash
+# run it before starting live, adjust the number
 MARKETS='*USDT,*BTC'
 
 if [ -z $1 ]; then

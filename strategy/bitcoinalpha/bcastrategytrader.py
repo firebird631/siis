@@ -428,7 +428,6 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         trade.last_stop_loss[0] = timestamp
 
                         # @todo
-
                         Terminal.inst().info("%s modify SL" % timestamp, view="debug")
                     else:
                         trade.sl = stop_loss
@@ -450,7 +449,6 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         trade.last_take_profit[0] = timestamp
 
                         # @todo
-
                         Terminal.inst().info("%s modify TP" % timestamp, view="debug")
                     else:
                         trade.tp = take_profit
@@ -527,8 +525,9 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # simply set the computed quantity
         order_quantity = quantity
 
-        # Order.ORDER_LIMIT @todo limit later
+        # @todo as limit order
         order_type = Order.ORDER_MARKET
+        # order_type = Order.ORDER_LIMIT
 
         # @todo or trade at order book, compute the limit price from what the order book offer
         # limit best price at tiniest ofr price

@@ -10,7 +10,6 @@ import threading
 import copy
 import traceback
 import pathlib
-import psycopg2
 
 from watcher.service import WatcherService
 from notifier.signal import Signal
@@ -49,6 +48,8 @@ class PgSql(Database):
 
     def connect(self, config):
         if 'siis' in config:
+            import psycopg2
+
             self._db = psycopg2.connect("dbname=%s user=%s password=%s host=%s port=%i" % (
                 'siis',
                 config['siis'].get('user', 'siis'),

@@ -10,7 +10,6 @@ import threading
 import copy
 import traceback
 import pathlib
-import MySQLdb
 
 from watcher.service import WatcherService
 from notifier.signal import Signal
@@ -42,6 +41,8 @@ class MySql(Database):
 
     def connect(self, config):
         if 'siis' in config:
+            import MySQLdb
+
             self._db = MySQLdb.connect(
                 db='siis',
                 host=config['siis'].get('host', 'localhost'),

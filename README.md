@@ -88,7 +88,7 @@ source siis.venv/bin/activate
 
 You need to activate it each time you open your terminal before running SiiS.
 
-From deps/ directory, first install TA-Lib :
+From deps/ directory, first install TA-Lib (C lib needed by the Python binding) :
 
 ```
 tar xvzf deps/ta-lib-0.4.0-src.tar.gz
@@ -97,24 +97,45 @@ cd ta-lib
 make
 ```
 
+Finally to install in your /usr/local :
+
 ```
 sudo make install
 ```
 
-copy the content of the include folder into siis.venv/include/ta-lib/
-and copy the .a and .so to siis.venv/lib/pythonX.Y/site-packages
+Or eventually if you have installed TA-lib in a custom prexil (e.g., with ./configure --profile=$PREFIX),
+then you have to specify 2 variables before installing the requirements :
+
+```
+export TA_LIBRARY_PATH=$PREFIX/lib
+export TA_INCLUDE_PATH=$PREFIX/include
+```
+
+For more details on TA-lib installation please visit : https://github.com/mrjbq7/ta-lib
 
 
 ### Python dependencies ###
 
-pip install -r requirements.txt
+From siis base directory :
 
+```
+pip install -r deps/requirements.txt
+```
 
-Before running the lib folder containing TA-Lib must be in the LD_LIBRARY_PATH :
+Then depending of which database storage to use :
 
-With, if installed in the default directory :
+```
+pip install -r deps/reqspgsql.txt  # if using PostgreSQL (recommended)
+pip install -r deps/reqsmysql.txt  # or if using MySQL
+```
 
+Before running the lib folder containing TA-Lib must be found in the LD_LIBRARY_PATH :
+
+With, if installed in the default directory (/usr/local/lib) :
+
+```
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+```
 
 
 ### Database ###
