@@ -103,7 +103,7 @@ Finally to install in your /usr/local :
 sudo make install
 ```
 
-Or eventually if you have installed TA-lib in a custom prexil (e.g., with ./configure --profile=$PREFIX),
+Or eventually if you have installed TA-lib in a custom prefix (e.g., with ./configure --prefix=$PREFIX),
 then you have to specify 2 variables before installing the requirements :
 
 ```
@@ -422,12 +422,12 @@ will be more accurate.
 The C++ version (WIP) have no performance issue (can run 1000x to 10000x faster than the Python version).
 
 Imagine your strategy works on close of 4h OHLC, you can run your backtesting with a --timestep=4h. Or imagine your strategy works on close of 5m, 
-but you want the exit of a trade be more reactive than 5m, because if the price move fastly in few seconds, then you'll probably have differents results
+but you want the exit of a trade be more reactive than 5m, because if the price move briefly in few seconds, then you'll probably have differents results
 using a lesser timestep.
 
 Ideally a timestep of 0.1 will give accurate results, but the computations will take many hours. Some optimizations to only recompute the only last value
 for indicators will probably give a bit a performance, but the main problem rest the nature of the Python, without C/C++ sub modules I have no idea
-how to optimize it : GIL is slow, Python list are very slow, list slicing is horribly slow, even a simple loop take too many times compared to C/C++.
+how to optimize it : GIL is slow, Python list and slicing are slow, even a simple loop take lot of time compared to C/C++.
 
 Originally I've developped this backtesting feature to be focused to replay multiples markets, on a virtual account, not only oriented to backtest the raw
 performance of the strategy.
@@ -549,6 +549,18 @@ Troubles
 --------
 
 TA-lib is not found : look you have installed it, and may be you have to export your LD_LIBRARY_PATH.
+
+Backtesting is slow : I know that, you can increase the timestep, but then the results will be less accurates, mostly depending
+if the strategy works at close or at each tick/trade, and if the timestep is or not an integer divider of the strategy base timeframe.
+When I've more time or lot of feedbacks I will spend more time to develop the C++ version.
+
+Fetching historical data is slow : It depends of the exchance and the timeframe. Fetching history trades from BitMex takes a lot of time,
+be more patient, this is due to theirs API limitations.
+
+When restarting my regions and trades are not reloaded : Regions and trades are saved but the loading part is not totally completed at this
+time, you can uses the assign command eventually to remap an existing trade.
+
+Please understands than I develop this project during my free time, and for free, only your donations could help me.
 
 
 Disclaimer
