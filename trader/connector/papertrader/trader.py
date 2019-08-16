@@ -557,7 +557,20 @@ class PaperTrader(Trader):
                     rm_list.append(order.order_id)
                     continue
 
-                if order.order_type == Order.ORDER_LIMIT:
+                if order.order_type == Order.ORDER_MARKET:
+                    # market
+                    # does not support the really offered qty, take all at current price in one shot
+                    if market.trade == market.TRADE_BUY_SELL:
+                        self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
+                    elif market.trade == market.TRADE_MARGIN:
+                        self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                    elif market.trade == market.TRADE_IND_MARGIN:
+                        self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+
+                    # fully executed
+                    rm_list.append(order.order_id)
+
+                elif order.order_type == Order.ORDER_LIMIT:
                     # limit
                     if ((order.direction == Position.LONG and open_exec_price <= order.price) or
                         (order.direction == Position.SHORT and open_exec_price >= order.price)):
@@ -593,6 +606,14 @@ class PaperTrader(Trader):
                     if ((order.direction == Position.LONG and close_exec_price >= order.stop_price) or
                         (order.direction == Position.SHORT and close_exec_price <= order.stop_price)):
 
+                        # limit
+                        if order.direction == Position.LONG:
+                            open_exec_price = min(order.price, open_exec_price)
+                            close_exec_price = min(order.price, close_exec_price)
+                        elif order.direction == Position.SHORT:
+                            open_exec_price = max(order.price, open_exec_price)
+                            close_exec_price = max(order.price, close_exec_price)
+
                         # does not support the really offered qty, take all at current price in one shot
                         if market.trade == market.TRADE_BUY_SELL:
                             self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
@@ -623,6 +644,14 @@ class PaperTrader(Trader):
                     # opposite trigger + limit
                     if ((order.direction == Position.LONG and close_exec_price <= order.stop_price) or
                         (order.direction == Position.SHORT and close_exec_price >= order.stop_price)):
+
+                        # limit
+                        if order.direction == Position.LONG:
+                            open_exec_price = min(order.price, open_exec_price)
+                            close_exec_price = min(order.price, close_exec_price)
+                        elif order.direction == Position.SHORT:
+                            open_exec_price = max(order.price, open_exec_price)
+                            close_exec_price = max(order.price, close_exec_price)
 
                         # does not support the really offered qty, take all at current price in one shot
                         if market.trade == market.TRADE_BUY_SELL:
@@ -715,6 +744,7 @@ class PaperTrader(Trader):
         # unique order id
         order_id =  "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
         order.set_order_id(order_id)
+        order.created_time = self.timestamp
 
         if order.order_type == Order.ORDER_MARKET:
             # immediate execution of the order at market
@@ -1032,7 +1062,6 @@ class PaperTrader(Trader):
             order.executed = base_qty
 
             # transaction time is current timestamp
-            order.created_time = self.timestamp
             order.transact_time = self.timestamp
 
             result = True
@@ -1136,7 +1165,6 @@ class PaperTrader(Trader):
             order.executed = base_qty
 
             # transaction time is current timestamp
-            order.created_time = self.timestamp
             order.transact_time = self.timestamp
 
             result = True
@@ -1457,7 +1485,6 @@ class PaperTrader(Trader):
                     self.account.add_used_margin((order.quantity * lot_size * contract_size * margin_factor) / base_exchange_rate)
 
             # transaction time is current timestamp
-            order.created_time = self.timestamp
             order.transact_time = self.timestamp
 
             #order.set_position_id(current_position.position_id)
@@ -1633,7 +1660,7 @@ class PaperTrader(Trader):
 
             # long are open on ofr and short on bid
             position.entry_price = market.open_exec_price(order.direction)
-            # logger.debug("el" if position.direction==0 else "es", position.entry_price, market.bid, market.ofr, market.bid < market.ofr)
+            # logger.debug("%s %f %f %f %i" % ("el" if position.direction>0 else "es", position.entry_price, market.bid, market.ofr, market.bid < market.ofr))
 
             # transaction time is creation position date time
             order.transact_time = position.created_time
@@ -1641,8 +1668,6 @@ class PaperTrader(Trader):
 
             # directly executed quantity
             order.executed = order.quantity
-
-            # @todo stop loss, take profit, order type (limit, market...)
 
             self._positions[position_id] = position
 
@@ -1877,7 +1902,6 @@ class PaperTrader(Trader):
                     self.account.add_used_margin((order.quantity * lot_size * contract_size * margin_factor) / base_exchange_rate)
 
             # transaction time is current timestamp
-            order.created_time = self.timestamp
             order.transact_time = self.timestamp
 
             #order.set_position_id(current_position.position_id)
@@ -1956,7 +1980,7 @@ class PaperTrader(Trader):
                 'price': order.price,
                 'stop-price': order.stop_price,
                 'exec-price': exec_price,
-                'avg-price': current_position.entry_price,
+                'avg-price': exec_price,  # current_position.entry_price,
                 'filled': order.executed,
                 'cumulative-filled': order.executed,
                 'quote-transacted': realized_position_cost,  # its margin
@@ -2015,8 +2039,8 @@ class PaperTrader(Trader):
                 # take care this does not make an issue
                 current_position.exit(None)
 
-                if current_position.position_id in self._positions:
-                    del self._positions[current_position.position_id]
+                if current_position.symbol in self._positions:
+                    del self._positions[current_position.symbol]
 
                 self.unlock()
         else:
@@ -2053,8 +2077,9 @@ class PaperTrader(Trader):
             account_currency = self.account.currency
 
             # long are open on ofr and short on bid
-            position.entry_price = market.open_exec_price(order.direction)
-            # logger.debug("el" if position.direction==0 else "es", position.entry_price, market.bid, market.ofr, market.bid < market.ofr)
+            exec_price = open_exec_price
+            position.entry_price = exec_price
+            # logger.debug("%s %f %f %f %i" % ("el" if position.direction>0 else "es", position.entry_price, market.bid, market.ofr, market.bid < market.ofr))
 
             # transaction time is creation position date time
             order.transact_time = position.created_time
@@ -2062,8 +2087,6 @@ class PaperTrader(Trader):
 
             # directly executed quantity
             order.executed = order.quantity
-
-            # @todo stop loss, take profit, order type (limit, market...)
 
             self._positions[position_id] = position
 

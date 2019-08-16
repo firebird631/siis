@@ -274,6 +274,8 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                 stop_loss = trade.sl
 
+                # @todo update as bcastrategytrader
+
                 # ATR stop-loss (long/short)
                 atr_stop = self.timeframes[trade.timeframe].atr.stop_loss(trade.direction)
                 if trade.direction > 0:

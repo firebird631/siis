@@ -18,17 +18,17 @@ Features
 --------
 
 * Initially developped for Linux, but should work on Window or MacOSX
-* Traditionnals and crypto markets brokers (traders) are supported
-    * Binance
+* Traditionnals and crypto markets brokers for trading are supported
+    * Binance (margin planned)
     * Bitmex
     * IG
     * 1broker (obsolete)
     * Help for others are welcome :-)
-* Some others data-source in way to gets prices/volumes data
+* Some others source of prices/volumes data fetchers
    * HistData (only to import manually downloaded files)
    * AlphaVantage (WIP)
    * Tiingo (WIP)
-* Fetching OHLC and ticks history data in a PostgreSQL or MySQL database
+* Fetching of OHLC and ticks/trades history data in a PostgreSQL or MySQL database
 * Multiples instances can run at the same time
 * Many strategies and markets can run on a same instance (tested with 100+ markets on a single instance)
 * Connection with API key (open-source you can check than yours API keys are safe with SiiS)
@@ -37,17 +37,17 @@ Features
     * Combine one or more appliances per profile
     * Configure multiple appliances and profiles with different options
 * Backtesting
-* Paper-mode (simulate a broker for spot and margin trading)
+* Paper-mode (simulate a broker for spot and margin trading using live market data)
 * Live-mode trading on your broker account
 * Interactive command line interface
     * Backtesting with a slow down or real-time factor allowing you to replay an history
       and doing manual and semi-automated trading
 * Try as possible to take-care of the spread of the market and the commissions
 * Compute the average unit price of owned assets on Binance
-* Display account detail and assets quantities
+* Display account details and assets quantities
 * Display tickers and markets informations
 * Display per strategy current (active or pending) trades, trades history and performance
-* Manage multiple timeframes
+* Works on multiple timeframes
 * Common indicators are supported (RSI, SMA, BBANDS, ATR, STOCH, ask if you want more...)
 * Pure signal strategies are possibles in way to only generating some signals/alerts
 * Desktop notification on Linux via dbus
@@ -67,7 +67,14 @@ Features
         * Trend channel region : oblics symetrics or asymmetrics low and high trends
     * Auto-expiration after a predefined delay, or after than a trigger price is reached
 
-### Donation ###
+### Participate ###
+
+Any help is welcome, if you are a Python, Javascrip or C++ devlopper, or a data scientist contact me if your are
+interested in participating seriously into this project.
+
+### Donate ###
+
+If this project helped you out feel free to donate.
 
 * BTC: 1GVdwcVrvvbqBgzNMii6tGNhTYnGvsJZFE
 * ETH: 0xd9cbda09703cdd4df9aeabf63f23be8da19ca9bf
@@ -150,9 +157,9 @@ Configuration
 -------------
 
 First running will try to create a data structure on your local user.
-* /home/<username>/.siis on Linux based systems
-* C:\Users\<username>\AppData\Local\siis on Windows
-* /Users/<username>/.siis on MacOSX
+* /home/\<username>/.siis on Linux based systems
+* C:\Users\\<username>\AppData\Local\siis on Windows
+* /Users/\<username>/.siis on MacOSX
 
 The directory will contains 4 sub-directories:
 
@@ -163,13 +170,13 @@ The directory will contains 4 sub-directories:
 
 ### config ###
 
-#### <.siis/config/>config.py ####
+#### <.siis>/config/config.py ####
 
 You have an initial file in config/config.py. Do not modify the original.
 
 This file comes from the beginning of the project, would need some reorganization, but it looks like :
 
-* DATABASES the 'siis' database configuration (type is pgsql or mysql). There is only only database for now.
+* DATABASES the 'siis' database configuration (type is pgsql or mysql). There is only one database for now.
 * FETCHERS You should not modifiy this dict, it contains the classpath for the availables fetchers.
 * WATCHERS Must contain 1 entry per broker to have the capacity to connect to a broker, watching price data, and user trade data
     * Not those values could be overrided into the appliances.py file but here you could defined the general config
@@ -218,11 +225,11 @@ This file comes from the beginning of the project, would need some reorganizatio
   to control SiiS more friendly than using the CLI
 
 
-#### <.siis/config/>appliances.py ####
+#### <.siis>/config/appliances.py ####
 
 You have an initial file in config/appliances.py. Do not modify the original.
 
-This file must contains your configuration named profile (command line options --profile=<profilename>).
+This file must contains your configuration named profile (command line options --profile=\<profilename>).
 You have the profiles and the appliances.
 
 A profile is a mixing of one or many appliance, that can be runned on a same instance of SiiS, with
@@ -264,7 +271,7 @@ traders and watchers options overriding.
             * alias User defined instrument name alias
 
 
-#### <.siis/config/>identities.py ####
+#### <.siis>/config/identities.py ####
 
 This is the more sensible file, which contains your API keys.
 You have a config/identities.py.template file. Do not modify this file it will not be read.
@@ -315,27 +322,27 @@ python siis.py <identity> [--help, --options...]
 
 * --help display command line help.
 * --version display the version number.
-* --profile=<profile> Use a specific profile of appliance else default loads any.
+* --profile=\<profile> Use a specific profile of appliance else default loads any.
 * --paper-mode instanciate paper mode trader and simulate as best as possible.
 * --backtest process a backtesting, uses paper mode traders and data history avalaible in the database.
-* --timestep=<seconds> Timestep in seconds to increment the backesting. More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal candles size uses in the backtested strategies. Default is 60 seconds.
-* --time-factor=<factor> in backtesting mode only allow the user to change the time factor and permit to interact during the backtesting. Default speed factor is as fast as possible.
+* --timestep=\<seconds> Timestep in seconds to increment the backesting. More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal candles size uses in the backtested strategies. Default is 60 seconds.
+* --time-factor=\<factor> in backtesting mode only allow the user to change the time factor and permit to interact during the backtesting. Default speed factor is as fast as possible.
 * --check-data @todo Process a test on candles data. Check if there is inconsitencies into the time of the candles and if there is some gaps. The test is done only on the defined range of time.
 * --from=<YYYY-MM-DDThh:mm:ss> define the date time from which start the backtesting, fetcher or binarizer. If ommited use whoole data set (take care).
 * --to=<YYYY-MM-DDThh:mm:ss> define the date time to which stop the backtesting, fetcher or binarizer. If ommited use now.
-* --last=<number> Fast last number of candles for every watched market (take care can take all requests credits on the broker). By default it is configured to get 1m, 5m and 1h candles.
-* --market=<market-id> Specific market identifier to fetch, binarize only.
-* --broker=<broker-name> Specific fetcher or watcher name to fetche or binarize market from.
-* --timeframe=<timeframe> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in 1m 5m 15m 1h 2h 4h d m w
-* --cascaded=<max-timeframe> During fetch process generate the candles of highers timeframe from lowers. Default is no. Take care to have entire multiple to fullfill the generated candles.
-* --spec=<specific-option> Specific fetcher option (exemple STOCK for alphavantage.co fetcher to fetch a stock market).
+* --last=\<number> Fast last number of candles for every watched market (take care can take all requests credits on the broker). By default it is configured to get 1m, 5m and 1h candles.
+* --market=\<market-id> Specific market identifier to fetch, binarize only.
+* --broker=\<broker-name> Specific fetcher or watcher name to fetche or binarize market from.
+* --timeframe=\<timeframe> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in 1m 5m 15m 1h 2h 4h d m w
+* --cascaded=\<max-timeframe> During fetch process generate the candles of highers timeframe from lowers. Default is no. Take care to have entire multiple to fullfill the generated candles.
+* --spec=\<specific-option> Specific fetcher option (exemple STOCK for alphavantage.co fetcher to fetch a stock market).
 * --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.
 * --read-only Don't write market neither candles data to the database. Default is writing to the database.
 * --fetch Process the data fetcher.
 * --binarize Process to text file to binary conversion for a market (text version of data could be removed on the futur).
 
 You need to define the name of the identity to use. This is related to the name defined into the identities.py file.
-Excepted for fetch/binarize/check-data the name of the profile of appliances to use --profile=<profilename> must be specified.
+Excepted for fetch/binarize/check-data the name of the profile of appliances to use --profile=\<profilename> must be specified.
 
 ```
 Important, about performance and stability :
@@ -370,11 +377,11 @@ This example will fetch any weekly OHLC of pairs based on USDT and BTC, from 201
 Common timeframes are formed of number plus a letter (s for second, m for minute, h for hour, d for day, w for week, M for month).
 Here we want only the weekly OHLC, then --timeframe=1w.
 
-Defines the range of datetime using --from=<datetime> and --to=<datetime>.
+Defines the range of datetime using --from=\<datetime> and --to=\<datetime>.
 The format of the datetime is 4 digits year, 2 digits month, 2 digts day of month, a T separator (meaning time),
 2 digits hour, 2 digits minutes, 2 digits seconds. The datetime is interpreted as UTC.
 
-The optionnal option --cascaded=<max-timeframe> will generate the higher multiple of OHLC until one of (1m, 5m, 15m, 1h, 4h, 1d, 1w).
+The optionnal option --cascaded=\<max-timeframe> will generate the higher multiple of OHLC until one of (1m, 5m, 15m, 1h, 4h, 1d, 1w).
 
 For example, this will fetch from 5m OHLC from the broker, and then generate 15m, 1h, 4h and 1d from them :
 
@@ -386,7 +393,7 @@ Market must be the unique market id of the broker, not the common usual name. Th
 the market identifier. Negation ! can be placed at the beginning of the market identifier to avoid a specific market when a wildchar filter is also used.
 Example of --market=\*USDT,!BCHUSDT will fetch for any USDT based excepted for BCHUSDT
 
-Common usage is to fetch only a certain number of recent OHLC, using the --last=<number> option.
+Common usage is to fetch only a certain number of recent OHLC, using the --last=\<number> option.
 
 The --spec optionnal option could be necessary for some fetchers, like with alphavantage.co where you have to specify the type of the market (--spec=STOCK).
 
@@ -432,7 +439,7 @@ how to optimize it : GIL is slow, Python list and slicing are slow, even a simpl
 Originally I've developped this backtesting feature to be focused to replay multiples markets, on a virtual account, not only oriented to backtest the raw
 performance of the strategy.
 
-Adding the --time-factor=<factor> will add a supplementary dealy during the backtesting. The idea is if you want to replay a recent period,
+Adding the --time-factor=\<factor> will add a supplementary dealy during the backtesting. The idea is if you want to replay a recent period,
 and have the time to interact manually, like replaying a semi-automated day of scalping. The factor is a multiple of the time : 1 meaning real-time,
 and then 60 mean 1 minute of simulation per second.
 

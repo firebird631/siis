@@ -167,7 +167,9 @@ class StrategyAssetTrade(StrategyTrade):
                 # REST sync
                 self.sell_order_type = order.order_type
                 self.sell_order_qty = order.quantity
-                self.last_tp_ot = order.created_time
+                
+                self.last_tp_ot[0] = order.created_time
+                self.last_tp_ot[1] += 1
 
                 self.tp = price
 
@@ -215,7 +217,9 @@ class StrategyAssetTrade(StrategyTrade):
                 # REST sync
                 self.sell_order_type = order.order_type
                 self.sell_order_qty = order.quantity
-                self.last_sl_ot = order.created_time
+                
+                self.last_sl_ot[0] = order.created_time
+                self.last_sl_ot[1] += 1
 
                 self.sl = stop_price
 

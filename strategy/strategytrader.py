@@ -10,6 +10,7 @@ from strategy.strategytrade import StrategyTrade
 from strategy.strategyassettrade import StrategyAssetTrade
 from strategy.strategymargintrade import StrategyMarginTrade
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
+
 from terminal.terminal import Terminal
 from common.utils import timeframe_to_str
 from notifier.signal import Signal
@@ -119,23 +120,72 @@ class StrategyTrader(object):
 
         self.unlock()
 
-    def loads(self, data, region):
-        pass
+    def loads(self, data, regions):
+        """
+        Load strategy trader state and regions.
+        """
+        # data reserved
 
-    def loads_trade(self, trade_id, trade_type, data, region):
-        pass
+        # instanciates the regions
+        for r in regions:
+            if r['name'] in self.strategy.service.regions:
+                try:
+                    # instanciate the region
+                    region = self.strategy.service.regions[r['name']](0, 0, 0, 0)
+                    region.loads(r)
 
-        # instanciate the trade and add it
-        # trade = StrategyTrade(...)
-        # trade.loads(data[1])
+                    if region.check():
+                        # append the region to the strategy trader
+                        strategy_trader.add_region(region)
+                    else:
+                        logger.error("During loads, region checking error %s" % (r['name'],))
 
-        # for op in data[2]:
-        #     operation = self.service.tradeops[op_name]()
-        #     operation.loads(op)
+                    self.add_region(region)
+                except Exception as e:
+                    logger.error(repr(e))
+            else:
+                logger.error("During loads, unsupported region %s" % (r['name'],))
 
-        #     trade.add_operation(operation)
+    def loads_trade(self, trade_id, trade_type, data, operations):
+        """
+        Load a strategy trader trade and its operations.
+        @todo Need to check the validity of the trade :
+            - existings orders, create, sell, limit, stop, position
+            - and eventually the free margin, asset quantity
+        There is many scenarii where the trade state changed, trade executed, order modified or canceled...
+        """
+        trade = None
 
-        # self.add_trade(trade)
+        if trade_type == StrategyTrade.TRADE_BUY_SELL:
+            trade = StrategyAssetTrade(0)
+        elif trade_type == StrategyTrade.TRADE_MARGIN:
+            trade = StrategyMarginTrade(0)
+        elif trade_type == StrategyTrade.TRADE_IND_MARGIN:
+            trade = StrategyIndMarginTrade(0)
+        else:
+            logger.error("During loads, usupported trade type %i" % (trade_type,))
+            return
+
+        trade.loads(data)
+
+        # operations
+        for op in operations:
+            if op['name'] in self.strategy.service.tradeops:
+                try:                
+                    operation = self.strategy.service.tradeops[op['name']]()
+                    operation.loads(op)
+
+                    if operation.check(trade):
+                        # append the operation to the trade
+                        trade.add_operation(operation)
+                    else:
+                        logger.error("During loads, operation checking error %s" % (op_name,))
+                except Exception as e:
+                    logger.error(repr(e))
+            else:
+                logger.error("During loads, region checking error %s" % (r['name'],))
+
+        self.add_trade(trade)
 
     #
     # order/position slot
@@ -428,6 +478,7 @@ class StrategyTrader(object):
 
                     # estimation on mid last price, but might be close market price
                     # rate = (trade.best_price() - trade.entry_price) / trade.entry_price  # for best missed profit
+                    # rate = (trade.exit_price - trade.entry_price) / trade.entry_price
                     rate = trade.profit_loss  # realized profit/loss
 
                     # fee rate for entry and exit

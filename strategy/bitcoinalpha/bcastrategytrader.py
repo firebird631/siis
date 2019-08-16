@@ -411,47 +411,47 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 # reevaluate the R:R
                 # @todo
 
-                if update_sl and stop_loss > 0 and trade.sl != stop_loss:
-                    logger.info("SL %s %s %s" % (update_sl, stop_loss, trade.sl))
+                if update_sl and stop_loss > 0:
                     stop_loss = self.instrument.adjust_price(stop_loss)
 
-                    delta_time = timestamp - trade.last_stop_loss[0]
-                    num_orders = trade.last_stop_loss[1]
+                    if trade.sl != stop_loss:
+                        # logger.info("SL %s %s %s" % (update_sl, stop_loss, trade.sl))
 
-                    # too many stop-loss modifications in the timeframe
-                    if not trade.has_stop_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
-                        try:
-                            trade.modify_stop_loss(self.strategy.trader(), self.instrument.market_id, stop_loss)
-                        except Exception as e:
-                            logger.error(repr(e))
+                        delta_time = timestamp - trade.last_stop_loss[0]
+                        num_orders = trade.last_stop_loss[1]
 
-                        trade.last_stop_loss[0] = timestamp
+                        # too many stop-loss modifications in the timeframe
+                        if not trade.has_stop_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
+                            try:
+                                trade.modify_stop_loss(self.strategy.trader(), self.instrument.market_id, stop_loss)
+                            except Exception as e:
+                                logger.error(repr(e))
 
-                        # @todo
-                        Terminal.inst().info("%s modify SL" % timestamp, view="debug")
-                    else:
-                        trade.sl = stop_loss
+                            # @todo
+                            Terminal.inst().info("%s modify SL" % timestamp, view="debug")
+                        else:
+                            trade.sl = stop_loss
 
-                if update_tp and take_profit > 0 and trade.tp != take_profit:
-                    logger.info("TP %s %s %s" % (update_tp, take_profit, trade.tp))
+                if update_tp and take_profit > 0:
                     take_profit = self.instrument.adjust_price(take_profit)
 
-                    delta_time = timestamp - trade.last_take_profit[0]
-                    num_orders = trade.last_take_profit[1]
+                    if trade.tp != take_profit:
+                        # logger.info("TP %s %s %s" % (update_tp, take_profit, trade.tp))
 
-                    # too many stop-loss modifications in the timeframe
-                    if not trade.has_limit_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
-                        try:
-                            trade.modify_take_profit(self.strategy.trader(), self.instrument.market_id, take_profit)
-                        except Exception as e:
-                            logger.error(repr(e))
+                        delta_time = timestamp - trade.last_take_profit[0]
+                        num_orders = trade.last_take_profit[1]
 
-                        trade.last_take_profit[0] = timestamp
+                        # too many stop-loss modifications in the timeframe
+                        if not trade.has_limit_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
+                            try:
+                                trade.modify_take_profit(self.strategy.trader(), self.instrument.market_id, take_profit)
+                            except Exception as e:
+                                logger.error(repr(e))
 
-                        # @todo
-                        Terminal.inst().info("%s modify TP" % timestamp, view="debug")
-                    else:
-                        trade.tp = take_profit
+                            # @todo
+                            Terminal.inst().info("%s modify TP" % timestamp, view="debug")
+                        else:
+                            trade.tp = take_profit
 
                 if retained_exit:
                     self.process_exit(timestamp, trade, retained_exit.price)
@@ -525,9 +525,9 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # simply set the computed quantity
         order_quantity = quantity
 
-        # @todo as limit order
-        order_type = Order.ORDER_MARKET
-        # order_type = Order.ORDER_LIMIT
+        # market or limit
+        #order_type = Order.ORDER_MARKET
+        order_type = Order.ORDER_LIMIT
 
         # @todo or trade at order book, compute the limit price from what the order book offer
         # limit best price at tiniest ofr price
@@ -556,10 +556,10 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 # no more than max simultaneous trades
                 do_order = False
 
-            # for trade in self.trades:
-            #     if trade.timeframe == timeframe or trade.direction != direction:
-            #         # not on the same timeframe and cannot hedge on crypto market
-            #         do_order = False
+            for trade in self.trades:
+                if trade.direction != direction:  # or trade.timeframe == timeframe:
+                    # not on the same timeframe and cannot hedge on crypto market
+                    do_order = False
 
             # if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].entry_open_time) < self.trade_delay):
             if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].entry_open_time) < timeframe):

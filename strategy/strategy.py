@@ -602,7 +602,7 @@ class Strategy(Runnable):
                             feeder.set_instrument(instrument)
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_LIST:
-                    # for each trade, add the trade to the corresponding instrument sub
+                    # for each market load the corresponding trades to the strategy trader
                     for data in signal.data:
                         instrument = self.find_instrument(data[0])
                         if instrument:
@@ -612,6 +612,7 @@ class Strategy(Runnable):
                             strategy_trader.loads_trade(data[1], data[2], data[3], data[4])
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADER_LIST:
+                    # for each market load the corresponding settings and regions to the strategy trader
                     for data in signal.data:
                         instrument = self.find_instrument(data[0])
                         if instrument:
@@ -1841,7 +1842,7 @@ class Strategy(Runnable):
                         # instanciate the operation
                         operation = self.service.tradeops[op_name]()
 
-                        # and defined the parameters
+                        # and define the parameters
                         operation.init(data)
 
                         if operation.check(trade):
@@ -2081,7 +2082,7 @@ class Strategy(Runnable):
                         region.init(data)
 
                         if region.check():
-                            # append the region to the trade
+                            # append the region to the strategy trader
                             strategy_trader.add_region(region)
                         else:
                             results['error'] = True

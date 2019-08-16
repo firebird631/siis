@@ -381,6 +381,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     # reevaluate the R:R
                     # @todo
 
+                # @todo update as bcastrategytrader
+
                 sl_treshold = 0.005  # 0.5%
                 tp_treshold = 0.001  # 0.5%
 

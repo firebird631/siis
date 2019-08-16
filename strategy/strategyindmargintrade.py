@@ -174,6 +174,9 @@ class StrategyIndMarginTrade(StrategyTrade):
             if trader.create_order(order):
                 self.limit_oid = order.order_id
                 self.limit_order_qty = order.quantity
+                
+                self.last_tp_ot[0] = order.created_time
+                self.last_tp_ot[1] += 1
 
                 self.tp = limit_price
 
@@ -207,9 +210,12 @@ class StrategyIndMarginTrade(StrategyTrade):
 
             self._stats['exit-maker'] = not order.is_market()
 
-            if trader.create_order(order):  
+            if trader.create_order(order):
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
+                
+                self.last_sl_ot[0] = order.created_time
+                self.last_sl_ot[1] += 1
 
                 self.sl = stop_price
 
@@ -258,6 +264,9 @@ class StrategyIndMarginTrade(StrategyTrade):
             self._stats['exit-maker'] = not order.is_market()
 
             if trader.create_order(order):
+                self.stop_oid = order.order_id
+                self.stop_order_qty = order.quantity
+
                 return True
             else:
                 self.stop_ref_oid = None

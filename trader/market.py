@@ -15,8 +15,6 @@ class Market(object):
     Useful market data from instrument.
     @note Ofr is a synonym for ask.
 
-    IG : https://labs.ig.com/rest-trading-api-reference/service-detail?id=528
-
     @todo availables margins levels for IG but its complicated to manage
     @todo rollover fee buts its complicated too
     @todo levarage persistance
