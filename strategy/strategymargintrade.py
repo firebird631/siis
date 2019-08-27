@@ -260,6 +260,10 @@ class StrategyMarginTrade(StrategyTrade):
         """
         Close the position and cancel the related orders.
         """
+        if self._closing:
+            # already closing order
+            return False
+
         if self.create_oid:
             # cancel the remaining buy order
             if trader.cancel_order(self.create_oid):
@@ -304,15 +308,15 @@ class StrategyMarginTrade(StrategyTrade):
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
 
+                # closing order defined
+                self._closing = True
+
                 return True
             else:
                 self.stop_ref_oid = None
                 return False
 
         return True
-
-    def is_closing(self):
-        return (self.limit_ref_oid is True or self.stop_ref_oid is True) or self._exit_state == StrategyTrade.STATE_OPENED or self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED
 
     def has_stop_order(self):
         return self.stop_oid is not None and self.stop_oid != ""

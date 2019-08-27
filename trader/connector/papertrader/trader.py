@@ -761,6 +761,27 @@ class PaperTrader(Trader):
             self._orders[order_id] = order
             self.unlock()
 
+            #
+            # order signal
+            #
+
+            order_data = {
+                'id': order.order_id,
+                'symbol': order.symbol,
+                'type': order.order_type,
+                'direction': order.direction,
+                'timestamp': order.created_time,
+                'quantity': order.quantity,
+                'price': order.price,
+                'stop-price': order.stop_price,
+                'stop-loss': order.stop_loss,
+                'take-profit': order.take_profit,
+                'time-in-force': order.time_in_force
+            }
+
+            # signal as watcher service (opened + full traded qty and immediately deleted)
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (order.symbol, order_data, order.ref_order_id))
+
             return True
 
         return False
@@ -1086,7 +1107,7 @@ class PaperTrader(Trader):
                 'symbol': order.symbol,
                 'type': order.order_type,
                 'direction': order.direction,
-                'timestamp': order.transact_time,
+                'timestamp': order.created_time,
                 'quantity': order.quantity,
                 'price': order.price,
                 'stop-price': order.stop_price,
@@ -1190,7 +1211,7 @@ class PaperTrader(Trader):
                 'symbol': order.symbol,
                 'type': order.order_type,
                 'direction': order.direction,
-                'timestamp': order.transact_time,
+                'timestamp': order.created_time,
                 'quantity': order.quantity,
                 'price': order.price,
                 'stop-price': order.stop_price,
@@ -1540,7 +1561,7 @@ class PaperTrader(Trader):
                 'symbol': order.symbol,
                 'type': order.order_type,
                 'direction': order.direction,
-                'timestamp': order.transact_time,
+                'timestamp': order.created_time,
                 'quantity': order.quantity,
                 'price': order.price,
                 'stop-price': order.stop_price,
@@ -1695,7 +1716,7 @@ class PaperTrader(Trader):
                 'symbol': order.symbol,
                 'type': order.order_type,
                 'direction': order.direction,
-                'timestamp': order.transact_time,
+                'timestamp': order.created_time,
                 'quantity': order.quantity,
                 'price': order.price,
                 'stop-price': order.stop_price,
@@ -1957,7 +1978,7 @@ class PaperTrader(Trader):
                 'symbol': order.symbol,
                 'type': order.order_type,
                 'direction': order.direction,
-                'timestamp': order.transact_time,
+                'timestamp': order.created_time,
                 'quantity': order.quantity,
                 'price': order.price,
                 'stop-price': order.stop_price,
@@ -2114,7 +2135,7 @@ class PaperTrader(Trader):
                 'symbol': order.symbol,
                 'type': order.order_type,
                 'direction': order.direction,
-                'timestamp': order.transact_time,
+                'timestamp': order.created_time,
                 'quantity': order.quantity,
                 'price': order.price,
                 'stop-price': order.stop_price,

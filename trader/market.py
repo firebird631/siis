@@ -56,6 +56,7 @@ class Market(object):
     ORDER_STOP_LIMIT = 4
     ORDER_TAKE_PROFIT_MARKET = 8
     ORDER_TAKE_PROFIT_LIMIT = 16
+    ORDER_ONE_CANCEL_OTHER = 32
     ORDER_ALL = 32-1
 
     # Standard month code

@@ -286,35 +286,16 @@ class Watcher(Runnable):
     # utils
     #
 
-    def __update_ohlc(self, ohlc, bid, ofr, volume):
-        if volume:
-            ohlc._volume += volume
-
-        if bid:
-            if not ohlc._bid_open:
-                ohlc.set_bid_ohlc(bid, bid, bid, bid)
-
-            # update bid prices
-            ohlc._bid_high = max(ohlc._bid_high, bid)
-            ohlc._bid_low = min(ohlc._bid_low, bid)
-
-            # potential close
-            ohlc._bid_close = bid
-
-        if ofr:
-            if not ohlc.ofr_open:
-                ohlc.set_ofr_ohlc(ofr, ofr, ofr, ofr)
-
-            # update ofr prices
-            ohlc._ofr_high = max(ohlc._ofr_high, ofr)
-            ohlc._ofr_low = min(ohlc._ofr_low, ofr)
-
-            # potential close
-            ohlc._ofr_close = ofr
-
     def update_ohlc(self, market_id, tf, ts, bid, ofr, volume):
-        base_time = Instrument.basetime(ts, time.time())
-
+        """
+        Update the current OHLC or create a new one, and save them.
+        @param market_id str Unique market identifier
+        @param tf float Timeframe (normalized timeframe at second)
+        @param ts float Timestamp of the update or of the tick/trade
+        @param bid float Bid price.
+        @param ofr float Offer/ask price.
+        @param volume float Volume transacted or 0 if unspecified.
+        """
         ended_ohlc = None
         ohlc = None
 
@@ -330,14 +311,8 @@ class Watcher(Runnable):
         else:
             ohlc = last_ohlc_by_timeframe[tf]
 
-        if ohlc and (ohlc.timestamp + tf <= base_time):
-            # later tick data (laggy ?)
-            if ts < base_time:
-                # but after that next in laggy data will be ignored...
-                # its not perfect in laggy cases for storage, but in live we can't deals we later data
-                self.__update_ohlc(ohlc, bid, ofr, volume)
-
-            # need to close the ohlc and to open a new one
+        if ohlc and ts >= ohlc.timestamp + tf:
+            # need to close the current ohlc
             ohlc.set_consolidated(True)
             ended_ohlc = ohlc
 
@@ -345,20 +320,45 @@ class Watcher(Runnable):
             ohlc = None
 
         if ohlc is None:
-            # open a new one
+            # open a new one if necessary
+            base_time = Instrument.basetime(tf, ts)
             ohlc = Candle(base_time, tf)
 
             ohlc.set_consolidated(False)
 
             if bid:
-                ohlc.set_bid_ohlc(bid, bid, bid, bid)
+                ohlc.set_bid(bid)
             if ofr:
-                ohlc.set_ofr_ohlc(ofr, ofr, ofr, ofr)
+                ohlc.set_ofr(ofr)
 
             last_ohlc_by_timeframe[tf] = ohlc
 
         if ts >= ohlc.timestamp:
-            self.__update_ohlc(ohlc, bid, ofr, volume)
+            # update the current OHLC
+            if volume:
+                ohlc._volume += volume
+
+            if bid:
+                if not ohlc._bid_open:
+                    ohlc.set_bid(bid)
+
+                # update bid prices
+                ohlc._bid_high = max(ohlc._bid_high, bid)
+                ohlc._bid_low = min(ohlc._bid_low, bid)
+
+                # potential close
+                ohlc._bid_close = bid
+
+            if ofr:
+                if not ohlc.ofr_open:
+                    ohlc.set_ofr(ofr)
+
+                # update ofr prices
+                ohlc._ofr_high = max(ohlc._ofr_high, ofr)
+                ohlc._ofr_low = min(ohlc._ofr_low, ofr)
+
+                # potential close
+                ohlc._ofr_close = ofr
 
         # stored timeframes only
         if ended_ohlc and (tf in self.STORED_TIMEFRAMES):

@@ -123,7 +123,7 @@ class CandleGenerator(object):
 
         if self._candle is None:
             # open a new one
-            base_time = self.basetime(from_tick[0])  # from_tick[0] directly ?
+            base_time = self.basetime(from_tick[0])
             self._candle = Candle(base_time, self._to_tf)
 
             self._candle.set_consolidated(False)
@@ -179,10 +179,11 @@ class CandleGenerator(object):
             # already done
             return None
 
-        base_time = self.basetime(from_candle.timestamp)
+        # base_time = self.basetime(from_candle.timestamp)
         ended_candle = None
 
-        if self._candle and self._candle.timestamp+self._to_tf <= base_time:
+        # if self._candle and self._candle.timestamp+self._to_tf <= base_time:
+        if self._candle and from_candle.timestamp >= self._candle.timestamp+self._to_tf:
             # need to close the candle and to open a new one
             self._candle.set_consolidated(True)
             ended_candle = self._candle
@@ -191,6 +192,7 @@ class CandleGenerator(object):
 
         if self._candle is None:
             # open a new one
+            base_time = self.basetime(from_candle.timestamp)
             self._candle = Candle(base_time, self._to_tf)
 
             self._candle.set_consolidated(False)

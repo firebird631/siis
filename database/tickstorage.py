@@ -30,6 +30,8 @@ class TickStorage(object):
 
     Price and volume should be formated with the asset precision if possible but scientific notation
     is tolerate.
+
+    @todo Seek to file position before writing.
     """
 
     def __init__(self, markets_path, broker_id, market_id, text=True, binary=True):
@@ -248,6 +250,8 @@ class TickStreamer(object):
             if os.path.isfile(pathname):
                 self._file = open(pathname, "rt")
                 self._is_binary = False
+
+                # @todo seeking
 
     def close(self):
         if self._file:

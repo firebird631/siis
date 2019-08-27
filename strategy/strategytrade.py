@@ -28,7 +28,7 @@ class StrategyTrade(object):
     then for a TP50% use two trade with half of the size, the first having a TP at 50% price.    
     """
 
-    __slots__ = '_trade_type', '_entry_state', '_exit_state', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
+    __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
                 'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', 'ptp', '_stats', 'last_tp_ot', 'last_sl_ot', \
                 'exit_trades'
 
@@ -55,6 +55,7 @@ class StrategyTrade(object):
         
         self._entry_state = StrategyTrade.STATE_NEW
         self._exit_state = StrategyTrade.STATE_NEW
+        self._closing = False
 
         self._timeframe = timeframe  # timeframe that have given this trade
 
@@ -285,7 +286,7 @@ class StrategyTrade(object):
         """
         Is close order in progress.
         """
-        return self._exit_state == StrategyTrade.STATE_OPENED or self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED
+        return self._closing and self._exit_state != StrategyTrade.STATE_FILLED
 
     def is_closed(self):
         """
@@ -504,6 +505,7 @@ class StrategyTrade(object):
             'trade': self._trade_type,  #  self.trade_type_to_str(),
             'entry-state': self._entry_state,  #  self.trade_state_to_str(self._entry_state),
             'exit-state': self._exit_state,  # self.trade_state_to_str(self._exit_state),
+            'closing': self._closing,
             'timeframe': self._timeframe,  # self.timeframe_to_str(),
             'user-trade': self._user_trade,
             'avg-entry-price': self.aep,
@@ -532,6 +534,7 @@ class StrategyTrade(object):
         self._trade_type = data.get('trade', 0)  # self.trade_type_from_str(data.get('type', ''))
         self._entry_state = data.get('entry-state', 0)  # self.trade_state_from_str(data.get('entry-state', ''))
         self._exit_state = data.get('exit-state', 0)  # self.trade_state_from_str(data.get('exit-state', ''))
+        self._closing = data.get('closing', False)
         self._timeframe =  data.get('timeframe', 0)  # timeframe_from_str(data.get('timeframe', '4h'))
         self._user_trade = data.get('user-trade')
 

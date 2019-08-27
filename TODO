@@ -34,6 +34,32 @@
 
 #93 Command doit y avoir un prob avec self._word qui doit être parfois mal définit, donc la complétion initial du premier verbe déconne parfois
 
+#95 Sometime during bitmex trade history fetching :
+ File "siis.py", line 605, in <module>
+    application(sys.argv)
+  File "siis.py", line 210, in application
+    do_fetcher(options, siis_logger)
+  File "/home/frederic/dev/trading/siis/tools/fetcher.py", line 77, in do_fetcher
+    options.get('spec'), cascaded)
+  File "/home/frederic/dev/trading/siis/watcher/fetcher.py", line 124, in fetch_and_generate
+    for data in self.fetch_trades(market_id, from_date, to_date, n):
+  File "/home/frederic/dev/trading/siis/watcher/connector/bitmex/fetcher.py", line 101, in fetch_trades
+    for trade in trades:
+  File "/home/frederic/dev/trading/siis/connector/bitmex/connector.py", line 295, in get_historical_trades
+    results = self.request(path=endpoint, query=params, verb='GET')
+  File "/home/frederic/dev/trading/siis/connector/bitmex/connector.py", line 248, in request
+    return response.json()
+  File "/home/frederic/dev/trading/siis.venv/lib/python3.7/site-packages/requests/models.py", line 897, in json
+    return complexjson.loads(self.text, **kwargs)
+  File "/usr/lib/python3.7/json/__init__.py", line 348, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib/python3.7/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib/python3.7/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None 
+    json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+
 ##########
 # URGENT #
 ##########

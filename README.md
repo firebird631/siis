@@ -69,7 +69,7 @@ Features
 
 ### Participate ###
 
-Any help is welcome, if you are a Python, Javascrip or C++ devlopper, or a data scientist contact me if your are
+Any help is welcome, if you are a Python, Javascript or C++ developper, or a data scientist contact me if your are
 interested in participating seriously into this project.
 
 ### Donate ###
@@ -157,9 +157,9 @@ Configuration
 -------------
 
 First running will try to create a data structure on your local user.
-* /home/\<username>/.siis on Linux based systems
-* C:\Users\\<username>\AppData\Local\siis on Windows
-* /Users/\<username>/.siis on MacOSX
+* /home/\<username\>/.siis on Linux based systems
+* C:\Users\\<username\>\AppData\Local\siis on Windows
+* /Users/\<username\>/.siis on MacOSX
 
 The directory will contains 4 sub-directories:
 
@@ -193,7 +193,7 @@ This file comes from the beginning of the project, would need some reorganizatio
             * either a wildchar prefixed value. For example *BTC to filter any BTC quoted paires
             * either a ! prefixed value (meaning not) for avoiding this particular market
             * you could have ['*BTC', '!BCHABCBTC'] for exemple to watching any BTC quote paires excepted the BCHABCBTC.
-    * there is some more specific options on the tradingview webhock server (host and port of your listening server).
+    * there is some more specific options on the tradingview webhook server (host and port of your listening server).
 * INDICATORS Like for fetcher you might not have to modify this part or if you create your own indicators.
 * TRADEOPS Again likes indictors, except if you create your own trade operations.
 * STRATEGIES Contains the default built-ins strategies, you'll need to add yours here.
@@ -333,7 +333,7 @@ python siis.py <identity> [--help, --options...]
 * --last=\<number> Fast last number of candles for every watched market (take care can take all requests credits on the broker). By default it is configured to get 1m, 5m and 1h candles.
 * --market=\<market-id> Specific market identifier to fetch, binarize only.
 * --broker=\<broker-name> Specific fetcher or watcher name to fetche or binarize market from.
-* --timeframe=\<timeframe> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in 1m 5m 15m 1h 2h 4h d m w
+* --timeframe=\<timeframe> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in **1m, 5m, 15m, 1h, 2h, 4h, 1d, 1M, 1w**
 * --cascaded=\<max-timeframe> During fetch process generate the candles of highers timeframe from lowers. Default is no. Take care to have entire multiple to fullfill the generated candles.
 * --spec=\<specific-option> Specific fetcher option (exemple STOCK for alphavantage.co fetcher to fetch a stock market).
 * --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.
@@ -370,7 +370,7 @@ OHLC goes into the SQL database, trades/ticks data goes to binary files, organiz
 Starting by example will be more easy, so :
 
 ```
-python siis.py real --fetch --broker=binance.com --market=\*USDT,\*BTC --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=1w
+python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=1w
 ```
 
 This example will fetch any weekly OHLC of pairs based on USDT and BTC, from 2017-08-01 to 2019-08-31.
@@ -566,6 +566,9 @@ be more patient, this is due to theirs API limitations.
 
 When restarting my regions and trades are not reloaded : Regions and trades are saved but the loading part is not totally completed at this
 time, you can uses the assign command eventually to remap an existing trade.
+
+Exception during fetch of BitMex trade : It appears, and I have no idea at this time there is an unexpected API response that generate a program
+exception, that need to restart the fetch at the time of failure. I will investigate later on that issue. 
 
 Please understands than I develop this project during my free time, and for free, only your donations could help me.
 

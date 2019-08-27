@@ -69,12 +69,15 @@ class SineWaveIndicator(Indicator):
 
         return 0
 
+    def trend(self):
+        return 1 if self._last_sine > self._last_lead_sine else -1 if self._last_sine < self._last_lead_sine else 0
+
     def compute(self, timestamp, close):
         self._prev_sine = self._last_sine
         self._prev_lead_sine = self._last_lead_sine
 
         self._sines, self._lead_sines = ta_HT_SINE(close)
-        
+
         self._last_sine = self._sines[-1]
         self._last_lead_sine = self._lead_sines[-1]
 

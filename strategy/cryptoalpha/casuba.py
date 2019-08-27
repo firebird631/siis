@@ -21,7 +21,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
-        self.atr = None
         self.stochrsi = None
 
         super().__init__(strategy_trader, params)
@@ -148,9 +147,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                 bb_ma = -1
             elif prices[-1] > self.bollingerbands.last_ma:
                 bb_ma = 1
-
-        if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.tomdemark:
             self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
@@ -362,9 +358,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                 bb_ma = -1
             elif prices[-1] > self.bollingerbands.last_ma:
                 bb_ma = 1
-
-        if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         level1_signal = 0
 
@@ -596,51 +589,47 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
         if self.bbawe:
             bbawe = self.bbawe.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
-        if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
-
-        level1_signal = 0
+        ema_sma = 0
 
         if self.ema.last < self.sma.last:
             # bear trend
             if self.rsi.last > 0.5:  # initial: 0.5
-                level1_signal = -1
+                ema_sma = -1
             elif self.rsi.last < 0.2:  # initial: 0.2
-                level1_signal = 1
+                ema_sma = 1
         else:
             # bull trend
             if self.rsi.last > 0.8:  # initial: 0.8
-                level1_signal = -1
+                ema_sma = -1
             elif self.rsi.last < 0.6:  # initial: 0.6
-                level1_signal = 1
+                ema_sma = 1
 
-        if bbawe > 0 and level1_signal > 0:
+        # @todo dip, bounce or trend...
+
+        if bbawe > 0 and ema_sma > 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_ENTRY
             signal.dir = 1
             signal.p = self.price.close[-1]
 
-            if self.tomdemark.c.tdst:
-                signal.sl = self.tomdemark.c.tdst
-
-        # elif bbawe < 0 and level1_signal < 0:
-        #     # exit signal
-        #     signal = StrategySignal(self.tf, timestamp)
-        #     signal.signal = StrategySignal.SIGNAL_EXIT
-        #     signal.dir = 1
-        #     signal.p = self.price.close[-1]
+        elif bbawe < 0 and ema_sma < 0:
+            # exit signal
+            signal = StrategySignal(self.tf, timestamp)
+            signal.signal = StrategySignal.SIGNAL_EXIT
+            signal.dir = 1
+            signal.p = self.price.close[-1]
 
         if self.tomdemark:
             self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
-            if 0: # self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and (level1_signal < 0 or bbawe < 0):
+            if 0: # self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and (ema_sma < 0 or bbawe < 0):
                 # setup complete and trend change
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT
                 signal.dir = 1
                 signal.p = self.price.close[-1]
 
-            elif 0: #2 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0 and (level1_signal < 0):
+            elif 2 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0 and (ema_sma < 0 and bbawe < 0):
                 # cancelation
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT

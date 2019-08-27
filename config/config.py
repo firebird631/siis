@@ -1,15 +1,15 @@
 # @date 2018-08-08
 # @author Frederic SCHERMA
 # @license Copyright (c) 2018 Dream Overflow
-# Watcher, traders, indicator configuration
+# Config for : Databases, Fetchers, Watchers, Traders, Indicator, Region, TradeOps, Strategies, Monitoring
 
 DATABASES = {
-    'siis': {
-        'type': 'pgsql',
-        'user': 'siis',
-        'password': 'siis',
-        'host': '127.0.0.1',
-        'port': 5432,
+    'siis': {                   # fixed name of the database
+        'type': 'pgsql',        # pgsql or mysql
+        'user': 'siis',         # database user grant for siis database
+        'password': 'siis',     # user password
+        'host': '127.0.0.1',    # database hostname or unix:// socket
+        'port': 5432,           # database host port
         'conn_max_age': 86400
     }
 }
@@ -316,6 +316,12 @@ INDICATORS = {
         'options': {
         }
     },
+    'mama': {
+        'status': 'load',
+        'classpath': 'strategy.indicator.mama.mama.MAMAIndicator',
+        'options': {
+        }
+    },
 }
 
 TRADEOPS = {
@@ -388,9 +394,9 @@ STRATEGIES = {
 }
 
 MONITORING = {
-    'host': '127.0.0.1',
-    'port': 8080,
+    'host': '127.0.0.1',      # listening host
+    'port': 8080,             # and port
     'allowdeny': 'allowany',  # can be allowany, denyall, allowlist, denylist
-    'list': None,
-    'api-key': 'e4f7d47e832e115df640ec3b1c95a417c2f26286'  # replace with you generated unique key date --rfc-3339=ns | sha1sum | awk '{print $1}'
+    'list': None,             # allowed or blocked IPs
+    'api-key': 'e4f7d47e832e115df640ec3b1c95a417c2f26286'  # replace with your generated unique key, using bash: date --rfc-3339=ns | sha1sum | awk '{print $1}'
 }

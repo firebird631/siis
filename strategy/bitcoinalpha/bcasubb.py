@@ -27,6 +27,7 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
 
         self.atr = None
         self.bollingerbands = None
+        self.mama = None
 
         super().__init__(strategy_trader, params)
 
@@ -142,6 +143,9 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
             if self.bollingerbands.last_ma < prices[-1] < self.bollingerbands.last_top:
                 bb_way = -1
 
+        if self.mama:
+            self.mama.compute(last_timestamp, self.price.close)
+
         # if ema_sma_cross > 0 and rsi_30_70 > 0:
         #     self.trend = 1
 
@@ -154,22 +158,22 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
         # else:
         #     self.trend = 0
 
-        level1_signal = 0
+        ema_sma = 0
 
-        if self.ema.last < self.sma.last:
-            # bear trend
-            if self.rsi.last > 0.5:  # initial: 0.5
-                level1_signal = -1
-            elif self.rsi.last < 0.2:  # initial: 0.2
-                level1_signal = 1
-        else:
-            # bull trend
-            if self.rsi.last > 0.8:  # initial: 0.8
-                level1_signal = -1
-            elif self.rsi.last < 0.6:  # initial: 0.6
-                level1_signal = 1            
+        # if self.ema.last < self.sma.last:
+        #     # bear trend
+        #     if self.rsi.last > 0.5:  # initial: 0.5
+        #         ema_sma = -1
+        #     elif self.rsi.last < 0.2:  # initial: 0.2
+        #         ema_sma = 1
+        # else:
+        #     # bull trend
+        #     if self.rsi.last > 0.8:  # initial: 0.8
+        #         ema_sma = -1
+        #     elif self.rsi.last < 0.6:  # initial: 0.6
+        #         ema_sma = 1            
 
-        if level1_signal < 0:
+        if ema_sma < 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_EXIT
             signal.dir = 1
@@ -177,7 +181,7 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
 
             self.trend = -1
 
-        elif level1_signal > 0:
+        elif ema_sma > 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_EXIT
             signal.dir = -1
@@ -187,8 +191,25 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
         else:
             self.trend = 0
 
-        self.can_long = self.trend >= 0
-        self.can_short = self.trend <= 0
+        if self.mama:
+            cross = self.mama.cross()
+            # logger.info("mama cross %s %s %s" % (self.mama.last_fama, self.mama.last_mama, self.mama.trend()))
+
+            if cross > 0:
+                self.mama_cross = (1, last_timestamp, self.price.close[-1])
+            elif cross < 0:
+                self.mama_cross = (-1, last_timestamp, self.price.close[-1])
+
+            # or we can try an entry on cross signal
+            # @todo
+
+            self.trend = self.mama.trend()
+
+        # can long on upward trend, on dip or on lower of bollinger if range
+        # @todo detect dip, bollinger range (flat mama + first bounces)
+
+        self.can_long = True #self.trend >= 0
+        self.can_short = True #self.trend <= 0
 
         if self.pivotpoint:
             self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
@@ -213,14 +234,14 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
                 signal.dir = -1
                 signal.p = self.price.close[-1]
 
-            elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0:  # and (level1_signal < 0):
+            elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0:  # and (ema_sma < 0):
                 # cancelation
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT
                 signal.dir = 1
                 signal.p = self.price.close[-1]
 
-            elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d < 0:  # and (level1_signal > 0):
+            elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d < 0:  # and (ema_sma > 0):
                 # cancelation
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT

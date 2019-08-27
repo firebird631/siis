@@ -54,6 +54,7 @@ class Client(object):
     ORDER_TYPE_TAKE_PROFIT = 'TAKE_PROFIT'
     ORDER_TYPE_TAKE_PROFIT_LIMIT = 'TAKE_PROFIT_LIMIT'
     ORDER_TYPE_LIMIT_MAKER = 'LIMIT_MAKER'
+    ORDER_TYPE_ONE_CANCEL_OTHER = 'OCO'
 
     TIME_IN_FORCE_GTC = 'GTC'  # Good till cancelled
     TIME_IN_FORCE_IOC = 'IOC'  # Immediate or cancel
@@ -72,6 +73,10 @@ class Client(object):
     AGG_TIME = 'T'
     AGG_BUYER_MAKES = 'm'
     AGG_BEST_MATCH = 'M'
+
+    # @todo margin/transfer, margin/loan, margin/repay, margin/order, margin/account
+    # @todo margin/asset, margin/pair, margin/priceIndex, margin/openOrders, margin/allOrders, margin/myTrades
+    # @todo margin/maxBorrowable, margin/maxTransferable 
 
     def __init__(self, api_key, api_secret, requests_params=None):
         """Binance API Client constructor
@@ -194,6 +199,8 @@ class Client(object):
         """Internal helper for handling API responses from the Binance server.
         Raises the appropriate exceptions when necessary; otherwise, returns the
         response.
+
+        @todo X-MBX-USED-WEIGHT
         """
         if not str(response.status_code).startswith('2'):
             raise BinanceAPIException(response)

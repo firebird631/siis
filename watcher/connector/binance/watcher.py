@@ -297,6 +297,9 @@ class BinanceWatcher(Watcher):
             # symbol['orderTypes'] in ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT']
             # market.orders = 
 
+            if symbol.get('ocoAllowed', False):
+                market.orders |= Market.ORDER_ONE_CANCEL_OTHER
+
             market.maker_fee = account['makerCommission'] * 0.0001
             market.taker_fee = account['takerCommission'] * 0.0001
 

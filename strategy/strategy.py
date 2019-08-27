@@ -1525,8 +1525,12 @@ class Strategy(Runnable):
 
             # color TP in green if hitted, similarely in red for SL
             # @todo not really true, could store the exit reason in trade stats
-            _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']), style=style, true=Color.GREEN)
-            _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']), style=style, true=Color.RED)
+            if t['d'] == "long":
+                _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']), style=style, true=Color.GREEN)
+                _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']), style=style, true=Color.RED)
+            else:
+                _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) <= float(t['tp']), style=style, true=Color.GREEN)
+                _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) >= float(t['sl']), style=style, true=Color.RED)
 
             # per active trade
             markets.append(t['symbol'])

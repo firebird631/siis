@@ -140,6 +140,7 @@ DEFAULT_PARAMS = {
                 'pivotpoint': ('pivotpoint', 3,),
                 'tomdemark': ('tomdemark', 9),
                 'atr': ('atr', 14, 2.618),
+                'mama': ('mama', 0.5, 0.05),
             },
             'constants': {
                 'rsi_low': 0.3,

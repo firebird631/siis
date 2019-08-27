@@ -75,9 +75,6 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         self.setup_streaming()
 
-        self._wait_bless = 0
-        self._wait_timeout = 0
-
     def filter_market(self, timestamp):
         """
         The first boolean mean accept, the second compute.
@@ -135,26 +132,14 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         ref_sma = self.timeframes[self.ref_timeframe].sma.last
         ref_ema = self.timeframes[self.ref_timeframe].ema.last
 
-        if self._wait_bless == 1:
-            if self._wait_timeout > 0 and timestamp >= self._wait_timeout:
-                # wait for timeout
-                self._wait_bless = -1
-                self._wait_timeout = 0
-
-            if ref_sma > ref_sma55:
-                self._wait_bless = -1
-                Terminal.inst().message("SMA > SMA55 %s (price=%s ema=%s sma=%s sma55=%s)!" % (self.instrument.market_id, ref_price, ref_ema, ref_sma, ref_sma55) , view='debug')
-
         #
         # filters the entries
         #
 
         retained_entries = []
 
-        for entry in entries:
-            # filters entry signal, according to some correlation, parent timeframe signal or trend or trade regions
-            parent_entry_tf = self.parent_timeframe(entry.timeframe)
-
+        # filters entry signal, according to some correlation, parent timeframe signal or trend or trade regions
+        for entry in entries:          
             # only allowed range of signal for entry
             if not (self.min_traded_timeframe <= entry.timeframe <= self.max_traded_timeframe):
                 continue
@@ -163,25 +148,9 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ofr, entry, self.region_allow):
                 continue
 
-            # ref timeframe is bear don't take the risk
+            # ref timeframe is bear don't take the risk (always long entry)
             if not self.timeframes[self.sltp_timeframe].can_long:
                 continue
-
-            #
-            # consecutives loosing trade, stop the curse for a moment
-            #
-
-            # if self._wait_bless == 1:
-            #     continue
-
-            # if self._wait_bless == 0 and self._stats['cont-loss'] > self.max_trades:
-            #     self._wait_bless = 1
-            #     self._wait_timeout = timestamp + 12*60*60  # 12h self-ban
-            #     Terminal.inst().message("Curse !!! Wait a moment, or a favorable trend %s !" % self.instrument.market_id, view='debug')
-            #     continue
-
-            # if self._wait_bless == -1:
-            #    self._wait_bless = 0
 
             atr_stop = self.timeframes[self.sltp_timeframe].atr.stop_loss(entry.dir)
             if atr_stop < self.instrument.open_exec_price(entry.dir):
@@ -189,34 +158,36 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             # and a target
             take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]
+            min_take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
 
+            # minimal R:R
             gain = (take_profit - entry.p) / entry.p
             loss = (entry.p - entry.sl) / entry.p
 
-            if loss != 0 and (gain / loss < 0.5):  # 0.75
-                Terminal.inst().message("%s %s %s %s" % (entry.p, entry.sl, take_profit, (gain/loss)), view="debug")
+            if loss != 0 and (gain / loss < 0.85):  # 0.75 1.0
+                Terminal.inst().message("Risk:reward too weak p=%s sl=%s tp=%s rr=%s" % (entry.p, entry.sl, take_profit, (gain/loss)), view="debug")
                 continue
 
-            # not enought potential profit
-            if (take_profit - entry.p) / entry.p < 0.005:  # 0.5% min
+            # not enought potential profit (minimal %)
+            if gain < 0.01:
                 continue
 
             entry.tp = take_profit
             entry.ptp = 1.0
 
-            if (entry.price - entry.sl) / entry.price < -0.035:
-                # max loss at x%
+            # max loss in %
+            if loss < 0.035:
                 entry.sl = entry.price * (1-0.035)
-                # or do not do the trade to risky
-                entry = None
-                continue
+
+                # or not do the trade, to risky
+                # continue
 
             retained_entries.append(entry)
 
-            # TP 50% entry
+            # # TP 50% entry
             # entry_50pc = StrategySignal(0, 0)
             # entry_50pc.dup(entry)
-            # entry_50pc.tp = np.max(self.timeframes[self.sltp_timeframe].pivotpoint.resistances[0])#[-1]
+            # entry_50pc.tp = self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[0]
             # entry_50pc.ptp = 0.25
 
             # retained_entries.append(entry_50pc)
@@ -288,14 +259,15 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 # stop-loss update
                 #
 
-                update_tp = not trade.tp  # always need a target, even if user trade
-                update_sl = not trade.sl  # and a stop
+                # always need a target, even if user trade and a stop order
+                update_tp = not trade.tp or not trade.has_limit_order()  
+                update_sl = not trade.sl or not trade.has_stop_order()
 
                 # current sl/tp
                 stop_loss = trade.sl
                 take_profit = trade.tp
 
-                # ATR stop-loss
+                # ATR stop-loss (always long)
                 atr_stop = self.timeframes[self.sltp_timeframe].atr.stop_loss(trade.direction)
                 if atr_stop > stop_loss:
                     stop_loss = atr_stop
@@ -307,7 +279,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                         if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
                             update_sl = True
-                            # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
+                            stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
 
                     elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
                         if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[1]):
@@ -315,7 +287,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                         if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
                             update_sl = True
-                            # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
+                            stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
 
                     elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
                         if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[0]):
@@ -323,7 +295,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                         if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
                             update_sl = True
-                            # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_pivot
+                            stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_pivot
 
                     elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
                         if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.pivot):
@@ -363,39 +335,62 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                     take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.partial_tp)]
 
-                    # if update_tp and trade.best_price() > take_profit and close_exec_price > trade.entry_price:
-                    #     # best price reached this take-profit, close as soon as possible
-                    #     Terminal.inst().info("%s bestPrice>TP close" % timestamp, view="debug")
-                    #     trade.tp = close_exec_price
-
-                    # higher TP need at least 5% more
-                    if update_tp and (take_profit - close_exec_price) / close_exec_price < 0.005:
-                       update_tp = False
-
-                    #gain = (trade.tp - close_exec_price) / close_exec_price
-                    #loss = (close_exec_price - trade.sl) / close_exec_price
-
-                    gain = (trade.tp - trade.entry_price) / trade.entry_price
-                    loss = (trade.entry_price - trade.sl) / trade.entry_price
+                    # enought potential profit (0.5% min target) (always long)
+                    # if (take_profit - close_exec_price) / close_exec_price < 0.005 and update_tp:
+                    #     update_tp = False
 
                     # reevaluate the R:R
-                    # @todo
+                    # gain = (take_profit - trade.entry_price) / trade.entry_price
+                    # loss = (trade.entry_price - trade.sl) / trade.entry_price
 
-                # @todo update as bcastrategytrader
+                    # if loss != 0 and (gain / loss < 0.5):  # 0.75
+                    #     # Terminal.inst().message("%s %s %s %s" % (trade.entry_price, trade.sl, take_profit, (gain/loss)), view="debug")
+                    #     # @todo force exit
+                    #     continue
 
-                sl_treshold = 0.005  # 0.5%
-                tp_treshold = 0.001  # 0.5%
+                # @todo utiliser OCO, et sinon on peu aussi prioriser un ordre SL si le trade est en perte, et plutot un limit si en profit
+                if update_sl and stop_loss > 0:
+                    stop_loss = self.instrument.adjust_price(stop_loss)
 
-                if update_sl and trade.sl != stop_loss:
-                    delta_sl = (abs(stop_loss - trade.sl) / trade.sl) if trade.sl else sl_treshold
-                    if delta_sl > sl_treshold:
-                        trade.sl = stop_loss
-                        Terminal.inst().info("%s updateSL d=%s" % (timestamp, delta_sl), view="debug")
+                    if trade.sl != stop_loss:
+                        # logger.info("SL %s %s %s" % (update_sl, stop_loss, trade.sl))
 
-                if update_tp and trade.tp != take_profit:
-                    delta_tp = (abs(take_profit - trade.tp) / trade.tp) if trade.tp else tp_treshold
-                    if delta_tp > tp_treshold:
-                        Terminal.inst().info("%s updateTP d=%s" % (timestamp, delta_tp), view="debug")
+                        delta_time = timestamp - trade.last_stop_loss[0]
+                        num_orders = trade.last_stop_loss[1]
+
+                        # too many stop-loss modifications in the timeframe
+                        if 0:  #not trade.has_stop_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
+                            try:
+                                # OCO order or only bot managed stop-loss, only a TP limit is defined
+                                trade.modify_stop_loss(self.strategy.trader(), self.instrument.market_id, stop_loss)
+                            except Exception as e:
+                                logger.error(repr(e))
+
+                            Terminal.inst().info("%s modify SL" % timestamp, view="debug")
+                        else:
+                            trade.sl = stop_loss
+                            Terminal.inst().info("%s modify SL" % timestamp, view="debug")
+
+                if update_tp and take_profit > 0:
+                    take_profit = self.instrument.adjust_price(take_profit)
+
+                    if trade.tp != take_profit:
+                        # logger.info("TP %s %s %s" % (update_tp, take_profit, trade.tp))
+
+                        delta_time = timestamp - trade.last_take_profit[0]
+                        num_orders = trade.last_take_profit[1]
+
+                        # too many stop-loss modifications in the timeframe
+                        if not trade.has_limit_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
+                            try:
+                                trade.modify_take_profit(self.strategy.trader(), self.instrument.market_id, take_profit)
+                            except Exception as e:
+                                logger.error(repr(e))
+
+                            # @todo
+                            Terminal.inst().info("%s modify TP" % timestamp, view="debug")
+                        else:
+                            trade.tp = take_profit
 
                 #
                 # exit trade if an exit signal retained

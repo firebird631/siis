@@ -53,14 +53,14 @@ class BBAweIndicator(Indicator):
         bb_basis = ta_EMA(close, self._bb_L) if self._use_EMA else ta_SMA(close, self._bb_L)
         fast_ma = ta_EMA(close, self._fast_MA_L)
 
-        # Deviation
-        dev = ta_STDDEV(close, self._bb_L)
-        bb_dev_inner = self._base_multiplier * dev
+        # Deviation (a simple BBAND)
+        # dev = ta_STDDEV(close, self._bb_L)
+        # bb_dev_inner = self._base_multiplier * dev
 
         # Upper bands
-        inner_high = bb_basis + bb_dev_inner
+        # inner_high = bb_basis + bb_dev_inner
         # Lower Bands
-        inner_low = bb_basis - bb_dev_inner
+        # inner_low = bb_basis - bb_dev_inner
 
         # Calculate Awesome Oscillator
         hl2 = (high + low) * 0.5

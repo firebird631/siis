@@ -142,7 +142,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ofr, entry, self.region_allow):
                 continue
 
-            # ref timeframe is bear don't take the risk
+            # ref timeframe is contrary
             if entry.direction > 0 and not self.timeframes[self.sltp_timeframe].can_long:
                 continue
 
@@ -151,32 +151,47 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             # initial stop-loss
             atr_stop = self.timeframes[self.sltp_timeframe].atr.stop_loss(entry.dir)
-            if atr_stop < self.instrument.open_exec_price(entry.dir):
-                entry.sl = atr_stop
 
-            # and an initial target
-            take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]
+            if entry.direction > 0:
+                # and an initial target
+                take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]
 
-            gain = (take_profit - entry.p) / entry.p
-            loss = (entry.p - entry.sl) / entry.p
+                if atr_stop < self.instrument.open_exec_price(entry.dir):
+                    entry.sl = atr_stop
+
+                gain = (take_profit - entry.p) / entry.p
+                loss = (entry.p - entry.sl) / entry.p
+
+            elif entry.direction < 0:
+                # and an initial target
+                take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
+
+                if atr_stop > self.instrument.open_exec_price(entry.dir):
+                    entry.sl = atr_stop
+
+                gain = (entry.p - take_profit) / entry.p
+                loss = (entry.sl - entry.p) / entry.p
 
             if loss != 0 and (gain / loss < 0.5):  # 0.75
-                Terminal.inst().message("%s %s %s %s" % (entry.p, entry.sl, take_profit, (gain/loss)), view="debug")
+                # Terminal.inst().message("%s %s %s %s %s %s" % (entry.p, entry.sl, take_profit, gain, loss, (gain/loss)), view="debug")
                 continue
 
             # not enought potential profit
-            if (take_profit - entry.p) / entry.p < 0.005:  # 0.5% min
+            if gain < 0.005:
                 continue
 
             entry.tp = take_profit
             entry.ptp = 1.0
 
-            if (entry.price - entry.sl) / entry.price < -0.035:
-                # max loss at x%
-                entry.sl = entry.price * (1-0.035)
+            # max loss at x%
+            if loss > 0.035:
+                if entry.direction > 0:
+                    entry.sl = entry.price * (1-0.035)
+                elif entry.direction < 0:
+                    entry.sl = entry.price * (1+0.035)
+
                 # or do not do the trade to risky
-                entry = None
-                continue
+                # continue
 
             retained_entries.append(entry)
 
@@ -391,19 +406,15 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     # target update
                     #
 
-                    take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.partial_tp)]  # * 1.05
-
                     # enought potential profit (0.5% min target)
                     if trade.direction > 0:
-                        if (take_profit - close_exec_price) / close_exec_price < 0.005 and update_tp:
-                            update_tp = False
+                        take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.partial_tp)]
 
                         gain = (take_profit - trade.entry_price) / trade.entry_price
                         loss = (trade.entry_price - trade.sl) / trade.entry_price
 
                     elif trade.direction < 0:
-                        if (close_exec_price - take_profit) / close_exec_price < 0.005 and update_tp:
-                            update_tp = False
+                        take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[int(2*trade.partial_tp)]
 
                         gain = (trade.entry_price - take_profit) / trade.entry_price
                         loss = (trade.sl - trade.entry_price) / trade.entry_price
@@ -411,6 +422,9 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 # reevaluate the R:R
                 # @todo
 
+                # if gain < 0.005 and update_tp:
+                #    ...
+                
                 if update_sl and stop_loss > 0:
                     stop_loss = self.instrument.adjust_price(stop_loss)
 
@@ -452,6 +466,10 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                             Terminal.inst().info("%s modify TP" % timestamp, view="debug")
                         else:
                             trade.tp = take_profit
+
+                #
+                # exit trade if an exit signal retained
+                #
 
                 if retained_exit:
                     self.process_exit(timestamp, trade, retained_exit.price)

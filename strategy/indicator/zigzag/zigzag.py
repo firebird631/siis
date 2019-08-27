@@ -45,10 +45,10 @@ class ZigZagIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_OVERLAY
 
-    def __init__(self, timeframe):
+    def __init__(self, timeframe, threshold=0.05):
         super().__init__("zigzag", timeframe)
 
-        self._threshold = 0.05
+        self._threshold = threshold
 
         self._lowers = []
         self._highers = []
@@ -67,6 +67,8 @@ class ZigZagIndicator(Indicator):
 
     def compute(self, timestamp, open, high, low, close):
         highers, lowers = [], []
+
+        # @todo
 
         self._lowers = lowers
         self._highers = highers
