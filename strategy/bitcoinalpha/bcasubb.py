@@ -208,8 +208,8 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
         # can long on upward trend, on dip or on lower of bollinger if range
         # @todo detect dip, bollinger range (flat mama + first bounces)
 
-        self.can_long = True #self.trend >= 0
-        self.can_short = True #self.trend <= 0
+        self.can_long = self.trend >= 0
+        self.can_short = self.trend <= 0
 
         if self.pivotpoint:
             self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)

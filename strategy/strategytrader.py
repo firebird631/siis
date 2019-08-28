@@ -344,7 +344,8 @@ class StrategyTrader(object):
                                 'take-profit', profit_loss_rate)
 
                         # streaming (but must be done with notify)
-                        self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
+                        if self._global_streamer:
+                            self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
 
                 elif (trade.sl > 0) and (close_exec_price <= trade.sl) and not trade.has_stop_order():
                     # stop loss trigger stop, close at market (taker fee)
@@ -369,7 +370,8 @@ class StrategyTrader(object):
                                 'stop-loss', profit_loss_rate)
 
                         # streaming (but must be done with notify)
-                        self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
+                        if self._global_streamer:
+                            self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
 
             #
             # margin trade
@@ -421,7 +423,8 @@ class StrategyTrader(object):
                                 'take-profit', profit_loss_rate)
 
                         # and for streaming
-                        self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
+                        if self._global_streamer:
+                            self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
 
                 elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_limit_order():
                     # close a long or a short position at stop-loss level at market (taker fee)
@@ -451,7 +454,8 @@ class StrategyTrader(object):
                                 'stop-loss', profit_loss_rate)
 
                         # and for streaming
-                        self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
+                        if self._global_streamer:
+                            self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
 
         self.unlock()
 
@@ -699,32 +703,46 @@ class StrategyTrader(object):
         """
         Use or create a specific streamer.
         """
+        result = False
+        self.lock()
+
+        if timeframe is not None and isinstance(timeframe, (float, int)):
+            timeframe = self.timeframes.get(timeframe)
+
         if timeframe in self._timeframe_streamers:
             self._timeframe_streamers[timeframe].use()
-            return True
+            result = True
         else:
             streamer = self.create_chart_streamer(timeframe)
 
             if streamer:
                 streamer.use()
                 self._timeframe_streamers[timeframe] = streamer
-                return True
+                result = True
 
+        self.unlock()
         return False
 
     def unsubscribe(self, timeframe):
         """
         Delete a specific streamer when no more subscribers.
         """
+        result = False
+        self.lock()
+
+        if timeframe is not None and isinstance(timeframe, (float, int)):
+            timeframe = self.timeframes.get(timeframe)
+
         if timeframe in self._timeframe_streamers:
             self._timeframe_streamers[timeframe].unuse()
             if self._timeframe_streamers[timeframe].is_free():
                 # delete if 0 subscribers
                 del self._timeframe_streamers[timeframe]
     
-            return True
-        else:
-            return False
+            result = True
+
+        self.unlock()
+        return False
 
     def stream_call(self):
         """

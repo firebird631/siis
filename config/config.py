@@ -33,6 +33,9 @@ FETCHERS = {
     'histdata.com': {
         'classpath': 'watcher.connector.histdata.fetcher.HistDataFetcher',
     },
+    'kraken.com': {
+        'classpath': 'watcher.connector.kraken.fetcher.KrakenFetcher',
+    },  
 }
 
 WATCHERS = {
@@ -79,6 +82,11 @@ WATCHERS = {
             'CS.D.CFEGOLD.CFE.IP',  # Or au comptant (1€)
             'IX.D.SPTRD.IFE.IP',    # US 500 au comptant (1€)
         ],
+    },
+    'kraken.com': {
+        'status': 'load',
+        'classpath': 'watcher.connector.kraken.watcher.KrakenWatcher',
+        'symbols': ['XXBTZUSD', 'XXBTZEUR', 'XETHZUSD', 'XETHZEUR', 'XXRPZUSD', 'XXRPZEUR'],
     },
     'tiingo.com': {
         'status': None,  # 'load',
@@ -168,7 +176,20 @@ TRADERS = {
             'currency-symbol': '$',
             'initial': 1000,
         }, 
-    }
+    },
+    'kraken.com': {
+        'status': 'load',
+        'classpath': 'trader.connector.kraken.trader.KrakenTrader',
+        'symbols': ['XXBTZUSD', 'XXBTZEUR', 'XETHZUSD', 'XETHZEUR', 'XXRPZUSD', 'XXRPZEUR'],
+        'paper-mode': {
+            'type': 'asset',
+            'currency': 'EUR',
+            'currency-symbol': '€',
+            'alt-currency': 'USD',
+            'alt-currency-symbol': '$',
+            'initial': 1000,
+        },
+    },
 }
 
 INDICATORS = {

@@ -333,6 +333,7 @@ class MonitorService(Service):
                     'appliance': appliance,
                     'market-id': market_id,
                     'timeframe': timeframe,
+                    'type': "chart",
                     'action': "unsubscribe"
                 })
 
@@ -348,5 +349,6 @@ class MonitorService(Service):
                     'market-id': market_id,
                     'timeframe': None,
                     'subscriber-key': "",  # @todo
+                    'type': "info",
                     'action': "unsubscribe"
                 })

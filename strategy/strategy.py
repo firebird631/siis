@@ -178,7 +178,7 @@ class Strategy(Runnable):
 
     # def notify(self, notification_type, data):
     # @todo more generic notifier for any trader action on a trade or for different sort of messages
-    #       but its fore few message per minute, the traders might diffuse only the strict minimum,
+    #       but its for few message per minute, the traders might diffuse only the strict minimum,
     #       excepted for debug/profiling mode
     #     self.service.notify(Signal.SIGNAL_STRATEGY_xxx, self._name, signal_data)
 
@@ -2251,7 +2251,7 @@ class Strategy(Runnable):
         }      
 
         monitor_url = data.get('monitor-url')
-        timeframe = data.get('timeframe')
+        timeframe = data.get('timeframe', 15*60)
 
         if results['error']:
             return results
@@ -2273,19 +2273,38 @@ class Strategy(Runnable):
             'error': False
         }      
 
-        timeframe = data.get('timeframe')
-        action = data.get('action')
+        timeframe = data.get('timeframe', None)
+        action = data.get('action', "")
+        typename = data.get('type', "")
 
-        if action == 'subscribe':
-            strategy_trader.subscribe(timeframe)
-            results['messages'].append("Subscribed for stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "default"))
-        elif action == 'unsubscribe':
-            strategy_trader.unsubscribe(timeframe)
-            results['messages'].append("Unsubscribed from stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "any"))
+        if action == "subscribe":
+            if typename == "chart":
+                strategy_trader.subscribe(timeframe)
+                results['messages'].append("Subscribed for stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "default"))
+            # elif typename == "info":
+            #     strategy_trader.subscribe_info()
+            #     results['messages'].append("Subscribed for stream info %s %s" % (self.identifier, strategy_trader.instrument.market_id))
+            else:
+                # unsupported type
+                results['error'] = True
+                results['messages'].append("Unsupported stream type on trader %i" % trade.id)
+
+        elif action == "unsubscribe":
+            if typename == "chart":            
+                strategy_trader.unsubscribe(timeframe)
+                results['messages'].append("Unsubscribed from stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "any"))
+            # elif typename == "info":
+            #     strategy_trader.unsubscribe_info()
+            #     results['messages'].append("Unsubscribed from stream info %s %s" % (self.identifier, strategy_trader.instrument.market_id))
+            else:
+                # unsupported type
+                results['error'] = True
+                results['messages'].append("Unsupported stream type on trader %i" % trade.id)
+
         else:
              # unsupported action
             results['error'] = True
-            results['messages'].append("Unsupported action on trader %i" % trade.id)
+            results['messages'].append("Unsupported stream action on trader %i" % trade.id)
 
         return results
 

@@ -505,10 +505,12 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         timestamp, trade.timeframe, 'entry', None, market.format_price(trade.sl), market.format_price(trade.tp))
 
                 # want it on the streaming (take care its only the order signal, no the real complete execution)
-                if trade.direction > 0:
-                    self._global_streamer.member('buy-entry').update(price, timestamp)
-                elif trade.direction < 0:
-                    self._global_streamer.member('sell-entry').update(price, timestamp)
+                if self._global_streamer:
+                    # @todo remove me after notify manage that
+                    if trade.direction > 0:
+                        self._global_streamer.member('buy-entry').update(price, timestamp)
+                    elif trade.direction < 0:
+                        self._global_streamer.member('sell-entry').update(price, timestamp)
             else:
                 self.remove_trade(trade)
 
@@ -522,11 +524,6 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # close at market as taker
             trader = self.strategy.trader()
             trade.close(trader, self.instrument.market_id)
-
-            if trade.direction > 0:
-                self._global_streamer.member('buy-exit').update(exit_price, timestamp)
-            elif trade.direction < 0:
-                self._global_streamer.member('sell-exit').update(exit_price, timestamp)
 
             market = trader.market(self.instrument.market_id)
 
@@ -552,6 +549,13 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # notify
             self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, market.format_price(exit_price),
                     timestamp, trade.timeframe, 'exit', profit_loss_rate)
+
+            if self._global_streamer:
+                # @todo remove me after notify manage that
+                if trade.direction > 0:
+                    self._global_streamer.member('buy-exit').update(exit_price, timestamp)
+                elif trade.direction < 0:
+                    self._global_streamer.member('sell-exit').update(exit_price, timestamp)
 
     #### @deprecated scorify method kept for history reference.
         # is_div = False

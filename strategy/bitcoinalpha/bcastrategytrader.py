@@ -172,8 +172,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 gain = (entry.p - take_profit) / entry.p
                 loss = (entry.sl - entry.p) / entry.p
 
-            if loss != 0 and (gain / loss < 0.5):  # 0.75
-                # Terminal.inst().message("%s %s %s %s %s %s" % (entry.p, entry.sl, take_profit, gain, loss, (gain/loss)), view="debug")
+            if loss != 0 and (gain / loss < 1.0):
+                Terminal.inst().message("%s %s %s %s %s %s" % (entry.p, entry.sl, take_profit, gain, loss, (gain/loss)), view="debug")
                 continue
 
             # not enought potential profit
@@ -610,10 +610,12 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
 
                 # want it on the streaming (take care its only the order signal, no the real complete execution)
-                if trade.direction > 0:
-                    self._global_streamer.member('buy-entry').update(price, timestamp)
-                elif trade.direction < 0:
-                    self._global_streamer.member('sell-entry').update(price, timestamp)
+                if self._global_streamer:
+                    # @todo remove me after notify manage that
+                    if trade.direction > 0:
+                        self._global_streamer.member('buy-entry').update(price, timestamp)
+                    elif trade.direction < 0:
+                        self._global_streamer.member('sell-entry').update(price, timestamp)
             else:
                 self.remove_trade(trade)
 
@@ -632,11 +634,6 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # close at market as taker
             trader = self.strategy.trader()
             trade.close(trader, self.instrument.market_id)
-
-            if trade.direction > 0:
-                self._global_streamer.member('buy-exit').update(exit_price, timestamp)
-            elif trade.direction < 0:
-                self._global_streamer.member('sell-exit').update(exit_price, timestamp)
 
             # estimed profit/loss rate
             if trade.direction > 0:
@@ -660,3 +657,10 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # notify
             self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(exit_price),
                     timestamp, trade.timeframe, 'exit', profit_loss_rate)
+
+            if self._global_streamer:
+                # @todo remove me after notify manage that
+                if trade.direction > 0:
+                    self._global_streamer.member('buy-exit').update(exit_price, timestamp)
+                elif trade.direction < 0:
+                    self._global_streamer.member('sell-exit').update(exit_price, timestamp)

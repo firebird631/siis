@@ -259,7 +259,8 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         # global data
         self.lock()
 
-        self._global_streamer.push()
+        if self._global_streamer:
+            self._global_streamer.push()
 
         # and per timeframe
         for tf, timeframe_streamer in self._timeframe_streamers.items():
@@ -271,8 +272,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
     def stream_call(self):
         # timeframes list
-        self._global_streamer.member('tfs').update(list(self.timeframes.keys()))
-        self._global_streamer.push()
+        if self._global_streamer:
+            self._global_streamer.member('tfs').update(list(self.timeframes.keys()))
+            self._global_streamer.push()
 
     def create_chart_streamer(self, sub):
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART, self.strategy.identifier, "%s:%i" % (self.instrument.market_id, sub.tf))
@@ -288,10 +290,43 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         sub.stream(streamer)
 
+    def subscribe_info(self):
+        result = False
+
+        self.lock()
+
+        if not self._global_streamer:
+            self.setup_streaming()
+
+        if self._global_streamer:
+            self._global_streamer.use()
+            result = True
+
+        self.unlock()
+        return result
+
+    def unsubscribe_info(self):
+        result = False
+
+        self.lock()
+
+        if self._global_streamer:
+            self._global_streamer.unuse()
+            
+            if self._global_streamer.is_free():
+                self._global_streamer = None
+
+            result = True
+
+        self.unlock()
+        return result
+
     def subscribe(self, timeframe):
         """
         Use or create a specific streamer.
         """
+        result = False
+
         self.lock()
 
         if timeframe is not None and isinstance(timeframe, (float, int)):
@@ -303,26 +338,28 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         if timeframe in self._timeframe_streamers:
             self._timeframe_streamers[timeframe].use()
-            self.unlock()
-            return True
+            result = True
         else:
             streamer = self.create_chart_streamer(timeframe)
 
             if streamer:
                 streamer.use()
                 self._timeframe_streamers[timeframe.tf] = streamer
-                self.unlock()
-                return True
+                result = True
 
         self.unlock()
-
         return False
 
     def unsubscribe(self, timeframe):
         """
         Delete a specific streamer when no more subscribers.
         """
+        result = False
+
         self.lock()
+
+        if timeframe is not None and isinstance(timeframe, (float, int)):
+            timeframe = self.timeframes.get(timeframe)
 
         if timeframe in self._timeframe_streamers:
             self._timeframe_streamers[timeframe].unuse()
@@ -331,7 +368,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 del self._timeframe_streamers[timeframe]
     
             self.unlock()
-            return True
+            result = True
 
         self.unlock()
-        return False
+        return result

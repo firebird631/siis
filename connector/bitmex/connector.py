@@ -1,7 +1,7 @@
 # @date 2018-08-23
 # @author Frederic SCHERMA
 # @license Copyright (c) 2018 Dream Overflow
-# HTTPS connector for bitmex.com
+# HTTPS+WS connector for bitmex.com
 
 import time
 import json
@@ -56,7 +56,7 @@ class Connector(object):
             self._session = requests.Session()
 
             # These headers are always sent
-            self._session.headers.update({'user-agent': 'siis-' + '0.2'})
+            self._session.headers.update({'user-agent': 'siis-' + '1.0'})
             self._session.headers.update({'content-type': 'application/json'})
             self._session.headers.update({'accept': 'application/json'})
 
@@ -70,7 +70,7 @@ class Connector(object):
                 if instrument['typ'] in ('FFCCSX', 'FFWCSX'):
                     self._all_instruments.append(instrument['symbol'])
 
-        if self._ws is None or not self._ws.connected and use_ws:
+        if self._ws is not None and not self._ws.connected and use_ws:
             # only subscribe to avalaibles instruments
             symbols = []
 

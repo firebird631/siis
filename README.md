@@ -19,8 +19,9 @@ Features
 
 * Initially developped for Linux, but should work on Window or MacOSX
 * Traditionnals and crypto markets brokers for trading are supported
-    * Binance (margin planned)
+    * Binance (margin coming soon)
     * Bitmex
+    * Kraken (work in progress)
     * IG
     * 1broker (obsolete)
     * Help for others are welcome :-)

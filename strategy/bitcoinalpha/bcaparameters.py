@@ -10,8 +10,8 @@ DEFAULT_PARAMS = {
     'max-trades': 1,    # max number of simultaned trades for a same market
     'trade-delay': 30,  # at least wait 30 seconds before sending another signal 
     'base-timeframe': 't',   # process each time strategy receive a tick
-    'min-traded-timeframe': '1m',
-    'max-traded-timeframe': '1m',
+    'min-traded-timeframe': '3m',
+    'max-traded-timeframe': '3m',
     'sltp-timeframe': '1h',
     'ref-timeframe': '1d', # '4h',
     'need-update': True,      # only compute when update is waited
@@ -112,8 +112,8 @@ DEFAULT_PARAMS = {
         #         'rsi_high': 0.7,
         #     }
         # },
-        '1min': {
-            'timeframe': '1m',
+        '3min': {
+            'timeframe': '3m',
             'parent': '1h',  # '30m',
             'mode': 'A',
             'depth': 36,

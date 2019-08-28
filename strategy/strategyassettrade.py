@@ -458,7 +458,7 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-                if data['commission-asset'] == data['symbol']:
+                if data['commission-asset'] == instrument.base:
                     # commission asset is itself, have to reduce it from filled
                     self.e = instrument.adjust_quantity(self.e - data['commission-amount'])
 
@@ -508,7 +508,7 @@ class StrategyAssetTrade(StrategyTrade):
                         self._exit_state = StrategyTrade.STATE_FILLED
 
                 # commission asset is asset, have to reduce it from filled
-                if data['commission-asset'] == data['symbol']:
+                if data['commission-asset'] == instrument.base:
                     self.x = instrument.adjust_quantity(self.x - data['commission-amount'])
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:

@@ -186,7 +186,7 @@ class WssClient(KrakenSocketManager):
         try:
             self.close()
         finally:
-            reactor.stop()
+            pass  # reactor.stop()
 
     def subscribe_public(self, pair, subscription, callback):
         id_ = "_".join([subscription['name'], pair[0]])

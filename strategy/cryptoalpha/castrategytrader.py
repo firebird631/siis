@@ -501,7 +501,9 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
 
                 # want it on the streaming
-                self._global_streamer.member('buy-entry').update(price, timestamp)
+                if self._global_streamer:
+                    # @todo remove me after notify manage that
+                    self._global_streamer.member('buy-entry').update(price, timestamp)
             else:
                 self.remove_trade(trade)
 
@@ -521,8 +523,6 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             trader = self.strategy.trader()
             trade.close(trader, self.instrument.market_id)
 
-            self._global_streamer.member('buy-exit').update(exit_price, timestamp)
-
             # estimed profit/loss rate
             profit_loss_rate = (exit_price - trade.entry_price) / trade.entry_price
 
@@ -540,3 +540,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # notify
             self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(exit_price),
                     timestamp, trade.timeframe, 'exit', profit_loss_rate)
+
+            if self._global_streamer:
+                # @todo remove me after notify manage that
+                self._global_streamer.member('buy-exit').update(exit_price, timestamp)
