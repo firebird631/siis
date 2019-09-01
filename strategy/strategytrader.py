@@ -166,7 +166,7 @@ class StrategyTrader(object):
             logger.error("During loads, usupported trade type %i" % (trade_type,))
             return
 
-        trade.loads(data)
+        trade.loads(data, self.strategy.service)
 
         # operations
         for op in operations:

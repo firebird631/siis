@@ -685,8 +685,6 @@ class Strategy(Runnable):
                         if initial:
                             # append the current OHLC from the watcher on live mode
                             if not self.service.backtesting:
-                                if instrument.market_id == "XBTUSD":
-                                    print(signal.data[1], instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).current_ohlc(instrument.market_id, signal.data[1]))
                                 instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).current_ohlc(instrument.market_id, signal.data[1]))
 
                             sub = self._strategy_traders.get(instrument)
