@@ -26,12 +26,14 @@ class DummyWatcher(Watcher):
 
     def connect(self):
         self._connected = False
+        self._ready = False
 
         from database.database import Database
         Database.inst().load_market_list(self.service, self.name)
 
     def disconnect(self):
         self._connected = False
+        self._ready = False
 
     @property
     def connected(self):
@@ -60,8 +62,9 @@ class DummyWatcher(Watcher):
                     self._watched_instruments = set([x[0] for x in signal.data])
 
                     self._connected = True
+                    self._ready = True
 
-                    self.unlock()
+                    self.unlock()                   
 
                     # now connected and signal
                     self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())

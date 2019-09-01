@@ -62,7 +62,7 @@ class CandleGenerator(object):
         self._last_consumed = 0
 
         for from_candle in from_candles:
-            to_candle = self.update_from_candle(from_candle)
+            to_candle = self.update_from_candle(from_candle, ignore_non_ended)
             if to_candle:
                 to_candles.append(to_candle)
 
@@ -124,8 +124,8 @@ class CandleGenerator(object):
         if self._candle is None:
             # open a new one
             base_time = self.basetime(from_tick[0])
-            self._candle = Candle(base_time, self._to_tf)
 
+            self._candle = Candle(base_time, self._to_tf)
             self._candle.set_consolidated(False)
 
             # all open, close, low high from the initial candle
@@ -159,7 +159,7 @@ class CandleGenerator(object):
         return ended_candle
 
 
-    def update_from_candle(self, from_candle):
+    def update_from_candle(self, from_candle, ignore_non_ended):
         """
         From a timeframe, create/update candle to another timeframe, that must be greater and a multiple of.
         Example of creating/updating hourly candle for 1 minute candles.
@@ -169,7 +169,10 @@ class CandleGenerator(object):
 
         A non ended candle is ignored because it will false the volume.
         """
-        if from_candle is None or not from_candle.ended:
+        if from_candle is None:
+            return None
+
+        if ignore_non_ended and not from_candle.ended:
             return None
 
         if self._from_tf != from_candle.timeframe:
@@ -193,8 +196,8 @@ class CandleGenerator(object):
         if self._candle is None:
             # open a new one
             base_time = self.basetime(from_candle.timestamp)
-            self._candle = Candle(base_time, self._to_tf)
 
+            self._candle = Candle(base_time, self._to_tf)
             self._candle.set_consolidated(False)
 
             # all open, close, low high from the initial candle

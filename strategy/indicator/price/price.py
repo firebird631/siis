@@ -195,6 +195,9 @@ class PriceIndicator(Indicator):
             self._low = l_prices
             self._close = c_prices            
 
+        # if self._open[-1] > 5000 and self.timeframe == 86400:
+        #     print(">-2 ", candles[-2], ">-1 ", candles[-1])
+
         # related timestamps
         self._timestamp = np.array([x.timestamp for x in candles])
 

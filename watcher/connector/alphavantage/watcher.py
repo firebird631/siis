@@ -94,6 +94,7 @@ class AlphaVantageWatcher(Watcher):
 
         try:
             self.lock()
+            self._ready = False
 
             identity = self.service.identity(self._name)
             self._subscriptions = []  # reset previous list
@@ -124,7 +125,7 @@ class AlphaVantageWatcher(Watcher):
                 for symbol in instruments:
                     self._watched_instruments.add(symbol)
 
-            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+                self._ready = True
 
         except Exception as e:
             logger.debug(repr(e))
@@ -133,6 +134,9 @@ class AlphaVantageWatcher(Watcher):
             self._connector = None
         finally:
             self.unlock()
+
+        if self._ready:
+            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
     @property
     def connector(self):
@@ -151,6 +155,8 @@ class AlphaVantageWatcher(Watcher):
             if self._connector:
                 self._connector.disconnect()
                 self._connector = None
+            
+            self._ready = False
 
         except Exception as e:
             logger.error(repr(e))
@@ -211,3 +217,6 @@ class AlphaVantageWatcher(Watcher):
 
     def fetch_markets(self):
         pass
+
+    def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
+        pass  # @todo

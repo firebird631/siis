@@ -29,7 +29,7 @@ class TimeframeBasedSub(object):
         self.trend = 0
 
         self.can_long = False
-        self.can_short = False        
+        self.can_short = False
 
     def init_candle_generator(self):
         """
@@ -39,7 +39,7 @@ class TimeframeBasedSub(object):
         """
         if self.candles_gen and not self.candles_gen.current:
             last_candle = self.strategy_trader.instrument.candle(self.tf)
-            if last_candle:  #  and not last_candle.ended:
+            if last_candle and not last_candle.ended:
                 # the last candle is not ended, we have to continue it
                 self.candles_gen.current = last_candle
 

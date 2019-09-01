@@ -76,7 +76,6 @@ class BinanceWatcher(Watcher):
         self._symbols_data = {}
         self._tickers_data = {}
 
-        self._init = False
         self._last_trade_id = {}
 
     def connect(self):
@@ -84,6 +83,8 @@ class BinanceWatcher(Watcher):
 
         try:
             self.lock()
+            self._ready = False
+
             identity = self.service.identity(self._name)
 
             if identity:
@@ -98,70 +99,71 @@ class BinanceWatcher(Watcher):
                 if not self._connector.connected or not self._connector.ws_connected:
                     self._connector.connect()
 
-                #
-                # instruments
-                #
+                if self._connector and self._connector.connected:
+                    #
+                    # instruments
+                    #
 
-                # get all products symbols
-                self._available_instruments = set()
+                    # get all products symbols
+                    self._available_instruments = set()
 
-                instruments = self._connector.client.get_products().get('data', [])
-                configured_symbols = self.configured_symbols()
-                matching_symbols = self.matching_symbols_set(configured_symbols, [instrument['symbol'] for instrument in instruments])
+                    instruments = self._connector.client.get_products().get('data', [])
+                    configured_symbols = self.configured_symbols()
+                    matching_symbols = self.matching_symbols_set(configured_symbols, [instrument['symbol'] for instrument in instruments])
 
-                # prefetch all markets data with a single request to avoid one per market
-                self.__prefetch_markets()
+                    # prefetch all markets data with a single request to avoid one per market
+                    self.__prefetch_markets()
 
-                multiplex = []
+                    multiplex = []
 
-                for instrument in instruments:
-                    self._available_instruments.add(instrument['symbol'])
+                    for instrument in instruments:
+                        self._available_instruments.add(instrument['symbol'])
 
-                    # and watch it if configured or any
-                    if instrument['symbol'] in matching_symbols:
-                        # live data
-                        symbol = instrument['symbol'].lower()
+                        # and watch it if configured or any
+                        if instrument['symbol'] in matching_symbols:
+                            # live data
+                            symbol = instrument['symbol'].lower()
 
-                        # depth - order book
-                        # multiplex.append(symbol + '@depth')
+                            # depth - order book
+                            # multiplex.append(symbol + '@depth')
 
-                        # aggreged trade
-                        multiplex.append(symbol + '@aggTrade')
+                            # aggreged trade
+                            multiplex.append(symbol + '@aggTrade')
 
-                        # ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
-                        # multiplex.append('{}@kline_{}'.format(symbol, '1m'))
-                        # multiplex.append('{}@kline_{}'.format(symbol, '5m'))
-                        # multiplex.append('{}@kline_{}'.format(symbol, '1h'))
+                            # ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
+                            # multiplex.append('{}@kline_{}'.format(symbol, '1m'))
+                            # multiplex.append('{}@kline_{}'.format(symbol, '5m'))
+                            # multiplex.append('{}@kline_{}'.format(symbol, '1h'))
 
-                        # one more watched instrument
-                        self.insert_watched_instrument(instrument['symbol'], [0])
+                            # one more watched instrument
+                            self.insert_watched_instrument(instrument['symbol'], [0])
 
-                # all 24h mini tickers (prefers ticker@arr)
-                # multiplex.append('!miniTicker@arr')
+                    # all 24h mini tickers (prefers ticker@arr)
+                    # multiplex.append('!miniTicker@arr')
 
-                # all tickers
-                multiplex.append('!ticker@arr')
+                    # all tickers
+                    multiplex.append('!ticker@arr')
 
-                # depth+kline+ticker
-                self._multiplex_handler = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
+                    # depth+kline+ticker
+                    self._multiplex_handler = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
 
-                # userdata
-                self._user_data_handler = self._connector.ws.start_user_socket(self.__on_user_data)
+                    # userdata
+                    self._user_data_handler = self._connector.ws.start_user_socket(self.__on_user_data)
 
-                # and start ws manager
-                self._connector.ws.start()
+                    # and start ws manager
+                    self._connector.ws.start()
 
                 # once market are init
-                self._init = True
-
-            # now we are ready
-            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+                self._ready = True
 
         except Exception as e:
             logger.debug(repr(e))
             error_logger.error(traceback.format_exc())
         finally:
             self.unlock()
+
+        if self._connector and self._connector.connected and self._ready:
+            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
     def disconnect(self):
         super().disconnect()
@@ -173,7 +175,7 @@ class BinanceWatcher(Watcher):
                 self._connector.disconnect()
                 self._connector = None
 
-            self._init = False
+            self._ready = False
 
         except Exception as e:
             logger.debug(repr(e))
@@ -187,16 +189,16 @@ class BinanceWatcher(Watcher):
 
     @property
     def connected(self):
-        return self._init and self._connector is not None and self._connector.connected and self._connector.ws_connected
+        return self._connector is not None and self._connector.connected and self._connector.ws_connected
 
     @property
     def authenticated(self):
-        return self._init and self._connector and self._connector.authenticated
+        return self._connector and self._connector.authenticated
 
     def pre_update(self):
-        if not self._init or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
+        if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
             # retry in 2 second
-            self._init = False
+            self._ready = False
             self._connector = None
 
             time.sleep(2)
@@ -393,8 +395,6 @@ class BinanceWatcher(Watcher):
                 vol24_quote = float(ticker['q']) if ticker['q'] else 0.0
 
                 # @todo compute base_exchange_rate
-                # base_exchange_rate = ...
-
                 # if quote_asset != self.BASE_QUOTE:
                 #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
                 #         market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
@@ -777,3 +777,6 @@ class BinanceWatcher(Watcher):
                 market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+
+    def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
+        pass  # @todo

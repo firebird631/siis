@@ -79,7 +79,7 @@ class Fetcher(object):
     def connected(self):
         return False
 
-    def fetch_and_generate(self, market_id, timeframe, from_date=None, to_date=None, n=1000, fetch_option="", cascaded=None):
+    def fetch_and_generate(self, market_id, timeframe, from_date=None, to_date=None, n_last=1000, fetch_option="", cascaded=None):
         if timeframe > 0 and timeframe not in self.GENERATED_TF:
             logger.error("Timeframe %i is not allowed !" % (timeframe,))
             return
@@ -90,10 +90,10 @@ class Fetcher(object):
         self._last_ticks = []
         self._last_ohlcs = {}
 
-        if not from_date and n:
+        if not from_date and n_last:
             # compute a from date
             today = datetime.now().astimezone(UTC())
-            from_date = today - timedelta(seconds=timeframe*n)
+            from_date = today - timedelta(seconds=timeframe*n_last)
 
         if not to_date:
             today = datetime.now().astimezone(UTC())
@@ -121,7 +121,7 @@ class Fetcher(object):
         t = 0
 
         if timeframe == 0:
-            for data in self.fetch_trades(market_id, from_date, to_date, n):
+            for data in self.fetch_trades(market_id, from_date, to_date, None):
                 # store (int timestamp in ms, str bid, str ofr, str volume)
                 Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3]))
 
@@ -168,7 +168,7 @@ class Fetcher(object):
             logger.info("Fetched %i trades" % t)
 
         elif timeframe > 0:
-            for data in self.fetch_candles(market_id, timeframe, from_date, to_date, n):
+            for data in self.fetch_candles(market_id, timeframe, from_date, to_date, None):
                 # store (int timestamp ms, str open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
                 Database.inst().store_market_ohlc((
                     self.name, market_id, data[0], int(timeframe),
@@ -212,8 +212,8 @@ class Fetcher(object):
         """
         Retrieve the historical trades data for a certain a period of date.
         @param market_id Specific name of the market
-        @param n Last n data
-        @param generated Higher timeframe that must be generated from fetched data
+        @param from_date
+        @param to_date
         """
         pass
 
@@ -222,8 +222,9 @@ class Fetcher(object):
         Retrieve the historical candles data for an unit of time and certain a period of date.
         @param market_id Specific name of the market
         @param timeframe Time unit in second.
-        @param n Last n data
-        @param generated Higher timeframe that must be generated from fetched data
+        @param from_date
+        @param to_date
+        @param n_last Last n data
         """
         pass
 

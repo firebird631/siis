@@ -93,6 +93,7 @@ class IGWatcher(Watcher):
 
         try:
             self.lock()
+            self._ready = False
 
             identity = self.service.identity(self._name)
             self._subscriptions = []  # reset previous list
@@ -159,7 +160,7 @@ class IGWatcher(Watcher):
 
                     self.insert_watched_instrument(symbol, [0])
 
-            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+            self._ready = True
 
         except Exception as e:
             logger.debug(repr(e))
@@ -170,13 +171,16 @@ class IGWatcher(Watcher):
         finally:
             self.unlock()
 
+        if self._connector and self._connector.connected and self._ready:
+            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+
     @property
     def connector(self):
         return self._connector
 
     @property
     def connected(self):
-        return self._connector is not None and self._connector.connected
+        return self._ready and self._connector is not None and self._connector.connected
 
     def subscribe_account(self, account_id):
         fields = ["PNL", "AVAILABLE_TO_DEAL", "MARGIN", "FUNDS", "AVAILABLE_CASH"]
@@ -298,6 +302,8 @@ class IGWatcher(Watcher):
             if self._connector:
                 self._connector.disconnect()
                 self._connector = None
+
+            self._ready = False
 
         except Exception as e:
             logger.error(repr(e))
@@ -876,3 +882,6 @@ class IGWatcher(Watcher):
                 market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+
+    def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
+        pass  # @todo

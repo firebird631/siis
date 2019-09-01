@@ -172,8 +172,9 @@ class Candle(object):
         self._ofr_close = dup._ofr_close
 
     def __repr__(self):
-        return "%s bid %s/%s/%s/%s ofr %s/%s/%s/%s" % (
+        return "%s %s bid %s/%s/%s/%s ofr %s/%s/%s/%s" % (
             timeframe_to_str(self._timeframe),
+            self._timestamp,
             self._bid_open,
             self._bid_high,
             self._bid_low,
@@ -726,7 +727,7 @@ class Instrument(object):
 
                             candles.append(c)
 
-                        elif c.timestamp == candles[-1].timestamp:  # and not candles[-1].ended:
+                        elif c.timestamp == candles[-1].timestamp and not candles[-1].ended:
                             # replace the last candle if was not consolidated
                             candles[-1] = c
                 else:
@@ -754,7 +755,7 @@ class Instrument(object):
                         else:
                             candles.append(candle)
 
-                    elif candle.timestamp == candles[-1].timestamp:  # and not candles[-1].ended:
+                    elif candle.timestamp == candles[-1].timestamp and not candles[-1].ended:
                         # replace the last candle if was not consolidated
                         candles[-1] = candle
                 else:

@@ -305,7 +305,7 @@ class View(object):
                         if self._right_align:
                             # @todo not perfect because count non color escapes
                             rm = row.count('\\')
-                            x = max(0, self.width - len(row) - rm)
+                            x = max(0, self.width - len(row) - rm - 1)
                         else:
                             x = 0
 
@@ -345,7 +345,7 @@ class View(object):
                             if self._right_align:
                                 # not perfect because count non color escapes
                                 rm = row.count('\\')
-                                x = max(0, self.width - len(row) - rm)
+                                x = max(0, self.width - len(row) - rm - 1)
                             else:
                                 x = 0
 
@@ -428,7 +428,7 @@ class View(object):
                     for row in self._content[self._first_row : self._first_row+self.height]:
                         if self._right_align:
                             rm = row.count('\\')
-                            x = max(0, self.width - len(row) - rm)
+                            x = max(0, self.width - len(row) - rm - 1)
                         else:
                             x = 0
 

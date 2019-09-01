@@ -50,17 +50,19 @@ class KrakenWatcher(Watcher):
         self._symbols_data = {}
         self._tickers_data = {}
 
-        self._init = False
         self._last_trade_id = {}
 
         self._assets = {}
         self._instruments = {}
+        self._wsname_lookup = {}
 
     def connect(self):
         super().connect()
 
         try:
             self.lock()
+            self._ready = False
+
             identity = self.service.identity(self._name)
 
             if identity:
@@ -97,33 +99,61 @@ class KrakenWatcher(Watcher):
                 configured_symbols = self.configured_symbols()
                 matching_symbols = self.matching_symbols_set(configured_symbols, [instrument for instrument in list(self._instruments.keys())])
 
+                pairs = []
+
                 for market_id, instrument in instruments.items():
                     self._available_instruments.add(market_id)
 
                     # and watch it if configured or any
                     if market_id in matching_symbols:
                         # live data
-                        wsname = instrument['wsname']
-
-                        # @todo
+                        pairs.append(instrument['wsname'])                       
+                        self._wsname_lookup[instrument['wsname']] = market_id
 
                         # one more watched instrument
                         self.insert_watched_instrument(market_id, [0])
 
+                if pairs:
+                    self._connector.ws.subscribe_public(
+                        subscription={
+                            'name': 'ticker'
+                        },
+                        pair=pairs,
+                        callback=self.__on_ticker_data
+                    )
+
+                    self._connector.ws.subscribe_public(
+                        subscription={
+                            'name': 'trade'
+                        },
+                        pair=pairs,
+                        callback=self.__on_trade_data
+                    )
+
+                    # @todo see later
+                    # self._connector.ws.subscribe_public(
+                    #     subscription={
+                    #         'name': 'book'
+                    #     },
+                    #     pair=pairs,
+                    #     depth=10,  # 10 25 100 500 1000
+                    #     callback=self.__on_depth_data
+                    # )
+
                 # and start ws manager
-                # self._connector.ws.start()
+                self._connector.ws.start()
 
                 # once market are init
-                self._init = True
-
-            # now we are ready
-            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+                self._ready = True
 
         except Exception as e:
             logger.debug(repr(e))
             error_logger.error(traceback.format_exc())
         finally:
             self.unlock()
+
+        if self._ready and self._connector and self._connector.connected:
+            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
     def disconnect(self):
         super().disconnect()
@@ -135,7 +165,7 @@ class KrakenWatcher(Watcher):
                 self._connector.disconnect()
                 self._connector = None
 
-            self._init = False
+            self._ready = False
 
         except Exception as e:
             logger.debug(repr(e))
@@ -149,16 +179,16 @@ class KrakenWatcher(Watcher):
 
     @property
     def connected(self):
-        return self._init and self._connector is not None and self._connector.connected and self._connector.ws_connected
+        return elf._connector is not None and self._connector.connected and self._connector.ws_connected
 
     @property
     def authenticated(self):
-        return self._init and self._connector and self._connector.authenticated
+        return self._connector and self._connector.authenticated
 
     def pre_update(self):
-        if not self._init or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
+        if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
             # retry in 2 second
-            self._init = False
+            self._ready = False
             self._connector = None
 
             time.sleep(2)
@@ -323,6 +353,7 @@ class KrakenWatcher(Watcher):
         return market
 
     def fetch_order_book(self, market_id):
+        # https://api.kraken.com/0/public/Depth
         pass
 
     #
@@ -334,10 +365,84 @@ class KrakenWatcher(Watcher):
         self._instruments = self._connector.instruments()
 
     def __on_depth_data(self, data):
+        # @ref https://www.kraken.com/en-us/features/websocket-api#message-book
         pass
 
+    def __on_ticker_data(self, data):
+        if isinstance(data, list) and data[2] == "ticker":
+            market_id = self._wsname_lookup.get(data[3])
+            base_asset, quote_asset = data[3].split('/')
+
+            if not market_id:
+                return
+
+            last_update_time = time.time()
+            ticker = data[1]
+            
+            bid = float(ticker['b'][0])
+            ofr = float(ticker['a'][0])
+
+            vol24_base = float(ticker['v'][0])
+            vol24_quote = float(ticker['v'][0]) * float(ticker['p'][0])
+
+            # @todo compute base_exchange_rate
+            if quote_asset != self.account.currency:
+                if quote_asset in self._assets:
+                    pass  # @todo direct or indirect
+                else:
+                    market.base_exchange_rate = 1.0  # could be EURUSD... but we don't have
+            else:
+                market.base_exchange_rate = 1.0
+
+            market_data = (market_id, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
+            self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+
+        elif isinstance(data, dict):
+            if data['event'] == "subscriptionStatus" and data['channelName'] == "ticker":
+                # @todo register channelID...
+                # {'channelID': 93, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'ticker'}}
+                pass
+
     def __on_trade_data(self, data):
-        pass
+        if isinstance(data, list) and data[2] == "trade":
+            market_id = self._wsname_lookup.get(data[3])
+
+            if not market_id:
+                return
+
+            for trade in data[1]:
+                bid = float(trade[0])
+                ofr = float(trade[0])
+                vol = float(trade[1])
+                trade_time = float(trade[2])
+                # side = trade[3]
+
+                tick = (trade_time, bid, ofr, vol)
+
+                # store for generation of OHLCs
+                self.lock()
+                self._last_tick[market_id] = tick
+                self.unlock()
+
+                self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
+
+                if not self._read_only:
+                    Database.inst().store_market_trade((self.name, market_id, int(trade_time*1000.0), trade[0], trade[0], trade[1]))
+
+                for tf in Watcher.STORED_TIMEFRAMES:
+                    # generate candle per timeframe
+                    self.lock()
+                    candle = self.update_ohlc(market_id, tf, trade_time, bid, ofr, vol)
+                    self.unlock()
+
+                    if candle is not None:
+                        self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
+
+        elif isinstance(data, dict):
+            if data['event'] == "subscriptionStatus" and data['channelName'] == "trade":
+                # @todo register channelID...
+                # {'channelID': 93, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'trade'}}
+                pass
 
     def __on_kline_data(self, data):
         pass
@@ -372,3 +477,6 @@ class KrakenWatcher(Watcher):
                 market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+
+    def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
+        pass  # @todo

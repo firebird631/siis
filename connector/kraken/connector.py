@@ -30,6 +30,19 @@ class Connector(object):
     With max at 15 or 20 initial, decrease by 1 every 3 or 2 seconds.
     Order/cancel does not affect this counter.
     Trade history increase by 2, other by 2
+
+    # https://api.kraken.com/0/private/OpenOrders
+    # https://api.kraken.com/0/private/ClosedOrders
+    # https://api.kraken.com/0/private/QueryOrders
+    # https://api.kraken.com/0/private/TradesHistory
+    # https://api.kraken.com/0/private/QueryTrades
+    # https://api.kraken.com/0/private/OpenPositions
+    # https://api.kraken.com/0/private/TradeVolume ???
+    # https://api.kraken.com/0/private/AddOrder
+    # https://api.kraken.com/0/private/CancelOrder
+
+    # @ref REST https://www.kraken.com/features/api
+    # @ref WSS https://www.kraken.com/en-us/features/websocket-api
     """
 
     def __init__(self, service, api_key, api_secret, symbols, host="api.kraken.com", callback=None):
@@ -132,16 +145,40 @@ class Connector(object):
         return []
 
     def get_historical_trades(self, symbol, from_date, to_date=None, limit=None):
+        # @todo https://api.kraken.com/0/public/Spread
         pass
 
     def get_historical_candles(self, symbol, bin_size, from_date, to_date=None, limit=None):
+        # @todo https://api.kraken.com/0/public/OHLC
         pass
 
     def get_order_book(self, symbol, depth):
         """
         Get current order book.
         """
+        # @todo https://api.kraken.com/0/public/Depth
         pass
+
+    def get_account(self):
+        result = self.query_private('Balance')
+        # default = [{"name": "ZEUR", "balance": 0.0}, {"name": "ZUSD", "balance": 0.0}, {"name": "ZCAD", "balance": 0.0}, {"name": "ZJPY", "balance": 0.0}]
+        default = [("ZEUR", 0.0), ("ZUSD", 0.0), ("ZCAD", 0.0), ("ZJPY", 0.0)]
+
+        if not result:
+            return default
+
+        if result['error']:
+            logger.error("query balance: %s" % ', '.join(result['error']))
+
+        if result['result']:
+            return result['result']
+
+        return default
+
+    def get_trade_balance(self):
+        # https://api.kraken.com/0/private/TradeBalance
+        # @todo
+        return []
 
     def _query(self, urlpath, data, headers=None, timeout=None):
         """

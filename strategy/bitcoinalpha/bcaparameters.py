@@ -73,7 +73,7 @@ DEFAULT_PARAMS = {
                 # 'bollingerbands': ('bollingerbands', 20,),
                 'triangle': None,
                 'pivotpoint': ('pivotpoint', 0,),
-                'atr': ('atr', 21, 2.5),
+                'atr': ('atr', 14, 1.5),
                 'tomdemark': ('tomdemark', 9),
                 'mama': ('mama', 0.5, 0.05),
             },

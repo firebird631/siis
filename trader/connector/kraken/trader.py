@@ -310,6 +310,8 @@ class KrakenTrader(Trader):
         for symbol, market in self._markets.items():
             return self.__update_positions(symbol, market)
 
+    # https://api.kraken.com/0/public/Trades recents trades
+
     def __fetch_orders(self):
         # @todo use REST API to fetch open orders
         return self.__update_orders()

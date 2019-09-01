@@ -54,6 +54,8 @@ class BitMexWatcher(Watcher):
 
         try:
             self.lock()
+            self._ready = False
+            
             identity = self.service.identity(self._name)
 
             if identity:
@@ -77,16 +79,42 @@ class BitMexWatcher(Watcher):
                 if not self._connector.connected or not self._connector.ws_connected:
                     self._connector.connect()
 
-                for symbol in self._watched_instruments:
-                    self.insert_watched_instrument(symbol, [0])
+                if self._connector and self._connector.connected:
+                    logger.info("Fetching %s current OHLCs..." % self.name)
 
-            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+                    for symbol in self._watched_instruments:
+                        # subscribed instrument
+                        self.insert_watched_instrument(symbol, [0])
+
+                        # fetch from 1M to 1W
+                        self.fetch_and_generate(symbol, Instrument.TF_1M, 1, None)
+                        self.fetch_and_generate(symbol, Instrument.TF_5M, 3, Instrument.TF_15M)
+                        self.fetch_and_generate(symbol, Instrument.TF_1H, 4, Instrument.TF_4H)
+                        self.fetch_and_generate(symbol, Instrument.TF_1D, 7, Instrument.TF_1W)
+
+                        logger.info("%s prefetch for %s" % (self.name, symbol))
+
+                        # if symbol == "XBTUSD":
+                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60)))
+                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*5)))
+                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*15)))
+                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60)))
+                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*4)))
+                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24)))
+                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24*7)))
+
+                    logger.info("Done fetching %s current OHLCs !" % self.name)
+
+                    self._ready = True
 
         except Exception as e:
             logger.debug(repr(e))
             error_logger.error(traceback.format_exc())
         finally:
             self.unlock()
+
+        if self._connector and self._connector.connected and self._ready:
+            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
     def disconnect(self):
         super().disconnect()
@@ -97,6 +125,9 @@ class BitMexWatcher(Watcher):
             if self._connector:
                 self._connector.disconnect()
                 self._connector = None
+            
+            self._ready = False
+
         except Exception as e:
             logger.debug(repr(e))
             error_logger.error(traceback.format_exc())
@@ -215,7 +246,7 @@ class BitMexWatcher(Watcher):
                         # no position
                         continue
 
-                    exec_logger.info("bitmex.com position %s" % str(ld))
+                    # exec_logger.info("bitmex.com position %s" % str(ld))
 
                     if ld.get('currentQty', 0) != 0:
                         direction = Order.SHORT if ld['currentQty'] < 0 else Order.LONG
@@ -637,3 +668,34 @@ class BitMexWatcher(Watcher):
                 market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+
+    def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
+        TF_MAP = {
+            60: '1m',
+            300: '5m',
+            3600: '1h',
+            86400: '1d'
+        }
+
+        if timeframe not in TF_MAP:
+            logger.error("Watcher %s does not support timeframe %s" % (self.name, timeframe))
+            return
+
+        candles = []
+
+        # second timeframe to bitmex bin size
+        bin_size = TF_MAP[timeframe]
+
+        try:
+            candles = self._connector.get_historical_candles(market_id, bin_size, from_date, to_date, partial=True)
+        except Exception as e:
+            logger.error("Watcher %s cannot retrieve candles %s on market %s" % (self.name, bin_size, market_id))
+            error_logger.error(traceback.format_exc())
+
+        count = 0
+        
+        for candle in candles:
+            count += 1
+            # store (timestamp, open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+            if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
+                yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[1], candle[2], candle[3], candle[4], candle[5]))

@@ -31,98 +31,103 @@ error_logger = logging.getLogger('siis.error.watcher.tiingo')
 
 
 class TiingoWatcher(Watcher):
-	"""
-	Tiingo watcher get price and volumes of instruments in live mode throught REST API + WS.
-	"""
+    """
+    Tiingo watcher get price and volumes of instruments in live mode throught REST API + WS.
+    """
 
-	DEFAULT_MAX_QUERIES_PER_MIN = 5  # default for free account
+    DEFAULT_MAX_QUERIES_PER_MIN = 5  # default for free account
 
-	def __init__(self, service):
-		super().__init__("tiingo.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
+    def __init__(self, service):
+        super().__init__("tiingo.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
 
-		self._connector = None
+        self._connector = None
 
-	def connect(self):
-		super().connect()
+    def connect(self):
+        super().connect()
 
-		try:
-			self.lock()
+        try:
+            self.lock()
 
-			identity = self.service.identity(self._name)
-			self._subscriptions = []  # reset previous list
+            identity = self.service.identity(self._name)
+            self._subscriptions = []  # reset previous list
 
-			if identity:
-				self._connector = Connector(self.service, identity.get('api-key'), identity.get('host'))
+            if identity:
+                self._connector = Connector(self.service, identity.get('api-key'), identity.get('host'))
 
-				instruments = []
+                instruments = []
 
-				if '*' in self.configured_symbols():
-					# not permit there is thousand of symbols
-					self._available_instruments = []
-				else:
-					instruments = self.configured_symbols()
+                if '*' in self.configured_symbols():
+                    # not permit there is thousand of symbols
+                    self._available_instruments = []
+                else:
+                    instruments = self.configured_symbols()
 
-				# susbcribe for symbols
-				for symbol in instruments:
-					self._watched_instruments.add(symbol)
+                # susbcribe for symbols
+                for symbol in instruments:
+                    self._watched_instruments.add(symbol)
 
-			self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+                self._ready = True
 
-		except Exception as e:
-			logger.error(repr(e))
-			logger.error(traceback.format_exc())
+        except Exception as e:
+            logger.error(repr(e))
+            logger.error(traceback.format_exc())
 
-			self._connector = None
-		finally:
-			self.unlock()
+            self._connector = None
+        finally:
+            self.unlock()
 
-	@property
-	def connector(self):
-		return self._connector
+        if self._ready and self._connector and self._connector.connected:
+            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
-	@property
-	def connected(self):
-		return self._connector is not None and self._connector.connected
+    @property
+    def connector(self):
+        return self._connector
 
-	def disconnect(self):
-		super().disconnect()
+    @property
+    def connected(self):
+        return self._connector is not None and self._connector.connected
 
-		try:
-			self.lock()
+    def disconnect(self):
+        super().disconnect()
 
-			if self._connector:
-				sefl._connector.disconnect()
-				self._connector = None
+        try:
+            self.lock()
 
-		except Exception:
-			error_logger.error(traceback.format_exc())
-		finally:
-			self.unlock()
+            if self._connector:
+                sefl._connector.disconnect()
+                self._connector = None
 
-	def pre_update(self):
-		super().pre_update()
+            self._ready = False
 
-		if self._connector is None:
-			self.connect()
+        except Exception:
+            error_logger.error(traceback.format_exc())
+        finally:
+            self.unlock()
 
-			if not self.connected:
-				# retry in 2 second
-				time.sleep(2.0)
+    def pre_update(self):
+        super().pre_update()
 
-			return
+        if self._connector is None:
+            self.connect()
 
-	def update(self):
-		if not super().update():
-			return False
+            if not self.connected:
+                # retry in 2 second
+                time.sleep(2.0)
 
-		if self._connector is None or not self._connector.connected:
-			return False
+            return
 
-		return True
+    def update(self):
+        if not super().update():
+            return False
 
-	def post_update(self):
-		super().post_update()
-		time.sleep(0.0001)
+        if self._connector is None or not self._connector.connected:
+            return False
 
-	def post_run(self):
-		super().post_run()
+        return True
+
+    def post_update(self):
+        super().post_update()
+        time.sleep(0.0001)
+
+    def post_run(self):
+        super().post_run()

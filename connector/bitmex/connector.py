@@ -8,7 +8,7 @@ import json
 import base64
 import requests
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import config
 from common.utils import UTC
 
@@ -27,6 +27,9 @@ class Connector(object):
         60*60: '1h',
         24*60*60: '1d'
     }
+
+    # bin size reverse map (str: double)
+    BIN_SIZE_TO_TIMEFRAME = {v: k for k, v in TIMEFRAME_TO_BIN_SIZE.items()}
 
     BIN_SIZE = ('1m', '5m', '1h', '1d')
 
@@ -166,13 +169,15 @@ class Connector(object):
 
             # 429, ratelimit; cancel orders & wait until X-RateLimit-Reset
             elif response.status_code == 429:
-                logger.error("Ratelimited on current request (contact support@bitmex.com to raise your limits). ")
-                logger.error("Request: %s \n %s" % (url, json.dumps(postdict)))
+                # logger.error("Ratelimited on current request (contact support@bitmex.com to raise your limits). ")
+                # logger.error("Request: %s \n %s" % (url, json.dumps(postdict)))
                 
                 # Figure out how long we need to wait.
                 ratelimit_reset = response.headers['X-RateLimit-Reset']
                 to_sleep = int(ratelimit_reset) - int(time.time()) + 1.0  # add 1.0 more second be we still have issues
                 reset_str = datetime.fromtimestamp(int(ratelimit_reset)).strftime('%X')
+
+                to_sleep = float(response.headers.get('Retry-After', to_sleep))
 
                 # We're ratelimited, and we may be waiting for a long time. Cancel orders.
                 # logger.warning("Canceling all known orders in the meantime.")
@@ -322,11 +327,11 @@ class Connector(object):
             if (to_date and last_datetime > to_date) or len(results) < 500:
                 break
 
-            time.sleep(0.5)  # don't excess API usage limit
+            time.sleep(1.0)  # don't excess API usage limit
 
         return trades
 
-    def get_historical_candles(self, symbol, bin_size, from_date, to_date=None, limit=None):
+    def get_historical_candles(self, symbol, bin_size, from_date, to_date=None, limit=None, partial=False):
         """
         Time interval [1m,5m,1h,1d].
         """
@@ -344,10 +349,17 @@ class Connector(object):
             # 'start': 0
         }
 
-        if to_date:
-            params['endTime'] = self._format_datetime(to_date)
+        if partial:
+            params['partial'] = True
 
-        last_datetime = from_date
+        # because bitmex works in close time but we are in open time
+        delta = self.BIN_SIZE_TO_TIMEFRAME[bin_size]
+
+        if to_date:
+            params['endTime'] = self._format_datetime(to_date + timedelta(seconds=delta))
+
+        last_datetime = from_date + timedelta(seconds=delta)
+        ot = from_date  # init
 
         while 1:
             if last_datetime:
@@ -357,20 +369,24 @@ class Connector(object):
 
             for c in results:
                 dt = self._parse_datetime(c['timestamp']).replace(tzinfo=UTC())
-                if to_date and dt > to_date:
+
+                # its close time, want open time
+                ot = dt - timedelta(seconds=delta)
+
+                if to_date and ot > to_date:
                     break
 
-                yield (int(dt.timestamp()*1000),  # integer ms
+                yield (int(ot.timestamp()*1000),  # integer ms
                     c['open'], c['high'], c['low'], c['close'],
                     c['open'], c['high'], c['low'], c['close'],
                     c['volume'])
 
                 last_datetime = dt
 
-            if (to_date and last_datetime > to_date) or len(results) < 750:
+            if (to_date and ot > to_date) or len(results) < 750:
                 break
 
-            time.sleep(0.5)  # don't excess API usage limit
+            time.sleep(1.0)  # don't excess API usage limit
 
     def _format_datetime(self, dt):
         return dt.strftime('%Y-%m-%d %H:%M:%S+00:00')

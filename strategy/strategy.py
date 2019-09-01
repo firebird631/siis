@@ -263,8 +263,8 @@ class Strategy(Runnable):
         for watcher_name, watcher_conf in self._watchers_conf.items():
             # retrieve the watcher instance
             watcher = self._watcher_service.watcher(watcher_name)
-            if watcher is None or not watcher.connected:
-                return False
+            if watcher is None or not watcher.connected or not watcher.ready:
+               return False
 
         return True
 
@@ -683,6 +683,12 @@ class Strategy(Runnable):
 
                         # initials candles loaded
                         if initial:
+                            # append the current OHLC from the watcher on live mode
+                            if not self.service.backtesting:
+                                if instrument.market_id == "XBTUSD":
+                                    print(signal.data[1], instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).current_ohlc(instrument.market_id, signal.data[1]))
+                                instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).current_ohlc(instrument.market_id, signal.data[1]))
+
                             sub = self._strategy_traders.get(instrument)
                             if sub:
                                 sub.on_received_initial_candles(signal.data[1])

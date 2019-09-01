@@ -6,8 +6,10 @@
 import time
 import collections
 
+from datetime import datetime, timedelta
+
 from common.runnable import Runnable
-from common.utils import matching_symbols_set
+from common.utils import matching_symbols_set, UTC
 from terminal.terminal import Terminal
 
 from notifier.signal import Signal
@@ -15,6 +17,7 @@ from config import config
 from database.database import Database
 
 from instrument.instrument import Instrument, Candle
+from instrument.candlegenerator import CandleGenerator
 
 
 class Watcher(Runnable):
@@ -41,6 +44,9 @@ class Watcher(Runnable):
         Instrument.TF_DAY,
         Instrument.TF_WEEK)
 
+    # candles from 1m to 1 week
+    GENERATED_TF = [60, 60*5, 60*15, 60*60, 60*60*4, 60*60*24, 60*60*24*7]
+
     def __init__(self, name, service, watcher_type):
         super().__init__("wt-%s" % (name,))
 
@@ -49,6 +55,7 @@ class Watcher(Runnable):
         self._authors = {}
         self._positions = {}
         self._watcher_type = watcher_type
+        self._ready = False
 
         self._signals = collections.deque()
 
@@ -100,6 +107,10 @@ class Watcher(Runnable):
     @property
     def connector(self):
         return None
+
+    @property
+    def ready(self):
+        return self._ready
 
     #
     # instruments
@@ -182,6 +193,16 @@ class Watcher(Runnable):
         @param timeframe int TF_xxx or -1 for any
         """
         return False
+
+    def current_ohlc(self, market_id, timeframe):
+        """
+        Return current OHLC for a specific market-id and timeframe or None.
+        """
+        if market_id in self._last_ohlc:
+            if timeframe in self._last_ohlc[market_id]:
+                return self._last_ohlc[market_id][timeframe]
+
+        return None
 
     #
     # processing
@@ -385,3 +406,107 @@ class Watcher(Runnable):
                 ohlc = self.update_ohlc(market_id, tf, time.time(), None, None, None)
                 if ohlc:
                     self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, ohlc))
+
+    def fetch_and_generate(self, market_id, timeframe, n_last=1, cascaded=None):
+        """
+        For initial fetching of the current OHLC.
+        """
+        if timeframe > 0 and timeframe not in self.GENERATED_TF:
+            logger.error("Timeframe %i is not allowed !" % (timeframe,))
+            return
+
+        generators = []
+        from_tf = timeframe
+
+        if not market_id in self._last_ohlc:
+            self._last_ohlc[market_id] = {}
+
+        # compute a from date
+        today = datetime.now().astimezone(UTC())
+        from_date = today - timedelta(seconds=timeframe*n_last)
+        to_date = today
+
+        last_ohlcs = {}
+
+        # cascaded generation of candles
+        if cascaded:
+            for tf in Watcher.GENERATED_TF:
+                if tf > timeframe:
+                    # from timeframe greater than initial
+                    if tf <= cascaded:
+                        # until max cascaded timeframe
+                        generators.append(CandleGenerator(from_tf, tf))
+                        from_tf = tf
+
+                        # store for generation
+                        last_ohlcs[tf] = []
+                else:
+                    from_tf = tf
+
+        if timeframe > 0:
+            last_ohlcs[timeframe] = []
+
+        n = 0
+
+        for data in self.fetch_candles(market_id, timeframe, from_date, to_date, None):
+            # store (int timestamp in ms, str bid, str ofr, str volume)
+            if not self._read_only:
+                Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3]))
+
+            candle = Candle(float(data[0]) * 0.001, timeframe)
+
+            candle.set_bid_ohlc(float(data[1]), float(data[2]), float(data[3]), float(data[4]))
+            candle.set_ofr_ohlc(float(data[5]), float(data[6]), float(data[7]), float(data[8]))
+
+            candle.set_volume(float(data[9]))
+
+            if candle.timestamp >= Instrument.basetime(timeframe, time.time()):
+                candle.set_consolidated(False)  # current
+
+            last_ohlcs[timeframe].append(candle)
+
+            # only the last
+            self._last_ohlc[market_id][timeframe] = candle
+
+            # generate higher candles
+            for generator in generators:
+                candles = generator.generate_from_candles(last_ohlcs[generator.from_tf], False)
+                if candles:
+                    if not self._read_only:
+                        for c in candles:
+                            self.store_candle(market_id, generator.to_tf, c)
+
+                    last_ohlcs[generator.to_tf].extend(candles)
+
+                    # only the last as current
+                    self._last_ohlc[market_id][generator.to_tf] = candles[-1]
+
+                elif generator.current:
+                    self._last_ohlc[market_id][generator.to_tf] = generator.current
+
+                # remove consumed candles
+                last_ohlcs[generator.from_tf] = []
+
+            n += 1
+
+        for k, ohlc in self._last_ohlc[market_id].items():
+            if ohlc:
+                ohlc.set_consolidated(False)
+
+    def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
+        """
+        Retrieve the historical candles data for an unit of time and certain a period of date.
+        @param market_id Specific name of the market
+        @param timeframe Time unit in second.
+        @param from_date
+        @param to_date
+        @param n_last Last n data
+        """
+        pass
+
+    def store_candle(self, market_id, timeframe, candle):
+        Database.inst().store_market_ohlc((
+            self.name, market_id, int(candle.timestamp*1000.0), int(timeframe),
+            str(candle.bid_open), str(candle.bid_high), str(candle.bid_low), str(candle.bid_close),
+            str(candle.ofr_open), str(candle.ofr_high), str(candle.ofr_low), str(candle.ofr_close),
+            str(candle.volume)))

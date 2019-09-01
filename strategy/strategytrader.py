@@ -395,7 +395,7 @@ class StrategyTrader(object):
                 # potential order exec close price
                 close_exec_price = self.instrument.close_exec_price(trade.direction)
 
-                if (trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (trade.direction < 0 and close_exec_price <= trade.tp)) and not trade.has_stop_order():
+                if (trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (trade.direction < 0 and close_exec_price <= trade.tp)) and not trade.has_limit_order():
                     # close in profit at market (taker fee)
                     if trade.close(trader, self.instrument.market_id):
                         # estimed profit/loss rate
@@ -426,7 +426,7 @@ class StrategyTrader(object):
                         if self._global_streamer:
                             self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
 
-                elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_limit_order():
+                elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_stop_order():
                     # close a long or a short position at stop-loss level at market (taker fee)
                     if trade.close(trader, self.instrument.market_id):
                         # estimed profit/loss rate
@@ -471,10 +471,10 @@ class StrategyTrader(object):
             if trade.can_delete():
                 mutated = True
 
-                # cleanup if necessary before deleting the trade related refs, and add them to the deletion list
+                # cleanup if necessary before deleting the trade related refs
                 trade.remove(trader)
 
-                # record the trade for analysis and learning
+                # record the trade for analysis and study
                 if not trade.is_canceled():
                     # @todo all this part could be in an async method of another background service, because 
                     # it is not part of the trade managemnt neither strategy computing, its purely for reporting

@@ -14,7 +14,7 @@ import pathlib
 from watcher.service import WatcherService
 from notifier.signal import Signal
 
-from instrument.instrument import Candle
+from instrument.instrument import Instrument, Candle
 
 from trader.market import Market
 from trader.asset import Asset
@@ -595,6 +595,9 @@ class PgSql(Database):
                         #   continue
 
                         ohlc.set_volume(float(row[9]))
+
+                        if ohlc.timestamp >= Instrument.basetime(mk[3], time.time()):
+                            candle.set_consolidated(False)  # current
 
                         ohlcs.append(ohlc)
 
