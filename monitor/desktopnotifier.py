@@ -47,6 +47,8 @@ class DesktopNotifier(Notifiable):
     def __init__(self):
         super().__init__("desktop")
 
+        self.notify2 = None
+
         try:
             self.notify2 = import_module('notify2', package='')
         except ModuleNotFoundError as e:
