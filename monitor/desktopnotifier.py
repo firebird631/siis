@@ -25,6 +25,9 @@ from database.database import Database
 
 from common.utils import timeframe_to_str
 
+import logging
+logger = logging.getLogger('siis.monitor.desktopnotifier')
+
 
 class DesktopNotifier(Notifiable):
     """
@@ -44,7 +47,10 @@ class DesktopNotifier(Notifiable):
     def __init__(self):
         super().__init__("desktop")
 
-        self.notify2 = import_module('notify2', package='')
+        try:
+            self.notify2 = import_module('notify2', package='')
+        except ModuleNotFoundError as e:
+            logger.error(repr(e))
 
         self.strategy_service = None
         self.trader_service = None
@@ -64,6 +70,7 @@ class DesktopNotifier(Notifiable):
         self._last_strategy_update = 0
         self._displayed_strategy = 0
 
+        # @todo cleanup and move as conf
         self._discord_webhook = {
             'signals': 'https://discordapp.com/api/webhooks/539501969862295557/FMQTMhUQbhxow5EPW_2G8YKBPVtpqHEJDczzA2yW5OeQKXVjJKuRZe4ILMPcGEfYZaiq',
             'altusdt-15m-reports': 'https://discordapp.com/api/webhooks/549002302602870785/usiI7sYPCPm0zcI7Af3OEEpSpH4M0GzCKkL6xfgVgKmIObGRvi8mCSFcY6vusAPDeN5L',
@@ -85,7 +92,8 @@ class DesktopNotifier(Notifiable):
         self._audio_device = 'pulse'
 
         # lib notify
-        notify2.init('SiiS')
+        if self.notify2:
+            self.notify2.init('SiiS')
 
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)
@@ -250,10 +258,8 @@ class DesktopNotifier(Notifiable):
                 # os.system('play --no-show-progress --null --channels 1 synth %s sine %f' % (duration, freq))
 
             if not self.backtesting and self.popups and message:
-                n = self.notify2.Notification(
-                    label,
-                    message,
-                    icon)
+                if self.notify2:
+                    n = self.notify2.Notification(label, message, icon)
 
                 n.show()
 
@@ -265,7 +271,8 @@ class DesktopNotifier(Notifiable):
         # time.sleep(0.001)  # its sync to main thread no need more
 
     def terminate(self):
-        self.notify2.uninit()
+        if self.notify2:
+            self.notify2.uninit()
 
     def sync(self):
         # synced update
