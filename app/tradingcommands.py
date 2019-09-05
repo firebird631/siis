@@ -906,53 +906,86 @@ class UserSaveCommand(Command):
         return False
 
 
-def register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service):
-    cmd = PlayCommand(trader_service, strategy_service)
-    commands_handler.register(cmd)
+class SetQuantityCommand(Command):
+
+    SUMMARY = "to change the traded quantity per market of a strategy"
     
-    cmd = PauseCommand(trader_service, strategy_service)
-    commands_handler.register(cmd)
+    def __init__(self, strategy_service):
+        super().__init__('setquantity', 'SETQTY')
 
-    cmd = InfoCommand(trader_service, strategy_service)
-    commands_handler.register(cmd)
+        self._strategy_service = strategy_service
 
-    cmd = ChartCommand(strategy_service, monitor_service)
-    commands_handler.register(cmd)
+    def execute(self, args):
+        if not args:
+            Terminal.inst().action("Missing parameters", view='status')
+            return False
 
-    cmd = UserSaveCommand(strategy_service)
-    commands_handler.register(cmd)
+        # ie: ":setquantity altbtc BTCUSDT 1000"
+        appliance = None
+        market_id = None
+
+        if len(args) < 3:
+            Terminal.inst().action("Missing parameters", view='status')
+            return False
+
+        try:
+            appliance, market_id = args[0], args[1]
+            quantity = float(args[2])
+
+        except Exception:
+            Terminal.inst().action("Invalid parameters", view='status')
+            return False
+
+        if quantity <= 0.0:
+            Terminal.inst().action("Invalid quantity", view='status')
+            return False
+
+        self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+            'appliance': appliance,
+            'market-id': market_id,
+            'action': "set-quantity",
+            'quantity': quantity
+        })
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
+def register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service):
+    #
+    # global
+    #
+
+    commands_handler.register(PlayCommand(trader_service, strategy_service))
+    commands_handler.register(PauseCommand(trader_service, strategy_service))
+    commands_handler.register(InfoCommand(trader_service, strategy_service))
+    commands_handler.register(ChartCommand(strategy_service, monitor_service))
+    commands_handler.register(UserSaveCommand(strategy_service))
+    commands_handler.register(SetQuantityCommand(strategy_service))
 
     #
     # order
     #
 
-    cmd = LongCommand(strategy_service)
-    commands_handler.register(cmd)
-
-    cmd = ShortCommand(strategy_service)
-    commands_handler.register(cmd)
-
-    cmd = CloseCommand(strategy_service)
-    commands_handler.register(cmd)
-
-    cmd = ModifyStopLossCommand(strategy_service)
-    commands_handler.register(cmd)
-
-    cmd = ModifyTakeProfitCommand(strategy_service)
-    commands_handler.register(cmd)
-
-    cmd = AssignCommand(strategy_service)
-    commands_handler.register(cmd)
+    commands_handler.register(LongCommand(strategy_service))
+    commands_handler.register(ShortCommand(strategy_service))
+    commands_handler.register(CloseCommand(strategy_service))
+    commands_handler.register(ModifyStopLossCommand(strategy_service))
+    commands_handler.register(ModifyTakeProfitCommand(strategy_service))
+    commands_handler.register(AssignCommand(strategy_service))
 
     #
     # trade operations
     #
 
-    cmd = TradeInfoCommand(strategy_service)
-    commands_handler.register(cmd)
-
-    cmd = RemoveOperationCommand(strategy_service)
-    commands_handler.register(cmd)
-
-    cmd = DynamicStopLossOperationCommand(strategy_service)
-    commands_handler.register(cmd)
+    commands_handler.register(TradeInfoCommand(strategy_service))
+    commands_handler.register(RemoveOperationCommand(strategy_service))
+    commands_handler.register(DynamicStopLossOperationCommand(strategy_service))

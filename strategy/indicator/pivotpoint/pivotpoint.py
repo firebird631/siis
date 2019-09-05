@@ -24,7 +24,8 @@ class PivotPointIndicator(Indicator):
     Pivot = (H + B + C) / 3
     S1 = (2 x Pivot) - H
     S2 = Pivot - (H - B)
-    S3 = B - 2x (H - Pivot)
+    S3 = B - 2 x (H - Pivot)
+    ...
     R1 = (2 x Pivot) - B
     R2 = Pivot + (H - B)
     R3 = H + 2x (Pivot - B)
@@ -34,6 +35,8 @@ class PivotPointIndicator(Indicator):
     S1 = C - (H - L) * 1.1/12
     S2 = C - (H - L) * 1.1/6
     S3 = C - (H - L) * 1.1/4
+    S4 = C - (H - L) * 1.1/2
+    R4 = C + (H - L) * 1.1/2
     R3 = C + (H - L) * 1.1/4
     R2 = C + (H - L) * 1.1/6
     R1 = C + (H - L) * 1.1/12
@@ -50,7 +53,7 @@ class PivotPointIndicator(Indicator):
     METHOD_WOODIE = 4
     METHOD_FIBONACCI = 5
 
-    __slots__ = '_method', '_pivot', '_supports', '_resistances', '_last_supports', '_last_resistances', '_last_pivot'
+    __slots__ = '_method', '_pivot', '_supports', '_resistances', '_last_supports', '_last_resistances', '_last_pivot', '_num'
 
     @classmethod
     def indicator_type(cls):
@@ -60,17 +63,29 @@ class PivotPointIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_OVERLAY
 
-    def __init__(self, timeframe, method=METHOD_CLASSICAL):
+    def __init__(self, timeframe, method=METHOD_CLASSICAL, num=6):
         super().__init__("pivotpoint", timeframe)
 
+        if method == self.METHOD_CAMARILLA:
+            num = 4
+        elif method == self.METHOD_FIBONACCI:
+            num = 4
+        else:
+            num = min(max(3, num), 10)  # at least 3 supports/resistances
+
         self._method = method
+        self._num = num
 
         self._pivot = np.array([])
-        self._supports = [np.array([]), np.array([]), np.array([])]
-        self._resistances = [np.array([]), np.array([]), np.array([])]
+        self._supports = [None]*num
+        self._resistances = [None]*num
 
-        self._last_supports = [0.0]*3
-        self._last_resistances = [0.0]*3
+        for n in range(0, num):
+            self._supports[n] = np.array([])
+            self._resistances[n] = np.array([])
+
+        self._last_supports = [0.0]*num
+        self._last_resistances = [0.0]*num
         self._last_pivot = 0.0
 
     @property
@@ -124,6 +139,10 @@ class PivotPointIndicator(Indicator):
     @property
     def resistances(self):
         return self._resistances
+
+    @property
+    def num(self):
+        return self._num
     
     # @staticmethod
     # def PivotPoint(method, _open, high, low, close):
@@ -181,7 +200,7 @@ class PivotPointIndicator(Indicator):
         if len(self._pivot) != size:
             self._pivot = np.zeros(size)
 
-            for i in range(0, 3):
+            for i in range(0, self._num):
                 self._supports[i] = np.zeros(size)
                 self._resistances[i] = np.zeros(size)
 
@@ -192,22 +211,27 @@ class PivotPointIndicator(Indicator):
                 self._supports[0][i+1] = close[i] - (high[i] - low[i])*1.1/12
                 self._supports[1][i+1] = close[i] - (high[i] - low[i])*1.1/6
                 self._supports[2][i+1] = close[i] - (high[i] - low[i])*1.1/4
+                self._supports[2][i+1] = close[i] - (high[i] - low[i])*1.1/2
 
                 self._resistances[0][i+1] = close[i] + (high[i] - low[i])*1.1/12
                 self._resistances[1][i+1] = close[i] + (high[i] - low[i])*1.1/6
                 self._resistances[2][i+1] = close[i] + (high[i] - low[i])*1.1/4
+                self._resistances[3][i+1] = close[i] + (high[i] - low[i])*1.1/2
 
         elif self._method == PivotPointIndicator.METHOD_FIBONACCI:
             for i in range(0, size-1):
                 self._pivot[i+1] = close[i]
 
+                # or 100 618 382
                 self._supports[0][i+1] = close[i] - (high[i] - low[i])*0.382
                 self._supports[1][i+1] = close[i] - (high[i] - low[i])*0.618
                 self._supports[2][i+1] = close[i] - (high[i] - low[i])*0.764
+                self._supports[3][i+1] = close[i] - (high[i] - low[i])  # 100%
 
                 self._resistances[0][i+1] = close[i] + (high[i] - low[i])*0.382
                 self._resistances[1][i+1] = close[i] + (high[i] - low[i])*0.618
                 self._resistances[2][i+1] = close[i] + (high[i] - low[i])*0.764
+                self._resistances[3][i+1] = close[i] + (high[i] - low[i])  # 100%
 
         else:  # classical or woodie
             if self._method == PivotPointIndicator.METHOD_CLASSICAL:
@@ -216,11 +240,16 @@ class PivotPointIndicator(Indicator):
 
                     self._supports[0][i+1] = (2.0 * self._pivot[i+1]) - high[i]
                     self._supports[1][i+1] = self._pivot[i+1] - (high[i] - low[i])
-                    self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
+                    # self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
 
                     self._resistances[0][i+1] = (2.0 * self._pivot[i+1]) - low[i]
                     self._resistances[1][i+1] = self._pivot[i+1] + (high[i] - low[i])
-                    self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
+                    # self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
+
+                for n in range(2, self._num):
+                    for i in range(0, size-1):
+                        self._supports[n][i+1] = low[i] - n * (high[i] - self._pivot[i+1])
+                        self._resistances[n][i+1] = high[i] + n * (self._pivot[i+1] - low[i])
 
             elif self._method == PivotPointIndicator.METHOD_CLASSICAL_OHLC:
                 for i in range(0, size-1):
@@ -228,11 +257,16 @@ class PivotPointIndicator(Indicator):
 
                     self._supports[0][i+1] = (2.0 * self._pivot[i+1]) - high[i]
                     self._supports[1][i+1] = self._pivot[i+1] - (high[i] - low[i])
-                    self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
+                    # self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
 
                     self._resistances[0][i+1] = (2.0 * self._pivot[i+1]) - low[i]
                     self._resistances[1][i+1] = self._pivot[i+1] + (high[i] - low[i])
-                    self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
+                    # self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
+
+                for n in range(2, self._num):
+                    for i in range(0, size-1):
+                        self._supports[n][i+1] = low[i] - n * (high[i] - self._pivot[i+1])
+                        self._resistances[n][i+1] = high[i] + n * (self._pivot[i+1] - low[i])
 
             elif self._method == PivotPointIndicator.METHOD_CLASSICAL_OHL:
                 for i in range(0, size-1):
@@ -240,11 +274,16 @@ class PivotPointIndicator(Indicator):
 
                     self._supports[0][i+1] = (2.0 * self._pivot[i+1]) - high[i]
                     self._supports[1][i+1] = self._pivot[i+1] - (high[i] - low[i])
-                    self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
+                    # self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
 
                     self._resistances[0][i+1] = (2.0 * self._pivot[i+1]) - low[i]
                     self._resistances[1][i+1] = self._pivot[i+1] + (high[i] - low[i])
-                    self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
+                    # self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
+
+                for n in range(2, self._num):
+                    for i in range(0, size-1):
+                        self._supports[n][i+1] = low[i] - n * (high[i] - self._pivot[i+1])
+                        self._resistances[n][i+1] = high[i] + n * (self._pivot[i+1] - low[i])
 
             elif self._method == PivotPointIndicator.METHOD_WOODIE:
                 for i in range(0, size-1):
@@ -252,17 +291,22 @@ class PivotPointIndicator(Indicator):
 
                     self._supports[0][i+1] = (2.0 * self._pivot[i+1]) - high[i]
                     self._supports[1][i+1] = self._pivot[i+1] - (high[i] - low[i])
-                    self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
+                    # self._supports[2][i+1] = low[i] - 2.0 * (high[i] - self._pivot[i+1])
 
                     self._resistances[0][i+1] = (2.0 * self._pivot[i+1]) - low[i]
                     self._resistances[1][i+1] = self._pivot[i+1] + (high[i] - low[i])
-                    self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
+                    # self._resistances[2][i+1] = high[i] + 2.0 * (self._pivot[i+1] - low[i])
+
+                for n in range(2, self._num):
+                    for i in range(0, size-1):
+                        self._supports[n][i+1] = low[i] - n * (high[i] - self._pivot[i+1])
+                        self._resistances[n][i+1] = high[i] + n * (self._pivot[i+1] - low[i])
 
     def compute(self, timestamp, _open, high, low, close):
         self._pivotpoint3(_open, high, low, close)
 
-        self._last_supports = (self._supports[0][-1], self._supports[1][-1], self._supports[2][-1])
-        self._last_resistances = (self._resistances[0][-1], self._resistances[1][-1], self._resistances[2][-1])
+        self._last_supports = [self._supports[n][-1] for n in range(0, self._num)]  # (self._supports[0][-1], self._supports[1][-1], self._supports[2][-1])
+        self._last_resistances = [self._resistances[n][-1] for n in range(0, self._num)]  # (self._resistances[0][-1], self._resistances[1][-1], self._resistances[2][-1])
         self._last_pivot = self._pivot[-1]
 
         self._last_timestamp = timestamp

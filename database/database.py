@@ -135,6 +135,8 @@ class Database(object):
         self._pending_user_trader_insert = []
         self._pending_user_trader_select = []
 
+        self._pending_liquidation_insert = []
+
         self._last_tick_flush = 0
         self._last_ohlc_flush = 0
         self._last_ohlc_clean = time.time()
@@ -275,6 +277,23 @@ class Database(object):
             self._pending_ohlc_insert.extend(data)
         else:
             self._pending_ohlc_insert.append(data)
+        self.unlock()
+
+    def store_market_liquidation(self, data):
+        """
+        @param data is a tuple or an array of tuples containing data in that order and format :
+            str broker_id (not empty)
+            str market_id (not empty)
+            integer timestamp (ms since epoch)
+            integer direction (-1 or 1)
+            str price > 0
+            str quantity > 0
+        """
+        self.lock()
+        if isinstance(data, list):
+            self._pending_liquidation_insert.extend(data)
+        else:
+            self._pending_liquidation_insert.append(data)
         self.unlock()
 
     def store_market_info(self, data):

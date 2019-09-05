@@ -1370,7 +1370,9 @@ class Instrument(object):
 
     @staticmethod
     def basetime(tf, timestamp):
-        if tf < 7*24*60*60:
+        if tf <= 0.0:
+            return timestamp
+        elif tf < 7*24*60*60:
             # simplest
             return int(timestamp / tf) * tf
         elif tf == 7*24*60*60:

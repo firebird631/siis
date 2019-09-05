@@ -40,7 +40,6 @@ class RangeRegionCommand(Command):
 
         appliance = None
         market_id = None
-        trade_id = None
         timeframe = -1
 
         action = "add-region"
@@ -95,7 +94,6 @@ class RangeRegionCommand(Command):
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'appliance': appliance,
             'market-id': market_id,
-            'trade-id': trade_id,
             'action': action,
             'region': reg,
             'created': created,
@@ -145,7 +143,6 @@ class TrendRegionCommand(Command):
 
         appliance = None
         market_id = None
-        trade_id = None
         timeframe = -1
 
         action = "add-region"
@@ -205,7 +202,6 @@ class TrendRegionCommand(Command):
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'appliance': appliance,
             'market-id': market_id,
-            'trade-id': trade_id,
             'action': action,
             'region': reg,
             'created': created,
@@ -250,7 +246,6 @@ class RemoveRegionCommand(Command):
 
         appliance = None
         market_id = None
-        trade_id = None
 
         action = 'del-region'
         operation_id = None        

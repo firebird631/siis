@@ -265,8 +265,13 @@ class BitMexTrader(Trader):
             postdict['ordType'] = 'Market'
             postdict['orderQty'] = qty
 
-        # @todo order.price_type
-        # exec_inst "MarkPrice"  "LastPrice"  "IndexPrice"
+        # execution price
+        if order.price_type == Order.PRICE_LAST:
+            exec_inst.append('LastPrice')
+        elif order.price_type == Order.PRICE_INDEX:
+            exec_inst.append('IndexPrice')
+        elif order.price_type == Order.PRICE_MARK:
+             exec_inst.append('MarkPrice')
 
         if order.reduce_only:
             exec_inst.append("ReduceOnly")

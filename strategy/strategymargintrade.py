@@ -53,6 +53,7 @@ class StrategyMarginTrade(StrategyTrade):
         order.order_type = order_type
         order.quantity = quantity
         order.leverage = leverage
+        order.post_only = False
 
         if hedging:
             order.hedging = hedging
@@ -631,7 +632,7 @@ class StrategyMarginTrade(StrategyTrade):
         return data
 
     def loads(self, data, strategy_service):
-        if not super().loads(data, strategy_service):
+        if not super().loads(data):
             return False
 
         self.create_ref_oid = data.get('create-ref-oid')

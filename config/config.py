@@ -412,6 +412,12 @@ STRATEGIES = {
         'options': {
         }
     },
+    'refuel': {
+        'status': 'load',
+        'classpath': 'strategy.refuel.refuelstrategy.RefuelStrategy',
+        'options': {
+        }
+    },
 }
 
 MONITORING = {

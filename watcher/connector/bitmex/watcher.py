@@ -87,10 +87,10 @@ class BitMexWatcher(Watcher):
                         self.insert_watched_instrument(symbol, [0])
 
                         # fetch from 1M to 1W
-                        self.fetch_and_generate(symbol, Instrument.TF_1M, 1, None)
-                        self.fetch_and_generate(symbol, Instrument.TF_5M, 3, Instrument.TF_15M)
-                        self.fetch_and_generate(symbol, Instrument.TF_1H, 4, Instrument.TF_4H)
-                        self.fetch_and_generate(symbol, Instrument.TF_1D, 7, Instrument.TF_1W)
+                        self.fetch_and_generate(symbol, Instrument.TF_1M, 64, None)  # 1
+                        self.fetch_and_generate(symbol, Instrument.TF_5M, 64, Instrument.TF_15M)  # 3
+                        self.fetch_and_generate(symbol, Instrument.TF_1H, 64, Instrument.TF_4H)  # 4
+                        self.fetch_and_generate(symbol, Instrument.TF_1D, 64, Instrument.TF_1W)  # 7
 
                         logger.info("%s prefetch for %s" % (self.name, symbol))
 
@@ -222,13 +222,34 @@ class BitMexWatcher(Watcher):
 
                 self.service.notify(Signal.SIGNAL_ACCOUNT_DATA, self.name, account_data)
 
+            elif data[1] == 'liquidation' and data[0] == 'insert':  # action
+                exec_logger.info("bitmex l226 liquidation > %s " % str(data))
+
+                for ld in data[3]:
+                    # data[3]['orderID']
+                    # symbol is market-id, side is the liquidation order direction, then the initial liquided order was in the opposite
+                    liquidation_data = (
+                        ld['symbol'],
+                        time.time(),
+                        1 if ld['side'] == "Buy" else -1,
+                        ld['price'],
+                        ld['leavesQty'])
+
+                    self.service.notify(Signal.SIGNAL_LIQUIDATION_DATA, self.name, liquidation_data)
+
+                    Database.inst().store_market_liquidation((self.name, liquidation_data[0],
+                        int(liquidation_data[1]*1000.0),
+                        liquidation_data[2],
+                        liquidation_data[3],
+                        liquidation_data[4]))
+
             #
             # orders partial execution
             #
-            
+
             if data[1] == 'execution' and data[2]:
                 for ld in data[3]:
-                    exec_logger.info("bitmex l185 execution > ", ld)
+                    exec_logger.info("bitmex l185 execution > %s" % str(ld))
 
             #
             # positions
@@ -416,9 +437,35 @@ class BitMexWatcher(Watcher):
             # market
             #
 
-            # if data[1] == 'instrument' and data[2]:
-            elif (data[1] == 'instrument' or data[1] == 'quote') and data[2]:
-                # updated market id
+            # elif data[1] == 'trade' and data[0] == 'insert':
+            #     exec_logger.info("bitmex.com trade %s" % str(data))
+
+            #     for trade in data[3]:
+            #         # trade data
+            #         market_id = trade['symbol']
+            #         trade_time = datetime.strptime(trade['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+            #         direction = Order.LONG if trade['side'] == 'Buy' else Order.SHORT
+            #         quantity = trade['size']
+            #         price = trade['price']
+
+            #         # 'homeNotional': 0.4793 value in XBT
+
+            #         # we have a tick when we have a volume in data content
+            #         tick = (trade_time, price, price, quantity)
+
+            #         self.lock()
+            #         self._last_tick[market_id] = tick
+            #         self.unlock()
+
+            #         # and notify
+            #         self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
+
+            #         if not self._read_only:
+            #             # store trade
+            #             Database.inst().store_market_trade((self.name, symbol, int(trade_time*1000), price, price, quantity))
+
+            elif (data[1] == 'instrument' or data[1] == 'quote') and data[0] == 'insert' or data[0] == 'update':
+                # instrument and quote data (bid, ofr, volume)
                 for market_id in data[2]:
                     instrument = self.connector.ws.get_instrument(market_id)
 
@@ -509,16 +556,15 @@ class BitMexWatcher(Watcher):
                             # store trade/tick
                             Database.inst().store_market_trade((self.name, symbol, int(update_time*1000), bid, ofr, volume))
 
-                    # @todo could check that, because might be done only when Tick
-                    for tf in Watcher.STORED_TIMEFRAMES:
-                        # generate candle per each timeframe
-                        self.lock()
+                        for tf in Watcher.STORED_TIMEFRAMES:
+                            # generate candle per each timeframe
+                            self.lock()
 
-                        candle = self.update_ohlc(market_id, tf, update_time, last_bid, last_ofr, last_vol)
-                        if candle is not None:
-                            self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
+                            candle = self.update_ohlc(market_id, tf, update_time, last_bid, last_ofr, last_vol)
+                            if candle is not None:
+                                self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
-                        self.unlock()
+                            self.unlock()
 
             #
             # order book L2 top 25

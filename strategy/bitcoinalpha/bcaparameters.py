@@ -17,7 +17,7 @@ DEFAULT_PARAMS = {
     'need-update': True,      # only compute when update is waited
     'min-vol24h': 1000,       # 1000 BTC per 24h
     'min-price': 0.00000500,  # or 500 sats
-    'region-allow': True,     # can trade if no defined regions
+    'region-allow': False,    # can trade if no defined regions
     'timeframes': {
         'daily': {
             'timeframe': '1d',

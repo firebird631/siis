@@ -1,4 +1,4 @@
--- initial, create tables for mysql
+7-- initial, create tables for mysql
 -- usage example :
 -- $ mysql -u root -p
 -- > CREATE DATABASE siis;
@@ -56,10 +56,19 @@ CREATE TABLE IF NOT EXISTS user_trade(
 
 -- user_trader
 CREATE TABLE IF NOT EXISTS user_trader(
-    id SERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
     appliance_id VARCHAR(255) NOT NULL,
     activity INTEGER NOT NULL DEFAULT 1,
     data TEXT NOT NULL DEFAULT '{}',    
     regions TEXT NOT NULL DEFAULT '{}',
     UNIQUE KEY(broker_id, market_id, appliance_id, account_id))
+
+-- liquidation
+CREATE TABLE IF NOT EXISTS liquidation(
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+    timestamp BIGINT NOT NULL,
+    direction INTEGER NOT NULL,
+    price VARCHAR(32) NOT NULL,
+    quantity VARCHAR(32) NOT NULL)

@@ -62,3 +62,12 @@ CREATE TABLE IF NOT EXISTS user_trader(
     data TEXT NOT NULL DEFAULT '{}',
     regions TEXT NOT NULL DEFAULT '{}',
     UNIQUE(broker_id, account_id, market_id, appliance_id))
+
+-- liquidation
+CREATE TABLE IF NOT EXISTS liquidation(
+    id SERIAL PRIMARY KEY,
+    broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+    timestamp BIGINT NOT NULL,
+    direction INTEGER NOT NULL,
+    price VARCHAR(32) NOT NULL,
+    quantity VARCHAR(32) NOT NULL)

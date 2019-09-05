@@ -23,6 +23,7 @@ class Signal(object):
 	SIGNAL_SOCIAL_ORDER = 104           # data is a tuple with (str market id, dict position details)
 	SIGNAL_BUY_SELL_ORDER = 105         # data is BuySellSignal
 	SIGNAL_ORDER_BOOK = 106             # data is a tuple with (market_id, buys array, sells array)
+	SIGNAL_LIQUIDATION_DATA = 107       # data is a tuple with (market_id, timestamp, direction, price, quantity)
 
 	SIGNAL_WATCHER_CONNECTED = 200      # data is None
 	SIGNAL_WATCHER_DISCONNECTED = 201   # data is None

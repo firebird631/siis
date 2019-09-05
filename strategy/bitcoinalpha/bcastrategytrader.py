@@ -32,11 +32,9 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     The defined timeframe must form a chained list of multiple of the previous timeframe. One is the root, and the last is the leaf.
     Each timeframe is unique and is defined by its preceding timeframe.
 
-    - Enter, exit as taker (market order)
+    - Enter, exit as possible as maker (limit order)
     - Stop are taker (market order)
 
-    @todo Finish, update like in CA and in FA strategies
-    @todo Implement with a LIMIT (maker/taker) and a LIMIT (maker only) versions.
     @todo Need to cancel a trade if not executed after a specific timeout. If partially executed, after the timeout only cancel the
         buy order, keep the trade active of course.    
     """
@@ -180,7 +178,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             if gain < 0.005:
                 continue
 
-            entry.tp = take_profit
+            entry.tp = take_profit if gain > 0.005 else entry.p * 1.01
             entry.ptp = 1.0
 
             # max loss at x%
@@ -278,11 +276,12 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 atr_stop = self.timeframes[self.sltp_timeframe].atr.stop_loss(trade.direction)
                 if trade.direction > 0:
                     # long, greater or initial
-                    if atr_stop > stop_loss:
+                    if atr_stop > stop_loss and atr_stop < close_exec_price * 0.995:
                         stop_loss = atr_stop
+
                 elif trade.direction < 0:
                     # short, lesser or initial
-                    if atr_stop < stop_loss or stop_loss <= 0:
+                    if (atr_stop < stop_loss or stop_loss <= 0) and atr_stop > close_exec_price * 1.005:
                         stop_loss = atr_stop
 
                 if self.timeframes[self.ref_timeframe].pivotpoint.last_pivot > 0.0:

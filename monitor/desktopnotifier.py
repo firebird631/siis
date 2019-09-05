@@ -7,11 +7,11 @@ import collections
 import threading
 import os
 import time
-import notify2
 import logging
 import subprocess
 import traceback
 
+from importlib import import_module
 from datetime import datetime, timedelta
 
 from trader.position import Position
@@ -43,6 +43,8 @@ class DesktopNotifier(Notifiable):
 
     def __init__(self):
         super().__init__("desktop")
+
+        self.notify2 = import_module('notify2', package='')
 
         self.strategy_service = None
         self.trader_service = None
@@ -83,7 +85,7 @@ class DesktopNotifier(Notifiable):
         self._audio_device = 'pulse'
 
         # lib notify
-        notify2.init('SiiS')      
+        notify2.init('SiiS')
 
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)
@@ -248,7 +250,7 @@ class DesktopNotifier(Notifiable):
                 # os.system('play --no-show-progress --null --channels 1 synth %s sine %f' % (duration, freq))
 
             if not self.backtesting and self.popups and message:
-                n = notify2.Notification(
+                n = self.notify2.Notification(
                     label,
                     message,
                     icon)
@@ -263,7 +265,7 @@ class DesktopNotifier(Notifiable):
         # time.sleep(0.001)  # its sync to main thread no need more
 
     def terminate(self):
-        notify2.uninit()
+        self.notify2.uninit()
 
     def sync(self):
         # synced update

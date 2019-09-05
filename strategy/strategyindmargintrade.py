@@ -56,6 +56,7 @@ class StrategyIndMarginTrade(StrategyTrade):
         order.order_type = order_type
         order.quantity = quantity
         order.leverage = leverage
+        order.post_only = False
 
         # generated a reference order id
         trader.set_ref_order_id(order)
@@ -517,7 +518,7 @@ class StrategyIndMarginTrade(StrategyTrade):
         return data
 
     def loads(self, data, strategy_service):
-        if not super().loads(data, strategy_service):
+        if not super().loads(data):
             return False
 
         self.create_ref_oid = data.get('create-ref-oid')

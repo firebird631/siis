@@ -555,6 +555,9 @@ class StrategyTrader(object):
 
         self.unlock()
 
+    def on_received_liquidation(self, liquidation):
+        pass
+
     #
     # region management
     #
@@ -687,6 +690,135 @@ class StrategyTrader(object):
                 trade.sl = stop_loss
             else:
                 trade.modify_stop_loss(trader, instrument.market_id, stop_loss)
+
+    # def update_tp_sl(self, trade, close_exec_price, price, pointpivot):
+    #     """
+    #     Return a couple of two 2 couple :
+    #         - stop-loss: boolean update, float price
+    #         - take-profit: boolean update, float price
+    #     """
+    #     done = False
+
+    #     stop_loss = 0.0
+    #     take_profit = 0.0
+
+    #     update_sl = False
+    #     update_tp = False
+
+    #     if pivotpoint.last_pivot > 0.0:
+    #         if trade.direction > 0:
+    #             # long
+    #             done = False
+
+    #             for n in range(pivotpoint.num-1, 0, -1):
+    #                 if close_exec_price > pivotpoint.last_resistances[n]:
+    #                     if utils.crossover(price.prices, pivotpoint.resistances[n]):
+    #                         update_tp = True
+
+    #                     if stop_loss < pivotpoint.last_resistances[n-1]:
+    #                         update_sl = True
+    #                         # stop_loss = pivotpoint.last_resistances[n-1]
+
+    #                     return ((update_sl, stop_loss), (update_tp, take_profit))
+
+    #             if close_exec_price > pivotpoint.last_resistances[0]:
+    #                 if utils.crossover(price.prices, pivotpoint.resistances[0]):
+    #                     update_tp = True
+
+    #                 if stop_loss < pivotpoint.last_pivot:
+    #                     update_sl = True
+    #                     # stop_loss = pivotpoint.last_pivot
+
+    #                 return ((update_sl, stop_loss), (update_tp, take_profit))
+
+    #             if close_exec_price > pivotpoint.last_pivot:
+    #                 if utils.crossover(price.prices, pivotpoint.pivot):
+    #                     update_tp = True
+
+    #                 if stop_loss < pivotpoint.last_supports[0]:
+    #                     update_sl = True
+    #                     # stop_loss = pivotpoint.last_supports[0]
+
+    #                 return ((update_sl, stop_loss), (update_tp, take_profit))
+
+    #             for n in range(0, pivotpoint.num-1):
+    #                 if close_exec_price > pivotpoint.last_supports[n]:
+    #                     if utils.crossover(price.prices, pivotpoint.supports[n]):
+    #                         update_tp = True
+
+    #                     if stop_loss < pivotpoint.last_supports[n+1]:
+    #                         update_sl = True
+    #                         # stop_loss = pivotpoint.last_supports[n+1]
+
+    #                     return ((update_sl, stop_loss), (update_tp, take_profit))
+
+    #                 if close_exec_price > pivotpoint.last_supports[pivotpoint.num-1]:
+    #                     if utils.crossover(price.prices, pivotpoint.supports[pivotpoint.num-1]):
+    #                         update_tp = True
+
+    #                     if stop_loss < pivotpoint.last_supports[pivotpoint.num-1]:
+    #                         update_sl = True
+    #                         # stop_loss = pivotpoint.last_supports[pivotpoint.num-1]
+
+    #                     return ((update_sl, stop_loss), (update_tp, take_profit))
+
+    #         elif trade.direction < 0:
+    #             # short (could use the sign, but if we want a non symmetrical approch...)
+    #             if close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
+    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[2]):
+    #                     update_tp = True
+
+    #                 if close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
+    #                     update_sl = True
+    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
+
+    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
+    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[1]):
+    #                     update_tp = True
+
+    #                 if trade.sl > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
+    #                     update_sl = True
+    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
+
+    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
+    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[0]):
+    #                     update_tp = True
+
+    #                 if trade.sl > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
+    #                     update_sl = True
+    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]
+
+    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
+    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.pivot):
+    #                     update_tp = True
+
+    #                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
+    #                     update_sl = True
+    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]
+
+    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
+    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[0]):
+    #                     update_tp = True
+
+    #                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
+    #                     update_sl = True
+    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_pivot
+
+    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
+    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[1]):
+
+    #                     update_tp = True
+    #                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
+    #                     update_sl = True
+    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
+
+    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]:
+    #                 if utils.crossunder(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[2]):
+    #                     update_tp = True
+
+    #                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
+    #                     update_sl = True
+    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
 
     #
     # signal data streaming for profiling

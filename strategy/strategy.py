@@ -687,9 +687,9 @@ class Strategy(Runnable):
                             if not self.service.backtesting:
                                 instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).current_ohlc(instrument.market_id, signal.data[1]))
 
-                            sub = self._strategy_traders.get(instrument)
-                            if sub:
-                                sub.on_received_initial_candles(signal.data[1])
+                            strategy_trader = self._strategy_traders.get(instrument)
+                            if strategy_trader:
+                                strategy_trader.on_received_initial_candles(signal.data[1])
 
                         if instrument not in do_update:
                             do_update[instrument] = signal.data[1]
@@ -737,6 +737,20 @@ class Strategy(Runnable):
 
                         instrument.set_fees(market.maker_fee, market.taker_fee)
                         instrument.set_commissions(market.maker_commission, market.taker_commission)
+
+                elif signal.signal_type == Signal.SIGNAL_LIQUIDATION_DATA:
+                    # interest in liquidation data
+
+                    # symbol mapping
+                    instrument = self.instrument(signal.data[0])
+                    if instrument is None:
+                        continue
+
+                    strategy_trader = self._strategy_traders.get(instrument)
+                    if strategy_trader:
+                        strategy_trader.on_received_liquidation(signal.data)
+
+                    do_update[instrument] = 0
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_CONNECTED:
                     # initiate the strategy prefetch initial data, only once all watchers are ready
@@ -2117,16 +2131,29 @@ class Strategy(Runnable):
         elif action == "enable":
             if not strategy_trader.activity:
                 strategy_trader.set_activity(True)
-                results['messages'].append("Enabled strategy trader for market %s" % sub.instrument.market_id)
+                results['messages'].append("Enabled strategy trader for market %s" % strategy_trader.instrument.market_id)
             else:
-                results['messages'].append("Already enabled strategy trader for market %s" % sub.instrument.market_id)
+                results['messages'].append("Already enabled strategy trader for market %s" % strategy_trader.instrument.market_id)
 
         elif action == "disable":
             if strategy_trader.activity:
                 strategy_trader.set_activity(False)
-                results['messages'].append("Disabled strategy trader for market %s" % sub.instrument.market_id)
+                results['messages'].append("Disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
             else:
-                results['messages'].append("Already disabled strategy trader for market %s" % sub.instrument.market_id)
+                results['messages'].append("Already disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
+
+        elif action == "set-quantity":
+            quantity = 0.0
+
+            try:
+                quantity = float(data.get('quantity', -1))
+            except Exception:
+                results['error'] = True
+                results['messages'].append("Invalid quantity")
+
+            if quantity > 0.0:
+                strategy_trader.instrument.trade_quantity = quantity
+                results['messages'].append("Modified trade quantity for %s to %s" % (strategy_trader.instrument.market_id, quantity))
 
         else:
             results['error'] = True
@@ -2188,12 +2215,15 @@ class Strategy(Runnable):
             # status
             results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
 
-        elif not detail:
+        elif not detail or detail == "details":
             # no specific detail
             results['messages'].append("Stragegy trader %s details:" % strategy_trader.instrument.market_id)
 
             # status
             results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
+
+            # quantity
+            results['messages'].append("Trade quantity : %s" % strategy_trader.instrument.trade_quantity)
 
             # regions
             results['messages'].append("List %i regions:" % len(strategy_trader.regions))
@@ -2217,8 +2247,10 @@ class Strategy(Runnable):
             if instrument in self._strategy_traders:
                 strategy_trader = self._strategy_traders[instrument]
                 if strategy_trader:
-                    Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s" % (
-                        data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused"), view='content')
+                    Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s. Trade quantity is %s" % (
+                        data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused",
+                            strategy_trader.instrument.trade_quantity),
+                        view='content')
 
             self.unlock()
         else:

@@ -21,6 +21,9 @@ from strategy.strategy import Strategy
 from notifier.signal import Signal
 from config import config, utils
 
+import logging
+logger = logging.getLogger('siis.strategy.service')
+
 
 class StrategyService(Service):
 
