@@ -98,6 +98,10 @@ class StrategySignal(object):
         return self.sl
     
     @property
+    def timestamp(self):
+        return self.ts    
+
+    @property
     def take_profit(self):
         return self.tp
 

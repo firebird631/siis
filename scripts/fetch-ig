@@ -4,14 +4,14 @@ MARKETS='CS.D.AUDNZD.MINI.IP,CS.D.EURCAD.MINI.IP,CS.D.EURJPY.MINI.IP,CS.D.EURUSD
 TO='2019-12-31T23:59:59'
 IDENTITY='demo'
 
-FROM='2019-08-26T00:00:00'
+FROM='2019-09-02T00:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1w &
 
-FROM='2019-08-29T00:00:00'
+FROM='2019-09-08T00:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1d &
 
-FROM='2019-08-29T08:00:00'
+FROM='2019-09-08T20:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=4h &
 
-FROM='2019-08-29T08:00:00'
+FROM='2019-09-08T20:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1h 

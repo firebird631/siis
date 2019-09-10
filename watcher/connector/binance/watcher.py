@@ -135,6 +135,14 @@ class BinanceWatcher(Watcher):
                             # multiplex.append('{}@kline_{}'.format(symbol, '5m'))
                             # multiplex.append('{}@kline_{}'.format(symbol, '1h'))
 
+                            # fetch from 1M to 1W
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1M, 64, None)  # 1
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_5M, 64, Instrument.TF_15M)  # 3
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1H, 64, Instrument.TF_4H)  # 4
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1D, 64, Instrument.TF_1W)  # 7
+
+                            logger.info("%s prefetch for %s" % (self.name, instrument['symbol']))
+
                             # one more watched instrument
                             self.insert_watched_instrument(instrument['symbol'], [0])
 
@@ -779,4 +787,40 @@ class BinanceWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
-        pass  # @todo
+        TF_MAP = {
+            60: '1m',
+            180: '3m',
+            300: '5m',
+            900: '15m',
+            1800: '30m',
+            3600: '1h',
+            7200: '2h',
+            14400: '4h',
+            21600: '6h',
+            28800: '8h',
+            43200: '12h',
+            86400: '1d',
+            259200: '3d',
+            604800: '1w',
+            2592000: '1M'
+        }
+
+        if timeframe not in TF_MAP:
+            logger.error("Fetcher %s does not support timeframe %s" % (self.name, timeframe))
+            return
+
+        candles = []
+
+        tf = TF_MAP[timeframe]
+
+        try:
+            candles = self._connector.client.get_historical_klines(market_id, tf, int(from_date.timestamp() * 1000), int(to_date.timestamp() * 1000))
+        except Exception as e:
+            logger.error("Fetcher %s cannot retrieve candles %s on market %s (%s)" % (self.name, tf, market_id, str(e)))
+
+        count = 0
+        
+        for candle in candles:
+            count += 1
+            # (timestamp, open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+            yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[1], candle[2], candle[3], candle[4], candle[5]))

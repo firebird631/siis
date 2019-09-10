@@ -265,13 +265,14 @@ class BitMexTrader(Trader):
             postdict['ordType'] = 'Market'
             postdict['orderQty'] = qty
 
-        # execution price
-        if order.price_type == Order.PRICE_LAST:
-            exec_inst.append('LastPrice')
-        elif order.price_type == Order.PRICE_INDEX:
-            exec_inst.append('IndexPrice')
-        elif order.price_type == Order.PRICE_MARK:
-             exec_inst.append('MarkPrice')
+        # execution price for stop orders
+        if order.order_type in (Order.ORDER_STOP, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT, Order.ORDER_TAKE_PROFIT_LIMIT):
+            if order.price_type == Order.PRICE_LAST:
+                exec_inst.append('LastPrice')
+            elif order.price_type == Order.PRICE_INDEX:
+                exec_inst.append('IndexPrice')
+            elif order.price_type == Order.PRICE_MARK:
+                 exec_inst.append('MarkPrice')
 
         if order.reduce_only:
             exec_inst.append("ReduceOnly")

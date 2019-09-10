@@ -243,8 +243,12 @@ class StrategyTrade(object):
             # entry and exit are fully filled
             return True
 
-        if self._entry_state == StrategyTrade.STATE_REJECTED or (self._entry_state == StrategyTrade.STATE_CANCELED and self.e <= 0):
-            # entry rejected or canceled (canceled in the mean of no quantity processed at all)
+        if self._entry_state == StrategyTrade.STATE_REJECTED:
+            # entry rejected
+            return True
+
+        if (self._entry_state == StrategyTrade.STATE_CANCELED or self._entry_state == StrategyTrade.STATE_DELETED) and self.e <= 0:
+            # entry canceled or deleted and empty
             return True
 
         return False

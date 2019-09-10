@@ -619,7 +619,7 @@ class MySql(Database):
                         ohlc.set_volume(float(row[9]))
 
                         if ohlc.timestamp >= Instrument.basetime(mk[3], time.time()):
-                            candle.set_consolidated(False)  # current
+                            ohlc.set_consolidated(False)  # current
 
                         ohlcs.append(ohlc)
 

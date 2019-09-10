@@ -418,6 +418,12 @@ STRATEGIES = {
         'options': {
         }
     },
+    # 'refuellogger': {
+    #     'status': 'load',
+    #     'classpath': 'strategy.refuellogger.refuelloggerstrategy.RefuelLoggerStrategy',
+    #     'options': {
+    #     }
+    # },
 }
 
 MONITORING = {
