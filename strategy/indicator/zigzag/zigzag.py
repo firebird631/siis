@@ -31,8 +31,6 @@ class ZigZagIndicator(Indicator):
     %change=Minimum price movement, in percentage.
     Retrace=Is change a retracement of the previous move, or an absolute change from peak to trough?
     LastExtreme=If the extreme price is the same over multiple periods, is the extreme price the first or last observation?
-    ​
-    @todo
     """
 
     __slots__ = '_threshold', '_lowers', '_highers', '_pattern'

@@ -291,9 +291,6 @@ class BinanceWatcher(Watcher):
                 elif afilter['filterType'] == "PRICE_FILTER":
                     price_limits = [afilter['minPrice'], afilter['maxPrice'], afilter['tickSize']]
 
-            if float(size_limits[2]) < 1:
-                size_limits[2] = str(float(size_limits[2]))  # * 10)
-
             market.set_size_limits(float(size_limits[0]), float(size_limits[1]), float(size_limits[2]))
             market.set_price_limits(float(price_limits[0]), float(price_limits[1]), float(price_limits[2]))
             market.set_notional_limits(float(notional_limits[0]), 0.0, 0.0)
@@ -312,6 +309,12 @@ class BinanceWatcher(Watcher):
 
             market.maker_fee = account['makerCommission'] * 0.0001
             market.taker_fee = account['takerCommission'] * 0.0001
+
+            if symbol.get('isSpotTradingAllowed', False):
+                pass  # @todo
+
+            if symbol.get('isMarginTradingAllowed', False):
+                pass  # @todo
 
             # market.buyer_commission = account['buyerCommission']
             # market.seller_commission = account['sellerCommission']

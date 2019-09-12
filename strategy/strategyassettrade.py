@@ -291,7 +291,7 @@ class StrategyAssetTrade(StrategyTrade):
                     # REST sync
                     self.stop_order_type = order.order_type
                     self.stop_order_qty = order.quantity
-                    
+
                     self.last_sl_ot[0] = order.created_time
                     self.last_sl_ot[1] += 1
 
@@ -458,9 +458,9 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-                if data['commission-asset'] == instrument.base:
+                if data.get('commission-asset', "") == instrument.base:
                     # commission asset is itself, have to reduce it from filled
-                    self.e = instrument.adjust_quantity(self.e - data['commission-amount'])
+                    self.e = instrument.adjust_quantity(self.e - data.get('commission-amount', 0))
 
             elif (data['id'] == self.limit_oid or data['id'] == self.stop_oid) and ('filled' in data or 'cumulative-filled' in data):
                 # @warning on the exit side, normal case will have a single order, but possibly to have a 
@@ -508,8 +508,8 @@ class StrategyAssetTrade(StrategyTrade):
                         self._exit_state = StrategyTrade.STATE_FILLED
 
                 # commission asset is asset, have to reduce it from filled
-                if data['commission-asset'] == instrument.base:
-                    self.x = instrument.adjust_quantity(self.x - data['commission-amount'])
+                if data.get('commission-asset', "") == instrument.base:
+                    self.x = instrument.adjust_quantity(self.x - data.get('commission-amount', 0))
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price or qty modified

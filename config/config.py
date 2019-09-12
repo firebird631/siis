@@ -343,6 +343,12 @@ INDICATORS = {
         'options': {
         }
     },
+    'ichimoku': {
+        'status': 'load',
+        'classpath': 'strategy.indicator.ichimoku.ichimoku.IchimokuIndicator',
+        'options': {
+        }
+    },
 }
 
 TRADEOPS = {
@@ -417,6 +423,12 @@ STRATEGIES = {
         'classpath': 'strategy.refuel.refuelstrategy.RefuelStrategy',
         'options': {
         }
+    },
+    'bourricot': {
+         'status': 'load',
+         'classpath': 'strategy.bourricot.bourricotstrategy.BourricotStrategy',
+         'options': {
+         }
     },
     # 'refuellogger': {
     #     'status': 'load',

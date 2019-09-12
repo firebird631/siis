@@ -2,7 +2,7 @@
 # @author Frederic SCHERMA
 # @author Xavier BONNIN
 # @license Copyright (c) 2018 Dream Overflow
-# Bollinger Bands indicator
+# Triangle indicator and trend detection indicator
 
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample, MM_n
