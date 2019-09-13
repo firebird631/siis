@@ -24,11 +24,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     """
     Timeframe base strategy trader base class.
     Sub timeframe object must be based on TimeframeBasedSub.
-    It support the generation of the candles from tick level,
-    or from another candle timeframe with chained generation (cascaded).
+    It support the generation of the OHLCs from tick level, or from others OHLCs of a sub-multiple lower timeframe.
 
-    But you want either process at a close of a candle, or at any new price (base timeframe).
-    Cascaded scheme could only give signals on
+    But you want either process at a close of a OHLC, or at any new price (base timeframe).
 
     @see Strategy.base_timeframe
     """
@@ -47,7 +45,6 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         self._wait_next_update = wait_next_update
 
         self.timeframes = {}  # analyser per timeframe
-        self.tfs_chain = []
 
     @property
     def base_timeframe(self):
@@ -106,62 +103,6 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         self.unlock()
 
-    # def gen_candles_chain(self, tfs_chain, tf, timestamp):
-    #     """
-    #     Generate the news candles from candles of the low timeframe and from ticks.
-
-    #     @param tfs_chain A chain of timeframe value, its a dict with key the from timeframe,
-    #         and the value the target timeframe. The last key must have a None value to stop the chain.
-
-    #     @param tf The chain must begin with tf.
-    #     @deprecated Prefered way is using the min defined common timeframe for every generated timeframe
-    #     """
-    #     self.lock()
-
-    #      if not self.tfs_chain and self.timeframes:
-    #          for k, timeframe in self.timeframes.items():
-    #              self.tfs_chain[timeframe.timeframe] = 
-
-    #     # update candle chain
-    #     next_tf = tf
-
-    #     if tf == 0:
-    #         sub = self.timeframes.get(0)
-    #         if sub:
-    #             # first level of candle from ticks
-    #             ticks = self.instrument.ticks_after(sub.candles_gen.last_timestamp)
-
-    #             generated = sub.candles_gen.generate_from_ticks(ticks)
-    #             if generated:
-    #                 self.instrument.add_candle(generated, sub.history)
-
-    #             self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.history)  # with the non consolidated
-
-    #         # no longer need them
-    #         self.instrument.clear_ticks()
-
-    #         next_tf = tfs_chain.get(0)
-
-    #     # update candle chain from its precedecessor
-    #     while next_tf:
-    #         sub = self.timeframes.get(next_tf)
-    #         if not sub:
-    #             break
-
-    #         # update at candle timeframe
-    #         candles = self.instrument.candles_after(sub.sub_tf, sub.candles_gen.last_timestamp)
-
-    #         generated = sub.candles_gen.generate_from_candles(candles)
-    #         if generated:
-    #             self.instrument.add_candle(generated, sub.history)
-
-    #         self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.history)  # with the non consolidated
-
-    #         # next timeframe to generate or None
-    #         next_tf = tfs_chain.get(next_tf)
-
-    #     self.unlock()
-
     def compute(self, timeframe, timestamp):
         """
         Compute the signals for the differents timeframes depending of the update policy.
@@ -177,6 +118,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             # process sub computations only when condition
             for tf, sub in self.timeframes.items():
                 if sub.need_update(timestamp):
+                    print(tf, self.instrument.market_id)
                     # only if need_update return true
                     signal = sub.process(timestamp)
                     if signal:
@@ -201,18 +143,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return entries, exits
 
-    def parent_timeframe(self, tf):
-        # higher timeframe if not the root else himself
-        timeframe = self.timeframes.get(tf, None)
-        if timeframe:
-            return timeframe.parent_tf
-        else:
-            return tf
-
-    def higher_timeframe_low_high_trend(self, tf):
-        # higher timeframe
-        upper_tf = self.parent_timeframe(tf)
-
+    def higher_timeframe_low_high_trend(self, tf, upper_tf):
         # how to do if the previous candles are very smalls or very big ?
         height = max(self.instrument.height(tf, -1), self.instrument.height(tf, -2))  # * 2.0
 

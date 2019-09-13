@@ -19,7 +19,7 @@ from instrument.instrument import Candle
 from trader.market import Market
 from trader.asset import Asset
 
-from config.utils import databases
+from config import utils
 
 from .tickstorage import TickStorage, TickStreamer
 from .ohlcstorage import OhlcStorage, OhlcStreamer
@@ -97,7 +97,7 @@ class Database(object):
 
     @classmethod
     def create(cls, options):
-        config = databases(options.get('config-path')) or {}
+        config = utils.attribute(options.get('config-path'), 'DATABASES') or {}
 
         if config['siis'].get('type', 'mysql') == 'mysql':
             from .mysql import MySql
@@ -153,7 +153,7 @@ class Database(object):
 
     def setup(self, options):
         # load database
-        config = databases(options.get('config-path')) or {}
+        config = utils.attribute(options.get('config-path'), 'DATABASES') or {}
 
         self.connect(config)
 

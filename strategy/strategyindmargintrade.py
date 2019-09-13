@@ -28,7 +28,8 @@ class StrategyIndMarginTrade(StrategyTrade):
         specially with bitmex which only returns a cummulative filled
     """
 
-    __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', 'position_id', 'stop_order_qty', 'limit_order_qty'
+    __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', 'position_id', \
+        'leverage', 'stop_order_qty', 'limit_order_qty'
 
     def __init__(self, timeframe):
         super().__init__(StrategyTrade.TRADE_IND_MARGIN, timeframe)
@@ -42,6 +43,7 @@ class StrategyIndMarginTrade(StrategyTrade):
         self.limit_oid = None   # related limit order id
 
         self.position_id = None  # related position id
+        self.leverage = 1.0
 
         self.stop_order_qty = 0.0    # if stop_oid then this is the qty placed on the stop order
         self.limit_order_qty = 0.0   # if limit_oid then this is the qty placed on the limit order
@@ -55,8 +57,9 @@ class StrategyIndMarginTrade(StrategyTrade):
         order.price = order_price
         order.order_type = order_type
         order.quantity = quantity
-        order.leverage = leverage
         order.post_only = False
+        order.margin_trade = True
+        order.leverage = leverage
 
         # generated a reference order id
         trader.set_ref_order_id(order)
@@ -69,6 +72,8 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         self.tp = take_profit
         self.sl = stop_loss
+
+        self.leverage = leverage
 
         self._stats['entry-maker'] = not order.is_market()
 
@@ -163,9 +168,11 @@ class StrategyIndMarginTrade(StrategyTrade):
             order = Order(self, market_id)
             order.direction = -self.direction
             order.order_type = Order.ORDER_LIMIT
-            order.reduce_only = True  # (not for now because it implies to have the filled qty, and so need to update each time trade qty is updated)
+            order.reduce_only = True
             order.quantity = self.e - self.x  # remaining
             order.price = limit_price
+            order.margin_trade = True
+            order.leverage = self.leverage
 
             trader.set_ref_order_id(order)
             self.limit_ref_oid = order.ref_order_id
@@ -205,6 +212,8 @@ class StrategyIndMarginTrade(StrategyTrade):
             order.reduce_only = True
             order.quantity = self.e - self.x  # remaining
             order.stop_price = stop_price
+            order.margin_trade = True
+            order.leverage = self.leverage
 
             trader.set_ref_order_id(order)
             self.stop_ref_oid = order.ref_order_id
@@ -261,6 +270,8 @@ class StrategyIndMarginTrade(StrategyTrade):
             order.order_type = Order.ORDER_MARKET
             order.reduce_only = True
             order.quantity = self.e - self.x  # remaining qty
+            order.margin_trade = True
+            order.leverage = self.leverage
 
             # generated a reference order id
             trader.set_ref_order_id(order)

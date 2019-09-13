@@ -15,6 +15,7 @@ from terminal.terminal import Terminal, Color
 from common.runnable import Runnable
 from monitor.streamable import Streamable, StreamMemberFloat, StreamMemberBool
 from common.utils import timeframe_to_str, timeframe_from_str
+from config.utils import merge_parameters
 
 from notifier.signal import Signal
 from instrument.instrument import Instrument
@@ -79,7 +80,7 @@ class Strategy(Runnable):
         self._trader_service = trader_service
         self._identifier = None
 
-        self._parameters = Strategy.parse_parameters(Strategy.merge_parameters(default_parameters, user_parameters))
+        self._parameters = Strategy.parse_parameters(merge_parameters(default_parameters, user_parameters))
 
         self._preset = False       # True once instrument are setup
         self._prefetched = False   # True once strategies are ready
@@ -1616,6 +1617,9 @@ class Strategy(Runnable):
         stop_loss = data.get('stop-loss', 0.0)
         take_profit = data.get('take-profit', 0.0)
         timeframe = data.get('timeframe', Instrument.TF_4HOUR)
+        leverage = data.get('leverage', 1.0)
+        hedging = data.get('hedging', True)
+        margin_trade = data.get('margin-trade', False)
 
         if quantity_rate <= 0.0:
             results['messages'].append("Missing or empty quantity.")
@@ -1642,7 +1646,6 @@ class Strategy(Runnable):
             order_type = Order.ORDER_MARKET
 
         order_quantity = 0.0
-        order_leverage = 1.0
 
         trader = self.trader()
         market = trader.market(strategy_trader.instrument.market_id)
@@ -1651,7 +1654,8 @@ class Strategy(Runnable):
         price = limit_price or market.open_exec_price(direction)
         trade = None
 
-        if market.trade == Market.TRADE_BUY_SELL:
+        if market.has_spot and not margin_trade:
+            # market support spot and margin option is not defined
             trade = StrategyAssetTrade(timeframe)
 
             # ajust max quantity according to free asset of quote, and convert in asset base quantity
@@ -1665,7 +1669,7 @@ class Strategy(Runnable):
                     results['messages'].append("Not enought free quote asset %s, has %s but need %s" % (
                             market.quote, market.format_quantity(trader.asset(market.quote).free), market.format_quantity(qty)))
 
-        elif market.trade == Market.TRADE_MARGIN:
+        elif market.has_margin and not market.indivisible_position:
             trade = StrategyMarginTrade(timeframe)
 
             if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
@@ -1674,7 +1678,7 @@ class Strategy(Runnable):
 
             order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
-        elif market.trade == Market.TRADE_IND_MARGIN:
+        elif market.has_margin and market.indivisible_position:
             trade = StrategyIndMarginTrade(timeframe)
 
             if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
@@ -1704,7 +1708,7 @@ class Strategy(Runnable):
             strategy_trader.add_trade(trade)
 
             if trade.open(trader, strategy_trader.instrument.market_id, direction, order_type, order_price, order_quantity,
-                          take_profit, stop_loss, leverage=order_leverage, hedging=True):
+                          take_profit, stop_loss, leverage=leverage, hedging=hedging):
 
                 # add a success result message
                 results['messages'].append("Created trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
@@ -1948,7 +1952,8 @@ class Strategy(Runnable):
             results['messages'].append("No enought free asset quantity.")
             results['error'] = True
 
-        if market.trade != Market.TRADE_BUY_SELL:
+        # @todo trade type
+        if not market.has_spot:
             results['messages'].append("Only allowed on a spot market.")
             results['error'] = True
 
@@ -2347,21 +2352,6 @@ class Strategy(Runnable):
     #
     # static
     #
-
-    @staticmethod
-    def merge_parameters(default, user):
-        def merge(a, b):
-            if isinstance(a, dict) and isinstance(b, dict):
-                d = dict(a)
-                d.update({k: merge(a.get(k, None), b[k]) for k in b})
-                return d
-
-            if isinstance(a, list) and isinstance(b, list):
-                return [merge(x, y) for x, y in itertools.zip_longest(a, b)]
-
-            return a if b is None else b
-
-        return merge(default, user)
 
     @staticmethod
     def parse_parameters(parameters):

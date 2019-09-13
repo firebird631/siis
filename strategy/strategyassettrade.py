@@ -56,7 +56,6 @@ class StrategyAssetTrade(StrategyTrade):
         order.price = order_price
         order.order_type = order_type
         order.quantity = quantity
-        order.leverage = leverage
 
         # if need to retry @todo or cancel
         # self._market_id = market_id

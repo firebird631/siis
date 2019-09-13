@@ -376,11 +376,12 @@ class Instrument(object):
     MAKER = 0
     TAKER = 1
 
-    TRADE_BUY_SELL = 0     # no margin no short, only buy (hold) and sell
-    TRADE_ASSET = 0        # synonym for buy-sell/spot
-    TRADE_SPOT = 0         # synonym for buy-sell/asset
-    TRADE_MARGIN = 1       # margin, long and short
-    TRADE_IND_MARGIN = 2   # indivisible position, margin, long and short
+    TRADE_BUY_SELL = 1     # no margin no short, only buy (hold) and sell
+    TRADE_ASSET = 1        # synonym for buy-sell/spot
+    TRADE_SPOT = 1         # synonym for buy-sell/asset
+    TRADE_MARGIN = 2       # margin, long and short
+    TRADE_IND_MARGIN = 4   # indivisible position, margin, long and short
+    TRADE_FIFO = 8         # positions are closed in FIFO order
 
     ORDER_MARKET = 0
     ORDER_LIMIT = 1
@@ -465,6 +466,10 @@ class Instrument(object):
     def tradeable(self, status):
         self._tradeable = status
 
+    #
+    # instrument trade type
+    #
+
     @property
     def trade(self):
         return self._trade
@@ -472,6 +477,22 @@ class Instrument(object):
     @trade.setter
     def trade(self, trade):
         self._trade = trade
+
+    @property
+    def has_spot(self):
+        return self._trade & Instrument.TRADE_SPOT == Instrument.TRADE_SPOT
+
+    @property
+    def has_margin(self):
+        return self._trade & Instrument.TRADE_MARGIN == Instrument.TRADE_MARGIN
+
+    @property
+    def indivisible_position(self):
+        return self._trade & Instrument.TRADE_IND_MARGIN == Instrument.TRADE_IND_MARGIN
+
+    @property
+    def fifo_position(self):
+        return self._trade & Instrument.TRADE_FIFO == Instrument.TRADE_FIFO
 
     @property
     def orders(self):

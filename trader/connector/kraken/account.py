@@ -51,6 +51,14 @@ class KrakenAccount(Account):
 
         # @todo
 
+        # self._free_asset_balance
+        # self._asset_balance
+
+        # self._balance = 0.0
+        # self._net_worth = 0.0
+        # self._margin_balance = 0.0
+        # self._risk_limit = 0.0
+
         now = time.time()
         self._last_update = now
 

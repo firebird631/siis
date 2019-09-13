@@ -35,23 +35,24 @@ class StrategySignal(object):
     - ptp for partial TP from 0 to 1
     """
 
-    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'ptp'
+    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'alt_tp', 'ptp'
 
     SIGNAL_NONE = 0   # signal type undefined (must be entry or exit else its informal)
     SIGNAL_ENTRY = 1  # entry signal (this does not mean long. @see dir)
     SIGNAL_EXIT = -1  # exit signal (this does not mean short. @see dir)
 
     def __init__(self, timeframe, timestamp):
-        self.timeframe = timeframe
-        self.ts = timestamp
-        self.signal = StrategySignal.SIGNAL_NONE
+        self.timeframe = timeframe   # timeframe related to the signal
+        self.ts = timestamp          # timestamps of the signal emit
+        self.signal = StrategySignal.SIGNAL_NONE  # type of the signal : entry or exit
 
-        self.dir = 0
-        self.p = 0
-        self.sl = 0
-        self.tp = 0
+        self.dir = 0     # signal diretion
+        self.p = 0       # signal price / possible entry-price
+        self.sl = 0      # possible stop-loss pricce
+        self.tp = 0      # primary possible take profit price
+        self.alt_tp = 0  # secondary possible take profit price
 
-        self.ptp = 1.0
+        self.ptp = 1.0  # partial TP ratio ]0.0..N]
 
     def base_time(self) -> float:
         """
@@ -106,6 +107,10 @@ class StrategySignal(object):
         return self.tp
 
     @property
+    def alt_take_profit(self):
+        return self.alt_tp
+
+    @property
     def partial_tp(self):
         return self.ptp
 
@@ -126,6 +131,7 @@ class StrategySignal(object):
         self.p = _from.p
         self.sl = _from.sl
         self.tp = _from.tp
+        self.alt_tp = _from.alt_tp
 
     def compare(self, _to) -> bool:
         """

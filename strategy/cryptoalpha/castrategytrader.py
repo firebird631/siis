@@ -83,7 +83,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if timestamp - self._last_filter_cache[0] < 60*60:  # only once per hour
             return self._last_filter_cache[1], self._last_filter_cache[2]
 
-        if self.instrument.trade != self.instrument.TRADE_BUY_SELL:
+        if not self.instrument.has_spot:
             # only allow buy/sell markets
             self._last_filter_cache = (timestamp, False, False)
             return False, False
@@ -210,8 +210,6 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     continue
 
                 for signal in exits:
-                    parent_signal_tf = self.parent_timeframe(signal.timeframe)
-
                     # @todo how to managed exit region ?
 
                     # receive an exit signal of the timeframe of the trade
@@ -223,11 +221,6 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     if signal.timeframe == self.ref_timeframe:
                         retained_exit = signal
                         break
-
-                    # exit from parent timeframe signal
-                    # if parent_signal_tf == trade.timeframe: 
-                    #     retained_exit = signal
-                    #     break
 
                     # exit from any parent timeframe signal
                     # if signal.timeframe > trade.timeframe:

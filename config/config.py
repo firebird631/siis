@@ -418,23 +418,17 @@ STRATEGIES = {
         'options': {
         }
     },
-    'refuel': {
-        'status': 'load',
-        'classpath': 'strategy.refuel.refuelstrategy.RefuelStrategy',
-        'options': {
-        }
-    },
-    'bourricot': {
-         'status': 'load',
-         'classpath': 'strategy.bourricot.bourricotstrategy.BourricotStrategy',
-         'options': {
-         }
-    },
-    # 'refuellogger': {
+    # 'refuel': {
     #     'status': 'load',
-    #     'classpath': 'strategy.refuellogger.refuelloggerstrategy.RefuelLoggerStrategy',
+    #     'classpath': 'strategy.refuel.refuelstrategy.RefuelStrategy',
     #     'options': {
     #     }
+    # },
+    # 'bourricot': {
+    #      'status': 'load',
+    #      'classpath': 'strategy.bourricot.bourricotstrategy.BourricotStrategy',
+    #      'options': {
+    #      }
     # },
 }
 

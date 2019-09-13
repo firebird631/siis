@@ -105,7 +105,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             self._last_filter_cache = (timestamp, False, False)
             return False, False
 
-        if market.trade != market.TRADE_MARGIN:
+        if not market.has_margin:
             # only allow margin markets
             self._last_filter_cache = (timestamp, False, False)
             return False, False
@@ -186,8 +186,6 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         
         retained_entries = []
         for entry in entries:
-            parent_entry_tf = self.parent_timeframe(entry.timeframe)
-
             # > ENTRY.C1
             # only allowed range of signal for entry
             if not (self.min_traded_timeframe <= entry.timeframe <= self.max_traded_timeframe):
@@ -251,8 +249,6 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 #
 
                 for signal in exits:
-                    hi_signal_tf = self.parent_timeframe(signal.timeframe)
-
                     # EX.C1 receive an exit signal for a timeframe defined in an active trade
                     # @todo probably not the best solution because could have some TD9 but at 
                     # lower timeframe could be not be the best

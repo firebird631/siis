@@ -25,10 +25,10 @@ class WatcherService(Service):
         self._backtesting = options.get('backtesting', False)
 
         # fetchers config
-        self._fetchers_config = utils.fetchers(options.get('config-path')) or {}
+        self._fetchers_config = utils.attribute(options.get('config-path'), 'FETCHERS') or {}
 
         # watchers config
-        self._watchers_config = utils.watchers(options.get('config-path')) or {}
+        self._watchers_config = utils.attribute(options.get('config-path'), 'WATCHERS') or {}
 
         # user identities
         self._identities_config = utils.identities(options.get('config-path')) or {}

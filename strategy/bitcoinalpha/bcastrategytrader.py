@@ -82,8 +82,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if timestamp - self._last_filter_cache[0] < 60*60:  # only once per hour
             return self._last_filter_cache[1], self._last_filter_cache[2]
         
-        if self.instrument.trade != self.instrument.TRADE_IND_MARGIN and self.instrument.trade != self.instrument.TRADE_MARGIN:
-            # only allow margin markets
+        if not self.instrument.has_margin or not self.instrument.indivisible_position:
+            # only allow margin markets with indivisible position
             self._last_filter_cache = (timestamp, False, False)
             return False, False
 
@@ -215,8 +215,6 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 user_mgmt = trade.is_user_trade()
 
                 for signal in exits:
-                    parent_signal_tf = self.parent_timeframe(signal.timeframe)
-
                     # @todo how to managed exit region ?
 
                     # receive an exit signal of the timeframe of the trade
@@ -228,11 +226,6 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     if signal.timeframe == self.ref_timeframe:
                         retained_exit = signal
                         break
-
-                    # exit from parent timeframe signal
-                    # if parent_signal_tf == trade.timeframe: 
-                    #     retained_exit = signal
-                    #     break
 
                     # exit from any parent timeframe signal
                     # if signal.timeframe > trade.timeframe:

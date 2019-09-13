@@ -1252,7 +1252,8 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets.
         """
-        columns = ('Broker', 'Account', 'Username', 'Email', 'Balance', 'Margin', 'Net worth', 'Net w. alt', 'Risk limit', 'Unrealized P/L', 'U. P/L alt')
+        columns = ('Broker', 'Account', 'Username', 'Email', 'Balance', 'Asset', 'Free Asset', 'Margin', 'Net worth', 'Net w. alt',
+                   'Risk limit', 'Unrealized P/L', 'U. P/L alt', 'Asset U. P/L', 'Asset U. P/L alt')
         data = []
 
         self.lock()
@@ -1270,13 +1271,17 @@ class Trader(Runnable):
             self._account.name,
             self._account.username,
             self._account.email,
+            self.account.format_price(self._account.asset_balance) + self.account.currency_display or self.account.currency,
+            self.account.format_price(self._account.free_asset_balance) + self.account.currency_display or self.account.currency,
             self.account.format_price(self._account.balance) + self.account.currency_display or self.account.currency,
             self.account.format_price(self._account.margin_balance) + self.account.currency_display or self.account.currency,
             self.account.format_price(self._account.net_worth) + self.account.currency_display or self.account.currency,
             self.account.format_alt_price(self._account.net_worth * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency,
             self.account.format_price(self._account.risk_limit) + self.account.currency_display or self.account.currency,
             self.account.format_price(self._account.profit_loss) + self.account.currency_display or self.account.currency,
-            self.account.format_alt_price(self._account.profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
+            self.account.format_alt_price(self._account.profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency,
+            self.account.format_price(self._account.asset_profit_loss) + self.account.currency_display or self.account.currency,
+            self.account.format_alt_price(self._account.asset_profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency,
         )
 
         if offset < 1 and limit > 0:

@@ -4,146 +4,87 @@
 # 
 
 import importlib.util
+import itertools
 
 import logging
 logger = logging.getLogger('siis.config')
 
 
+def merge_parameters(default, user):
+    def merge(a, b):
+        if isinstance(a, dict) and isinstance(b, dict):
+            d = dict(a)
+            d.update({k: merge(a.get(k, None), b[k]) for k in b})
+            return d
+
+        if isinstance(a, list) and isinstance(b, list):
+            return [merge(x, y) for x, y in itertools.zip_longest(a, b)]
+
+        return a if b is None else b
+
+    return merge(default, user)
+
+
 def identities(config_path):
-	spec = importlib.util.spec_from_file_location("config.identity", '/'.join((config_path, 'identity.py')))
-	mod = importlib.util.module_from_spec(spec)
-	spec.loader.exec_module(mod)
-	return mod.IDENTITIES if hasattr(mod, 'IDENTITIES') else {}
+    spec = importlib.util.spec_from_file_location("config.identity", '/'.join((config_path, 'identity.py')))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.IDENTITIES if hasattr(mod, 'IDENTITIES') else {}
 
 
-def watchers(config_path):
-	from config import config
-	default_config = config.WATCHERS or {}
 
-	res = {}
-	try:
-		spec = importlib.util.spec_from_file_location(".", '/'.join((config_path, 'config.py')))
-		mod = importlib.util.module_from_spec(spec)
-		spec.loader.exec_module(mod)
-		if hasattr(mod, 'WATCHERS'):
-			return mod.WATCHERS
-	except FileNotFoundError:
-		pass
-	except Exception as e:
-		logger.error(repr(e))
+def attribute(config_path, attr_name):
+    from config import config
+    default_config = getattr(config, attr_name) or {}
 
-	return default_config
+    res = {}
+    try:
+        spec = importlib.util.spec_from_file_location(".", '/'.join((config_path, 'config.py')))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        if hasattr(mod, attr_name):
+            return merge_parameters(default_config, getattr(mod, attr_name))
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        logger.error(repr(e))
 
-
-def fetchers(config_path):
-	from config import config
-	default_config = config.FETCHERS or {}
-
-	res = {}
-	try:
-		spec = importlib.util.spec_from_file_location(".", '/'.join((config_path, 'config.py')))
-		mod = importlib.util.module_from_spec(spec)
-		spec.loader.exec_module(mod)
-		if hasattr(mod, 'FETCHERS'):
-			return mod.FETCHERS
-	except FileNotFoundError:
-		pass
-	except Exception as e:
-		logger.error(repr(e))
-
-	return default_config
-
-
-def traders(config_path):
-	from config import config
-	default_config = config.TRADERS or {}
-
-	res = {}
-	try:
-		spec = importlib.util.spec_from_file_location(".", '/'.join((config_path, 'config.py')))
-		mod = importlib.util.module_from_spec(spec)
-		spec.loader.exec_module(mod)
-		if hasattr(mod, 'TRADERS'):
-			return mod.TRADERS
-	except FileNotFoundError:
-		pass
-	except Exception as e:
-		logger.error(repr(e))
-
-	return default_config
+    return default_config
 
 
 def appliances(config_path):
-	from config import appliance
-	default_config = appliance.APPLIANCES or {}
+    from config import appliance
+    default_config = appliance.APPLIANCES or {}
 
-	res = {}
-	try:
-		spec = importlib.util.spec_from_file_location("config.appliance", '/'.join((config_path, 'appliance.py')))
-		mod = importlib.util.module_from_spec(spec)
-		spec.loader.exec_module(mod)
-		if hasattr(mod, 'APPLIANCES'):
-			return mod.APPLIANCES
-	except FileNotFoundError:
-		pass
-	except Exception as e:
-		logger.error(repr(e))
+    res = {}
+    try:
+        spec = importlib.util.spec_from_file_location("config.appliance", '/'.join((config_path, 'appliance.py')))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        if hasattr(mod, 'APPLIANCES'):
+            return mod.APPLIANCES
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        logger.error(repr(e))
 
-	return default_config
+    return default_config
 
 
 def profiles(config_path):
-	from config import appliance
-	default_config = appliance.PROFILES or {}
+    from config import appliance
+    default_config = appliance.PROFILES or {}
 
-	res = {}
-	try:
-		spec = importlib.util.spec_from_file_location("config.appliance", '/'.join((config_path, 'appliance.py')))
-		mod = importlib.util.module_from_spec(spec)
-		spec.loader.exec_module(mod)
-		if hasattr(mod, 'PROFILES'):
-			return mod.PROFILES
-	except FileNotFoundError:
-		pass
-	except Exception as e:
-		logger.error(repr(e))
+    res = {}
+    try:
+        spec = importlib.util.spec_from_file_location("config.appliance", '/'.join((config_path, 'appliance.py')))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        if hasattr(mod, 'PROFILES'):
+            return mod.PROFILES
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        logger.error(repr(e))
 
-	return default_config
-
-
-def monitoring(config_path):
-	from config import config
-	default_config = config.MONITORING or {}
-
-	res = {}
-	try:
-		spec = importlib.util.spec_from_file_location(".", '/'.join((config_path, 'config.py')))
-		mod = importlib.util.module_from_spec(spec)
-		spec.loader.exec_module(mod)
-		if hasattr(mod, 'MONITORING'):
-			return mod.MONITORING
-	except FileNotFoundError:
-		pass
-	except Exception as e:
-		logger.error(repr(e))
-
-	return default_config
-
-
-def databases(config_path):
-	from config import config
-	default_config = config.DATABASES or {}
-
-	res = {}
-	try:
-		spec = importlib.util.spec_from_file_location(".", '/'.join((config_path, 'config.py')))
-		mod = importlib.util.module_from_spec(spec)
-		spec.loader.exec_module(mod)
-		if hasattr(mod, 'DATABASES'):
-			return mod.DATABASES
-	except FileNotFoundError:
-		pass
-	except Exception as e:
-		logger.error(repr(e))
-
-	return default_config
+    return default_config

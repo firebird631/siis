@@ -67,6 +67,7 @@ class Order(object):
         self._close_only = False
         self._price_type = Order.PRICE_LAST
 
+        self._margin_trade = False
         self._leverage = 1.0
 
         self._time_in_force = Order.TIME_IN_FORCE_GTC
@@ -138,6 +139,10 @@ class Order(object):
     @property
     def leverage(self):
         return self._leverage
+
+    @property
+    def margin_trade(self):
+        return self._margin_trade
 
     @property
     def reduce_only(self):
@@ -218,6 +223,10 @@ class Order(object):
     @leverage.setter
     def leverage(self, leverage):
         self._leverage = leverage
+
+    @margin_trade.setter
+    def margin_trade(self, margin_trade):
+        self._margin_trade = margin_trade
 
     @direction.setter
     def direction(self, direction):

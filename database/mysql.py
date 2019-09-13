@@ -19,8 +19,6 @@ from instrument.instrument import Candle
 from trader.market import Market
 from trader.asset import Asset
 
-from config.utils import databases
-
 from .tickstorage import TickStorage, TickStreamer
 from .ohlcstorage import OhlcStorage, OhlcStreamer
 

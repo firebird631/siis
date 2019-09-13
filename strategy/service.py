@@ -45,10 +45,10 @@ class StrategyService(Service):
         self._watcher_only = options.get('watcher-only', False)
         self._profile = options.get('profile', 'default')
 
-        self._indicators_config = config.INDICATORS or {}
-        self._tradeops_config = config.TRADEOPS or {}
-        self._regions_config = config.REGIONS or {}
-        self._strategies_config = config.STRATEGIES or {}
+        self._indicators_config = utils.attribute(options.get('config-path'), 'INDICATORS') or {}
+        self._tradeops_config = utils.attribute(options.get('config-path'), 'TRADEOPS') or {}
+        self._regions_config = utils.attribute(options.get('config-path'), 'REGIONS') or {}
+        self._strategies_config = utils.attribute(options.get('config-path'), 'STRATEGIES') or {}
         self._appliances_config = utils.appliances(options.get('config-path')) or {}
         self._profile_config = utils.profiles(options.get('config-path')) or {}
 
@@ -209,7 +209,7 @@ class StrategyService(Service):
 
                 Clazz = self._strategies.get(strategy['name'])
                 if not Clazz:
-                    logger.error("Unknown strategy name for appliance %s !" % k)
+                    logger.error("Unknown strategy name %s for appliance %s !" % (strategy['name'], k))
 
                 appl_inst = Clazz(self, self.watcher_service, self.trader_service, appl, parameters)
                 appl_inst.set_identifier(k)

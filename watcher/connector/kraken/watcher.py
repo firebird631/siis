@@ -297,12 +297,12 @@ class KrakenWatcher(Watcher):
             # "lot":"unit"
             market.unit_type = Market.UNIT_AMOUNT
             market.market_type = Market.TYPE_CRYPTO
-            market.trade = Market.TRADE_ASSET
             market.contract_type = Market.CONTRACT_SPOT
 
-            # @todo add a copy with
-            market.trade = Market.TRADE_MARGIN
-            market.contract_type = Market.CONTRACT_FUTUR
+            market.trade = Market.TRADE_ASSET
+            if leverages:
+                market.trade |= Market.TRADE_MARGIN
+                market.trade |= Market.TRADE_FIFO
 
             # orders capacities
             market.orders = Order.ORDER_LIMIT | Order.ORDER_MARKET | Order.ORDER_STOP | Order.ORDER_TAKE_PROFIT

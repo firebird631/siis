@@ -14,7 +14,7 @@ class ForexAlphaStrategySub(TimeframeBasedSub):
     """
 
     def __init__(self, strategy_trader, params):
-        super().__init__(strategy_trader, params['timeframe'], params['parent'], params['depth'], params['history'])
+        super().__init__(strategy_trader, params['timeframe'], params['depth'], params['history'], params)
 
         self.score_ratio = params['score-ratio']
         self.score_level = params['score-level']

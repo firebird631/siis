@@ -15,7 +15,7 @@ logger = logging.getLogger('siis')
 class Account(object):
     """
     An account object is owned by a Trader object.
-    @todo currency string formatter ?
+    @todo distinct spot/margin balance, balance and margin for margin and add a total asset value field (and column in views)
     """
 
     TYPE_UNDEFINED = 0
@@ -46,13 +46,16 @@ class Account(object):
         self._currency_precision = 2
         self._alt_currency_precision = 2
 
-        self._balance = 0
-        self._net_worth = 0     
+        self._balance = 0.0
+        self._net_worth = 0.0
+        self._margin_balance = 0.0
+        self._risk_limit = 0.0
 
-        self._margin_balance = 0
-        self._risk_limit = 0
+        self._profit_loss = 0.0
+        self._asset_profit_loss = 0.0
 
-        self._profit_loss = 0
+        self._asset_balance = 0.0
+        self._free_asset_balance = 0.0
 
         self._shared = False   # share shared trades xD
 
@@ -146,6 +149,10 @@ class Account(object):
         return self._profit_loss
 
     @property
+    def asset_profit_loss(self):
+        return self._asset_profit_loss
+
+    @property
     def default_stop_loss_rate(self):
         return self._default_stop_loss_rate
 
@@ -166,6 +173,14 @@ class Account(object):
         return self._risk_limit
 
     @property
+    def asset_balance(self):
+        return self._asset_balance
+
+    @property
+    def free_asset_balance(self):
+        return self._free_asset_balance
+
+    @property
     def guaranteed_stop(self):
         return self._guaranteed_stop
 
@@ -184,6 +199,10 @@ class Account(object):
     def set_balance(self, balance):
         self._balance = balance
 
+    def set_asset_balance(self, balance, free):
+        self._asset_balance = balance
+        self._free_asset_balance = free
+
     def add_used_margin(self, margin):
         self._margin_balance += margin
 
@@ -198,6 +217,12 @@ class Account(object):
 
     def set_unrealized_profit_loss(self, upnl):
         self._profit_loss = upnl
+
+    def add_unrealized_assetprofit_loss(self, upnl):
+        self._asset_profit_loss += upnl
+
+    def set_unrealized_asset_profit_loss(self, upnl):
+        self._asset_profit_loss = upnl
 
     def set_currency(self, currency, currency_display=""):
         self._currency = currency

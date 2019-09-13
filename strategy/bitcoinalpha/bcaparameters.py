@@ -21,7 +21,6 @@ DEFAULT_PARAMS = {
     'timeframes': {
         'daily': {
             'timeframe': '1d',
-            'parent': None,
             'mode': 'B',
             'depth': 56,
             'history': 56,
@@ -51,7 +50,6 @@ DEFAULT_PARAMS = {
         },
         'hourly': {
             'timeframe': '1h',
-            'parent': '1d',
             'mode': 'B', 
             'depth': 64,
             'history': 64,
@@ -84,7 +82,6 @@ DEFAULT_PARAMS = {
         },
         # '30min': {
         #     'timeframe': '30m',
-        #     'parent': '1h',
         #     'mode': 'B',
         #     'depth': 22,
         #     'history': 22,
@@ -114,7 +111,6 @@ DEFAULT_PARAMS = {
         # },
         '3min': {
             'timeframe': '3m',
-            'parent': '1h',  # '30m',
             'mode': 'A',
             'depth': 36,
             'history': 36,

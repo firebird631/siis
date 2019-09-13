@@ -56,8 +56,8 @@ class BinanceAccount(Account):
             self._name = connector.account_id
 
             # recompute the balance and free margin for each non-zero account balance
-            self._balance = 0.0
-            self._margin_balance = 0.0
+            self._asset_balance = 0.0
+            self._free_asset_balance = 0.0
 
             asset_quantities = self.parent.asset_quantities()
 
@@ -85,10 +85,10 @@ class BinanceAccount(Account):
                         # asset BTC itself
                         base_price = 1.0
 
-                    self._balance += (free + locked) * base_price
-                    self._margin_balance += free * base_price
+                    self._asset_balance += (free + locked) * base_price
+                    self._free_asset_balance += free * base_price
 
-            self._net_worth = self._balance
+            self._net_worth = self._asset_balance
             self._last_update = time.time()
 
         # @deprecated old way using a REST API call

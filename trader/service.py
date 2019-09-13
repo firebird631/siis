@@ -119,7 +119,7 @@ class TraderService(Service):
                 Clazz = getattr(module, parts[-1])
 
                 # backtesting always create paper traders
-                if self.backtesting:
+                if self.backtesting or self._paper_mode:
                     inst_trader = PaperTrader(self, k)
                     paper_mode = trader.get('paper-mode', None)
 
@@ -146,39 +146,16 @@ class TraderService(Service):
                                 if asset.get('base') and asset.get('quote') and asset.get('initial'):
                                     inst_trader.create_asset(asset['base'], asset['initial'], paper_mode.get('price', 0.0), asset['quote'], asset.get('precision', 8))
 
-                    # no auto-update -> no thread : avoid time deviation
-                    self._traders[k] = inst_trader
-
-                elif self._paper_mode:
-                    inst_trader = PaperTrader(self, k)
-                    paper_mode = trader.get('paper-mode', None)
-
-                    if paper_mode:
-                        # initial fund or asset
-                        inst_trader.account.set_currency(paper_mode.get('currency', 'USD'), paper_mode.get('currency-symbol', '$'))
-                        inst_trader.account.set_alt_currency(paper_mode.get('alt-currency', 'USD'), paper_mode.get('alt-currency-symbol', '$'))
-
-                        if paper_mode.get('type', 'margin') == 'margin':
-                            inst_trader.account.account_type = inst_trader.account.TYPE_MARGIN
-                            inst_trader.account.initial(paper_mode.get('initial', 1000.0), inst_trader.account.currency, inst_trader.account.currency_display)
-
-                        elif paper_mode.get('type', 'margin') == 'asset':
-                            inst_trader.account.account_type = inst_trader.account.TYPE_ASSET
-
-                            assets = paper_mode.get('assets', [{
-                                'base': inst_trader.account.currency,
-                                'quote': inst_trader.account.alt_currency,
-                                'initial': 1000.0,
-                                'precision': 8
-                            }])
-
-                            for asset in assets:
-                                if asset.get('base') and asset.get('quote') and asset.get('initial'):
-                                    inst_trader.create_asset(asset['base'], asset['initial'], paper_mode.get('price', 0.0), asset['quote'], asset.get('precision', 8))
-
-                    if inst_trader.start():
+                    if self.backtesting:
+                        # no auto-update -> no thread : avoid time deviation
                         self._traders[k] = inst_trader
+
+                    elif self._paper_mode:
+                        # live but in paper-mode -> thread
+                        if inst_trader.start():
+                            self._traders[k] = inst_trader
                 else:
+                    # live with real trader
                     inst_trader = Clazz(self)
 
                     if inst_trader.start():
@@ -334,7 +311,7 @@ class TraderService(Service):
         profile_config = utils.profiles(options.get('config-path')) or {}
         traders_profile = profile_config.get(profile_name, {'traders': {}}).get('traders', {})
 
-        traders_config = utils.traders(options.get('config-path')) or {}
+        traders_config = utils.attribute(options.get('config-path'), 'TRADERS') or {}
 
         # override from profile
         for k, trader_config in traders_config.items():

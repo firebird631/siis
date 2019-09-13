@@ -18,7 +18,6 @@ DEFAULT_PARAMS = {
     'timeframes': {
         '4hour': {
             'timeframe': '4h',
-            'parent':None,
             'mode': 'A',
             'depth': 22,
             'history': 22,
@@ -38,7 +37,6 @@ DEFAULT_PARAMS = {
         },
         'hourly': {
             'timeframe': '1h',
-            'parent': '4h',
             'mode': 'A', 
             'depth': 22,
             'history': 22,
@@ -58,7 +56,6 @@ DEFAULT_PARAMS = {
         },
         '15min': {
             'timeframe': '15m',
-            'parent': '1h',
             'mode': 'A',
             'depth': 22,
             'history': 22,
@@ -78,7 +75,6 @@ DEFAULT_PARAMS = {
         },
         '5min': {
             'timeframe': '5m',
-            'parent': '15m',
             'mode': 'A',
             'depth': 22,
             'history': 22,
@@ -98,7 +94,6 @@ DEFAULT_PARAMS = {
         },
         '2min':{
             'timeframe': '2m',
-            'parent': '5m',
             'mode': 'A',
             'depth': 22,
             'history': 22,
@@ -118,7 +113,6 @@ DEFAULT_PARAMS = {
         },
         '1min': {
             'timeframe': '1m',
-            'parent': '2m',
             'mode': 'A',
             'depth': 22,
             'history': 22,

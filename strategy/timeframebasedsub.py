@@ -11,15 +11,19 @@ class TimeframeBasedSub(object):
     TimeframeBasedSub sub computation base class.
     """
 
-    def __init__(self, strategy_trader, timeframe, parent_timeframe, depth, history):
+    def __init__(self, strategy_trader, timeframe, depth, history, params=None):
         self.strategy_trader = strategy_trader  # parent strategy-trader object
 
+        params = params or {}
+
         self.tf = timeframe
-        self.parent_tf = parent_timeframe
         self.depth = depth       # min samples size needed for processing
         self.history = history   # sample history size
         self.profiling = False   # profiling mean store the states of the indicators for any signals
         self.next_timestamp = 0  # next waiting, to be processed ohlc timestamp
+
+        self._update_at_close = params.get('update-at-close', False)
+        self._signal_at_close = params.get('signal-at-close', False)
 
         self.candles_gen = CandleGenerator(self.strategy_trader.base_timeframe, self.tf)
 
@@ -45,8 +49,9 @@ class TimeframeBasedSub(object):
 
     def need_update(self, timestamp):
         """
-        An update is needed if the timestamp is greater than the next waited timestamp.
-        next_timestamp must be updated during the processing.
+        An update is needed if the timestamp is greater or equal than the next waited timestamp.
+        next_timestamp must be updated during the processing of the sub.
+        In others word this default implementation means to compute once the ohlc closed.
         """
         return timestamp >= self.next_timestamp
 
@@ -64,13 +69,6 @@ class TimeframeBasedSub(object):
         return self.tf
 
     @property
-    def parent_timeframe(self):
-        """
-        If a parent timeframe is defined, then it refers to its timeframe.
-        """
-        return self.parent_tf
-
-    @property
     def samples_depth_size(self):
         """
         Number of Ohlc to have at least to process the computation.
@@ -83,6 +81,14 @@ class TimeframeBasedSub(object):
         Number of Ohlc used for inititalization on kept in memory.
         """
         return self.history
+
+    @property
+    def update_at_close(self):
+        return self._update_at_close
+    
+    @property
+    def signal_at_close(self):
+        return self._signal_at_close
 
     #
     # data streaming (@deprecated way)

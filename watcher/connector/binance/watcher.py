@@ -297,8 +297,13 @@ class BinanceWatcher(Watcher):
 
             market.unit_type = Market.UNIT_AMOUNT
             market.market_type = Market.TYPE_CRYPTO
-            market.trade = Market.TRADE_ASSET
             market.contract_type = Market.CONTRACT_SPOT
+
+            market.trade = 0
+            if symbol.get('isSpotTradingAllowed', False):
+                market.trade |= Market.TRADE_ASSET
+            if symbol.get('isMarginTradingAllowed', False):
+                market.trade |= Market.TRADE_IND_MARGIN
 
             # @todo orders capacities
             # symbol['orderTypes'] in ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT']
@@ -309,12 +314,6 @@ class BinanceWatcher(Watcher):
 
             market.maker_fee = account['makerCommission'] * 0.0001
             market.taker_fee = account['takerCommission'] * 0.0001
-
-            if symbol.get('isSpotTradingAllowed', False):
-                pass  # @todo
-
-            if symbol.get('isMarginTradingAllowed', False):
-                pass  # @todo
 
             # market.buyer_commission = account['buyerCommission']
             # market.seller_commission = account['sellerCommission']

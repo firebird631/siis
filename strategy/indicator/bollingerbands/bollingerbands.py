@@ -19,7 +19,7 @@ class BollingerBandsIndicator(Indicator):
     https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/bollinger-band-width
     """
 
-    __slots__ = '_length', '_prev_bottom', '_prev_ma', '_prev_top', '_last_bottom', '_last_ma', '_last_top'
+    __slots__ = '_length', '_prev_bottom', '_prev_ma', '_prev_top', '_last_bottom', '_last_ma', '_last_top', '_bottoms', '_tops', '_mas'
 
     @classmethod
     def indicator_type(cls):
@@ -41,6 +41,10 @@ class BollingerBandsIndicator(Indicator):
         self._last_bottom = 0.0
         self._last_ma = 0.0
         self._last_top = 0.0
+
+        self._bottoms = np.array([])
+        self._mas = np.array([])
+        self._tops = np.array([])
 
     @property
     def length(self):
@@ -90,6 +94,18 @@ class BollingerBandsIndicator(Indicator):
     def last_top(self):
         return self._last_top
 
+    @property
+    def bottoms(self):
+        return self._bottoms
+    
+    @property
+    def tops(self):
+        return self._tops
+    
+    @property
+    def mas(self):
+        return self._mas
+
     @staticmethod
     def BB(N, data):
         mm = MM_n(N, data)
@@ -137,15 +153,15 @@ class BollingerBandsIndicator(Indicator):
         self._prev_bottom = self._last_bottom
 
         # bottom, ma, top = BollingerBandsIndicator.BB(self._length, prices)
-        top, ma, bottom = ta_BBANDS(prices, timeperiod=self._length, nbdevup=2, nbdevdn=2, matype=0)
+        self._tops, self._mas, self._bottoms = ta_BBANDS(prices, timeperiod=self._length, nbdevup=2, nbdevdn=2, matype=0)
 
-        self._last_top = top[-1]
-        self._last_ma = ma[-1]
-        self._last_bottom = bottom[-1]
+        self._last_top = self._tops[-1]
+        self._last_ma = self._mas[-1]
+        self._last_bottom = self._bottoms[-1]
 
         self._last_timestamp = timestamp
 
-        return top, ma, bottom
+        return self._tops, self._mas, self._bottoms
 
     def trace(self):
         return tuple(self._last_top, self._last_ma, self._last_bottom)

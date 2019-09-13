@@ -40,6 +40,7 @@ class PaperTraderHistoryEntry(object):
         self._order = order
         self._balance = balance
         self._margin_balance = margin_balance
+        # self._asset_balance = asset_balance
 
         self._gain_loss_pip = gain_loss_pip
         self._gain_loss_rate = gain_loss_rate
@@ -264,6 +265,8 @@ class PaperTrader(Trader):
 
     @todo support of slippage will need a list of order, and to process in update time, and need a tick level or order book data.
     @note ORDER_STOP_LIMIT and ORDER_TAKE_PROFIT_LIMIT orders are not implemented at this time
+    @todo A profil with unlimited asset/margin.
+    @issue Margin computation with BitMex markets (base exchange rate or what else is going wrong during the calculation ?)
     """
 
     def __init__(self, service, name="papertrader.siis"):
@@ -477,7 +480,7 @@ class PaperTrader(Trader):
         if self._account.account_type & PaperTraderAccount.TYPE_ASSET:
             # support spot
             balance = 0.0
-            margin_balance = 0.0
+            free_balance = 0.0
             profit_loss = 0.0
 
             self.lock()
@@ -514,14 +517,13 @@ class PaperTrader(Trader):
                         base_exchange_rate = 1.0 / market.price if market else 1.0
 
                     balance += free * base_price + locked * base_price  # current total free+locked balance
-                    margin_balance += free * base_price                 # current total free balance
+                    free_balance += free * base_price                 # current total free balance
 
                     # current profit/loss at market
                     profit_loss += asset.profit_loss_market / base_exchange_rate  # current total P/L in primary account currency
 
-            self.account.set_balance(balance)
-            self.account.set_margin_balance(margin_balance)
-            self.account.set_unrealized_profit_loss(profit_loss)
+            self.account.set_asset_balance(balance, free_balance)
+            self.account.set_unrealized_asset_profit_loss(profit_loss)
 
             self.unlock()
 
@@ -560,12 +562,13 @@ class PaperTrader(Trader):
                 if order.order_type == Order.ORDER_MARKET:
                     # market
                     # does not support the really offered qty, take all at current price in one shot
-                    if market.trade == market.TRADE_BUY_SELL:
+                    if order.margin_trade and market.has_margin:
+                        if market.indivisible_position:
+                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+                        else:
+                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                    elif not order.margin_trade and market.has_spot:
                         self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
-                    elif market.trade == market.TRADE_MARGIN:
-                        self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
-                    elif market.trade == market.TRADE_IND_MARGIN:
-                        self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
 
                     # fully executed
                     rm_list.append(order.order_id)
@@ -576,12 +579,13 @@ class PaperTrader(Trader):
                         (order.direction == Position.SHORT and open_exec_price >= order.price)):
 
                         # does not support the really offered qty, take all at current price in one shot
-                        if market.trade == market.TRADE_BUY_SELL:
+                        if order.margin_trade and market.has_margin:
+                            if market.indivisible_position:
+                                self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+                            else:
+                                self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                        elif not order.margin_trade and market.has_spot:
                             self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
-                        elif market.trade == market.TRADE_MARGIN:
-                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
-                        elif market.trade == market.TRADE_IND_MARGIN:
-                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
 
                         # fully executed
                         rm_list.append(order.order_id)
@@ -591,12 +595,13 @@ class PaperTrader(Trader):
                     if ((order.direction == Position.LONG and close_exec_price >= order.stop_price) or
                         (order.direction == Position.SHORT and close_exec_price <= order.stop_price)):
 
-                        if market.trade == market.TRADE_BUY_SELL:
+                        if order.margin_trade and market.has_margin:
+                            if market.indivisible_position:
+                                self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+                            else:
+                                self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                        elif not order.margin_trade and market.has_spot:
                             self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
-                        elif market.trade == market.TRADE_MARGIN:
-                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
-                        elif market.trade == market.TRADE_IND_MARGIN:
-                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
 
                         # fully executed
                         rm_list.append(order.order_id)
@@ -615,12 +620,13 @@ class PaperTrader(Trader):
                             close_exec_price = max(order.price, close_exec_price)
 
                         # does not support the really offered qty, take all at current price in one shot
-                        if market.trade == market.TRADE_BUY_SELL:
+                        if order.margin_trade and market.has_margin:
+                            if market.indivisible_position:
+                                self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+                            else:
+                                self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                        elif not order.margin_trade and market.has_spot:
                             self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
-                        elif market.trade == market.TRADE_MARGIN:
-                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
-                        elif market.trade == market.TRADE_IND_MARGIN:
-                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
 
                     # fully executed
                     rm_list.append(order.order_id)
@@ -630,12 +636,13 @@ class PaperTrader(Trader):
                     if ((order.direction == Position.LONG and close_exec_price <= order.stop_price) or
                         (order.direction == Position.SHORT and close_exec_price >= order.stop_price)):
 
-                        if market.trade == market.TRADE_BUY_SELL:
+                        if order.margin_trade and market.has_margin:
+                            if market.indivisible_position:
+                                self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+                            else:
+                                self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                        elif not order.margin_trade and market.has_spot:
                             self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
-                        elif market.trade == market.TRADE_MARGIN:
-                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
-                        elif market.trade == market.TRADE_IND_MARGIN:
-                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
 
                     # fully executed
                     rm_list.append(order.order_id)
@@ -654,12 +661,13 @@ class PaperTrader(Trader):
                             close_exec_price = max(order.price, close_exec_price)
 
                         # does not support the really offered qty, take all at current price in one shot
-                        if market.trade == market.TRADE_BUY_SELL:
-                            self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
-                        elif market.trade == market.TRADE_MARGIN:
-                            self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
-                        elif market.trade == market.TRADE_IND_MARGIN:
-                            self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+                        if order.margin_trade and market.has_margin:
+                            if market.indivisible_position:
+                                self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+                            else:
+                                self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+                        elif not order.margin_trade and market.has_spot:
+                                self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
 
                     # fully executed
                     rm_list.append(order.order_id)
@@ -749,12 +757,14 @@ class PaperTrader(Trader):
         if order.order_type == Order.ORDER_MARKET:
             # immediate execution of the order at market
             # @todo or add to orders for emulate the slippage
-            if market.trade == market.TRADE_BUY_SELL:
+
+            if order.margin_trade and market.has_margin:
+                if market.indivisible_position:
+                    return self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
+                else:
+                    return self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+            elif not order.margin_trade and market.has_spot:
                 return self.__exec_buysell_order(order, market, open_exec_price, close_exec_price)
-            elif market.trade == market.TRADE_MARGIN:
-                return self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
-            elif market.trade == market.TRADE_IND_MARGIN:
-                return self.__exec_ind_margin_order(order, market, open_exec_price, close_exec_price)
         else:
             # create accepted, add to orders
             self.lock()

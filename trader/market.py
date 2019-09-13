@@ -44,11 +44,12 @@ class Market(object):
     CONTRACT_WARRANT = 4
     CONTRACT_TURBO = 5
 
-    TRADE_BUY_SELL = 0     # no margin no short, only buy (hold) and sell
-    TRADE_ASSET = 0        # synonym for buy-sell/spot
-    TRADE_SPOT = 0         # synonym for buy-sell/asset
-    TRADE_MARGIN = 1       # margin, long and short
-    TRADE_IND_MARGIN = 2   # indivisible position, margin, long and short
+    TRADE_BUY_SELL = 1     # no margin no short, only buy (hold) and sell
+    TRADE_ASSET = 1        # synonym for buy-sell/spot
+    TRADE_SPOT = 1         # synonym for buy-sell/asset
+    TRADE_MARGIN = 2       # margin, long and short
+    TRADE_IND_MARGIN = 4   # indivisible position, margin, long and short
+    TRADE_FIFO = 8         # position are closed in FIFO order
 
     ORDER_MARKET = 0
     ORDER_LIMIT = 1
@@ -84,7 +85,7 @@ class Market(object):
         self._market_id = market_id
         self._symbol = symbol
 
-        self._trade = Market.TRADE_MARGIN
+        self._trade = 0
         self._orders = Market.ORDER_ALL
 
         self._base = ""
@@ -136,6 +137,10 @@ class Market(object):
     def symbol(self):
         return self._symbol
 
+    #
+    # market trade type
+    #
+
     @property
     def trade(self):
         return self._trade
@@ -143,6 +148,22 @@ class Market(object):
     @trade.setter
     def trade(self, trade):
         self._trade = trade
+
+    @property
+    def has_spot(self):
+        return self._trade & Market.TRADE_SPOT == Market.TRADE_SPOT
+
+    @property
+    def has_margin(self):
+        return self._trade & Market.TRADE_MARGIN == Market.TRADE_MARGIN
+
+    @property
+    def indivisible_position(self):
+        return self._trade & Market.TRADE_IND_MARGIN == Market.TRADE_IND_MARGIN
+
+    @property
+    def fifo_position(self):
+        return self._trade & Market.TRADE_FIFO == Market.TRADE_FIFO
 
     @property
     def orders(self):

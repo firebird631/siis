@@ -20,7 +20,6 @@ DEFAULT_PARAMS = {
     'timeframes': {
         'weely': {
             'timeframe': '1w',
-            'parent': None,
             'mode': 'C',
             'depth': 22,
             'history': 22,
@@ -52,7 +51,6 @@ DEFAULT_PARAMS = {
         },
         'daily': {
             'timeframe': '1d',
-            'parent': '1w',
             'mode': 'C',
             'depth': 22,
             'history': 22,
@@ -84,7 +82,6 @@ DEFAULT_PARAMS = {
         },
         '4hour': {
             'timeframe': '4h',
-            'parent': '1d',
             'mode': 'A',
             'depth': 56,
             'history': 56,
@@ -116,7 +113,6 @@ DEFAULT_PARAMS = {
         },
         'hourly': {
             'timeframe': '1h,'
-            'parent': '4h',
             'mode': 'A',
             'depth': 22,
             'history': 22,
@@ -149,7 +145,6 @@ DEFAULT_PARAMS = {
         },
         '15min': {
             'timeframe': '15m',
-            'parent': '1h',
             'mode': 'A',
             'depth': 22,
             'history': 22,
@@ -181,7 +176,6 @@ DEFAULT_PARAMS = {
         },
         '5min': {
             'timeframe': '5m',
-            'parent': '15m',
             'mode': 'A',
             'depth': 14,
             'history': 14,
@@ -213,7 +207,6 @@ DEFAULT_PARAMS = {
         },
         '1min': {
             'timeframe': '1m,'
-            'parent': '5m,'
             'mode': 'A',
             'depth': 20,
             'history': 20,
