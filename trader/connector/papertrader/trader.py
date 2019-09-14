@@ -517,7 +517,7 @@ class PaperTrader(Trader):
                         base_exchange_rate = 1.0 / market.price if market else 1.0
 
                     balance += free * base_price + locked * base_price  # current total free+locked balance
-                    free_balance += free * base_price                 # current total free balance
+                    free_balance += free * base_price                   # current total free balance
 
                     # current profit/loss at market
                     profit_loss += asset.profit_loss_market / base_exchange_rate  # current total P/L in primary account currency

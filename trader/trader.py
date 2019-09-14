@@ -1252,7 +1252,7 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets.
         """
-        columns = ('Broker', 'Account', 'Username', 'Email', 'Balance', 'Asset', 'Free Asset', 'Margin', 'Net worth', 'Net w. alt',
+        columns = ('Broker', 'Account', 'Username', 'Email', 'Asset', 'Free Asset', 'Balance', 'Margin', 'Net worth', 'Net w. alt',
                    'Risk limit', 'Unrealized P/L', 'U. P/L alt', 'Asset U. P/L', 'Asset U. P/L alt')
         data = []
 

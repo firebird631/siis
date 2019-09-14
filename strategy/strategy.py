@@ -2370,7 +2370,6 @@ class Strategy(Runnable):
         parameters.setdefault('base-timeframe', '4h')
         parameters.setdefault('min-traded-timeframe', '4h')
         parameters.setdefault('max-traded-timeframe', '4h')
-        parameters.setdefault('need-update', True)
         parameters.setdefault('min-vol24h', 0.0)
         parameters.setdefault('min-price', 0.0)
         parameters.setdefault('region-allow', True)
@@ -2390,9 +2389,10 @@ class Strategy(Runnable):
             timeframe.setdefault('history', 0)
 
             parameters.setdefault('timeframe', None)
-            parameters.setdefault('parent', None)
+            
+            parameters.setdefault('update-at-close', True)
+            parameters.setdefault('signal-at-close', True)
 
             convert(timeframe, 'timeframe')
-            convert(timeframe, 'parent')
 
         return parameters

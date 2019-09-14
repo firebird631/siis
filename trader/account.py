@@ -218,7 +218,7 @@ class Account(object):
     def set_unrealized_profit_loss(self, upnl):
         self._profit_loss = upnl
 
-    def add_unrealized_assetprofit_loss(self, upnl):
+    def add_unrealized_asset_profit_loss(self, upnl):
         self._asset_profit_loss += upnl
 
     def set_unrealized_asset_profit_loss(self, upnl):

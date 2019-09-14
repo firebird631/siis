@@ -1,0 +1,2 @@
+notify2>=0.3.1
+dbus-python>=1.2.8

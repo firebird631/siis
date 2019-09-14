@@ -142,10 +142,10 @@ class IchimokuIndicator(Indicator):
         #
 
         trmax_h = np.array([0]*n)
-        Ichimoku.rolling_max(high, self._tenkan_sen_l, trmax_h)
+        IchimokuIndicator.rolling_max(high, self._tenkan_sen_l, trmax_h)
 
         trmin_l = np.array([0]*n)
-        Ichimoku.rolling_min(low, self._tenkan_sen_l, trmin_l)
+        IchimokuIndicator.rolling_min(low, self._tenkan_sen_l, trmin_l)
 
         self._tenkans = (trmax_h + trmin_l) * 0.5
 
@@ -154,10 +154,10 @@ class IchimokuIndicator(Indicator):
         #
 
         krmax_h = np.array([0]*n)
-        Ichimoku.rolling_max(high, self._kijun_sen_l, krmax_h)
+        IchimokuIndicator.rolling_max(high, self._kijun_sen_l, krmax_h)
 
         krmin_l = np.array([0]*n)
-        Ichimoku.rolling_min(low, self._kijun_sen_l, krmin_l)
+        IchimokuIndicator.rolling_min(low, self._kijun_sen_l, krmin_l)
 
         self._kijuns = (krmax_h + krmin_l) * 0.5
 
@@ -173,10 +173,10 @@ class IchimokuIndicator(Indicator):
         #
 
         sbrmax_h = np.array([0]*n)
-        Ichimoku.rolling_max(high, self._senkou_span_b_l, sbrmax_h)
+        IchimokuIndicator.rolling_max(high, self._senkou_span_b_l, sbrmax_h)
 
         sbrmin_l = np.array([0]*n)
-        Ichimoku.rolling_min(low, self._senkou_span_b_l, sbrmin_l)
+        IchimokuIndicator.rolling_min(low, self._senkou_span_b_l, sbrmin_l)
 
         # must be considered as shifted in futur (26)
         self._ssbs = (sbrmax_h + sbrmin_l) * 0.5

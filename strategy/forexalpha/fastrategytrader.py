@@ -43,7 +43,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     """
 
     def __init__(self, strategy, instrument, params):
-        super().__init__(strategy, instrument, params['base-timeframe'], params['need-update'])
+        super().__init__(strategy, instrument, params['base-timeframe'])
 
         # mean when there is already a position on the same direction does not increase in the same direction if 0 or increase at max N times
         self.pyramided = params['pyramided']

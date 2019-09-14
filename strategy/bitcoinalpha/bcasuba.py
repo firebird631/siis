@@ -53,12 +53,8 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
 
         signal = self.process4(timestamp, last_timestamp, candles, prices, volumes)
 
-        if candles:
-            # last processed candle timestamp (from last candle if non consolidated else from the next one)
-            self.next_timestamp = candles[-1].timestamp if not candles[-1].ended else candles[-1].timestamp + self.tf
-
         # avoid duplicates signals
-        if signal:
+        if signal and self.need_signal:
             # self.last_signal = signal
             if (self.last_signal and (signal.signal == self.last_signal.signal) and
                     (signal.dir == self.last_signal.dir) and
@@ -78,6 +74,8 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
                     # signal.add_condition('stochrsi', self.stochrsi.trace())
                     # signal.add_condition('tomdemark', self.tomdemark.trace())
                     # signal.add_condition('bollinger', self.bollingerbands.trade())
+
+        self.complete(candles)
 
         return signal
 

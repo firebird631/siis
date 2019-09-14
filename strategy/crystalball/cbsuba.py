@@ -53,7 +53,7 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
             self.next_timestamp = candles[-1].timestamp if not candles[-1].ended else candles[-1].timestamp + self.tf
 
         # avoid duplicates signals
-        if signal:
+        if signal and self.need_signal:
             # self.last_signal = signal
             if (self.last_signal and (signal.signal == self.last_signal.signal) and
                     (signal.dir == self.last_signal.dir) and

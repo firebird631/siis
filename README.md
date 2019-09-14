@@ -526,17 +526,18 @@ The OHLC data are stored in the SQL database. But only the 4h, 1D, 1W candle are
 * 1s, 10s are never kept.
 
 The cleaner is executed frequently by running instance of SiiS. It is necessary to clean some OHLC, else the DB
-will become to big. In addition OHLC are used for live mode, to initially feed the indicators of the strategies,
-and to avoid to request the broker API for data history.
+will become to big. Each strategy look for an history of OHLC, look if you have prefetched any data before.
 
-Why not requesting the broker API ? Because depending of the broker, but it take lot of time, especially when you have
-a lot of markets, it could consumes lot of API call credits, or your are candles count limited like with IG (10k candles per week per account).
-Maybe this will not be longer a problem with the revisited version of SiiS because the connector are standalone
-then they don't have to be stopped each time you have to try some changes on your strategy.
+The watchers at least prefetch the current OHLC for differents timeframes, and can prefetch more. For the default
+values are set to 64 history OHLCs (binance, bitmex, kraken) but this could be a problem with IG because of the 10k sample
+history limit per week then for now I don't prefetch IG OHLC at its watcher startup.
 
 For conveniance I've made some bash scripts to frequently fetch OHLC, and some others script (look at the scripts/ directory for examples)
-that I run just before starting a live instance to make a prefetching (only the last N candles).
-I know there is more works that could be done on this part, but remember this version acts more as a prototype, but fonctionnal.
+that I run just before starting a live instance to make a prefetching (only the last N candles) in case the default value of 64
+will not suffise or for the IG case.
+
+Later I will improve the subscription to market at the watcher, to be related to markets the startegies ask, letting eventually a 
+pure watcher mode to only record live data.
 
 About the file containing the ticks, there is bad effect of that design. The good effect is the high performance, but because of Python
 performance this is not very impressive, but the C++ version could read millions of tick per seconds, its more performant than any
@@ -549,8 +550,6 @@ Where it is more problematic its with IG broker, where it's impossible to get hi
 For this case I realize the backtesting using other dataset. A cool solution could be to run an instance with a profile having only
 the watchers, (using your demo account for the IG broker case), always running, then you will have all data from live. And then
 when you run the others instances to avoid multiple writting, use the --read-only option (will not write generated OHLC, neither ticks in files).
-
-All that to say, this part is far from be perfect, but I can deal with, so you could too.
 
 
 Troubles
@@ -565,11 +564,37 @@ When I've more time or lot of feedbacks I will spend more time to develop the C+
 Fetching historical data is slow : It depends of the exchance and the timeframe. Fetching history trades from BitMex takes a lot of time,
 be more patient, this is due to theirs API limitations.
 
-When restarting my regions and trades are not reloaded : Regions and trades are saved but the loading part is not totally completed at this
-time, you can uses the assign command eventually to remap an existing trade.
+When restarting some old trades are reloaded : Trades are saved but the loading part is not totally completed at this
+time, you can uses the assign command eventually to remap an existing trade, or eventually cleanup the DB table, or I will disable the
+saving until the reload is not completed.
 
 Exception during fetch of BitMex trade : It appears, and I have no idea at this time there is an unexpected API response that generate a program
 exception, that need to restart the fetch at the time of failure. I will investigate later on that issue. 
+
+BitMex WS connection error : Their WS are very annoying, if you restart the bot you have to wait 2 or 3 minutes before, because it
+will reject you until you don't wait.
+
+BitMex overloads : The bot did retry of order, like 5 or 10 or 15 time, I could make a configurable option for this, but sometime
+it could not suffise, consider you missed the train.
+
+BitMex reject your API call, a story of expired timestamp : Then your server time is no synced with a global NTP server. BitMex says
+there is a timestamp to far in the past or that is in the futur. If your server does not have a NTP service consider to install one,
+and update the datetime of your system, and then restart the bot.
+
+Binance watcher starting is slow : Yes, prefetching all USDT and BTC markets take a while, many minutes, be patient, your bot
+will does not have to be restarted every day, once your configured correctly. For testing considers limiting the configured symbols list 
+in the watcher.
+
+IG candle limit 10k reached : Do the maths, how many markets do you want to initiate, to fetch, how many candles history you will need,
+find your way, or try to ask if they can increase your limitations. I have no solution for this problem because its out of my possibility.
+
+Help command goes out of the window : Yes the help command can goes outside, and there is no scrolling at this time for the console view.
+It will be solved, but its the least of my priorities. I've some changes to improves view architectures, not finished for now, and
+the Web interface will be more friendly.
+
+In paper-mode (live or backtesing) margin or asset quantity is missing : A recent problem reapears with BitMex markets, I have to investigate,
+its annoying for live paper-mode and for backtesting. Similar issues could appears with assets quantities. Its in the priority list.
+Maybe I will plan to have only percent P/L, where the paper-trader will accept any trades.
 
 Please understands than I develop this project during my free time, and for free, only your donations could help me.
 

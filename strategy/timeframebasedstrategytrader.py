@@ -31,7 +31,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     @see Strategy.base_timeframe
     """
 
-    def __init__(self, strategy, instrument, base_timeframe=Instrument.TF_TICK, wait_next_update=False):
+    def __init__(self, strategy, instrument, base_timeframe=Instrument.TF_TICK):
         """
         @param strategy Parent strategy (mandatory)
         @param instrument Related unique instance of instrument (mandatory)
@@ -42,17 +42,12 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         super().__init__(strategy, instrument)
 
         self._base_timeframe = base_timeframe
-        self._wait_next_update = wait_next_update
 
         self.timeframes = {}  # analyser per timeframe
 
     @property
     def base_timeframe(self):
         return self._base_timeframe
-
-    @property
-    def wait_next_update(self):
-        return self._wait_next_update
 
     def on_received_initial_candles(self, timeframe):
         """
@@ -76,6 +71,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             generated = sub.candles_gen.generate_from_ticks(ticks)
             if generated:
                 self.instrument.add_candle(generated, sub.history)
+
+                # last OHLC close
+                sub._last_closed = True
 
             self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.history)  # with the non consolidated
 
@@ -106,20 +104,24 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     def compute(self, timeframe, timestamp):
         """
         Compute the signals for the differents timeframes depending of the update policy.
-
-        If wait_next_update is set then it will only compute signal for a particular timeframe
-        when the need_update method return True. The standard implementation is to compute signal at a candle close.
         """
         # split entries from exits signals
         entries = []
         exits = []
 
-        if self.wait_next_update:
-            # process sub computations only when condition
+        if self.base_timeframe == timeframe:
             for tf, sub in self.timeframes.items():
-                if sub.need_update(timestamp):
-                    print(tf, self.instrument.market_id)
-                    # only if need_update return true
+                if not sub.next_timestamp:
+                    # initial timestamp
+                    sub.next_timestamp = self.strategy.timestamp
+
+                if sub.update_at_close:
+                    if sub.need_update(timestamp):
+                        compute = True
+                else:
+                    compute = True
+
+                if compute:
                     signal = sub.process(timestamp)
                     if signal:
                         if signal.signal == StrategySignal.SIGNAL_ENTRY:
@@ -127,49 +129,11 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                         elif signal.signal == StrategySignal.SIGNAL_EXIT:
                             exits.append(signal)
 
-        elif self.base_timeframe == timeframe:
-            # or at min timeframe level (default behavior, and at tick level)
-            for tf, sub in self.timeframes.items():
-                signal = sub.process(timestamp)
-                if signal:
-                    if signal.signal == StrategySignal.SIGNAL_ENTRY:
-                        entries.append(signal)
-                    elif signal.signal == StrategySignal.SIGNAL_EXIT:
-                        exits.append(signal)
-
         # finally sort them by timeframe ascending
         entries.sort(key=lambda s: s.timeframe)
         exits.sort(key=lambda s: s.timeframe)
 
         return entries, exits
-
-    def higher_timeframe_low_high_trend(self, tf, upper_tf):
-        # how to do if the previous candles are very smalls or very big ?
-        height = max(self.instrument.height(tf, -1), self.instrument.height(tf, -2))  # * 2.0
-
-        last_price = 0
-        slow_ema = 0
-        price_above_slow_ema = 0
-        slow_rsi = 0
-
-        if len(self.timeframes[upper_tf].price.price):
-            last_price = self.timeframes[upper_tf].price.price[-1]
-
-        if len(self.timeframes[upper_tf].ema.ema):
-            slow_ema = self.timeframes[upper_tf].ema.ema[-1]
-
-        if len(self.timeframes[upper_tf].rsi.rsi):
-            slow_rsi = self.timeframes[upper_tf].rsi.rsi[-1]
-
-        if last_price > slow_ema:
-            price_above_slow_ema = 1
-        elif last_price < slow_ema:
-            price_above_slow_ema = -1
-
-        low = self.instrument.candle(upper_tf).low
-        high = self.instrument.candle(upper_tf).high
-
-        return upper_tf, low, high, price_above_slow_ema
 
     #
     # streaming

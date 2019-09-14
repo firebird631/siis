@@ -26,8 +26,8 @@ class TimeframeBasedSub(object):
         self._signal_at_close = params.get('signal-at-close', False)
 
         self.candles_gen = CandleGenerator(self.strategy_trader.base_timeframe, self.tf)
+        self._last_closed = False  # last generated candle closed
 
-        # @todo do we distinct entry from exit signal (last) ?
         self.last_signal = None
 
         self.trend = 0
@@ -49,17 +49,44 @@ class TimeframeBasedSub(object):
 
     def need_update(self, timestamp):
         """
-        An update is needed if the timestamp is greater or equal than the next waited timestamp.
-        next_timestamp must be updated during the processing of the sub.
-        In others word this default implementation means to compute once the ohlc closed.
+        Return True if the compute must be done.
+        If update at close then wait for the last OHLC close, else always returns true.
         """
-        return timestamp >= self.next_timestamp
+        if self._update_at_close:
+            return self._last_closed
+
+        return True
+
+    def need_signal(self, timestamp):
+        """
+        Return True if the signal can be generated and returned at this processing.
+        If signal at close than wait for the last candle close, else always returns true.
+        """
+        if self._signal_at_close:
+            return self._last_closed
+
+        return True
 
     def process(self, timestamp):
         """
         Process the computation here.
         """
         pass
+
+    def complete(self, candles):
+        """
+        Must be called at the end of the process method.
+        """
+        if candles:
+            # last processed candle timestamp (from last candle if non consolidated else from the next one)
+            self.next_timestamp = candles[-1].timestamp if not candles[-1].ended else candles[-1].timestamp + self.tf
+
+        # last closed candle processed
+        self._last_closed = False
+
+    #
+    # properties
+    #
 
     @property
     def timeframe(self):
@@ -85,10 +112,14 @@ class TimeframeBasedSub(object):
     @property
     def update_at_close(self):
         return self._update_at_close
-    
+
     @property
     def signal_at_close(self):
         return self._signal_at_close
+
+    @property
+    def last_closed(self):
+        return self._last_closed
 
     #
     # data streaming (@deprecated way)

@@ -15,7 +15,6 @@ DEFAULT_PARAMS = {
     'base-timeframe': 't',   # process each time strategy receive a tick
     'min-traded-timeframe': '1m',
     'max-traded-timeframe': '1m',
-    'need-update': True,      # only compute when update is waited
     'min-vol24h': 100,        # 300 BTC per 24h
     'min-price': 0.00000069,  # or 69 sats (to binary otherwise)
     'timeframes': {
@@ -26,6 +25,8 @@ DEFAULT_PARAMS = {
             'history': 22,
             'score-ratio': 8,
             'score-level': 0.05,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 1,),
                 'volume': ('volume', 0,),
@@ -67,6 +68,8 @@ DEFAULT_PARAMS = {
             'history': 41,
             'score-ratio': 4,
             'score-level': 0.05,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 1,),
                 'volume': ('volume', 0,),
@@ -108,6 +111,8 @@ DEFAULT_PARAMS = {
             'history': 56,
             'score-ratio': 6,
             'score-level': 0.05,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 1,),
                 'volume': ('volume', 0,),
@@ -151,6 +156,8 @@ DEFAULT_PARAMS = {
             'history': 41,
             'score-ratio': 4,
             'score-level': 0.05,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 1,),
                 'volume': ('volume', 0,),
@@ -192,6 +199,8 @@ DEFAULT_PARAMS = {
             'history': 41,
             'score-ratio': 2,
             'score-level': 0.05,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 1,),
                 'volume': ('volume', 0,),
@@ -233,6 +242,8 @@ DEFAULT_PARAMS = {
             'history': 41,
             'score-ratio': 1,
             'score-level': 0.05,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 1,),
                 'volume': ('volume', 0,),
@@ -274,6 +285,8 @@ DEFAULT_PARAMS = {
             'history': 41,
             'score-ratio': 0.5,
             'score-level': 0.05,
+            'update-at-close': True,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 1,),
                 'volume': ('volume', 0,),
@@ -322,6 +335,8 @@ DEFAULT_PARAMS = {
         #     'history': 100,
         #     'score-ratio': 0.5,
         #     'score-level': 0.05,
+        #     'update-at-close': True,
+        #     'signal-at-close': True,
         #     'indicators': {
         #         'price': ('price', 1,),
         #         'volume': ('volume', 0,),

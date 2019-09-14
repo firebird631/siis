@@ -12,7 +12,6 @@ DEFAULT_PARAMS = {
     'base-timeframe': 't',   # process each time strategy receive a tick
     'min-traded-timeframe': '1m',
     'max-traded-timeframe': '4h',
-    'need-update': False,     # only compute when update is waited
     'min-vol24h': 100,        # 300 BTC per 24h
     'min-price': 0.00000069,  # or 69 sats (to binary otherwise)
     'timeframes': {
@@ -21,6 +20,8 @@ DEFAULT_PARAMS = {
             'mode': 'A',
             'depth': 22,
             'history': 22,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 2,),
                 'volume': ('volume', 0,),
@@ -40,6 +41,8 @@ DEFAULT_PARAMS = {
             'mode': 'A', 
             'depth': 22,
             'history': 22,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 2,),
                 'volume': ('volume', 0,),
@@ -59,6 +62,8 @@ DEFAULT_PARAMS = {
             'mode': 'A',
             'depth': 22,
             'history': 22,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 2,),
                 'volume': ('volume', 0,),
@@ -78,6 +83,8 @@ DEFAULT_PARAMS = {
             'mode': 'A',
             'depth': 22,
             'history': 22,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 2,),
                 'volume': ('volume', 0,),
@@ -97,6 +104,8 @@ DEFAULT_PARAMS = {
             'mode': 'A',
             'depth': 22,
             'history': 22,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 2,),
                 'volume': ('volume', 0,),
@@ -116,6 +125,8 @@ DEFAULT_PARAMS = {
             'mode': 'A',
             'depth': 22,
             'history': 22,
+            'update-at-close': True,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 2,),
                 'volume': ('volume', 0,),

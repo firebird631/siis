@@ -13,7 +13,6 @@ DEFAULT_PARAMS = {
     'max-traded-timeframe': '3m',
     'sltp-timeframe': '1h',
     'ref-timeframe': '1d',
-    'need-update': True,      # only compute when update is waited
     'min-vol24h': 100,        # 100 BTC per 24h
     'min-price': 0.00000069,  # or 69 sats
     'region-allow': False,     # can trade if no defined region
@@ -23,6 +22,8 @@ DEFAULT_PARAMS = {
             'mode': 'B',
             'depth': 56,
             'history': 56,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 1,),
                 'volume': ('volume', 0,),
@@ -52,6 +53,8 @@ DEFAULT_PARAMS = {
             'mode': 'B', 
             'depth': 64,
             'history': 64,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 1,),
                 'volume': ('volume', 0,),
@@ -86,6 +89,8 @@ DEFAULT_PARAMS = {
         #     'mode': 'B',
         #     'depth': 22,
         #     'history': 22,
+        #     'update-at-close': False,
+        #     'signal-at-close': True,
         #     'indicators': {
         #         'price': ('price', 1,),
         #         'volume': ('volume', 0,),
@@ -114,6 +119,8 @@ DEFAULT_PARAMS = {
         #     'mode': 'B', 
         #     'depth': 64,
         #     'history': 64,
+        #     'update-at-close': False,
+        #     'signal-at-close': True,
         #     'indicators': {
         #         'price': ('price', 1,),
         #         'volume': ('volume', 0,),
@@ -147,6 +154,8 @@ DEFAULT_PARAMS = {
             'mode': 'A',
             'depth': 36,
             'history': 36,
+            'update-at-close': False,
+            'signal-at-close': True,
             'indicators': {
                 'price': ('price', 1,),
                 'volume': ('volume', 0,),
