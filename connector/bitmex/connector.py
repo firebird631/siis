@@ -353,12 +353,26 @@ class Connector(object):
             params['partial'] = True
 
         # because bitmex works in close time but we are in open time
-        delta = self.BIN_SIZE_TO_TIMEFRAME[bin_size]
+        # delta = self.BIN_SIZE_TO_TIMEFRAME[bin_size]
+        # have issue using delta in seconds
+
+        delta_time = timedelta(seconds=0)
+
+        if bin_size == '1m':
+            delta_time = timedelta(minutes=1)
+        elif bin_size == '5m':
+            delta_time = timedelta(minutes=5)
+        elif bin_size == '1h':
+            delta_time = timedelta(hours=1)
+        elif bin_size == '1d':
+            delta_time = timedelta(days=1)
 
         if to_date:
-            params['endTime'] = self._format_datetime(to_date + timedelta(seconds=delta))
+            # params['endTime'] = self._format_datetime(to_date + timedelta(seconds=delta))
+            params['endTime'] = self._format_datetime(to_date + delta_time)
 
-        last_datetime = from_date + timedelta(seconds=delta)
+        # last_datetime = from_date + timedelta(seconds=delta)
+        last_datetime = from_date + delta_time
         ot = from_date  # init
 
         while 1:
@@ -371,7 +385,7 @@ class Connector(object):
                 dt = self._parse_datetime(c['timestamp']).replace(tzinfo=UTC())
 
                 # its close time, want open time
-                ot = dt - timedelta(seconds=delta)
+                ot = dt - delta_time  # timedelta(seconds=delta)
 
                 if to_date and ot > to_date:
                     break

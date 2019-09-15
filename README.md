@@ -451,6 +451,15 @@ How to create or modify a strategy
 A guide explaning how to create or modify an existing strategy will be added into the doc/ directory.
 
 
+The winning strategy
+--------------------
+
+Understand the given strategies acts here as examples, you can use them, can works on some patterns, cannot works
+on some others. Considers to do your owns, or to use SiiS as a trading monitor with improved trade following,
+dynamic stop-loss, take-profit. Somes fixes could be needed for the current strategies, it serves as a labs, I will not
+publish my always winning unicorn strategy ^^.
+
+
 Paper-mode
 ----------
 
@@ -555,44 +564,44 @@ when you run the others instances to avoid multiple writting, use the --read-onl
 Troubles
 --------
 
-TA-lib is not found : look you have installed it, and may be you have to export your LD_LIBRARY_PATH.
+**TA-lib is not found** : look you have installed it, and may be you have to export your LD_LIBRARY_PATH.
 
-Backtesting is slow : I know that, you can increase the timestep, but then the results will be less accurates, mostly depending
+**Backtesting is slow** : I know that, you can increase the timestep, but then the results will be less accurates, mostly depending
 if the strategy works at close or at each tick/trade, and if the timestep is or not an integer divider of the strategy base timeframe.
 When I've more time or lot of feedbacks I will spend more time to develop the C++ version.
 
-Fetching historical data is slow : It depends of the exchance and the timeframe. Fetching history trades from BitMex takes a lot of time,
+**Fetching historical data is slow** : It depends of the exchance and the timeframe. Fetching history trades from BitMex takes a lot of time,
 be more patient, this is due to theirs API limitations.
 
-When restarting some old trades are reloaded : Trades are saved but the loading part is not totally completed at this
+**When restarting some old trades are reloaded** : Trades are saved but the loading part is not totally completed at this
 time, you can uses the assign command eventually to remap an existing trade, or eventually cleanup the DB table, or I will disable the
 saving until the reload is not completed.
 
-Exception during fetch of BitMex trade : It appears, and I have no idea at this time there is an unexpected API response that generate a program
+**Exception during fetch of BitMex trade** : It appears, and I have no idea at this time there is an unexpected API response that generate a program
 exception, that need to restart the fetch at the time of failure. I will investigate later on that issue. 
 
-BitMex WS connection error : Their WS are very annoying, if you restart the bot you have to wait 2 or 3 minutes before, because it
+**BitMex WS connection error** : Their WS are very annoying, if you restart the bot you have to wait 2 or 3 minutes before, because it
 will reject you until you don't wait.
 
-BitMex overloads : The bot did retry of order, like 5 or 10 or 15 time, I could make a configurable option for this, but sometime
+**BitMex overloads** : The bot did retry of order, like 5 or 10 or 15 time, I could make a configurable option for this, but sometime
 it could not suffise, consider you missed the train.
 
-BitMex reject your API call, a story of expired timestamp : Then your server time is no synced with a global NTP server. BitMex says
+**BitMex reject your API call, a story of expired timestamp** : Then your server time is no synced with a global NTP server. BitMex says
 there is a timestamp to far in the past or that is in the futur. If your server does not have a NTP service consider to install one,
 and update the datetime of your system, and then restart the bot.
 
-Binance watcher starting is slow : Yes, prefetching all USDT and BTC markets take a while, many minutes, be patient, your bot
+**Binance watcher starting is slow** : Yes, prefetching all USDT and BTC markets take a while, many minutes, be patient, your bot
 will does not have to be restarted every day, once your configured correctly. For testing considers limiting the configured symbols list 
 in the watcher.
 
-IG candle limit 10k reached : Do the maths, how many markets do you want to initiate, to fetch, how many candles history you will need,
+**IG candle limit 10k reached** : Do the maths, how many markets do you want to initiate, to fetch, how many candles history you will need,
 find your way, or try to ask if they can increase your limitations. I have no solution for this problem because its out of my possibility.
 
-Help command goes out of the window : Yes the help command can goes outside, and there is no scrolling at this time for the console view.
+**Help command goes out of the window** : Yes the help command can goes outside, and there is no scrolling at this time for the console view.
 It will be solved, but its the least of my priorities. I've some changes to improves view architectures, not finished for now, and
 the Web interface will be more friendly.
 
-In paper-mode (live or backtesing) margin or asset quantity is missing : A recent problem reapears with BitMex markets, I have to investigate,
+**In paper-mode (live or backtesing) margin or asset quantity is missing** : A recent problem reapears with BitMex markets, I have to investigate,
 its annoying for live paper-mode and for backtesting. Similar issues could appears with assets quantities. Its in the priority list.
 Maybe I will plan to have only percent P/L, where the paper-trader will accept any trades.
 

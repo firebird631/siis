@@ -22,7 +22,7 @@ class IchimokuIndicator(Indicator):
     """
 
     __slots__ = '_tenkan_sen_l', '_kijun_sen_l', '_senkou_span_b_l', '_tenkans' ,'_kijuns', '_ssas', '_ssbs', '_chikous', \
-        '_prev_tenkan', '_last_tenkan', '_prev_kijun', '_last_kijun'
+        '_prev_tenkan', '_last_tenkan', '_prev_kijun', '_last_kijun', '_trmax_h', '_trmin_l', '_krmax_h', '_krmin_l', '_sbrmax_h', '_sbrmin_l'
 
     @classmethod
     def indicator_type(cls):
@@ -39,19 +39,28 @@ class IchimokuIndicator(Indicator):
         self._kijun_sen_l = kijun_sen_l      # kijun sen periods number
         self._senkou_span_b_l = senkou_span_b_l  # senkou span B periods number
 
-        self._tenkans = np.array([])
-        self._kijuns = np.array([])
+        self._tenkans = np.empty(0)
+        self._kijuns = np.empty(0)
 
-        self._ssas = np.array([])
-        self._ssbs = np.array([])
+        self._ssas = np.empty(0)
+        self._ssbs = np.empty(0)
 
-        self._chikous = np.array([])
+        self._chikous = np.empty(0)
 
         self._prev_tenkan = 0.0
         self._last_tenkan = 0.0
 
         self._prev_kijun = 0.0
         self._last_kijun = 0.0
+
+        self._trmax_h = np.empty(0)
+        self._trmin_l = np.empty(0)
+
+        self._krmax_h = np.empty(0)
+        self._krmin_l = np.empty(0)
+
+        self._sbrmax_h = np.empty(0)
+        self._sbrmin_l = np.empty(0)
 
     @property
     def tenkan_sen_l(self):
@@ -119,7 +128,7 @@ class IchimokuIndicator(Indicator):
         for i in range(0, window):
             out[i] = 0.0
 
-        for i in range(window+1, len(array), 1):
+        for i in range(window, len(array), 1):
             out[i] = np.amin(array[i-window:i])
 
     @staticmethod
@@ -137,29 +146,34 @@ class IchimokuIndicator(Indicator):
 
         n = len(high)
 
+        # resize temporary arrays
+        if len(self._trmax_h) != n:
+            self._trmax_h = np.zeros(n)
+            self._trmin_l = np.zeros(n)
+
+            self._krmax_h = np.zeros(n)
+            self._krmin_l = np.zeros(n)
+
+            self._sbrmax_h = np.zeros(n)
+            self._sbrmin_l = np.zeros(n)
+
         #
         # tenkan-sen - conversion line (window of 9)
         #
 
-        trmax_h = np.array([0]*n)
-        IchimokuIndicator.rolling_max(high, self._tenkan_sen_l, trmax_h)
+        IchimokuIndicator.rolling_max(high, self._tenkan_sen_l, self._trmax_h)
+        IchimokuIndicator.rolling_min(low, self._tenkan_sen_l, self._trmin_l)
 
-        trmin_l = np.array([0]*n)
-        IchimokuIndicator.rolling_min(low, self._tenkan_sen_l, trmin_l)
-
-        self._tenkans = (trmax_h + trmin_l) * 0.5
+        self._tenkans = (self._trmax_h + self._trmin_l) * 0.5
 
         #
         # kijun-sen - base line (window of 9)
         #
 
-        krmax_h = np.array([0]*n)
-        IchimokuIndicator.rolling_max(high, self._kijun_sen_l, krmax_h)
+        IchimokuIndicator.rolling_max(high, self._kijun_sen_l, self._krmax_h)
+        IchimokuIndicator.rolling_min(low, self._kijun_sen_l, self._krmin_l)
 
-        krmin_l = np.array([0]*n)
-        IchimokuIndicator.rolling_min(low, self._kijun_sen_l, krmin_l)
-
-        self._kijuns = (krmax_h + krmin_l) * 0.5
+        self._kijuns = (self._krmax_h + self._krmin_l) * 0.5
 
         #
         # senkou span A - leading span A
@@ -172,14 +186,11 @@ class IchimokuIndicator(Indicator):
         # senkou span B - leading span B
         #
 
-        sbrmax_h = np.array([0]*n)
-        IchimokuIndicator.rolling_max(high, self._senkou_span_b_l, sbrmax_h)
-
-        sbrmin_l = np.array([0]*n)
-        IchimokuIndicator.rolling_min(low, self._senkou_span_b_l, sbrmin_l)
+        IchimokuIndicator.rolling_max(high, self._senkou_span_b_l, self._sbrmax_h)
+        IchimokuIndicator.rolling_min(low, self._senkou_span_b_l, self._sbrmin_l)
 
         # must be considered as shifted in futur (26)
-        self._ssbs = (sbrmax_h + sbrmin_l) * 0.5
+        self._ssbs = (self._sbrmax_h + self._sbrmin_l) * 0.5
 
         #
         # chikou span - lagging span (shifted in past)
@@ -191,7 +202,7 @@ class IchimokuIndicator(Indicator):
         self._last_kijun = self._kijuns[-1]
         self._last_timestamp = timestamp
 
-        return self._tenkans, self._kijuns, self._ssas, self._ssbs # , self._chikous
+        return self._tenkans, self._kijuns, self._ssas, self._ssbs, self._chikous
 
     def trace(self):
         return tuple(self._last_tenkan, self._last_kijun)
