@@ -212,6 +212,7 @@ class TickStreamer(object):
                 pos = 0
                 left = 0
                 right = file_size
+                eof = file_size-1 if file_size > 0 else 0
 
                 while 1:
                     data = self._file.read(TickStreamer.TICK_SIZE)  # read 4 float64
@@ -235,7 +236,7 @@ class TickStreamer(object):
                         # move backward
                         right = pos - TickStreamer.TICK_SIZE
 
-                    elif self._file.tell() == EOF:
+                    elif self._file.tell() >= eof:
                         break
 
                     pos = max(0, left + ((right - left) // TickStreamer.TICK_SIZE) // 2 * TickStreamer.TICK_SIZE)

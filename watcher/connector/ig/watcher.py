@@ -147,6 +147,37 @@ class IGWatcher(Watcher):
                 else:
                     instruments = self.configured_symbols()
 
+                # prefetching and then WS subscribtion because else it block the WS processing...
+                # look to see for a better solution
+
+                # susbcribe for symbols
+                # for symbol in instruments:
+                #     # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
+                #     # prefetch for the last of each except for 1m and 5m we assume we have a delay of 15 minutes
+                #     # from the manual prefetch script execution and assuming the higher timeframe are already up-to-date.
+                #     self.fetch_and_generate(symbol, Instrument.TF_1M, 15, None)
+                #     self.fetch_and_generate(symbol, Instrument.TF_5M, 3, None)
+                #     self.fetch_and_generate(symbol, Instrument.TF_15M, 1, None)
+                #     self.fetch_and_generate(symbol, Instrument.TF_1H, 1, None)
+                #     self.fetch_and_generate(symbol, Instrument.TF_4H, 1, None)
+                #     self.fetch_and_generate(symbol, Instrument.TF_1D, 1, None)
+                #     self.fetch_and_generate(symbol, Instrument.TF_1W, 1, None)
+
+                #     logger.info("%s prefetch for %s" % (self.name, symbol))
+
+                #     self.insert_watched_instrument(symbol, [0])
+
+                #     # avoid blocking websocket during sleep
+                #     self.unlock()
+                #     time.sleep(8.0)  # 1 sec per query + 1 extra second
+                #     self.lock()
+
+                # logger.info("Watcher %s wait 10 seconds to limit to a fair API usage" % (self.name,))
+
+                # self.unlock()
+                # time.sleep(10.0)
+                # self.lock()
+
                 # susbcribe for symbols
                 for symbol in instruments:
                     # to know when market close but could be an hourly REST API call, but it consume one subscriber...
@@ -156,36 +187,9 @@ class IGWatcher(Watcher):
                     # tick data
                     self.subscribe_tick(symbol)
 
-                    # @todo look for prefetch OHLCs
-
                     # ohlc data (now generated)
                     # for tf in IGWatcher.STORED_TIMEFRAMES:
                     #     self.subscribe_ohlc(symbol, tf)
-
-                    # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
-                    # prefetch for the last of each except for 1m and 5m we assume we have a delay of 15 minutes
-                    # from the manual prefetch script execution and assuming the higher timeframe are already up-to-date.
-                    self.fetch_and_generate(symbol, Instrument.TF_1M, 15, None)
-                    time.sleep(1.0)
-                    self.fetch_and_generate(symbol, Instrument.TF_5M, 3, None)
-                    time.sleep(1.0)
-                    self.fetch_and_generate(symbol, Instrument.TF_15M, 1, None)
-                    time.sleep(1.0)
-                    self.fetch_and_generate(symbol, Instrument.TF_1H, 1, None)
-                    time.sleep(1.0)
-                    self.fetch_and_generate(symbol, Instrument.TF_4H, 1, None)
-                    time.sleep(1.0)
-                    self.fetch_and_generate(symbol, Instrument.TF_1D, 1, None)
-                    time.sleep(1.0)
-                    self.fetch_and_generate(symbol, Instrument.TF_1W, 1, None)
-                    time.sleep(1.0)
-
-                    logger.info("%s prefetch for %s" % (self.name, symbol))
-
-                    self.insert_watched_instrument(symbol, [0])
-
-            logger.info("Watcher %s wait 15 seconds to limit to a fair API usage" % (self.name,))
-            time.sleep(15.0)
 
             self._ready = True
 

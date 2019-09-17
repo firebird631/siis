@@ -374,10 +374,6 @@ class Market(object):
         self._fees[1][1] = commission
 
     @property
-    def maker_commission(self):
-        return self._fees[0][1]
-
-    @property
     def fee_currency(self):
         return self._fee_currency
 
