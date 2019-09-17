@@ -9,7 +9,7 @@ import traceback
 
 from watcher.fetcher import Fetcher
 
-from connector.binance.connector import Connector
+from connector.kraken.connector import Connector
 
 from config import config
 
@@ -24,21 +24,15 @@ class KrakenFetcher(Fetcher):
     """
 
     TF_MAP = {
-        60: '1m',
-        180: '3m',
-        300: '5m',
-        900: '15m',
-        1800: '30m',
-        3600: '1h',
-        7200: '2h',
-        14400: '4h',
-        21600: '6h',
-        28800: '8h',
-        43200: '12h',
-        86400: '1d',
-        259200: '3d',
-        604800: '1w',
-        2592000: '1M'
+        60: 1,          # 1m
+        300: 5,         # 5m
+        900: 15,        # 15m
+        1800: 30,       # 30m
+        3600: 60,       # 1h
+        14400: 240,     # 4h
+        86400.0: 1440,  # 1d
+        # 604800: 10080,  # 1w (not allowed because starts on thuesday)
+        # 1296000: 21600  # 15d
     }
 
     def __init__(self, service):
@@ -70,12 +64,10 @@ class KrakenFetcher(Fetcher):
                 # get all products symbols
                 self._available_instruments = set()
 
-                # @todo
+                instruments = self._connector.instruments()
 
-                # instruments = self._connector.client.get_products().get('data', [])
-
-                # for instrument in instruments:
-                #     self._available_instruments.add(instrument['symbol'])
+                for market_id, instrument in instruments.items():
+                    self._available_instruments.add(market_id)
 
         except Exception as e:
             logger.error(repr(e))
@@ -106,5 +98,29 @@ class KrakenFetcher(Fetcher):
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
         pass
+
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
-        pass
+        if timeframe not in self.TF_MAP:
+            logger.error("Fetcher %s does not support timeframe %s" % (self.name, timeframe))
+            return
+
+        candles = []
+
+        # second timeframe to kraken interval
+        interval = self.TF_MAP[timeframe]
+
+        try:
+            candles = self._connector.get_historical_candles(market_id, interval, from_date, to_date)
+        except Exception as e:
+            logger.error("Fetcher %s cannot retrieve candles %s on market %s" % (self.name, interval, market_id))
+            error_logger.error(traceback.format_exc())
+
+        count = 0
+        
+        for candle in candles:
+            count += 1
+            # store (timestamp, open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+            if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
+                yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[1], candle[2], candle[3], candle[4], candle[5]))
+
+        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, interval))

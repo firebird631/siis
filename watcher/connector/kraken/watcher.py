@@ -40,6 +40,18 @@ class KrakenWatcher(Watcher):
     @todo complete
     """
 
+    TF_MAP = {
+        60: 1,          # 1m
+        300: 5,         # 5m
+        900: 15,        # 15m
+        1800: 30,       # 30m
+        3600: 60,       # 1h
+        14400: 240,     # 4h
+        86400.0: 1440,  # 1d
+        # 604800: 10080,  # 1w (not allowed because starts on thuesday)
+        # 1296000: 21600  # 15d
+    }
+
     def __init__(self, service):
         super().__init__("kraken.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
 

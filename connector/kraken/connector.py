@@ -12,7 +12,7 @@ import urllib.parse
 import hashlib
 import hmac
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import config
 from common.utils import UTC
 
@@ -44,6 +44,18 @@ class Connector(object):
     # @ref REST https://www.kraken.com/features/api
     # @ref WSS https://www.kraken.com/en-us/features/websocket-api
     """
+
+    INTERVALS = {
+        1: 60.0,        # 1m
+        5: 300.0,
+        15: 900.0,
+        30: 1800.0,
+        60: 3600.0,
+        240: 14400.0,   # 4h
+        1440: 86400.0,  # 1d
+        # 10080: 604800,
+        # 21600: 1296000,
+    }
 
     def __init__(self, service, api_key, api_secret, symbols, host="api.kraken.com", callback=None):
         self._protocol = "https://"
@@ -148,9 +160,60 @@ class Connector(object):
         # @todo https://api.kraken.com/0/public/Spread
         pass
 
-    def get_historical_candles(self, symbol, bin_size, from_date, to_date=None, limit=None):
-        # @todo https://api.kraken.com/0/public/OHLC
-        pass
+    def get_historical_candles(self, symbol, interval, from_date, to_date=None, limit=None):
+        """
+        Time interval [1m,5m,1h,4h,1d,1w,15d].
+        """
+        candles = []
+
+        if interval not in self.INTERVALS:
+            raise ValueError("Kraken does not support interval %s !" % interval)
+
+        params = {
+            'pair': symbol,
+            'interval': interval,
+        }
+
+        last_datetime = from_date.timestamp() - 1.0  # minus 1 sec else will not have from current
+        to_ts = to_date.timestamp()
+
+        delta = None
+
+        if interval == 10080:
+            delta = timedelta(days=3)
+
+        while 1:
+            if last_datetime:
+                params['since'] = last_datetime
+
+            results = self.query_public('OHLC', params)
+
+            if results.get('error', []):
+                raise ValueError("Kraken historical candle : %s !" % '\n'.join(results['error']))
+
+            candles = results.get('result', {}).get(symbol, [])
+
+            for c in candles:
+                if delta:
+                    dt = (datetime.fromtimestamp(c[0]).replace(tzinfo=UTC()) - delta).timestamp()
+                else:
+                    dt = c[0]
+
+                if to_ts and dt > to_ts:
+                    break
+
+                yield (int(dt*1000),  # integer ms
+                    c[1], c[2], c[3], c[4],  # ohlc
+                    c[6])  # volume
+
+                last_datetime = dt
+
+                if (to_ts and dt > to_ts):
+                    break
+
+            # kraken does not manage lot of history (no need to loop)
+            break
+            time.sleep(1.0)  # don't excess API usage limit
 
     def get_order_book(self, symbol, depth):
         """

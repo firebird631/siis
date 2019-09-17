@@ -5,7 +5,7 @@
 
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample, MMexp_n, MM_n
-from talib import MACD as ta_MACD
+from talib import MIN as ta_MIN, MAX as ta_MAX, MIDPRICE as ta_MIDPRICE
 
 import numpy as np
 
@@ -146,34 +146,36 @@ class IchimokuIndicator(Indicator):
 
         n = len(high)
 
-        # resize temporary arrays
-        if len(self._trmax_h) != n:
-            self._trmax_h = np.zeros(n)
-            self._trmin_l = np.zeros(n)
+        # # resize temporary arrays
+        # if len(self._trmax_h) != n:
+        #     self._trmax_h = np.zeros(n)
+        #     self._trmin_l = np.zeros(n)
 
-            self._krmax_h = np.zeros(n)
-            self._krmin_l = np.zeros(n)
+        #     self._krmax_h = np.zeros(n)
+        #     self._krmin_l = np.zeros(n)
 
-            self._sbrmax_h = np.zeros(n)
-            self._sbrmin_l = np.zeros(n)
+        #     self._sbrmax_h = np.zeros(n)
+        #     self._sbrmin_l = np.zeros(n)
 
         #
         # tenkan-sen - conversion line (window of 9)
         #
 
-        IchimokuIndicator.rolling_max(high, self._tenkan_sen_l, self._trmax_h)
-        IchimokuIndicator.rolling_min(low, self._tenkan_sen_l, self._trmin_l)
+        # IchimokuIndicator.rolling_max(high, self._tenkan_sen_l, self._trmax_h)
+        # IchimokuIndicator.rolling_min(low, self._tenkan_sen_l, self._trmin_l)
 
-        self._tenkans = (self._trmax_h + self._trmin_l) * 0.5
+        # self._tenkans = (self._trmax_h + self._trmin_l) * 0.5
+        self._tenkans = ta_MIDPRICE(high, low, self._tenkan_sen_l)
 
         #
         # kijun-sen - base line (window of 9)
         #
 
-        IchimokuIndicator.rolling_max(high, self._kijun_sen_l, self._krmax_h)
-        IchimokuIndicator.rolling_min(low, self._kijun_sen_l, self._krmin_l)
+        # IchimokuIndicator.rolling_max(high, self._kijun_sen_l, self._krmax_h)
+        # IchimokuIndicator.rolling_min(low, self._kijun_sen_l, self._krmin_l)
 
-        self._kijuns = (self._krmax_h + self._krmin_l) * 0.5
+        # self._kijuns = (self._krmax_h + self._krmin_l) * 0.5
+        self._kijuns = ta_MIDPRICE(high, low, self._kijun_sen_l)
 
         #
         # senkou span A - leading span A
@@ -186,17 +188,18 @@ class IchimokuIndicator(Indicator):
         # senkou span B - leading span B
         #
 
-        IchimokuIndicator.rolling_max(high, self._senkou_span_b_l, self._sbrmax_h)
-        IchimokuIndicator.rolling_min(low, self._senkou_span_b_l, self._sbrmin_l)
+        # IchimokuIndicator.rolling_max(high, self._senkou_span_b_l, self._sbrmax_h)
+        # IchimokuIndicator.rolling_min(low, self._senkou_span_b_l, self._sbrmin_l)
 
-        # must be considered as shifted in futur (26)
-        self._ssbs = (self._sbrmax_h + self._sbrmin_l) * 0.5
+        # # must be considered as shifted in futur (26)
+        # self._ssbs = (self._sbrmax_h + self._sbrmin_l) * 0.5
+        self._ssbs = ta_MIDPRICE(high, low, self._senkou_span_b_l)
 
         #
         # chikou span - lagging span (shifted in past)
         #
 
-        self._chikous = np.array(close)
+        # self._chikous = np.array(close)
 
         self._last_tenkan = self._tenkans[-1]
         self._last_kijun = self._kijuns[-1]

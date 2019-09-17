@@ -36,8 +36,8 @@ class DonchianIndicator(Indicator):
         self._last_low = 0.0
         self._last_high = 0.0
 
-        self._highs = np.array([])
-        self._lows = np.array([])
+        self._highs = np.empty(0)
+        self._lows = np.empty(0)
 
     @property
     def prev_low(self):

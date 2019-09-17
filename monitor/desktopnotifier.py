@@ -240,6 +240,9 @@ class DesktopNotifier(Notifiable):
                 if signal.data['rate'] is not None:
                     message += " (%.2f%%)" % ((signal.data['rate'] * 100),)
 
+                if signal.data['comment'] is not None:
+                    message += " (%s)" % signal.data['comment']
+
                 if self.discord:
                     if signal.data['identifier'] in self._discord_webhook:
                         send_to_discord(self._discord_webhook[signal.data['identifier']], 'CryptoBot', '```' + message + '```')

@@ -158,6 +158,7 @@ class PriceIndicator(Indicator):
         return prices
 
     def compute(self, timestamp, candles):
+        # @todo could optimize with AVGPRICE, MEDPRICE, TYPPRICE
         self._prev = self._last
 
         # price = PriceIndicator.Price(self._method, candles)  # , self._step, self._filtering)
