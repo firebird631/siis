@@ -112,7 +112,7 @@ class IGTrader(Trader):
 
         self.unlock()
 
-        self.account.update(self._watcher.connector)    
+        self.account.update(self._watcher.connector)
 
     def on_watcher_disconnected(self, watcher_name):
         super().on_watcher_disconnected(watcher_name)

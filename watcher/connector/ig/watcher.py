@@ -88,6 +88,8 @@ class IGWatcher(Watcher):
         # caches for when a value is not defined
         self._cached_tick = {}
 
+        self._store_trade = True  # default store trade because we can't get history else
+
     def connect(self):
         super().connect()
 
@@ -154,11 +156,36 @@ class IGWatcher(Watcher):
                     # tick data
                     self.subscribe_tick(symbol)
 
+                    # @todo look for prefetch OHLCs
+
                     # ohlc data (now generated)
                     # for tf in IGWatcher.STORED_TIMEFRAMES:
                     #     self.subscribe_ohlc(symbol, tf)
 
+                    # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
+                    # prefetch for the last of each except for 1m and 5m we assume we have a delay of 15 minutes
+                    # from the manual prefetch script execution and assuming the higher timeframe are already up-to-date.
+                    self.fetch_and_generate(symbol, Instrument.TF_1M, 15, None)
+                    time.sleep(1.0)
+                    self.fetch_and_generate(symbol, Instrument.TF_5M, 3, None)
+                    time.sleep(1.0)
+                    self.fetch_and_generate(symbol, Instrument.TF_15M, 1, None)
+                    time.sleep(1.0)
+                    self.fetch_and_generate(symbol, Instrument.TF_1H, 1, None)
+                    time.sleep(1.0)
+                    self.fetch_and_generate(symbol, Instrument.TF_4H, 1, None)
+                    time.sleep(1.0)
+                    self.fetch_and_generate(symbol, Instrument.TF_1D, 1, None)
+                    time.sleep(1.0)
+                    self.fetch_and_generate(symbol, Instrument.TF_1W, 1, None)
+                    time.sleep(1.0)
+
+                    logger.info("%s prefetch for %s" % (self.name, symbol))
+
                     self.insert_watched_instrument(symbol, [0])
+
+            logger.info("Watcher %s wait 15 seconds to limit to a fair API usage" % (self.name,))
+            time.sleep(15.0)
 
             self._ready = True
 
@@ -458,7 +485,7 @@ class IGWatcher(Watcher):
                         self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
                 # disabled for now
-                if not self._read_only:
+                if not self._read_only and self._store_trade:
                     Database.inst().store_market_trade((self.name, market_id, int(utm), bid, ofr, ltv or 0))
 
         except Exception as e:
@@ -884,4 +911,34 @@ class IGWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
-        pass  # @todo
+        try:
+            if n_last:
+                data = self._connector.history_last_n(market_id, timeframe, n_last)
+            else:
+                data = self._connector.history_range(market_id, timeframe, from_date, to_date)
+        except Exception as e:
+            logger.error(repr(e))
+            error_logger.error(traceback.format_exc())
+
+            data = {}
+
+        prices = data.get('prices', [])
+
+        for price in prices:
+            timestamp = datetime.strptime(price['snapshotTime'], '%Y:%m:%d-%H:%M:%S').timestamp()
+
+            if price.get('highPrice')['bid'] is None and price.get('highPrice')['ask'] is None:
+                # ignore empty candles
+                continue
+
+            # yield (timestamp, high bid, low, open, close, high ofr, low, open, close, volume)
+            yield([int(timestamp * 1000),
+                str(price.get('highPrice')['bid'] or price.get('highPrice')['ask']),
+                str(price.get('lowPrice')['bid'] or price.get('lowPrice')['ask']),
+                str(price.get('openPrice')['bid'] or price.get('openPrice')['ask']),
+                str(price.get('closePrice')['bid'] or price.get('closePrice')['ask']),
+                str(price.get('highPrice')['ask'] or price.get('highPrice')['bid']),
+                str(price.get('lowPrice')['ask'] or price.get('lowPrice')['bid']),
+                str(price.get('openPrice')['ask'] or price.get('openPrice')['bid']),
+                str(price.get('closePrice')['ask'] or price.get('closePrice')['bid']),
+                price.get('lastTradedVolume', '0')])

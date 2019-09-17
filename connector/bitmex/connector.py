@@ -354,7 +354,7 @@ class Connector(object):
 
         # because bitmex works in close time but we are in open time
         # delta = self.BIN_SIZE_TO_TIMEFRAME[bin_size]
-        # have issue using delta in seconds
+        # have issue using delta in seconds why...
 
         delta_time = timedelta(seconds=0)
 

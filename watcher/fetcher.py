@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from common.utils import matching_symbols_set, UTC
 from terminal.terminal import Terminal
 
-from instrument.instrument import Tick, Candle
+from instrument.instrument import Tick, Candle, Instrument
 from instrument.candlegenerator import CandleGenerator
 
 from notifier.signal import Signal
@@ -93,11 +93,19 @@ class Fetcher(object):
         if not from_date and n_last:
             # compute a from date
             today = datetime.now().astimezone(UTC())
-            from_date = today - timedelta(seconds=timeframe*n_last)
+
+            if timeframe == Instrument.TF_MONTH:
+                from_date = today - timedelta(months=int(timeframe/Instrument.TF_MONTH)*n_last)
+            else:
+                from_date = today - timedelta(seconds=timeframe*n_last)
 
         if not to_date:
             today = datetime.now().astimezone(UTC())
-            to_date = today + timedelta(seconds=timeframe)
+
+            if timeframe == Instrument.TF_MONTH:
+                to_date = today + timedelta(months=1)
+            else:
+                to_date = today + timedelta(seconds=timeframe)
 
         # cascaded generation of candles
         if cascaded:

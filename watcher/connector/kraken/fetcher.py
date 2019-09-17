@@ -97,7 +97,21 @@ class KrakenFetcher(Fetcher):
         return self._connector and self._connector.authenticated
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
-        pass
+        trades = []
+        # get all trades and append them into a file
+        try:
+            trades = self._connector.get_historical_trades(market_id, from_date, to_date)
+        except Exception as e:
+            logger.error("Fetcher %s cannot retrieve aggregated trades on market %s" % (self.name, market_id))
+
+        count = 0
+
+        for trade in trades:
+            count += 1
+            # timestamp, bid, ofr, volume
+            yield(trade)
+
+        logger.info("Fetcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         if timeframe not in self.TF_MAP:

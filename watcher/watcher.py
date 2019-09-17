@@ -34,6 +34,8 @@ class Watcher(Runnable):
     WATCHER_BUY_SELL_SIGNAL = 2
     WATCHER_ALL = 1|2
 
+    DEFAULT_PREFETCH_SIZE = 100  # by defaut prefetch 100 OHLCs for each stored timeframe
+
     # ohlc timeframes of interest for storage
     STORED_TIMEFRAMES = (
         Instrument.TF_MIN,
@@ -64,6 +66,7 @@ class Watcher(Runnable):
 
         self._data_streams = {}
         self._read_only = service.read_only  # no db storage in read-only mode
+        self._store_trade = False            # default never store trade/tick/quote during watching
 
         self._last_tick = {}  # last tick per market id
         self._last_ohlc = {}  # last ohlc per market id and then per timeframe
@@ -423,7 +426,14 @@ class Watcher(Runnable):
 
         # compute a from date
         today = datetime.now().astimezone(UTC())
-        from_date = today - timedelta(seconds=timeframe*n_last)
+        from_date = today
+
+        # for n last, minus a delta time
+        if timeframe == Instrument.TF_MONTH:
+            from_date = today - timedelta(months=int(timeframe/Instrument.TF_MONTH)*n_last)
+        else:
+            from_date = today - timedelta(seconds=int(timeframe)*n_last)
+
         to_date = today
 
         last_ohlcs = {}
@@ -449,9 +459,12 @@ class Watcher(Runnable):
         n = 0
 
         for data in self.fetch_candles(market_id, timeframe, from_date, to_date, None):
-            # store (int timestamp in ms, str bid, str ofr, str volume)
-            if not self._read_only:
-                Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3]))
+            # store (int timestamp ms, str open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+            Database.inst().store_market_ohlc((
+                self.name, market_id, data[0], int(timeframe),
+                data[1], data[2], data[3], data[4],
+                data[5], data[6], data[7], data[8],
+                data[9]))
 
             candle = Candle(float(data[0]) * 0.001, timeframe)
 
@@ -469,7 +482,7 @@ class Watcher(Runnable):
             self._last_ohlc[market_id][timeframe] = candle
 
             # generate higher candles
-            for generator in generators:
+            for generator in generators:              
                 candles = generator.generate_from_candles(last_ohlcs[generator.from_tf], False)
                 if candles:
                     if not self._read_only:

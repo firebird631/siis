@@ -91,8 +91,6 @@ class KrakenWatcher(Watcher):
                 # assets
                 self._assets = self._connector.assets()
 
-                # {'ADA': {'aclass': 'currency', 'altname': 'ADA', 'decimals': 8, 'display_decimals': 6}, 'ATOM': {'aclass': 'currency', 'altname': 'ATOM', 'decimals': 8, 'display_decimals': 6}, 'BAT': {'aclass': 'currency', 'altname': 'BAT', 'decimals': 10, 'display_decimals': 5}, 'BCH': {'aclass': 'currency', 'altname': 'BCH', 'decimals': 10, 'display_decimals': 5}, 'BSV': {'aclass': 'currency', 'altname': 'BSV', 'decimals': 10, 'display_decimals': 5}, 'DASH': {'aclass': 'currency', 'altname': 'DASH', 'decimals': 10, 'display_decimals': 5}, 'EOS': {'aclass': 'currency', 'altname': 'EOS', 'decimals': 10, 'display_decimals': 5}, 'GNO': {'aclass': 'currency', 'altname': 'GNO', 'decimals': 10, 'display_decimals': 5}, 'KFEE': {'aclass': 'currency', 'altname': 'FEE', 'decimals': 2, 'display_decimals': 2}, 'QTUM': {'aclass': 'currency', 'altname': 'QTUM', 'decimals': 10, 'display_decimals': 6}, 'USDT': {'aclass': 'currency', 'altname': 'USDT', 'decimals': 8, 'display_decimals': 4}, 'WAVES': {'aclass': 'currency', 'altname': 'WAVES', 'decimals': 10, 'display_decimals': 5}, 'XETC': {'aclass': 'currency', 'altname': 'ETC', 'decimals': 10, 'display_decimals': 5}, 'XETH': {'aclass': 'currency', 'altname': 'ETH', 'decimals': 10, 'display_decimals': 5}, 'XLTC': {'aclass': 'currency', 'altname': 'LTC', 'decimals': 10, 'display_decimals': 5}, 'XMLN': {'aclass': 'currency', 'altname': 'MLN', 'decimals': 10, 'display_decimals': 5}, 'XREP': {'aclass': 'currency', 'altname': 'REP', 'decimals': 10, 'display_decimals': 5}, 'XTZ': {'aclass': 'currency', 'altname': 'XTZ', 'decimals': 8, 'display_decimals': 5}, 'XXBT': {'aclass': 'currency', 'altname': 'XBT', 'decimals': 10, 'display_decimals': 5}, 'XXDG': {'aclass': 'currency', 'altname': 'XDG', 'decimals': 8, 'display_decimals': 2}, 'XXLM': {'aclass': 'currency', 'altname': 'XLM', 'decimals': 8, 'display_decimals': 5}, 'XXMR': {'aclass': 'currency', 'altname': 'XMR', 'decimals': 10, 'display_decimals': 5}, 'XXRP': {'aclass': 'currency', 'altname': 'XRP', 'decimals': 8, 'display_decimals': 5}, 'XZEC': {'aclass': 'currency', 'altname': 'ZEC', 'decimals': 10, 'display_decimals': 5}, 'ZCAD': {'aclass': 'currency', 'altname': 'CAD', 'decimals': 4, 'display_decimals': 2}, 'ZEUR': {'aclass': 'currency', 'altname': 'EUR', 'decimals': 4, 'display_decimals': 2}, 'ZGBP': {'aclass': 'currency', 'altname': 'GBP', 'decimals': 4, 'display_decimals': 2}, 'ZJPY': {'aclass': 'currency', 'altname': 'JPY', 'decimals': 2, 'display_decimals': 0}, 'ZUSD': {'aclass': 'currency', 'altname': 'USD', 'decimals': 4, 'display_decimals': 2}}
-
                 for asset_name, details in self._assets.items():
                     pass
                     # {'aclass': 'currency', 'altname': 'ADA', 'decimals': 8, 'display_decimals': 6},
@@ -121,6 +119,16 @@ class KrakenWatcher(Watcher):
                         # live data
                         pairs.append(instrument['wsname'])                       
                         self._wsname_lookup[instrument['wsname']] = market_id
+
+                        # fetch from 1m to 1w
+                        self.fetch_and_generate(market_id, Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE, None)
+                        self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
+                        self.fetch_and_generate(market_id, Instrument.TF_15M, self.DEFAULT_PREFETCH_SIZE, None)
+                        self.fetch_and_generate(market_id, Instrument.TF_1H, self.DEFAULT_PREFETCH_SIZE, None)
+                        self.fetch_and_generate(market_id, Instrument.TF_4H, self.DEFAULT_PREFETCH_SIZE, None)
+                        self.fetch_and_generate(market_id, Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE*7, Instrument.TF_1W)
+
+                        logger.info("%s prefetch for %s" % (self.name, market_id))
 
                         # one more watched instrument
                         self.insert_watched_instrument(market_id, [0])
@@ -319,14 +327,19 @@ class KrakenWatcher(Watcher):
             # orders capacities
             market.orders = Order.ORDER_LIMIT | Order.ORDER_MARKET | Order.ORDER_STOP | Order.ORDER_TAKE_PROFIT
 
+            # @todo take the first but it might depends of the traded volume per 30 days...
             # "fees":[[0,0.26],[50000,0.24],[100000,0.22],[250000,0.2],[500000,0.18],[1000000,0.16],[2500000,0.14],[5000000,0.12],[10000000,0.1]],
             # "fees_maker":[[0,0.16],[50000,0.14],[100000,0.12],[250000,0.1],[500000,0.08],[1000000,0.06],[2500000,0.04],[5000000,0.02],[10000000,0]],
+            fees = instrument.get('fees', [])
+            fees_maker = instrument.get('fees_maker', [])
 
-            # market.maker_fee = account['makerCommission'] * 0.0001
-            # market.taker_fee = account['takerCommission'] * 0.0001
+            if fees:
+                market.taker_fee = fees[0][1]
+            if fees_maker:
+                market.maker_fee = fees_maker[0][1]
 
-            # 'fee_volume_currency': 'ZUSD'
-            # fee_volume_currency = volume discount currency
+            if instrument.get('fee_volume_currency'):
+                market.fee_currency(instrument['fee_volume_currency'])
 
             # if quote_asset != self.BASE_QUOTE:
             #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
@@ -438,7 +451,7 @@ class KrakenWatcher(Watcher):
 
                 self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
-                if not self._read_only:
+                if not self._read_only and self._store_trade:
                     Database.inst().store_market_trade((self.name, market_id, int(trade_time*1000.0), trade[0], trade[0], trade[1]))
 
                 for tf in Watcher.STORED_TIMEFRAMES:
@@ -470,7 +483,7 @@ class KrakenWatcher(Watcher):
         """
         Retrieve the historical price for a specific market id.
         """
-        pass
+        return None
 
     def update_markets_info(self):
         """
@@ -491,4 +504,27 @@ class KrakenWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
-        pass  # @todo
+        if timeframe not in self.TF_MAP:
+            logger.error("Watcher %s does not support timeframe %s" % (self.name, timeframe))
+            return
+
+        candles = []
+
+        # second timeframe to kraken interval
+        interval = self.TF_MAP[timeframe]
+
+        try:
+            candles = self._connector.get_historical_candles(market_id, interval, from_date, to_date)
+        except Exception as e:
+            logger.error("Watcher %s cannot retrieve candles %s on market %s" % (self.name, interval, market_id))
+            error_logger.error(traceback.format_exc())
+
+        count = 0
+        
+        for candle in candles:
+            count += 1
+            # store (timestamp, open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+            if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
+                yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[1], candle[2], candle[3], candle[4], candle[5]))
+
+        logger.info("Watcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, interval))

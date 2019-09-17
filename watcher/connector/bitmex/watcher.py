@@ -87,13 +87,14 @@ class BitMexWatcher(Watcher):
                         self.insert_watched_instrument(symbol, [0])
 
                         # fetch from 1M to 1W
-                        self.fetch_and_generate(symbol, Instrument.TF_1M, 64, None)  # 1
-                        self.fetch_and_generate(symbol, Instrument.TF_5M, 64, Instrument.TF_15M)  # 3
-                        self.fetch_and_generate(symbol, Instrument.TF_1H, 64, Instrument.TF_4H)  # 4
-                        self.fetch_and_generate(symbol, Instrument.TF_1D, 64, Instrument.TF_1W)  # 7
+                        self.fetch_and_generate(symbol, Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE, None)  # 1
+                        self.fetch_and_generate(symbol, Instrument.TF_5M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_15M)  # 3
+                        self.fetch_and_generate(symbol, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)  # 4
+                        self.fetch_and_generate(symbol, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)  # 7
 
                         logger.info("%s prefetch for %s" % (self.name, symbol))
 
+                        # debug only
                         # if symbol == "XBTUSD":
                         #     logger.info(str(self._last_ohlc["XBTUSD"].get(60)))
                         #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*5)))
@@ -460,7 +461,7 @@ class BitMexWatcher(Watcher):
             #         # and notify
             #         self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
-            #         if not self._read_only:
+            #         if not self._read_only and self._store_trade:
             #             # store trade
             #             Database.inst().store_market_trade((self.name, symbol, int(trade_time*1000), price, price, quantity))
 
@@ -552,7 +553,7 @@ class BitMexWatcher(Watcher):
                         # and notify
                         self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
-                        if not self._read_only:
+                        if not self._read_only and self._store_trade:
                             # store trade/tick
                             Database.inst().store_market_trade((self.name, symbol, int(update_time*1000), bid, ofr, volume))
 

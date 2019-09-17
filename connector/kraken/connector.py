@@ -157,15 +157,62 @@ class Connector(object):
         return []
 
     def get_historical_trades(self, symbol, from_date, to_date=None, limit=None):
-        # @todo https://api.kraken.com/0/public/Spread
-        pass
+        """
+        @note Per chunck of 1000.
+        """
+        params = {
+            'pair': symbol,
+        }
+
+        prev_last_ts = ""
+        last_datetime = str(int(from_date.timestamp() * 1000000000))
+        to_ts = to_date.timestamp()
+
+        while 1:
+            if last_datetime:
+                params['since'] = last_datetime
+
+            results = self.query_public('Trades', params)
+
+            if results.get('error', []):
+                if results['error'][0] == "EAPI:Rate limit exceeded":
+                    time.sleep(5.0)
+                    continue
+                else:
+                    raise ValueError("Kraken historical trades : %s !" % '\n'.join(results['error']))
+
+            result = results.get('result', {})
+            trades = result.get(symbol, [])
+
+            for c in trades:
+                # ["6523.70000","0.00309500",1537144913.0241,"b","l",""]  b for buy or s for sell
+                dt = c[2]
+
+                if to_ts and dt > to_ts:
+                    break
+
+                yield (int(dt*1000),  # integer ms
+                    c[0], c[0],  # price
+                    c[1])  # volume
+
+            if dt > to_ts or not len(trades):
+                break
+
+            last_ts = result.get('last', "")
+            if last_ts != prev_last_ts:
+                prev_last_ts = last_ts
+                last_datetime = last_ts
+                # last_datetime = str(int((dt+0.001)*1000000000))
+            else:
+                break
+
+            # kraken does not manage lot of history (no need to loop)
+            time.sleep(1.5)  # don't excess API usage limit
 
     def get_historical_candles(self, symbol, interval, from_date, to_date=None, limit=None):
         """
         Time interval [1m,5m,1h,4h,1d,1w,15d].
         """
-        candles = []
-
         if interval not in self.INTERVALS:
             raise ValueError("Kraken does not support interval %s !" % interval)
 
@@ -179,12 +226,13 @@ class Connector(object):
 
         delta = None
 
+        # but we disallow 1w and 15d because 1w starts on a thuesday
         if interval == 10080:
             delta = timedelta(days=3)
 
         while 1:
             if last_datetime:
-                params['since'] = last_datetime
+                params['since'] = int(last_datetime)
 
             results = self.query_public('OHLC', params)
 
@@ -213,7 +261,9 @@ class Connector(object):
 
             # kraken does not manage lot of history (no need to loop)
             break
-            time.sleep(1.0)  # don't excess API usage limit
+
+            # last_datetime = float(results.get('last', dt*1000)) * 0.001
+            # time.sleep(1.5)  # don't excess API usage limit
 
     def get_order_book(self, symbol, depth):
         """

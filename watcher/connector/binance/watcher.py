@@ -136,10 +136,10 @@ class BinanceWatcher(Watcher):
                             # multiplex.append('{}@kline_{}'.format(symbol, '1h'))
 
                             # fetch from 1M to 1W
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1M, 64, None)  # 1
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_5M, 64, Instrument.TF_15M)  # 3
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1H, 64, Instrument.TF_4H)  # 4
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1D, 64, Instrument.TF_1W)  # 7
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE, None)  # 1
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_5M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_15M)  # 3
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)  # 4
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)  # 7
 
                             logger.info("%s prefetch for %s" % (self.name, instrument['symbol']))
 
@@ -510,7 +510,7 @@ class BinanceWatcher(Watcher):
 
             self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
-            if not self._read_only:
+            if not self._read_only and self._store_trade:
                 Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q']))
 
             for tf in Watcher.STORED_TIMEFRAMES:
@@ -768,7 +768,7 @@ class BinanceWatcher(Watcher):
             return (float(d[0][1]) + float(d[0][4]) + float(d[0][3])) / 3.0
         except Exception as e:
             logger.error("Cannot found price history for %s at %s" % (market_id, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
-            return 0.0
+            return None
 
     def update_markets_info(self):
         """
@@ -808,7 +808,7 @@ class BinanceWatcher(Watcher):
         }
 
         if timeframe not in TF_MAP:
-            logger.error("Fetcher %s does not support timeframe %s" % (self.name, timeframe))
+            logger.error("Watcher %s does not support timeframe %s" % (self.name, timeframe))
             return
 
         candles = []
@@ -818,7 +818,7 @@ class BinanceWatcher(Watcher):
         try:
             candles = self._connector.client.get_historical_klines(market_id, tf, int(from_date.timestamp() * 1000), int(to_date.timestamp() * 1000))
         except Exception as e:
-            logger.error("Fetcher %s cannot retrieve candles %s on market %s (%s)" % (self.name, tf, market_id, str(e)))
+            logger.error("Watcher %s cannot retrieve candles %s on market %s (%s)" % (self.name, tf, market_id, str(e)))
 
         count = 0
         
