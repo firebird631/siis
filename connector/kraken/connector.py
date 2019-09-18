@@ -272,26 +272,79 @@ class Connector(object):
         # @todo https://api.kraken.com/0/public/Depth
         pass
 
-    def get_account(self):
+    def get_account(self, asset="ZUSD"):
+        params = {
+            'aclass': "currency",
+            'asset': asset
+        }
+
+        data = self.query_private('TradeBalance', params)
+
+        if data['error']:
+            logger.error("query trade balance: %s" % ', '.join(data['error']))
+
+        if data['result']:
+            return data['result']
+
+        return {}
+
+    def get_balances(self):
         result = self.query_private('Balance')
-        # default = [{"name": "ZEUR", "balance": 0.0}, {"name": "ZUSD", "balance": 0.0}, {"name": "ZCAD", "balance": 0.0}, {"name": "ZJPY", "balance": 0.0}]
-        default = [("ZEUR", 0.0), ("ZUSD", 0.0), ("ZCAD", 0.0), ("ZJPY", 0.0)]
 
-        if not result:
-            return default
+        if data['error']:
+            logger.error("query balance: %s" % ', '.join(data['error']))
 
-        if result['error']:
-            logger.error("query balance: %s" % ', '.join(result['error']))
+        if data['result']:
+            return data['result']
 
-        if result['result']:
-            return result['result']
+        return {}
 
-        return default
+    def get_open_orders(self):
+        # trades = inclure les trades ou non dans la requête (facultatif. par défaut = faux) 
+        # userref = restreindre les résultats à un identifiant de référence utilisateur donné (facult
+        params = {}
 
-    def get_trade_balance(self):
-        # https://api.kraken.com/0/private/TradeBalance
-        # @todo
-        return []
+        result = self.query_private('OpenOrders', params)
+        # refid = identifiant de référence de la transaction qui a créé cette commande
+        # userref = identifiant de référence de l'utilisateur
+        # status = état de l'ordre
+        #     pending = ordre en attente d'entrer dans le livre
+        #     open = ordre ouvert
+        #     closed = ordre fermé
+        #     canceled = ordre annulé
+        #     expired = ordre expiré
+        # opentm = horodatage Unix où la commande a été passée
+        # starttm = horodatage Unix de l'heure de début de la commande (ou 0 s'il n'est pas configuré)
+        # expiretm = horodatage Unix de l'heure de fin de la commande (ou 0 s'il n'est pas configuré)
+        # descr = description de l'ordre 
+        #     pair = pair d'actifs
+        #     type =  type de commande (achat/vente) 
+        #     ordertype = type de commande (voir  Ajouter une commande standard )  
+        #     price = prix primaire
+        #     price2 = prix secondaire
+        #     leverage = montant de l'effet de levier 
+        #     order = description de l'ordre
+        #     close = description de l'ordre de fermeture conditionnel (si l'ensemble de fermeture conditionnel est défini) 
+        # vol = volume de l'ordre (devise de base sauf si viqc est défini sur oflags
+        # vol_exec = volume exécuté (devise de base, sauf si viqc est définie dans oflags) 
+        # cost = coût total (devise de cotation sauf si viqc n'est pas défini dans oflags) 
+        # fee =total des frais (total de cotation) 
+        # price = prix moyen (devise de cotation sauf si viqc est définie dans oflags) 
+        # stopprice = prix stop (devise de cotation, pour les trailing stops)
+        # limitprice = prix limite de déclenchement (devise de cotation, lorsque le type d'ordre basé sur la limite est déclenché)
+        # misc = liste délimitée par des virgules d'informations diverses 
+        #     stopped = déclenché par prix stop 
+        #     touched = déclenché par une touche de prix 
+        #     liquidated = liquidation
+        #     partial = remplissage partiel
+        # oflags = liste d'indicateurs d'ordre séparés par des virgule
+        #     viqc = volume en devise de cotation 
+        #     fcib = préférer frais dans la devise de base (défaut en cas de vente)
+        #     fciq = préférer frais dans la devise de cotation (par défaut si achat)
+        #     nompp = pas de protection des prix du marché
+        # trades = tableau d'identifiants de transaction liés à l'ordre (si des informations sur les transactions sont demandées et les données disponibles)
+
+        return {}
 
     def _query(self, urlpath, data, headers=None, timeout=None):
         """

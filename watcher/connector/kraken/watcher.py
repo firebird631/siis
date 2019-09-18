@@ -40,6 +40,8 @@ class KrakenWatcher(Watcher):
     @todo complete
     """
 
+    BASE_QUOTE = "ZUSD"
+
     TF_MAP = {
         60: 1,          # 1m
         300: 5,         # 5m
@@ -92,8 +94,8 @@ class KrakenWatcher(Watcher):
                 self._assets = self._connector.assets()
 
                 for asset_name, details in self._assets.items():
-                    pass
                     # {'aclass': 'currency', 'altname': 'ADA', 'decimals': 8, 'display_decimals': 6},
+                    pass
  
                 #
                 # instruments
@@ -199,7 +201,7 @@ class KrakenWatcher(Watcher):
 
     @property
     def connected(self):
-        return elf._connector is not None and self._connector.connected and self._connector.ws_connected
+        return self._connector is not None and self._connector.connected and self._connector.ws_connected
 
     @property
     def authenticated(self):
@@ -339,17 +341,18 @@ class KrakenWatcher(Watcher):
                 market.maker_fee = fees_maker[0][1]
 
             if instrument.get('fee_volume_currency'):
-                market.fee_currency(instrument['fee_volume_currency'])
+                market.fee_currency = instrument['fee_volume_currency']
 
-            # if quote_asset != self.BASE_QUOTE:
+            if quote_asset != self.BASE_QUOTE:
+                pass
             #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
             #         market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
             #     elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
             #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
             #     else:
             #         market.base_exchange_rate = 1.0
-            # else:
-            #     market.base_exchange_rate = 1.0
+            else:
+                market.base_exchange_rate = 1.0
 
             # market.contract_size = 1.0 / mid_price
             # market.value_per_pip = market.contract_size / mid_price
@@ -411,13 +414,13 @@ class KrakenWatcher(Watcher):
             vol24_quote = float(ticker['v'][0]) * float(ticker['p'][0])
 
             # @todo compute base_exchange_rate
-            if quote_asset != self.account.currency:
-                if quote_asset in self._assets:
-                    pass  # @todo direct or indirect
-                else:
-                    market.base_exchange_rate = 1.0  # could be EURUSD... but we don't have
-            else:
-                market.base_exchange_rate = 1.0
+            # if quote_asset != self.BASE_QUOTE:
+            #     if quote_asset in self._assets:
+            #         pass  # @todo direct or indirect
+            #     else:
+            #         market.base_exchange_rate = 1.0  # could be EURUSD... but we don't have
+            # else:
+            #     market.base_exchange_rate = 1.0
 
             market_data = (market_id, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)

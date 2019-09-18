@@ -150,6 +150,13 @@ class Strategy(Runnable):
         """Configuration default merge with users"""
         return self._parameters
 
+    def specific_parameters(self, market_id):
+        """Strategy trader parameters overloaded by per market-id specific if exists"""
+        if market_id in self._parameters['markets']:
+            return merge_parameters(parameters, self._parameters['markets'][market_id])
+        else:
+            return self._parameters
+
     #
     # monitoring notification (@todo to be cleanup)
     #
@@ -2383,6 +2390,9 @@ class Strategy(Runnable):
 
         # timeframes
         parameters.setdefault('timeframes', {})
+
+        # markets specifics
+        parameters.setdefault('markets', {})
 
         # for each timeframes
         for k, timeframe in parameters['timeframes'].items():

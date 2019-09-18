@@ -65,7 +65,7 @@ class BitcoinAlphaStrategy(Strategy):
         self.reset()
 
     def create_trader(self, instrument):
-        return BitcoinAlphaStrategyTrader(self, instrument, self.parameters)
+        return BitcoinAlphaStrategyTrader(self, instrument, self.specific_parameters(instrument.market_id))
 
     def update_strategy(self, tf, instrument):
         strategy_trader = self._strategy_traders.get(instrument)

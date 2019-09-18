@@ -96,7 +96,7 @@ class KrakenTrader(Trader):
         self.unlock()
 
         # initial account update
-        self.account.update(self._watcher.connector)
+        self._account.update(self._watcher.connector)
 
     def on_watcher_disconnected(self, watcher_name):
         super().on_watcher_disconnected(watcher_name)
@@ -305,12 +305,14 @@ class KrakenTrader(Trader):
         # @todo use REST API to fetch account state
         self._account.update(self._watcher.connector)
 
+    def __fetch_assets(self):
+        # @todo use REST API to fetch assets balances
+        pass
+
     def __fetch_positions(self):
         # @todo use REST API to fetch open positions
         for symbol, market in self._markets.items():
             return self.__update_positions(symbol, market)
-
-    # https://api.kraken.com/0/public/Trades recents trades
 
     def __fetch_orders(self):
         # @todo use REST API to fetch open orders
@@ -320,10 +322,6 @@ class KrakenTrader(Trader):
         if not self.connected:
             return
 
-        pass
-
     def __update_orders(self):
         if not self.connected:
             return
-
-        pass

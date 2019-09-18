@@ -139,7 +139,7 @@ class BoostedBlueSkyDayStrategy(Strategy):
         self.reset()
 
     def create_trader(self, instrument):
-        return BoostedBlueSkyDayStrategyTrader(self, instrument, self.parameters)
+        return BoostedBlueSkyDayStrategyTrader(self, instrument, self.specific_parameters(instrument.market_id))
 
     def setup_live(self):
         super().setup_live()
