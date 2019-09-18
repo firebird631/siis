@@ -198,3 +198,11 @@ class WssClient(KrakenSocketManager):
         payload = json.dumps(data, ensure_ascii=False).encode('utf8')
         return self._start_socket(id_, payload, callback)
 
+    def subscribe_private(self, subscription, callback):
+        id_ = "_".join([subscription['name']])
+        data = {
+            'event': 'subscribe',
+            'subscription': subscription,
+        }
+        payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+        return self._start_socket(id_, payload, callback)

@@ -37,7 +37,7 @@ class Connector(object):
     # https://api.kraken.com/0/private/TradesHistory
     # https://api.kraken.com/0/private/QueryTrades
     # https://api.kraken.com/0/private/OpenPositions
-    # https://api.kraken.com/0/private/TradeVolume ???
+    # https://api.kraken.com/0/private/TradeVolume
     # https://api.kraken.com/0/private/AddOrder
     # https://api.kraken.com/0/private/CancelOrder
 
@@ -129,32 +129,47 @@ class Connector(object):
         return self._watched_symbols
 
     def instruments(self):
-        result = self.query_public('AssetPairs')
+        data = self.query_public('AssetPairs')
 
-        if not result:
+        if not data:
             return []
         
-        if result['error']:
-            logger.error("query markets: %s" % ', '.join(result['error']))
+        if data['error']:
+            logger.error("query markets: %s" % ', '.join(data['error']))
+            return []
 
-        if result['result']:
-            return result['result']
+        if data['result']:
+            return data['result']
 
         return []
 
     def assets(self):
-        result = self.query_public('Assets')
+        data = self.query_public('Assets')
 
-        if not result:
+        if not data:
             return []
         
-        if result['error']:
-            logger.error("query assets: %s" % ', '.join(result['error']))
+        if data['error']:
+            logger.error("query assets: %s" % ', '.join(data['error']))
+            return []
 
-        if result['result']:
-            return result['result']
+        if data['result']:
+            return data['result']
 
         return []
+
+    def get_ws_token(self):
+        data = self.query_private('GetWebSocketsToken')
+        logger.info(data)
+
+        if data['error']:
+            logger.error("ws token: %s" % ', '.join(data['error']))
+            return ""
+
+        if data['result']:
+            return data['result']
+
+        return ""
 
     def get_historical_trades(self, symbol, from_date, to_date=None, limit=None):
         """
@@ -282,6 +297,7 @@ class Connector(object):
 
         if data['error']:
             logger.error("query trade balance: %s" % ', '.join(data['error']))
+            return {}
 
         if data['result']:
             return data['result']
@@ -293,6 +309,7 @@ class Connector(object):
 
         if data['error']:
             logger.error("query balance: %s" % ', '.join(data['error']))
+            return {}
 
         if data['result']:
             return data['result']

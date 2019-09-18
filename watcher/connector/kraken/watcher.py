@@ -130,6 +130,8 @@ class KrakenWatcher(Watcher):
                         self.fetch_and_generate(market_id, Instrument.TF_4H, self.DEFAULT_PREFETCH_SIZE, None)
                         self.fetch_and_generate(market_id, Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE*7, Instrument.TF_1W)
 
+                        time.sleep(6.0)
+
                         logger.info("%s prefetch for %s" % (self.name, market_id))
 
                         # one more watched instrument
@@ -161,6 +163,29 @@ class KrakenWatcher(Watcher):
                     #     depth=10,  # 10 25 100 500 1000
                     #     callback=self.__on_depth_data
                     # )
+
+                #
+                # user data
+                #
+
+                ws_token = self._connector.get_ws_token()
+
+                if ws_token and ws_token.get('token'):
+                    self._connector.ws.subscribe_private(
+                        subscription={
+                            'name': 'ownTrades',
+                            'token': ws_token['token']
+                        },
+                        callback=self.__on_own_trades
+                    )
+
+                    self._connector.ws.subscribe_private(
+                        subscription={
+                            'name': 'openOrders',
+                            'token': ws_token['token']
+                        },
+                        callback=self.__on_open_orders
+                )
 
                 # and start ws manager
                 self._connector.ws.start()
@@ -475,7 +500,10 @@ class KrakenWatcher(Watcher):
     def __on_kline_data(self, data):
         pass
 
-    def __on_user_data(self, data):
+    def __on_own_trades(self, data):
+        pass
+
+    def __on_open_orders(self, data):
         pass
 
     #
