@@ -104,7 +104,7 @@ class DesktopNotifier(Notifiable):
             self.prev_item()
         elif key == 'KEY_SNEXT':
             self.next_item()
-        elif key in ('KEY_SR', 'KEY_SF', 'KEY_SLEFT', 'KEY_SRIGHT', 'KEY_PPAGE', 'KEY_NPAGE'):
+        elif key in ('KEY_SR', 'KEY_SF', 'KEY_SLEFT', 'KEY_SRIGHT', 'KEY_PPAGE', 'KEY_NPAGE', 'H', 'J', 'K', 'L'):
             self._last_strategy_view = 0  # force refresh
 
     def prev_item(self):

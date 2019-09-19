@@ -1038,11 +1038,12 @@ class Terminal(object):
                 if c[0] == '\n':
                     self._key = 'KEY_ENTER'
                     return '\n'
+
             except:
                 pass
 
             # https://docs.python.org/2/library/curses.html keys list
-            if c and c.startswith('KEY_'):
+            if c and (c.startswith('KEY_') or (c in ('H', 'J', 'K', 'L'))):
                 if c == 'KEY_BACKSPACE':
                     self._key = c
                     return '\b'
@@ -1068,28 +1069,28 @@ class Terminal(object):
 
                 # shift + keys arrows for table navigation
                 # ch == curses.KEY_SUP
-                elif c == 'KEY_SR':
+                elif c == 'KEY_SR' or c == 'J':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_row(-1)
 
                     self._key = c
-                elif c == 'KEY_SF':
+                elif c == 'KEY_SF' or c == 'K':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_row(1)
 
                     self._key = c
-                elif c == 'KEY_SLEFT':
+                elif c == 'KEY_SLEFT' or c == 'H':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_cols(-1)
 
                     self._key = c
-                elif c == 'KEY_SRIGHT':
+                elif c == 'KEY_SRIGHT' or c == 'L':
                     if self._active_content:
                         view = self._views.get(self._active_content)
                         if view:
