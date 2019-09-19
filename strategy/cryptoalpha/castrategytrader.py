@@ -355,7 +355,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         if 0:  #not trade.has_stop_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
                             try:
                                 # OCO order or only bot managed stop-loss, only a TP limit is defined
-                                trade.modify_stop_loss(self.strategy.trader(), self.instrument.market_id, stop_loss)
+                                trade.modify_stop_loss(self.strategy.trader(), self.instrument, stop_loss)
                             except Exception as e:
                                 logger.error(repr(e))
 
@@ -376,7 +376,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         # too many stop-loss modifications in the timeframe
                         if not trade.has_limit_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
                             try:
-                                trade.modify_take_profit(self.strategy.trader(), self.instrument.market_id, take_profit)
+                                trade.modify_take_profit(self.strategy.trader(), self.instrument, take_profit)
                             except Exception as e:
                                 logger.error(repr(e))
 
@@ -488,7 +488,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             trade.partial_tp = partial_tp
 
-            if trade.open(trader, self.instrument.market_id, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage):
+            if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage):
                 # notify
                 self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
                         timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
@@ -514,7 +514,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if do_order:
             # close at market as taker
             trader = self.strategy.trader()
-            trade.close(trader, self.instrument.market_id)
+            trade.close(trader, self.instrument)
 
             # estimed profit/loss rate
             profit_loss_rate = (exit_price - trade.entry_price) / trade.entry_price

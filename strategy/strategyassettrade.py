@@ -23,7 +23,7 @@ class StrategyAssetTrade(StrategyTrade):
     """
 
     __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', 'entry_oid', 'stop_oid', 'limit_oid', 'oco_oid', \
-                'stop_order_type', 'stop_order_qty', 'limit_order_type', 'limit_order_qty'
+                'stop_order_type', 'stop_order_qty', 'limit_order_type', 'limit_order_qty', '_use_oco'
 
     def __init__(self, timeframe):
         super().__init__(StrategyTrade.TRADE_BUY_SELL, timeframe)
@@ -44,21 +44,21 @@ class StrategyAssetTrade(StrategyTrade):
         self.limit_order_type = Order.ORDER_MARKET
         self.limit_order_qty = 0.0
 
-    def open(self, trader, market_id, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
+    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None, use_oco=False):
         """
         Buy an asset.
         """
         if self._entry_state != StrategyTrade.STATE_NEW:
             return False
 
-        order = Order(trader, market_id)
+        order = Order(trader, instrument.market_id)
         order.direction = direction
         order.price = order_price
         order.order_type = order_type
         order.quantity = quantity
 
         # if need to retry @todo or cancel
-        # self._market_id = market_id
+        # self._market_id = instrument.market_id
         # self._order_type = order_type
         # self._leverage = leverage
 
@@ -74,6 +74,10 @@ class StrategyAssetTrade(StrategyTrade):
         self.tp = take_profit
         self.sl = stop_loss
 
+        # @todo support OCO
+        self._use_oco = use_oco
+
+        # @todo if price if counter the market then assume taker
         self._stats['entry-maker'] = not order.is_market()
 
         if trader.create_order(order):
@@ -167,7 +171,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         return True
 
-    def modify_take_profit(self, trader, market_id, price):
+    def modify_take_profit(self, trader, instrument, price):
         if self._closing:
             # already closing order
             return False
@@ -204,7 +208,7 @@ class StrategyAssetTrade(StrategyTrade):
                 return True
 
             if price:
-                order = Order(trader, market_id)
+                order = Order(trader, instrument.market_id)
                 order.direction = -self.dir  # neg dir
                 order.order_type = Order.ORDER_LIMIT
                 order.price = price
@@ -235,7 +239,7 @@ class StrategyAssetTrade(StrategyTrade):
 
             return True
 
-    def modify_stop_loss(self, trader, market_id, stop_price):
+    def modify_stop_loss(self, trader, instrument, stop_price):
         if self._closing:
             # already closing order
             return False
@@ -273,7 +277,7 @@ class StrategyAssetTrade(StrategyTrade):
                 return True
 
             if stop_price:
-                order = Order(trader, market_id)
+                order = Order(trader, instrument.market_id)
                 order.direction = -self.dir  # neg dir
                 order.order_type = Order.ORDER_STOP
                 order.stop_price = stop_price
@@ -304,7 +308,7 @@ class StrategyAssetTrade(StrategyTrade):
 
             return True
 
-    def close(self, trader, market_id):
+    def close(self, trader, instrument):
         if self._closing:
             # already closing order
             return False
@@ -343,7 +347,7 @@ class StrategyAssetTrade(StrategyTrade):
                 # all qty is filled
                 return True
 
-            order = Order(trader, market_id)
+            order = Order(trader, instrument.market_id)
             order.direction = -self.dir  # neg dir
             order.order_type = Order.ORDER_MARKET
             order.quantity = self.e - self.x  # remaining qty
@@ -442,14 +446,14 @@ class StrategyAssetTrade(StrategyTrade):
                     # average entry price is directly given
                     self.aep = data['avg-price']
 
-                elif data.get('exec-price') is not None and data['exec-price']:
+                elif (data.get('exec-price') is not None and data['exec-price']) and (filled > 0):
                     # compute the average entry price whe increasing the trade
                     self.aep = instrument.adjust_price(((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled))
 
                 # cumulative filled entry qty
                 if data.get('cumulative-filled') is not None:
                     self.e = data.get('cumulative-filled')
-                else:
+                elif filled > 0:
                     self.e = instrument.adjust_quantity(self.e + filled)
 
                 if self.e >= self.oq:
@@ -457,7 +461,7 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-                if data.get('commission-asset', "") == instrument.base:
+                if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
                     # commission asset is itself, have to reduce it from filled
                     self.e = instrument.adjust_quantity(self.e - data.get('commission-amount', 0))
 
@@ -471,7 +475,7 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     filled = 0
 
-                if data.get('exec-price') is not None and data['exec-price']:
+                if data.get('exec-price') is not None and data['exec-price'] and filled > 0:
                     # profit/loss when reducing the trade (over executed entry qty)
                     self.pl += ((data['exec-price'] * filled) - (self.aep * self.e)) / (self.aep * self.e)
 
@@ -489,7 +493,9 @@ class StrategyAssetTrade(StrategyTrade):
                 # if data.get('cumulative-filled') is not None:
                 #     self.x = data.get('cumulative-filled')
                 # else:
-                self.x = instrument.adjust_quantity(self.x + filled)
+
+                if filled > 0:
+                    self.x = instrument.adjust_quantity(self.x + filled)
 
                 if self._entry_state == StrategyTrade.STATE_FILLED:
                     if self.x >= self.e:
@@ -507,7 +513,7 @@ class StrategyAssetTrade(StrategyTrade):
                         self._exit_state = StrategyTrade.STATE_FILLED
 
                 # commission asset is asset, have to reduce it from filled
-                if data.get('commission-asset', "") == instrument.base:
+                if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
                     self.x = instrument.adjust_quantity(self.x - data.get('commission-amount', 0))
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:

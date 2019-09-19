@@ -487,14 +487,14 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # the new trade must be in the trades list if the event comes before, and removed after only it failed
             self.add_trade(trade)
 
-            if trade.open(trader, self.instrument.market_id, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
+            if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
                 # initiate the take-profit limit order
                 if take_profit > 0:
-                    trade.modify_take_profit(trader, self.instrument.market_id, take_profit)
+                    trade.modify_take_profit(trader, self.instrument, take_profit)
                 
                 # # initiate the stop-loss order
                 # if stop_loss > 0:
-                #     trade.modify_stop_loss(trader, self.instrument.market_id, stop_loss)
+                #     trade.modify_stop_loss(trader, self.instrument, stop_loss)
 
                 # notify
                 self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, market.format_price(price),
@@ -519,7 +519,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if do_order:
             # close at market as taker
             trader = self.strategy.trader()
-            trade.close(trader, self.instrument.market_id)
+            trade.close(trader, self.instrument)
 
             market = trader.market(self.instrument.market_id)
 

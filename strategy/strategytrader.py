@@ -323,7 +323,7 @@ class StrategyTrader(object):
 
                 if (trade.tp > 0) and (close_exec_price >= trade.tp) and not trade.has_limit_order():
                     # take profit trigger stop, close at market (taker fee)
-                    if trade.close(trader, self.instrument.market_id):
+                    if trade.close(trader, self.instrument):
                         # estimed profit/loss rate
                         profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
 
@@ -349,7 +349,7 @@ class StrategyTrader(object):
 
                 elif (trade.sl > 0) and (close_exec_price <= trade.sl) and not trade.has_stop_order():
                     # stop loss trigger stop, close at market (taker fee)
-                    if trade.close(trader, self.instrument.market_id):
+                    if trade.close(trader, self.instrument):
                         # estimed profit/loss rate
                         profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
 
@@ -397,7 +397,7 @@ class StrategyTrader(object):
 
                 if (trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (trade.direction < 0 and close_exec_price <= trade.tp)) and not trade.has_limit_order():
                     # close in profit at market (taker fee)
-                    if trade.close(trader, self.instrument.market_id):
+                    if trade.close(trader, self.instrument):
                         # estimed profit/loss rate
                         if trade.direction > 0 and trade.entry_price:
                             profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
@@ -428,7 +428,7 @@ class StrategyTrader(object):
 
                 elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_stop_order():
                     # close a long or a short position at stop-loss level at market (taker fee)
-                    if trade.close(trader, self.instrument.market_id):
+                    if trade.close(trader, self.instrument):
                         # estimed profit/loss rate
                         if trade.direction > 0 and trade.entry_price:
                             profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
@@ -689,7 +689,7 @@ class StrategyTrader(object):
             if local:
                 trade.sl = stop_loss
             else:
-                trade.modify_stop_loss(trader, instrument.market_id, stop_loss)
+                trade.modify_stop_loss(trader, instrument, stop_loss)
 
     # def update_tp_sl(self, trade, close_exec_price, price, pointpivot):
     #     """

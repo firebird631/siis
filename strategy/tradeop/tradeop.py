@@ -220,7 +220,7 @@ class TradeOpDynamicStopLoss(TradeOp):
             # long
             if instrument.close_exec_price(trade.direction) >= self._trigger:
                 if trade.has_stop_order():
-                    trade.modify_stop_loss(trader, instrument.market_id, self._stop_loss)
+                    trade.modify_stop_loss(trader, instrument, self._stop_loss)
                 else:
                     trade.sl = self._stop_loss
 
@@ -230,7 +230,7 @@ class TradeOpDynamicStopLoss(TradeOp):
             # short
             if instrument.close_exec_price(trade.direction) <= self._trigger:
                 if trade.has_stop_order():
-                    trade.modify_stop_loss(trader, instrument.market_id, self._stop_loss)
+                    trade.modify_stop_loss(trader, instrument, self._stop_loss)
                 else:
                     trade.sl = self._stop_loss
                 return True

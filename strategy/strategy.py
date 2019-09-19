@@ -1332,17 +1332,9 @@ class Strategy(Runnable):
     # display formatters
     #
 
-    def formatted_stats(self, results, style='', quantities=False, summ=True):
+    def formatted_trade_stats(self, results, style='', quantities=False):
+        # @deprecated
         markets = []
-        pl = []
-        perf = []
-        worst = []
-        best = []
-        success = []
-        failed = []
-        roe = []
-
-        markets2 = []
         trade_id = []
         direction = []
         olp = []
@@ -1359,6 +1351,80 @@ class Strategy(Runnable):
         entry_times = []
         exit_times = []
         timeframes = []
+
+        for r in results:
+            if r['perf'] == 0.0 and not r['trades']:
+                continue
+
+            cr = Color.colorize_updn("%.2f" % (r['rate']*100.0), 0.0, r['rate'], style=style)
+
+            for t in r['trades']:
+                if t['rate'] < 0 and ((t['d'] == 'long' and float(t['b']) > float(t['aep'])) or (t['d'] == 'short' and float(t['b']) < float(t['aep']))):
+                    # have been profitable but loss
+                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
+                elif t['rate'] < 0:  # loss
+                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
+                elif t['rate'] > 0:  # profit
+                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
+                else:  # equity
+                    cr = "0.0"
+
+                # per active trade
+                markets.append(r['symbol'])
+                trade_id.append(t['id'])
+                direction.append(t['d'])
+                olp.append(t['l'])
+                price.append(t['p'])
+                sl.append(t['sl'])
+                tp.append(t['tp'])
+                rate.append(cr)
+                qty.append(t['q'])
+                eqty.append(t['e'])
+                xqty.append(t['x'])
+                status.append(t['s'])
+                bests.append(t['b'])
+                worsts.append(t['w'])
+                entry_times.append(datetime.fromtimestamp(t['ts']).strftime('%Y-%m-%d %H:%M:%S'))
+                timeframes.append(t['tf'])
+
+        data = {
+            'Market': markets,
+            'Id': trade_id,
+            'Dir': direction,
+            'P/L(%)': rate,
+            'Limit': olp,
+            'Price': price,
+            'Entry date': entry_times,
+            'TF': timeframes,
+            'SL': sl,
+            'TP': tp,
+            'Best': bests,
+            'Worst': worsts
+        }
+
+        if quantities:
+            data['Qty'] = qty
+            data['Status'] = status
+            data['Entry Q'] = eqty
+            data['Exit Q'] = xqty
+
+        arr = tabulate(data, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
+
+        if style == 'uterm' or style == 'curses':
+            arr = arr.replace(Color.ORANGE, '\\6').replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
+
+        return arr
+
+    def formatted_agg_trade_stats(self, results, style='', quantities=False, summ=True):
+        # @deprecated
+        markets = []
+        pl = []
+        perf = []
+        worst = []
+        best = []
+        success = []
+        failed = []
+        roe = []
 
         pl_sum = 0.0
         perf_sum = 0.0
@@ -1392,35 +1458,6 @@ class Strategy(Runnable):
             failed_sum += r['failed']
             roe_sum += r['roe']
 
-            for t in r['trades']:
-                if t['rate'] < 0 and ((t['d'] == 'long' and float(t['b']) > float(t['aep'])) or (t['d'] == 'short' and float(t['b']) < float(t['aep']))):
-                    # have been profitable but loss
-                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
-                elif t['rate'] < 0:  # loss
-                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
-                elif t['rate'] > 0:  # profit
-                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
-                else:  # equity
-                    cr = "0.0"
-
-                # per active trade
-                markets2.append(r['symbol'])
-                trade_id.append(t['id'])
-                direction.append(t['d'])
-                olp.append(t['l'])
-                price.append(t['p'])
-                sl.append(t['sl'])
-                tp.append(t['tp'])
-                rate.append(cr)
-                qty.append(t['q'])
-                eqty.append(t['e'])
-                xqty.append(t['x'])
-                status.append(t['s'])
-                bests.append(t['b'])
-                worsts.append(t['w'])
-                entry_times.append(datetime.fromtimestamp(t['ts']).strftime('%Y-%m-%d %H:%M:%S'))
-                timeframes.append(t['tf'])
-
         #
         # sum
         #
@@ -1442,83 +1479,86 @@ class Strategy(Runnable):
             'Market': markets,
             'P/L(%)': pl,
             'Total(%)': perf,
-            'Worst': worst,
             'Best': best,
+            'Worst': worst,
             'Success': success,
             'Failed': failed,
             'ROE': roe
         }
 
-        arr1 = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f")
+        arr = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f")
 
         if style == 'uterm' or style == 'curses':
-            arr1 = arr1.replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
+            arr = arr.replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
 
-        #
-        # per trades
-        #
+        return arr
 
-        data2 = {
-            'Market': markets2,
-            'Id': trade_id,
-            'Dir': direction,
-            'P/L(%)': rate,
-            'Limit': olp,
-            'Price': price,
-            'Entry date': entry_times,
-            'TF': timeframes,
-            'SL': sl,
-            'TP': tp,
-            'Best': bests,
-            'Worst': worsts
-        }
+    def agg_trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None):
+        """
+        Returns a table of any active trades plus a resume per market.
+        """
+        columns = ('Market', 'P/L(%)', 'Total(%)', 'Best', 'Worst', 'Succes', 'Failed', 'ROE')
+        data = []
 
+        self.lock()
+
+        if offset is None:
+            offset = 0
+
+        if limit is None:
+            limit = len(markets)
+
+        limit = offset + limit
+
+        trades.sort(key=lambda x: x.market_id)
+        trades = markets[offset:limit]
+
+        # for trade in trades:
+        #     row = (...
+        #     )
+
+        #     data.append(row[col_ofs:])
+
+        self.unlock()
+
+        return columns[col_ofs:], data, total_size
+
+    def trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False):
+        """
+        Returns a table of any active trades plus a resume per market.
+        """
         if quantities:
-            data2['Qty'] = qty
-            data2['Status'] = status
-            data2['Entry Q'] = eqty
-            data2['Exit Q'] = xqty
+            columns = ('Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF', 'Qty', 'Status', 'Entry Q', 'Exit Q')
+        else:
+            columns = ('Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF')
 
-        df = data2
+        data = []
 
-        arr2 = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
+        self.lock()
 
-        if style == 'uterm' or style == 'curses':
-            arr2 = arr2.replace(Color.ORANGE, '\\6').replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
+        if offset is None:
+            offset = 0
 
-        return arr1, arr2
+        if limit is None:
+            limit = len(markets)
 
-    # def trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None):
-    #     """
-    #     Returns a table of any active trades plus a resume per market.
-    #     """
-    #     columns = ('Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF')
-    #     data = []
+        limit = offset + limit
 
-    #     self.lock()
+        trades.sort(key=lambda x: x.market_id)
+        trades = markets[offset:limit]
 
-    #     if offset is None:
-    #         offset = 0
+        # for trade in trades:
+        #     row = (...
+        #     )
+        #     if quantities:
 
-    #     if limit is None:
-    #         limit = len(markets)
+        #     data.append(row[col_ofs:])
 
-    #     limit = offset + limit
+        self.unlock()
 
-    #     trades.sort(key=lambda x: x.market_id)
-    #     trades = markets[offset:limit]
+        return columns[col_ofs:], data, total_size
 
-    #     for trade in trades:
-    #         row = (...
-    #         )
-
-    #         data.append(row[col_ofs:])
-
-    #     self.unlock()
-
-    #     return columns[col_ofs:], data, total_size
-
-    def formatted_trade_stats(self, results, style='', quantities=False):
+    def formatted_closed_trade_stats(self, results, style='', quantities=False):
         """
         Formatted list of terminated trades.
         """
@@ -1602,6 +1642,41 @@ class Strategy(Runnable):
             arr = arr.replace(Color.ORANGE, '\\6').replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
 
         return arr
+
+    def closed_trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False):
+        """
+        Returns a table of any closed trades.
+        """
+        if quantities:
+            columns = ('Market', 'Id', 'Dir', 'P/L(%)', 'Price', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF', 'Qty', 'Status', 'Entry Q', 'Exit Q')
+        else:
+            columns = ('Market', 'Id', 'Dir', 'P/L(%)', 'Price', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF')
+
+        data = []
+
+        self.lock()
+
+        if offset is None:
+            offset = 0
+
+        if limit is None:
+            limit = len(markets)
+
+        limit = offset + limit
+
+        trades.sort(key=lambda x: x.market_id)
+        trades = markets[offset:limit]
+
+        # for trade in trades:
+        #     row = (...
+        #     )
+        #     if quantities:
+
+        #     data.append(row[col_ofs:])
+
+        self.unlock()
+
+        return columns[col_ofs:], data, total_size
 
     #
     # trade commands
@@ -1715,7 +1790,7 @@ class Strategy(Runnable):
             # the new trade must be in the trades list if the event comes before, and removed after only it failed
             strategy_trader.add_trade(trade)
 
-            if trade.open(trader, strategy_trader.instrument.market_id, direction, order_type, order_price, order_quantity,
+            if trade.open(trader, strategy_trader.instrument, direction, order_type, order_price, order_quantity,
                           take_profit, stop_loss, leverage=leverage, hedging=hedging):
 
                 # add a success result message
@@ -1849,7 +1924,7 @@ class Strategy(Runnable):
             if action == 'stop-loss' and 'stop-loss' in data and type(data['stop-loss']) is float:
                 if data['stop-loss'] > 0.0:
                     if trade.has_stop_order():
-                        trade.modify_stop_loss(self.trader(), strategy_trader.instrument.market_id, data['stop-loss'])
+                        trade.modify_stop_loss(self.trader(), strategy_trader.instrument, data['stop-loss'])
                     else:
                         trade.sl = data['stop-loss']
                 else:
@@ -1860,7 +1935,7 @@ class Strategy(Runnable):
             elif action == 'take-profit' and 'take-profit' in data and type(data['take-profit']) is float:
                 if data['take-profit'] > 0.0:
                     if trade.has_limit_order():
-                        trade.modify_take_profit(self.trader(), strategy_trader.instrument.market_id, data['take-profit'])
+                        trade.modify_take_profit(self.trader(), strategy_trader.instrument, data['take-profit'])
                     else:
                         trade.tp = data['take-profit']
                 else:
@@ -2050,7 +2125,8 @@ class Strategy(Runnable):
             Terminal.inst().notice("Active trades for strategy %s - %s" % (self.name, self.identifier), view='content')
 
             # tabular formated text
-            arr1, arr2 = self.formatted_stats(results, style=Terminal.inst().style(), quantities=True)
+            arr1 = self.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
+            arr2 = self.formatted_agg_trade_stats(results, style=Terminal.inst().style(), quantities=True)
 
             Terminal.inst().info(arr1, view='content')
             Terminal.inst().info(arr2, view='content')
@@ -2062,7 +2138,7 @@ class Strategy(Runnable):
             Terminal.inst().notice("Trade history for strategy %s - %s" % (self.name, self.identifier), view='content')
 
             # tabular formated text
-            arr = self.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
+            arr = self.formatted_closed_trade_stats(results, style=Terminal.inst().style(), quantities=True)
 
             Terminal.inst().info(arr, view='content')
 

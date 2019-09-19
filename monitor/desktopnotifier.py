@@ -309,7 +309,8 @@ class DesktopNotifier(Notifiable):
                 dst = self._discord_webhook['forex-15m-reports']
 
             if results:
-                arr1, arr2 = strategy.formatted_stats(results, style='')
+                arr1 = strategy.formatted_trade_stats(results, style='')
+                arr2 = strategy.formatted_agg_trade_stats(results, style='')
 
                 self.split_and_send(dst, arr1)
                 self.split_and_send(dst, arr2)
@@ -362,26 +363,29 @@ class DesktopNotifier(Notifiable):
             results = appl.get_stats()
 
             # tabular formated text
-            arr1, arr2 = appl.formatted_stats(results, style=Terminal.inst().style(), quantities=True)
-
-            # perf view
-            if Terminal.inst().is_active('perf'):
-                Terminal.inst().info("Perf per market trades for strategy %s - %s" % (appl.name, appl.identifier), view='perf-head')
-                Terminal.inst().info(arr1, view='perf')
+            # @todo table(...)
+            arr1 = appl.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
+            arr2 = appl.formatted_agg_trade_stats(results, style=Terminal.inst().style(), quantities=True)
 
             # strategy view
             if Terminal.inst().is_active('strategy'):
                 Terminal.inst().info("Active trades for strategy %s - %s" % (appl.name, appl.identifier), view='strategy-head')
-                Terminal.inst().info(arr2, view='strategy')
+                Terminal.inst().info(arr1, view='strategy')
+
+            # perf view
+            if Terminal.inst().is_active('perf'):
+                Terminal.inst().info("Perf per market trades for strategy %s - %s" % (appl.name, appl.identifier), view='perf-head')
+                Terminal.inst().info(arr2, view='perf')
 
         # stats view
         if Terminal.inst().is_active('stats'):
             Terminal.inst().info("Trade history for strategy %s - %s" % (appl.name, appl.identifier), view='stats-head')
 
+            # @todo table(...)
             results = appl.get_history_stats(0, 50, None)
 
             # tabular formated text
-            arr = appl.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
+            arr = appl.formatted_closed_trade_stats(results, style=Terminal.inst().style(), quantities=True)
 
             try:
                 Terminal.inst().info(arr, view='stats')

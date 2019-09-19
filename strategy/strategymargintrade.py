@@ -43,13 +43,13 @@ class StrategyMarginTrade(StrategyTrade):
         self.stop_order_qty = 0.0    # if stop_oid then this is the qty placed on the stop order
         self.limit_order_qty = 0.0   # if limit_oid then this is the qty placed on the limit order
 
-    def open(self, trader, market_id, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
+    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
         """
         Open a position or buy an asset.
 
         @param hedging If defined use the defined value else use the default from the market.
         """
-        order = Order(trader, market_id)
+        order = Order(trader, instrument.market_id)
         order.direction = direction
         order.price = order_price
         order.order_type = order_type
@@ -75,6 +75,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         self.leverage = leverage
 
+        # @todo if price if counter the market then assume taker
         self._stats['entry-maker'] = not order.is_market()
 
         if trader.create_order(order):
@@ -155,7 +156,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         return True
 
-    def modify_take_profit(self, trader, market_id, limit_price):
+    def modify_take_profit(self, trader, instrument, limit_price):
         if self.limit_oid:
             # cancel the limit order and create a new one
             if trader.cancel_order(self.limit_oid):
@@ -181,7 +182,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         elif self.e > 0:
             # only if filled entry partially or totally
-            order = Order(self, market_id)
+            order = Order(self, instrument.market_id)
             order.direction = -self.direction
             order.order_type = Order.ORDER_LIMIT
             order.reduce_only = True
@@ -211,7 +212,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         return False
 
-    def modify_stop_loss(self, trader, market_id, stop_price):
+    def modify_stop_loss(self, trader, instrument, stop_price):
         if self.stop_oid:
             # cancel the stop order and create a new one
             if trader.cancel_order(self.stop_oid):
@@ -236,7 +237,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         elif self.e > 0:
             # only if filled entry partially or totally
-            order = Order(self, market_id)
+            order = Order(self, instrument.market_id)
             order.direction = -self.direction
             order.order_type = Order.ORDER_STOP
             order.reduce_only = True
@@ -266,7 +267,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         return False
 
-    def close(self, trader, market_id):
+    def close(self, trader, instrument):
         """
         Close the position and cancel the related orders.
         """
@@ -303,7 +304,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         elif self.e - self.x > 0.0:
             # bitmex case no have position id
-            order = Order(trader, market_id)
+            order = Order(trader, instrument.market_id)
             order.direction = -self.dir  # neg dir
             order.order_type = Order.ORDER_MARKET
             order.reduce_only = True

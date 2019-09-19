@@ -435,7 +435,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         # too many stop-loss modifications in the timeframe
                         if not trade.has_stop_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
                             try:
-                                trade.modify_stop_loss(self.strategy.trader(), self.instrument.market_id, stop_loss)
+                                trade.modify_stop_loss(self.strategy.trader(), self.instrument, stop_loss)
                             except Exception as e:
                                 logger.error(repr(e))
 
@@ -455,7 +455,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         # too many stop-loss modifications in the timeframe
                         if not trade.has_limit_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
                             try:
-                                trade.modify_take_profit(self.strategy.trader(), self.instrument.market_id, take_profit)
+                                trade.modify_take_profit(self.strategy.trader(), self.instrument, take_profit)
                             except Exception as e:
                                 logger.error(repr(e))
 
@@ -592,14 +592,14 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # the new trade must be in the trades list if the event comes before, and removed after only it failed
             self.add_trade(trade)
 
-            if trade.open(trader, self.instrument.market_id, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
+            if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
                 # initiate the take-profit limit order
                 # if take_profit > 0:
-                #    trade.modify_take_profit(trader, self.instrument.market_id, take_profit)
+                #    trade.modify_take_profit(trader, self.instrument, take_profit)
 
                 # initiate the stop-loss order
                 # if stop_loss > 0:
-                #     trade.modify_stop_loss(trader, self.instrument.market_id, stop_loss)
+                #     trade.modify_stop_loss(trader, self.instrument, stop_loss)
 
                 # notify
                 self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
@@ -629,7 +629,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if do_order:
             # close at market as taker
             trader = self.strategy.trader()
-            trade.close(trader, self.instrument.market_id)
+            trade.close(trader, self.instrument)
 
             # estimed profit/loss rate
             if trade.direction > 0:

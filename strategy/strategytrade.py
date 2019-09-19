@@ -211,12 +211,12 @@ class StrategyTrade(object):
     # processing
     #
 
-    def open(self, trader, market_id, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
+    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
         """
         Order to open a position or to buy an asset.
 
         @param trader Trader Valid trader handler.
-        @param market_id str Valid market identifier.
+        @param instrument Instrument object.
         @param direction int Order direction (1 or -1)
         @param order_type int Order type (market, limit...)
         @param order_price float Limit order price or None for market
@@ -324,19 +324,19 @@ class StrategyTrade(object):
         """
         return False
 
-    def modify_take_profit(self, trader, market_id, price):
+    def modify_take_profit(self, trader, instrument, price):
         """
         Create/modify the take-order limit order or position limit.
         """
         return False
 
-    def modify_stop_loss(self, trader, market_id, price):
+    def modify_stop_loss(self, trader, instrument, price):
         """
         Create/modify the stop-loss taker order or position limit.
         """
         return False
 
-    def close(self, trader, market_id):
+    def close(self, trader, instrument):
         """
         Close the position or sell the asset.
         """

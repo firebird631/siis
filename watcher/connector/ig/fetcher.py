@@ -18,7 +18,7 @@ from connector.ig.connector import IGConnector
 
 import logging
 logger = logging.getLogger('siis.fetcher.ig')
-logger = logging.getLogger('siis.error.fetcher.ig')
+error_logger = logging.getLogger('siis.error.fetcher.ig')
 
 
 class IGFetcher(Fetcher):
