@@ -145,7 +145,7 @@ class PauseCommand(Command):
 
 class InfoCommand(Command):
 
-    SUMMARY = "[traders,apps] <[appliance-id,trader-id]> <appliance-market-id> to get info on traders or appliances."
+    SUMMARY = "[traders,apps] <[appliance-id,trader-id]> <appliance-market-id> to get info on trader(s) or appliance(s)."
 
     def __init__(self, trader_service, strategy_service):
         super().__init__('info', None)

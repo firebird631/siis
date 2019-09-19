@@ -1689,9 +1689,9 @@ class Strategy(Runnable):
         elif market.has_margin and market.indivisible_position:
             trade = StrategyIndMarginTrade(timeframe)
 
-            if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
-                results['error'] = True
-                results['messages'].append("Not enought margin")
+            # if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
+            #     results['error'] = True
+            #     results['messages'].append("Not enought margin")
 
             order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 

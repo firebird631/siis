@@ -10,6 +10,10 @@ from twisted.internet.error import ReactorAlreadyRunning
 
 from connector.binance.client import Client
 
+import logging
+logger = logging.getLogger('siis.connector.binance.ws')
+error_logger = logging.getLogger('siis.error.connector.binance.ws')
+
 
 class BinanceClientProtocol(WebSocketClientProtocol):
 
@@ -469,7 +473,15 @@ class BinanceSocketManager(threading.Thread):
         self._user_timer.start()
 
     def _keepalive_user_socket(self):
-        user_listen_key = self._client.stream_get_listen_key()
+        try:
+            user_listen_key = self._client.stream_get_listen_key()
+        except Exception as e:
+            # very rare exception ConnectTimeout
+            error_logger.error(repr(e))
+
+            # assume unchanged
+            user_listen_key = self._user_listen_key
+
         # check if they key changed and
         if user_listen_key != self._user_listen_key:
             # Start a new socket with the key received

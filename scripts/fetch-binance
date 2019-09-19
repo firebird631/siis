@@ -12,7 +12,10 @@ FROM='2019-09-18T12:00:00'
 python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=4h &
 
 FROM='2019-09-18T12:00:00'
-python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=1h 
+python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=2h
+
+FROM='2019-09-18T12:00:00'
+python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=1h
 
 # FROM='2019-09-18T12:00:00'
 # python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=15m

@@ -109,6 +109,9 @@ def application(argv):
                 elif arg == '--sync':
                     # use the syncer
                     options['sync'] = True
+                elif arg == '--rebuild':
+                    # use the rebuilder
+                    options['rebuild'] = True
 
                 elif arg == '--backtest':
                     # backtest mean always paper-mode
@@ -234,6 +237,19 @@ def application(argv):
         if options.get('broker'):
             from tools.syncer import do_syncer
             do_syncer(options, siis_logger)
+        else:
+            display_cli_help()
+
+        sys.exit(0)
+
+    #
+    # rebuilder mode
+    #
+
+    if options.get('rebuild'):
+        if options.get('market') and options.get('from') and options.get('to') and options.get('broker') and options.get('timeframe'):
+            from tools.rebuilder import do_rebuilder
+            do_rebuilder(options, siis_logger)
         else:
             display_cli_help()
 

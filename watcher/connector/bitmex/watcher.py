@@ -101,6 +101,7 @@ class BitMexWatcher(Watcher):
                         #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*15)))
                         #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60)))
                         #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*4)))
+                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*2)))
                         #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24)))
                         #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24*7)))
 
@@ -490,10 +491,17 @@ class BitMexWatcher(Watcher):
                     # base instrument
                     base_market_id = "XBT" + quote_symbol
                     base_market = None
-                    if base_market_id != symbol:
+
+                    if quote_symbol == "USD" and base_market_id != symbol:
+                        xbtusd_market = self.connector.ws.get_instrument("XBTUSD")
+                        if xbtusd_market:
+                            base_exchange_rate = instrument.get('lastPrice', 1.0) / xbtusd_market.get('lastPrice', 1.0)
+
+                    elif base_market_id != symbol:
                         base_market = self.connector.ws.get_instrument(base_market_id)
-                        if base_market:
-                            base_exchange_rate = base_market.get('lastPrice', 1.0) / instrument.get('lastPrice', 1.0)
+                        xbtusd_market = self.connector.ws.get_instrument("XBTUSD")
+                        if base_market and xbtusd_market:
+                            base_exchange_rate = instrument.get('lastPrice', 1.0) / (base_market.get('lastPrice', 1.0) / xbtusd_market.get('lastPrice', 1.0))
 
                     bid = instrument.get('bidPrice')
                     ofr = instrument.get('askPrice')
@@ -502,14 +510,19 @@ class BitMexWatcher(Watcher):
                         # update contract size and value per pip
                         if quote_symbol == 'USD' and base_market_id == symbol:  # XBTUSD...
                             contract_size = 1.0 / instrument.get('lastPrice', 1.0)
+                            value_per_pip = contract_size * instrument.get('lastPrice', 1.0)
+                        elif base_market_id == symbol:  # XBTU19...
+                            contract_size = 1.0 / instrument.get('lastPrice', 1.0)
+                            value_per_pip = contract_size * instrument.get('lastPrice', 1.0)
                         elif quote_symbol == 'USD' and base_market_id != symbol:  # ETHUSD...
-                            contract_size = (0.001 * 0.01) * instrument.get('lastPrice', 1.0)
+                            contract_size = (0.001 * 0.0001) * instrument.get('lastPrice', 1.0)
+                            value_per_pip = contract_size * instrument.get('lastPrice', 1.0)
                         elif base_market and base_market_id != symbol:  # ADAZ18...
-                            contract_size = 1.0 / instrument.get('lastPrice', 1.0)
+                            contract_size = 0.0001 * instrument.get('lastPrice', 1.0)
+                            value_per_pip = contract_size * instrument.get('lastPrice', 1.0)
                         else:
-                            contract_size = 1.0 / instrument.get('lastPrice', 1.0)
-
-                        value_per_pip = contract_size / instrument.get('lastPrice', 1.0)
+                            contract_size = 0.0001 * instrument.get('lastPrice', 1.0)
+                            value_per_pip = contract_size * instrument.get('lastPrice', 1.0)
 
                         vol24h = instrument.get('volume24h')
                         vol24hquote = instrument.get('foreignNotional24h')
@@ -619,8 +632,12 @@ class BitMexWatcher(Watcher):
             # base instrument
             base_market_id = "XBT" + quote_symbol
             base_market = self.connector.ws.get_instrument(base_market_id)
-            if base_market_id != symbol and base_market:
-                market.base_exchange_rate = base_market.get('lastPrice', 1.0) / instrument.get('lastPrice', 1.0)
+            xbtusd_market = self.connector.ws.get_instrument("XBTUSD")
+
+            if quote_symbol == "USD" and base_market_id != symbol and xbtusd_market:
+                market.base_exchange_rate = instrument.get('lastPrice', 1.0) / xbtusd_market.get('lastPrice', 1.0)
+            elif base_market_id != symbol and base_market and xbtusd_market:
+                market.base_exchange_rate = instrument.get('lastPrice', 1.0) / (base_market.get('lastPrice', 1.0) / xbtusd_market.get('lastPrice', 1.0))
 
             # @todo 'multiplier', 'riskStep', 'riskLimit'
 
@@ -666,15 +683,18 @@ class BitMexWatcher(Watcher):
             market.one_pip_means = instrument.get('tickSize', 1.0)
 
             # contract_size need to be updated as price changes
-            # @todo this is wrong... same on update part above
             if quote_symbol == 'USD' and base_market_id == symbol:  # XBTUSD...
                 market.contract_size = 1.0 / instrument.get('lastPrice', 1.0)
-            elif quote_symbol == 'USD' and base_market_id != symbol:  # ETHUSD...
-                market.contract_size = (0.001 * 0.01) * instrument.get('lastPrice', 1.0)
-            elif base_market and base_market_id != symbol:  # ADAZ18...
+                market.value_per_pip = market.contract_size * instrument.get('lastPrice', 1.0)
+            elif base_market_id == symbol:  # XBTU19...
                 market.contract_size = 1.0 / instrument.get('lastPrice', 1.0)
-
-            market.value_per_pip = market.contract_size / instrument.get('lastPrice', 1.0)
+                market.value_per_pip = market.contract_size * instrument.get('lastPrice', 1.0)
+            elif quote_symbol == 'USD' and base_market_id != symbol:  # ETHUSD...
+                market.contract_size = (0.001 * 0.0001) * instrument.get('lastPrice', 1.0)
+                market.value_per_pip = market.contract_size * instrument.get('lastPrice', 1.0)
+            elif base_market and base_market_id != symbol:  # ADAZ18...
+                market.contract_size = 0.0001 * instrument.get('lastPrice', 1.0)
+                market.value_per_pip = market.contract_size * instrument.get('lastPrice', 1.0)
 
             market.maker_fee = instrument.get('makerFee', 0.0)
             market.taker_fee = instrument.get('takerFee', 0.0)

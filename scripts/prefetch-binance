@@ -12,6 +12,7 @@ if [ $MIN = 0 ]; then
     python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=1 --timeframe=1w &
     python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=1 --timeframe=1d
     python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=1 --timeframe=4h &
+    python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=1 --timeframe=2h
     python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --last=1 --timeframe=1h
 fi
 

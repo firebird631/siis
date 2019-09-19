@@ -1098,7 +1098,7 @@ class Trader(Runnable):
                 str("%.8f" % market.one_pip_means).rstrip('0').rstrip('.'),
                 str("%.8f" % market.value_per_pip).rstrip('0').rstrip('.'),
                 str("%.8f" % market.lot_size).rstrip('0').rstrip('.'),
-                str("%.8f" % market.contract_size).rstrip('0').rstrip('.'))
+                str("%.12f" % market.contract_size).rstrip('0').rstrip('.'))
 
             data.append(row[col_ofs:])
 

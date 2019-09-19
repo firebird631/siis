@@ -5,10 +5,11 @@ IDENTITY='real'
 
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --last=1 --timeframe=1w &
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --last=1 --timeframe=1d &
-python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --last=1 --timeframe=4h &
+python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --last=1 --timeframe=4h 
+python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --last=1 --timeframe=2h &
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --last=1 --timeframe=1h 
 
 # only just before running bot (last 50 15m and last 50 5m)
-python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --last=50 --timeframe=15m
+python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --last=50 --timeframe=15m &
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --last=50 --timeframe=5m
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --last=50 --timeframe=1m

@@ -19,7 +19,7 @@ def do_sync(options, siis_logger):
     Terminal.inst().info("Starting SIIS syncer...")
     Terminal.inst().flush()
 
-    # @todo
+    # @todo connect only fetch market info data and prefetched markets OHLCs and say bye
 
     Terminal.inst().info("Sync done!")
     Terminal.inst().flush()
