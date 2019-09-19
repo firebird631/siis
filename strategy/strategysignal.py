@@ -35,7 +35,7 @@ class StrategySignal(object):
     - ptp for partial TP from 0 to 1
     """
 
-    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'alt_tp', 'ptp'
+    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'alt_tp', 'ptp', 'comment'
 
     SIGNAL_NONE = 0   # signal type undefined (must be entry or exit else its informal)
     SIGNAL_ENTRY = 1  # entry signal (this does not mean long. @see dir)
@@ -51,6 +51,7 @@ class StrategySignal(object):
         self.sl = 0      # possible stop-loss pricce
         self.tp = 0      # primary possible take profit price
         self.alt_tp = 0  # secondary possible take profit price
+        self.comment = ""  # optional comment
 
         self.ptp = 1.0  # partial TP ratio ]0.0..N]
 
@@ -143,6 +144,6 @@ class StrategySignal(object):
         mydate = datetime.fromtimestamp(self.ts)
         date_str = mydate.strftime('%Y-%m-%d %H:%M:%S')
 
-        return "tf=%s ts=%s signal=%s dir=%s p=%s sl=%s tp=%s" % (
+        return "tf=%s ts=%s signal=%s dir=%s p=%s sl=%s tp=%s %s" % (
                 timeframe_to_str(self.timeframe), date_str, self.signal_type_str(), self.direction_str(),
-                self.p, self.sl, self.tp)
+                self.p, self.sl, self.tp, self.comment)

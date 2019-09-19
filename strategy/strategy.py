@@ -1154,6 +1154,162 @@ class Strategy(Runnable):
     # display views
     #
 
+    def get_all_active_trades(self):
+        """
+        Generate and return an array of all the actives trades :
+            symbol: str market identifier
+            id: int trade identifier
+            eot: float entry open UTC timestamp
+            xot: float exit open UTC timestamp
+            d: str 'long' or 'short'
+            p: str formatted entry price
+            tp: str formatted take-profit price
+            sl: str formatted stop-loss price
+            rate: float profit/loss rate
+            tfs: list of str timeframe generating the trade
+            b: best hit price
+            w: worst hit price
+            bt: best hit price timestamp
+            wt: worst hit price timestamp
+            q: ordered qty
+            e: executed entry qty
+            x: executed exit qty
+            aep: average entry price
+            axp: average exit price
+            com: trade comment
+        """
+        results = []
+        trader = self.trader()
+
+        for k, strategy_trader in self._strategy_traders.items():
+            strategy_trader.lock()
+
+            market = trader.market(strategy_trader.instrument.market_id) if trader else None
+            if market:
+                for trade in strategy_trader.trades:
+                    # estimation at close price
+                    if trade.direction > 0 and trade.entry_price:
+                        trade_rate = (market.close_exec_price(trade.direction) - trade.entry_price) / trade.entry_price
+                    elif trade.direction < 0 and trade.entry_price:
+                        trade_rate = (trade.entry_price - market.close_exec_price(trade.direction)) / trade.entry_price
+                    else:
+                        trade_rate = 0.0
+
+                    # estimed maker/taker fee rate for entry and exit
+                    if trade.get_stats()['entry-maker']:
+                        trade_rate -= market.maker_fee
+                    else:
+                        trade_rate -= market.taker_fee
+
+                    # assume an exit in maker
+                    trade_rate -= market.maker_fee
+
+                    results.append({
+                        'mid': market.market_id,
+                        'sym': market.symbol,
+                        'id': trade.id,
+                        'eot': trade.entry_open_time,
+                        'xot': trade.exit_open_time,
+                        'd': trade.direction_to_str(),
+                        'l': market.format_price(trade.order_price),
+                        'p': market.format_price(trade.entry_price),
+                        'q': market.format_quantity(trade.order_quantity),
+                        'e': market.format_quantity(trade.exec_entry_qty),
+                        'x': market.format_quantity(trade.exec_exit_qty),
+                        'tp': market.format_price(trade.take_profit),
+                        'sl': market.format_price(trade.stop_loss),
+                        'rate': trade_rate or trade.profit_loss,
+                        'tf': timeframe_to_str(trade.timeframe),
+                        's': trade.state_to_str(),
+                        'b': market.format_price(trade.best_price()),
+                        'w': market.format_price(trade.worst_price()),
+                        'bt': trade.best_price_timestamp(),
+                        'wt': trade.worst_price_timestamp(),
+                        'aep': trade.entry_price,
+                        'axp': trade.exit_price,
+                        'com': trade.comment,
+                    })
+
+            strategy_trader.unlock()
+
+        return results
+
+    def get_agg_trades(self):
+        """
+        Generate and return an array of :
+            mid: str name of the market id
+            sym: str name of the symbol
+            rate: float current profit/loss rate 0 based
+            perf: float total sum of profit/loss rate 0 based
+            rate: rate
+            perf: perf
+            worst: worst
+            best: best
+            success: success
+            failed: failed
+            roe: roe
+        """
+        results = []
+        trader = self.trader()
+
+        for k, strategy_trader in self._strategy_traders.items():
+            rate = 0.0
+            perf = 0.0
+
+            strategy_trader.lock()
+
+            perf = strategy_trader._stats['perf']
+            best = strategy_trader._stats['best']
+            worst = strategy_trader._stats['worst']
+
+            success = len(strategy_trader._stats['success'])
+            failed = len(strategy_trader._stats['failed'])
+            roe = len(strategy_trader._stats['roe'])
+
+            mid = strategy_trader.instrument.market_id
+            sym = strategy_trader.instrument.symbol
+
+            num = len(strategy_trader.trades)
+
+            market = trader.market(strategy_trader.instrument.market_id) if trader else None
+            if market:
+                for trade in strategy_trader.trades:
+                    # estimation at close price
+                    if trade.direction > 0 and trade.entry_price:
+                        trade_rate = (market.close_exec_price(trade.direction) - trade.entry_price) / trade.entry_price
+                    elif trade.direction < 0 and trade.entry_price:
+                        trade_rate = (trade.entry_price - market.close_exec_price(trade.direction)) / trade.entry_price
+                    else:
+                        trade_rate = 0.0
+
+                    # estimed maker/taker fee rate for entry and exit
+                    if trade.get_stats()['entry-maker']:
+                        trade_rate -= market.maker_fee
+                    else:
+                        trade_rate -= market.taker_fee
+
+                    # assume an exit in maker
+                    trade_rate -= market.maker_fee
+
+                    rate += trade_rate or trade.pl
+
+            strategy_trader.unlock()
+
+            if rate != 0.0 or num > 0 or success > 0 or failed > 0 or roe > 0:
+                results.append({
+                    'mid': mid,
+                    'sym': sym,
+                    'rate': rate,
+                    'perf': perf,
+                    'worst': worst,
+                    'best': best,
+                    'success': success,
+                    'failed': failed,
+                    'roe': roe
+                })
+
+        return results
+
     def get_stats(self):
         """
         Generate and return an array of dict with the form :
@@ -1178,10 +1334,7 @@ class Strategy(Runnable):
                 x: executed exit qty
                 aep: average entry price
                 axp: average exit price
-
-        @note Its implementation could be overrided but respect at the the described informations.
-        @note This method is slow, it need to go through all the strategy-trader, and look for any trades,
-            it can lock the strategy-trader trades processing, can causing global latency when having lot of markets.
+                com: trade comment
         """
         results = []
         trader = self.trader()
@@ -1224,7 +1377,7 @@ class Strategy(Runnable):
                     # @todo update
                     trades.append({
                         'id': trade.id,
-                        'ts': trade.entry_open_time,
+                        'eot': trade.entry_open_time,
                         'd': trade.direction_to_str(),
                         'l': market.format_price(trade.order_price),
                         'p': market.format_price(trade.entry_price),
@@ -1241,7 +1394,8 @@ class Strategy(Runnable):
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
                         'aep': trade.entry_price,
-                        'axp': trade.exit_price
+                        'axp': trade.exit_price,
+                        'com': trade.comment,
                     })
 
                     rate += trade_rate or trade.pl
@@ -1249,7 +1403,8 @@ class Strategy(Runnable):
             strategy_trader.unlock()
 
             results.append({
-                'symbol': strategy_trader.instrument.market_id,
+                'mid': strategy_trader.instrument.market_id,
+                'sym': strategy_trader.instrument.symbol,
                 'rate': rate,
                 'perf': perf,
                 'trades': trades,
@@ -1262,10 +1417,9 @@ class Strategy(Runnable):
 
         return results
 
-    def get_history_stats(self, offset=None, limit=None, col_ofs=None):
+    def get_closed_trades(self):
         """
         Like as get_stats but only return the array of the trade, and complete history.
-        @todo as table
         """
         results = []
         trader = self.trader()
@@ -1277,9 +1431,11 @@ class Strategy(Runnable):
             if market:
                 def append_trade(market, trades, trade):
                     trades.append({
-                        'symbol': strategy_trader.instrument.market_id,
+                        'mid': strategy_trader.instrument.market_id,
+                        'sym': strategy_trader.instrument.symbol,
                         'id': trade['id'],
-                        'ts': trade['ts'],
+                        'eot': trade['eot'],
+                        'xot': trade['xot'],
                         'd': trade['d'],
                         'p': trade['p'],
                         'q': trade['q'],
@@ -1296,7 +1452,8 @@ class Strategy(Runnable):
                         'w': trade['w'],
                         'wt': trade['wt'],
                         'aep': trade['aep'],
-                        'axp': trade['axp']
+                        'axp': trade['axp'],
+                        'com': trade['com'],
                     })
 
                 for trade in strategy_trader._stats['success']:
@@ -1310,17 +1467,7 @@ class Strategy(Runnable):
 
             strategy_trader.unlock()
 
-        results.sort(key=lambda t: -t['id'])
-
-        if offset is None:
-            offset = 0
-
-        if limit is None:
-            limit = len(results)
-
-        limit = offset + limit
-
-        return results[offset:limit]
+        return results
 
     #
     # display formatters
@@ -1364,7 +1511,7 @@ class Strategy(Runnable):
                     cr = "0.0"
 
                 # per active trade
-                markets.append(r['symbol'])
+                markets.append(r['mid'])
                 trade_id.append(t['id'])
                 direction.append(t['d'])
                 olp.append(t['l'])
@@ -1378,7 +1525,7 @@ class Strategy(Runnable):
                 status.append(t['s'])
                 bests.append(t['b'])
                 worsts.append(t['w'])
-                entry_times.append(datetime.fromtimestamp(t['ts']).strftime('%Y-%m-%d %H:%M:%S'))
+                entry_times.append(datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'))
                 timeframes.append(t['tf'])
 
         data = {
@@ -1398,9 +1545,9 @@ class Strategy(Runnable):
 
         if quantities:
             data['Qty'] = qty
-            data['Status'] = status
             data['Entry Q'] = eqty
             data['Exit Q'] = xqty
+            data['Status'] = status
 
         arr = tabulate(data, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
 
@@ -1435,11 +1582,11 @@ class Strategy(Runnable):
             cr = Color.colorize_updn("%.2f" % (r['rate']*100.0), 0.0, r['rate'], style=style)
             cp = Color.colorize_updn("%.2f" % (r['perf']*100.0), 0.0, r['perf'], style=style)
 
-            markets.append(r['symbol'])
+            markets.append(r['mid'])
             pl.append(cr)
             perf.append(cp)
-            worst.append(r['worst']*100.0)
-            best.append(r['best']*100.0)
+            worst.append("%.2f" % (r['worst']*100.0))
+            best.append("%.2f" % (r['best']*100.0))
             success.append(r['success'])
             failed.append(r['failed'])
             roe.append(r['roe'])
@@ -1473,8 +1620,8 @@ class Strategy(Runnable):
             'Market': markets,
             'P/L(%)': pl,
             'Total(%)': perf,
-            'Best': best,
-            'Worst': worst,
+            'Best(%)': best,
+            'Worst(%)': worst,
             'Success': success,
             'Failed': failed,
             'ROE': roe
@@ -1487,31 +1634,81 @@ class Strategy(Runnable):
 
         return arr
 
-    def agg_trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None):
+    def agg_trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, summ=True):
         """
-        Returns a table of any active trades plus a resume per market.
+        Returns a table of any aggreged active and closes trades.
         """
-        columns = ('Market', 'P/L(%)', 'Total(%)', 'Best', 'Worst', 'Succes', 'Failed', 'ROE')
+        columns = ('Market', 'P/L(%)', 'Total(%)', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE')
         data = []
 
         self.lock()
+
+        agg_trades = self.get_agg_trades()
+        total_size = (len(columns), len(agg_trades) + (1 if summ else 0))
 
         if offset is None:
             offset = 0
 
         if limit is None:
-            limit = len(markets)
+            limit = len(agg_trades) + (1 if summ else 0)
 
         limit = offset + limit
 
-        trades.sort(key=lambda x: x.market_id)
-        trades = markets[offset:limit]
+        agg_trades.sort(key=lambda x: x['mid'])
+        agg_trades = agg_trades[offset:limit]
 
-        # for trade in trades:
-        #     row = (...
-        #     )
+        pl_sum = 0.0
+        perf_sum = 0.0
+        worst_sum = 0.0
+        best_sum = 0.0
+        success_sum = 0
+        failed_sum = 0
+        roe_sum = 0
 
-        #     data.append(row[col_ofs:])
+        for t in agg_trades:
+            cr = Color.colorize_updn("%.2f" % (t['rate']*100.0), 0.0, t['rate'], style=style)
+            cp = Color.colorize_updn("%.2f" % (t['perf']*100.0), 0.0, t['perf'], style=style)
+
+            row = (
+                t['mid'],
+                cr,
+                cp,
+                "%.2f" % (t['worst']*100.0),
+                "%.2f" % (t['best']*100.0),
+                t['success'],
+                t['failed'],
+                t['roe']
+            )
+
+            pl_sum += t['rate']
+            perf_sum += t['perf']
+            worst_sum = min(worst_sum, t['worst'])
+            best_sum = max(best_sum, t['best'])
+            success_sum += t['success']
+            failed_sum += t['failed']
+            roe_sum += t['roe']
+
+            data.append(row[col_ofs:])
+
+        #
+        # sum
+        #
+
+        if summ:
+            cpl_sum = Color.colorize_updn("%.2f" % (pl_sum*100.0), 0.0, pl_sum, style=style)
+            cperf_sum = Color.colorize_updn("%.2f" % (perf_sum*100.0), 0.0, perf_sum, style=style)
+
+            row = (
+                'Total',
+                cpl_sum,
+                cperf_sum,
+                "%.2f" % (worst_sum*100.0),
+                "%.2f" % (best_sum*100.0),
+                success_sum,
+                failed_sum,
+                roe_sum)
+
+            data.append(row[col_ofs:])
 
         self.unlock()
 
@@ -1519,34 +1716,67 @@ class Strategy(Runnable):
 
     def trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False):
         """
-        Returns a table of any active trades plus a resume per market.
+        Returns a table of any active trades.
         """
+        columns = ['Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Entry date', 'Exit date', 'Comment']
+
         if quantities:
-            columns = ('Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF', 'Qty', 'Status', 'Entry Q', 'Exit Q')
-        else:
-            columns = ('Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF')
+            columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
+
+        columns = tuple(columns)
 
         data = []
 
         self.lock()
 
+        trades = self.get_all_active_trades()
+        total_size = (len(columns), len(trades))
+
         if offset is None:
             offset = 0
 
         if limit is None:
-            limit = len(markets)
+            limit = len(trades)
 
         limit = offset + limit
 
-        trades.sort(key=lambda x: x.market_id)
-        trades = markets[offset:limit]
+        trades.sort(key=lambda x: x['eot'])
+        trades = trades[offset:limit]
 
-        # for trade in trades:
-        #     row = (...
-        #     )
-        #     if quantities:
+        for t in trades:
+            if t['rate'] < 0 and ((t['d'] == 'long' and float(t['b']) > float(t['aep'])) or (t['d'] == 'short' and float(t['b']) < float(t['aep']))):
+                # have been profitable but loss
+                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
+            elif t['rate'] < 0:  # loss
+                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
+            elif t['rate'] > 0:  # profit
+                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
+            else:  # equity
+                cr = "0.0"
 
-        #     data.append(row[col_ofs:])
+            row = [
+                t['mid'],
+                t['id'],
+                cr,
+                t['l'],
+                t['p'],
+                t['sl'],
+                t['tp'],
+                t['b'],
+                t['w'],
+                datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'),
+                datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S'),
+                t['tf'],
+                t['com']
+            ]
+
+            if quantities:
+                row.append(t['q'])
+                row.append(t['e'])
+                row.append(t['x'])
+                row.append(t['s'])
+
+            data.append(row[col_ofs:])
 
         self.unlock()
 
@@ -1572,6 +1802,7 @@ class Strategy(Runnable):
         entry_times = []
         exit_times = []
         timeframes = []
+        comments = []
 
         for t in results:
             # @todo direction
@@ -1593,8 +1824,7 @@ class Strategy(Runnable):
                 _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) <= float(t['tp']), style=style, true=Color.GREEN)
                 _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) >= float(t['sl']), style=style, true=Color.RED)
 
-            # per active trade
-            markets.append(t['symbol'])
+            markets.append(t['mid'])
             trade_id.append(t['id'])
             direction.append(t['d'])
             price.append(t['p']),
@@ -1607,8 +1837,10 @@ class Strategy(Runnable):
             status.append(t['s'])
             bests.append(t['b'])
             worsts.append(t['w'])
-            entry_times.append(datetime.fromtimestamp(t['ts']).strftime('%Y-%m-%d %H:%M:%S'))
+            entry_times.append(datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'))
+            exit_times.append(datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S'))
             timeframes.append(t['tf'])
+            comments.append(t['com'])
 
         data = {
             'Market': markets,
@@ -1618,10 +1850,12 @@ class Strategy(Runnable):
             'Price': price,
             'SL': sl,
             'TP': tp,
-            'Best': bests,
-            'Worst': worsts,
+            'Best(%)': bests,
+            'Worst(%)': worsts,
             'Entry date': entry_times,
+            'Exit date': exit_times,
             'TF': timeframes,
+            'Comment': comments,
         }
 
         if quantities:
@@ -1641,32 +1875,73 @@ class Strategy(Runnable):
         """
         Returns a table of any closed trades.
         """
+        columns = ['Market', 'Id', 'Dir', 'P/L(%)', 'Price', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Entry date', 'Exit date', 'Comment']
+
         if quantities:
-            columns = ('Market', 'Id', 'Dir', 'P/L(%)', 'Price', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF', 'Qty', 'Status', 'Entry Q', 'Exit Q')
-        else:
-            columns = ('Market', 'Id', 'Dir', 'P/L(%)', 'Price', 'SL', 'TP', 'Best', 'Worst', 'Entry date', 'TF')
+            columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
+
+        columns = tuple(columns)
 
         data = []
-
+        
         self.lock()
+
+        closed_trades = self.get_closed_trades()
+        total_size = (len(columns), len(closed_trades))
 
         if offset is None:
             offset = 0
 
         if limit is None:
-            limit = len(markets)
+            limit = len(closed_trades)
 
         limit = offset + limit
 
-        trades.sort(key=lambda x: x.market_id)
-        trades = markets[offset:limit]
+        closed_trades.sort(key=lambda x: -x['xot'])
+        closed_trades = closed_trades[offset:limit]
 
-        # for trade in trades:
-        #     row = (...
-        #     )
-        #     if quantities:
+        for t in closed_trades:
+            # @todo direction
+            if t['rate'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
+                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
+            elif t['rate'] < 0:  # loss
+                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
+            elif t['rate'] > 0:  # profit
+                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
+            else:
+                cr = "0.0"
 
-        #     data.append(row[col_ofs:])
+            # color TP in green if hitted, similarely in red for SL
+            # @todo not really true, could store the exit reason in trade stats
+            if t['d'] == "long":
+                _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']), style=style, true=Color.GREEN)
+                _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']), style=style, true=Color.RED)
+            else:
+                _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) <= float(t['tp']), style=style, true=Color.GREEN)
+                _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) >= float(t['sl']), style=style, true=Color.RED)
+
+            row = [
+                t['mid'],
+                t['id'],
+                t['d'],
+                cr,
+                t['p'],
+                _sl,
+                _tp,
+                t['b'],
+                t['w'],
+                t['tf'],
+                datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'),
+                datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S'),
+                t['com']]
+
+            if quantities:
+                row.append(t['q'])
+                row.append(t['e'])
+                row.append(t['x'])
+                row.append(t['s'])
+
+            data.append(row[col_ofs:])
 
         self.unlock()
 

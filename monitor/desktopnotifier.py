@@ -241,9 +241,9 @@ class DesktopNotifier(Notifiable):
 
                 if self.discord:
                     if signal.data['identifier'] in self._discord_webhook:
-                        send_to_discord(self._discord_webhook[signal.data['identifier']], 'CryptoBot', '```' + message + '```')
+                        send_to_discord(self._discord_webhook[signal.data['identifier']], 'SiiS', '```' + message + '```')
                     else:
-                        send_to_discord(self._discord_webhook['signals'], 'CryptoBot', '```' + message + '```')
+                        send_to_discord(self._discord_webhook['signals'], 'SiiS', '```' + message + '```')
 
                 # log them to the signal view
                 Terminal.inst().notice(message, view="signal")
@@ -330,7 +330,7 @@ class DesktopNotifier(Notifiable):
                 i += 1
 
             if buf:
-                send_to_discord(dst, 'Bot', '```' + buf + '```')
+                send_to_discord(dst, 'SiiS', '```' + buf + '```')
 
     def refresh_stats(self):
         self.refresh_strategies_stats()
@@ -361,42 +361,24 @@ class DesktopNotifier(Notifiable):
         if Terminal.inst().is_active('strategy') or Terminal.inst().is_active('perf'):
             results = appl.get_stats()
 
-            # tabular formated text
-            # @todo table(...)
-            arr1 = appl.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
-            arr2 = appl.formatted_agg_trade_stats(results, style=Terminal.inst().style(), quantities=True)
-
             # strategy view
             if Terminal.inst().is_active('strategy'):
                 Terminal.inst().info("Active trades for strategy %s - %s" % (appl.name, appl.identifier), view='strategy-head')
-                Terminal.inst().info(arr1, view='strategy')
-                # columns, table, total_size = trader.trades_table(*Terminal.inst().active_content().format(), quantities=True)
-                # Terminal.inst().table(columns, table, total_size, view='stats')
+                columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                Terminal.inst().table(columns, table, total_size, view='strategy')
 
             # perf view
             if Terminal.inst().is_active('perf'):
                 Terminal.inst().info("Perf per market trades for strategy %s - %s" % (appl.name, appl.identifier), view='perf-head')
-                Terminal.inst().info(arr2, view='perf')
-                # columns, table, total_size = trader.agg_trades_table(*Terminal.inst().active_content().format(), quantities=True)
-                # Terminal.inst().table(columns, table, total_size, view='stats')
+                columns, table, total_size = appl.agg_trades_stats_table(*Terminal.inst().active_content().format(), summ=True)
+                Terminal.inst().table(columns, table, total_size, view='perf')
 
         # stats view
         if Terminal.inst().is_active('stats'):
             Terminal.inst().info("Trade history for strategy %s - %s" % (appl.name, appl.identifier), view='stats-head')
 
-            # @todo table(...)
-            results = appl.get_history_stats(0, 50, None)
-
-            # tabular formated text
-            arr = appl.formatted_closed_trade_stats(results, style=Terminal.inst().style(), quantities=True)
-
-            # columns, table, total_size = trader.trades_history_table(*Terminal.inst().active_content().format(), quantities=True)
-            # Terminal.inst().table(columns, table, total_size, view='stats')
-
-            try:
-                Terminal.inst().info(arr, view='stats')
-            except:
-                pass
+            columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+            Terminal.inst().table(columns, table, total_size, view='stats')
 
     def refresh_traders_stats(self):
         if not self.trader_service:

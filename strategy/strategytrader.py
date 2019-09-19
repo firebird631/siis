@@ -515,7 +515,8 @@ class StrategyTrader(object):
 
                     record = {
                         'id': trade.id,
-                        'ts': trade.entry_open_time,
+                        'eot': trade.entry_open_time,
+                        'xot': trade.exit_open_time,
                         'd': trade.direction_to_str(),
                         'p': self.instrument.format_price(trade.entry_price),
                         'q': self.instrument.format_quantity(trade.order_quantity),
@@ -532,7 +533,8 @@ class StrategyTrader(object):
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
                         'rate': rate,
-                        'c': trade.get_conditions()
+                        'c': trade.get_conditions(),
+                        'com': trade.comment,
                     }
 
                     if rate < 0:

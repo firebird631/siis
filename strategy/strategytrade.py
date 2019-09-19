@@ -30,7 +30,7 @@ class StrategyTrade(object):
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
                 'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', 'ptp', '_stats', 'last_tp_ot', 'last_sl_ot', \
-                'exit_trades'
+                'exit_trades', '_comment'
 
     VERSION = "1.0.0"
 
@@ -61,6 +61,7 @@ class StrategyTrade(object):
 
         self._operations = []      # list containing the operation to process during the trade for semi-automated trading
         self._user_trade = False   # true if the user is responsible of the TP & SL adjustement else (default) strategy manage it
+        self._comment = ""         # optionnal comment (must be few chars)
 
         self._next_operation_id = 1
 
@@ -206,6 +207,14 @@ class StrategyTrade(object):
     def last_stop_loss(self):
         """Last stop-loss order creation/modification timestamp"""
         return self.last_sl_ot
+
+    @property
+    def comment(self):
+        return self._comment
+    
+    @comment.setter
+    def comment(self, comment):
+        self._comment = comment
 
     #
     # processing
@@ -512,6 +521,7 @@ class StrategyTrade(object):
             'closing': self._closing,
             'timeframe': self._timeframe,  # self.timeframe_to_str(),
             'user-trade': self._user_trade,
+            'comment': self._comment,
             'avg-entry-price': self.aep,
             'avg-exit-price': self.axp,
             'take-profit-price': self.tp,
@@ -541,6 +551,7 @@ class StrategyTrade(object):
         self._closing = data.get('closing', False)
         self._timeframe =  data.get('timeframe', 0)  # timeframe_from_str(data.get('timeframe', '4h'))
         self._user_trade = data.get('user-trade')
+        self._comment = data.get('comment', "")
 
         self._operations = []
         self._next_operation_id = -1
