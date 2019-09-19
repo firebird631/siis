@@ -27,6 +27,7 @@ from common.utils import timeframe_to_str
 
 import logging
 logger = logging.getLogger('siis.monitor.desktopnotifier')
+signal_logger = logging.getLogger('siis.signal')
 
 
 class DesktopNotifier(Notifiable):
@@ -246,6 +247,9 @@ class DesktopNotifier(Notifiable):
 
                 # log them to the signal view
                 Terminal.inst().notice(message, view="signal")
+
+                # and in signal logger
+                signal_logger.info(message)
 
             # process sound
             if not self.backtesting and self.audible and audio_alert:

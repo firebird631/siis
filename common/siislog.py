@@ -8,6 +8,8 @@ import logging
 import colorama
 import curses
 
+from logging.handlers import RotatingFileHandler
+
 from terminal.terminal import Terminal
 
 class ColoredFormatter(logging.Formatter):
@@ -78,7 +80,8 @@ class TerminalHandler(logging.StreamHandler):
         logging.StreamHandler.__init__(self)
 
     def filter(self, record):
-        if record.pathname.startswith('siis.exec.'):
+        if record.pathname.startswith('siis.exec.') or record.pathname.startswith('siis.signal.'):
+            # this only goes to loggers, not to stdout
             return False
 
         return True
@@ -137,14 +140,16 @@ class SiisLog(object):
         self.file_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
         # a siis logger with siis.log
-        self.file_logger = logging.FileHandler(options['log-path'] + '/' + options['log-name'])
+        self.file_logger = RotatingFileHandler(options['log-path'] + '/' + options['log-name'], maxBytes=1024*1024, backupCount=5)
+        # self.file_logger = logging.FileHandler(options['log-path'] + '/' + options['log-name'])
         self.file_logger.setFormatter(self.file_formatter)
         self.file_logger.setLevel(logging.DEBUG)
 
         self.add_file_logger('siis', self.file_logger)
 
         # a siis logger with exec.siis.log
-        self.exec_file_logger = logging.FileHandler(options['log-path'] + '/' + "exec." + options['log-name'])
+        # self.exec_file_logger = logging.FileHandler(options['log-path'] + '/' + "exec." + options['log-name'])
+        self.exec_file_logger = RotatingFileHandler(options['log-path'] + '/' + "exec." + options['log-name'], maxBytes=1024*1024, backupCount=5)
         self.exec_file_logger.setFormatter(self.file_formatter)
         self.exec_file_logger.setLevel(logging.INFO)
 
@@ -152,12 +157,22 @@ class SiisLog(object):
         self.add_file_logger('siis.exec', self.exec_file_logger, False)
 
         # a siis logger with error.siis.log
-        self.error_file_logger = logging.FileHandler(options['log-path'] + '/' + "error." + options['log-name'])
+        # self.error_file_logger = logging.FileHandler(options['log-path'] + '/' + "error." + options['log-name'])
+        self.error_file_logger = RotatingFileHandler(options['log-path'] + '/' + "error." + options['log-name'], maxBytes=1024*1024, backupCount=5)
         self.error_file_logger.setFormatter(self.file_formatter)
         self.error_file_logger.setLevel(logging.INFO)
 
         # don't propagate error trade to siis logger
         self.add_file_logger('siis.error', self.error_file_logger, False)
+
+        # a siis logger with signal.siis.log
+        # self.signal_file_logger = logging.FileHandler(options['log-path'] + '/' + "signal." + options['log-name'])
+        self.signal_file_logger = RotatingFileHandler(options['log-path'] + '/' + "signal." + options['log-name'], maxBytes=1024*1024, backupCount=5)
+        self.signal_file_logger.setFormatter(self.file_formatter)
+        self.signal_file_logger.setLevel(logging.INFO)
+
+        # don't propagate signal trade to siis logger
+        self.add_file_logger('siis.signal', self.signal_file_logger, False)
 
     def add_file_logger(self, name, handler, level=logging.DEBUG, propagate=True):
         my_logger = logging.getLogger(name)
