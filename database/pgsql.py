@@ -353,7 +353,7 @@ class PgSql(Database):
                     cursor.execute("""
                         INSERT INTO asset(broker_id, account_id, asset_id, last_trade_id, timestamp, quantity, price, quote_symbol)
                             VALUES(%s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (broker_id, asset_id) DO UPDATE SET 
+                        ON CONFLICT (broker_id, account_id, asset_id) DO UPDATE SET 
                             last_trade_id = %s, timestamp = %s, quantity = %s, price = %s, quote_symbol = %s""", (*ua, *ua[3:]))
 
                 self._db.commit()
@@ -490,7 +490,7 @@ class PgSql(Database):
                     "INSERT INTO user_trader(broker_id, account_id, market_id, appliance_id, activity, data, regions) VALUES",
                     ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
                             json.dumps(ut[5]).replace("'", "''"), json.dumps(ut[6]).replace("'", "''")) for ut in uti]),
-                    "ON CONFLICT (broker_id, market_id, appliance_id) DO UPDATE SET activity = EXCLUDED.activity, data = EXCLUDED.data, regions = EXCLUDED.regions"
+                    "ON CONFLICT (broker_id, account_id, market_id, appliance_id) DO UPDATE SET activity = EXCLUDED.activity, data = EXCLUDED.data, regions = EXCLUDED.regions"
                 ))
 
                 cursor.execute(query)
