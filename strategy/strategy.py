@@ -56,9 +56,7 @@ class Strategy(Runnable):
 
     MAX_SIGNALS = 2000   # max size of the signals messages queue before ignore some market data (tick, ohlc)
 
-    COMMAND_SHOW_STATS = 1
-    COMMAND_SHOW_HISTORY = 2
-    COMMAND_INFO = 3
+    COMMAND_INFO = 1
 
     COMMAND_TRADE_ENTRY = 10    # manually create a new trade
     COMMAND_TRADE_MODIFY = 11   # modify an existing trade
@@ -1016,11 +1014,7 @@ class Strategy(Runnable):
         Some parts are mutexed some others are not.
         @todo some command are only display, so could be moved to a displayer, and command could only return an object
         """
-        if command_type == Strategy.COMMAND_SHOW_STATS:
-            self.cmd_trade_stats(data)
-        elif command_type == Strategy.COMMAND_SHOW_HISTORY:
-            self.cmd_trade_history(data)
-        elif command_type == Strategy.COMMAND_INFO:
+        if command_type == Strategy.COMMAND_INFO:
             self.cmd_trader_info(data)
         elif command_type == Strategy.COMMAND_TRADE_ENTRY:
             self.trade_command("entry", data, self.cmd_trade_entry)
@@ -2117,30 +2111,6 @@ class Strategy(Runnable):
         strategy_trader.unlock()
 
         return results
-
-    def cmd_trade_stats(self, data):
-        results = self.get_stats()
-
-        if results:
-            Terminal.inst().notice("Active trades for strategy %s - %s" % (self.name, self.identifier), view='content')
-
-            # tabular formated text
-            arr1 = self.formatted_trade_stats(results, style=Terminal.inst().style(), quantities=True)
-            arr2 = self.formatted_agg_trade_stats(results, style=Terminal.inst().style(), quantities=True)
-
-            Terminal.inst().info(arr1, view='content')
-            Terminal.inst().info(arr2, view='content')
-
-    def cmd_trade_history(self, data):
-        results = self.get_history_stats(0, data.get('limit', 50), None)
-
-        if results:
-            Terminal.inst().notice("Trade history for strategy %s - %s" % (self.name, self.identifier), view='content')
-
-            # tabular formated text
-            arr = self.formatted_closed_trade_stats(results, style=Terminal.inst().style(), quantities=True)
-
-            Terminal.inst().info(arr, view='content')
 
     def cmd_strategy_trader_modify(self, strategy_trader, data):
         """

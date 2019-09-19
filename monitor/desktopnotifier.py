@@ -74,14 +74,9 @@ class DesktopNotifier(Notifiable):
 
         # @todo cleanup and move as conf
         self._discord_webhook = {
-            'signals': 'https://discordapp.com/api/webhooks/539501969862295557/FMQTMhUQbhxow5EPW_2G8YKBPVtpqHEJDczzA2yW5OeQKXVjJKuRZe4ILMPcGEfYZaiq',
-            'altusdt-15m-reports': 'https://discordapp.com/api/webhooks/549002302602870785/usiI7sYPCPm0zcI7Af3OEEpSpH4M0GzCKkL6xfgVgKmIObGRvi8mCSFcY6vusAPDeN5L',
-            'altbtc-15m-reports': 'https://discordapp.com/api/webhooks/549002507763056641/vpPVbeFpd3wVbgecx0AmKKgCeCQ6Cu1SvzxUDD82CodAblI1FWxfFIa1vHQ65IpblPMk',
-            'forex-15m-reports': 'https://discordapp.com/api/webhooks/549002507763056641/vpPVbeFpd3wVbgecx0AmKKgCeCQ6Cu1SvzxUDD82CodAblI1FWxfFIa1vHQ65IpblPMk',
-            'daily-reports': 'https://discordapp.com/api/webhooks/542848229859917834/PyGUjiTmRlSd8j7AtNh-sWef38ZbIQuSxMWQA8VgLMzuPKuV2fvGr3z44B5JFkpQeBNJ',
-            'weekly-reports': 'https://discordapp.com/api/webhooks/542848303281471504/rC9BKhsygiLgAUhTS2JpPSscpVdPn69qJcWMHUZbTacPArFRmDyM4Dt8qmjJLgt5iCLY',
-            'bitmex-crystalball': 'https://discordapp.com/api/webhooks/567346875070677034/83LuKTcMEd5ja6CLQId2u9CnR52L405ir2FPFbIvO52McJxKcqHzUdKSEJgaA6gsopt-',
-            'binance-crystalball': 'https://discordapp.com/api/webhooks/567346955630542869/wSltI4G5QUKfG0D1-4THXjvRTnn1s4LVqFqNik7QWmr_ZWl7eCCpPxUxIA-1y5heC5sr',
+            'signals': 'https://discordapp.com/api/webhooks/...',
+            'altusdt-15m-reports': 'https://discordapp.com/api/webhooks/...',
+            'altbtc-15m-reports': 'https://discordapp.com/api/webhooks/...',
         }
 
         self._alerts = [
@@ -371,11 +366,15 @@ class DesktopNotifier(Notifiable):
             if Terminal.inst().is_active('strategy'):
                 Terminal.inst().info("Active trades for strategy %s - %s" % (appl.name, appl.identifier), view='strategy-head')
                 Terminal.inst().info(arr1, view='strategy')
+                # columns, table, total_size = trader.trades_table(*Terminal.inst().active_content().format(), quantities=True)
+                # Terminal.inst().table(columns, table, total_size, view='stats')
 
             # perf view
             if Terminal.inst().is_active('perf'):
                 Terminal.inst().info("Perf per market trades for strategy %s - %s" % (appl.name, appl.identifier), view='perf-head')
                 Terminal.inst().info(arr2, view='perf')
+                # columns, table, total_size = trader.agg_trades_table(*Terminal.inst().active_content().format(), quantities=True)
+                # Terminal.inst().table(columns, table, total_size, view='stats')
 
         # stats view
         if Terminal.inst().is_active('stats'):
@@ -386,6 +385,9 @@ class DesktopNotifier(Notifiable):
 
             # tabular formated text
             arr = appl.formatted_closed_trade_stats(results, style=Terminal.inst().style(), quantities=True)
+
+            # columns, table, total_size = trader.trades_history_table(*Terminal.inst().active_content().format(), quantities=True)
+            # Terminal.inst().table(columns, table, total_size, view='stats')
 
             try:
                 Terminal.inst().info(arr, view='stats')

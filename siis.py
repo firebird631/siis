@@ -463,25 +463,14 @@ def application(argv):
                             # @todo convert to Command object accelerator
                             if not result:
                                 result = True
-                                
+
+                                # @todo might be replaced by views                                
                                 if value == 'p':
                                     trader_service.command(Trader.COMMAND_LIST_POSITIONS, {})
-                                elif value == 'b':
-                                    trader_service.command(Trader.COMMAND_LIST_ASSETS, {})
-                                elif value == 'm':
-                                    trader_service.command(Trader.COMMAND_LIST_MARKETS, {})
-                                elif value == 't':
-                                    trader_service.command(Trader.COMMAND_LIST_TICKERS, {})                            
-                                elif value == 'c':
-                                    trader_service.command(Trader.COMMAND_DISPLAY_ACCOUNT, {})
                                 elif value == 'o':
                                     trader_service.command(Trader.COMMAND_LIST_ORDERS, {})
                                 elif value == 'g':
                                     trader_service.command(Trader.COMMAND_SHOW_PERFORMANCE, {})
-                                elif value == 'f':
-                                    strategy_service.command(Strategy.COMMAND_SHOW_STATS, {})
-                                elif value == 's':
-                                    strategy_service.command(Strategy.COMMAND_SHOW_HISTORY, {})
 
                                 # display views
 

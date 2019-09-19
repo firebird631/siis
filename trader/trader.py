@@ -53,10 +53,6 @@ class Trader(Runnable):
     COMMAND_INFO = 1
 
     # bases command
-    COMMAND_DISPLAY_ACCOUNT = 100             # display account details
-    COMMAND_LIST_MARKETS = 101                # display list active markets
-    COMMAND_LIST_ASSETS = 102                 # display list non empty assets
-    COMMAND_LIST_TICKERS = 103                # display list active markets tickers
     COMMAND_LIST_ORDERS = 104                 # display list active orders
     COMMAND_LIST_POSITIONS = 105              # display list current account positions
 
@@ -366,23 +362,6 @@ class Trader(Runnable):
                             order.leverage = command.get('leverage', 1)
 
                             self.create_order(order)
-
-        elif command_type == Trader.COMMAND_LIST_MARKETS:
-            # display the list of markets
-            if self.connected and self._markets:
-
-                Terminal.inst().notice("List %i markets for %s" % (len(self._markets), self._name), view='content')
-
-                columns, table, total_size = self.markets_table(style=Terminal.inst().style())
-                Terminal.inst().table(columns, table, total_size, view='content')
-
-        elif command_type == Trader.COMMAND_LIST_TICKERS:
-            # display the list of markets tickers
-            if self.connected and self._markets:
-                Terminal.inst().notice("List %i markets tickers for %s" % (len(self._markets), self._name), view='content')
-
-                columns, table, total_size = self.markets_tickers_table(style=Terminal.inst().style())
-                Terminal.inst().table(columns, table, total_size, view='content')
         
         elif command_type == Trader.COMMAND_LIST_POSITIONS:
             # display the list of ALL positions of the account (managed or not by a strategy)
@@ -469,25 +448,6 @@ class Trader(Runnable):
                 
                 # columns, table, total_size = trader.orders_table(*Terminal.inst().active_content().format())
                 # Terminal.inst().table(columns, table, total_size, view='content')
-
-        elif command_type == Trader.COMMAND_LIST_ASSETS:
-            # display the list of non empty assets
-            if self.connected and self._assets:
-                if self.account is None:
-                    return
-
-                columns, table, total_size = self.assets_table(*Terminal.inst().active_content().format())
-
-                Terminal.inst().notice("List %i assets for %s" % (total_size[1], self._name), view='content')
-                Terminal.inst().table(columns, table, total_size, view='content')
-
-        elif command_type == Trader.COMMAND_DISPLAY_ACCOUNT:
-            # display the account details
-            if self.connected and self._account:
-                Terminal.inst().notice("Account details for %s" % (self._name,), view='content')
-               
-                columns, table, total_size = self.account_table(style=Terminal.inst().style())
-                Terminal.inst().table(columns, table, total_size, view='content')
 
         elif command_type == Trader.COMMAND_INFO:
             # info on the appliance

@@ -421,7 +421,7 @@ class StrategyService(Service):
         self._mutex.release()
 
     def command(self, command_type, data):
-        if Strategy.COMMAND_SHOW_STATS <= command_type <= Strategy.COMMAND_INFO:
+        if command_type == Strategy.COMMAND_INFO:
             # any or specific commands
             appliance_identifier = data.get('appliance')
 

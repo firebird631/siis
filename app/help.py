@@ -26,15 +26,8 @@ def display_help(commands_handler, user_context=False):
         Terminal.inst().message(" - 'e' toggle discord notifications", view='content')
 
         Terminal.inst().message(" - 'p' list positions", view='content')
-        Terminal.inst().message(" - 'b' list assets", view='content')
-        Terminal.inst().message(" - 'm' list availables markets", view='content')
-        Terminal.inst().message(" - 'w' list watched markets", view='content')
-        Terminal.inst().message(" - 't' list tickers", view='content')
-        Terminal.inst().message(" - 'c' list accounts", view='content')
         Terminal.inst().message(" - 'o' list orders", view='content')
         Terminal.inst().message(" - 'g' print trader performance", view='content')
-        Terminal.inst().message(" - 'f' print appliance performance", view='content')
-        Terminal.inst().message(" - 's' print appliance statistics", view='content')
 
         Terminal.inst().message(" - 'A' show account view", view='content')
         Terminal.inst().message(" - 'Q' show assets view", view='content')        
