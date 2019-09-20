@@ -1770,9 +1770,9 @@ class Strategy(Runnable):
                 t['tp'],
                 t['b'],
                 t['w'],
+                t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'),
                 datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S'),
-                t['tf'],
                 t['com']
             ]
 
@@ -1843,9 +1843,9 @@ class Strategy(Runnable):
             status.append(t['s'])
             bests.append(t['b'])
             worsts.append(t['w'])
+            timeframes.append(t['tf'])
             entry_times.append(datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'))
             exit_times.append(datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S'))
-            timeframes.append(t['tf'])
             comments.append(t['com'])
 
         data = {
@@ -1858,9 +1858,9 @@ class Strategy(Runnable):
             'TP': tp,
             'Best(%)': bests,
             'Worst(%)': worsts,
+            'TF': timeframes,
             'Entry date': entry_times,
             'Exit date': exit_times,
-            'TF': timeframes,
             'Comment': comments,
         }
 
@@ -2136,7 +2136,7 @@ class Strategy(Runnable):
                 results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
             else:
                 # close or cancel
-                trade.close(trader, strategy_trader.instrument.market_id)
+                trade.close(trader, strategy_trader.instrument)
 
                 # add a success result message
                 results['messages'].append("Close trade %i on %s:%s at market price %s" % (

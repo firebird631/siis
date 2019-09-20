@@ -30,7 +30,7 @@ class StrategyTrade(object):
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
                 'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', 'ptp', '_stats', 'last_tp_ot', 'last_sl_ot', \
-                'exit_trades', '_comment'
+                'exit_trades', '_comment', '_expiry', '_dirty',
 
     VERSION = "1.0.0"
 
@@ -56,12 +56,14 @@ class StrategyTrade(object):
         self._entry_state = StrategyTrade.STATE_NEW
         self._exit_state = StrategyTrade.STATE_NEW
         self._closing = False
+        self._dirty = False        # flag set when the quantity of the entry trade increase and then the exit orders must be updated
 
         self._timeframe = timeframe  # timeframe that have given this trade
 
         self._operations = []      # list containing the operation to process during the trade for semi-automated trading
         self._user_trade = False   # true if the user is responsible of the TP & SL adjustement else (default) strategy manage it
         self._comment = ""         # optionnal comment (must be few chars)
+        self._expiry = 0           # expiration delay in seconde or 0 if never
 
         self._next_operation_id = 1
 
@@ -188,6 +190,14 @@ class StrategyTrade(object):
     def timeframe(self):
         return self._timeframe
 
+    @property
+    def expiry(self):
+        return self._expiry
+    
+    @expiry.setter
+    def expiry(self, expiry):
+        self._expiry = expiry
+
     def set_user_trade(self, user_trade=True):
         self._user_trade = user_trade
 
@@ -215,6 +225,10 @@ class StrategyTrade(object):
     @comment.setter
     def comment(self, comment):
         self._comment = comment
+
+    @property
+    def is_dirty(self):
+        return self._dirty
 
     #
     # processing
@@ -309,11 +323,19 @@ class StrategyTrade(object):
 
     def is_entry_timeout(self, timestamp, timeout):
         """
-        Return true if the trade timeout.
+        Return true if the trade entry timeout.
 
         @note created timestamp t must be valid else it will timeout every time.
         """
         return (self._entry_state == StrategyTrade.STATE_OPENED) and (self.e == 0) and (self.eot > 0) and ((timestamp - self.eot) >= timeout)
+
+    def is_trade_timeout(self, timestamp):
+        """
+        Return true if the trade timeout.
+
+        @note created timestamp t must be valid else it will timeout every time.
+        """
+        return (self._entry_state in (StrategyTrade.STATE_PARTIALLY_FILLED, StrategyTrade.STATE_FILLED)) and (self.e > 0) and (self.eot > 0) and ((timestamp - self.eot) >= self._expiry)
 
     def is_valid(self, timestamp, validity):
         """
@@ -363,6 +385,12 @@ class StrategyTrade(object):
         """
         return False
 
+    def has_oco_order(self):
+        """
+        Overrides, must return true if the trade have a broker side OCO order
+        """
+        return False
+
     #
     # signals
     #
@@ -378,6 +406,9 @@ class StrategyTrade(object):
 
     def is_target_position(self, position_id, ref_order_id):
         return False
+
+    def update_dirty(self):
+        pass
 
     #
     # Helpers

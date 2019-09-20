@@ -318,6 +318,10 @@ class StrategyTrader(object):
                 if not self.instrument.tradeable:
                     continue
 
+                if trade.is_dirty:
+                    # entry quantity changed need to update the exits orders
+                    trade.update_dirty(trader, self.instrument)
+
                 # potential order exec close price (always close a long)
                 close_exec_price = self.instrument.close_exec_price(Order.LONG)
 

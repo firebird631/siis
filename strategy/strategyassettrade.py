@@ -383,9 +383,34 @@ class StrategyAssetTrade(StrategyTrade):
         """
         return self.limit_oid != None and self.limit_oid != ""
 
+    def has_oco_order(self):
+        """
+        Overrides, must return true if the trade have a broker side OCO order
+        """
+        return self.oco_oid != None and self.oco_oid != ""
+
     #
     # signals
     #
+
+    def update_dirty(self, trader, instrument):
+        done = True
+
+        if self.has_oco_order():
+            done = False
+            # @todo
+        else:
+            if self.has_limit_order():
+                if not self.modify_take_profit(trader, instrument, self.tp):
+                    done = False
+
+            if self.has_stop_order():
+                if not self.modify_stop_loss(trader, instrument, self.sl):
+                    done = False
+
+        if done:
+            # clean dirty flag if all the order have been updated
+            self._dirty = False
 
     def is_target_order(self, order_id, ref_order_id):
         if order_id and (order_id == self.entry_oid or order_id == self.stop_oid or order_id == self.limit_oid or order_id == self.oco_oid):
@@ -455,6 +480,7 @@ class StrategyAssetTrade(StrategyTrade):
                     self.e = data.get('cumulative-filled')
                 elif filled > 0:
                     self.e = instrument.adjust_quantity(self.e + filled)
+                    self._dirty = True
 
                 if self.e >= self.oq:
                     self._entry_state = StrategyTrade.STATE_FILLED
