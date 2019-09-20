@@ -297,7 +297,10 @@ class DesktopNotifier(Notifiable):
     def send_discord(self):
         # @todo must be in a specific discordnotifier
         for strategy in self.strategy_service.get_appliances():
+            strategy.lock()
             results = strategy.get_stats()
+            strategy.unlock()
+
             dst = None
 
             if 'altusdt' in strategy.identifier:
@@ -359,8 +362,6 @@ class DesktopNotifier(Notifiable):
             return
 
         if Terminal.inst().is_active('strategy') or Terminal.inst().is_active('perf'):
-            results = appl.get_stats()
-
             # strategy view
             if Terminal.inst().is_active('strategy'):
                 Terminal.inst().info("Active trades for strategy %s - %s" % (appl.name, appl.identifier), view='strategy-head')

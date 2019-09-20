@@ -1337,6 +1337,7 @@ class Strategy(Runnable):
                 com: trade comment
         """
         results = []
+
         trader = self.trader()
 
         for k, strategy_trader in self._strategy_traders.items():
@@ -1422,6 +1423,9 @@ class Strategy(Runnable):
         Like as get_stats but only return the array of the trade, and complete history.
         """
         results = []
+
+        self.lock()
+
         trader = self.trader()
 
         for k, strategy_trader in self._strategy_traders.items():
@@ -1466,6 +1470,8 @@ class Strategy(Runnable):
                     append_trade(market, results, trade)
 
             strategy_trader.unlock()
+
+        self.unlock()
 
         return results
 
