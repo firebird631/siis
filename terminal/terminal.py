@@ -17,20 +17,22 @@ from tabulate import tabulate
 
 class Color(object):
 
-    WHITE = '\033[0m'    # '\\0'
-    RED = '\033[31m'     # '\\1'
-    GREEN = '\033[32m'   # '\\5'
-    ORANGE = '\033[33m'  # '\\6'
-    BLUE = '\033[34m'    # '\\4'
-    PURPLE = '\033[35m'  # '\\2'
+    WHITE = '\033[0m'      # '\\0'
+    RED = '\033[31m'       # '\\1'
+    GREEN = '\033[32m'     # '\\5'
+    ORANGE = '\033[33m'    # '\\6'
+    BLUE = '\033[34m'      # '\\4'
+    PURPLE = '\033[35m'    # '\\2'
+    YELLOW = '\033[33;1m'  # '\\3'
 
     UTERM_COLORS_MAP = {
-        '\033[0m': '\\0',   # white (normal)
-        '\033[31m': '\\1',  # red
-        '\033[32m': '\\5',  # green
-        '\033[33m': '\\6',  # orange
-        '\033[34m': '\\4',  # blue
-        '\033[35m': '\\2'   # purple
+        '\033[0m': '\\0',     # white (normal)
+        '\033[31m': '\\1',    # red
+        '\033[32m': '\\5',    # green
+        '\033[33m': '\\6',    # orange
+        '\033[34m': '\\4',    # blue
+        '\033[35m': '\\2',    # purple
+        '\033[33;1m': '\\3',  # yellow
     }
 
     @staticmethod

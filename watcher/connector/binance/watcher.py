@@ -37,13 +37,13 @@ class BinanceWatcher(Watcher):
     """
     Binance market watcher using REST + WS.
 
-    @note Market step-size are scaled for the smallers of them to avoid somes weirds issues (have to check more on that).
+    @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/margin-api.md
 
-    @todo Eeach day or 4h update/store markets info.
-    @todo Soon support of margin trading, get position from REST API + WS events.
+    @todo Margin trading, get position from REST API + WS events.
     @todo Finish order book events.
     @todo Update base_exchange_rate as price change.
-    @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/margin-api.md
+    @todo Once a market is not longer found (market update) we could remove it from watched list,
+        and even have a special signal to strategy, and remove the subscriber, and markets data from watcher and trader
     """
 
     BASE_QUOTE = 'BTC'
@@ -779,11 +779,17 @@ class BinanceWatcher(Watcher):
         for market_id in self._watched_instruments:
             market = self.fetch_market(market_id)
 
-            if market.is_open:
+            if market is None:
+                # can be a removed market, signal its closed
+                market_data = (market_id, False, time.time(), 0.0, 0.0, None, None, None, None, None)
+
+            elif market.is_open:
+                # market exists and tradable
                 market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ofr,
                         market.base_exchange_rate, market.contract_size, market.value_per_pip,
                         market.vol24h_base, market.vol24h_quote)
             else:
+                # market exists but closed
                 market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)

@@ -31,8 +31,6 @@ from strategy.strategyindmargintrade import StrategyIndMarginTrade
 
 from database.database import Database
 
-from tabulate import tabulate
-
 import logging
 logger = logging.getLogger('siis.strategy')
 
@@ -44,12 +42,6 @@ class Strategy(Runnable):
     A strategy is the implementation, an the appliance is an instance of a strategy.
     Then when speaking of appliance it always refers to a contextual instance of a strategy,
     and when speaking of strategy it refers to the algorithm, the model, the implementation.
-
-    @todo tabulated might support columns shifting from left, and row offet to be displayed better in the terminal
-        after having added the tabulated support directly to terminal (update for current trades, history trades).
-
-    @todo Getting display data are the slow part, causing potential global latency, don't call it too often.
-        Maybe a kind of event sourcing will be preferable.
 
     @todo Move Each COMMAND_ to command/ and have a registry
     """
@@ -1479,167 +1471,6 @@ class Strategy(Runnable):
     # display formatters
     #
 
-    def formatted_trade_stats(self, results, style='', quantities=False):
-        # @deprecated
-        markets = []
-        trade_id = []
-        direction = []
-        olp = []
-        price = []
-        sl = []
-        tp = []
-        rate = []
-        qty = []
-        eqty = []
-        xqty = []
-        status = []
-        bests = []
-        worsts = []
-        entry_times = []
-        exit_times = []
-        timeframes = []
-
-        for r in results:
-            if r['perf'] == 0.0 and not r['trades']:
-                continue
-
-            cr = Color.colorize_updn("%.2f" % (r['rate']*100.0), 0.0, r['rate'], style=style)
-
-            for t in r['trades']:
-                if t['rate'] < 0 and ((t['d'] == 'long' and float(t['b']) > float(t['aep'])) or (t['d'] == 'short' and float(t['b']) < float(t['aep']))):
-                    # have been profitable but loss
-                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
-                elif t['rate'] < 0:  # loss
-                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
-                elif t['rate'] > 0:  # profit
-                    cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
-                else:  # equity
-                    cr = "0.0"
-
-                # per active trade
-                markets.append(r['mid'])
-                trade_id.append(t['id'])
-                direction.append(t['d'])
-                olp.append(t['l'])
-                price.append(t['p'])
-                sl.append(t['sl'])
-                tp.append(t['tp'])
-                rate.append(cr)
-                qty.append(t['q'])
-                eqty.append(t['e'])
-                xqty.append(t['x'])
-                status.append(t['s'])
-                bests.append(t['b'])
-                worsts.append(t['w'])
-                entry_times.append(datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'))
-                timeframes.append(t['tf'])
-
-        data = {
-            'Market': markets,
-            'Id': trade_id,
-            'Dir': direction,
-            'P/L(%)': rate,
-            'Limit': olp,
-            'Price': price,
-            'Entry date': entry_times,
-            'TF': timeframes,
-            'SL': sl,
-            'TP': tp,
-            'Best': bests,
-            'Worst': worsts
-        }
-
-        if quantities:
-            data['Qty'] = qty
-            data['Entry Q'] = eqty
-            data['Exit Q'] = xqty
-            data['Status'] = status
-
-        arr = tabulate(data, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        if style == 'uterm' or style == 'curses':
-            arr = arr.replace(Color.ORANGE, '\\6').replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
-
-        return arr
-
-    def formatted_agg_trade_stats(self, results, style='', quantities=False, summ=True):
-        # @deprecated
-        markets = []
-        pl = []
-        perf = []
-        worst = []
-        best = []
-        success = []
-        failed = []
-        roe = []
-
-        pl_sum = 0.0
-        perf_sum = 0.0
-        worst_sum = 0.0
-        best_sum = 0.0
-        success_sum = 0
-        failed_sum = 0
-        roe_sum = 0
-
-        for r in results:
-            if r['perf'] == 0.0 and not r['trades']:
-                continue
-
-            cr = Color.colorize_updn("%.2f" % (r['rate']*100.0), 0.0, r['rate'], style=style)
-            cp = Color.colorize_updn("%.2f" % (r['perf']*100.0), 0.0, r['perf'], style=style)
-
-            markets.append(r['mid'])
-            pl.append(cr)
-            perf.append(cp)
-            worst.append("%.2f" % (r['worst']*100.0))
-            best.append("%.2f" % (r['best']*100.0))
-            success.append(r['success'])
-            failed.append(r['failed'])
-            roe.append(r['roe'])
-
-            pl_sum += r['rate']
-            perf_sum += r['perf']
-            worst_sum = min(worst_sum, r['worst'])
-            best_sum = max(best_sum, r['best'])
-            success_sum += r['success']
-            failed_sum += r['failed']
-            roe_sum += r['roe']
-
-        #
-        # sum
-        #
-
-        if summ:
-            cpl_sum = Color.colorize_updn("%.2f" % (pl_sum*100.0), 0.0, pl_sum, style=style)
-            cperf_sum = Color.colorize_updn("%.2f" % (perf_sum*100.0), 0.0, perf_sum, style=style)
-
-            markets.append('Total')
-            pl.append(cpl_sum)
-            perf.append(cperf_sum)
-            worst.append("%.2f" % (worst_sum*100.0))
-            best.append("%.2f" % (best_sum*100.0))
-            success.append(success_sum)
-            failed.append(failed_sum)
-            roe.append(roe_sum)
-
-        df = {
-            'Market': markets,
-            'P/L(%)': pl,
-            'Total(%)': perf,
-            'Best(%)': best,
-            'Worst(%)': worst,
-            'Success': success,
-            'Failed': failed,
-            'ROE': roe
-        }
-
-        arr = tabulate(df, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f")
-
-        if style == 'uterm' or style == 'curses':
-            arr = arr.replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
-
-        return arr
-
     def agg_trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, summ=True):
         """
         Returns a table of any aggreged active and closes trades.
@@ -1771,8 +1602,8 @@ class Strategy(Runnable):
                 t['b'],
                 t['w'],
                 t['tf'],
-                datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'),
-                datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S'),
+                datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S') if t['eot'] > 0 else "",
+                datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S') if t['xot'] > 0 else "",
                 t['com']
             ]
 
@@ -1787,95 +1618,6 @@ class Strategy(Runnable):
         self.unlock()
 
         return columns[col_ofs:], data, total_size
-
-    def formatted_closed_trade_stats(self, results, style='', quantities=False):
-        """
-        Formatted list of terminated trades.
-        """
-        markets = []
-        trade_id = []
-        direction = []
-        price = []
-        sl = []
-        tp = []
-        rate = []
-        qty = []
-        eqty = []
-        xqty = []
-        status = []
-        bests = []
-        worsts = []
-        entry_times = []
-        exit_times = []
-        timeframes = []
-        comments = []
-
-        for t in results:
-            # @todo direction
-            if t['rate'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
-                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
-            elif t['rate'] < 0:  # loss
-                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
-            elif t['rate'] > 0:  # profit
-                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
-            else:
-                cr = "0.0"
-
-            # color TP in green if hitted, similarely in red for SL
-            # @todo not really true, could store the exit reason in trade stats
-            if t['d'] == "long":
-                _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']), style=style, true=Color.GREEN)
-                _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']), style=style, true=Color.RED)
-            else:
-                _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) <= float(t['tp']), style=style, true=Color.GREEN)
-                _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) >= float(t['sl']), style=style, true=Color.RED)
-
-            markets.append(t['mid'])
-            trade_id.append(t['id'])
-            direction.append(t['d'])
-            price.append(t['p']),
-            sl.append(_sl),
-            tp.append(_tp),
-            rate.append(cr)
-            qty.append(t['q']),
-            eqty.append(t['e']),
-            xqty.append(t['x']),
-            status.append(t['s'])
-            bests.append(t['b'])
-            worsts.append(t['w'])
-            timeframes.append(t['tf'])
-            entry_times.append(datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'))
-            exit_times.append(datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S'))
-            comments.append(t['com'])
-
-        data = {
-            'Market': markets,
-            'Id': trade_id,
-            'Dir': direction,
-            'P/L(%)': rate,
-            'Price': price,
-            'SL': sl,
-            'TP': tp,
-            'Best(%)': bests,
-            'Worst(%)': worsts,
-            'TF': timeframes,
-            'Entry date': entry_times,
-            'Exit date': exit_times,
-            'Comment': comments,
-        }
-
-        if quantities:
-            data['Qty'] = qty
-            data['Entry'] = eqty
-            data['Exited'] = xqty
-            data['Status'] = status
-
-        arr = tabulate(data, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        if style == 'uterm' or style == 'curses':
-            arr = arr.replace(Color.ORANGE, '\\6').replace(Color.RED, '\\1').replace(Color.GREEN, '\\5').replace(Color.WHITE, '\\0')
-
-        return arr
 
     def closed_trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False):
         """

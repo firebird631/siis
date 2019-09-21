@@ -75,9 +75,9 @@ class DesktopNotifier(Notifiable):
 
         # @todo cleanup and move as conf
         self._discord_webhook = {
-            'signals': 'https://discordapp.com/api/webhooks/...',
-            'altusdt-15m-reports': 'https://discordapp.com/api/webhooks/...',
-            'altbtc-15m-reports': 'https://discordapp.com/api/webhooks/...',
+            # 'binance-altusdt-top.trades': 'https://discordapp.com/api/webhooks/...',
+            # 'binance-altusdt-top.agg-trades': 'https://discordapp.com/api/webhooks/...',
+            # 'binance-altusdt-top.closed-trades': 'https://discordapp.com/api/webhooks/...',
         }
 
         self._alerts = [
@@ -286,7 +286,8 @@ class DesktopNotifier(Notifiable):
         if self.strategy_service:
             # discord 15m reports
 
-            # if self.discord and time.time() - self._last_stats >= 15*60:  # every 15m
+            if self.discord and time.time() - self._last_stats >= 15*60:  # every 15m
+                pass
             #     if self.send_discord():
             #         self._last_stats = time.time()
 
@@ -295,28 +296,47 @@ class DesktopNotifier(Notifiable):
                 self.refresh_stats()
                 self._last_strategy_view = time.time()
 
-    def send_discord(self):
-        # @todo must be in a specific discordnotifier
-        for strategy in self.strategy_service.get_appliances():
-            strategy.lock()
-            results = strategy.get_stats()
-            strategy.unlock()
+    #
+    # discord notification @deprecated must be in a specific discordnotifier
+    #
 
+    def format_table(self, data):
+        arr = tabulate(data, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
+        # remove colors
+        arr = arr.replace(Color.ORANGE, '').replace(Color.RED, '').replace(Color.GREEN, '').replace(Color.WHITE, '').replace(Color.PURPLE, '')
+
+        return arr
+
+    def send_discord(self):
+        for strategy in self.strategy_service.get_appliances():
             dst = None
 
-            if 'altusdt' in strategy.identifier:
-                dst = self._discord_webhook['altusdt-15m-reports']
-            elif 'altbtc' in strategy.identifier:
-                dst = self._discord_webhook['altbtc-15m-reports']
-            elif 'forex' in strategy.identifier:
-                dst = self._discord_webhook['forex-15m-reports']
+            if strategy.identifier + '.trades' in self._discord_webhook:
+                trades_dst = self._discord_webhook[strategy.identifier + '.trades']
 
-            if results:
-                arr1 = strategy.formatted_trade_stats(results, style='')
-                arr2 = strategy.formatted_agg_trade_stats(results, style='')
+            if strategy.identifier + '.agg-trades' in self._discord_webhook:
+                agg_trades_dst = self._discord_webhook[strategy.identifier + '.agg-trades']
 
-                self.split_and_send(dst, arr1)
-                self.split_and_send(dst, arr2)
+            if strategy.identifier + '.closed-trades' in self._discord_webhook:
+                closed_trades_dst = self._discord_webhook[strategy.identifier + '.closed-trades']
+
+            if trades_dst:
+                columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                if table:
+                    arr = self.format_table(table)
+                    self.split_and_send(trades_dst, arr)
+            
+            if agg_trades_dst:
+                columns, table, total_size = appl.agg_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                if table:
+                    arr = self.format_table(table)
+                    self.split_and_send(agg_trades_dst, arr)
+
+            if closed_trades_dst:
+                columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                if table:
+                    arr = self.format_table(table)
+                    self.split_and_send(closed_trades_dst, arr)
 
         return True
 
@@ -335,6 +355,10 @@ class DesktopNotifier(Notifiable):
 
             if buf:
                 send_to_discord(dst, 'SiiS', '```' + buf + '```')
+
+    #
+    # view @deprecated must uses the new views handler
+    #
 
     def refresh_stats(self):
         self.refresh_strategies_stats()

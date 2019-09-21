@@ -1100,6 +1100,22 @@ class Trader(Runnable):
                 ofr = market.format_price(market.ofr)
                 spread = market.format_price(market.spread)
 
+            if market.vol24h_quote:
+                # @todo could be configured
+                low = 0
+                if market.quote in ('USD', 'EUR', 'ZEUR', 'ZUSD', 'USDT', 'PAX', 'USDC', 'USDS', 'BUSD', 'TUSD'):
+                    low = 1000000
+                elif market.quote in ('BTC'):
+                    low = 100
+                elif market.quote in ('ETH'):
+                    low = 5000
+                elif market.quote in ('BNB'):
+                    low = 50000
+
+                vol24h_quote = Color.colorize_cond("%.2f" % market.vol24h_quote, market.vol24h_quote < low, style=style, true=Color.YELLOW, false=Color.WHITE)
+            else:
+                vol24h_quote = charmap.HOURGLASS
+
             row = (
                  market.market_id,
                  market.symbol,
@@ -1107,8 +1123,8 @@ class Trader(Runnable):
                  ofr,
                  spread,
                  market.format_quantity(market.vol24h_base) if market.vol24h_base else charmap.HOURGLASS,
-                 ("%.2f" % market.vol24h_quote) if market.vol24h_quote else charmap.HOURGLASS,
-                 datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S"))
+                 vol24h_quote,
+                 datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S") if market.last_update_time else charmap.HOURGLASS)
 
             data.append(row[col_ofs:])
 
