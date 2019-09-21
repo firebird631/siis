@@ -398,7 +398,7 @@ class CommandsHandler(object):
         # each time a char is typed current completion is reset
         self._tab_pos = -1
 
-    def process_key(self, key_code, args):
+    def process_key(self, key_code, args, command_mode):
         """
         Process a key on the command handler.
         """
@@ -410,21 +410,21 @@ class CommandsHandler(object):
 
             return self._aliases[key_code]
 
-        elif key_code == 'KEY_ESCAPE':
+        elif key_code == 'KEY_ESCAPE' and command_mode:
             self._current = []
             self._history_pos = 0
             self._word = ""
             self._tab_pos = -1
 
-        elif key_code == 'KEY_STAB':
+        elif key_code == 'KEY_STAB' and command_mode:
             args, self._tab_pos = self.process_cli_completion([*args[:-1], self._word.lstrip(':')], self._tab_pos, 1)
             return args
 
-        elif key_code == 'KEY_BTAB':
+        elif key_code == 'KEY_BTAB' and command_mode:
             args, self._tab_pos = self.process_cli_completion([*args[:-1], self._word.lstrip(':')], self._tab_pos, -1)
             return args
 
-        elif key_code == 'KEY_UP':
+        elif key_code == 'KEY_UP' and command_mode:
             if self._history:
                 if (len(self._history) + self._history_pos > 0):
                     if self._history_pos == 0:
@@ -433,7 +433,7 @@ class CommandsHandler(object):
                     self._history_pos -= 1
                     return self._history[self._history_pos]
 
-        elif key_code == 'KEY_DOWN':
+        elif key_code == 'KEY_DOWN' and command_mode:
             if self._history:
                 if self._history_pos < 0:
                     self._history_pos += 1

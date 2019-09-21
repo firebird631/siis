@@ -378,13 +378,14 @@ def application(argv):
                     commands_handler.process_char(c, args)
 
                 if key:
-                    view_service.on_key_pressed(key)
-
                     if key == 'KEY_ESCAPE':
                         # cancel command
                         value = None
                         value_changed = True
                         command_timeout = 0
+
+                        # use command mode
+                        Terminal.inst().set_mode(Terminal.MODE_DEFAULT)
 
                     # split the commande line
                     args = [arg for arg in (value[1:].split(' ') if value and value.startswith(':') else []) if arg]
@@ -392,7 +393,7 @@ def application(argv):
                         args.append('')
 
                     # process on the arguments
-                    args = commands_handler.process_key(key, args)
+                    args = commands_handler.process_key(key, args, Terminal.inst().mode == Terminal.MODE_COMMAND)
 
                     if args:
                         # regen the updated commande ligne
@@ -404,7 +405,7 @@ def application(argv):
 
                 # @todo move the rest to command_handler
                 if c:
-                    if value and value[0] == ':':                       
+                    if value and value[0] == ':':
                         if c == '\b':
                             # backspace, erase last command char
                             value = value[:-1] if value else None
@@ -449,14 +450,25 @@ def application(argv):
                             value_changed = True
                             value = None
 
+                            # use default mode
+                            Terminal.inst().set_mode(Terminal.MODE_DEFAULT)
+
                     elif c != '\n':
                         # initial command value
                         value = "" + c
                         value_changed = True
                         command_timeout = time.time()
 
+                        if value and value[0] == ':':
+                            # use command mode
+                            Terminal.inst().set_mode(Terminal.MODE_COMMAND)
+
                     if value and value[0] != ':':
                         # direct key
+
+                        # use default mode
+                        Terminal.inst().set_mode(Terminal.MODE_DEFAULT)
+
                         try:
                             result = commands_handler.process_accelerator(key)
 

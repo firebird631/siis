@@ -680,6 +680,10 @@ class Terminal(object):
     NEUTRAL = '\\7'
     HIGHLIGHT = '\\8'
 
+    MODE_DEFAULT = 0
+    MODE_COMMAND = 1
+    MODE_LOCKED = 2
+
     @classmethod
     def inst(cls):
         global terminal
@@ -715,6 +719,7 @@ class Terminal(object):
         self._active_content = 'content'
         self._old_default = None
         self._key = None
+        self._mode = Terminal.MODE_DEFAULT
 
     def upgrade(self):
         self.setup_term(True)
@@ -1043,7 +1048,7 @@ class Terminal(object):
                 pass
 
             # https://docs.python.org/2/library/curses.html keys list
-            if c and (c.startswith('KEY_') or (c in ('H', 'J', 'K', 'L'))):
+            if c and (c.startswith('KEY_') or (c in ('H', 'J', 'K', 'L') and self._mode == Terminal.MODE_DEFAULT)):
                 if c == 'KEY_BACKSPACE':
                     self._key = c
                     return '\b'
@@ -1067,31 +1072,30 @@ class Terminal(object):
                             if view:
                                 view.redraw()
 
-                # shift + keys arrows for table navigation
-                # ch == curses.KEY_SUP
-                elif c == 'KEY_SR' or c == 'J':
-                    if self._active_content:
+                # shift + keys arrows for table navigation only in default mode (ch == curses.KEY_SUP)
+                elif (c == 'KEY_SR' or c == 'J'):
+                    if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_row(-1)
 
                     self._key = c
-                elif c == 'KEY_SF' or c == 'K':
-                    if self._active_content:
+                elif (c == 'KEY_SF' or c == 'K'):
+                    if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_row(1)
 
                     self._key = c
-                elif c == 'KEY_SLEFT' or c == 'H':
-                    if self._active_content:
+                elif (c == 'KEY_SLEFT' or c == 'H'):
+                    if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_cols(-1)
 
                     self._key = c
-                elif c == 'KEY_SRIGHT' or c == 'L':
-                    if self._active_content:
+                elif (c == 'KEY_SRIGHT' or c == 'L'):
+                    if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_cols(1)
@@ -1100,14 +1104,14 @@ class Terminal(object):
 
                 # pageup/pagedown
                 elif c == 'KEY_PPAGE':
-                    if self._active_content:
+                    if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_row(-(view.height-4))
 
                     self._key = c
                 elif c == 'KEY_NPAGE':
-                    if self._active_content:
+                    if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_row(view.height-4)
@@ -1125,12 +1129,6 @@ class Terminal(object):
                 # F1 to F24
                 elif c.startswith('KEY_F(') and c[-1] == ')':
                     self._key = c
-
-                # mouse handling
-                elif c == 'KEY_MOUSE':
-                    # @todo
-                    # @ref https://www.gnu.org/software/guile-ncurses/manual/html_node/Mouse-handling.html#Mouse-handling
-                    pass
 
                 c = None
 
@@ -1157,3 +1155,10 @@ class Terminal(object):
             view = self._views.get(self._active_content)
             if view:
                 view.clear()
+
+    def set_mode(self, mode):
+        self._mode = mode
+
+    @property
+    def mode(self):
+        return self._mode

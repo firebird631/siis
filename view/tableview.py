@@ -55,18 +55,19 @@ class TableView(View):
     def on_key_pressed(self, key):
         super().on_key_pressed(key)
 
-        if key == 'KEY_PPAGE':
-            self.scroll_row(-(self.height()-4))   
-        elif key == 'KEY_NPAGE':
-            self.scroll_row(self.height()-4)
-        elif c == 'KEY_SR' or c == 'J':
-            self.scroll_row(-1)
-        elif c == 'KEY_SF' or c == 'K':
-            self.scroll_row(1)
-        elif c == 'KEY_SLEFT' or c == 'H':
-            self.scroll_col(-1)
-        elif c == 'KEY_SRIGHT' or c == 'L':
-            self.scroll_col(1)
+        if Terminal.inst().mode == Terminal.MODE_DEFAULT:
+            if key == 'KEY_PPAGE':
+                self.scroll_row(-(self.height()-4))   
+            elif key == 'KEY_NPAGE':
+                self.scroll_row(self.height()-4)
+            elif (c == 'KEY_SR' or c == 'J'):
+                self.scroll_row(-1)
+            elif (c == 'KEY_SF' or c == 'K'):
+                self.scroll_row(1)
+            elif (c == 'KEY_SLEFT' or c == 'H'):
+                self.scroll_col(-1)
+            elif (c == 'KEY_SRIGHT' or c == 'L'):
+                self.scroll_col(1)
 
     def table(self, columns, data):
         """

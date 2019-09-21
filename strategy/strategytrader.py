@@ -826,6 +826,38 @@ class StrategyTrader(object):
     #                     update_sl = True
     #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
 
+    def check_entry_timeout(self, trade, timestamp, timeout):
+        """
+        Timeout then can cancel a non filled trade if exit signal occurs before timeout (timeframe).
+        """
+        if trade.is_entry_timeout(timestamp, self.ENTRY_TIMEOUT):
+            trader = self.strategy.trader()
+            trade.cancel_open(trader)
+
+            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(trade.entry_price),
+                timestamp, trade.timeframe, 'cancel', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp),
+                comment='timeout')
+
+            return True
+
+        return False
+
+    def check_trade_timeout(self, trade, timestamp, profit_loss_rate=0.0):
+        """
+        Close a profitable trade that has passed its expiry.
+        """
+        if trade.is_trade_timeout(timestamp) and trade.profit_loss > profit_loss_rate:
+            trader = self.strategy.trader()
+            trade.close(trader, self.instrument)
+
+            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(trade.entry_price),
+                timestamp, trade.timeframe, 'exit', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp),
+                comment='timeout')
+
+            return True
+
+        return False
+
     #
     # signal data streaming for profiling
     #

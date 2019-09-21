@@ -100,12 +100,13 @@ class DesktopNotifier(Notifiable):
         self._mutex.release()
 
     def on_key_pressed(self, key):
-        if key == 'KEY_SPREVIOUS':
-            self.prev_item()
-        elif key == 'KEY_SNEXT':
-            self.next_item()
-        elif key in ('KEY_SR', 'KEY_SF', 'KEY_SLEFT', 'KEY_SRIGHT', 'KEY_PPAGE', 'KEY_NPAGE', 'H', 'J', 'K', 'L'):
-            self._last_strategy_view = 0  # force refresh
+        if Terminal.inst().mode == Terminal.MODE_DEFAULT:
+            if key == 'KEY_SPREVIOUS':
+                self.prev_item()
+            elif key == 'KEY_SNEXT':
+                self.next_item()
+            elif key in ('KEY_SR', 'KEY_SF', 'KEY_SLEFT', 'KEY_SRIGHT', 'KEY_PPAGE', 'KEY_NPAGE', 'H', 'J', 'K', 'L'):
+                self._last_strategy_view = 0  # force refresh
 
     def prev_item(self):
         self._displayed_strategy -= 1

@@ -435,8 +435,12 @@ class StrategyMarginTrade(StrategyTrade):
                 # cumulative filled entry qty
                 if data.get('cumulative-filled') is not None:
                     self.e = data.get('cumulative-filled')
-                else:
-                    self.e += filled
+                elif filled > 0:
+                    self.e = instrument.adjust_quantity(self.e + filled)
+
+                if filled > 0:
+                    # probably need to update exit orders
+                    self._dirty = True
 
                 # logger.info("Entry avg-price=%s cum-filled=%s" % (self.aep, self.e))
 
@@ -481,8 +485,8 @@ class StrategyMarginTrade(StrategyTrade):
                 # cumulative filled exit qty
                 if data.get('cumulative-filled') is not None:
                     self.x = data.get('cumulative-filled')
-                else:
-                    self.x += filled
+                elif filled > 0:
+                    self.x = instrument.adjust_quantity(self.x + filled)
 
                 logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
 

@@ -480,6 +480,9 @@ class StrategyAssetTrade(StrategyTrade):
                     self.e = data.get('cumulative-filled')
                 elif filled > 0:
                     self.e = instrument.adjust_quantity(self.e + filled)
+
+                if filled > 0:
+                    # probably need to update exit orders
                     self._dirty = True
 
                 if self.e >= self.oq:
