@@ -28,7 +28,7 @@ class WatcherService(Service):
         self._fetchers_config = utils.attribute(options.get('config-path'), 'FETCHERS') or {}
 
         # watchers config
-        self._watchers_config = utils.attribute(options.get('config-path'), 'WATCHERS') or {}
+        self._watchers_config = self._init_watchers_config(options)
 
         # user identities
         self._identities_config = utils.identities(options.get('config-path')) or {}
@@ -123,21 +123,12 @@ class WatcherService(Service):
 
         return None
 
-    def identity(self, name):
-        return self._identities_config.get(name, {}).get(self._identity)
-
     def watcher(self, name):
         return self._watchers.get(name)
 
     @property
     def backtesting(self):
         return self._backtesting
-
-    def watcher_config(self, name):
-        """
-        Get the configurations for a watcher as dict.
-        """
-        return self._watchers_config.get(name, {})
 
     def command(self, command_type, data):
         for k, watcher in self._watchers.items():
@@ -152,6 +143,45 @@ class WatcherService(Service):
     @property
     def read_only(self):
         return self._read_only
+
+    #
+    # config
+    #
+
+    def identity(self, name):
+        return self._identities_config.get(name, {}).get(self._identity)
+
+    def watcher_config(self, name):
+        """
+        Get the configurations for a watcher as dict.
+        """
+        return self._watchers_config.get(name, {})
+
+    def _init_watchers_config(self, options):
+        """
+        Get the profile configuration for a specific watche name.
+        """
+        profile_name = options.get('profile', 'default')
+
+        profile_config = utils.profiles(options.get('config-path')) or {}
+        watchers_profile = profile_config.get(profile_name, {'watchers': {}}).get('watchers', {})
+
+        watchers_config = utils.attribute(options.get('config-path'), 'WATCHERS') or {}
+
+        # @todo could rebuild the list of symbols according to what is found in appliances
+
+        # override from profile
+        for k, watcher_config in watchers_config.items():
+            if k in watchers_profile:
+                override = watchers_profile[k]
+
+                if 'symbols' not in watcher_config:
+                    watcher_config['symbols'] = []
+
+                if 'symbols' in override:
+                    watcher_config['symbols'] = override['symbols']
+
+        return watchers_config
 
     def profile(self, name):
         """

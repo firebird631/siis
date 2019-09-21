@@ -42,7 +42,7 @@ class MySql(Database):
             import MySQLdb
 
             self._db = MySQLdb.connect(
-                db='siis',
+                db=config['siis'].get('name', 'siis'),
                 host=config['siis'].get('host', 'localhost'),
                 port=config['siis'].get('port', 3306),
                 user=config['siis'].get('user', 'siis'),

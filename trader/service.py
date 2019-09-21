@@ -263,9 +263,6 @@ class TraderService(Service):
         #           elif trader.name == signal.data.watcher.name:
         #               trader.on_set_order(signal.data, command_trigger)
 
-    def identity(self, name):
-        return self._identities_config.get(name, {}).get(self._identity)
-
     def trader(self, name):
         return self._traders.get(name)
 
@@ -290,17 +287,24 @@ class TraderService(Service):
     def paper_mode(self):
         return self._paper_mode
 
-    def trader_config(self, name):
-        """
-        Get the configurations for a trader as dict.
-        """
-        return self._traders_config.get(name, {})
-
     def ping(self):
         self._mutex.acquire()
         for k, trader, in self._traders.items():
             trader.ping()
         self._mutex.release()
+
+    #
+    # config
+    #
+
+    def identity(self, name):
+        return self._identities_config.get(name, {}).get(self._identity)
+
+    def trader_config(self, name):
+        """
+        Get the configurations for a trader as dict.
+        """
+        return self._traders_config.get(name, {})
 
     def _init_traders_config(self, options):
         """
@@ -313,10 +317,15 @@ class TraderService(Service):
 
         traders_config = utils.attribute(options.get('config-path'), 'TRADERS') or {}
 
+        # @todo could rebuild the list of symbols according to what is found in appliances
+
         # override from profile
         for k, trader_config in traders_config.items():
             if k in traders_profile:
                 override = traders_profile[k]
+
+                if 'symbols' not in trader_config:
+                    trader_config['symbols'] = []
 
                 if 'symbols' in override:
                     trader_config['symbols'] = override['symbols']

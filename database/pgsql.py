@@ -49,7 +49,7 @@ class PgSql(Database):
             import psycopg2
 
             self._db = psycopg2.connect("dbname=%s user=%s password=%s host=%s port=%i" % (
-                'siis',
+                config['siis'].get('name', 'siis'),
                 config['siis'].get('user', 'siis'),
                 config['siis'].get('password', 'siis'),
                 config['siis'].get('host', 'localhost'),
