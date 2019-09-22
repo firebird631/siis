@@ -436,9 +436,9 @@ class StrategyIndMarginTrade(StrategyTrade):
                 elif data.get('exec-price') is not None and data['exec-price'] > 0:
                     # increase/decrease profit/loss (over entry executed quantity)
                     if self.dir > 0:
-                        self.pl += ((data['exec-price'] * filled) - (self.aep * self.e)) / (self.aep * self.e)
+                        self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
                     elif self.dir < 0:
-                        self.pl += ((self.aep * self.e) - (data['exec-price'] * filled)) / (self.aep * self.e)
+                        self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
 
                     # compute the average exit price
                     self.axp = instrument.adjust_price(((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled))
@@ -489,9 +489,9 @@ class StrategyIndMarginTrade(StrategyTrade):
                 if data.get('exec-price') is not None and data['exec-price'] > 0:
                     # increase/decrease profit/loss (over entry executed quantity)
                     if self.dir > 0:
-                        self.pl += ((data['exec-price'] * filled) - (self.aep * self.e)) / (self.aep * self.e)
+                        self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
                     elif self.dir < 0:
-                        self.pl += ((self.aep * self.e) - (data['exec-price'] * filled)) / (self.aep * self.e)
+                        self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
 
             self._exit_state = StrategyTrade.STATE_FILLED
 

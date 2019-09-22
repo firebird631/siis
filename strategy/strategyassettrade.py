@@ -506,14 +506,14 @@ class StrategyAssetTrade(StrategyTrade):
 
                 if data.get('exec-price') is not None and data['exec-price'] and filled > 0:
                     # profit/loss when reducing the trade (over executed entry qty)
-                    self.pl += ((data['exec-price'] * filled) - (self.aep * self.e)) / (self.aep * self.e)
+                    self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
 
                     # average exit price
                     self.axp = instrument.adjust_price(((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled))
 
                 # elif data.get('avg-price') is not None and data['avg-price']:
                 #     # average price is directly given
-                #     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * self.e)) / (self.aep * self.e)
+                #     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * filled)) / (self.aep * self.e)
 
                 #     # average exit price
                 #     self.axp = data['avg-price']
