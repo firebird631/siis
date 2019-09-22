@@ -1591,6 +1591,13 @@ class Strategy(Runnable):
             else:  # equity
                 cr = "0.0"
 
+            if t['d'] == 'long':
+                bpct = (float(t['b']) - float(t['aep'])) / float(t['aep'])
+                wpct = (float(t['w']) - float(t['aep'])) / float(t['aep'])
+            elif t['d'] == 'short':
+                bpct = (float(t['aep']) - float(t['b'])) / float(t['aep'])
+                wpct = (float(t['aep']) - float(t['w'])) / float(t['aep'])
+
             row = [
                 t['mid'],
                 t['id'],
@@ -1599,8 +1606,8 @@ class Strategy(Runnable):
                 t['p'],
                 t['sl'],
                 t['tp'],
-                t['b'],
-                t['w'],
+                "%s (%.2f)" % (t['b'], bpct * 100),
+                "%s (%.2f)" % (t['w'], wpct * 100),
                 t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S') if t['eot'] > 0 else "",
                 datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S') if t['xot'] > 0 else "",
