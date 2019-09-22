@@ -1611,7 +1611,7 @@ class Strategy(Runnable):
                 row.append(t['q'])
                 row.append(t['e'])
                 row.append(t['x'])
-                row.append(t['s'])
+                row.append(t['s'].capitalize())
 
             data.append(row[col_ofs:])
 
@@ -1687,7 +1687,7 @@ class Strategy(Runnable):
                 row.append(t['q'])
                 row.append(t['e'])
                 row.append(t['x'])
-                row.append(t['s'])
+                row.append(t['s'].capitalize())
 
             data.append(row[col_ofs:])
 

@@ -1048,13 +1048,15 @@ class Trader(Runnable):
         markets = markets[offset:limit]
 
         for market in markets:
+            status = Color.colorize_cond("Open" if market.is_open else "Close", market.is_open, style=style, true=Color.GREEN, false=Color.RED)
+
             row = (
                 market.market_id,
                 market.symbol,
                 str("%.8f" % market.base_exchange_rate).rstrip('0').rstrip('.'),
-                market.market_type_str(),
-                market.unit_type_str(),
-                market.is_open,
+                market.market_type_str().capitalize(),
+                market.unit_type_str().capitalize(),
+                status,
                 str("%.8f" % market.one_pip_means).rstrip('0').rstrip('.'),
                 str("%.8f" % market.value_per_pip).rstrip('0').rstrip('.'),
                 str("%.8f" % market.lot_size).rstrip('0').rstrip('.'),

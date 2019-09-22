@@ -389,22 +389,42 @@ class DesktopNotifier(Notifiable):
         if Terminal.inst().is_active('strategy') or Terminal.inst().is_active('perf'):
             # strategy view
             if Terminal.inst().is_active('strategy'):
-                Terminal.inst().info("Active trades for strategy %s - %s" % (appl.name, appl.identifier), view='strategy-head')
-                columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
-                Terminal.inst().table(columns, table, total_size, view='strategy')
+                num = 0
+
+                try:                
+                    columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                    Terminal.inst().table(columns, table, total_size, view='strategy')
+                    num = total_size[1]
+                except:
+                    pass
+
+                Terminal.inst().info("Active trades (%i) for strategy %s - %s" % (num, appl.name, appl.identifier), view='strategy-head')
 
             # perf view
             if Terminal.inst().is_active('perf'):
-                Terminal.inst().info("Perf per market trades for strategy %s - %s" % (appl.name, appl.identifier), view='perf-head')
-                columns, table, total_size = appl.agg_trades_stats_table(*Terminal.inst().active_content().format(), summ=True)
-                Terminal.inst().table(columns, table, total_size, view='perf')
+                num = 0
+
+                try:
+                    columns, table, total_size = appl.agg_trades_stats_table(*Terminal.inst().active_content().format(), summ=True)
+                    Terminal.inst().table(columns, table, total_size, view='perf')
+                    num = total_size[1]
+                except:
+                    pass
+
+                Terminal.inst().info("Perf per market trades (%i) for strategy %s - %s" % (num, appl.name, appl.identifier), view='perf-head')
 
         # stats view
         if Terminal.inst().is_active('stats'):
-            Terminal.inst().info("Trade history for strategy %s - %s" % (appl.name, appl.identifier), view='stats-head')
+            num = 0
 
-            columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
-            Terminal.inst().table(columns, table, total_size, view='stats')
+            try:
+                columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                Terminal.inst().table(columns, table, total_size, view='stats')
+                num = total_size[1]
+            except:
+                pass
+
+            Terminal.inst().info("Trade history (%i) for strategy %s - %s" % (num, appl.name, appl.identifier), view='stats-head')
 
     def refresh_traders_stats(self):
         if not self.trader_service:
@@ -416,14 +436,16 @@ class DesktopNotifier(Notifiable):
 
             if len(traders) > 0:
                 trader = next(iter(traders))
-
-                Terminal.inst().info("Account details for trader %s - %s" % (trader.name, trader.account.name), view='account-head')
+                num = 0
 
                 try:
                     columns, table, total_size = trader.account_table(*Terminal.inst().active_content().format())
                     Terminal.inst().table(columns, table, total_size, view='account')
+                    num = total_size[1]
                 except:
                     pass
+
+                Terminal.inst().info("Account details (%i) for trader %s - %s" % (num, trader.name, trader.account.name), view='account-head')
 
         # tickers view
         if Terminal.inst().is_active('ticker'):
@@ -431,16 +453,16 @@ class DesktopNotifier(Notifiable):
 
             if len(traders) > 0:
                 trader = next(iter(traders))
-
-                Terminal.inst().info("Tickers list for tader %s on account %s" % (trader.name, trader.account.name), view='ticker-head')
+                num = 0
 
                 try:
-                    columns, table, total_size = trader.markets_tickers_table(*Terminal.inst().active_content().format(),
-                            prev_timestamp=self._last_strategy_update)
-
+                    columns, table, total_size = trader.markets_tickers_table(*Terminal.inst().active_content().format(), prev_timestamp=self._last_strategy_update)
                     Terminal.inst().table(columns, table, total_size, view='ticker')
+                    num = total_size[1]
                 except:
                     pass
+
+                Terminal.inst().info("Tickers list (%i) for tader %s on account %s" % (num, trader.name, trader.account.name), view='ticker-head')
 
         # markets view
         if Terminal.inst().is_active('market'):
@@ -448,14 +470,16 @@ class DesktopNotifier(Notifiable):
 
             if len(traders) > 0:
                 trader = next(iter(traders))
-
-                Terminal.inst().info("Market list trader %s on account %s" % (trader.name, trader.account.name), view='market-head')
+                num = 0
 
                 try:
                     columns, table, total_size = trader.markets_table(*Terminal.inst().active_content().format())
                     Terminal.inst().table(columns, table, total_size, view='market')
+                    num = total_size[1]
                 except:
                     pass
+
+                Terminal.inst().info("Market list (%i) trader %s on account %s" % (num, trader.name, trader.account.name), view='market-head')
 
         # assets view
         if Terminal.inst().is_active('asset'):
@@ -463,13 +487,15 @@ class DesktopNotifier(Notifiable):
 
             if len(traders) > 0:
                 trader = next(iter(traders))
-
-                Terminal.inst().info("Asset list trader %s on account %s" % (trader.name, trader.account.name), view='asset-head')
+                num = 0
 
                 try:
                     columns, table, total_size = trader.assets_table(*Terminal.inst().active_content().format())
                     Terminal.inst().table(columns, table, total_size, view='asset')
+                    num = total_size[1]
                 except:
                     pass
+
+                Terminal.inst().info("Asset list (%i) trader %s on account %s" % (num, trader.name, trader.account.name), view='asset-head')
 
         self._last_strategy_update = self.strategy_service.timestamp
