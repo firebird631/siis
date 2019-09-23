@@ -22,13 +22,15 @@ Features
     * Binance (margin coming soon)
     * Bitmex
     * Kraken (work in progress)
+    * Kraken Futures (planned)
     * IG
+    * Jex (Binance futures) (planned)
     * 1broker (obsolete)
     * Help for others are welcome :-)
 * Some others source of prices/volumes data fetchers
-   * HistData (only to import manually downloaded files)
-   * AlphaVantage (WIP)
-   * Tiingo (WIP)
+    * HistData (only to import manually downloaded files)
+    * AlphaVantage (WIP)
+    * Tiingo (WIP)
 * Fetching of OHLC and ticks/trades history data in a PostgreSQL or MySQL database
 * Multiples instances can run at the same time
 * Many strategies and markets can run on a same instance (tested with 100+ markets on a single instance)
@@ -48,8 +50,17 @@ Features
 * Display account details and assets quantities
 * Display tickers and markets informations
 * Display per strategy current (active or pending) trades, trades history and performance
-* Works on multiple timeframes
-* Common indicators are supported (RSI, SMA, BBANDS, ATR, STOCH, ask if you want more...)
+* Works on multiple timeframes from 1 second to 1 month
+* Common indicators are supported :
+    * Momentum, RSI, Stochastic, Stochastic RSI
+    * SMA, EMA, HMA, WMA, VWMA, MAMA, MACD
+    * Bollinger Bands, Donchian Channels
+    * ATR, SAR
+    * Ichimoku
+    * SineWave
+    * Pivot Point Supports Resistances
+    * TomDemark TD9
+    * Ask if you want more :-)
 * Pure signal strategies are possibles in way to only generating some signals/alerts
 * Desktop notification on Linux via dbus
 * Audible notification on Linux via aplay
@@ -104,6 +115,8 @@ cd ta-lib
 ./configure
 make
 ```
+
+Eventually you need to have installed the build-essential packages from your distribution repository in way to have GCC, Make and Autotools.
 
 Finally to install in your /usr/local :
 
@@ -341,6 +354,7 @@ python siis.py <identity> [--help, --options...]
 * --read-only Don't write market neither candles data to the database. Default is writing to the database.
 * --fetch Process the data fetcher.
 * --binarize Process to text file to binary conversion for a market (text version of data could be removed on the futur).
+* --rebuild Rebuild OHLC from the trades/ticks data for a market (WIP).
 
 You need to define the name of the identity to use. This is related to the name defined into the identities.py file.
 Excepted for fetch/binarize/check-data the name of the profile of appliances to use --profile=\<profilename> must be specified.
@@ -448,7 +462,7 @@ and then 60 mean 1 minute of simulation per second.
 How to create or modify a strategy
 ----------------------------------
 
-A guide explaning how to create or modify an existing strategy will be added into the doc/ directory.
+[A guide explaning how to create, modify and configured an existing strategy](doc/strategy.md)
 
 
 The winning strategy
@@ -508,18 +522,20 @@ Interaction / CLI
 -----------------
 
 SiiS offers a basic but auto suffisent set of commands and keyboard shortcuts to manage and control your trades,
-looking your account status, markets status, tickers, and strategies performances.
+looking your account, markets, tickers, trades, orders, positions and strategies performances.
 
 In addition there is a charting feature using matplotlib.
 The goal is to finish the monitoring service, and to realise a Web client to monitor and manage each instance.
 
 During the execution of the program you can type a command starting by a semicolumn : plus the name of the command.
-Lets first type the :help command.
+Lets first type the :help command. To exit the command is q then type : followed by w and then press enter.
 
-There is some direct keys, not using the semicolumn, and some complex commands.
+There is some direct keys, not using the semicolumn, in default mode, and some complex commands in command mode.
 
-Integrated help should be suffisent, but later more content here will be added in the doc/ directory,
-in way to describes the differents panels and commands.
+The :help command give you the list a shortcut and commands, and :help \<command-name> to have detailed help
+for a specific command.
+
+[More information of the CLI](doc/cli.md)
 
 
 About data storage

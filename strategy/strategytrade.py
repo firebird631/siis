@@ -638,7 +638,7 @@ class StrategyTrade(object):
 
                 if last_price < self._stats['worst-price'] or not self._stats['worst-price']:
                     self._stats['worst-price'] = last_price
-                    self._stats['worst-timestamp'] = timestamp                    
+                    self._stats['worst-timestamp'] = timestamp
 
             elif self.dir < 0:
                 if last_price < self._stats['best-price'] or not self._stats['best-price']:
