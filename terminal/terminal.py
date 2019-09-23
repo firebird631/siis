@@ -1050,7 +1050,7 @@ class Terminal(object):
                 pass
 
             # https://docs.python.org/2/library/curses.html keys list
-            if c and (c.startswith('KEY_') or (c in ('H', 'J', 'K', 'L') and self._mode == Terminal.MODE_DEFAULT)):
+            if c and (c.startswith('KEY_') or (c in ('h', 'j', 'k', 'l') and self._mode == Terminal.MODE_DEFAULT)):
                 if c == 'KEY_BACKSPACE':
                     self._key = c
                     return '\b'
@@ -1075,28 +1075,28 @@ class Terminal(object):
                                 view.redraw()
 
                 # shift + keys arrows for table navigation only in default mode (ch == curses.KEY_SUP)
-                elif (c == 'KEY_SR' or c == 'J'):
+                elif (c == 'KEY_SR' or c == 'j'):
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_row(-1)
 
                     self._key = c
-                elif (c == 'KEY_SF' or c == 'K'):
+                elif (c == 'KEY_SF' or c == 'k'):
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_row(1)
 
                     self._key = c
-                elif (c == 'KEY_SLEFT' or c == 'H'):
+                elif (c == 'KEY_SLEFT' or c == 'h'):
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_cols(-1)
 
                     self._key = c
-                elif (c == 'KEY_SRIGHT' or c == 'L'):
+                elif (c == 'KEY_SRIGHT' or c == 'l'):
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:

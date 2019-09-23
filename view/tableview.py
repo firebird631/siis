@@ -60,13 +60,13 @@ class TableView(View):
                 self.scroll_row(-(self.height()-4))   
             elif key == 'KEY_NPAGE':
                 self.scroll_row(self.height()-4)
-            elif (c == 'KEY_SR' or c == 'J'):
+            elif (c == 'KEY_SR' or c == 'j'):
                 self.scroll_row(-1)
-            elif (c == 'KEY_SF' or c == 'K'):
+            elif (c == 'KEY_SF' or c == 'k'):
                 self.scroll_row(1)
-            elif (c == 'KEY_SLEFT' or c == 'H'):
+            elif (c == 'KEY_SLEFT' or c == 'h'):
                 self.scroll_col(-1)
-            elif (c == 'KEY_SRIGHT' or c == 'L'):
+            elif (c == 'KEY_SRIGHT' or c == 'l'):
                 self.scroll_col(1)
 
     def table(self, columns, data):

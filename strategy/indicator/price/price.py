@@ -53,7 +53,7 @@ class PriceIndicator(Indicator):
         return self._last
 
     @property
-    def last(self):
+    def prev(self):
         return self._prev
 
     @property
