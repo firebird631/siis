@@ -1492,7 +1492,6 @@ class Strategy(Runnable):
         limit = offset + limit
 
         agg_trades.sort(key=lambda x: x['mid'])
-        agg_trades = agg_trades[offset:limit]
 
         pl_sum = 0.0
         perf_sum = 0.0
@@ -1501,6 +1500,19 @@ class Strategy(Runnable):
         success_sum = 0
         failed_sum = 0
         roe_sum = 0
+
+        # total summ before offset:limit
+        if summ:
+            for t in agg_trades:
+                pl_sum += t['rate']
+                perf_sum += t['perf']
+                worst_sum = min(worst_sum, t['worst'])
+                best_sum = max(best_sum, t['best'])
+                success_sum += t['success']
+                failed_sum += t['failed']
+                roe_sum += t['roe']
+
+        agg_trades = agg_trades[offset:limit]
 
         for t in agg_trades:
             cr = Color.colorize_updn("%.2f" % (t['rate']*100.0), 0.0, t['rate'], style=style)
@@ -1516,14 +1528,6 @@ class Strategy(Runnable):
                 t['failed'],
                 t['roe']
             )
-
-            pl_sum += t['rate']
-            perf_sum += t['perf']
-            worst_sum = min(worst_sum, t['worst'])
-            best_sum = max(best_sum, t['best'])
-            success_sum += t['success']
-            failed_sum += t['failed']
-            roe_sum += t['roe']
 
             data.append(row[col_ofs:])
 
@@ -1675,6 +1679,13 @@ class Strategy(Runnable):
                 _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) <= float(t['tp']), style=style, true=Color.GREEN)
                 _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) >= float(t['sl']), style=style, true=Color.RED)
 
+            if t['d'] == 'long':
+                bpct = (float(t['b']) - float(t['aep'])) / float(t['aep'])
+                wpct = (float(t['w']) - float(t['aep'])) / float(t['aep'])
+            elif t['d'] == 'short':
+                bpct = (float(t['aep']) - float(t['b'])) / float(t['aep'])
+                wpct = (float(t['aep']) - float(t['w'])) / float(t['aep'])
+
             row = [
                 t['mid'],
                 t['id'],
@@ -1683,8 +1694,8 @@ class Strategy(Runnable):
                 t['p'],
                 _sl,
                 _tp,
-                t['b'],
-                t['w'],
+                "%s (%.2f)" % (t['b'], bpct * 100),
+                "%s (%.2f)" % (t['w'], wpct * 100),
                 t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'),
                 datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S'),
