@@ -657,7 +657,8 @@ class BinanceWatcher(Watcher):
                     'take-profit': None,
                     'time-in-force': time_in_force,
                     'commission-amount': float(data['n']),
-                    'commission-asset': data['N']
+                    'commission-asset': data['N'],
+                    'maker': data['m'],   # trade execution over or counter the market : true if maker, false if taker
                 }
 
                 self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))

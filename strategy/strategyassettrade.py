@@ -77,8 +77,7 @@ class StrategyAssetTrade(StrategyTrade):
         # @todo support OCO
         self._use_oco = use_oco
 
-        # @todo if price if counter the market then assume taker
-        self._stats['entry-maker'] = not order.is_market()
+        self._stats['entry-order-type'] = order.order_type
 
         if trader.create_order(order):
             if not self.eot and order.created_time:
@@ -214,8 +213,7 @@ class StrategyAssetTrade(StrategyTrade):
                 order.price = price
                 order.quantity = self.e - self.x  # remaining
 
-                # @todo not correct, depend of what is executed
-                self._stats['exit-maker'] = not order.is_market()
+                self._stats['limit-order-type'] = order.order_type
 
                 # generated a reference order id
                 trader.set_ref_order_id(order)
@@ -283,8 +281,7 @@ class StrategyAssetTrade(StrategyTrade):
                 order.stop_price = stop_price
                 order.quantity = self.e - self.x  # remaining
 
-                # @todo not correct, depend of what is executed
-                self._stats['exit-maker'] = not order.is_market()
+                self._stats['stop-order-type'] = order.order_type
 
                 # generated a reference order id
                 trader.set_ref_order_id(order)
@@ -352,7 +349,7 @@ class StrategyAssetTrade(StrategyTrade):
             order.order_type = Order.ORDER_MARKET
             order.quantity = self.e - self.x  # remaining qty
 
-            self._stats['exit-maker'] = not order.is_market()
+            self._stats['stop-order-type'] = order.order_type
 
             # generated a reference order id and keep it before ordering to retrieve its signals
             trader.set_ref_order_id(order)
@@ -485,14 +482,25 @@ class StrategyAssetTrade(StrategyTrade):
                     # probably need to update exit orders
                     self._dirty = True
 
+                if filled > 0 and self.e == 0:
+                    # initial fill we count the commission fee
+                    self._stats['entry-fees'] = instrument.maker_commission if data.get('maker', False) else instrument.taker_commission
+
                 if self.e >= self.oq:
                     self._entry_state = StrategyTrade.STATE_FILLED
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
+                #
+                # fees/commissions
+                #
+
                 if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
-                    # commission asset is itself, have to reduce it from filled
-                    self.e = instrument.adjust_quantity(self.e - data.get('commission-amount', 0))
+                    # commission asset is itself, have to reduce it from filled, done after status determination because of the qty reduced by the fee
+                    self.e = instrument.adjust_quantity(self.e - data.get('commission-amount', 0.0))
+
+                # realized fees
+                self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
 
             elif (data['id'] == self.limit_oid or data['id'] == self.stop_oid) and ('filled' in data or 'cumulative-filled' in data):
                 # @warning on the exit side, normal case will have a single order, but possibly to have a 
@@ -541,9 +549,16 @@ class StrategyAssetTrade(StrategyTrade):
                         # there is no longer entry order, then we have fully filled the exit
                         self._exit_state = StrategyTrade.STATE_FILLED
 
+                #
+                # fees/commissions
+                #
+
                 # commission asset is asset, have to reduce it from filled
                 if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
                     self.x = instrument.adjust_quantity(self.x - data.get('commission-amount', 0))
+
+                # realized fees
+                self._stats['exit-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price or qty modified

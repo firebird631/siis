@@ -75,8 +75,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         self.leverage = leverage
 
-        # @todo if price if counter the market then assume taker
-        self._stats['entry-maker'] = not order.is_market()
+        self._stats['entry-order-type'] = order.order_type
 
         if trader.create_order(order):
             # keep the related create position identifier if available
@@ -194,7 +193,7 @@ class StrategyMarginTrade(StrategyTrade):
             trader.set_ref_order_id(order)
             self.limit_ref_oid = order.ref_order_id
 
-            self._stats['exit-maker'] = not order.is_market()
+            self._stats['limit-order-type'] = order.order_type
 
             if trader.create_order(order):
                 self.limit_oid = order.order_id
@@ -249,7 +248,7 @@ class StrategyMarginTrade(StrategyTrade):
             trader.set_ref_order_id(order)
             self.stop_ref_oid = order.ref_order_id
 
-            self._stats['exit-maker'] = not order.is_market()
+            self._stats['stop-order-type'] = order.order_type
 
             if trader.create_order(order):  
                 self.stop_oid = order.order_id
@@ -316,7 +315,7 @@ class StrategyMarginTrade(StrategyTrade):
             trader.set_ref_order_id(order)
             self.stop_ref_oid = order.ref_order_id
 
-            self._stats['exit-maker'] = not order.is_market()
+            self._stats['stop-order-type'] = order.order_type
 
             if trader.create_order(order):
                 self.stop_oid = order.order_id

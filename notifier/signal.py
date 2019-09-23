@@ -14,7 +14,7 @@ class Signal(object):
 	SIGNAL_AUTHOR_ADDED = 13
 	SIGNAL_AUTHOR_REMOVED = 14
 
-	SIGNAL_STRATEGY_ENTRY_EXIT = 50     # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'rate', 'timestamp', ...}
+	SIGNAL_STRATEGY_ENTRY_EXIT = 50     # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'profit-loss', 'timestamp', ...}
 
 	SIGNAL_CANDLE_DATA = 100            # data is a pair with (market_id, Candle)
 	SIGNAL_TICK_DATA = 101              # data is a pair with (market_id, Tick)

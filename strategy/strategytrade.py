@@ -99,8 +99,9 @@ class StrategyTrade(object):
             'best-timestamp': 0.0,
             'worst-price': 0.0,
             'worst-timestamp': 0.0,
-            'entry-maker': False,
-            'exit-maker': False,
+            'entry-order-type': Order.ORDER_LIMIT,
+            'limit-order-type': Order.ORDER_LIMIT,
+            'stop-order-type': Order.ORDER_MARKET,
             'entry-fees': 0.0,
             'exit-fees': 0.0,
             'conditions': {}
@@ -614,8 +615,9 @@ class StrategyTrade(object):
             'best-timestamp': 0.0,
             'worst-price': 0.0,
             'worst-timestamp': 0.0,
-            'entry-maker': False,
-            'exit-maker': False,
+            'entry-order-type': Order.ORDER_LIMIT,
+            'limit-order-type': Order.ORDER_LIMIT,
+            'stop-order-type': Order.ORDER_MARKET,
             'entry-fees': 0.0,
             'exit-fees': 0.0,
             'conditions': {}
@@ -667,6 +669,51 @@ class StrategyTrade(object):
 
     def get_conditions(self):
         return self._stats['conditions']
+
+    def entry_fees(self):
+        """Realized entry fees cost (not rate)"""
+        return self._stats['entry-fees']
+
+    def entry_fees_rate(self):
+        """Realized entry fees rate"""
+        if self.e > 0:
+            return self._stats['entry-fees'] / self.e
+
+        return 0.0
+
+    def exit_fees(self):
+        """Realized exit fees cost (not rate)"""
+        return self._stats['exit-fees']
+
+    def exit_fees_rate(self):
+        """Realized entry fees rate"""
+        if self.x > 0:
+            return self._stats['exit-fees'] / self.x
+
+        return 0.0
+
+    def estimate_profit_loss(self, instrument):
+        """
+        During the trade open, compute an estimation of the unrealized profit/loss rate.
+        """
+        # estimation at close price
+        if self.direction > 0 and self.entry_price > 0:
+            profit_loss = (instrument.close_exec_price(self.direction) - self.entry_price) / self.entry_price
+        elif self.direction < 0 and self.entry_price > 0:
+            profit_loss = (self.entry_price - instrument.close_exec_price(self.direction)) / self.entry_price
+        else:
+            profit_loss = 0.0
+
+        # minus realized entry fees rate
+        profit_loss -= self.entry_fees_rate()
+
+        # count the exit fees related to limit order type
+        if self._stats['limit-order-type'] in (Order.ORDER_LIMIT, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT_LIMIT):
+            profit_loss -= instrument.maker_fee
+        elif self._stats['limit-order-type'] in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT):
+            profit_loss -= instrument.taker_fee
+
+        return profit_loss
 
     #
     # operations

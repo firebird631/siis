@@ -631,28 +631,9 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             trader = self.strategy.trader()
             trade.close(trader, self.instrument)
 
-            # estimed profit/loss rate
-            if trade.direction > 0:
-                profit_loss_rate = (exit_price - trade.entry_price) / trade.entry_price
-            elif trade.direction < 0:
-                profit_loss_rate = (trade.entry_price - exit_price) / trade.entry_price
-            else:
-                profit_loss_rate = 0
-
-            # estimed maker/taker fee rate for entry and exit
-            if trade.get_stats()['entry-maker']:
-                profit_loss_rate -= self.instrument.maker_fee
-            else:
-                profit_loss_rate -= self.instrument.taker_fee
-
-            if trade.get_stats()['exit-maker']:
-                profit_loss_rate -= self.instrument.maker_fee
-            else:
-                profit_loss_rate -= self.instrument.taker_fee
-
             # notify
             self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(exit_price),
-                    timestamp, trade.timeframe, 'exit', profit_loss_rate)
+                    timestamp, trade.timeframe, 'exit', trade.estimate_profit_loss(self.instrument))
 
             if self._global_streamer:
                 # @todo remove me after notify manage that

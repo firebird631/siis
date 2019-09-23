@@ -431,6 +431,7 @@ class BitMexWatcher(Watcher):
                           'cumulative-filled': ld.get('cumQty', 0),
                           'exec-price': None,  # no have
                           'avg-price': ld.get('avgPx', 0),  # averaged for the cumulative
+                          # 'maker': ,   # trade execution over or counter the market : true if maker, false if taker
                         }
 
                         self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ld.get('clOrdID', "")))

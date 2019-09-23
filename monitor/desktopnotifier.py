@@ -27,6 +27,7 @@ from common.utils import timeframe_to_str
 
 import logging
 logger = logging.getLogger('siis.monitor.desktopnotifier')
+error_logger = logging.getLogger('siis.error.monitor.desktopnotifier')
 signal_logger = logging.getLogger('siis.signal')
 
 
@@ -234,8 +235,8 @@ class DesktopNotifier(Notifiable):
                 if signal.data['take-profit']:
                     message += " TP@%s" % (signal.data['take-profit'],)
 
-                if signal.data['rate'] is not None:
-                    message += " (%.2f%%)" % ((signal.data['rate'] * 100),)
+                if signal.data['profit-loss'] is not None:
+                    message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
 
                 if signal.data['comment'] is not None:
                     message += " (%s)" % signal.data['comment']
@@ -395,8 +396,8 @@ class DesktopNotifier(Notifiable):
                     columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
                     Terminal.inst().table(columns, table, total_size, view='strategy')
                     num = total_size[1]
-                except:
-                    pass
+                except Exception as e:
+                    error_logger.error(repr(e))                    
 
                 Terminal.inst().info("Active trades (%i) for strategy %s - %s" % (num, appl.name, appl.identifier), view='strategy-head')
 
@@ -408,8 +409,8 @@ class DesktopNotifier(Notifiable):
                     columns, table, total_size = appl.agg_trades_stats_table(*Terminal.inst().active_content().format(), summ=True)
                     Terminal.inst().table(columns, table, total_size, view='perf')
                     num = total_size[1]
-                except:
-                    pass
+                except Exception as e:
+                    error_logger.error(repr(e))
 
                 Terminal.inst().info("Perf per market trades (%i) for strategy %s - %s" % (num, appl.name, appl.identifier), view='perf-head')
 
@@ -421,8 +422,8 @@ class DesktopNotifier(Notifiable):
                 columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
                 Terminal.inst().table(columns, table, total_size, view='stats')
                 num = total_size[1]
-            except:
-                pass
+            except Exception as e:
+                    error_logger.error(repr(e))
 
             Terminal.inst().info("Trade history (%i) for strategy %s - %s" % (num, appl.name, appl.identifier), view='stats-head')
 
@@ -476,8 +477,8 @@ class DesktopNotifier(Notifiable):
                     columns, table, total_size = trader.markets_table(*Terminal.inst().active_content().format())
                     Terminal.inst().table(columns, table, total_size, view='market')
                     num = total_size[1]
-                except:
-                    pass
+                except Exception as e:
+                    error_logger.error(repr(e))
 
                 Terminal.inst().info("Market list (%i) trader %s on account %s" % (num, trader.name, trader.account.name), view='market-head')
 
@@ -493,8 +494,8 @@ class DesktopNotifier(Notifiable):
                     columns, table, total_size = trader.assets_table(*Terminal.inst().active_content().format())
                     Terminal.inst().table(columns, table, total_size, view='asset')
                     num = total_size[1]
-                except:
-                    pass
+                except Exception as e:
+                    error_logger.error(repr(e))
 
                 Terminal.inst().info("Asset list (%i) trader %s on account %s" % (num, trader.name, trader.account.name), view='asset-head')
 

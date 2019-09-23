@@ -328,24 +328,10 @@ class StrategyTrader(object):
                 if (trade.tp > 0) and (close_exec_price >= trade.tp) and not trade.has_limit_order():
                     # take profit trigger stop, close at market (taker fee)
                     if trade.close(trader, self.instrument):
-                        # estimed profit/loss rate
-                        profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
-
-                        # estimed maker/taker fee rate for entry and exit
-                        if trade.get_stats()['entry-maker']:
-                            profit_loss_rate -= self.instrument.maker_fee
-                        else:
-                            profit_loss_rate -= self.instrument.taker_fee
-
-                        if trade.get_stats()['exit-maker']:
-                            profit_loss_rate -= self.instrument.maker_fee
-                        else:
-                            profit_loss_rate -= self.instrument.taker_fee
-
                         # notify
                         self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
                                 self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
-                                'take-profit', profit_loss_rate)
+                                'take-profit', trade.estimate_profit_loss(self.instrument))
 
                         # streaming (but must be done with notify)
                         if self._global_streamer:
@@ -354,24 +340,10 @@ class StrategyTrader(object):
                 elif (trade.sl > 0) and (close_exec_price <= trade.sl) and not trade.has_stop_order():
                     # stop loss trigger stop, close at market (taker fee)
                     if trade.close(trader, self.instrument):
-                        # estimed profit/loss rate
-                        profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
-
-                        # estimed maker/taker fee rate for entry and exit
-                        if trade.get_stats()['entry-maker']:
-                            profit_loss_rate -= self.instrument.maker_fee
-                        else:
-                            profit_loss_rate -= self.instrument.taker_fee
-
-                        if trade.get_stats()['exit-maker']:
-                            profit_loss_rate -= self.instrument.maker_fee
-                        else:
-                            profit_loss_rate -= self.instrument.taker_fee
-
                         # notify
                         self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
                                 self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
-                                'stop-loss', profit_loss_rate)
+                                'stop-loss', trade.estimate_profit_loss(self.instrument))
 
                         # streaming (but must be done with notify)
                         if self._global_streamer:
@@ -402,29 +374,10 @@ class StrategyTrader(object):
                 if (trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (trade.direction < 0 and close_exec_price <= trade.tp)) and not trade.has_limit_order():
                     # close in profit at market (taker fee)
                     if trade.close(trader, self.instrument):
-                        # estimed profit/loss rate
-                        if trade.direction > 0 and trade.entry_price:
-                            profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
-                        elif trade.direction < 0 and trade.entry_price:
-                            profit_loss_rate = (trade.entry_price - close_exec_price) / trade.entry_price
-                        else:
-                            profit_loss_rate = 0
-
-                        # estimed maker/taker fee rate for entry and exit
-                        if trade.get_stats()['entry-maker']:
-                            profit_loss_rate -= self.instrument.maker_fee
-                        else:
-                            profit_loss_rate -= self.instrument.taker_fee
-
-                        if trade.get_stats()['exit-maker']:
-                            profit_loss_rate -= self.instrument.maker_fee
-                        else:
-                            profit_loss_rate -= self.instrument.taker_fee
-
                         # and notify
                         self.strategy.notify_order(trade.id, trade.close_direction(), self.instrument.market_id,
                                 self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
-                                'take-profit', profit_loss_rate)
+                                'take-profit', trade.estimate_profit_loss(self.instrument))
 
                         # and for streaming
                         if self._global_streamer:
@@ -433,29 +386,10 @@ class StrategyTrader(object):
                 elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_stop_order():
                     # close a long or a short position at stop-loss level at market (taker fee)
                     if trade.close(trader, self.instrument):
-                        # estimed profit/loss rate
-                        if trade.direction > 0 and trade.entry_price:
-                            profit_loss_rate = (close_exec_price - trade.entry_price) / trade.entry_price
-                        elif trade.direction < 0 and trade.entry_price:
-                            profit_loss_rate = (trade.entry_price - close_exec_price) / trade.entry_price
-                        else:
-                            profit_loss_rate = 0
-
-                        # estimed maker/taker fee rate for entry and exit
-                        if trade.get_stats()['entry-maker']:
-                            profit_loss_rate -= self.instrument.maker_fee
-                        else:
-                            profit_loss_rate -= self.instrument.taker_fee
-
-                        if trade.get_stats()['exit-maker']:
-                            profit_loss_rate -= self.instrument.maker_fee
-                        else:
-                            profit_loss_rate -= self.instrument.taker_fee
-
                         # and notify
                         self.strategy.notify_order(trade.id, trade.close_direction(), self.instrument.market_id,
                                 self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
-                                'stop-loss', profit_loss_rate)
+                                'stop-loss', trade.estimate_profit_loss(self.instrument))
 
                         # and for streaming
                         if self._global_streamer:
@@ -480,40 +414,23 @@ class StrategyTrader(object):
 
                 # record the trade for analysis and study
                 if not trade.is_canceled():
-                    # @todo all this part could be in an async method of another background service, because 
-                    # it is not part of the trade managemnt neither strategy computing, its purely for reporting
-                    # and view then we could add a list of the deleted trade (producer) and having another service (consumer) doing the rest
+                    # last update of stats before logging
+                    trade.update_stats(self.instrument.close_exec_price(trade.direction), timestamp)
 
-                    # estimation on mid last price, but might be close market price
-                    # rate = (trade.best_price() - trade.entry_price) / trade.entry_price  # for best missed profit
-                    # rate = (trade.exit_price - trade.entry_price) / trade.entry_price
-                    rate = trade.profit_loss  # realized profit/loss
-
-                    # fee rate for entry and exit
-                    if trade._stats['entry-maker']:
-                        rate -= self.instrument.maker_fee
-                    else:
-                        rate -= self.instrument.taker_fee
-
-                    if trade._stats['exit-maker']:
-                        rate -= self.instrument.maker_fee
-                    else:
-                        rate -= self.instrument.taker_fee
-
-                    # estimed commission fee rate (futur, stocks)
-                    # @todo
+                    # realized profit/loss
+                    profit_loss = trade.profit_loss - trade.entry_fees_rate() - trade.exit_fees_rate()
 
                     # perf sommed here it means that its not done during partial closing
-                    if rate != 0.0:
-                        self._stats['perf'] += rate
-                        self._stats['worst'] = min(self._stats['worst'], rate)
-                        self._stats['best'] = max(self._stats['best'], rate)
+                    if profit_loss != 0.0:
+                        self._stats['perf'] += profit_loss
+                        self._stats['worst'] = min(self._stats['worst'], profit_loss)
+                        self._stats['best'] = max(self._stats['best'], profit_loss)
 
-                    if rate <= 0.0:
+                    if profit_loss <= 0.0:
                         self._stats['cont-loss'] += 1
                         self._stats['cont-win'] = 1
 
-                    elif rate > 0.0:
+                    elif profit_loss > 0.0:
                         self._stats['cont-loss'] = 0
                         self._stats['cont-win'] += 1
 
@@ -536,14 +453,15 @@ class StrategyTrader(object):
                         'w': self.instrument.format_price(trade.worst_price()),
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
-                        'rate': rate,
+                        'pl': profit_loss,
+                        'fees': trade.entry_fees_rate() + trade.exit_fees_rate(),
                         'c': trade.get_conditions(),
                         'com': trade.comment,
                     }
 
-                    if rate < 0:
+                    if profit_loss < 0:
                         self._stats['failed'].append(record)
-                    elif rate > 0:
+                    elif profit_loss > 0:
                         self._stats['success'].append(record)
                     else:
                         self._stats['roe'].append(record)

@@ -152,7 +152,7 @@ class Strategy(Runnable):
     #
 
     def notify_order(self, trade_id, direction, symbol, price, timestamp, timeframe,
-            action='order', rate=None, stop_loss=None, take_profit=None, comment=None):
+            action='order', profit_loss=None, stop_loss=None, take_profit=None, comment=None):
         """
         Notify an order execution to the user. It must be called by the strategy-trader.
         @param trade_id If -1 then it notify a simple signal unrelated to a trade.
@@ -167,19 +167,13 @@ class Strategy(Runnable):
             'direction': direction,
             'symbol': symbol,
             'price': price,
-            'rate': rate,
+            'profit-loss': profit_loss,
             'stop-loss': stop_loss,
             'take-profit': take_profit,
             'comment': comment
         }
 
         self.service.notify(Signal.SIGNAL_STRATEGY_ENTRY_EXIT, self._name, signal_data)
-
-    # def notify(self, notification_type, data):
-    # @todo more generic notifier for any trader action on a trade or for different sort of messages
-    #       but its for few message per minute, the traders might diffuse only the strict minimum,
-    #       excepted for debug/profiling mode
-    #     self.service.notify(Signal.SIGNAL_STRATEGY_xxx, self._name, signal_data)
 
     def setup_streaming(self):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY, "status", self.identifier)
@@ -1179,22 +1173,7 @@ class Strategy(Runnable):
             market = trader.market(strategy_trader.instrument.market_id) if trader else None
             if market:
                 for trade in strategy_trader.trades:
-                    # estimation at close price
-                    if trade.direction > 0 and trade.entry_price:
-                        trade_rate = (market.close_exec_price(trade.direction) - trade.entry_price) / trade.entry_price
-                    elif trade.direction < 0 and trade.entry_price:
-                        trade_rate = (trade.entry_price - market.close_exec_price(trade.direction)) / trade.entry_price
-                    else:
-                        trade_rate = 0.0
-
-                    # estimed maker/taker fee rate for entry and exit
-                    if trade.get_stats()['entry-maker']:
-                        trade_rate -= market.maker_fee
-                    else:
-                        trade_rate -= market.taker_fee
-
-                    # assume an exit in maker
-                    trade_rate -= market.maker_fee
+                    profit_loss = trade.estimate_profit_loss(strategy_trader.instrument)
 
                     results.append({
                         'mid': market.market_id,
@@ -1210,7 +1189,7 @@ class Strategy(Runnable):
                         'x': market.format_quantity(trade.exec_exit_qty),
                         'tp': market.format_price(trade.take_profit),
                         'sl': market.format_price(trade.stop_loss),
-                        'rate': trade_rate or trade.profit_loss,
+                        'pl': profit_loss,
                         'tf': timeframe_to_str(trade.timeframe),
                         's': trade.state_to_str(),
                         'b': market.format_price(trade.best_price()),
@@ -1231,9 +1210,7 @@ class Strategy(Runnable):
         Generate and return an array of :
             mid: str name of the market id
             sym: str name of the symbol
-            rate: float current profit/loss rate 0 based
-            perf: float total sum of profit/loss rate 0 based
-            rate: rate
+            pl: flaot profit/loss rate
             perf: perf
             worst: worst
             best: best
@@ -1245,7 +1222,7 @@ class Strategy(Runnable):
         trader = self.trader()
 
         for k, strategy_trader in self._strategy_traders.items():
-            rate = 0.0
+            pl = 0.0
             perf = 0.0
 
             strategy_trader.lock()
@@ -1266,32 +1243,15 @@ class Strategy(Runnable):
             market = trader.market(strategy_trader.instrument.market_id) if trader else None
             if market:
                 for trade in strategy_trader.trades:
-                    # estimation at close price
-                    if trade.direction > 0 and trade.entry_price:
-                        trade_rate = (market.close_exec_price(trade.direction) - trade.entry_price) / trade.entry_price
-                    elif trade.direction < 0 and trade.entry_price:
-                        trade_rate = (trade.entry_price - market.close_exec_price(trade.direction)) / trade.entry_price
-                    else:
-                        trade_rate = 0.0
-
-                    # estimed maker/taker fee rate for entry and exit
-                    if trade.get_stats()['entry-maker']:
-                        trade_rate -= market.maker_fee
-                    else:
-                        trade_rate -= market.taker_fee
-
-                    # assume an exit in maker
-                    trade_rate -= market.maker_fee
-
-                    rate += trade_rate or trade.pl
+                    pl += trade.estimate_profit_loss(strategy_trader.instrument)
 
             strategy_trader.unlock()
 
-            if rate != 0.0 or num > 0 or success > 0 or failed > 0 or roe > 0:
+            if pl != 0.0 or num > 0 or success > 0 or failed > 0 or roe > 0:
                 results.append({
                     'mid': mid,
                     'sym': sym,
-                    'rate': rate,
+                    'pl': pl,
                     'perf': perf,
                     'worst': worst,
                     'best': best,
@@ -1306,7 +1266,7 @@ class Strategy(Runnable):
         """
         Generate and return an array of dict with the form :
             symbol: str name of the symbol/market
-            rate: float current profit/loss rate 0 based
+            pl: float current profit/loss rate 0 based
             perf: float total sum of profit/loss rate 0 based
             trades: list of dict of actives trades
                 id: int trade identifier
@@ -1315,7 +1275,7 @@ class Strategy(Runnable):
                 p: str formatted entry price
                 tp: str formatted take-profit price
                 sl: str formatted stop-loss price
-                rate: float profit/loss rate
+                pl: float profit/loss rate
                 tfs: list of str timeframe generating the trade
                 b: best hit price
                 w: worst hit price
@@ -1333,7 +1293,7 @@ class Strategy(Runnable):
         trader = self.trader()
 
         for k, strategy_trader in self._strategy_traders.items():
-            rate = 0.0
+            profit_loss = 0.0
             trades = []
             perf = 0.0
 
@@ -1350,24 +1310,8 @@ class Strategy(Runnable):
             market = trader.market(strategy_trader.instrument.market_id) if trader else None
             if market:
                 for trade in strategy_trader.trades:
-                    # estimation at close price
-                    if trade.direction > 0 and trade.entry_price:
-                        trade_rate = (market.close_exec_price(trade.direction) - trade.entry_price) / trade.entry_price
-                    elif trade.direction < 0 and trade.entry_price:
-                        trade_rate = (trade.entry_price - market.close_exec_price(trade.direction)) / trade.entry_price
-                    else:
-                        trade_rate = 0.0
+                    trade_pl = trade.estimate_profit_loss(strategy_trader.instrument)
 
-                    # estimed maker/taker fee rate for entry and exit
-                    if trade.get_stats()['entry-maker']:
-                        trade_rate -= market.maker_fee
-                    else:
-                        trade_rate -= market.taker_fee
-
-                    # assume an exit in maker
-                    trade_rate -= market.maker_fee
-
-                    # @todo update
                     trades.append({
                         'id': trade.id,
                         'eot': trade.entry_open_time,
@@ -1379,7 +1323,7 @@ class Strategy(Runnable):
                         'x': market.format_quantity(trade.exec_exit_qty),
                         'tp': market.format_price(trade.take_profit),
                         'sl': market.format_price(trade.stop_loss),
-                        'rate': trade_rate or trade.profit_loss,
+                        'pl': trade_pl,
                         'tf': timeframe_to_str(trade.timeframe),
                         's': trade.state_to_str(),
                         'b': market.format_price(trade.best_price()),
@@ -1391,14 +1335,14 @@ class Strategy(Runnable):
                         'com': trade.comment,
                     })
 
-                    rate += trade_rate or trade.pl
+                    profit_loss += trade_pl
 
             strategy_trader.unlock()
 
             results.append({
                 'mid': strategy_trader.instrument.market_id,
                 'sym': strategy_trader.instrument.symbol,
-                'rate': rate,
+                'pl': profit_loss,
                 'perf': perf,
                 'trades': trades,
                 'worst': worst,
@@ -1439,7 +1383,7 @@ class Strategy(Runnable):
                         'x': trade['e'],
                         'tp': trade['tp'],
                         'sl': trade['sl'],
-                        'rate': trade['rate'],
+                        'pl': trade['pl'],
                         'tf': trade['tf'],
                         's': trade['s'],
                         'c': trade['c'],
@@ -1450,6 +1394,7 @@ class Strategy(Runnable):
                         'aep': trade['aep'],
                         'axp': trade['axp'],
                         'com': trade['com'],
+                        'fees': trade['fees'],
                     })
 
                 for trade in strategy_trader._stats['success']:
@@ -1504,7 +1449,7 @@ class Strategy(Runnable):
         # total summ before offset:limit
         if summ:
             for t in agg_trades:
-                pl_sum += t['rate']
+                pl_sum += t['pl']
                 perf_sum += t['perf']
                 worst_sum = min(worst_sum, t['worst'])
                 best_sum = max(best_sum, t['best'])
@@ -1515,7 +1460,7 @@ class Strategy(Runnable):
         agg_trades = agg_trades[offset:limit]
 
         for t in agg_trades:
-            cr = Color.colorize_updn("%.2f" % (t['rate']*100.0), 0.0, t['rate'], style=style)
+            cr = Color.colorize_updn("%.2f" % (t['pl']*100.0), 0.0, t['pl'], style=style)
             cp = Color.colorize_updn("%.2f" % (t['perf']*100.0), 0.0, t['perf'], style=style)
 
             row = (
@@ -1585,22 +1530,27 @@ class Strategy(Runnable):
         trades = trades[offset:limit]
 
         for t in trades:
-            if t['rate'] < 0 and ((t['d'] == 'long' and float(t['b']) > float(t['aep'])) or (t['d'] == 'short' and float(t['b']) < float(t['aep']))):
+            if t['pl'] < 0 and ((t['d'] == 'long' and float(t['b']) > float(t['aep'])) or (t['d'] == 'short' and float(t['b']) < float(t['aep']))):
                 # have been profitable but loss
-                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
-            elif t['rate'] < 0:  # loss
-                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
-            elif t['rate'] > 0:  # profit
-                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
+                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
+            elif t['pl'] < 0:  # loss
+                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
+            elif t['pl'] > 0:  # profit
+                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
             else:  # equity
                 cr = "0.0"
 
-            if t['d'] == 'long':
-                bpct = (float(t['b']) - float(t['aep'])) / float(t['aep'])
-                wpct = (float(t['w']) - float(t['aep'])) / float(t['aep'])
-            elif t['d'] == 'short':
-                bpct = (float(t['aep']) - float(t['b'])) / float(t['aep'])
-                wpct = (float(t['aep']) - float(t['w'])) / float(t['aep'])
+            aep = float(t['aep'])
+
+            if t['d'] == 'long' and aep > 0:
+                bpct = (float(t['b']) - aep) / aep
+                wpct = (float(t['w']) - aep) / aep
+            elif t['d'] == 'short' and aep > 0:
+                bpct = (aep - float(t['b'])) / aep
+                wpct = (aep - float(t['w'])) / aep
+            else:
+                bpct = 0
+                wpct = 0
 
             row = [
                 t['mid'],
@@ -1634,7 +1584,7 @@ class Strategy(Runnable):
         """
         Returns a table of any closed trades.
         """
-        columns = ['Market', 'Id', 'Dir', 'P/L(%)', 'Price', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Entry date', 'Exit date', 'Comment']
+        columns = ['Market', 'Id', 'Dir', 'P/L(%)', 'Fees(%)', 'Price', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Entry date', 'Exit date', 'Comment']
 
         if quantities:
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -1661,12 +1611,12 @@ class Strategy(Runnable):
 
         for t in closed_trades:
             # @todo direction
-            if t['rate'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
-                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.ORANGE, style=style)
-            elif t['rate'] < 0:  # loss
-                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.RED, style=style)
-            elif t['rate'] > 0:  # profit
-                cr = Color.colorize("%.2f" % (t['rate']*100.0), Color.GREEN, style=style)
+            if t['pl'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
+                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
+            elif t['pl'] < 0:  # loss
+                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
+            elif t['pl'] > 0:  # profit
+                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
             else:
                 cr = "0.0"
 
@@ -1691,6 +1641,7 @@ class Strategy(Runnable):
                 t['id'],
                 t['d'],
                 cr,
+                "%.2f%%" % (t['fees'] * 100),
                 t['p'],
                 _sl,
                 _tp,
