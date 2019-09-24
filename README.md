@@ -462,7 +462,7 @@ and then 60 mean 1 minute of simulation per second.
 How to create or modify a strategy
 ----------------------------------
 
-[A guide explaning how to create, modify and configured an existing strategy](doc/strategy.md)
+[A guide explaning how to create, modify and configure an existing strategy.](doc/strategy.md)
 
 
 The winning strategy
@@ -512,10 +512,11 @@ python siis.py real --profile=bitmex-xbteth1
 Trades will be executed on your trading account.
 
 I'll suggest in a first time to test with a demo account or a testnet.
-Then once your are ok with your strategy, with the interface, and the stability, to try a second time try with small amount/quantity,
-on real account, before finally letting the bot playing with biggers amount/quantity. Please read the disclaimer at the bottom of this file.
+Then once your are ok with your strategy, with the interface, and the stability, and in a second time try with small amount,
+on real account, before finally letting the bot playing with biggers amount. Please read the disclaimer at the bottom of this file.
 
-In that case the watchers are running and stores OHLC and ticks/trade data (or not if --read-only is specified).
+By default, OHLC a stored to the database during the watching in live mode, but the trade/ticks are only manually fetched,
+excepted for IG which by default store the ticks during live mode, because it is not possible to get them from history.
 
 
 Interaction / CLI
@@ -535,7 +536,7 @@ There is some direct keys, not using the semicolumn, in default mode, and some c
 The :help command give you the list a shortcut and commands, and :help \<command-name> to have detailed help
 for a specific command.
 
-[More information of the CLI](doc/cli.md)
+[More information about the CLI.](doc/cli.md)
 
 
 About data storage

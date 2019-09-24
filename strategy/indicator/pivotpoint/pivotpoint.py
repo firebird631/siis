@@ -303,6 +303,9 @@ class PivotPointIndicator(Indicator):
                         self._resistances[n][i+1] = high[i] + n * (self._pivot[i+1] - low[i])
 
     def compute(self, timestamp, _open, high, low, close):
+        if not len(_open):
+            return
+
         self._pivotpoint3(_open, high, low, close)
 
         self._last_supports = [self._supports[n][-1] for n in range(0, self._num)]  # (self._supports[0][-1], self._supports[1][-1], self._supports[2][-1])

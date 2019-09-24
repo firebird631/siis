@@ -64,14 +64,10 @@ class IGWatcher(Watcher):
         - 1 to 3 Min 40 Days
         - 5 Min to 4 Hours 360 Days
         - Day 15 years
+        - Only for forex, indices, commodities, but no history for stocks !
 
     @todo get vol24 in base and quote unit
     @todo base_exchange_rate must be updated as price changes
-
-    @todo could use endpoint marketnavigation to get all instruments but its hierarchically queries...
-        { "nodes": [{ "id": "668394", "name": "Crypto-monnaie" }, { "id": "5371876", ...
-        per nodes id we have then : {"nodes": [{ "id": "668997", "name": "Bitcoin" }, { "id": "1002200", ...
-        and finally when we found "markets": [{ "epic": "CS.D.AUDUSD.CFD.IP", ... }]
     """
 
     MAX_CONCURRENT_SUBSCRIPTIONS = 40
@@ -85,9 +81,7 @@ class IGWatcher(Watcher):
         self._subscriptions = []
         self._account_id = ""
 
-        # caches for when a value is not defined
-        self._cached_tick = {}
-
+        self._cached_tick = {}    # caches for when a value is not defined
         self._store_trade = True  # default store trade because we can't get history else
 
     def connect(self):

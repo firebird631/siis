@@ -615,19 +615,24 @@ class StrategyTrader(object):
             else:
                 trade.modify_stop_loss(trader, instrument, stop_loss)
 
-    # def update_tp_sl(self, trade, close_exec_price, price, pointpivot):
-    #     """
-    #     Return a couple of two 2 couple :
-    #         - stop-loss: boolean update, float price
-    #         - take-profit: boolean update, float price
-    #     """
-    #     done = False
+    def update_exit(self, trade, close_exec_price, price, pointpivot):
+        """
+        According to a pivotpoint compute the next stop-loss trailing price,
+        and potentially a new take-profit price.
 
-    #     stop_loss = 0.0
-    #     take_profit = 0.0
+        Return a couple of two 2 couples :
+            - stop-loss: boolean update, float price
+            - take-profit: boolean update, float price
+        """
+        done = False
 
-    #     update_sl = False
-    #     update_tp = False
+        stop_loss = 0.0
+        take_profit = 0.0
+
+        update_sl = False
+        update_tp = False
+
+        return ((update_sl, stop_loss), (update_tp, take_profit))
 
     #     if pivotpoint.last_pivot > 0.0:
     #         if trade.direction > 0:
