@@ -753,7 +753,7 @@ class StrategyTrader(object):
         """
         Timeout then can cancel a non filled trade if exit signal occurs before timeout (timeframe).
         """
-        if trade.is_entry_timeout(timestamp, self.ENTRY_TIMEOUT):
+        if trade.is_entry_timeout(timestamp, timeout):
             trader = self.strategy.trader()
             trade.cancel_open(trader)
 
