@@ -277,6 +277,9 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     if (atr_stop < stop_loss or stop_loss <= 0) and atr_stop > close_exec_price * 1.005:
                         stop_loss = atr_stop
 
+                # update take-profit if necessary, and trailing stop-loss
+                # new_exit = self.update_exit(trade, close_exec_price, self.timeframes[self.ref_timeframe].price, self.timeframes[self.ref_timeframe].pointpivot)
+
                 if self.timeframes[self.ref_timeframe].pivotpoint.last_pivot > 0.0:
                     if trade.direction > 0:
                         # long
