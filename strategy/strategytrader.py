@@ -3,6 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy trader base class.
 
+import pathlib
 import threading
 import time
 
@@ -57,6 +58,8 @@ class StrategyTrader(object):
 
         self._global_streamer = None
         self._timeframe_streamers = {}
+
+        self._reporting = StrategyTrader.REPORTING_NONE
 
         self._stats = {
             'perf': 0.0,     # initial
@@ -477,6 +480,9 @@ class StrategyTrader(object):
                     else:
                         self._stats['roe'].append(record)
 
+                    if self._reporting == StrategyTrader.REPORTING_VERBOSE:
+                        self.report(trade, False)
+
         # recreate the list of trades
         if mutated:
             trades_list = []
@@ -793,7 +799,7 @@ class StrategyTrader(object):
         return False
 
     #
-    # signal data streaming for profiling
+    # signal data streaming
     #
 
     def create_chart_streamer(self, timeframe):
@@ -859,9 +865,9 @@ class StrategyTrader(object):
     #
 
     def report_path(self, *relative_path):
-        # check sub-path existence else create
-        import pathlib
-
+        """
+        Check and generated a path where to write reporting files.
+        """
         report_path = pathlib.Path(self.strategy.service.report_path)
         if report_path.exists():
             # only create the relative path (not the report if not exists, it might from config setup else its an issue)
@@ -880,9 +886,12 @@ class StrategyTrader(object):
             return None
 
     def default_report_filename(self, ext=".csv", header=None):
+        """
+        Generate a default filename for reporting.
+        """
         report_path = self.report_path(self.strategy.identifier, self.instrument.market_id)
         if report_path:
-            filename = str(report_path.joinpath(datetime.now().strftime('%Y-%m-%dT%H-%M-%S') + ext))
+            filename = str(report_path.joinpath(datetime.now().strftime('%Y%m%d_%Hh%Mm%S') + ext))
 
             try:
                 f = open(filename, "wt")
@@ -898,3 +907,9 @@ class StrategyTrader(object):
             return filename
 
         return None
+
+    def report(self, trade, is_entry):
+        """
+        Override this method.
+        """
+        pass

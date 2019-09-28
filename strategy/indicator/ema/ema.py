@@ -84,6 +84,3 @@ class EMAIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._emas
-
-    def trace(self):
-        return tuple(self._last)

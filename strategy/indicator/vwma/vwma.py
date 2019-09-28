@@ -97,6 +97,3 @@ class VWMAIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._vwmas
-
-    def trace(self):
-        return tuple(self._last)

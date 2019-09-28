@@ -140,6 +140,3 @@ class FibonacciIndicator(Indicator):
         # @todo
 
         return levels
-
-    def trace(self):
-        return tuple(self._lowers, self._highers)

@@ -64,17 +64,6 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
                 # retains the last valid signal only if valid
                 self.last_signal = signal
 
-                if self.profiling:
-                    # store signal data condition when profiling
-                    signal.add_condition('price', self.price.trace())
-                    # signal.add_condition('rsi', self.rsi.trace())
-                    # signal.add_condition('sma', self.sma.trace())
-                    # signal.add_condition('ema', self.ema.trace())
-                    # signal.add_condition('stochrsi', self.stochrsi.trace())
-                    signal.add_condition('tomdemark', self.tomdemark.trace())
-                    # signal.add_condition('bbawe', self.bbawe.trace())
-                    # signal.add_condition('bollinger', self.bollingerbands.trade())
-
         return signal
 
     def compute(self, timestamp, last_timestamp, candles, prices, volumes):

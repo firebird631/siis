@@ -315,6 +315,3 @@ class PivotPointIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._pivot, self._supports, self._resistances
-
-    def trace(self):
-        return tuple(self._last_resistances, self._last_pivot, self._last_supports)

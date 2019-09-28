@@ -87,6 +87,3 @@ class MomentumIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._mmts
-
-    def trace(self):
-        return tuple(self._last)

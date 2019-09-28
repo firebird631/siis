@@ -84,6 +84,3 @@ class VolumeIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._volumes
-
-    def trace(self):
-        return tuple(self._last)

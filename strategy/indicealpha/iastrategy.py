@@ -36,7 +36,6 @@ logger = logging.getLogger('siis.strategy.indicealpha')
 class IndiceAlphaStrategy(Strategy):
     """
     Indice Alpha strategy. Does not use volume information because we don't have them.
-    @todo based on Forex Alpha but without volume profiling and more on trend.
     """
 
     def __init__(self, strategy_service, watcher_service, trader_service, options):

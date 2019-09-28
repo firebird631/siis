@@ -99,6 +99,3 @@ class MACDIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._macds
-
-    def trace(self):
-        return tuple(self._last)

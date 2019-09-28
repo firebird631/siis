@@ -85,6 +85,3 @@ class WMAIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._wmas
-
-    def trace(self):
-        return tuple(self._last)

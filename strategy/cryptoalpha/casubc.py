@@ -51,14 +51,6 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
                 # retains the last valid signal only if valid
                 self.last_signal = signal
 
-                if self.profiling:
-                    # store signal data condition when profiling
-                    signal.add_condition('price', self.price.trace())
-                    signal.add_condition('rsi', self.rsi.trace())
-                    signal.add_condition('sma', self.sma.trace())
-                    signal.add_condition('ema', self.ema.trace())
-                    signal.add_condition('stochrsi', self.stochrsi.trace())
-
         self.complete(candles)
 
         return signal

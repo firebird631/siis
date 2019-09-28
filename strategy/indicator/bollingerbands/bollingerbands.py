@@ -162,6 +162,3 @@ class BollingerBandsIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._tops, self._mas, self._bottoms
-
-    def trace(self):
-        return tuple(self._last_top, self._last_ma, self._last_bottom)

@@ -74,6 +74,3 @@ class ZigZagIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return highers, lowers
-
-    def trace(self):
-        return tuple(self._lowers, self._highers)

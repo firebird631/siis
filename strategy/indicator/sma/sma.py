@@ -80,6 +80,3 @@ class SMAIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._smas
-
-    def trace(self):
-        return tuple(self._last)

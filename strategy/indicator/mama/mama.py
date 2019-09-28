@@ -101,6 +101,3 @@ class MAMAIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._mamas, self._famas
-
-    def trace(self):
-        return tuple(self._last_fama, self._last_mama)

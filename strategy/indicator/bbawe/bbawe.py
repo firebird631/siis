@@ -90,6 +90,3 @@ class BBAweIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._signal
-
-    def trace(self):
-        return tuple(self._signal)

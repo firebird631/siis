@@ -84,6 +84,3 @@ class SineWaveIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._sines, self._lead_sines
-
-    def trace(self):
-        return tuple(self._last_sine, self._last_lead_sine)

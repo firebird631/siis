@@ -539,6 +539,3 @@ class TomDemarkIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self
-
-    def trace(self):
-        return tuple(self._c.c, self._cd.c, self._agg_cd.c)

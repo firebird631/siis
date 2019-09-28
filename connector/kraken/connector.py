@@ -160,7 +160,6 @@ class Connector(object):
 
     def get_ws_token(self):
         data = self.query_private('GetWebSocketsToken')
-        logger.info(data)
 
         if data['error']:
             logger.error("ws token: %s" % ', '.join(data['error']))

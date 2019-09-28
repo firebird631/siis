@@ -1,7 +1,7 @@
 #!/bin/bash
 # update FROM= each time or use --last= and do it every day/week using a crontab
 TO='2019-12-31T23:59:59'
-MARKETS='XBTUSD,ETHUSD,ETHU19,BCHU19,LTCU19,TRXU19,EOSU19,XRPU19,ADAU19,XBTU19'
+MARKETS='XBTUSD,ETHUSD,ETHZ19,BCHZ19,LTCZ19,TRXZ19,EOSZ19,XRPZ19,ADAZ19,XBTZ19'
 
 # need the last 7 day to reconstruct the weekly
 FROM='2019-09-16T00:00:00'

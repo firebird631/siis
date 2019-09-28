@@ -206,6 +206,3 @@ class IchimokuIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._tenkans, self._kijuns, self._ssas, self._ssbs, self._chikous
-
-    def trace(self):
-        return tuple(self._last_tenkan, self._last_kijun)

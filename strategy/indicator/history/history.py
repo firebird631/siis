@@ -79,6 +79,3 @@ class HistoryIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._values
-
-    def trace(self):
-        return tuple(self._last)

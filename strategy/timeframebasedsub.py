@@ -19,7 +19,6 @@ class TimeframeBasedSub(object):
         self.tf = timeframe
         self.depth = depth       # min samples size needed for processing
         self.history = history   # sample history size
-        self.profiling = False   # profiling mean store the states of the indicators for any signals
         self.next_timestamp = 0  # next waiting, to be processed ohlc timestamp
 
         self._update_at_close = params.get('update-at-close', False)

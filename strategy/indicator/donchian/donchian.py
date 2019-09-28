@@ -76,6 +76,3 @@ class DonchianIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._highs, self._lows   
-
-    def trace(self):
-        return tuple(self._last_low, self._last_high)
