@@ -30,7 +30,7 @@ class StrategyTrade(object):
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
                 'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', 'ptp', '_stats', 'last_tp_ot', 'last_sl_ot', \
-                'exit_trades', '_comment', '_expiry', '_dirty',
+                'exit_trades', '_comment', '_expiry', '_dirty', '_extra'
 
     VERSION = "1.0.0"
 
@@ -106,6 +106,8 @@ class StrategyTrade(object):
             'exit-fees': 0.0,
             'conditions': {}
         }
+
+        self._extra = {}
 
     #
     # getters
@@ -568,7 +570,8 @@ class StrategyTrade(object):
             'exit-trades': self.exit_trades,
             'last-take-profit-order-time': self.last_tp_ot,
             'last-stop-loss-order-time': self.last_sl_ot,
-            'statistics': self._stats
+            'statistics': self._stats,
+            'extra': self._extra,
         }
 
     def loads(self, data):
@@ -622,6 +625,8 @@ class StrategyTrade(object):
             'exit-fees': 0.0,
             'conditions': {}
         })
+
+        self._extra = data.get('extra', {})
 
         return True
 
@@ -714,6 +719,26 @@ class StrategyTrade(object):
             profit_loss -= instrument.taker_fee
 
         return profit_loss
+
+    #
+    # extra
+    #
+
+    def set(self, key, value):
+        """
+        Add a key:value paire in the extra member dict of the trade.
+        It allow to add you internal trade data, states you want to keep during the live of the trade and even in persistency
+        """
+        self._extra[key] = value
+
+    def unset(self, key):
+        """Remove a previously set extra key"""
+        if key in self._extra:
+            del self._extra[key]
+
+    def get(self, key, default=None):
+        """Return a value for a previously defined key or default value if not exists"""
+        return self._extra.get(key, default)
 
     #
     # operations

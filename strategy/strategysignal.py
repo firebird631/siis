@@ -33,9 +33,11 @@ class StrategySignal(object):
     - tp for take-profit price
     - ts for timestamp (UTC)
     - ptp for partial TP from 0 to 1
+
+    @todo remove ptp, let in in extra
     """
 
-    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'alt_tp', 'ptp', 'comment'
+    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'alt_tp', 'ptp', '_extra', '_comment'
 
     SIGNAL_NONE = 0   # signal type undefined (must be entry or exit else its informal)
     SIGNAL_ENTRY = 1  # entry signal (this does not mean long. @see dir)
@@ -51,9 +53,51 @@ class StrategySignal(object):
         self.sl = 0      # possible stop-loss pricce
         self.tp = 0      # primary possible take profit price
         self.alt_tp = 0  # secondary possible take profit price
-        self.comment = ""  # optional comment
+
+        self._comment = ""  # optional comment
+        self._extra = {}
 
         self.ptp = 1.0  # partial TP ratio ]0.0..N]
+
+    @property
+    def direction(self):
+        return self.dir
+
+    @property
+    def price(self):
+        return self.p
+
+    @property
+    def stop_loss(self):
+        return self.sl
+    
+    @property
+    def timestamp(self):
+        return self.ts    
+
+    @property
+    def take_profit(self):
+        return self.tp
+
+    @property
+    def alt_take_profit(self):
+        return self.alt_tp
+
+    @property
+    def partial_tp(self):
+        return self.ptp
+
+    @property
+    def comment(self):
+        return self._comment
+
+    @comment.setter
+    def comment(self, comment):
+        self._comment = comment
+
+    #
+    # helpers
+    #
 
     def base_time(self) -> float:
         """
@@ -87,34 +131,6 @@ class StrategySignal(object):
 
         return "none"
 
-    @property
-    def direction(self):
-        return self.dir
-
-    @property
-    def price(self):
-        return self.p
-
-    @property
-    def stop_loss(self):
-        return self.sl
-    
-    @property
-    def timestamp(self):
-        return self.ts    
-
-    @property
-    def take_profit(self):
-        return self.tp
-
-    @property
-    def alt_take_profit(self):
-        return self.alt_tp
-
-    @property
-    def partial_tp(self):
-        return self.ptp
-
     def direction_str(self) -> str:
         if self.dir > 0:
             return "long"
@@ -147,3 +163,23 @@ class StrategySignal(object):
         return "tf=%s ts=%s signal=%s dir=%s p=%s sl=%s tp=%s %s" % (
                 timeframe_to_str(self.timeframe), date_str, self.signal_type_str(), self.direction_str(),
                 self.p, self.sl, self.tp, self.comment)
+
+    #
+    # extra
+    #
+
+    def set(self, key, value):
+        """
+        Add a key:value paire in the extra member dict of the signal.
+        It allow to add you internal signal data, states you want to communicate to the orderer.
+        """
+        self._extra[key] = value
+
+    def unset(self, key):
+        """Remove a previously set extra key"""
+        if key in self._extra:
+            del self._extra[key]
+
+    def get(self, key, default=None):
+        """Return a value for a previously defined key or default value if not exists"""
+        return self._extra.get(key, default)

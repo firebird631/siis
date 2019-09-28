@@ -489,6 +489,10 @@ class StrategyService(Service):
     def to_date(self):
         return self._to_date
 
+    @property
+    def report_path(self):
+        return self._report_path
+
     def appliance_config(self, name):
         """
         Get the configurations for an appliance as dict.

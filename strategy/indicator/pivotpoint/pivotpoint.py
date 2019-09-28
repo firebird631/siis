@@ -211,7 +211,7 @@ class PivotPointIndicator(Indicator):
                 self._supports[0][i+1] = close[i] - (high[i] - low[i])*1.1/12
                 self._supports[1][i+1] = close[i] - (high[i] - low[i])*1.1/6
                 self._supports[2][i+1] = close[i] - (high[i] - low[i])*1.1/4
-                self._supports[2][i+1] = close[i] - (high[i] - low[i])*1.1/2
+                self._supports[3][i+1] = close[i] - (high[i] - low[i])*1.1/2
 
                 self._resistances[0][i+1] = close[i] + (high[i] - low[i])*1.1/12
                 self._resistances[1][i+1] = close[i] + (high[i] - low[i])*1.1/6
