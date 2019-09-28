@@ -6,6 +6,8 @@
 import threading
 import time
 
+from datetime import datetime
+
 from strategy.strategytrade import StrategyTrade
 from strategy.strategyassettrade import StrategyAssetTrade
 from strategy.strategymargintrade import StrategyMarginTrade
@@ -20,6 +22,7 @@ from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.strategy')
+error_logger = logging.getLogger('siis.error.strategy')
 
 
 class StrategyTrader(object):
@@ -30,6 +33,14 @@ class StrategyTrader(object):
         notification receiver (only then keep notify_order calls), streaming will be done on a distinct service.
         disable any others streaming capacities on the strategy-traders excepted for debug purposes.
     """
+
+    REPORTING_NONE = 0
+    REPORTING_VERBOSE = 1
+
+    REPORTING_MAP = {
+        'none': REPORTING_NONE,
+        'verbose': REPORTING_VERBOSE,
+    }
 
     def __init__(self, strategy, instrument):
         self.strategy = strategy
@@ -842,3 +853,48 @@ class StrategyTrader(object):
         Process the call for the strategy trader. Must be overriden.
         """
         pass
+
+    #
+    # reporting
+    #
+
+    def report_path(self, *relative_path):
+        # check sub-path existence else create
+        import pathlib
+
+        report_path = pathlib.Path(self.strategy.service.report_path)
+        if report_path.exists():
+            # only create the relative path (not the report if not exists, it might from config setup else its an issue)
+            report_path = report_path.joinpath(*relative_path)
+            if not report_path.exists():
+                try:
+                    report_path.mkdir(parents=True)
+                except Exception as e:
+                    error_logger(repr(e))
+                    return None
+
+                return report_path
+            else:
+                return report_path
+        else:
+            return None
+
+    def default_report_filename(self, ext=".csv", header=None):
+        report_path = self.report_path(self.strategy.identifier, self.instrument.market_id)
+        if report_path:
+            filename = str(report_path.joinpath(datetime.now().strftime('%Y-%m-%dT%H-%M-%S') + ext))
+
+            try:
+                f = open(filename, "wt")
+
+                if header:
+                    f.write(f + '\n')
+
+                f.close()
+            except Exception as e:
+                error_logger.error(repr(e))
+                return None
+
+            return filename
+
+        return None
