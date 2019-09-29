@@ -244,7 +244,7 @@ class DesktopNotifier(Notifiable):
                 if self.discord:
                     if signal.data['identifier'] in self._discord_webhook:
                         send_to_discord(self._discord_webhook[signal.data['identifier']], 'SiiS', '```' + message + '```')
-                    else:
+                    elif self._discord_webhook.get('signals'):
                         send_to_discord(self._discord_webhook['signals'], 'SiiS', '```' + message + '```')
 
                 # log them to the signal view
