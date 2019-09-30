@@ -181,9 +181,9 @@ First running will try to create a data structure on your local user.
 The directory will contains 4 sub-directories:
 
 * config/ contains important configurations files (described belows)
-* log/ contains siis.log the main log and eventually some others logs files (client.log, error.siis.log, exec.siis.log...)
+* log/ contains siis.log the main log and eventually some others logs files (error.siis.log, exec.siis.log, signal.siis.log)
 * markets/ contains sub-directories for each configured brokers (detailes belows)
-* reports/ contains the reports of the backtesting, per datetime, broker name, 3 files per reports (data.py, report.log, trades.log)
+* reports/ contains the reports of the trades
 
 ### config ###
 
@@ -347,10 +347,10 @@ python siis.py <identity> [--help, --options...]
 * --check-data @todo Process a test on candles data. Check if there is inconsitencies into the time of the candles and if there is some gaps. The test is done only on the defined range of time.
 * --from=<YYYY-MM-DDThh:mm:ss> define the date time from which start the backtesting, fetcher or binarizer. If ommited use whoole data set (take care).
 * --to=<YYYY-MM-DDThh:mm:ss> define the date time to which stop the backtesting, fetcher or binarizer. If ommited use now.
-* --last=\<number> Fast last number of candles for every watched market (take care can take all requests credits on the broker). By default it is configured to get 1m, 5m and 1h candles.
+* --last=\<number> Fast last number of candles for every watched market (take care can take all requests credits on the broker).
 * --market=\<market-id> Specific market identifier to fetch, binarize only.
 * --broker=\<broker-name> Specific fetcher or watcher name to fetche or binarize market from.
-* --timeframe=\<timeframe> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in **1m, 5m, 15m, 1h, 2h, 4h, 1d, 1M, 1w**
+* --timeframe=\<timeframe> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in **1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1M, 1w**
 * --cascaded=\<max-timeframe> During fetch process generate the candles of highers timeframe from lowers. Default is no. Take care to have entire multiple to fullfill the generated candles.
 * --spec=\<specific-option> Specific fetcher option (exemple STOCK for alphavantage.co fetcher to fetch a stock market).
 * --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.
