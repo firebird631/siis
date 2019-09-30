@@ -130,16 +130,15 @@ class BinanceWatcher(Watcher):
                             # aggreged trade
                             multiplex.append(symbol + '@aggTrade')
 
-                            # ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
-                            # multiplex.append('{}@kline_{}'.format(symbol, '1m'))
-                            # multiplex.append('{}@kline_{}'.format(symbol, '5m'))
-                            # multiplex.append('{}@kline_{}'.format(symbol, '1h'))
+                            # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
+                            # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
 
                             # fetch from 1M to 1W
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE, None)  # 1
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_5M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_15M)  # 3
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)  # 4
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)  # 7
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_15M, 2*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
+                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)
 
                             logger.info("%s prefetch for %s" % (self.name, instrument['symbol']))
 
@@ -782,7 +781,7 @@ class BinanceWatcher(Watcher):
 
             if market is None:
                 # can be a removed market, signal its closed
-                market_data = (market_id, False, time.time(), 0.0, 0.0, None, None, None, None, None)
+                market_data = (market_id, False, time.time(), None, None, None, None, None, None, None)
 
             elif market.is_open:
                 # market exists and tradable
@@ -791,7 +790,7 @@ class BinanceWatcher(Watcher):
                         market.vol24h_base, market.vol24h_quote)
             else:
                 # market exists but closed
-                market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
+                market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 

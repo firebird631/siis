@@ -338,13 +338,19 @@ class StrategyTrade(object):
 
         @note created timestamp t must be valid else it will timeout every time.
         """
-        return (self._entry_state in (StrategyTrade.STATE_PARTIALLY_FILLED, StrategyTrade.STATE_FILLED)) and (self.e > 0) and (self.eot > 0) and ((timestamp - self.eot) >= self._expiry)
+        return (
+                (self._entry_state in (StrategyTrade.STATE_PARTIALLY_FILLED, StrategyTrade.STATE_FILLED)) and
+                (self._expiry > 0.0) and (self.e > 0) and (self.eot > 0) and ((timestamp - self.eot) >= self._expiry)
+            )
 
     def is_valid(self, timestamp, validity):
         """
         Return true if the trade is not expired (signal still acceptable) and entry quantity not fully filled.
         """
-        return ((self._entry_state == StrategyTrade.STATE_OPENED or self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED) and ((timestamp - self.entry_open_time) <= validity))
+        return (
+                ((self._entry_state == StrategyTrade.STATE_OPENED or self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED) and
+                (validity > 0.0) and ((timestamp - self.entry_open_time) <= validity))
+            )
 
     def cancel_open(self, trader):
         """

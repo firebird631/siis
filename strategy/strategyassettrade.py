@@ -421,7 +421,7 @@ class StrategyAssetTrade(StrategyTrade):
     def order_signal(self, signal_type, data, ref_order_id, instrument):
         if signal_type == Signal.SIGNAL_ORDER_OPENED:
             # already get at the return of create_order
-            if ref_order_id == self.entry_ref_oid:  # data['direction'] > 0: 
+            if ref_order_id == self.entry_ref_oid:
                 self.entry_oid = data['id']
                 self.entry_ref_oid = None
 
@@ -436,7 +436,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                 self._entry_state = StrategyTrade.STATE_OPENED
 
-            elif ref_order_id == self.stop_ref_oid:  # data['direction'] < 0:
+            elif ref_order_id == self.stop_ref_oid:
                 self.stop_oid = data['id']
                 self.stop_ref_oid = None
 
@@ -444,7 +444,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                 self._exit_state = StrategyTrade.STATE_OPENED
 
-            elif ref_order_id == self.limit_ref_oid:  # data['direction'] < 0:
+            elif ref_order_id == self.limit_ref_oid:
                 self.limit_oid = data['id']
                 self.limit_ref_oid = None
 

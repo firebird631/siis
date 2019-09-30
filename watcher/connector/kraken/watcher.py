@@ -447,8 +447,9 @@ class KrakenWatcher(Watcher):
             # else:
             #     market.base_exchange_rate = 1.0
 
-            market_data = (market_id, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
-            self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+            if bid > 0.0 and ofr > 0.0:
+                market_data = (market_id, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
+                self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
         elif isinstance(data, dict):
             if data['event'] == "subscriptionStatus" and data['channelName'] == "ticker":
@@ -530,7 +531,7 @@ class KrakenWatcher(Watcher):
                         market.base_exchange_rate, market.contract_size, market.value_per_pip,
                         market.vol24h_base, market.vol24h_quote)
             else:
-                market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
+                market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 

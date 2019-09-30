@@ -8,6 +8,9 @@ from strategy.indicator.utils import down_sample
 
 import numpy as np
 
+import logging
+logger = logging.getLogger('siis.strategy.indicator.price')
+
 
 class PriceIndicator(Indicator):
     """

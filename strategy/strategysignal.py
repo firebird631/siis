@@ -48,11 +48,13 @@ class StrategySignal(object):
         self.ts = timestamp          # timestamps of the signal emit
         self.signal = StrategySignal.SIGNAL_NONE  # type of the signal : entry or exit
 
-        self.dir = 0     # signal diretion
-        self.p = 0       # signal price / possible entry-price
-        self.sl = 0      # possible stop-loss pricce
-        self.tp = 0      # primary possible take profit price
-        self.alt_tp = 0  # secondary possible take profit price
+        self.dir = 0       # signal diretion
+
+        self.p = 0.0       # signal price / possible entry-price
+        self.sl = 0.0      # possible stop-loss pricce
+        self.tp = 0.0      # primary possible take profit price
+        self.alt_tp = 0.0  # secondary possible take profit price
+        self.expiry = 0.0  # trade expiration if in profit after this delay
 
         self._comment = ""  # optional comment
         self._extra = {}

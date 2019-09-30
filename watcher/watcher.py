@@ -39,8 +39,10 @@ class Watcher(Runnable):
     # ohlc timeframes of interest for storage
     STORED_TIMEFRAMES = (
         Instrument.TF_MIN,
+        Instrument.TF_3MIN,
         Instrument.TF_5MIN,
         Instrument.TF_15MIN,
+        Instrument.TF_30MIN,
         Instrument.TF_HOUR,
         Instrument.TF_2HOUR,
         Instrument.TF_4HOUR,
@@ -48,7 +50,7 @@ class Watcher(Runnable):
         Instrument.TF_WEEK)
 
     # candles from 1m to 1 week
-    GENERATED_TF = [60, 60*5, 60*15, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
+    GENERATED_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
 
     def __init__(self, name, service, watcher_type):
         super().__init__("wt-%s" % (name,))

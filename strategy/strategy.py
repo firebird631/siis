@@ -699,13 +699,22 @@ class Strategy(Runnable):
                     instrument.tradeable = signal.data[1]
 
                     if signal.data[1]:
-                        instrument.last_update_time = signal.data[2]
-                        instrument.market_bid = signal.data[3]
-                        instrument.market_ofr = signal.data[4]
+                        # only if valid field
+                        if signal.data[2]:
+                            instrument.last_update_time = signal.data[2]
 
-                        instrument.base_exchange_rate = signal.data[5]
-                        instrument.vol24h_base = signal.data[8]
-                        instrument.vol24h_quote = signal.data[9]
+                        if signal.data[3]:
+                            instrument.market_bid = signal.data[3]
+                        if signal.data[4]:
+                            instrument.market_ofr = signal.data[4]
+
+                        if signal.data[5]:
+                            instrument.base_exchange_rate = signal.data[5]
+
+                        if signal.data[8]:
+                            instrument.vol24h_base = signal.data[8]
+                        if signal.data[9]:
+                            instrument.vol24h_quote = signal.data[9]
 
                 elif signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                     # update market info data

@@ -12,11 +12,23 @@ import statistics as stat
 import numpy as np
 import copy
 
+import logging
+logger = logging.getLogger('siis.strategy.indicator.bollingerbands')
+
 
 class BollingerBandsIndicator(Indicator):
     """
     Bollinger Bands indicator
     https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/bollinger-band-width
+
+    TA-lib necessary path :
+
+    In src/ta_func/ta_utility.h :
+
+    --- #define TA_IS_ZERO(v) (((-0.00000001)<v)&&(v<0.00000001))
+    +++ #define TA_IS_ZERO(v) (((-0.000000000000000001)<v)&&(v<0.000000000000000001))
+    --- #define TA_IS_ZERO_OR_NEG(v) (v<0.00000001)
+    +++ #define TA_IS_ZERO_OR_NEG(v) (v<0.000000000000000001)
     """
 
     __slots__ = '_length', '_prev_bottom', '_prev_ma', '_prev_top', '_last_bottom', '_last_ma', '_last_top', '_bottoms', '_tops', '_mas'
@@ -152,12 +164,24 @@ class BollingerBandsIndicator(Indicator):
         self._prev_ma = self._last_ma
         self._prev_bottom = self._last_bottom
 
-        # bottom, ma, top = BollingerBandsIndicator.BB(self._length, prices)
+        # self._tops, self._mas, self._bottoms = BollingerBandsIndicator.BB(self._length, prices)
+        # self._tops, self._mas, self._bottoms = ta_BBANDS(prices*10000.0, timeperiod=self._length, nbdevup=2, nbdevdn=2, matype=0)
         self._tops, self._mas, self._bottoms = ta_BBANDS(prices, timeperiod=self._length, nbdevup=2, nbdevdn=2, matype=0)
+
+        # self._tops *= 0.0001
+        # self._mas *= 0.0001
+        # self._bottoms *= 0.0001
 
         self._last_top = self._tops[-1]
         self._last_ma = self._mas[-1]
         self._last_bottom = self._bottoms[-1]
+
+        # used to check with a crypto over BTC if values are the same else need to patch TA-lib
+        # if self.timeframe == 3600:
+        #     logger.info(prices)
+        #     logger.info(self._tops)
+        #     logger.info(self._mas)
+        #     logger.info(self._bottoms)
 
         self._last_timestamp = timestamp
 

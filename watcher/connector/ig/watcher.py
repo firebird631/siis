@@ -147,10 +147,11 @@ class IGWatcher(Watcher):
                 # susbcribe for symbols
                 # for symbol in instruments:
                 #     # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
-                #     # prefetch for the last of each except for 1m and 5m we assume we have a delay of 15 minutes
+                #     # prefetch for the last of each except for 1m and 5m we assume we have a delay of 5 minutes
                 #     # from the manual prefetch script execution and assuming the higher timeframe are already up-to-date.
-                #     self.fetch_and_generate(symbol, Instrument.TF_1M, 15, None)
-                #     self.fetch_and_generate(symbol, Instrument.TF_5M, 3, None)
+                #     self.fetch_and_generate(symbol, Instrument.TF_1M, 5, None)
+                #     self.fetch_and_generate(symbol, Instrument.TF_3M, 2, None)
+                #     self.fetch_and_generate(symbol, Instrument.TF_5M, 1, None)
                 #     self.fetch_and_generate(symbol, Instrument.TF_15M, 1, None)
                 #     self.fetch_and_generate(symbol, Instrument.TF_1H, 1, None)
                 #     self.fetch_and_generate(symbol, Instrument.TF_4H, 1, None)
@@ -418,7 +419,7 @@ class IGWatcher(Watcher):
                     market_data = (name[1], True, update_time, float(values["BID"]), float(values["OFFER"]), None, None, None, None, None)
                 else:
                     update_time = 0
-                    market_data = (name[1], False, 0, 0.0, 0.0, None, None, None, None, None)
+                    market_data = (name[1], False, 0, None, None, None, None, None, None, None)
 
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
         except Exception as e:
@@ -904,7 +905,7 @@ class IGWatcher(Watcher):
                         market.base_exchange_rate, market.contract_size, market.value_per_pip,
                         market.vol24h_base, market.vol24h_quote)
             else:
-                market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
+                market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 

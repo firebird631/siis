@@ -112,9 +112,12 @@ From deps/ directory, first install TA-Lib (C lib needed by the Python binding) 
 ```
 tar xvzf deps/ta-lib-0.4.0-src.tar.gz
 cd ta-lib
+cp deps/patch/ta_utility.h ta-lib/src/ta_func
 ./configure
 make
 ```
+
+This include a patch necessary to have correct Bollinger Bands values for market price very low (<0.0001) else all the values will be the sames.
 
 Eventually you need to have installed the build-essential packages from your distribution repository in way to have GCC, Make and Autotools.
 

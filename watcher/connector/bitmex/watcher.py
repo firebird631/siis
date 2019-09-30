@@ -87,10 +87,10 @@ class BitMexWatcher(Watcher):
                         self.insert_watched_instrument(symbol, [0])
 
                         # fetch from 1M to 1W
-                        self.fetch_and_generate(symbol, Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE, None)  # 1
-                        self.fetch_and_generate(symbol, Instrument.TF_5M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_15M)  # 3
-                        self.fetch_and_generate(symbol, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)  # 4
-                        self.fetch_and_generate(symbol, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)  # 7
+                        self.fetch_and_generate(symbol, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
+                        self.fetch_and_generate(symbol, Instrument.TF_5M, 6*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
+                        self.fetch_and_generate(symbol, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
+                        self.fetch_and_generate(symbol, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)
 
                         logger.info("%s prefetch for %s" % (self.name, symbol))
 
@@ -733,7 +733,7 @@ class BitMexWatcher(Watcher):
                         market.base_exchange_rate, market.contract_size, market.value_per_pip,
                         market.vol24h_base, market.vol24h_quote)
             else:
-                market_data = (market_id, market.is_open, market.last_update_time, 0.0, 0.0, None, None, None, None, None)
+                market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 

@@ -29,7 +29,7 @@ class Fetcher(object):
     """
 
     # candles from 1m to 1 week
-    GENERATED_TF = [60, 60*5, 60*15, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
+    GENERATED_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
 
     TICK_STORAGE_DELAY = 0.05  # 50ms
     MAX_PENDING_TICK = 10000
