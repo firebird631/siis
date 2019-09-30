@@ -50,8 +50,8 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.max_trades = params['max-trades']
         self.hedging = params['hedging']  # only if the broker/market allow it
 
-        self.min_traded_timeframe = params['min-traded-timeframe']
-        self.max_traded_timeframe = params['max-traded-timeframe']
+        self.min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', "15m"))
+        self.max_traded_timeframe = self.timeframe_from_param(params.get('max-traded-timeframe', "4h"))
 
         # self.score_trigger = params['score-trigger']
         # self.score_increase_factor = params['score-increase-factor']

@@ -49,16 +49,16 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.min_price = params['min-price']
         self.min_vol24h = params['min-vol24h']
 
-        self.min_traded_timeframe = params['min-traded-timeframe']
-        self.max_traded_timeframe = params['max-traded-timeframe']
+        self.min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', '15m'))
+        self.max_traded_timeframe = self.timeframe_from_param(params.get('max-traded-timeframe', '4h'))
 
         self.region_allow = params['region-allow']
 
-        self.sltp_timeframe = params.setdefault('sltp-timeframe', Instrument.TF_1H)
-        self.ref_timeframe = params.setdefault('ref-timeframe', Instrument.TF_1D)
+        self.sltp_timeframe = self.timeframe_from_param(params.setdefault('sltp-timeframe', '1h'))
+        self.ref_timeframe = self.timeframe_from_param(params.setdefault('ref-timeframe', '1d'))
 
         self.sltp_max_rate = params.get('modify-max-rate', 3.0)
-        self.sltp_max_timeframe = params.get('modify-max-timeframe', 60.0)
+        self.sltp_max_timeframe = self.timeframe_from_param(params.get('modify-max-timeframe', '1m'))
 
         for k, timeframe in strategy.timeframes_config.items():
             if timeframe['mode'] == 'A':

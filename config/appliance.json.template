@@ -1,0 +1,254 @@
+{
+	"binance-baseusdt": {
+        "status": "enabled",
+        "strategy": {
+            "name": "cryptoalpha",
+            "parameters": {}
+        },
+        "watcher": [{
+            "name": "binance.com",
+            "symbols": ["*USDT"]
+        }],
+        "trader": {
+            "name": "binance.com",
+            "instruments": {
+                "*USDT": {
+                    "market-id": "{0}",
+                    "size": 250
+                }
+            }
+        }
+    },
+    "binance-altbtc": {
+        "status": "enabled",
+        "strategy": {
+            "name": "cryptoalpha",
+            "parameters": {}
+        },
+        "watcher": [{
+            "name": "binance.com",
+            "symbols": ["*BTC"]
+        }],
+        "trader": {
+            "name": "binance.com",
+            "instruments": {
+                "*BTC": {
+                    "market-id": "{0}",
+                    "size": 0.05
+                }
+            }
+        }
+    },
+    "bitmex-xbtusd-ethusd": {
+        "status": "disabled",
+        "strategy": {
+            "name": "cryptoalpha",
+            "parameters": {}
+        },
+        "watcher": [{
+            "name": "bitmex.com",
+            "symbols": ["XBTUSD", "ETHUSD"]
+        }],
+        "trader": {
+            "name": "bitmex.com",
+            "instruments": {
+                "XBTUSD": {
+                    "market-id": "XBTUSD",
+                    "size": 1000
+                },
+                "ETHUSD": {
+                    "market-id": "ETHUSD",
+                    "size": 1000
+                }
+            }
+        }
+    },
+    "bitmex-alts": {
+        "status": "disabled",
+        "strategy": {
+            "name": "cryptoalpha",
+            "parameters": {}
+        },
+        "watcher": [{
+            "name": "bitmex.com",
+            "symbols": ["XRPZ18", "TRXZ18"]
+        }],
+        "trader": {
+            "name": "bitmex.com",
+            "instruments": {
+                "XRPZ18": {
+                    "market-id": "XRPZ18",
+                    "size": 1000
+                },
+                "TRXZ18": {
+                    "market-id": "TRXZ18",
+                    "size": 50000
+                }
+            }
+        }
+    },
+    "ig-forex-mini": {
+        "status": "enabled",
+        "strategy": {
+            "name": "forexalpha",
+            "parameters": {}
+        },
+        "watcher": [{
+            "name": "ig.com",
+            "symbols": [
+                "CS.D.AUDNZD.MINI.IP",
+                "CS.D.EURUSD.MINI.IP",
+                "CS.D.EURJPY.MINI.IP",
+                "CS.D.GBPUSD.MINI.IP",
+                "CS.D.USDJPY.MINI.IP",
+                "CS.D.EURCAD.MINI.IP"
+            ]
+        }],
+        "trader": {
+            "name": "ig.com",
+            "instruments": {
+                "AUDNZD": {
+                    "market-id": "CS.D.AUDNZD.MINI.IP",
+                    "leverage": 30.0,
+                    "size": 1.0
+                },
+                "EURCAD": {
+                    "market-id": "CS.D.EURCAD.MINI.IP",
+                    "leverage": 30.0,
+                    "size": 1.0
+                },
+                "EURJPY": {
+                    "market-id": "CS.D.EURJPY.MINI.IP",
+                    "leverage": 30.0,
+                    "size": 1.0
+                },
+                "EURUSD": {
+                    "market-id": "CS.D.EURUSD.MINI.IP",
+                    "leverage": 30.0,
+                    "size": 1.0
+                },
+                "GBPUSD": {
+                    "market-id": "CS.D.GBPUSD.MINI.IP",
+                    "leverage": 30.0,
+                    "size": 1.0
+                },
+                "USDJPY": {
+                    "market-id": "CS.D.USDJPY.MINI.IP",
+                    "leverage": 30.0,
+                    "size": 1.0
+                }
+            }
+        }
+    },
+    "ig-indice-mini": {
+        "status": "disabled",
+        "strategy": {
+            "name": "indicealpha",
+            "parameters": {
+            }
+        },
+        "watcher": [{
+            "name": "ig.com",
+            "symbols": ["IX.D.SPTRD.IFE.IP"]
+        }],
+        "trader": {
+            "name": "ig.com",
+            "instruments": {
+                "SPX500": {
+                    "market-id": "IX.D.SPTRD.IFE.IP",
+                    "leverage": 20,
+                    "size": 1.0
+                }
+            }
+        }
+    },
+    "ig-commodity-mini": {
+        "status": "disabled",
+        "strategy": {
+            "name": "forexalpha",
+            "parameters": {
+                "reversal": false,
+                "pyramided": 0,
+                "hedging": true,
+                "max-trades": 3,
+                "min-traded-timeframe": "1m",
+                "max-traded-timeframe": "15m"
+            }
+        },
+        "watcher": [{
+            "name": "ig.com",
+            "symbols": ["CS.D.CFEGOLD.CFE.IP"]
+        }],
+        "trader": {
+            "name": "ig.com",
+            "instruments": {
+                "XAUUSD": {
+                    "market-id": "CS.D.CFEGOLD.CFE.IP",
+                    "leverage": 30,
+                    "size": 1.0
+                }
+            }
+        }
+    },
+    "binance-signal": {
+        "status": "enabled",
+        "strategy": {
+            "name": "crystalball",
+            "parameters": {
+                "min-traded-timeframe": "5m",
+                "max-traded-timeframe": "1h"
+            }
+        },
+        "watcher": [{
+            "name": "binance.com",
+            "symbols": ["BTCUSDT", "ETHBTC", "XRPBTC", "EOSBTC", "LTCBTC", "BCHABCBTC", "ADABTC", "XLMBTC",
+                "TRXBTC", "BCHSVBTC", "DASHBTC", "XMRBTC", "ONTBTC", "MIOTABTC", "ATOMBTC", "NEOBTC",
+                "BNBBTC", "IOSTBTC", "ICXBTC", "XLMBTC", "ETCBTC","QTUMBTC", "ZILBTC",
+                "ETHUSDT", "XRPUSDT", "EOSUSDT", "LTCUSDT", "BCHABCUSDT", "ADAUSDT", "BCHSVUSDT", "IOTAUSDT",
+                "XLMUSDT", "TRXUSDT", "XMRUSDT", "NEOUSDT", "ETCUSDT", "DASHUSDT", "ZILUSDT"]
+        }],
+        "trader": {
+            "name": "binance.com",
+            "instruments": {
+                "*BTC": {
+                    "market-id": "{0}",
+                    "size": 0.02
+                },
+                "*USDT": {
+                    "market-id": "{0}",
+                    "size": 100
+                }
+            }
+        }
+    },
+    "1broker-forex": {
+        "status": "disabled",
+        "strategy": {
+            "name": "socialcopy",
+            "parameters": {
+                "entry": "manual",
+                "exit": "auto"
+            }
+        },
+        "watcher": [{
+            "name": "1broker.com",
+            "symbols": ["(FOREX)"],
+            "parameters:": {
+                "authors": null
+            }
+        }],
+        "trader": {
+            "name": "1broker.com",
+            "instruments": {
+                "(MAJORS-FOREX)": {
+                    "market-id": null,
+                    "size": 0.002,
+                    "leverage": {
+                        "min": 1,
+                        "max": 100
+                    }
+                }
+            }
+        }
+    }
+}

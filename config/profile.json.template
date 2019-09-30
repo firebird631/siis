@@ -1,0 +1,49 @@
+{
+	"default": {
+        "appliances": [],
+        "watchers":  {},
+        "traders": {}
+    },
+    "binance-all": {
+        "appliances": ["binance-altbtc", "binance-baseusdt"],
+        "watchers": {
+            "binance.com": {
+                "status": "enabled"
+            }
+        },
+        "traders": {
+            "binance.com": {
+                "paper-mode": {
+                    "type": "asset",
+                    "currency": "BTC",
+                    "currency-symbol": "₿",
+                    "alt-currency": "USDT",
+                    "alt-currency-symbol": "Ť",
+                    "assets": [{
+	                        "base": "USDT",
+	                        "quote": "USDT",
+	                        "initial": 10000.0
+	                    }, {
+	                        "base": "BTC",
+	                        "quote": "USDT",
+	                        "initial": 10.0
+	                    }
+	                ]
+                }
+            }
+        }
+    },
+    "binance-signal": {
+        "appliances": ["binance-signal"],
+        "watchers":  {
+            "binance.com": {
+                "status": "enabled"
+            }
+        },
+        "traders": {
+            "binance.com": {
+                "status": "enabled"
+            }
+        }
+    }
+}

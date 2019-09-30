@@ -278,8 +278,8 @@ APPLIANCES = {
                 'pyramided': 0,
                 'hedging': True,
                 'max-trades': 3,    # max number of simultaned trades for a same market
-                'min-traded-timeframe': 60,
-                'max-traded-timeframe': 15*60,
+                'min-traded-timeframe': "1m",
+                'max-traded-timeframe': "15m"
             },
         },
         'watcher': [{
@@ -309,8 +309,8 @@ APPLIANCES = {
         'strategy': {
             'name': 'crystalball',
             'parameters': {
-                'min-traded-timeframe': 15*60,  # we wan't at least 15min signals
-                'max-traded-timeframe': 60*60,  # to 1h
+                'min-traded-timeframe': "15m",
+                'max-traded-timeframe': "1h"
             }
         },
         'watcher': [{

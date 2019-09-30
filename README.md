@@ -288,16 +288,15 @@ traders and watchers options overriding.
             * alias User defined instrument name alias
 
 
-#### <.siis>/config/identities.py ####
+#### <.siis>/config/identity.json ####
 
 This is the more sensible file, which contains your API keys.
-You have a config/identities.py.template file. Do not modify this file it will not be read.
+You have a config/identity.json.template file. Do not modify this file it will not be read.
 
-* IDENTITIES
-    * the identifier of the differents brokers
-        * profiles name
-            * for my usage I have real and demo
-            * specific needed value for the connector (API key, account identifier, password...)
+* the identifier of the differents brokers
+    * profiles name
+        * for my usage I have real and demo
+        * specific needed value for the connector (API key, account identifier, password...)
 
 The template show you the needed values to configure for the supported brokers.
 
@@ -359,7 +358,7 @@ python siis.py <identity> [--help, --options...]
 * --binarize Process to text file to binary conversion for a market (text version of data could be removed on the futur).
 * --rebuild Rebuild OHLC from the trades/ticks data for a market (WIP).
 
-You need to define the name of the identity to use. This is related to the name defined into the identities.py file.
+You need to define the name of the identity to use. This is related to the name defined into the identity.json file.
 Excepted for fetch/binarize/check-data the name of the profile of appliances to use --profile=\<profilename> must be specified.
 
 ```

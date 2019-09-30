@@ -36,8 +36,8 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
         self.min_price = params['min-price']
         self.min_vol24h = params['min-vol24h']
 
-        self.min_traded_timeframe = params['min-traded-timeframe']
-        self.max_traded_timeframe = params['max-traded-timeframe']
+        self.min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', "15m"))
+        self.max_traded_timeframe = self.timeframe_from_param(params.get('max-traded-timeframe', "4h"))
 
         # @todo remove and prefers overrided default parameters once done
         # if self.strategy.identifier == "binance-crystalball":

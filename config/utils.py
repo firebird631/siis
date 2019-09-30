@@ -3,11 +3,13 @@
 # @license Copyright (c) 2018 Dream Overflow
 # 
 
+import json
 import importlib.util
 import itertools
 
 import logging
 logger = logging.getLogger('siis.config')
+error_logger = logging.getLogger('siis.error.config')
 
 
 def merge_parameters(default, user):
@@ -26,11 +28,18 @@ def merge_parameters(default, user):
 
 
 def identities(config_path):
-    spec = importlib.util.spec_from_file_location("config.identity", '/'.join((config_path, 'identity.py')))
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.IDENTITIES if hasattr(mod, 'IDENTITIES') else {}
+    """
+    Get a dict containing any configured identities from user identity.json.
+    """
+    identities = {}
 
+    try:
+        with open('/'.join((config_path, 'identity.json')), 'r') as f:
+            identities = json.load(f)
+    except Exception as e:
+        error_logger.error(repr(e))
+
+    return identities
 
 
 def attribute(config_path, attr_name):

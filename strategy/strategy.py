@@ -2421,6 +2421,7 @@ class Strategy(Runnable):
 
         # regulars parameters
         parameters.setdefault('reversal', True)
+        parameters.setdefault('market-type', 0)
         parameters.setdefault('max-trades', 1)
         parameters.setdefault('base-timeframe', '4h')
         parameters.setdefault('min-traded-timeframe', '4h')

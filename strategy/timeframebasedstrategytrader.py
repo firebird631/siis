@@ -13,6 +13,7 @@ from strategy.strategysignal import StrategySignal
 
 from instrument.instrument import Instrument, Candle
 from instrument.candlegenerator import CandleGenerator
+from common.utils import timeframe_from_str
 
 from monitor.streamable import Streamable, StreamMemberInt, StreamMemberFloatTuple, StreamMemberTradeList, StreamMemberFloatScatter
 
@@ -267,3 +268,17 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         self.unlock()
         return result
+
+    #
+    # helpers
+    #
+
+    def timeframe_from_param(self, param):
+        if isinstance(param, str):
+            return timeframe_from_str(param)
+        elif isinstance(param, float):
+            return param
+        elif isinstance(param, int):
+            return float(param)
+        else:
+            return 0.0

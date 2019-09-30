@@ -1,0 +1,100 @@
+{
+	"1broker.com": {
+		"real" : {
+			"api_key": "<real-api-key>",
+			"host": "1broker.com"
+		},
+		"demo": {
+			"api_key": "<second-real-but-for-demo-api-key>",
+			"host": "1broker.com"
+		}
+	},
+	"1fox.com": {
+		"real" : {
+			"api_key": "<real-api-key>",
+			"host": "1fox.com"
+		},
+		"demo": {
+			"api_key": "<second-real-but-for-demo-api-key>",
+			"host": "1fox.com"
+		}
+	},
+	"binance.com": {
+		"real": {
+			"account-id": "<generate-your-own-for-local-mapping>",
+			"api-key": "<api-key>",
+			"api-secret": "<api-secret>",
+			"host": "binance.com"
+		},
+		"demo": {
+			"account-id": "<generate-another>",
+			"api-key": "<second-real-but-for-demo-api-key>",
+			"api-secret": "<second-real-but-for-demo-api-secret>",
+			"host": "binance.com"
+		}
+	},		
+	"bitmex.com": {
+		"real" : {
+			"api_key": "<api-key>",
+			"api_secret": "<api-secret>",
+			"host": "www.bitmex.com"
+		},
+		"demo": {
+			"api_key": "<demo-api-key>",
+			"api_secret": "<demo-api-secret>",
+			"host": "testnet.bitmex.com"
+		}
+	},
+	"ig.com": {
+		"real" : {
+			"api_key_name": "<api-key-name>",
+			"api_key": "<api-key>",
+			"username": "<username>",
+			"password": "<password>",
+			"accountid": "<ACCOUNTID>",
+			"host": "api.ig.com"
+		},
+		"demo": {
+			"api_key_name": "<demo-api-key-name>",
+			"api_key": "<demo-api-key>",
+			"username": "<demo-username>",
+			"password": "<demo-password>",
+			"accountid": "<DEMOACCOUNTID>",
+			"host": "demo-api.ig.com"
+		}
+	},
+	"hloc.siis.com": {
+		"real": {
+			"host": "127.0.0.1",
+			"port": 8080,
+			"api_key": ""
+		},
+		"demo": {
+			"host": "127.0.0.1",
+			"port": 8080,
+			"api_key": ""
+		}
+	},
+	"price.siis.com": {
+		"real": {
+			"host": "127.0.0.1",
+			"port": 8080,
+			"api_key": ""
+		},
+		"demo": {
+			"host": "127.0.0.1",
+			"port": 8080,
+			"api_key": ""
+		}
+	},
+	"tradingview.com": {
+		"real" : {
+			"port": 7373,
+			"api_key": "<generated-api-key-put-in-js-file-too>"
+		},
+		"demo": {
+			"port": 7373,
+			"api_key": "<generated-api-key-put-in-js-file-too>"
+		}
+	}
+}
