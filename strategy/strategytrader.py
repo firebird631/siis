@@ -908,8 +908,27 @@ class StrategyTrader(object):
 
         return None
 
+    def write_report_row(self, row):
+        """
+        Write a new row into the report file. Default behavior.
+        """
+        if self._report_filename:
+            try:
+                f = open(self._report_filename, "at")
+                f.write(",".join([str(v) for v in row]) + "\n")
+            except Exception as e:
+                error_logger.error(repr(e))
+            finally:
+                f.close()
+
     def report(self, trade, is_entry):
         """
-        Override this method.
+        Override this method to write trade entry (when is_entry is True) and exit.
+        """
+        pass
+
+    def report_header(self):
+        """
+        Override this method to write a header line into the report.
         """
         pass
