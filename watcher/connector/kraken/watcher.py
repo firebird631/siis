@@ -352,16 +352,16 @@ class KrakenWatcher(Watcher):
             # orders capacities
             market.orders = Order.ORDER_LIMIT | Order.ORDER_MARKET | Order.ORDER_STOP | Order.ORDER_TAKE_PROFIT
 
-            # @todo take the first but it might depends of the traded volume per 30 days...
+            # @todo take the first but it might depends of the traded volume per 30 days, then request volume window to got it
             # "fees":[[0,0.26],[50000,0.24],[100000,0.22],[250000,0.2],[500000,0.18],[1000000,0.16],[2500000,0.14],[5000000,0.12],[10000000,0.1]],
             # "fees_maker":[[0,0.16],[50000,0.14],[100000,0.12],[250000,0.1],[500000,0.08],[1000000,0.06],[2500000,0.04],[5000000,0.02],[10000000,0]],
             fees = instrument.get('fees', [])
             fees_maker = instrument.get('fees_maker', [])
 
             if fees:
-                market.taker_fee = fees[0][1]
+                market.taker_fee = fees[0][1] * 0.01
             if fees_maker:
-                market.maker_fee = fees_maker[0][1]
+                market.maker_fee = fees_maker[0][1] * 0.01
 
             if instrument.get('fee_volume_currency'):
                 market.fee_currency = instrument['fee_volume_currency']

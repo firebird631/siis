@@ -167,6 +167,32 @@ class StrategySignal(object):
                 self.p, self.sl, self.tp, self.comment)
 
     #
+    # profit/loss
+    #
+
+    def profit(self):
+        if self.dir > 0:
+            return ((self.tp - self.p) / self.p) if self.p > 0.0 else 0.0
+        elif self.dir < 0:
+            return ((self.p - self.tp) / self.p) if self.p > 0.0 else 0.0
+        
+        return 0.0
+
+    def loss(self):
+        if self.dir > 0:
+            return ((self.p - self.sl) / self.p) if self.p > 0.0 else 0.0
+        elif self.dir > 0:
+            return ((self.sl - self.p) / self.p) if self.p > 0.0 else 0.0
+
+        return 0.0
+
+    def risk_reward(self):
+        profit = self.profit()
+        loss = self.loss()
+
+        return loss / profit if profit > 0.0 else 0.0
+
+    #
     # extra
     #
 
