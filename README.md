@@ -188,22 +188,20 @@ The directory will contains 4 sub-directories:
 Each json file of the config directory could be overrided by adding your own blank copy of the file in your local siis/config
 directory. Every parameters can be overrided, and new entries can be inserted, but do NEVER modify the original files.
 
-> THIS PART IS CURRENTLY IN REFACTORING. PREVIOUS Python files are exploded and reencoded into json files and multiples directories.
-
 List of the files in config directory :
-    * databases.json : The SiiS database configuration, you have to override if you changes the defaults
-    * monitoring.json : Monitoring service configuration, you must orerride it, and recreate your api-key
-    * indicators.json : Supported technicals indicators, except you create your own you don't have to override this file
-    * tradeops.json : Supported trade operations, except you create your own you don't have to override this file
-    * regions.json : Supported regions, except you create your own you don't have to override this file
-    * fetchers.json : Supported fetchers, except you create your own you don't have to override this file
-    * stratetgies.json : Supported strategies, except you create your own you don't have to override this file
+* databases.json : The SiiS database configuration, you have to override if you changes the defaults
+* monitoring.json : Monitoring service configuration, you must orerride it, and recreate your api-key
+* indicators.json : Supported technicals indicators, except you create your own you don't have to override this file
+* tradeops.json : Supported trade operations, except you create your own you don't have to override this file
+* regions.json : Supported regions, except you create your own you don't have to override this file
+* fetchers.json : Supported fetchers, except you create your own you don't have to override this file
+* stratetgies.json : Supported strategies, except you create your own you don't have to override this file
 
 List of the sub-directories of config :
-    * watchers/ : One file perf watcher to configure, name of file must refers to a valid watcher name.
-    * traders/ : One file perf trader to configure, name of file must refers to a valid trader name.
-    * profiles/ : One file perf profile to configure
-    * appliances/ : One file perf appliance to configure
+* watchers/ : One file perf watcher to configure, name of file must refers to a valid watcher name.
+* traders/ : One file perf trader to configure, name of file must refers to a valid trader name.
+* profiles/ : One file perf profile to configure
+* appliances/ : One file perf appliance to configure
 
 ### config/databases.json ###
 
@@ -217,19 +215,19 @@ There is one configuration per broker to have the capacity to connect to a broke
 The values could be overrided per appliance, here its the general settings.
 
 Parameters :
-    * status if None then it will not be loaded by default else must be set to 'load'
-    * classpath You should not modify the default value
-    * symbols The list of the market identifier that you want to look for
-        * (could be overrided per appliance profile)
-        * on binance all tickers are watched but you can filter for some markets
-        * on bitmex all markets are subscribed by default but you can filter too
-        * on IG take care because your are limit on the number of subscriptions (like 40 max per account)
-        * this must be a list of string
-            * either the full name of the market
-            * either a wildchar prefixed value. For example *BTC to filter any BTC quoted paires
-            * either a ! prefixed value (meaning not) for avoiding this particular market
-            * you could have ['*BTC', '!BCHABCBTC'] for exemple to watching any BTC quote paires excepted the BCHABCBTC.
-    * there is some more specific options on the tradingview webhook server (host and port of your listening server).
+* status if None then it will not be loaded by default else must be set to 'load'
+* classpath You should not modify the default value
+* symbols The list of the market identifier that you want to look for
+    * (could be overrided per appliance profile)
+    * on binance all tickers are watched but you can filter for some markets
+    * on bitmex all markets are subscribed by default but you can filter too
+    * on IG take care because your are limit on the number of subscriptions (like 40 max per account)
+    * this must be a list of string
+        * either the full name of the market
+        * either a wildchar prefixed value. For example *BTC to filter any BTC quoted paires
+        * either a ! prefixed value (meaning not) for avoiding this particular market
+        * you could have ['*BTC', '!BCHABCBTC'] for exemple to watching any BTC quote paires excepted the BCHABCBTC.
+* there is some more specific options on the tradingview webhook server (host and port of your listening server).
 
 ### config/traders/ ###
 
@@ -239,26 +237,26 @@ There is one entry per broker to have the capacity to enable the trading feature
 The values could be overrided per appliance, here its the general settings.
 
 Parameters :
-    * status if None then it will not be loaded by default else must be set to 'load'
-        * (could be overrided per appliance profile)
-    * classpath You should not modify the default value
-    * symbols Contains a list of the market identifiers allowed for trading and than strategies will be able to auto-trades
-        * (could be overrided per appliance profile)
-        * If a market identifier is not defined on the WATCHERS side it could not be found
-    * leverage its a deprecated values list used only for 1broker
-        * (could be overrided per appliance profile)
-    * paper-mode To define the paper trader initially balances
-        * (could be overrided per appliance profile)
-        * type asset or margin to specify the account type
-        * currency principal currency asset symbol
-        * currency-symbol only for display
-        * alt-currency alternative currency asset symbol (usefull for binance)
-        * alt-currency-symbol only for display
-        * initial initial balance in the currency if type is margin
-        * assets is a list of the initials balance for different assets
-            * base name of the asset
-            * quote prefered quote (where asset + quote must related to a valid market)
-            * initial initial quantity for the asset
+* status if None then it will not be loaded by default else must be set to 'load'
+    * (could be overrided per appliance profile)
+* classpath You should not modify the default value
+* symbols Contains a list of the market identifiers allowed for trading and than strategies will be able to auto-trades
+    * (could be overrided per appliance profile)
+    * If a market identifier is not defined on the WATCHERS side it could not be found
+* leverage its a deprecated values list used only for 1broker
+    * (could be overrided per appliance profile)
+* paper-mode To define the paper trader initially balances
+    * (could be overrided per appliance profile)
+    * type asset or margin to specify the account type
+    * currency principal currency asset symbol
+    * currency-symbol only for display
+    * alt-currency alternative currency asset symbol (usefull for binance)
+    * alt-currency-symbol only for display
+    * initial initial balance in the currency if type is margin
+    * assets is a list of the initials balance for different assets
+        * base name of the asset
+        * quote prefered quote (where asset + quote must related to a valid market)
+        * initial initial quantity for the asset
 
 ### config/monitoring.json ###
 
@@ -279,41 +277,41 @@ The file name act as the name of the profile minus the file extension.
 If no profile is specified on command line option the default profile will be used.
 
 Content of a \<myprofile>.json :
-    * appliances A list of the name of the appliance to run in this profile (instance)
-    * watchers A dict of the watchers to enable
-        * unique name of the watcher
-            * status Must be set to enabled to load the module of the watcher
-    * traders a dict of the traders to enable
-        * unique name of the trader
-            * it is recommanded to have only one trader per profile (per running instance)
-            * any of the options configured in the config.py TRADERS can be overrided here
-              especially the paper-mode option when you want to make some specifics profiles of backtesting
+* appliances A list of the name of the appliance to run in this profile (instance)
+* watchers A dict of the watchers to enable
+    * unique name of the watcher
+        * status Must be set to enabled to load the module of the watcher
+* traders a dict of the traders to enable
+    * unique name of the trader
+        * it is recommanded to have only one trader per profile (per running instance)
+        * any of the options configured in the config.py TRADERS can be overrided here
+          especially the paper-mode option when you want to make some specifics profiles of backtesting
 
 #### config/appliances/ ####
 
 The file name act as the name of the appliance minus the file extension.
 
 Content of a \<myappliance>.json :
-    * status enabled or None If None the appliance could not be started in any of the profiles
-    * strategy
-        * name Identifier of the strategy (binance.com, bitmex.com, ig.com....)
-        * parameters Here you can overrides any of the default strategy parameters (indicator constants, timeframes...)
-    * watcher A list of the different watcher to use for the strategy (for now only one source of data is possible)
-        * name Watcher unique identifier
-        * symbols If defined here it overrided the symbols list from config.py (see WATCHERS)
-    * trader The related trader (even for paper-mode)
-        * name Identifier of the trader (binance.com, bitmex.com, ig.com...)
-        * instruments A dict for the mapping of the traded instruments
-            * Supports a wildchar as the beginning
-            * You can map a common symbol name (like EURUSD) to the broker market identifier (useful when multiple watcher sources)
-            * market-id Mapped broker unique market identifier or {0} when using wildchar
-                * If you have for example '\*BTC' as instrument, you want to map any of the BTC quote market to the same settings
-                  then you will have to set market-id to {0} that will be replaced by the filtered market identifier
-            * size Base quantity in quote asset to trade
-                * if USD 100 and margin, will trade 100$ per position
-                * if BTC 0.5 and asset spot, will trade an equivalent (adjusted value) of 0.5 BTC of the asset quantity
-                * if size is in contract then 1.0 mean 1 contract (1 lot for forex, or 1 mini-lot if market is mini lot or 1 micro-lot...)
-            * alias User defined instrument name alias
+* status enabled or None If None the appliance could not be started in any of the profiles
+* strategy
+    * name Identifier of the strategy (binance.com, bitmex.com, ig.com....)
+    * parameters Here you can overrides any of the default strategy parameters (indicator constants, timeframes...)
+* watcher A list of the different watcher to use for the strategy (for now only one source of data is possible)
+    * name Watcher unique identifier
+    * symbols If defined here it overrided the symbols list from config.py (see WATCHERS)
+* trader The related trader (even for paper-mode)
+    * name Identifier of the trader (binance.com, bitmex.com, ig.com...)
+    * instruments A dict for the mapping of the traded instruments
+        * Supports a wildchar as the beginning
+        * You can map a common symbol name (like EURUSD) to the broker market identifier (useful when multiple watcher sources)
+        * market-id Mapped broker unique market identifier or {0} when using wildchar
+            * If you have for example '\*BTC' as instrument, you want to map any of the BTC quote market to the same settings
+              then you will have to set market-id to {0} that will be replaced by the filtered market identifier
+        * size Base quantity in quote asset to trade
+            * if USD 100 and margin, will trade 100$ per position
+            * if BTC 0.5 and asset spot, will trade an equivalent (adjusted value) of 0.5 BTC of the asset quantity
+            * if size is in contract then 1.0 mean 1 contract (1 lot for forex, or 1 mini-lot if market is mini lot or 1 micro-lot...)
+        * alias User defined instrument name alias
 
 
 ### config/identities.json ###

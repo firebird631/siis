@@ -22,19 +22,19 @@ The command mode begin when you tip a semicolumn ":" character.
 ### Default mode ###
 
 Global fonctions are accessible throught direct keys :
-	* changing the active view
-	* clearing the console or signal or debug view content
-	* toggle of notifier (desktop, audio, webhook...)
-	* global state
+* changing the active view
+* clearing the console or signal or debug view content
+* toggle of notifier (desktop, audio, webhook...)
+* global state
 
 ### Command mode ###
 
 More specifics functions are obtained using the commande mode :
-	* trader info, control and strategy info, control
-	* trade info and trade operations
-	* region mangement and region info
-	* charting
-	* aliases
+* trader info, control and strategy info, control
+* trade info and trade operations
+* region mangement and region info
+* charting
+* aliases
 
 ### Views ###
 
