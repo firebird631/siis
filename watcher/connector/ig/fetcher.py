@@ -11,8 +11,6 @@ import traceback
 from datetime import datetime
 from watcher.fetcher import Fetcher
 
-from config import config
-
 from terminal.terminal import Terminal
 from connector.ig.connector import IGConnector
 

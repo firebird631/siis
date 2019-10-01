@@ -13,7 +13,6 @@ from common.utils import matching_symbols_set, UTC
 from terminal.terminal import Terminal
 
 from notifier.signal import Signal
-from config import config
 from database.database import Database
 
 from instrument.instrument import Instrument, Candle

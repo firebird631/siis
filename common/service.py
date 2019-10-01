@@ -14,7 +14,6 @@ from notifier.signal import Signal
 from terminal.terminal import Terminal
 
 from notifier.signal import Signal
-from config import config, appliance
 
 
 class Service(Notifiable):

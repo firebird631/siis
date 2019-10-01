@@ -9,8 +9,6 @@ import time
 from watcher.watcher import Watcher
 from notifier.signal import Signal
 
-from config import config
-
 from terminal.terminal import Terminal
 
 

@@ -14,7 +14,6 @@ from terminal.terminal import Terminal
 from trader.position import Position
 from trader.order import Order
 
-from config import config
 from strategy.strategy import Strategy
 
 from notifier.notifiable import Notifiable

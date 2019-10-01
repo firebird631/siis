@@ -23,8 +23,6 @@ from trader.account import Account
 from trader.market import Market
 
 from connector.ig.rest import IGException
-
-from config import config
 from database.database import Database
 
 import logging

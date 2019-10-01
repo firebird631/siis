@@ -21,7 +21,6 @@ from trader.order import Order
 from terminal.terminal import Terminal
 
 from connector.onebroker.connector import OneBrokerConnector
-from config import config
 
 
 class OneBrokerTrader(Trader):

@@ -22,8 +22,6 @@ from trader.order import Order
 from trader.asset import Asset
 from terminal.terminal import Terminal
 
-from config import config
-
 import logging
 logger = logging.getLogger('siis.trader.papertrader')
 

@@ -11,8 +11,6 @@ from notifier.notifiable import Notifiable
 from notifier.signal import Signal
 
 from trader.account import Account
-
-from config import config
 from terminal.terminal import Terminal
 
 

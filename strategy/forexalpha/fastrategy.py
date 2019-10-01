@@ -10,8 +10,6 @@ import traceback
 from datetime import datetime, timedelta
 from terminal.terminal import Terminal
 
-from config import config
-
 from strategy.strategy import Strategy
 
 from instrument.instrument import Instrument

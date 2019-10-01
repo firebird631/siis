@@ -11,9 +11,6 @@ import traceback
 from watcher.fetcher import Fetcher
 
 from connector.bitmex.connector import Connector
-
-from config import config
-
 from database.database import Database
 
 import logging

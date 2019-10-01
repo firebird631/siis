@@ -17,8 +17,6 @@ from watcher.author import Author
 from trader.position import Position
 from notifier.signal import Signal
 
-from config import config
-
 from terminal.terminal import Terminal
 from instrument.instrument import BuySellSignal
 

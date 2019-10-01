@@ -15,8 +15,6 @@ from watcher.author import Author
 from watcher.position import Position
 from notifier.signal import Signal
 
-from config import config
-
 from terminal.terminal import Terminal
 
 

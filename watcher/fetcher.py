@@ -14,7 +14,6 @@ from instrument.instrument import Tick, Candle, Instrument
 from instrument.candlegenerator import CandleGenerator
 
 from notifier.signal import Signal
-from config import config
 from database.database import Database
 
 import logging

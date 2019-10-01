@@ -12,7 +12,6 @@ from datetime import datetime
 from instrument.instrument import Instrument
 
 from terminal.terminal import Terminal
-from config import config
 
 import logging
 logger = logging.getLogger('siis.connector.alphavantage')

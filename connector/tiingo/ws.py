@@ -7,7 +7,6 @@ import json
 import websocket
 
 from terminal.terminal import Terminal
-from config import config
 
 import logging
 logger = logging.getLogger('siis.connector.tiingo')

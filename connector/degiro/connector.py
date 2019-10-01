@@ -6,7 +6,6 @@
 import requests
 
 from terminal.terminal import Terminal
-from config import config
 
 import logging
 logger = logging.getLogger('siis.connector.degiro')

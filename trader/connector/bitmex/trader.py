@@ -24,8 +24,6 @@ from trader.order import Order
 
 from connector.bitmex.connector import Connector
 
-from config import config
-
 import logging
 logger = logging.getLogger('siis.trader.bitmex')
 

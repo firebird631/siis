@@ -3,7 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Account/user model
 
-from config import config
 from common.utils import truncate
 
 import threading

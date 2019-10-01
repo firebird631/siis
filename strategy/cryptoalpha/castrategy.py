@@ -8,7 +8,6 @@ import traceback
 from datetime import datetime, timedelta
 from terminal.terminal import Terminal
 
-from config import config
 from common.utils import timeframe_to_str
 
 from strategy.strategy import Strategy

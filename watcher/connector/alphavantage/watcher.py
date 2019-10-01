@@ -15,9 +15,6 @@ from watcher.watcher import Watcher
 from notifier.signal import Signal
 
 from connector.alphavantage.connector import Connector
-
-from config import config
-
 from terminal.terminal import Terminal
 
 from instrument.instrument import Instrument, Candle

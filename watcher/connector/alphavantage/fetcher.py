@@ -10,9 +10,6 @@ import traceback
 from watcher.fetcher import Fetcher
 
 from connector.alphavantage.connector import Connector
-
-from config import config
-
 from terminal.terminal import Terminal
 
 import logging

@@ -21,8 +21,6 @@ from trader.market import Market
 
 from instrument.instrument import Instrument, Candle
 
-from config import config
-
 from terminal.terminal import Terminal
 from database.database import Database
 

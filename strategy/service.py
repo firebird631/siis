@@ -19,7 +19,7 @@ from terminal.terminal import Terminal
 from strategy.strategy import Strategy
 
 from notifier.signal import Signal
-from config import config, utils
+from config import utils
 
 import logging
 logger = logging.getLogger('siis.strategy.service')

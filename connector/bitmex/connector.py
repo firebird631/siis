@@ -9,7 +9,6 @@ import base64
 import requests
 
 from datetime import datetime, timedelta
-from config import config
 from common.utils import UTC
 
 from .apikeyauthwithexpires import APIKeyAuthWithExpires

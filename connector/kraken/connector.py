@@ -13,7 +13,6 @@ import hashlib
 import hmac
 
 from datetime import datetime, timedelta
-from config import config
 from common.utils import UTC
 
 from .ws import WssClient
@@ -330,8 +329,8 @@ class Connector(object):
         #     canceled = ordre annulé
         #     expired = ordre expiré
         # opentm = horodatage Unix où la commande a été passée
-        # starttm = horodatage Unix de l'heure de début de la commande (ou 0 s'il n'est pas configuré)
-        # expiretm = horodatage Unix de l'heure de fin de la commande (ou 0 s'il n'est pas configuré)
+        # starttm = horodatage Unix de l'heure de début de la commande (ou 0 s'il n'est pas configure)
+        # expiretm = horodatage Unix de l'heure de fin de la commande (ou 0 s'il n'est pas configure)
         # descr = description de l'ordre 
         #     pair = pair d'actifs
         #     type =  type de commande (achat/vente) 

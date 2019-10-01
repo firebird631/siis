@@ -11,8 +11,6 @@ from watcher.fetcher import Fetcher
 
 from connector.binance.connector import Connector
 
-from config import config
-
 import logging
 logger = logging.getLogger('siis.fetcher.binance')
 error_logger = logging.getLogger('siis.error.fetcher.binance')

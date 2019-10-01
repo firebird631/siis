@@ -16,9 +16,6 @@ from common.utils import UTC
 from watcher.fetcher import Fetcher
 
 # from connector.histdata.connector import Connector
-
-from config import config
-
 from terminal.terminal import Terminal
 
 import logging
