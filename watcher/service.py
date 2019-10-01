@@ -33,7 +33,7 @@ class WatcherService(Service):
         # user identities
         self._identities_config = utils.identities(options.get('config-path'))
         self._profile = options.get('profile', 'default')
-        self._profile_config = utils.profiles(options.get('config-path'))  # @todo new conf
+        self._profile_config = utils.load_config(options, "profiles/%s" % self._profile)
 
         # backtesting options
         self._backtesting = options.get('backtesting', False)
@@ -57,7 +57,7 @@ class WatcherService(Service):
 
         return Clazz(self)
 
-    def start(self):
+    def start(self, options):
         from watcher.connector.dummywatcher.watcher import DummyWatcher
         
         for k, watcher in self._watchers_config.items():
@@ -189,5 +189,5 @@ class WatcherService(Service):
         """
         Get the profile configuration for a specific watcher name.
         """
-        profile = self._profile_config.get(self._profile, {'watchers': {}}).get('watchers', {})
+        profile = self._profile_config.get('watchers', {})
         return profile.get(name, {})

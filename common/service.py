@@ -33,10 +33,10 @@ class Service(Notifiable):
 	def unlock(self):
 		self._mutex.release()
 
-	def start(self, data):
+	def start(self, options):
 		pass
 
-	def terminate(self, data):
+	def terminate(self, options):
 		pass
 
 	def sync(self):

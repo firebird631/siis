@@ -49,8 +49,7 @@ class StrategyService(Service):
         self._tradeops_config = utils.load_config(options, 'tradeops')
         self._regions_config = utils.load_config(options, 'regions')
         self._strategies_config = utils.load_config(options, 'strategies')
-        self._appliances_config = utils.appliances(options.get('config-path'))  # @todo new config
-        self._profile_config = utils.profiles(options.get('config-path'))  # @todo new config
+        self._profile_config = utils.load_config(options, "profiles/%s" % self._profile)
 
         # backtesting options
         self._backtesting = options.get('backtesting', False)
@@ -119,7 +118,7 @@ class StrategyService(Service):
         for k, appliance in self._appliances.items():
             appliance.set_activity(status)
 
-    def start(self):
+    def start(self, options):
         # indicators
         for k, indicators in self._indicators_config.items():
             if indicators.get("status") is not None and indicators.get("status") == "load":
@@ -185,12 +184,10 @@ class StrategyService(Service):
             return
 
         # and finally appliances
-        for k, appl in self._appliances_config.items():
-            if k == "default":
-                continue
+        for k in self._profile_config.get('appliances', []):
+            appl = utils.load_config(options, "appliances/%s" % k)
 
-            if not self.profile_has_appliance(k):
-                # ignore if not in the current profile
+            if k == "default":
                 continue
 
             if self._appliances.get(k) is not None:
@@ -493,22 +490,13 @@ class StrategyService(Service):
     def report_path(self):
         return self._report_path
 
-    def appliance_config(self, name):
-        """
-        Get the configurations for an appliance as dict.
-        """
-        return self._appliances_config.get(name, {})
-
     def profile_has_appliance(self, name):
         """
         Check if an appliance is allowed for the current loaded profile.
         """
-        profile = self._profile_config.get(self._profile, {'appliances': []})
+        appliances = self._profile_config.get('appliances', [])
 
-        if 'appliances' not in profile:
-            profile['appliances'] = []
-
-        for app_name in profile['appliances']:
+        for app_name in appliances:
             if app_name.startswith('!'):
                 if app_name[1:] == name:
                     # ignored

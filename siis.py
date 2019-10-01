@@ -291,12 +291,12 @@ def application(argv):
     # watcher service
     Terminal.inst().info("Starting watcher's service...")
     watcher_service = WatcherService(options)
-    watcher_service.start()
+    watcher_service.start(options)
 
     # trader service
     Terminal.inst().info("Starting trader's service...")
     trader_service = TraderService(watcher_service, monitor_service, options)
-    trader_service.start()
+    trader_service.start(options)
 
     # want to display desktop notification and update views
     watcher_service.add_listener(desktop_service)
@@ -312,7 +312,7 @@ def application(argv):
     # strategy service
     Terminal.inst().info("Starting strategy's service...")
     strategy_service = StrategyService(watcher_service, trader_service, monitor_service, options)
-    strategy_service.start()
+    strategy_service.start(options)
 
     # strategy service listen to watcher service
     watcher_service.add_listener(strategy_service)

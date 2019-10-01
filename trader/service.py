@@ -58,7 +58,7 @@ class TraderService(Service):
         # user identities
         self._identities_config = utils.identities(options.get('config-path'))
         self._profile = options.get('profile', 'default')
-        self._profile_config = utils.profiles(options.get('config-path')) or {}
+        self._profile_config = utils.load_config(options, "profiles/%s" % self._profile)
 
         # traders config
         self._traders_config = self._init_traders_config(options)
@@ -93,7 +93,7 @@ class TraderService(Service):
         for k, trader in self._traders.items():
             trader.set_activity(status)
 
-    def start(self):
+    def start(self, options):
         # no traders in watcher only
         if self._watcher_only:
             return
@@ -342,5 +342,5 @@ class TraderService(Service):
         """
         Get the profile configuration for a specific trader name.
         """
-        profile = self._profile_config.get(self._profile, {'traders': {}}).get('traders', {})
+        profile = self._profile_config.get('traders', {})
         return profile.get(name, {})
