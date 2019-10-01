@@ -1,0 +1,23 @@
+{
+    "alphavantage.co": {
+        "classpath": "watcher.connector.alphavantage.fetcher.AlphaVantageFetcher"
+    },
+    "binance.com": {
+        "classpath": "watcher.connector.binance.fetcher.BinanceFetcher"
+    },  
+    "bitmex.com": {
+        "classpath": "watcher.connector.bitmex.fetcher.BitMexFetcher"
+    },
+    "ig.com": {
+        "classpath": "watcher.connector.ig.fetcher.IGFetcher"
+    },
+    "tiingo.com": {
+        "classpath": "watcher.connector.tiingo.fetcher.TiingoFetcher"
+    },
+    "histdata.com": {
+        "classpath": "watcher.connector.histdata.fetcher.HistDataFetcher"
+    },
+    "kraken.com": {
+        "classpath": "watcher.connector.kraken.fetcher.KrakenFetcher"
+    }
+}

@@ -6,6 +6,7 @@
 import json
 import importlib.util
 import itertools
+import pathlib
 
 import logging
 logger = logging.getLogger('siis.config')
@@ -33,35 +34,43 @@ def identities(config_path):
     """
     identities = {}
 
-    try:
-        with open('/'.join((config_path, 'identity.json')), 'r') as f:
-            identities = json.load(f)
-    except Exception as e:
-        error_logger.error(repr(e))
+    user_file = pathlib.Path(config_path, 'identities.json')
+    if user_file.exists():
+        try:
+            with open(str(user_file), 'r') as f:
+                identities = json.load(f)
+        except Exception as e:
+            error_logger.error(repr(e))
 
     return identities
 
 
-def attribute(config_path, attr_name):
-    from config import config
-    default_config = getattr(config, attr_name) or {}
+def load_config(options, attr_name):
+    default_config = {}
 
-    res = {}
-    try:
-        spec = importlib.util.spec_from_file_location(".", '/'.join((config_path, 'config.py')))
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        if hasattr(mod, attr_name):
-            return merge_parameters(default_config, getattr(mod, attr_name))
-    except FileNotFoundError:
-        pass
-    except Exception as e:
-        logger.error(repr(e))
+    default_file = pathlib.Path(options['working-path'], 'config', attr_name + '.json')
+    if default_file.exists():
+        try:
+            with open(str(default_file), 'r') as f:
+                default_config = json.load(f)
+        except Exception as e:
+            error_logger.error(repr(e))
 
-    return default_config
+    user_config = {}
+
+    user_file = pathlib.Path(options['config-path'], attr_name + '.json')
+    if user_file.exists():
+        try:
+            with open(str(user_file), 'r') as f:
+                user_config = json.load(f)
+        except Exception as e:
+            error_logger.error("%s %s%s" % (repr(e), attr_name, '.json'))
+
+    return merge_parameters(default_config, user_config)
 
 
 def appliances(config_path):
+    # @todo update
     from config import appliance
     default_config = appliance.APPLIANCES or {}
 
@@ -81,6 +90,7 @@ def appliances(config_path):
 
 
 def profiles(config_path):
+    # @todo update
     from config import appliance
     default_config = appliance.PROFILES or {}
 

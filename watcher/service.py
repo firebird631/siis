@@ -25,15 +25,15 @@ class WatcherService(Service):
         self._backtesting = options.get('backtesting', False)
 
         # fetchers config
-        self._fetchers_config = utils.attribute(options.get('config-path'), 'FETCHERS') or {}
+        self._fetchers_config = utils.load_config(options, 'fetchers')
 
         # watchers config
         self._watchers_config = self._init_watchers_config(options)
 
         # user identities
-        self._identities_config = utils.identities(options.get('config-path')) or {}
+        self._identities_config = utils.identities(options.get('config-path'))
         self._profile = options.get('profile', 'default')
-        self._profile_config = utils.profiles(options.get('config-path')) or {}
+        self._profile_config = utils.profiles(options.get('config-path'))  # @todo new conf
 
         # backtesting options
         self._backtesting = options.get('backtesting', False)
@@ -164,22 +164,24 @@ class WatcherService(Service):
         profile_name = options.get('profile', 'default')
 
         profile_config = utils.profiles(options.get('config-path')) or {}
-        watchers_profile = profile_config.get(profile_name, {'watchers': {}}).get('watchers', {})
-
-        watchers_config = utils.attribute(options.get('config-path'), 'WATCHERS') or {}
+        watchers_profile = profile_config.get(profile_name, {'watchers': {}}).get('watchers', {})  # @todo from new profiles conf
 
         # @todo could rebuild the list of symbols according to what is found in appliances
+        watchers_config = {}
 
-        # override from profile
-        for k, watcher_config in watchers_config.items():
-            if k in watchers_profile:
-                override = watchers_profile[k]
+        for k, profile_watcher_config in watchers_profile.items():
+            user_watcher_config = utils.load_config(options, 'watchers/' + k)
+            if user_watcher_config:
+                if 'symbols' not in user_watcher_config:
+                    # at least an empty list of symbols
+                    user_watcher_config['symbols'] = []
 
-                if 'symbols' not in watcher_config:
-                    watcher_config['symbols'] = []
+                if 'symbols' in profile_watcher_config:
+                    # profile overrides any symbols
+                    user_watcher_config['symbols'] = profile_watcher_config['symbols']
 
-                if 'symbols' in override:
-                    watcher_config['symbols'] = override['symbols']
+                # keep overrided
+                watchers_config[k] = user_watcher_config
 
         return watchers_config
 

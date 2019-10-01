@@ -1,0 +1,17 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.ig.watcher.IGWatcher",
+    "symbols": [],
+    "_symbols": [
+        "CS.D.AUDNZD.MINI.IP",
+        "CS.D.AUDUSD.MINI.IP",
+        "CS.D.EURCAD.MINI.IP",
+        "CS.D.EURUSD.MINI.IP",
+        "CS.D.EURJPY.MINI.IP",
+        "CS.D.GBPUSD.MINI.IP",
+        "CS.D.USDJPY.MINI.IP",
+        "CS.D.CFEGOLD.CFE.IP",
+        "IX.D.SPTRD.IFE.IP"
+    ],
+    "__comment": "Or au comptant (1€) / US 500 au comptant (1€)"
+}

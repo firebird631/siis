@@ -183,21 +183,40 @@ The directory will contains 4 sub-directories:
 * config/ contains important configurations files (described belows)
 * log/ contains siis.log the main log and eventually some others logs files (error.siis.log, exec.siis.log, signal.siis.log)
 * markets/ contains sub-directories for each configured brokers (detailes belows)
-* reports/ contains the reports of the trades
+* reports/ contains the reports of the strategies trades, and the paper-trader reports
 
-### config ###
+Each json file of the config directory could be overrided by adding your own blank copy of the file in your local siis/config
+directory. Every parameters can be overrided, and new entries can be inserted, but do NEVER modify the original files.
 
-#### <.siis>/config/config.py ####
+> THIS PART IS CURRENTLY IN REFACTORING. PREVIOUS Python files are exploded and reencoded into json files and multiples directories.
 
-You have an initial file in config/config.py. Do not modify the original.
+List of the files in config directory :
+    * databases.json : The SiiS database configuration, you have to override if you changes the defaults
+    * monitoring.json : Monitoring service configuration, you must orerride it, and recreate your api-key
+    * indicators.json : Supported technicals indicators, except you create your own you don't have to override this file
+    * tradeops.json : Supported trade operations, except you create your own you don't have to override this file
+    * regions.json : Supported regions, except you create your own you don't have to override this file
+    * fetchers.json : Supported fetchers, except you create your own you don't have to override this file
+    * stratetgies.json : Supported strategies, except you create your own you don't have to override this file
 
-This file comes from the beginning of the project, would need some reorganization, but it looks like :
+List of the sub-directories of config :
+    * watchers/ : One file perf watcher to configure, name of file must refers to a valid watcher name.
+    * traders/ : One file perf trader to configure, name of file must refers to a valid trader name.
+    * profiles/ : One file perf profile to configure
+    * appliances/ : One file perf appliance to configure
 
-* DATABASES the 'siis' database configuration (type is pgsql or mysql). There is only one database for now.
-* FETCHERS You should not modifiy this dict, it contains the classpath for the availables fetchers.
-* WATCHERS Must contain 1 entry per broker to have the capacity to connect to a broker, watching price data, and user trade data
-    * Not those values could be overrided into the appliances.py file but here you could defined the general config
-        and eventually having the necessary adjustement on the appliances profiles
+### config/databases.json ###
+
+The 'siis' database configuration (type is pgsql or mysql). There is only one database for now.
+
+### config/watchers/ ###
+
+The default configuration might suffise, and you can overrides most of the parameters into your profiles.
+
+There is one configuration per broker to have the capacity to connect to a broker, watching price data, and user trade data.
+The values could be overrided per appliance, here its the general settings.
+
+Parameters :
     * status if None then it will not be loaded by default else must be set to 'load'
     * classpath You should not modify the default value
     * symbols The list of the market identifier that you want to look for
@@ -211,12 +230,15 @@ This file comes from the beginning of the project, would need some reorganizatio
             * either a ! prefixed value (meaning not) for avoiding this particular market
             * you could have ['*BTC', '!BCHABCBTC'] for exemple to watching any BTC quote paires excepted the BCHABCBTC.
     * there is some more specific options on the tradingview webhook server (host and port of your listening server).
-* INDICATORS Like for fetcher you might not have to modify this part or if you create your own indicators.
-* TRADEOPS Again likes indictors, except if you create your own trade operations.
-* STRATEGIES Contains the default built-ins strategies, you'll need to add yours here.
-* TRADERS Must contains 1 entry per broker to have the capacity to enable the trading feature for the live-mode
-    * Not those values could be overrided into the appliances.py file but here you could defined the general config
-        and eventually having the necessary adjustement on the appliances profiles
+
+### config/traders/ ###
+
+The default configuration might suffise, and you can overrides most of the parameters into your profiles.
+
+There is one entry per broker to have the capacity to enable the trading feature for the live-mode.
+The values could be overrided per appliance, here its the general settings.
+
+Parameters :
     * status if None then it will not be loaded by default else must be set to 'load'
         * (could be overrided per appliance profile)
     * classpath You should not modify the default value
@@ -238,24 +260,25 @@ This file comes from the beginning of the project, would need some reorganizatio
             * quote prefered quote (where asset + quote must related to a valid market)
             * initial initial quantity for the asset
 
-* MONITORING Contains the configuration of the listening service to connect a futur Web tools
-  to control SiiS more friendly than using the CLI
+### config/monitoring.json ###
+
+Contains the configuration of the listening service to connect a futur Web tools to control SiiS more friendly than using the CLI.
 
 
-#### <.siis>/config/appliances.py ####
+### Profiles and Appliances ###
 
-You have an initial file in config/appliances.py. Do not modify the original.
+You have two directories **.siis/config/profiles/** and **.siis/config/appliances/** and some templates in source config directory.
+You must define one file per profile and one file per appliance, the name of the file act as the name of reference.
 
-This file must contains your configuration named profile (command line options --profile=\<profilename>).
-You have the profiles and the appliances.
+A profile refers to zero, one or many appliances. This is the profile name to used on the command line options --profiles=\<profilename>.
+It is a mixing of one or many appliances, that can be runned on a same instance of SiiS, with traders and watchers options overriding.
 
-A profile is a mixing of one or many appliance, that can be runned on a same instance of SiiS, with
-traders and watchers options overriding.
+#### config/profiles/ ####
 
-* PROFILES At the first level you have the unique name of the profile
-    * If no profile is specicied on command line option the default profile will be used
-        * You should constat than any appliances will then be loaded, its a bad idea, probably the profile option
-          will be mandatory in the futur and the wildchar usage too.
+The file name act as the name of the profile minus the file extension.
+If no profile is specified on command line option the default profile will be used.
+
+Content of a \<myprofile>.json :
     * appliances A list of the name of the appliance to run in this profile (instance)
     * watchers A dict of the watchers to enable
         * unique name of the watcher
@@ -265,7 +288,12 @@ traders and watchers options overriding.
             * it is recommanded to have only one trader per profile (per running instance)
             * any of the options configured in the config.py TRADERS can be overrided here
               especially the paper-mode option when you want to make some specifics profiles of backtesting
-* APPLIANCES At the first level you have the unique name of the appliance
+
+#### config/appliances/ ####
+
+The file name act as the name of the appliance minus the file extension.
+
+Content of a \<myappliance>.json :
     * status enabled or None If None the appliance could not be started in any of the profiles
     * strategy
         * name Identifier of the strategy (binance.com, bitmex.com, ig.com....)
@@ -288,20 +316,21 @@ traders and watchers options overriding.
             * alias User defined instrument name alias
 
 
-#### <.siis>/config/identity.json ####
+### config/identities.json ###
 
 This is the more sensible file, which contains your API keys.
 You have a config/identity.json.template file. Do not modify this file it will not be read.
 
-* the identifier of the differents brokers
-    * profiles name
-        * for my usage I have real and demo
-        * specific needed value for the connector (API key, account identifier, password...)
+Parameters :
+    * the identifier of the differents brokers
+        * profiles name
+            * for my usage I have real and demo
+            * specific needed value for the connector (API key, account identifier, password...)
 
 The template show you the needed values to configure for the supported brokers.
 
 
-### markets ###
+### markets/ ###
 
 Each broker have its own usage name, creating if directory. Then you have 1 sub-directory per market.
 The market is identified by the unique broker market name.
@@ -315,7 +344,7 @@ the tabular version will be disabled and not stored by default.
 See more details on the data fetching section.
 
 
-### reports ###
+### reports/ ###
 
 Each backtest generate a triplet of files beginning with the starting datetime of the backtest, plus 
 the related broker identifier, and suffixed by :

@@ -56,7 +56,7 @@ class TraderService(Service):
         self._watcher_only = options.get('watcher-only', False)
 
         # user identities
-        self._identities_config = utils.identities(options.get('config-path')) or {}
+        self._identities_config = utils.identities(options.get('config-path'))
         self._profile = options.get('profile', 'default')
         self._profile_config = utils.profiles(options.get('config-path')) or {}
 
@@ -313,25 +313,28 @@ class TraderService(Service):
         profile_name = options.get('profile', 'default')
 
         profile_config = utils.profiles(options.get('config-path')) or {}
-        traders_profile = profile_config.get(profile_name, {'traders': {}}).get('traders', {})
-
-        traders_config = utils.attribute(options.get('config-path'), 'TRADERS') or {}
+        traders_profile = profile_config.get(profile_name, {'traders': {}}).get('traders', {})  # @todo from new profiles conf
 
         # @todo could rebuild the list of symbols according to what is found in appliances
+        traders_config = {}
 
-        # override from profile
-        for k, trader_config in traders_config.items():
-            if k in traders_profile:
-                override = traders_profile[k]
+        for k, profile_trader_config in traders_profile.items():
+            user_trader_config = utils.load_config(options, 'traders/' + k)
+            if user_trader_config:
+                if 'symbols' not in user_trader_config:
+                    # at least an empty list of symbols
+                    user_trader_config['symbols'] = []
 
-                if 'symbols' not in trader_config:
-                    trader_config['symbols'] = []
+                if 'symbols' in profile_trader_config:
+                    # profile overrides any symbols
+                    user_trader_config['symbols'] = profile_trader_config['symbols']
 
-                if 'symbols' in override:
-                    trader_config['symbols'] = override['symbols']
+                if 'paper-mode' in profile_trader_config:
+                    # paper-mode from profile overrides
+                    user_trader_config['paper-mode'] = profile_trader_config['paper-mode']
 
-                if 'paper-mode' in override:
-                    trader_config['paper-mode'] = override['paper-mode']
+                # keep overrided
+                traders_config[k] = user_trader_config
 
         return traders_config
 

@@ -45,12 +45,12 @@ class StrategyService(Service):
         self._watcher_only = options.get('watcher-only', False)
         self._profile = options.get('profile', 'default')
 
-        self._indicators_config = utils.attribute(options.get('config-path'), 'INDICATORS') or {}
-        self._tradeops_config = utils.attribute(options.get('config-path'), 'TRADEOPS') or {}
-        self._regions_config = utils.attribute(options.get('config-path'), 'REGIONS') or {}
-        self._strategies_config = utils.attribute(options.get('config-path'), 'STRATEGIES') or {}
-        self._appliances_config = utils.appliances(options.get('config-path')) or {}
-        self._profile_config = utils.profiles(options.get('config-path')) or {}
+        self._indicators_config = utils.load_config(options, 'indicators')
+        self._tradeops_config = utils.load_config(options, 'tradeops')
+        self._regions_config = utils.load_config(options, 'regions')
+        self._strategies_config = utils.load_config(options, 'strategies')
+        self._appliances_config = utils.appliances(options.get('config-path'))  # @todo new config
+        self._profile_config = utils.profiles(options.get('config-path'))  # @todo new config
 
         # backtesting options
         self._backtesting = options.get('backtesting', False)
@@ -501,7 +501,7 @@ class StrategyService(Service):
 
     def profile_has_appliance(self, name):
         """
-        Check if an appliance is allowed for a the current loaded profile.
+        Check if an appliance is allowed for the current loaded profile.
         """
         profile = self._profile_config.get(self._profile, {'appliances': []})
 

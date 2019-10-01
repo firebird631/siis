@@ -45,6 +45,18 @@ def install(options):
     if not config_path.exists():
         config_path.mkdir(parents=True)
 
+    if not config_path.joinpath("profiles").exists():
+        config_path.joinpath("profiles").mkdir(parents=True)
+
+    if not config_path.joinpath("appliances").exists():
+        config_path.joinpath("appliances").mkdir(parents=True)
+
+    if not config_path.joinpath("watchers").exists():
+        config_path.joinpath("watchers").mkdir(parents=True)
+
+    if not config_path.joinpath("traders").exists():
+        config_path.joinpath("traders").mkdir(parents=True)
+
     options['config-path'] = str(config_path)
 
     # markets/

@@ -5,8 +5,6 @@
 
 # This file serves as template purpose only. Put your into your siis config directory.
 
-SIZE_FACTOR = 1.0  # @todo could be a factor configured at the identity level
-
 PROFILES = {
     'default': {
         # default or not specified profile, we want nothing loaded
@@ -82,7 +80,7 @@ APPLIANCES = {
             'instruments': {
                 '*USDT': {
                     'market-id': '{0}',
-                    'size': 250,  # in USDT
+                    'size': 250
                 },
             }
         }
@@ -103,13 +101,13 @@ APPLIANCES = {
             'instruments': {
                 '*BTC': {
                     'market-id': '{0}',
-                    'size': 0.05,  # in BTC
+                    'size': 0.05
                 },
             }
         }
     },
     'bitmex-xbtusd-ethusd': {
-        'status': 'disabled',  # 'enabled',
+        'status': 'disabled',
         'strategy': {
             'name': 'cryptoalpha',
             'parameters': {
@@ -124,11 +122,11 @@ APPLIANCES = {
             'instruments': {
                 'XBTUSD': {
                     'market-id': 'XBTUSD',  # means map BTCUSD to XTBUSD (perpetual contract)
-                    'size': 1000*SIZE_FACTOR,    # USD
+                    'size': 1000,
                 },
                 'ETHUSD': {
                     'market-id': 'ETHUSD',
-                    'size': 1000*SIZE_FACTOR,    # USD
+                    'size': 1000,
                 }
             }
         }
@@ -149,11 +147,11 @@ APPLIANCES = {
             'instruments': {
                 'XRPZ18': {
                     'market-id': 'XRPZ18',
-                    'size': 1000*SIZE_FACTOR,    # XRP contracts
+                    'size': 1000,
                 },
                 'TRXZ18': {
                     'market-id': 'TRXZ18',
-                    'size': 50000*SIZE_FACTOR,    # TRX contracts
+                    'size': 50000,
                 },
             }
         }
@@ -182,7 +180,7 @@ APPLIANCES = {
                 'AUDNZD': {
                     'market-id': 'CS.D.AUDNZD.MINI.IP',
                     'leverage': 30.0,  # account and fixed for forex
-                    'size': 1.0*SIZE_FACTOR,
+                    'size': 1.0,
                     # 'value-per-pip': 1.0,
                     # 'contract-size': 10000,
                     # 'lot-size': 1.0,
@@ -192,7 +190,7 @@ APPLIANCES = {
                 'EURCAD': {
                     'market-id': 'CS.D.EURCAD.MINI.IP',
                     'leverage': 30.0,  # account and fixed for forex
-                    'size': 1.0*SIZE_FACTOR,
+                    'size': 1.0,
                     # 'value-per-pip': 1.0,
                     # 'contract-size': 10000,
                     # 'lot-size': 1.0,
@@ -202,7 +200,7 @@ APPLIANCES = {
                 'EURJPY': {
                     'market-id': 'CS.D.EURJPY.MINI.IP',
                     'leverage': 30.0,  # account and fixed for forex
-                    'size': 1.0*SIZE_FACTOR,
+                    'size': 1.0,
                     # 'value-per-pip': 50.0,
                     # 'contract-size': 10000,
                     # 'lot-size': 100.0,
@@ -212,7 +210,7 @@ APPLIANCES = {
                 'EURUSD': {
                     'market-id': 'CS.D.EURUSD.MINI.IP',
                     'leverage': 30.0,  # account and fixed for forex
-                    'size': 1.0*SIZE_FACTOR,
+                    'size': 1.0,
                     # 'value-per-pip': 1.0,
                     # 'contract-size': 10000,
                     # 'lot-size': 0.5,
@@ -222,7 +220,7 @@ APPLIANCES = {
                 'GBPUSD': {
                     'market-id': 'CS.D.GBPUSD.MINI.IP',
                     'leverage': 30.0,  # account and fixed for forex
-                    'size': 1.0*SIZE_FACTOR,
+                    'size': 1.0,
                     # 'value-per-pip': 1.0,
                     # 'contract-size': 10000,
                     # 'lot-size': 1.0,
@@ -232,7 +230,7 @@ APPLIANCES = {
                 'USDJPY': {
                     'market-id': 'CS.D.USDJPY.MINI.IP',
                     'leverage': 30.0,  # account and fixed for forex
-                    'size': 1.0*SIZE_FACTOR,
+                    'size': 1.0,
                     # 'value-per-pip': 50,
                     # 'contract-size': 10000,
                     # 'lot-size': 100.0,
@@ -259,7 +257,7 @@ APPLIANCES = {
                 'SPX500': {
                     'market-id': 'IX.D.SPTRD.IFE.IP',
                     'leverage': 20,  # account and fixed for forex
-                    'size': 1.0*SIZE_FACTOR,
+                    'size': 1.0,
                     # 'value-per-pip': 1.0,
                     # 'contract-size': 1.0,
                     # 'lot-size': 1,
@@ -292,7 +290,7 @@ APPLIANCES = {
                 'XAUUSD': {
                     'market-id': 'CS.D.CFEGOLD.CFE.IP',
                     'leverage': 30,  # account and fixed for forex
-                    'size': 1.0*SIZE_FACTOR,
+                    'size': 1.0,
                     # 'value-per-pip': 1.0,
                     # 'contract-size': 1.0,
                     # 'lot-size': 1.0,
@@ -326,22 +324,16 @@ APPLIANCES = {
             'instruments': {
                 '*BTC': {
                     'market-id': '{0}',
-                    'size': 0.02*SIZE_FACTOR,
+                    'size': 0.02,
                 },
                 '*USDT': {
                     'market-id': '{0}',
-                    'size': 100*SIZE_FACTOR,
-                },
+                    'size': 100,
+                }
             }
         }
     },
-
-    #
-    # @deprecated, kept for history
-    #
-
     '1broker-forex': {
-        # Any forex social copy signal manual entry, auto exit copy
         'status': 'disabled',
         'strategy': {
             'name': 'socialcopy',
@@ -357,19 +349,18 @@ APPLIANCES = {
                 'authors': None  # !! mean follow any authors configured into the watcher, else define a list of ids
             }
         }],
-        # @todo mapping with category name... or force to list any
         'trader': {
             'name': '1broker.com',
             'instruments': {
                 '(MAJORS-FOREX)': {   # map any major forex, using theese settings, some others need different size/leverage
                     'market-id': None,       # no mapping is necessary because the symbols are the sames
-                    'size': 0.002*SIZE_FACTOR,    # BTC
+                    'size': 0.002,    # BTC
                     'leverage': {
                         'min': 1,     # minimal leverage
                         'max': 100    # maximal leverage
-                    },
+                    }
                 }
             }
         }
-    },
+    }
 }

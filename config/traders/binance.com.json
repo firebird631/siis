@@ -1,0 +1,6 @@
+{
+    "status": "load",
+    "classpath": "trader.connector.binance.trader.BinanceTrader",
+    "symbols": [],
+    "_symbols": ["*USDT", "*BTC"]
+}

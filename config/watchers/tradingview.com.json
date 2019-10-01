@@ -1,0 +1,7 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.tradingview.watcher.TradingViewWatcher",
+    "host": "127.0.0.1",
+    "port": 7373,
+    "symbols": []
+}

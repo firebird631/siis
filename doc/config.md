@@ -1,10 +1,25 @@
-# Global configuration #
+# Global and user configuration #
 
-Probably will be subject to be replaced by json file, and appliance could be later be in disctinct files for more clarity.
-There is 3 parts :
-	* identity : API key goes here
-	* config : Global configuration
-	* appliance : User profiles and appliances
+Default and user customisable files :
+	* databases.json : Databases configuration
+	* monitoring.json : Monitoring service configuration
+	* indicators.json : 
+	* regions.json :
+	* tradeops.json :
+	* fetchers.json :
+	* watchers/\*.json :
+	* traders/\*.json :
+
+Each of these files exists in the source of SiiS. The default parameters would suffise except
+databases.json and monitoring.json that need user values.
+
+User only files :
+	* identities.json : API key goes here
+	* profiles/\*.json : User profiles of appliances
+	* appliances/\*.json : User appliances of strategies
+
+You need to create an identities.json file and at least one profile with one appliance to made a run.
+
 
 ## Identities ##
 
@@ -12,22 +27,46 @@ You find a model in config/identity.json.template.
 
 ... complete ..
 
-## Config ##
 
-You find an initial global configuration in config/config.py.
-To add your traders, watcher, and eventually your regions, tradeops, indicators, strategies you have
-to create a config.py file into your **.siis/config** local directory.
-
-TODO soon will be replaced by config.json.
+## Monitoring ##
 
 ... complete ..
 
-## Profiles and Appliances ##
 
-You find an initial global configuration in config/config.py.
-To add your traders, watcher, and eventually your regions, tradeops, indicators, strategies you have
-to create a config.py file into your **.siis/config** local directory.
+## Indicators ##
 
-TODO soon will be replaced by appliance.json and a directory of distinct appliances.
+... complete ..
+
+
+## Regions ##
+
+... complete ..
+
+
+## Trade Operations ##
+
+... complete ..
+
+## Fetchers ##
+
+... complete ..
+
+
+## Watchers ##
+
+... complete ..
+
+
+## Traders ##
+
+... complete ..
+
+
+## Profiles ##
+
+... complete ...
+
+
+## Appliances ##
 
 ... complete ...

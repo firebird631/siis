@@ -97,7 +97,7 @@ class Database(object):
 
     @classmethod
     def create(cls, options):
-        config = utils.attribute(options.get('config-path'), 'DATABASES') or {}
+        config = utils.load_config(options, 'databases')
 
         if config['siis'].get('type', 'mysql') == 'mysql':
             from .mysql import MySql
@@ -153,7 +153,7 @@ class Database(object):
 
     def setup(self, options):
         # load database
-        config = utils.attribute(options.get('config-path'), 'DATABASES') or {}
+        config = utils.load_config(options, 'databases')
 
         self.connect(config)
 

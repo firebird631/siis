@@ -69,7 +69,7 @@ class MonitorService(Service):
         super().__init__("monitor", options)
 
         # monitoring config
-        self._monitoring_config = utils.attribute(options.get('config-path'), 'MONITORING') or {}
+        self._monitoring_config = utils.load_config(options, 'monitoring')
 
         if options.get('monitored', True):
             self._monitoring = True

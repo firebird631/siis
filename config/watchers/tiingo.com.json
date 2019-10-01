@@ -1,0 +1,6 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.tiingo.watcher.TiingoWatcher",
+    "symbols": [],
+    "_symbols": ["MSFT", "GOOG", "APPL", "SPOT"]
+}

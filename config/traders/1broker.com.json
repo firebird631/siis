@@ -1,0 +1,31 @@
+{
+    "status": "load",
+    "classpath": "trader.connector.onebroker.trader.OneBrokerTrader",
+    "leverages": {
+        "(ANY)": [1, 100],
+        "AUDNZD": [50, 100],
+        "AUDUSD": [50, 100],
+        "EURAUD": [75, 125],
+        "EURCAD": [75, 125],
+        "EURCHF": [75, 125],
+        "EURCNH": [50, 100],
+        "EURGBP": [75, 125],
+        "EURJPY": [75, 100],
+        "EURMXN": [50, 75],
+        "EURTRY": [50, 100],
+        "EURUSD": [75, 125],
+        "GBPUSD": [75, 125],
+        "USDAUD": [75, 125],
+        "USDCAD": [75, 125],
+        "USDCHN": [75, 125],
+        "USDCNH": [50, 100],
+        "USDMXN": [25, 50],
+        "USDJPY": [75, 100],
+        "USDTRY": [50, 100],
+        "XAUUSD": [5, 15],
+        "XAGUSD": [5, 15],
+        "OILWTI": [5, 10],
+        "(STOCKS)": [1, 15]
+    },
+    "symbols": []
+}

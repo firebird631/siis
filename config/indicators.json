@@ -1,0 +1,132 @@
+{
+    "price": {
+        "status": "load",
+        "classpath": "strategy.indicator.price.price.PriceIndicator",
+        "options": {}
+    },
+    "volume": {
+        "status": "load",
+        "classpath": "strategy.indicator.volume.volume.VolumeIndicator",
+        "options": {}
+    },
+    "rsi": {
+        "status": "load",
+        "classpath": "strategy.indicator.rsi.rsi.RSIIndicator",
+        "options": {}
+    },
+    "stochrsi": {
+        "status": "load",
+        "classpath": "strategy.indicator.stochrsi.stochrsi.StochRSIIndicator",
+        "options": {}
+    },
+    "stochastic": {
+        "status": "load",
+        "classpath": "strategy.indicator.stochastic.stochastic.StochasticIndicator",
+        "options": {}
+    },  
+    "momentum": {
+        "status": "load",
+        "classpath": "strategy.indicator.momentum.momentum.MomentumIndicator",
+        "options": {}
+    },
+    "macd": {
+        "status": "load",
+        "classpath": "strategy.indicator.macd.macd.MACDIndicator",
+        "options": {}
+    },
+    "sma": {
+        "status": "load",
+        "classpath": "strategy.indicator.sma.sma.SMAIndicator",
+        "options": {}
+    },
+    "ema": {
+        "status": "load",
+        "classpath": "strategy.indicator.ema.ema.EMAIndicator",
+        "options": {}
+    },
+    "hma": {
+        "status": "load",
+        "classpath": "strategy.indicator.hma.hma.HMAIndicator",
+        "options": {}
+    },
+    "wma": {
+        "status": "load",
+        "classpath": "strategy.indicator.wma.wma.WMAIndicator",
+        "options": {}
+    },
+    "vwma": {
+        "status": "load",
+        "classpath": "strategy.indicator.vwma.vwma.VWMAIndicator",
+        "options": {}
+    },
+    "bollingerbands": {
+        "status": "load",
+        "classpath": "strategy.indicator.bollingerbands.bollingerbands.BollingerBandsIndicator",
+        "options": {}
+    },
+    "fibonacci": {
+        "status": "load",
+        "classpath": "strategy.indicator.fibonacci.fibonacci.FibonacciIndicator",
+        "options": {}
+    },
+    "triangle": {
+        "status": "load",
+        "classpath": "strategy.indicator.triangle.triangle.TriangleIndicator",
+        "options": {}
+    },
+    "pivotpoint": {
+        "status": "load",
+        "classpath": "strategy.indicator.pivotpoint.pivotpoint.PivotPointIndicator",
+        "options": {}
+    },
+    "tomdemark": {
+        "status": "load",
+        "classpath": "strategy.indicator.tomdemark.tomdemark.TomDemarkIndicator",
+        "options": {}
+    },
+    "atr": {
+        "status": "load",
+        "classpath": "strategy.indicator.atr.atr.ATRIndicator",
+        "options": {}
+    },
+    "donchian": {
+        "status": "load",
+        "classpath": "strategy.indicator.donchian.donchian.DonchianIndicator",
+        "options": {}
+    },
+    "sar": {
+        "status": "load",
+        "classpath": "strategy.indicator.sar.sar.SARIndicator",
+        "options": {}
+    },
+    "history": {
+        "status": "load",
+        "classpath": "strategy.indicator.history.history.HistoryIndicator",
+        "options": {}
+    },
+    "bbawe": {
+        "status": "load",
+        "classpath": "strategy.indicator.bbawe.bbawe.BBAweIndicator",
+        "options": {}
+    },
+    "sinewave": {
+        "status": "load",
+        "classpath": "strategy.indicator.sinewave.sinewave.SineWaveIndicator",
+        "options": {}
+    },
+    "zigzag": {
+        "status": "load",
+        "classpath": "strategy.indicator.zigzag.zigzag.ZigZagIndicator",
+        "options": {}
+    },
+    "mama": {
+        "status": "load",
+        "classpath": "strategy.indicator.mama.mama.MAMAIndicator",
+        "options": {}
+    },
+    "ichimoku": {
+        "status": "load",
+        "classpath": "strategy.indicator.ichimoku.ichimoku.IchimokuIndicator",
+        "options": {}
+    }
+}

@@ -1,0 +1,7 @@
+{
+    "dynamic-stop-loss": {
+        "status": "load",
+        "classpath": "strategy.tradeop.tradeop.TradeOpDynamicStopLoss",
+        "options": {}
+    }
+}

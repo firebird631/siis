@@ -1,0 +1,6 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.kraken.watcher.KrakenWatcher",
+    "symbols": [],
+    "_symbols": ["XXBTZUSD", "XXBTZEUR", "XETHZUSD", "XETHZEUR", "XXRPZUSD", "XXRPZEUR"]
+}

@@ -1,0 +1,11 @@
+{
+    "siis": {
+        "type": "pgsql",
+        "name": "siis",
+        "user": "siis",
+        "password": "siis",
+        "host": "127.0.0.1",
+        "port": 5432,
+        "conn_max_age": 86400
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.onebroker.watcher.OneBrokerWatcher",
+    "authors": [{
+            "username": "wangzai888",
+            "id": "11531",
+            "status": "share",
+            "instruments": ["forex", "stock", "commodity"],
+            "confidence": [0, 0, 0, 5, 5, 5, 5, 3],
+            "comments": ["blabla"]
+        }
+    ],
+    "symbols": []
+}

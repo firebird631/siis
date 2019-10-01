@@ -1,0 +1,37 @@
+{
+    "boostedblueskyday": {
+        "status": "load",
+        "classpath": "strategy.boostedblueskyday.bbstrategy.BoostedBlueSkyDayStrategy",
+        "options": {}
+    },
+    "socialcopy": {
+        "status": "load",
+        "classpath": "strategy.socialcopy.scstrategy.SocialCopyStrategy",
+        "options": {}
+    },
+    "cryptoalpha": {
+        "status": "load",
+        "classpath": "strategy.cryptoalpha.castrategy.CryptoAlphaStrategy",
+        "options": {}
+    },
+    "forexalpha": {
+        "status": "load",
+        "classpath": "strategy.forexalpha.fastrategy.ForexAlphaStrategy",
+        "options": {}
+    },
+    "indicealpha": {
+        "status": "load",
+        "classpath": "strategy.indicealpha.iastrategy.IndiceAlphaStrategy",
+        "options": {}
+    },
+    "bitcoinalpha": {
+        "status": "load",
+        "classpath": "strategy.bitcoinalpha.bcastrategy.BitcoinAlphaStrategy",
+        "options": {}
+    },
+    "crystalball": {
+        "status": "load",
+        "classpath": "strategy.crystalball.cbstrategy.CrystalBallStrategy",
+        "options": {}
+    }
+}

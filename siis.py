@@ -73,6 +73,7 @@ def application(argv):
     Terminal()
 
     options = {
+        'working-path': os.getcwd(),
         'identity': 'real',
         'config-path': './user/config',
         'log-path': './user/log',
