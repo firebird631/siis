@@ -75,17 +75,15 @@ class KrakenTrader(Trader):
         super().on_watcher_connected(watcher_name)
 
         # markets, orders and positions
+        logger.info("- Trader kraken.com retrieving symbols and markets...")
+
+        configured_symbols = self.configured_symbols()
+        matching_symbols = self.matching_symbols_set(configured_symbols, self._watcher.watched_instruments())
+
+        # markets, orders and positions
         self.lock()
 
-        # fetch tradable markets
-        if '*' in self.configured_symbols():
-            # all symbols from the watcher
-            symbols = self._watcher.instruments
-        else:
-            # only configured symbols
-            symbols = self.configured_symbols()
-
-        for symbol in symbols:
+        for symbol in matching_symbols:
             self.market(symbol, True)
 
         self.__fetch_orders()
@@ -95,6 +93,8 @@ class KrakenTrader(Trader):
 
         # initial account update
         self._account.update(self._watcher.connector)
+
+        logger.info("Trader kraken.com got data. Running.")
 
     def on_watcher_disconnected(self, watcher_name):
         super().on_watcher_disconnected(watcher_name)

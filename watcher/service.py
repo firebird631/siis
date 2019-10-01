@@ -161,7 +161,6 @@ class WatcherService(Service):
         """
         Get the profile configuration for a specific watche name.
         """
-        profile_name = options.get('profile', 'default')
         watchers_profile = self._profile_config.get('watchers', {})
 
         # @todo could rebuild the list of symbols according to what is found in appliances

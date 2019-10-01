@@ -587,6 +587,10 @@ class Strategy(Runnable):
                             instrument.set_fees(market.maker_fee, market.taker_fee)
                             instrument.set_commissions(market.maker_commission, market.taker_commission)
 
+                            strategy_trader = self._strategy_traders.get(instrument)
+                            if strategy_trader:
+                                strategy_trader.on_market_info()
+
                     if self.service.backtesting:
                         # retrieve the feeder by the relating instrument market_id or symbol
                         feeder = self._feeders.get(instrument.market_id) or self._feeders.get(instrument.symbol)
@@ -739,6 +743,10 @@ class Strategy(Runnable):
 
                         instrument.set_fees(market.maker_fee, market.taker_fee)
                         instrument.set_commissions(market.maker_commission, market.taker_commission)
+
+                        strategy_trader = self._strategy_traders.get(instrument)
+                        if strategy_trader:
+                            strategy_trader.on_market_info()
 
                 elif signal.signal_type == Signal.SIGNAL_LIQUIDATION_DATA:
                     # interest in liquidation data

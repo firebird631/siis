@@ -90,19 +90,17 @@ class IGTrader(Trader):
         super().on_watcher_connected(watcher_name)
 
         # markets, orders and positions
-        self.lock()
+        logger.info("- Trader ig.com retrieving symbols and markets...")
 
-        # fetch tradable markets
-        if '*' in self.configured_symbols():
-            # all watched symbols from the watcher
-            symbols = self._watcher.watched_instruments()
-        else:
-            # only configured symbols
-            symbols = self.configured_symbols()
-        
+        configured_symbols = self.configured_symbols()
+        matching_symbols = self.matching_symbols_set(configured_symbols, self._watcher.watched_instruments())
+      
         # fetch markets
-        for symbol in symbols:
+        for symbol in matching_symbols:
             self.market(symbol, True)
+
+        # markets, orders and positions
+        self.lock()
 
         # initials orders and positions
         self.__fetch_orders()
@@ -111,6 +109,8 @@ class IGTrader(Trader):
         self.unlock()
 
         self.account.update(self._watcher.connector)
+
+        logger.info("Trader ig.com got data. Running.")
 
     def on_watcher_disconnected(self, watcher_name):
         super().on_watcher_disconnected(watcher_name)

@@ -497,6 +497,15 @@ class StrategyTrader(object):
         self.unlock()
 
     def on_received_liquidation(self, liquidation):
+        """
+        Receive a trade liquidation (not user trade, global)
+        """
+        pass
+
+    def on_market_info(self):
+        """
+        When receive initial or update of market/instrument data
+        """
         pass
 
     #

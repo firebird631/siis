@@ -102,6 +102,7 @@ class BinanceTrader(Trader):
 
         configured_symbols = self.configured_symbols()
         matching_symbols = self.matching_symbols_set(configured_symbols, self._watcher.watched_instruments())
+        # logger.info("%s %s" % (configured_symbols, matching_symbols))
 
         # only configured symbols found in watched symbols
         for symbol in matching_symbols:
