@@ -1,5 +1,5 @@
 #######################################
-# TODOs has moved to a dedicated tool.#
+# TODOs has moved to a dedicated tool #
 #######################################
 
 ############
@@ -26,51 +26,20 @@
 			pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier orde)
 	- Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
 
-#71 vue latéral pour afficher les markets tradés de l'appliance séléctionné ?
-
-#77 Comment bien gérer les gap de candles ? Car si low volume ok on a mettons un gap en 1m ou 5m, le add_candle va rajouter un volume vide avec les
-	prix la précédente candle. Mais quand le market ferme en forex ou stock, à l'ouverture il ne faut pas créer les candle manquantes,
-	donc il faut disctinguer les 2 cas, par example le status tradable peu servir...
+#71 Vue latéral pour afficher les markets tradés de l'appliance séléctionné ?
 
 #93 Command doit y avoir un prob avec self._word qui doit être parfois mal définit, donc la complétion initial du premier verbe déconne parfois
 
-#95 Sometime during bitmex trade history fetching :
- File "siis.py", line 605, in <module>
-    application(sys.argv)
-  File "siis.py", line 210, in application
-    do_fetcher(options, siis_logger)
-  File "/home/frederic/dev/trading/siis/tools/fetcher.py", line 77, in do_fetcher
-    options.get('spec'), cascaded)
-  File "/home/frederic/dev/trading/siis/watcher/fetcher.py", line 124, in fetch_and_generate
-    for data in self.fetch_trades(market_id, from_date, to_date, n):
-  File "/home/frederic/dev/trading/siis/watcher/connector/bitmex/fetcher.py", line 101, in fetch_trades
-    for trade in trades:
-  File "/home/frederic/dev/trading/siis/connector/bitmex/connector.py", line 295, in get_historical_trades
-    results = self.request(path=endpoint, query=params, verb='GET')
-  File "/home/frederic/dev/trading/siis/connector/bitmex/connector.py", line 248, in request
-    return response.json()
-  File "/home/frederic/dev/trading/siis.venv/lib/python3.7/site-packages/requests/models.py", line 897, in json
-    return complexjson.loads(self.text, **kwargs)
-  File "/usr/lib/python3.7/json/__init__.py", line 348, in loads
-    return _default_decoder.decode(s)
-  File "/usr/lib/python3.7/json/decoder.py", line 337, in decode
-    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
-  File "/usr/lib/python3.7/json/decoder.py", line 355, in raw_decode
-    raise JSONDecodeError("Expecting value", s, err.value) from None 
-    json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+#95 Parfois on a un problème de quantité d'asset sur le paper-trader.
+
+#96 Valeur d'un pip pour les marchés BitMex => et corriger ainsi calcule uPnl.
 
 
 ##########
 # URGENT #
 ##########
 
-#91 Finir de migrer les tables restantes dans strategies (hist et trade list) vers le format table
-
-#90 Avoir les timeframe en str sur la config et uniformiser la config au model de la V2 (json, fichier indépendants...)
-
-#86 Finir la TrendRegion
-
-#82 SL sont en market, mais on pourrait avoir en Limit avec un prix assez large
+#82 SL sont en STOP, mais on pourrait avoir en STOP_LIMIT avec un prix assez large
 
 #81 Imaginer un filtre de prix utilisé pour les SL/TP pour éviter qu'ils s'active sur une mêche pour rien, peut être attendre sur une close sinon ?
 
@@ -78,8 +47,7 @@
 
 #75 TD9 countdown a debug et tester
 
-#57 Enregistrer en DB les trades en cours des strategies et les recharger en vérifiant si les positions existent toujours (et au moins la quantité pour les assets)
-	- DB Model partiel, DB store/load partiel, model dumps/loads partiel
+#57 Vérification des trades au rechargement :
 	- Cas des positions indépendante (CFD, futur) : pas de soucis tant qu'on retrouve la position et les ordres
 	- Cas des crypto margin: si on rate un trade event, on va perdre le compte : reprendre l'historique des trades, ça devient l'usine à gérer
 	- Cas des crypto spot : pareil si on rate un trade event...
@@ -88,10 +56,9 @@
 			- pour binance.com c'est un peu lent et ça consomme du crédit
 			- pour bitmex.com on a get_historical_trades(...)
 			- pour ig.com pas de question à se poser on regarde l'état de la position, et éventuellement les ordres actifs qu'on a fetched
-	=> table strategy_trade appliance_id varchar32, market_id varchar32, trade_id integer, data text (JSON)
 
-#63 Urgency command : Ferme les trades managé
-	- Pour l'instant on a que ça au niveau des Trader sur les positions (margin)
+#63 Mode backup urgency :
+	- Instance démarré à coté pour fermé les trades en profit et se fermer une fois tous les trades fermé
 
 
 #############
@@ -111,12 +78,6 @@
 	que l'on souhaite (en plus des save des trade en cours pour reload au relancement), mais demande un peu de surcouche, et puis ça découple bien,
 	surtout en cas de plantage.
 	- Ce découplage est pensé et réalisé sur la V2
-
-#68 A propos du prefetching lorsqu'on lance ne live, même si on a fait un prefetch manuel, actuellement le Watcher ne récupère ni en DB ni depuis l'API du broker
-	la candle en cours pour les timeframes stoquées en DB. Quelle solution ? Car fetcher depuis le broker c'est le mieux, mais ça consomme des crédit, ou c'est long,
-	après ce n'est pas anormal que ça soit un peu long certes au démarrage.
-		- Il faut au minimum que le watcher récupère les last candles à compléter
-			mais le mieux sera la mécanique de subscribtion dynamique, et donc on fetchera selon le processus, par market
 
 
 #######
@@ -141,7 +102,7 @@
 # LESS #
 ########
 
-#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, si vraiment pertinant de les avoirs... enfin c'est vite fais
+#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry
 
 #38 Fetcher et (REST) Watcher Tiingo
 

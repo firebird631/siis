@@ -27,13 +27,13 @@ class WatcherService(Service):
         # fetchers config
         self._fetchers_config = utils.load_config(options, 'fetchers')
 
-        # watchers config
-        self._watchers_config = self._init_watchers_config(options)
-
         # user identities
         self._identities_config = utils.identities(options.get('config-path'))
         self._profile = options.get('profile', 'default')
         self._profile_config = utils.load_config(options, "profiles/%s" % self._profile)
+
+        # watchers config
+        self._watchers_config = self._init_watchers_config(options)
 
         # backtesting options
         self._backtesting = options.get('backtesting', False)
@@ -162,9 +162,7 @@ class WatcherService(Service):
         Get the profile configuration for a specific watche name.
         """
         profile_name = options.get('profile', 'default')
-
-        profile_config = utils.profiles(options.get('config-path')) or {}
-        watchers_profile = profile_config.get(profile_name, {'watchers': {}}).get('watchers', {})  # @todo from new profiles conf
+        watchers_profile = self._profile_config.get('watchers', {})
 
         # @todo could rebuild the list of symbols according to what is found in appliances
         watchers_config = {}

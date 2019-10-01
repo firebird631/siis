@@ -69,41 +69,20 @@ def load_config(options, attr_name):
     return merge_parameters(default_config, user_config)
 
 
-def appliances(config_path):
-    # @todo update
-    from config import appliance
-    default_config = appliance.APPLIANCES or {}
+# def profiles(config_path):
+#     from config import appliance
+#     default_config = appliance.PROFILES or {}
 
-    res = {}
-    try:
-        spec = importlib.util.spec_from_file_location("config.appliance", '/'.join((config_path, 'appliance.py')))
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        if hasattr(mod, 'APPLIANCES'):
-            return mod.APPLIANCES
-    except FileNotFoundError:
-        pass
-    except Exception as e:
-        logger.error(repr(e))
+#     res = {}
+#     try:
+#         spec = importlib.util.spec_from_file_location("config.appliance", '/'.join((config_path, 'appliance.py')))
+#         mod = importlib.util.module_from_spec(spec)
+#         spec.loader.exec_module(mod)
+#         if hasattr(mod, 'PROFILES'):
+#             return mod.PROFILES
+#     except FileNotFoundError:
+#         pass
+#     except Exception as e:
+#         logger.error(repr(e))
 
-    return default_config
-
-
-def profiles(config_path):
-    # @todo update
-    from config import appliance
-    default_config = appliance.PROFILES or {}
-
-    res = {}
-    try:
-        spec = importlib.util.spec_from_file_location("config.appliance", '/'.join((config_path, 'appliance.py')))
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        if hasattr(mod, 'PROFILES'):
-            return mod.PROFILES
-    except FileNotFoundError:
-        pass
-    except Exception as e:
-        logger.error(repr(e))
-
-    return default_config
+#     return default_config

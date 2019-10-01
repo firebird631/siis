@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS market(
     min_notional VARCHAR(32) NOT NULL, max_notional VARCHAR(32) NOT NULL, step_notional VARCHAR(32) NOT NULL,
     maker_fee VARCHAR(32) NOT NULL DEFAULT '0', taker_fee VARCHAR(32) NOT NULL DEFAULT '0',
     maker_commission VARCHAR(32) NOT NULL DEFAULT '0', taker_commission VARCHAR(32) NOT NULL DEFAULT '0',
-    UNIQUE KEY(broker_id, market_id));
+    UNIQUE KEY(broker_id, market_id)) ENGINE=InnoDB;
 
 -- asset
 CREATE TABLE IF NOT EXISTS asset(
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS asset(
     broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, asset_id VARCHAR(255) NOT NULL,
     last_trade_id VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL,
     quantity VARCHAR(32) NOT NULL, price VARCHAR(32) NOT NULL, quote_symbol VARCHAR(32) NOT NULL,
-    UNIQUE KEY(broker_id, account_id, asset_id));
+    UNIQUE KEY(broker_id, account_id, asset_id)) ENGINE=InnoDB;
 
 -- ohlc
 CREATE TABLE IF NOT EXISTS ohlc(
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS ohlc(
     bid_open VARCHAR(32) NOT NULL, bid_high VARCHAR(32) NOT NULL, bid_low VARCHAR(32) NOT NULL, bid_close VARCHAR(32) NOT NULL,
     ask_open VARCHAR(32) NOT NULL, ask_high VARCHAR(32) NOT NULL, ask_low VARCHAR(32) NOT NULL, ask_close VARCHAR(32) NOT NULL,
     volume VARCHAR(48) NOT NULL,
-    UNIQUE KEY(broker_id, market_id, timestamp, timeframe));
+    UNIQUE KEY(broker_id, market_id, timestamp, timeframe)) ENGINE=InnoDB;
 
 -- user_trade
 CREATE TABLE IF NOT EXISTS user_trade(
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS user_trade(
     trade_type INTEGER NOT NULL,
     data TEXT NOT NULL DEFAULT '{}',
     operations TEXT NOT NULL DEFAULT '{}',
-    UNIQUE KEY(broker_id, market_id, appliance_id, account_id, trade_id));
+    UNIQUE KEY(broker_id, market_id, appliance_id, account_id, trade_id)) ENGINE=InnoDB;
 
 -- user_trader
 CREATE TABLE IF NOT EXISTS user_trader(
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS user_trader(
     activity INTEGER NOT NULL DEFAULT 1,
     data TEXT NOT NULL DEFAULT '{}',    
     regions TEXT NOT NULL DEFAULT '{}',
-    UNIQUE KEY(broker_id, market_id, appliance_id, account_id))
+    UNIQUE KEY(broker_id, market_id, appliance_id, account_id)) ENGINE=InnoDB;
 
 -- liquidation
 CREATE TABLE IF NOT EXISTS liquidation(
@@ -71,4 +71,4 @@ CREATE TABLE IF NOT EXISTS liquidation(
     timestamp BIGINT NOT NULL,
     direction INTEGER NOT NULL,
     price VARCHAR(32) NOT NULL,
-    quantity VARCHAR(32) NOT NULL)
+    quantity VARCHAR(32) NOT NULL) ENGINE=InnoDB;

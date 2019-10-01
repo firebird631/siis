@@ -32,6 +32,7 @@ error_logger = logging.getLogger('siis.error.database.mysql')
 class MySql(Database):
     """
     Storage service, mysql implementation.
+    @todo reconnect
     """
     def __init__(self):
         super().__init__()
@@ -79,7 +80,7 @@ class MySql(Database):
                 min_price VARCHAR(32) NOT NULL, max_price VARCHAR(32) NOT NULL, step_price VARCHAR(32) NOT NULL,
                 maker_fee VARCHAR(32) NOT NULL DEFAULT '0', taker_fee VARCHAR(32) NOT NULL DEFAULT '0',
                 maker_commission VARCHAR(32) NOT NULL DEFAULT '0', taker_commission VARCHAR(32) NOT NULL DEFAULT '0',
-                UNIQUE KEY(broker_id, market_id))""")
+                UNIQUE KEY(broker_id, market_id)) ENGINE=InnoDB""")
 
         self._db.commit()
 
@@ -97,7 +98,7 @@ class MySql(Database):
                 broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, asset_id VARCHAR(255) NOT NULL,
                 last_trade_id VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL, 
                 quantity VARCHAR(32) NOT NULL, price VARCHAR(32) NOT NULL, quote_symbol VARCHAR(32) NOT NULL,
-                UNIQUE KEY(broker_id, account_id, asset_id))""")
+                UNIQUE KEY(broker_id, account_id, asset_id)) ENGINE=InnoDB""")
 
         # trade table
         cursor.execute("SHOW TABLES LIKE 'user_trade'")
@@ -113,7 +114,7 @@ class MySql(Database):
                 trade_type INTEGER NOT NULL,
                 data TEXT NOT NULL DEFAULT '{}',
                 operations TEXT NOT NULL DEFAULT '{}',
-                UNIQUE KEY(broker_id, account_id, market_id, appliance_id, trade_id))""")
+                UNIQUE KEY(broker_id, account_id, market_id, appliance_id, trade_id)) ENGINE=InnoDB""")
 
         # trader table
         cursor.execute("SHOW TABLES LIKE 'user_trader'")
@@ -128,7 +129,7 @@ class MySql(Database):
                 activity INTEGER NOT NULL DEFAULT 1,
                 data TEXT NOT NULL DEFAULT '{}',
                 regions TEXT NOT NULL DEFAULT '{}',
-                UNIQUE KEY(broker_id, account_id, market_id, appliance_id))""")
+                UNIQUE KEY(broker_id, account_id, market_id, appliance_id)) ENGINE=InnoDB""")
 
         self._db.commit()
 
@@ -148,7 +149,7 @@ class MySql(Database):
                 bid_open VARCHAR(32) NOT NULL, bid_high VARCHAR(32) NOT NULL, bid_low VARCHAR(32) NOT NULL, bid_close VARCHAR(32) NOT NULL,
                 ask_open VARCHAR(32) NOT NULL, ask_high VARCHAR(32) NOT NULL, ask_low VARCHAR(32) NOT NULL, ask_close VARCHAR(32) NOT NULL,
                 volume VARCHAR(48) NOT NULL,
-                UNIQUE KEY(broker_id, market_id, timestamp, timeframe))""")
+                UNIQUE KEY(broker_id, market_id, timestamp, timeframe)) ENGINE=InnoDB""")
 
         # liquidation table
         cursor.execute("""
@@ -158,7 +159,7 @@ class MySql(Database):
                 timestamp BIGINT NOT NULL,
                 direction INTEGER NOT NULL,
                 price VARCHAR(32) NOT NULL,
-                quantity VARCHAR(32) NOT NULL)""")
+                quantity VARCHAR(32) NOT NULL) ENGINE=InnoDB""")
 
         self._db.commit()
 
@@ -211,23 +212,23 @@ class MySql(Database):
                                         min_price, max_price, step_price,
                                         maker_fee, taker_fee, maker_commission, taker_commission) 
                                     VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                    ON DUPLICATE KEY UPDATE symbol = %s,
-                                        market_type = %s, unit_type = %s, contract_type = %s,
-                                        trade_type = %s, orders = %s,
-                                        base = %s, base_display = %s, base_precision = %s,
-                                        quote = %s, quote_display = %s, quote_precision = %s,
-                                        expiry = %s, timestamp = %s,
-                                        lot_size = %s, contract_size = %s, base_exchange_rate = %s,
-                                        value_per_pip = %s, one_pip_means = %s, margin_factor = %s,
-                                        min_size = %s, max_size = %s, step_size = %s,
-                                        min_notional = %s, max_notional = %s, step_notional = %s,
-                                        min_price = %s, max_price = %s, step_price = %s,
-                                        maker_fee = %s, taker_fee = %s, maker_commission = %s, taker_commission = %s""",
-                                    (*mi, *mi[2:]))
+                                    ON DUPLICATE KEY UPDATE symbol = VALUES(symbol),
+                                        market_type = VALUES(market_type), unit_type = VALUES(unit_type), contract_type = VALUES(contract_type),
+                                        trade_type = VALUES(trade_type), orders = VALUES(orders),
+                                        base = VALUES(base), base_display = VALUES(base_display), base_precision = VALUES(base_precision),
+                                        quote = VALUES(quote), quote_display = VALUES(quote_display), quote_precision = VALUES(quote_precision),
+                                        expiry = VALUES(expiry), timestamp = VALUES(timestamp),
+                                        lot_size = VALUES(lot_size), contract_size = VALUES(contract_size), base_exchange_rate = VALUES(base_exchange_rate),
+                                        value_per_pip = VALUES(value_per_pip), one_pip_means = VALUES(one_pip_means), margin_factor = VALUES(margin_factor),
+                                        min_size = VALUES(min_size), max_size = VALUES(max_size), step_size = VALUES(step_size),
+                                        min_notional = VALUES(min_notional), max_notional = VALUES(max_notional), step_notional = VALUES(step_notional),
+                                        min_price = VALUES(min_price), max_price = VALUES(max_price), step_price = VALUES(step_price),
+                                        maker_fee = VALUES(maker_fee), taker_fee = VALUES(taker_fee), maker_commission = VALUES(maker_commission), taker_commission = VALUES(taker_commission)""",
+                                    (*mi,))
 
                 self._db.commit()
             except Exception as e:
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -310,7 +311,7 @@ class MySql(Database):
                     # notify
                     mi[0].notify(Signal.SIGNAL_MARKET_INFO_DATA, mi[1], (mi[2], market_info))
             except Exception as e:
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -343,7 +344,7 @@ class MySql(Database):
                     # notify
                     m[0].notify(Signal.SIGNAL_MARKET_LIST_DATA, m[1], market_list)
             except Exception as e:
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -368,11 +369,11 @@ class MySql(Database):
                         INSERT INTO asset(broker_id, account_id, asset_id, last_trade_id, timestamp, quantity, price, quote_symbol)
                             VALUES(%s, %s, %s, %s, %s, %s, %s, %s)
                         ON DUPLICATE KEY UPDATE 
-                            last_trade_id = %s, timestamp = %s, quantity = %s, price = %s, quote_symbol = %s""", (*ua, *ua[3:]))
+                            last_trade_id = VALUES(last_trade_id), timestamp = VALUES(timestamp), quantity = VALUES(quantity), price = VALUES(price), quote_symbol = VALUES(price)""", (*ua,))
 
                 self._db.commit()
             except Exception as e:
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -412,8 +413,7 @@ class MySql(Database):
                     # notify
                     ua[0].notify(Signal.SIGNAL_ASSET_DATA_BULK, ua[2], assets)
             except Exception as e:
-                # check database for valid ohlc and volumes
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -444,7 +444,7 @@ class MySql(Database):
 
                 self._db.commit()
             except Exception as e:
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -478,8 +478,7 @@ class MySql(Database):
                     # notify
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ut[4], user_trades)
             except Exception as e:
-                # check database for valid ohlc and volumes
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -510,7 +509,7 @@ class MySql(Database):
 
                 self._db.commit()
             except Exception as e:
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -544,8 +543,7 @@ class MySql(Database):
                     # notify
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADER_LIST, ut[4], user_traders)
             except Exception as e:
-                # check database for valid ohlc and volumes
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -624,8 +622,7 @@ class MySql(Database):
                     # notify
                     mk[0].notify(Signal.SIGNAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
             except Exception as e:
-                # check database for valide ohlc and volumes
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -656,7 +653,7 @@ class MySql(Database):
 
                     self._db.commit()
                 except Exception as e:
-                    logger.error(repr(e))
+                    self.on_error(e)
 
                     # retry the next time
                     self.lock()
@@ -689,7 +686,7 @@ class MySql(Database):
 
                 self._db.commit()
             except Exception as e:
-                logger.error(repr(e))
+                self.on_error(e)
 
                 # retry the next time
                 self.lock()
@@ -712,6 +709,17 @@ class MySql(Database):
 
                 self._db.commit()
             except Exception as e:
-                logger.error(repr(e))
+                self.on_error(e)
 
             self._last_ohlc_clean = time.time()
+
+    def on_error(self, e):
+        logger.error(repr(e))
+        time.sleep(5.0)
+
+    def try_reconnect(self, e):
+        pass  # @todo
+
+    @property
+    def connected(self):
+        return self._db != None

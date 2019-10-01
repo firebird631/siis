@@ -310,10 +310,7 @@ class TraderService(Service):
         """
         Get the profile configuration for a specific trader name.
         """
-        profile_name = options.get('profile', 'default')
-
-        profile_config = utils.profiles(options.get('config-path')) or {}
-        traders_profile = profile_config.get(profile_name, {'traders': {}}).get('traders', {})  # @todo from new profiles conf
+        traders_profile = self._profile_config.get('traders', {})
 
         # @todo could rebuild the list of symbols according to what is found in appliances
         traders_config = {}

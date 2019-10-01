@@ -181,15 +181,20 @@ class Database(object):
         """        
         pass
 
+    @property
+    def connected(self):
+        return False
+
     def close(self):
-        # wait until all insertions
-        self.lock()
-        while self._pending_ohlc_insert or self._pending_asset_insert or self._pending_market_info_insert:
-            self._last_ohlc_flush = 0  # force flush remaining non stored ohlc
-            self.unlock()
-            time.sleep(0.1)
+        if self.connected:
+            # wait until all insertions
             self.lock()
-        self.unlock()
+            while self._pending_ohlc_insert or self._pending_asset_insert or self._pending_market_info_insert:
+                self._last_ohlc_flush = 0  # force flush remaining non stored ohlc
+                self.unlock()
+                time.sleep(0.1)
+                self.lock()
+            self.unlock()
 
         # join the thread
         self._running = False
@@ -197,7 +202,8 @@ class Database(object):
             self._thread.join()
             self._thread = None
 
-        self.disconnect()
+        if self.connected:
+            self.disconnect()
 
         # flush remaining ticks
         self.lock()
@@ -497,9 +503,11 @@ class Database(object):
 
     def run(self):
         while self._running:
-            self.process_userdata()
-            self.process_market()
-            self.process_ohlc()
+            if self.connected:
+                self.process_userdata()
+                self.process_market()
+                self.process_ohlc()
+
             self.process_tick()
 
             time.sleep(0.001)  # don't waste the CPU
