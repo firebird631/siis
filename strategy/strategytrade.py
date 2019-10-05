@@ -23,13 +23,10 @@ class StrategyTrade(object):
 
     It can only have on entry order. The exit works on the entried quantity. When the entry order is not fully filled,
     the exit order are later adjusted.
-
-    To have partial TP uses multiples trades with different exit levels. Partial TP must be part of your strategy,
-    then for a TP50% use two trade with half of the size, the first having a TP at 50% price.    
     """
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
-                'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', 'ptp', '_stats', 'last_tp_ot', 'last_sl_ot', \
+                'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', '_stats', 'last_tp_ot', 'last_sl_ot', \
                 'exit_trades', '_comment', '_expiry', '_dirty', '_extra'
 
     VERSION = "1.0.0"
@@ -86,8 +83,6 @@ class StrategyTrade(object):
         self.x = 0.0     # current filled exit quantity (a correctly closed trade must have x == f with f <= q and q > 0)
 
         self.pl = 0.0    # once closed profit/loss in percent (valid once partially or fully closed)
-
-        self.ptp = 1.0   # partial take-profit rate (only during trade alive)
 
         self.last_tp_ot = [0, 0]
         self.last_sl_ot = [0, 0]
@@ -186,10 +181,6 @@ class StrategyTrade(object):
         return self.pl
 
     @property
-    def partial_tp(self):
-        return self.ptp
-
-    @property
     def timeframe(self):
         return self._timeframe
 
@@ -206,10 +197,6 @@ class StrategyTrade(object):
 
     def is_user_trade(self):
         return self._user_trade
-
-    @partial_tp.setter
-    def partial_tp(self, ptp):
-        self.ptp = ptp
 
     @property
     def last_take_profit(self):

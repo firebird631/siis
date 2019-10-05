@@ -450,8 +450,8 @@ class Trader(Runnable):
                 # Terminal.inst().table(columns, table, total_size, view='content')
 
         elif command_type == Trader.COMMAND_INFO:
-            # info on the appliance
-            Terminal.inst().info("Trader %s is %s" % (self.name, ("active" if self._activity else "inactive")), view='content')
+            # info on the trade
+            self.cmd_trader_info(data)
 
         elif command_type == Trader.COMMAND_CLOSE_MARKET:
             # manually close a specified position at market now
@@ -1028,7 +1028,7 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets.
         """
-        columns = ('Market', 'Symbol', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract')
+        columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract', 'Min Size', 'Min Notional')
         data = []
 
         self.lock()
@@ -1053,6 +1053,8 @@ class Trader(Runnable):
             row = (
                 market.market_id,
                 market.symbol,
+                market.base,
+                market.quote,
                 str("%.8f" % market.base_exchange_rate).rstrip('0').rstrip('.'),
                 market.market_type_str().capitalize(),
                 market.unit_type_str().capitalize(),
@@ -1060,7 +1062,9 @@ class Trader(Runnable):
                 str("%.8f" % market.one_pip_means).rstrip('0').rstrip('.'),
                 str("%.8f" % market.value_per_pip).rstrip('0').rstrip('.'),
                 str("%.8f" % market.lot_size).rstrip('0').rstrip('.'),
-                str("%.12f" % market.contract_size).rstrip('0').rstrip('.'))
+                str("%.12f" % market.contract_size).rstrip('0').rstrip('.'),
+                market.min_size,
+                market.min_notional)
 
             data.append(row[col_ofs:])
 
@@ -1350,3 +1354,44 @@ class Trader(Runnable):
         self._commands.append(command)
         self._purge_commands()
         self.unlock()
+
+    #
+    # commands
+    #
+
+    def cmd_trader_info(self, data):
+        # info on the trader
+        if 'market-id' in data:
+            self.lock()
+
+            market = self._markets.get(data['market-id'])
+            if market:
+                Terminal.inst().info("Market %s of trader %s is %s." % (
+                    data['market-id'], self.name, "active" if market.activity else "paused",
+                        market.instrument.trade_quantity),
+                    view='content')
+
+            self.unlock()
+        else:
+            Terminal.inst().info("Trader %s :" % (self.name), view='content')
+
+            enabled = []
+            disabled = []
+
+            self.lock()
+
+            for k, market in self._markets.items():
+                if market.activity:
+                    enabled.append(k)
+                else:
+                    disabled.append(k)
+
+            self.unlock()
+
+            if enabled:
+                enabled = [e if i%10 else e+'\n' for i, e in enumerate(enabled)]
+                Terminal.inst().info("Enabled instruments (%i): %s" % (len(enabled), " ".join(enabled)), view='content')
+
+            if disabled:
+                disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
+                Terminal.inst().info("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')

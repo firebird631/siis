@@ -173,7 +173,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 continue
 
             entry.tp = take_profit
-            entry.ptp = 1.0
+            entry.set('partial-take-profit', 1.0)
 
             # max loss in %
             if loss < 0.035:
@@ -188,7 +188,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # entry_50pc = StrategySignal(0, 0)
             # entry_50pc.dup(entry)
             # entry_50pc.tp = self.timeframes[self.sltp_timeframe].pivotpoint.last_resistances[0]
-            # entry_50pc.ptp = 0.25
+            # entry_50pc.set('partial-take-profit', 0.25)
 
             # retained_entries.append(entry_50pc)
 
@@ -326,7 +326,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     # target update
                     #
 
-                    take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.partial_tp)]
+                    take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.get('partial-take-profit', 0))]
 
                     # enought potential profit (0.5% min target) (always long)
                     # if (take_profit - close_exec_price) / close_exec_price < 0.005 and update_tp:
@@ -400,7 +400,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # retained long entry do the order entry signal
         for entry in retained_entries:
-            self.process_entry(timestamp, entry.price, entry.tp, entry.sl, entry.timeframe, entry.partial_tp)
+            self.process_entry(timestamp, entry.price, entry.tp, entry.sl, entry.timeframe, entry.get('partial-take-profit', 0))
 
         # streaming
         self.stream()
@@ -486,7 +486,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # the new trade must be in the trades list if the event comes before, and removed after only it failed
             self.add_trade(trade)
 
-            trade.partial_tp = partial_tp
+            trade.set('partial-take-profit', partial_tp)
 
             if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage):
                 # notify

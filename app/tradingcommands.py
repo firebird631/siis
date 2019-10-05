@@ -163,10 +163,10 @@ class InfoCommand(Command):
                 self._trader_service.command(Trader.COMMAND_INFO, {})
                 return True
             elif len(args) == 2:
-                self._strategy_service.command(Trader.COMMAND_INFO, {'trader': args[1]})
+                self._trader_service.command(Trader.COMMAND_INFO, {'trader': args[1]})
                 return False
             elif len(args) == 3:
-                self._strategy_service.command(Trader.COMMAND_INFO, {'trader': args[1], 'market-id': args[2]})
+                self._trader_service.command(Trader.COMMAND_INFO, {'trader': args[1], 'market-id': args[2]})
                 return False
         elif args[0] == 'apps':
             if len(args) == 1:

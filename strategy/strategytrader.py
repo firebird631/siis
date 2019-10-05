@@ -941,3 +941,70 @@ class StrategyTrader(object):
         Override this method to write a header line into the report.
         """
         pass
+
+    #
+    # checks
+    #
+
+    def compute_asset_quantity(self, trader, price):
+        quantity = 0.0
+
+        if trader.has_asset(self.instrument.quote):
+            # quantity = min(quantity, trader.asset(self.instrument.quote).free) / self.instrument.market_ofr
+            if trader.has_quantity(self.instrument.quote, self.instrument.trade_quantity):
+                quantity = self.instrument.adjust_quantity(self.instrument.trade_quantity / price)  # and adjusted to 0/max/step
+            else:
+                msg = "Not enought free quote asset %s, has %s but need %s" % (
+                    self.instrument.quote,
+                    self.instrument.format_quantity(trader.asset(self.instrument.quote).free),
+                    self.instrument.format_quantity(self.instrument.trade_quantity))
+
+                logger.warning(msg)
+                Terminal.inst().notice(msg, view='status')
+
+        return quantity
+
+    def compute_margin_quantity(self, trader):
+        quantity = 0.0
+
+        if not trader.has_margin(self.instrument.margin_cost(self.instrument.trade_quantity)):
+            msg = "Not enought free margin %s, has %s but need %s" % (
+                self.instrument.quote, self.instrument.format_quantity(trader.account.margin_balance),
+                self.instrument.format_quantity(self.instrument.trade_quantity))
+
+            logger.warning(msg)
+            Terminal.inst().notice(msg, view='status')
+        else:
+            quantity = self.instrument.adjust_quantity(self.instrument.trade_quantity)
+
+        return quantity
+
+    def check_min_notional(self, order_quantity, order_price):
+        if order_quantity <= 0 or order_quantity * order_price < self.instrument.min_notional:
+            # min notional not reached
+            msg = "Min notional not reached for %s, order %s%s => %s%s but need %s%s" % (
+                    self.instrument.symbol,
+                    order_quantity, self.instrument.base,
+                    order_quantity * order_price, self.instrument.quote,
+                    self.instrument.min_notional, self.instrument.quote)
+
+            logger.warning(msg)
+            Terminal.inst().notice(msg, view='status')
+
+            return False
+
+        return True
+
+    def has_max_trades(self, max_trades):
+        result = False
+
+        if self.trades:
+            self.lock()
+
+            if len(self.trades) >= max_trades:
+                # no more than max simultaneous trades
+                result = True
+
+            self.unlock()
+
+        return result

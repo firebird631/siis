@@ -32,12 +32,9 @@ class StrategySignal(object):
     - sl for stop-loss price
     - tp for take-profit price
     - ts for timestamp (UTC)
-    - ptp for partial TP from 0 to 1
-
-    @todo remove ptp, let in in extra
     """
 
-    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'alt_tp', 'ptp', 'expiry',  '_extra', '_comment'
+    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'alt_tp', 'expiry',  '_extra', '_comment'
 
     SIGNAL_NONE = 0   # signal type undefined (must be entry or exit else its informal)
     SIGNAL_ENTRY = 1  # entry signal (this does not mean long. @see dir)
@@ -48,7 +45,7 @@ class StrategySignal(object):
         self.ts = timestamp          # timestamps of the signal emit
         self.signal = StrategySignal.SIGNAL_NONE  # type of the signal : entry or exit
 
-        self.dir = 0       # signal diretion
+        self.dir = 0       # signal direction
 
         self.p = 0.0       # signal price / possible entry-price
         self.sl = 0.0      # possible stop-loss pricce
@@ -58,8 +55,6 @@ class StrategySignal(object):
 
         self._comment = ""  # optional comment
         self._extra = {}
-
-        self.ptp = 1.0  # partial TP ratio ]0.0..N]
 
     @property
     def direction(self):
@@ -84,10 +79,6 @@ class StrategySignal(object):
     @property
     def alt_take_profit(self):
         return self.alt_tp
-
-    @property
-    def partial_tp(self):
-        return self.ptp
 
     @property
     def comment(self):

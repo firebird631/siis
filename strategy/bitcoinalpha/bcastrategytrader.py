@@ -179,7 +179,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 continue
 
             entry.tp = take_profit if gain > 0.005 else entry.p * 1.01
-            entry.ptp = 1.0
+            entry.set('partial-take-profit', 1.0)
 
             # max loss at x%
             if loss > 0.035:
@@ -197,7 +197,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # entry_50pc = StrategySignal(0, 0)
             # entry_50pc.dup(entry)
             # entry_50pc.tp = np.max(self.timeframes[self.sltp_timeframe].pivotpoint.resistances[0])#[-1]
-            # entry_50pc.ptp = 0.25
+            # entry_50pc.set('partial-take-profit', 0.25)
 
             # retained_entries.append(entry_50pc)
 
@@ -403,7 +403,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                     # enought potential profit (0.5% min target)
                     if trade.direction > 0:
-                        take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.partial_tp)]
+                        take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.get('partial-take-profit', 0))]
 
                         # if take_profit <= trade.entry_price:
                         #     take_profit = trade.entry_price * 1.05
@@ -412,7 +412,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         loss = (trade.entry_price - trade.sl) / trade.entry_price
 
                     elif trade.direction < 0:
-                        take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[int(2*trade.partial_tp)]
+                        take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[int(2*trade.get('partial-take-profit', 0))]
 
                         # if take_profit >= trade.entry_price:
                         #     take_profit = trade.entry_price * 0.95
@@ -481,7 +481,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # retained long entry do the order entry signal
         for entry in retained_entries:
-            self.process_entry(timestamp, entry.dir, entry.price, entry.tp, entry.sl, entry.timeframe, entry.partial_tp)
+            self.process_entry(timestamp, entry.dir, entry.price, entry.tp, entry.sl, entry.timeframe, entry.get('partial-take-profit', 0))
 
         # streaming
         self.stream()
@@ -594,6 +594,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             # the new trade must be in the trades list if the event comes before, and removed after only it failed
             self.add_trade(trade)
+
+            trade.set('partial-take-profit', partial_tp)
 
             if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
                 # initiate the take-profit limit order

@@ -117,7 +117,7 @@ class KrakenWatcher(Watcher):
                     # and watch it if configured or any
                     if market_id in matching_symbols:
                         # live data
-                        pairs.append(instrument['wsname'])                       
+                        pairs.append(instrument['wsname'])
                         self._wsname_lookup[instrument['wsname']] = market_id
 
                         # fetch from 1m to 1w
@@ -317,23 +317,12 @@ class KrakenWatcher(Watcher):
 
             market.set_leverages(leverages)
 
-            size_limits = ["1.0", "0.0", "1.0"]
-            notional_limits = ["1.0", "0.0", "0.0"]
+            size_limit = self._size_limits.get(instrument['altname'], {})
+            min_size = size_limit.get('min-size', 1.0)
+
+            size_limits = [str(min_size), "0.0", str(min_size)]
+            notional_limits = ["0.0", "0.0", "0.0"]
             price_limits = ["0.0", "0.0", "0.0"]
-
-            # size min/max/step @todo using lot_decimals / pair_decimals
-            # for afilter in instrument["filters"]:
-            #     if afilter['filterType'] == "LOT_SIZE":
-            #         size_limits = [afilter['minQty'], afilter['maxQty'], afilter['stepSize']]
-
-            #     elif afilter['filterType'] == "MIN_NOTIONAL":
-            #         notional_limits[0] = afilter['minNotional']
-
-            #     elif afilter['filterType'] == "PRICE_FILTER":
-            #         price_limits = [afilter['minPrice'], afilter['maxPrice'], afilter['tickSize']]
-
-            # if float(size_limits[2]) < 1:
-            #     size_limits[2] = str(float(size_limits[2]))  # * 10)
 
             market.set_size_limits(float(size_limits[0]), float(size_limits[1]), float(size_limits[2]))
             market.set_price_limits(float(price_limits[0]), float(price_limits[1]), float(price_limits[2]))
@@ -359,9 +348,9 @@ class KrakenWatcher(Watcher):
             fees_maker = instrument.get('fees_maker', [])
 
             if fees:
-                market.taker_fee = fees[0][1] * 0.01
+                market.taker_fee = round(fees[0][1] * 0.01, 6)
             if fees_maker:
-                market.maker_fee = fees_maker[0][1] * 0.01
+                market.maker_fee = round(fees_maker[0][1] * 0.01, 6)
 
             if instrument.get('fee_volume_currency'):
                 market.fee_currency = instrument['fee_volume_currency']
@@ -412,6 +401,9 @@ class KrakenWatcher(Watcher):
     #
 
     def __prefetch_markets(self):
+        # size limits from conf
+        self._size_limits = self.service.watcher_config(self._name).get("size-limits", {})
+
         self._assets = self._connector.assets()
         self._instruments = self._connector.instruments()
 
