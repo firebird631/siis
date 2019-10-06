@@ -1,7 +1,7 @@
 # @date 2018-09-28
 # @author Frederic SCHERMA
 # @license Copyright (c) 2018 Dream Overflow
-# Support and resistance detection using price and fibonnacci levels
+# Support and resistance detection using price and fibonacci levels
 
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample, MM_n
@@ -12,7 +12,7 @@ import numpy as np
 
 class FibonacciIndicator(Indicator):
     """
-    Support and resistance detection using price and fibonnacci levels
+    Support and resistance detection using price and fibonacci levels
     Works with candles and not only a price.
 
     @todo
