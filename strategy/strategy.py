@@ -730,6 +730,7 @@ class Strategy(Runnable):
 
                     if market:
                         # put interesting market data into the instrument
+                        # @todo using message data
                         instrument.trade = market.trade
                         instrument.orders = market.orders
                         instrument.hedging = market.hedging

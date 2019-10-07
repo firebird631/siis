@@ -340,6 +340,9 @@ class BinanceWatcher(Watcher):
             # vol24_base = ticker24h('volume')
             # vol24_quote = ticker24h('quoteVolume')
 
+            # notify for strategy
+            self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
+
             # store the last market info to be used for backtesting
             if not self._read_only:
                 Database.inst().store_market_info((self.name, market.market_id, market.symbol,
@@ -355,9 +358,6 @@ class BinanceWatcher(Watcher):
                     *price_limits,
                     str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))
                 )
-
-            # notify for strategy
-            self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
 
         return market
 
