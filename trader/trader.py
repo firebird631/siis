@@ -937,7 +937,7 @@ class Trader(Runnable):
         if base_exchange_rate is not None:
             market.base_exchange_rate = base_exchange_rate
 
-        if last_update_time > 0:
+        if last_update_time is not None:
             market.last_update_time = last_update_time
 
         if tradable is not None:

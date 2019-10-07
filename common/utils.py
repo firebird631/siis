@@ -69,6 +69,12 @@ def matching_symbols_set(configured_symbols, available_symbols):
 
     @param available_symbols List containing any supported markets symbol of the broker. Used when a wildchar is defined.
     """
+    if not configured_symbols:
+        return set()
+
+    if not available_symbols:
+        return set()
+
     if '*' in configured_symbols:
         # all instruments
         watched_symbols = set(availables)

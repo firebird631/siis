@@ -337,6 +337,9 @@ class StrategyMarginTrade(StrategyTrade):
     def has_limit_order(self):
         return self.limit_oid is not None and self.limit_oid != ""
 
+    def support_both_order(self):
+        return True
+
     #
     # signal
     #

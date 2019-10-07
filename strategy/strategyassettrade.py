@@ -369,22 +369,20 @@ class StrategyAssetTrade(StrategyTrade):
                 return False
 
     def has_stop_order(self):
-        """
-        Overrides, must return true if the trade have a broker side stop order, else local trigger stop.
-        """
         return self.stop_oid != None and self.stop_oid != ""
 
     def has_limit_order(self):
-        """
-        Overrides, must return true if the trade have a broker side limit order, else local take-profit stop
-        """
         return self.limit_oid != None and self.limit_oid != ""
 
     def has_oco_order(self):
-        """
-        Overrides, must return true if the trade have a broker side OCO order
-        """
         return self.oco_oid != None and self.oco_oid != ""
+
+    def support_both_order(self):
+        if self.has_oco_order():
+            # only if an OCO order is defined
+            return True
+        else:
+            return False
 
     #
     # signals

@@ -387,6 +387,12 @@ class StrategyTrade(object):
         """
         return False
 
+    def support_both_order(self):
+        """
+        Overrides, must return true if the trader support stop and limit order at the same time
+        """
+        return False
+
     #
     # signals
     #

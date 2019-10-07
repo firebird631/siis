@@ -121,14 +121,14 @@ class KrakenWatcher(Watcher):
                         self._wsname_lookup[instrument['wsname']] = market_id
 
                         # fetch from 1m to 1w
-                        self.fetch_and_generate(market_id, Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE*3, Instrument.TF_3M)
-                        self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
-                        self.fetch_and_generate(market_id, Instrument.TF_15M, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_30M)
-                        self.fetch_and_generate(market_id, Instrument.TF_1H, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_2H)
-                        self.fetch_and_generate(market_id, Instrument.TF_4H, self.DEFAULT_PREFETCH_SIZE, None)
-                        self.fetch_and_generate(market_id, Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE*7, Instrument.TF_1W)
+                        # self.fetch_and_generate(market_id, Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE*3, Instrument.TF_3M)
+                        # self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
+                        # self.fetch_and_generate(market_id, Instrument.TF_15M, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_30M)
+                        # self.fetch_and_generate(market_id, Instrument.TF_1H, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_2H)
+                        # self.fetch_and_generate(market_id, Instrument.TF_4H, self.DEFAULT_PREFETCH_SIZE, None)
+                        # self.fetch_and_generate(market_id, Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE*7, Instrument.TF_1W)
 
-                        time.sleep(6.0)
+                        # time.sleep(6.0)
 
                         logger.info("%s prefetch for %s" % (self.name, market_id))
 
@@ -313,7 +313,7 @@ class KrakenWatcher(Watcher):
             leverages = set(instrument.get('leverage_buy', []))
             leverages.intersection(set(instrument.get('leverage_sell', [])))
 
-            market.margin_factor = 1.0 / max(leverages) if leverages else 1.0
+            market.margin_factor = 1.0 / max(leverages) if len(leverages) > 0 else 1.0
 
             market.set_leverages(leverages)
 
@@ -371,6 +371,9 @@ class KrakenWatcher(Watcher):
 
             # volume 24h : not have here
 
+            # notify for strategy
+            self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
+
             # store the last market info to be used for backtesting
             if not self._read_only:
                 Database.inst().store_market_info((self.name, market.market_id, market.symbol,
@@ -386,9 +389,6 @@ class KrakenWatcher(Watcher):
                     *price_limits,
                     str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))
                 )
-
-            # notify for strategy
-            self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
 
         return market
 
@@ -448,6 +448,7 @@ class KrakenWatcher(Watcher):
                 pass
 
     def __on_trade_data(self, data):
+        return
         if isinstance(data, list) and data[2] == "trade":
             market_id = self._wsname_lookup.get(data[3])
 
