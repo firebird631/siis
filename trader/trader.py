@@ -1367,8 +1367,7 @@ class Trader(Runnable):
             market = self._markets.get(data['market-id'])
             if market:
                 Terminal.inst().info("Market %s of trader %s is %s." % (
-                    data['market-id'], self.name, "active" if market.activity else "paused",
-                        market.instrument.trade_quantity),
+                    data['market-id'], self.name, "active" if market.activity else "paused"),
                     view='content')
 
             self.unlock()

@@ -11,7 +11,8 @@
         "CS.D.GBPUSD.MINI.IP",
         "CS.D.USDJPY.MINI.IP",
         "CS.D.CFEGOLD.CFE.IP",
-        "IX.D.SPTRD.IFE.IP"
+        "IX.D.SPTRD.IFE.IP",
+        "IX.D.DAX.IFMM.IP"
     ],
     "__comment": "Or au comptant (1€) / US 500 au comptant (1€)"
 }

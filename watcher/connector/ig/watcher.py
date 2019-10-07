@@ -143,27 +143,27 @@ class IGWatcher(Watcher):
                 # look to see for a better solution
 
                 # susbcribe for symbols
-                # for symbol in instruments:
-                #     # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
-                #     # prefetch for the last of each except for 1m and 5m we assume we have a delay of 5 minutes
-                #     # from the manual prefetch script execution and assuming the higher timeframe are already up-to-date.
-                #     self.fetch_and_generate(symbol, Instrument.TF_1M, 5, None)
-                #     self.fetch_and_generate(symbol, Instrument.TF_3M, 2, None)
-                #     self.fetch_and_generate(symbol, Instrument.TF_5M, 1, None)
-                #     self.fetch_and_generate(symbol, Instrument.TF_15M, 1, None)
-                #     self.fetch_and_generate(symbol, Instrument.TF_1H, 1, None)
-                #     self.fetch_and_generate(symbol, Instrument.TF_4H, 1, None)
-                #     self.fetch_and_generate(symbol, Instrument.TF_1D, 1, None)
-                #     self.fetch_and_generate(symbol, Instrument.TF_1W, 1, None)
+                for symbol in instruments:
+                    # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
+                    # prefetch for the last of each except for 1m and 5m we assume we have a delay of 5 minutes
+                    # from the manual prefetch script execution and assuming the higher timeframe are already up-to-date.
+                    self.fetch_and_generate(symbol, Instrument.TF_1M, 5, None)
+                    self.fetch_and_generate(symbol, Instrument.TF_3M, 2, None)
+                    self.fetch_and_generate(symbol, Instrument.TF_5M, 1, None)
+                    self.fetch_and_generate(symbol, Instrument.TF_15M, 1, None)
+                    self.fetch_and_generate(symbol, Instrument.TF_1H, 1, None)
+                    self.fetch_and_generate(symbol, Instrument.TF_4H, 1, None)
+                    self.fetch_and_generate(symbol, Instrument.TF_1D, 1, None)
+                    self.fetch_and_generate(symbol, Instrument.TF_1W, 1, None)
 
-                #     logger.info("%s prefetch for %s" % (self.name, symbol))
+                    logger.info("%s prefetch for %s" % (self.name, symbol))
 
-                #     self.insert_watched_instrument(symbol, [0])
+                    self.insert_watched_instrument(symbol, [0])
 
-                #     # avoid blocking websocket during sleep
-                #     self.unlock()
-                #     time.sleep(8.0)  # 1 sec per query + 1 extra second
-                #     self.lock()
+                    # avoid blocking websocket during sleep
+                    # self.unlock()
+                    # time.sleep(8.0)  # 1 sec per query + 1 extra second
+                    # self.lock()
 
                 # logger.info("Watcher %s wait 10 seconds to limit to a fair API usage" % (self.name,))
 
@@ -413,7 +413,8 @@ class IGWatcher(Watcher):
 
                 # date of the event 20:36:01 without Z
                 if ready:
-                    update_time = datetime.strptime(values['UPDATE_TIME'], '%H:%M:%S').timestamp()
+                    # @todo take now and replace H:M:S
+                    update_time = time.time()  #  datetime.strptime(values['UPDATE_TIME'], '%H:%M:%S').timestamp()
                     market_data = (name[1], True, update_time, float(values["BID"]), float(values["OFFER"]), None, None, None, None, None)
                 else:
                     update_time = 0

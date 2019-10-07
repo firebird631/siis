@@ -313,7 +313,7 @@ class KrakenWatcher(Watcher):
             leverages = set(instrument.get('leverage_buy', []))
             leverages.intersection(set(instrument.get('leverage_sell', [])))
 
-            market.margin_factor = 1.0 / max(leverages)
+            market.margin_factor = 1.0 / max(leverages) if leverages else 1.0
 
             market.set_leverages(leverages)
 

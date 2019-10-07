@@ -961,13 +961,19 @@ class StrategyTrader(object):
 
                 logger.warning(msg)
                 Terminal.inst().notice(msg, view='status')
+        else:
+            msg = "Quote asset %s not found" % self.instrument.quote
+
+            logger.warning(msg)
+            Terminal.inst().notice(msg, view='status')
 
         return quantity
 
     def compute_margin_quantity(self, trader):
         quantity = 0.0
 
-        if not trader.has_margin(self.instrument.margin_cost(self.instrument.trade_quantity)):
+        # @todo
+        if 0:#not trader.has_margin(self.instrument.margin_cost(self.instrument.trade_quantity)):
             msg = "Not enought free margin %s, has %s but need %s" % (
                 self.instrument.quote, self.instrument.format_quantity(trader.account.margin_balance),
                 self.instrument.format_quantity(self.instrument.trade_quantity))
@@ -1006,5 +1012,11 @@ class StrategyTrader(object):
                 result = True
 
             self.unlock()
+
+        if result:
+            msg = "Max trade reached for %s with %s" % (self.instrument.symbol, max_trades)
+
+            logger.warning(msg)
+            Terminal.inst().notice(msg, view='status')
 
         return result
