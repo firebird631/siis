@@ -199,7 +199,8 @@ class StrategyTrader(object):
             else:
                 logger.error("During loads, region checking error %s" % (r['name'],))
 
-        self.add_trade(trade)
+        # ignored for now because need to check assets/positions/orders
+        # self.add_trade(trade)
 
     #
     # order/position slot
