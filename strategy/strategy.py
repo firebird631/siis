@@ -361,12 +361,32 @@ class Strategy(Runnable):
 
                         instrument.base_exchange_rate = CURRENCY_HACK.get(instrument.currency, 1.0)
 
+                        market = self._trader.market(symbol)
+                        if market:
+                            # put initial market data into the instrument
+                            instrument.trade = market.trade
+                            instrument.orders = market.orders
+                            instrument.hedging = market.hedging
+                            instrument.tradeable = market.is_open
+                            instrument.set_base(market.base)
+                            instrument.set_quote(market.quote)
+
+                            instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
+                            instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
+                            instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
+
+                            instrument.set_fees(market.maker_fee, market.taker_fee)
+                            instrument.set_commissions(market.maker_commission, market.taker_commission)
+
                         self._instruments[mapped_symbol] = instrument
 
                         # and create the strategy-trader analyser per instrument
                         strategy_trader = self.create_trader(instrument)
                         if strategy_trader:
                             self._strategy_traders[instrument] = strategy_trader
+
+                            # initial market info
+                            strategy_trader.on_market_info()
                     else:
                         instrument = self._instruments.get(mapped_symbol)
 
