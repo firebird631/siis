@@ -207,6 +207,8 @@ class MySql(Database):
                             margin_factor = row[0]
                             mi = list(mi)
                             mi[16] = margin_factor
+                        else:
+                            mi[16] = "1.0"
 
                     cursor.execute("""INSERT INTO market(broker_id, market_id, symbol,
                                         market_type, unit_type, contract_type,

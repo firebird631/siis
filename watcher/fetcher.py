@@ -96,10 +96,19 @@ class Fetcher(object):
             # compute a from date
             today = datetime.now().astimezone(UTC())
 
-            if timeframe == Instrument.TF_MONTH:
-                from_date = today - timedelta(months=int(timeframe/Instrument.TF_MONTH)*n_last)
-            else:
-                from_date = today - timedelta(seconds=timeframe*n_last)
+            if timeframe >= Instrument.TF_MONTH:
+                from_date = (today - timedelta(months=int(timeframe/Instrument.TF_MONTH)*n_last)).replace(day=1).replace(hour=0).replace(minute=0).replace(second=0)
+            elif timeframe >= Instrument.TF_1D:
+                from_date = (today - timedelta(days=int(timeframe/Instrument.TF_1D)*n_last)).replace(hour=0).replace(minute=0).replace(second=0)
+            elif timeframe >= Instrument.TF_1H:
+                from_date = (today - timedelta(hours=int(timeframe/Instrument.TF_1H)*n_last)).replace(minute=0).replace(second=0)
+            elif timeframe >= Instrument.TF_1M:
+                from_date = (today - timedelta(minutes=int(timeframe/Instrument.TF_1M)*n_last)).replace(second=0)
+            elif timeframe >= Instrument.TF_1S:
+                from_date = (today - timedelta(seconds=int(timeframe/Instrument.TF_1S)*n_last))
+
+            from_date = from_date.replace(microsecond=0)
+            # print(from_date)
 
         if not to_date:
             today = datetime.now().astimezone(UTC())
@@ -108,6 +117,9 @@ class Fetcher(object):
                 to_date = today + timedelta(months=1)
             else:
                 to_date = today + timedelta(seconds=timeframe)
+
+            to_date= to_date.replace(microsecond=0)
+            # print(to_date)
 
         # cascaded generation of candles
         if cascaded:

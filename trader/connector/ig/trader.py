@@ -204,9 +204,10 @@ class IGTrader(Trader):
         Generating it before is a prefered way to correctly manange order in strategy.
         @param order A valid or on to set the ref order id.
         @note If the given order already have a ref order id no change is made.
+        @ref Pattern(regexp="[A-Za-z0-9_\\-]{1,30}")]
         """
         if order and not order.ref_order_id:
-            order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))
+            order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace('+', '-').replace('/', '_'))
             # order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid5(uuid.NAMESPACE_DNS, 'siis.com').bytes).decode('utf8').rstrip('=\n'))
             return order.ref_order_id
 

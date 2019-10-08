@@ -4,141 +4,141 @@
 # Crystal ball strategy indicator default parameters.
 
 DEFAULT_PARAMS = {
-    'reversal': True,
-    'pyramided': 0,
-    'hedging': False,
-    'max-trades': 3,    # max number of simultaned trades for a same market
-    'trade-delay': 30,  # at least wait 30 seconds before sending another signal 
-    'base-timeframe': 't',   # process each time strategy receive a tick
-    'min-traded-timeframe': '1m',
-    'max-traded-timeframe': '4h',
-    'min-vol24h': 100,        # 300 BTC per 24h
-    'min-price': 0.00000069,  # or 69 sats (to binary otherwise)
-    'timeframes': {
-        '4hour': {
-            'timeframe': '4h',
-            'mode': 'A',
-            'depth': 22,
-            'history': 22,
-            'update-at-close': False,
-            'signal-at-close': True,
-            'indicators': {
-                'price': ('price', 2,),
-                'volume': ('volume', 0,),
-                'rsi': ('rsi', 21,),
-                'pivotpoint': ('pivotpoint', 5,),
-                'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.0),  # was 1.5 , but too large else
-                'bbawe': ('bbawe', 20, 2.0, 3.0, 5, 34, False),
+    "reversal": True,
+    "pyramided": 0,
+    "hedging": False,
+    "max-trades": 3,    # max number of simultaned trades for a same market
+    "trade-delay": 30,  # at least wait 30 seconds before sending another signal 
+    "base-timeframe": "t",   # process each time strategy receive a tick
+    "min-traded-timeframe": "1m",
+    "max-traded-timeframe": "4h",
+    "min-vol24h": 100,        # 300 BTC per 24h
+    "min-price": 0.00000069,  # or 69 sats (to binary otherwise)
+    "timeframes": {
+        "4hour": {
+            "timeframe": "4h",
+            "mode": "A",
+            "depth": 22,
+            "history": 22,
+            "update-at-close": False,
+            "signal-at-close": True,
+            "indicators": {
+                "price": ("price", 2,),
+                "volume": ("volume", 0,),
+                "rsi": ("rsi", 21,),
+                "pivotpoint": ("pivotpoint", 5,),
+                "tomdemark": ("tomdemark", 9),
+                "atr": ("atr", 14, 1.0),  # was 1.5 , but too large else
+                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
             },
-            'constants': {
-                'rsi_low': 0.3,
-                'rsi_high': 0.7,
+            "constants": {
+                "rsi_low": 0.3,
+                "rsi_high": 0.7,
             }   
         },
-        'hourly': {
-            'timeframe': '1h',
-            'mode': 'A', 
-            'depth': 22,
-            'history': 22,
-            'update-at-close': False,
-            'signal-at-close': True,
-            'indicators': {
-                'price': ('price', 2,),
-                'volume': ('volume', 0,),
-                'rsi': ('rsi', 21,),
-                'pivotpoint': ('pivotpoint', 5,),
-                'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.0),  # was 1.5 , but too large else
-                'bbawe': ('bbawe', 20, 2.0, 3.0, 5, 34, False),
+        "hourly": {
+            "timeframe": "1h",
+            "mode": "A", 
+            "depth": 22,
+            "history": 22,
+            "update-at-close": False,
+            "signal-at-close": True,
+            "indicators": {
+                "price": ("price", 2,),
+                "volume": ("volume", 0,),
+                "rsi": ("rsi", 21,),
+                "pivotpoint": ("pivotpoint", 5,),
+                "tomdemark": ("tomdemark", 9),
+                "atr": ("atr", 14, 1.0),  # was 1.5 , but too large else
+                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
             },
-            'constants': {
-                'rsi_low': 0.3,
-                'rsi_high': 0.7,
+            "constants": {
+                "rsi_low": 0.3,
+                "rsi_high": 0.7,
             }
         },
-        '15min': {
-            'timeframe': '15m',
-            'mode': 'A',
-            'depth': 22,
-            'history': 22,
-            'update-at-close': False,
-            'signal-at-close': True,
-            'indicators': {
-                'price': ('price', 2,),
-                'volume': ('volume', 0,),
-                'rsi': ('rsi', 21,),
-                'pivotpoint': ('pivotpoint', 5,),
-                'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 1.0),
-                'bbawe': ('bbawe', 20, 2.0, 3.0, 5, 34, False),
+        "15min": {
+            "timeframe": "15m",
+            "mode": "A",
+            "depth": 22,
+            "history": 22,
+            "update-at-close": False,
+            "signal-at-close": True,
+            "indicators": {
+                "price": ("price", 2,),
+                "volume": ("volume", 0,),
+                "rsi": ("rsi", 21,),
+                "pivotpoint": ("pivotpoint", 5,),
+                "tomdemark": ("tomdemark", 9),
+                "atr": ("atr", 14, 1.0),
+                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
             },
-            'constants': {
-                'rsi_low': 0.3,
-                'rsi_high': 0.7,
+            "constants": {
+                "rsi_low": 0.3,
+                "rsi_high": 0.7,
             }
         },
-        '5min': {
-            'timeframe': '5m',
-            'mode': 'A',
-            'depth': 22,
-            'history': 22,
-            'update-at-close': False,
-            'signal-at-close': True,
-            'indicators': {
-                'price': ('price', 2,),
-                'volume': ('volume', 0,),
-                'rsi': ('rsi', 21,),
-                'pivotpoint': ('pivotpoint', 5,),
-                'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 3.0),
-                'bbawe': ('bbawe', 20, 2.0, 3.0, 5, 34, False),
+        "5min": {
+            "timeframe": "5m",
+            "mode": "A",
+            "depth": 22,
+            "history": 22,
+            "update-at-close": False,
+            "signal-at-close": True,
+            "indicators": {
+                "price": ("price", 2,),
+                "volume": ("volume", 0,),
+                "rsi": ("rsi", 21,),
+                "pivotpoint": ("pivotpoint", 5,),
+                "tomdemark": ("tomdemark", 9),
+                "atr": ("atr", 14, 3.0),
+                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
             },
-            'constants': {
-                'rsi_low': 0.3,
-                'rsi_high': 0.7,
+            "constants": {
+                "rsi_low": 0.3,
+                "rsi_high": 0.7,
             }
         },
-        '2min':{
-            'timeframe': '2m',
-            'mode': 'A',
-            'depth': 22,
-            'history': 22,
-            'update-at-close': False,
-            'signal-at-close': True,
-            'indicators': {
-                'price': ('price', 2,),
-                'volume': ('volume', 0,),
-                'rsi': ('rsi', 21,),
-                'pivotpoint': ('pivotpoint', 5,),
-                'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 3.0),
-                'bbawe': ('bbawe', 20, 2.0, 3.0, 5, 34, False),
+        "2min":{
+            "timeframe": "2m",
+            "mode": "A",
+            "depth": 22,
+            "history": 22,
+            "update-at-close": False,
+            "signal-at-close": True,
+            "indicators": {
+                "price": ("price", 2,),
+                "volume": ("volume", 0,),
+                "rsi": ("rsi", 21,),
+                "pivotpoint": ("pivotpoint", 5,),
+                "tomdemark": ("tomdemark", 9),
+                "atr": ("atr", 14, 3.0),
+                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
             },
-            'constants': {
-                'rsi_low': 0.3,
-                'rsi_high': 0.7,
+            "constants": {
+                "rsi_low": 0.3,
+                "rsi_high": 0.7,
             }
         },
-        '1min': {
-            'timeframe': '1m',
-            'mode': 'A',
-            'depth': 22,
-            'history': 22,
-            'update-at-close': True,
-            'signal-at-close': True,
-            'indicators': {
-                'price': ('price', 2,),
-                'volume': ('volume', 0,),
-                'rsi': ('rsi', 21,),
-                'pivotpoint': ('pivotpoint', 5,),
-                'tomdemark': ('tomdemark', 9),
-                'atr': ('atr', 14, 3.0),
-                'bbawe': ('bbawe', 20, 2.0, 3.0, 5, 34, False),
+        "1min": {
+            "timeframe": "1m",
+            "mode": "A",
+            "depth": 22,
+            "history": 22,
+            "update-at-close": True,
+            "signal-at-close": True,
+            "indicators": {
+                "price": ("price", 2,),
+                "volume": ("volume", 0,),
+                "rsi": ("rsi", 21,),
+                "pivotpoint": ("pivotpoint", 5,),
+                "tomdemark": ("tomdemark", 9),
+                "atr": ("atr", 14, 3.0),
+                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
             },
-            'constants': {
-                'rsi_low': 0.3,
-                'rsi_high': 0.7,
+            "constants": {
+                "rsi_low": 0.3,
+                "rsi_high": 0.7,
             }
         }
     }
