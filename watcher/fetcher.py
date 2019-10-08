@@ -66,6 +66,9 @@ class Fetcher(object):
 
         @param available_symbols List containing any supported markets symbol of the broker. Used when a wildchar is defined.
         """
+        if not available_symbols:
+            return configured_symbols
+
         return matching_symbols_set(configured_symbols, available_symbols)
 
     def connect(self):

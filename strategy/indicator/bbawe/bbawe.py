@@ -82,8 +82,8 @@ class BBAweIndicator(Indicator):
                 AO = -2
 
         # Calc breakouts
-        break_down = crossunder(fast_ma, bb_basis) and close[-1] < bb_basis[-1] and abs(AO)==2
-        break_up = crossover(fast_ma, bb_basis) and close[-1] > bb_basis[-1] and abs(AO)==1
+        break_down = crossunder(fast_ma, bb_basis) and close[-1] < bb_basis[-1] and AO<0  # abs(AO)==2
+        break_up = crossover(fast_ma, bb_basis) and close[-1] > bb_basis[-1] and AO>0  # abs(AO)==1
 
         self._signal = 1 if break_up else -1 if break_down else 0
 

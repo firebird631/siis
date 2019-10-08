@@ -68,6 +68,7 @@ class PgSql(Database):
         if self._db:
             self._db.close()
             self._db = None
+            self._conn_str = ""
 
     def setup_market_sql(self):
         cursor = self._db.cursor()
@@ -222,9 +223,14 @@ class PgSql(Database):
                 self._db.commit()
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_market_info_insert = mki + self._pending_market_info_insert
+                self.unlock()
+
             except Exception as e:
                 self.on_error(e)
-
 
                 # retry the next time
                 self.lock()
@@ -308,6 +314,12 @@ class PgSql(Database):
                     mi[0].notify(Signal.SIGNAL_MARKET_INFO_DATA, mi[1], (mi[2], market_info))
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_market_info_select = mis + self._pending_market_info_select
+                self.unlock()
+
             except Exception as e:
                 self.on_error(e)
 
@@ -343,6 +355,11 @@ class PgSql(Database):
                     m[0].notify(Signal.SIGNAL_MARKET_LIST_DATA, m[1], market_list)
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_market_list_select = mls + self._pending_market_list_select
+                self.unlock()
             except Exception as e:
                 self.on_error(e)
 
@@ -374,6 +391,11 @@ class PgSql(Database):
                 self._db.commit()
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_asset_insert = uai + self._pending_asset_insert
+                self.unlock()
             except Exception as e:
                 self.on_error(e)
 
@@ -416,6 +438,11 @@ class PgSql(Database):
                     ua[0].notify(Signal.SIGNAL_ASSET_DATA_BULK, ua[2], assets)
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_asset_select = uas + self._pending_asset_select
+                self.unlock()
             except Exception as e:
                 self.on_error(e)
 
@@ -449,6 +476,11 @@ class PgSql(Database):
                 self._db.commit()
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trade_insert = uti + self._pending_user_trade_insert
+                self.unlock()
             except Exception as e:
                 self.on_error(e)
 
@@ -485,13 +517,18 @@ class PgSql(Database):
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ut[4], user_trades)
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trade_select = uts + self._pending_user_trade_select
+                self.unlock()
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
                 self.lock()
                 self._pending_user_trade_select = uts + self._pending_user_trade_select
-                self.unlock()            
+                self.unlock()
 
         #
         # insert user_trader
@@ -518,6 +555,11 @@ class PgSql(Database):
                 self._db.commit()
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trader_insert = uti + self._pending_user_trader_insert
+                self.unlock()
             except Exception as e:
                 self.on_error(e)
 
@@ -554,13 +596,18 @@ class PgSql(Database):
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADER_LIST, ut[4], user_traders)
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trade_select = uts + self._pending_user_trade_select
+                self.unlock()
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
                 self.lock()
                 self._pending_user_trade_select = uts + self._pending_user_trade_select
-                self.unlock()      
+                self.unlock()
 
     def process_ohlc(self):       
         #
@@ -635,6 +682,11 @@ class PgSql(Database):
                     mk[0].notify(Signal.SIGNAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_ohlc_select = mks + self._pending_ohlc_select
+                self.unlock()
             except Exception as e:
                 self.on_error(e)
 
@@ -680,6 +732,11 @@ class PgSql(Database):
                     self._db.commit()
                 except self.psycopg2.OperationalError as e:
                     self.try_reconnect(e)
+
+                    # retry the next time
+                    self.lock()
+                    self._pending_ohlc_insert = mkd + self._pending_ohlc_insert
+                    self.unlock()
                 except Exception as e:
                     self.on_error(e)
 
@@ -708,6 +765,9 @@ class PgSql(Database):
                 for mk in mkd:
                     elts.append("('%s', '%s', %i, %i, '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5]))
 
+                # query = ' '.join(("INSERT INTO liquidation(broker_id, market_id, timestamp, direction, price, quantity) VALUES",
+                #             ','.join(elts),
+                #             "ON CONFLICT (broker_id, market_id, timestamp) DO NOTHING"))
                 query = ' '.join(("INSERT INTO liquidation(broker_id, market_id, timestamp, direction, price, quantity) VALUES", ','.join(elts)))
 
                 cursor.execute(query)
@@ -715,6 +775,11 @@ class PgSql(Database):
                 self._db.commit()
             except psycopg2.OperationalError as e:
                 self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_liquidation_insert = mkd + self._pending_liquidation_insert
+                self.unlock()
             except Exception as e:
                 self.on_error(e)
 

@@ -32,29 +32,38 @@ error_logger = logging.getLogger('siis.error.database.mysql')
 class MySql(Database):
     """
     Storage service, mysql implementation.
-    @todo reconnect
+    @todo try_reconnect
     """
     def __init__(self):
         super().__init__()
         self._db = None
+        self._conn_params = ""
+        self.MySQLdb = None
+
+        try:
+            self.MySQLdb = import_module('MySQLdb', package='')
+        except ModuleNotFoundError as e:
+            logger.error(repr(e))
 
     def connect(self, config):
-        if 'siis' in config:
-            import MySQLdb
+        if 'siis' in config and self.MySQLdb
+            self._conn_params = {
+                'db': config['siis'].get('name', 'siis'),
+                'host': config['siis'].get('host', 'localhost'),
+                'port': config['siis'].get('port', 3306),
+                'user': config['siis'].get('user', 'siis'),
+                'passwd': config['siis'].get('password', 'siis'),
+                'connect_timeout': 5
+            }
 
-            self._db = MySQLdb.connect(
-                db=config['siis'].get('name', 'siis'),
-                host=config['siis'].get('host', 'localhost'),
-                port=config['siis'].get('port', 3306),
-                user=config['siis'].get('user', 'siis'),
-                passwd=config['siis'].get('password', 'siis'),
-                connect_timeout=5)
+            self._db = self.MySQLdb.connect(**self._conn_params)
 
     def disconnect(self):
         # postresql db
         if self._db:
             self._db.close()
             self._db = None
+            self._conn_params = {}
 
     def setup_market_sql(self):
         cursor = self._db.cursor()
