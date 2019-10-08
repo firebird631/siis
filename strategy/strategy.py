@@ -363,7 +363,7 @@ class Strategy(Runnable):
 
                         market = self._trader.market(symbol)
                         if market:
-                            # put initial market data into the instrument
+                            # put initial market data into the instrument, only works in live
                             instrument.trade = market.trade
                             instrument.orders = market.orders
                             instrument.hedging = market.hedging
@@ -385,8 +385,9 @@ class Strategy(Runnable):
                         if strategy_trader:
                             self._strategy_traders[instrument] = strategy_trader
 
-                            # initial market info
-                            strategy_trader.on_market_info()
+                            # initial market info only in live mode else market data are not complete at this time
+                            if not self.service.backtesting:
+                                strategy_trader.on_market_info()
                     else:
                         instrument = self._instruments.get(mapped_symbol)
 
@@ -746,28 +747,28 @@ class Strategy(Runnable):
                     if instrument is None:
                         continue
 
-                    # market = signal.data[1]
+                    market = signal.data[1]
 
-                    # if market:
-                    #     # put interesting market data into the instrument
-                    #     # @todo using message data
-                    #     instrument.trade = market.trade
-                    #     instrument.orders = market.orders
-                    #     instrument.hedging = market.hedging
-                    #     instrument.tradeable = market.is_open
-                    #     instrument.set_base(market.base)
-                    #     instrument.set_quote(market.quote)
+                    if market:
+                        # put interesting market data into the instrument
+                        # @todo using message data
+                        instrument.trade = market.trade
+                        instrument.orders = market.orders
+                        instrument.hedging = market.hedging
+                        instrument.tradeable = market.is_open
+                        instrument.set_base(market.base)
+                        instrument.set_quote(market.quote)
 
-                    #     instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
-                    #     instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
-                    #     instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
+                        instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
+                        instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
+                        instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
 
-                    #     instrument.set_fees(market.maker_fee, market.taker_fee)
-                    #     instrument.set_commissions(market.maker_commission, market.taker_commission)
+                        instrument.set_fees(market.maker_fee, market.taker_fee)
+                        instrument.set_commissions(market.maker_commission, market.taker_commission)
 
-                    #     strategy_trader = self._strategy_traders.get(instrument)
-                    #     if strategy_trader:
-                    #         strategy_trader.on_market_info()
+                        strategy_trader = self._strategy_traders.get(instrument)
+                        if strategy_trader:
+                            strategy_trader.on_market_info()
 
                 elif signal.signal_type == Signal.SIGNAL_LIQUIDATION_DATA:
                     # interest in liquidation data
