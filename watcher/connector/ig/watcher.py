@@ -645,7 +645,7 @@ class IGWatcher(Watcher):
                                 # 'take-profit': order_take_profit,  'limitLevel'
                             }
 
-                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
 
                         elif status == "CLOSED":
                             # traded and completed
@@ -682,7 +682,7 @@ class IGWatcher(Watcher):
                                 'avg-price': None,  # no have
                             }
 
-                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
 
                         elif status == "PARTIALLY_CLOSED":
                             # traded and partially completed
@@ -698,7 +698,7 @@ class IGWatcher(Watcher):
                                 'avg-price': None,  # no have
                             }
 
-                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
 
                 #
                 # active waiting order (open/updated/deleted)
