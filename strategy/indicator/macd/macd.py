@@ -17,7 +17,7 @@ class MACDIndicator(Indicator):
     https://fr.wikipedia.org/wiki/MACD
     """
 
-    __slots__ = '_short_l', '_long_l', '_signal_l', '_prev', '_last', '_macds', '_signals', '_hists'
+    __slots__ = '_short_l', '_long_l', '_signal_l', '_prev_macd', '_last_macd', '_prev_signal', '_last_signal', '_macds', '_signals', '_hists'
 
     @classmethod
     def indicator_type(cls):
@@ -34,20 +34,31 @@ class MACDIndicator(Indicator):
         self._long_l = long_l      # slowest periods number
         self._signal_l = signal_l  # signal periods number
 
-        self._prev = 0.0
-        self._last = 0.0
+        self._prev_macd = 0.0
+        self._last_macd = 0.0
+
+        self._prev_signal = 0.0
+        self._last_signal = 0.0
 
         self._macds = np.array([])
         self._signals = np.array([])
         self._hists = np.array([])
 
     @property
-    def prev(self):
-        return self._prev
+    def prev_macd(self):
+        return self._prev_macd
 
     @property
-    def last(self):
-        return self._last
+    def last_macd(self):
+        return self._last_macd
+
+    @property
+    def last_signal(self):
+        return self._last_signal
+
+    @property
+    def prev_signal(self):
+        return self._prev_signal
 
     @property
     def short_length(self):
@@ -66,6 +77,14 @@ class MACDIndicator(Indicator):
         self._long_l = length
 
     @property
+    def signal_length(self):
+        return self._signal_l
+
+    @signal_length.setter
+    def signal_length(self, length):
+        self._signal_l = length
+
+    @property
     def macds(self):
         return self._macds
 
@@ -76,6 +95,14 @@ class MACDIndicator(Indicator):
     @property
     def signals(self):
         return self._signals
+
+    def cross(self):
+        if (self._prev_macd > self._prev_signal and self._last_macd < self._last_signal):
+            return -1
+        elif (self._prev_macd < self._prev_signal and self._last_macd > self._last_signal):
+            return 1
+
+        return 0
 
     @staticmethod
     def MACD(N_short, N_long, data):
@@ -100,12 +127,15 @@ class MACDIndicator(Indicator):
         return np.interp(range(len(data)), t_subdata, mms-mml)
 
     def compute(self, timestamp, prices):
-        self._prev = self._last
+        self._prev_macd = self._last_macd
+        self._prev_signal = self._last_signal
 
         # self._macds = MACDIndicator.MACD(self._short_l, self._long_l, prices)
         self._macds, self._signals, self._hists = ta_MACD(prices, fastperiod=self._short_l, slowperiod=self._long_l, signalperiod=self._short_l)
 
-        self._last = self._macds[-1]
+        self._last_macd = self._macds[-1]
+        self._last_signal = self._signals[-1]
+
         self._last_timestamp = timestamp
 
-        return self._macds
+        return self._macds, self._signals, self._hists

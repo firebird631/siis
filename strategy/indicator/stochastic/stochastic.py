@@ -93,7 +93,7 @@ class StochasticIndicator(Indicator):
     def cross(self):
         if (self._prev_k > self._prev_d and self._last_k < self._last_d):
             return -1
-        elif (self._prev_k < self._prev_d and self._last_k > self._prev_d):
+        elif (self._prev_k < self._prev_d and self._last_k > self._last_d):
             return 1
 
         return 0

@@ -1185,8 +1185,12 @@ class Strategy(Runnable):
         Generate and return an array of all the actives trades :
             symbol: str market identifier
             id: int trade identifier
-            eot: float entry open UTC timestamp
-            xot: float exit open UTC timestamp
+            eot: float first entry open UTC timestamp
+            xot: float first exit open UTC timestamp
+            freot: float first realized trade in entry UTC timestamp
+            frxot: float firest realized trade in exit UTC timestamp
+            lreot: float last realized trade in entry UTC timestamp
+            lrxot: float last realized trade in exit UTC timestamp
             d: str 'long' or 'short'
             p: str formatted entry price
             tp: str formatted take-profit price
@@ -1203,6 +1207,8 @@ class Strategy(Runnable):
             aep: average entry price
             axp: average exit price
             com: trade comment
+            upnl: trade unrealized profit loss
+            pnlcur: trade profit loss currency
         """
         results = []
         trader = self.trader()
@@ -1221,6 +1227,10 @@ class Strategy(Runnable):
                         'id': trade.id,
                         'eot': trade.entry_open_time,
                         'xot': trade.exit_open_time,
+                        'freot': trade.first_realized_entry_time,
+                        'frxot': trade.first_realized_exit_time,
+                        'lreot': trade.last_realized_entry_time,
+                        'lrxot': trade.last_realized_exit_time,
                         'd': trade.direction_to_str(),
                         'l': market.format_price(trade.order_price),
                         'p': market.format_price(trade.entry_price),
@@ -1239,6 +1249,8 @@ class Strategy(Runnable):
                         'aep': trade.entry_price,
                         'axp': trade.exit_price,
                         'com': trade.comment,
+                        'upnl': trade.unrealized_profit_loss,
+                        'pnlcur': trade.profit_loss_currency
                     })
 
             strategy_trader.unlock()
@@ -1327,6 +1339,8 @@ class Strategy(Runnable):
                 aep: average entry price
                 axp: average exit price
                 com: trade comment
+                upnl: trade unrealized profit loss
+                pnlcur: trade profit loss currency
         """
         results = []
 
@@ -1373,6 +1387,8 @@ class Strategy(Runnable):
                         'aep': trade.entry_price,
                         'axp': trade.exit_price,
                         'com': trade.comment,
+                        'upnl': trade.unrealized_profit_loss,
+                        'pnlcur': trade.profit_loss_currency
                     })
 
                     profit_loss += trade_pl
@@ -1416,6 +1432,10 @@ class Strategy(Runnable):
                         'id': trade['id'],
                         'eot': trade['eot'],
                         'xot': trade['xot'],
+                        'lreot': trade['lreot'],
+                        'lrxot': trade['lrxot'],
+                        'freot': trade['freot'],
+                        'frxot': trade['frxot'],
                         'd': trade['d'],
                         'p': trade['p'],
                         'q': trade['q'],
@@ -1435,6 +1455,8 @@ class Strategy(Runnable):
                         'axp': trade['axp'],
                         'com': trade['com'],
                         'fees': trade['fees'],
+                        'rpnl': trade['rpnl'],
+                        'pnlcur': trade['pnlcur']
                     })
 
                 for trade in strategy_trader._stats['success']:
@@ -1544,7 +1566,7 @@ class Strategy(Runnable):
         """
         Returns a table of any active trades.
         """
-        columns = ['Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Entry date', 'Exit date', 'Comment']
+        columns = ['Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Exit date', 'Comment', 'UPNL']
 
         if quantities:
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -1604,8 +1626,10 @@ class Strategy(Runnable):
                 "%s (%.2f)" % (t['w'], wpct * 100),
                 t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S') if t['eot'] > 0 else "",
-                datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S') if t['xot'] > 0 else "",
-                t['com']
+                datetime.fromtimestamp(t['freot']).strftime('%Y-%m-%d %H:%M:%S') if t['freot'] > 0 else "",
+                datetime.fromtimestamp(t['lrxot']).strftime('%Y-%m-%d %H:%M:%S') if t['lrxot'] > 0 else "",
+                t['com'],
+                "%s%s" % (t['upnl'], t['pnlcur'])
             ]
 
             if quantities:
@@ -1624,7 +1648,7 @@ class Strategy(Runnable):
         """
         Returns a table of any closed trades.
         """
-        columns = ['Market', 'Id', 'Dir', 'P/L(%)', 'Fees(%)', 'Price', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Entry date', 'Exit date', 'Comment']
+        columns = ['Market', 'Id', 'Dir', 'P/L(%)', 'Fees(%)', 'Price', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Exit date', 'Comment', 'RPNL']
 
         if quantities:
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -1646,7 +1670,7 @@ class Strategy(Runnable):
 
         limit = offset + limit
 
-        closed_trades.sort(key=lambda x: -x['xot'])
+        closed_trades.sort(key=lambda x: -x['lrxot'])
         closed_trades = closed_trades[offset:limit]
 
         for t in closed_trades:
@@ -1689,8 +1713,11 @@ class Strategy(Runnable):
                 "%s (%.2f)" % (t['w'], wpct * 100),
                 t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'),
-                datetime.fromtimestamp(t['xot']).strftime('%Y-%m-%d %H:%M:%S'),
-                t['com']]
+                datetime.fromtimestamp(t['freot']).strftime('%Y-%m-%d %H:%M:%S'),
+                datetime.fromtimestamp(t['lrxot']).strftime('%Y-%m-%d %H:%M:%S'),
+                t['com'],
+                "%s%s" % (t['rpnl'], t['pnlcur'])
+            ]
 
             if quantities:
                 row.append(t['q'])

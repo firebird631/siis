@@ -313,7 +313,8 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self.create_oid = data['id']
 
                 # init created timestamp at the create order open
-                self.eot = data['timestamp']
+                if not self.eot:
+                    self.eot = data['timestamp']
 
                 if data.get('stop-loss'):
                     self.sl = data['stop-loss']
@@ -326,14 +327,14 @@ class StrategyIndMarginTrade(StrategyTrade):
             elif ref_order_id == self.stop_ref_oid:
                 self.stop_oid = data['id']
 
-                self.xot = data['timestamp']
-                # self._exit_state = StrategyTrade.STATE_OPENED
+                if not self.xot:
+                    self.xot = data['timestamp']
 
             elif ref_order_id == self.limit_ref_oid:
                 self.limit_oid = data['id']
 
-                self.xot = data['timestamp']
-                # self._exit_state = StrategyTrade.STATE_OPENED
+                if not self.xot:
+                    self.xot = data['timestamp']
 
         elif signal_type == Signal.SIGNAL_ORDER_DELETED:
             # order is no longer active
@@ -416,8 +417,11 @@ class StrategyIndMarginTrade(StrategyTrade):
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-                # retains the last trade timestamp
-                self._stats['realized-entry-timestamp'] = data.get('timestamp', 0.0)
+                # retains the trade timestamp
+                if not self._stats['first-realized-entry-timestamp']:
+                    self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
+
+                self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
             elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
                 # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twices
@@ -482,10 +486,19 @@ class StrategyIndMarginTrade(StrategyTrade):
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-                # retains the last trade timestamp
-                self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
+                # retains the trade timestamp
+                if not self._stats['first-realized-exit-timestamp']:
+                    self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
+                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
     def position_signal(self, signal_type, data, ref_order_id, instrument):
+        # how to manage it correctly because cumulated position on the same size wrong its local trade value
+        # if data.get('profit-loss'):
+        #     self._stats['unrealized-profit-loss'] = data['profit-loss']
+        # if data.get('profit-currency'):
+        #     self._stats['profit-loss-currency'] = data['profit-currency']
+
         if signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position, have to cleanup any related trades in case of manual close, liquidation
             self.position_id = None

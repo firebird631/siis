@@ -97,8 +97,12 @@ class StrategyTrade(object):
             'entry-order-type': Order.ORDER_LIMIT,
             'limit-order-type': Order.ORDER_LIMIT,
             'stop-order-type': Order.ORDER_MARKET,
-            'realized-entry-timestamp': 0.0,
-            'realized-exit-timestamp': 0.0,
+            'first-realized-entry-timestamp': 0.0,
+            'first-realized-exit-timestamp': 0.0,
+            'last-realized-entry-timestamp': 0.0,
+            'last-realized-exit-timestamp': 0.0,
+            'unrealized-profit-loss': 0.0,
+            'profit-loss-currency': "",
             'entry-fees': 0.0,
             'exit-fees': 0.0,
             'conditions': {}
@@ -191,12 +195,28 @@ class StrategyTrade(object):
         return self._expiry
 
     @property
-    def realized_entry_time(self):
-        return self._stats['realized-entry-timestamp']
+    def first_realized_entry_time(self):
+        return self._stats['first-realized-entry-timestamp']
 
     @property
-    def realized_exit_time(self):
-        return self._stats['realized-exit-timestamp']
+    def first_realized_exit_time(self):
+        return self._stats['first-realized-exit-timestamp']
+
+    @property
+    def last_realized_entry_time(self):
+        return self._stats['last-realized-entry-timestamp']
+
+    @property
+    def last_realized_exit_time(self):
+        return self._stats['last-realized-exit-timestamp']
+
+    @property
+    def unrealized_profit_loss(self):
+        return self._stats['unrealized-profit-loss']
+
+    @property
+    def profit_loss_currency(self):
+        return self._stats['profit-loss-currency']
 
     @expiry.setter
     def expiry(self, expiry):

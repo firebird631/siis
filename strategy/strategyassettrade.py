@@ -424,7 +424,8 @@ class StrategyAssetTrade(StrategyTrade):
                 self.entry_ref_oid = None
 
                 # init created timestamp at the create order open
-                self.eot = data['timestamp']
+                if not self.eot:
+                    self.eot = data['timestamp']
 
                 if data.get('stop-loss'):
                     self.sl = data['stop-loss']
@@ -438,7 +439,8 @@ class StrategyAssetTrade(StrategyTrade):
                 self.stop_oid = data['id']
                 self.stop_ref_oid = None
 
-                self.xot = data['timestamp']
+                if not self.xot:
+                    self.xot = data['timestamp']
 
                 self._exit_state = StrategyTrade.STATE_OPENED
 
@@ -446,7 +448,8 @@ class StrategyAssetTrade(StrategyTrade):
                 self.limit_oid = data['id']
                 self.limit_ref_oid = None
 
-                self.xot = data['timestamp']
+                if not self.xot:
+                    self.xot = data['timestamp']
 
                 self._exit_state = StrategyTrade.STATE_OPENED
 
@@ -489,9 +492,6 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
                 
-                # retains the last trade timestamp
-                self._stats['realized-entry-timestamp'] = data.get('timestamp', 0.0)
-
                 #
                 # fees/commissions
                 #
@@ -502,6 +502,12 @@ class StrategyAssetTrade(StrategyTrade):
 
                 # realized fees
                 self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+
+                # retains the trade timestamp
+                if not self._stats['first-realized-entry-timestamp']:
+                    self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
+
+                self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
             elif (data['id'] == self.limit_oid or data['id'] == self.stop_oid) and ('filled' in data or 'cumulative-filled' in data):
                 # @warning on the exit side, normal case will have a single order, but possibly to have a 
@@ -550,9 +556,6 @@ class StrategyAssetTrade(StrategyTrade):
                         # there is no longer entry order, then we have fully filled the exit
                         self._exit_state = StrategyTrade.STATE_FILLED
 
-                # retains the last trade timestamp
-                self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
-
                 #
                 # fees/commissions
                 #
@@ -563,6 +566,12 @@ class StrategyAssetTrade(StrategyTrade):
 
                 # realized fees
                 self._stats['exit-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+                
+                # retains the trade timestamp
+                if not self._stats['first-realized-exit-timestamp']:
+                    self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
+                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price or qty modified

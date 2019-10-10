@@ -630,8 +630,22 @@ class IGWatcher(Watcher):
                         status = data.get('status', "")
 
                         if status == "AMENDED":
-                            # amended why for ?
-                            pass
+                            # traded and initial
+                            order = {
+                                'id': order_id,
+                                'symbol': epic,
+                                'timestamp': event_time,
+                                'direction': direction,
+                                'quantity': None,  # no have
+                                'filled': quantity,
+                                'cumulative-filled': None,  # no have
+                                'exec-price': level,
+                                'avg-price': None,  # no have
+                                # 'stop-loss': order_stop_loss,  'stopLevel'
+                                # 'take-profit': order_take_profit,  'limitLevel'
+                            }
+
+                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
 
                         elif status == "CLOSED":
                             # traded and completed
@@ -645,7 +659,6 @@ class IGWatcher(Watcher):
                                 'cumulative-filled': None,  # no have
                                 'exec-price': level,
                                 'avg-price': None,  # no have
-                                # 'maker': False,  # no have
                             }
 
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
@@ -667,7 +680,6 @@ class IGWatcher(Watcher):
                                 'cumulative-filled': None,  # no have
                                 'exec-price': level,
                                 'avg-price': None,  # no have
-                                # 'maker': False,  # no have
                             }
 
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
@@ -684,7 +696,6 @@ class IGWatcher(Watcher):
                                 'cumulative-filled': None,  # no have
                                 'exec-price': level,
                                 'avg-price': None,  # no have
-                                # 'maker': False,  # no have
                             }
 
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))

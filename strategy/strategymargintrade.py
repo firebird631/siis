@@ -353,7 +353,8 @@ class StrategyMarginTrade(StrategyTrade):
                 self.create_oid = data['id']
 
                 # init created timestamp at the create order open
-                self.eot = data['timestamp']
+                if self.eot:
+                    self.eot = data['timestamp']
 
                 if data.get('stop-loss'):
                     self.sl = data['stop-loss']
@@ -366,12 +367,14 @@ class StrategyMarginTrade(StrategyTrade):
             elif ref_order_id == self.stop_ref_oid:
                 self.stop_oid = data['id']
 
-                self.xot = data['timestamp']
+                if not self.xot:
+                    self.xot = data['timestamp']
 
             elif ref_order_id == self.limit_ref_oid:
                 self.limit_oid = data['id']
 
-                self.xot = data['timestamp']
+                if not self.xot:
+                    self.xot = data['timestamp']
 
         elif signal_type == Signal.SIGNAL_ORDER_DELETED:
             # order is no longer active
@@ -444,9 +447,6 @@ class StrategyMarginTrade(StrategyTrade):
                     # probably need to update exit orders
                     self._dirty = True
 
-                    # retains the last trade timestamp
-                    self._stats['realized-entry-timestamp'] = data.get('timestamp', 0.0)
-
                 # logger.info("Entry avg-price=%s cum-filled=%s" % (self.aep, self.e))
 
                 if self.e >= self.oq:
@@ -457,6 +457,12 @@ class StrategyMarginTrade(StrategyTrade):
                     self.create_ref_oid = None
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+                # retains the trade timestamp
+                if not self._stats['first-realized-entry-timestamp']:
+                    self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
+
+                self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
             elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
                 # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twices
@@ -512,121 +518,125 @@ class StrategyMarginTrade(StrategyTrade):
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-                # retains the last trade timestamp
-                self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
+                # retains the trade timestamp
+                if not self._stats['first-realized-exit-timestamp']:
+                    self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
+                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
     def position_signal(self, signal_type, data, ref_order_id, instrument):
         if signal_type == Signal.SIGNAL_POSITION_OPENED:
             self.position_id = data['id']
 
-            # open position as created timestamp
-            self.eot = data['timestamp']
+            if data.get('profit-loss'):
+                self._stats['unrealized-profit-loss'] = data['profit-loss']
+            if data.get('profit-currency'):
+                self._stats['profit-loss-currency'] = data['profit-currency']
 
-            if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                filled = data['cumulative-filled'] - self.e  # compute filled qty
-            elif data.get('filled') is not None and data['filled'] > 0:
-                filled = data['filled']
-            else:
-                filled = 0                    
+            # if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
+            #     filled = data['cumulative-filled'] - self.e  # compute filled qty
+            # elif data.get('filled') is not None and data['filled'] > 0:
+            #     filled = data['filled']
+            # else:
+            #     filled = 0                    
 
-            if data.get('avg-price') is not None and data['avg-price'] > 0:
-                # in that case we have avg-price already computed
-                self.aep = data['avg-price']
+            # if data.get('avg-price') is not None and data['avg-price'] > 0:
+            #     # in that case we have avg-price already computed
+            #     self.aep = data['avg-price']
 
-            elif data.get('exec-price') is not None and data['exec-price'] > 0:
-                # compute the average price
-                self.aep = ((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
+            # elif data.get('exec-price') is not None and data['exec-price'] > 0:
+            #     # compute the average price
+            #     self.aep = ((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
 
-            self.e = filled
+            # self.e = filled
 
-            # logger.info("Entry avg-price=%s cum-filled=%s" % (self.aep, self.e))
+            # # logger.info("Entry avg-price=%s cum-filled=%s" % (self.aep, self.e))
 
-            if self.e >= self.oq:
-                self._entry_state = StrategyTrade.STATE_FILLED
-            else:
-                self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-
-            # retains the last trade timestamp
-            self._stats['realized-entry-timestamp'] = data.get('timestamp', 0.0)
+            # if self.e >= self.oq:
+            #     self._entry_state = StrategyTrade.STATE_FILLED
+            # else:
+            #     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
         elif signal_type == Signal.SIGNAL_POSITION_UPDATED:
-            if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                filled = data['cumulative-filled'] - self.x   # computed filled qty
-            elif data.get('filled') is not None and data['filled'] > 0:
-                filled = data['filled']
-            else:
-                filled = 0
+            # update the unrealized profit-loss in currency
+            if data.get('profit-loss'):
+                self._stats['unrealized-profit-loss'] = data['profit-loss']
+            if data.get('profit-currency'):
+                self._stats['profit-loss-currency'] = data['profit-currency']
 
-            if data.get('avg-price') is not None and data['avg-price'] > 0:
-                # recompute profit-loss
-                if self.dir > 0:
-                    self.pl = (data['avg-price'] - self.aep) / self.aep
-                elif self.dir < 0:
-                    self.pl = (self.aep - data['avg-price']) / self.aep
+            # if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
+            #     filled = data['cumulative-filled'] - self.x   # computed filled qty
+            # elif data.get('filled') is not None and data['filled'] > 0:
+            #     filled = data['filled']
+            # else:
+            #     filled = 0
 
-                # in that case we have avg-price already computed
-                self.axp = data['avg-price']
+            # if data.get('avg-price') is not None and data['avg-price'] > 0:
+            #     # recompute profit-loss
+            #     if self.dir > 0:
+            #         self.pl = (data['avg-price'] - self.aep) / self.aep
+            #     elif self.dir < 0:
+            #         self.pl = (self.aep - data['avg-price']) / self.aep
 
-            elif data.get('exec-price') is not None and data['exec-price'] > 0:
-                # increase/decrease profit/loss
-                if self.dir > 0:
-                    self.pl += ((data['exec-price'] * filled) - (self.aep * self.e)) / (self.aep * self.e)  # over entry executed quantity
-                elif self.dir < 0:
-                    self.pl += ((self.aep * self.e) - (data['exec-price'] * filled)) / (self.aep * self.e)  # over entry executed quantity
+            #     # in that case we have avg-price already computed
+            #     self.axp = data['avg-price']
 
-                # compute the average exit price
-                self.axp = ((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled)
+            # elif data.get('exec-price') is not None and data['exec-price'] > 0:
+            #     # increase/decrease profit/loss
+            #     if self.dir > 0:
+            #         self.pl += ((data['exec-price'] * filled) - (self.aep * self.e)) / (self.aep * self.e)  # over entry executed quantity
+            #     elif self.dir < 0:
+            #         self.pl += ((self.aep * self.e) - (data['exec-price'] * filled)) / (self.aep * self.e)  # over entry executed quantity
 
-            # but this is in quote qty and we want in % change
-            # if data.get('profit-loss') is not None:
-            #     self.pl = data['profit-loss']
+            #     # compute the average exit price
+            #     self.axp = ((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled)
 
-            self.x = filled
+            # # but this is in quote qty and we want in % change
+            # # if data.get('profit-loss') is not None:
+            # #     self.pl = data['profit-loss']
 
-            # if filled > 0.0:
-            #     # retains the last trade timestamp
-            #     self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
+            # self.x = filled
 
-            logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
+            # # if filled > 0.0:
+            # #     # retains the last trade timestamp
+            # #     self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
-            if self.x >= self.oq:
-                self._exit_state = StrategyTrade.STATE_FILLED
-            else:
-                self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+            # logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
+
+            # if self.x >= self.oq:
+            #     self._exit_state = StrategyTrade.STATE_FILLED
+            # else:
+            #     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position
             self.position_id = None
 
-            # it depends of the order of the position deleted...
-            # @todo in some case not a good idea
-            self.create_oid = None
-            self.create_ref_oid = None
+            if data.get('profit-loss'):
+                self._stats['unrealized-profit-loss'] = data['profit-loss']
+            if data.get('profit-currency'):
+                self._stats['profit-loss-currency'] = data['profit-currency']
 
-            if self.x < self.e:
-                # mean fill the rest (positions are distincts)
-                filled = self.e - self.x
+            # if self.x < self.e:
+            #     # mean fill the rest (positions are distincts)
+            #     filled = self.e - self.x
 
-                if data.get('exec-price') is not None and data['exec-price'] > 0:
-                    # increase/decrease profit/loss (over entry executed quantity)
-                    if self.dir > 0:
-                        self.pl += ((data['exec-price'] * filled) - (self.aep * self.e)) / (self.aep * self.e)
-                    elif self.dir < 0:
-                        self.pl += ((self.aep * self.e) - (data['exec-price'] * filled)) / (self.aep * self.e)
+            #     if data.get('exec-price') is not None and data['exec-price'] > 0:
+            #         # increase/decrease profit/loss (over entry executed quantity)
+            #         if self.dir > 0:
+            #             self.pl += ((data['exec-price'] * filled) - (self.aep * self.e)) / (self.aep * self.e)
+            #         elif self.dir < 0:
+            #             self.pl += ((self.aep * self.e) - (data['exec-price'] * filled)) / (self.aep * self.e)
 
-                # but this is in quote qty and we want in % change
-                # if data.get('profit-loss') is not None:
-                #     self.pl = data['profit-loss']
+            #     self.x = filled
 
-                self.x = filled
+            #     self._exit_state = StrategyTrade.STATE_FILLED
 
-                self._exit_state = StrategyTrade.STATE_FILLED
+            #     # retains the last trade timestamp
+            #     if filled > 0.0:
+            #         self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
-                # retains the last trade timestamp
-                if filled > 0.0:
-                    self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
-
-                logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
+            #     logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
 
         elif signal_type == Signal.SIGNAL_POSITION_AMENDED:
             # update stop_loss/take_profit from outside
