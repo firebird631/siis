@@ -92,6 +92,17 @@ class IGConnector(object):
     def connected(self):
         return self._session is not None and self._ig_service is not None and self._ig_service.connected
 
+    def update_session(self):
+        """
+        Every 6h we have to update the user session.
+        """
+        try:
+            res = self._ig_service.create_session()
+            self._client_id = res.get('clientId')
+        except:
+            self._session = None
+            self._ig_service = None
+
     def funds(self):
         return self._ig_service.fetch_account(self.__account_id)
 

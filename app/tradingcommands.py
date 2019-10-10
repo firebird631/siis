@@ -456,7 +456,13 @@ class CloseCommand(Command):
 class DynamicStopLossOperationCommand(Command):
     
     SUMMARY = "to manually add a dynamic-stop-loss operation on a trade"
-    HELP = ("<appliance-identifier> <market-id> <trigger-price> <stop-loss-price>",)
+    HELP = (
+        "param1: appliance-id",
+        "param2: market-id",
+        "param3: trade-id",
+        "param4: trigger-price",
+        "param5: stop-loss-price"
+    )
 
     def __init__(self, strategy_service):
         super().__init__('dynamic-stop-loss', 'DSL')
@@ -521,6 +527,11 @@ class DynamicStopLossOperationCommand(Command):
 class RemoveOperationCommand(Command):
 
     SUMMARY = "to manually remove an operation from a trade"
+    HELP = (
+        "param1: appliance-id",
+        "param2: market-id",
+        "param3: trade-id"
+    )
 
     def __init__(self, strategy_service):
         super().__init__('del', 'D')
@@ -578,6 +589,13 @@ class RemoveOperationCommand(Command):
 class ModifyStopLossCommand(Command):
 
     SUMMARY = "to manually modify the stop-loss of a trade"
+    HELP = (
+        "param1: appliance-id",
+        "param2: market-id",
+        "param3: trade-id",
+        "param4: stop-loss price",
+        "param5 (optionnal) : add force to create an order or modify the position, not only have a local value",
+    )
    
     def __init__(self, strategy_service):
         super().__init__('stop-loss', 'SL')
@@ -594,6 +612,7 @@ class ModifyStopLossCommand(Command):
 
         action = 'stop-loss'
         stop_loss = 0.0
+        force = False
 
         # ie ":SL _ EURUSD 1 1.10"
         if len(args) < 4:
@@ -604,7 +623,12 @@ class ModifyStopLossCommand(Command):
             appliance, market_id = args[0], args[1]
 
             trade_id = int(args[2])
-            stop_loss = float(args[3])   
+            stop_loss = float(args[3])
+
+            if len(args) > 4:
+                # create an order or modify the position, else use default
+                force = str(args[4]) == "force"
+
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
             return False
@@ -614,7 +638,8 @@ class ModifyStopLossCommand(Command):
             'market-id': market_id,
             'trade-id': trade_id,
             'action': action,
-            'stop-loss': stop_loss
+            'stop-loss': stop_loss,
+            'force': force
         })
 
         return True
@@ -634,6 +659,13 @@ class ModifyStopLossCommand(Command):
 class ModifyTakeProfitCommand(Command):
 
     SUMMARY = "to manually modify the take-profit of a trade"
+    HELP = (
+        "param1: appliance-id",
+        "param2: market-id",
+        "param3: trade-id",
+        "param4: take-profit price",
+        "param5 (optionnal) : add force to create an order or modify the position, not only have a local value",
+    )
 
     def __init__(self, strategy_service):
         super().__init__('take-profit', 'TP')
@@ -651,6 +683,7 @@ class ModifyTakeProfitCommand(Command):
 
         action = 'take-profit'
         take_profit = 0.0
+        force = False
 
         # ie ":TP _ EURUSD 1 1.15"
         if len(args) < 4:
@@ -662,6 +695,11 @@ class ModifyTakeProfitCommand(Command):
 
             trade_id = int(args[2])
             take_profit = float(args[3])
+
+            if len(args) > 4:
+                # create an order or modify the position, else use default
+                force = str(args[4]) == "force"
+
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
             return False
@@ -671,7 +709,8 @@ class ModifyTakeProfitCommand(Command):
             'market-id': market_id,
             'trade-id': trade_id,
             'action': action,
-            'take-profit': take_profit
+            'take-profit': take_profit,
+            'force': force
         })
 
         return True
@@ -691,6 +730,11 @@ class ModifyTakeProfitCommand(Command):
 class TradeInfoCommand(Command):
 
     SUMMARY = "to get operation info of a specific trade"
+    HELP = (
+        "param1: appliance-id",
+        "param2: market-id",
+        "param3: trade-id"
+    )
 
     def __init__(self, strategy_service):
         super().__init__('trade', 'T')

@@ -17,7 +17,7 @@ class MACDIndicator(Indicator):
     https://fr.wikipedia.org/wiki/MACD
     """
 
-    __slots__ = '_short_l', '_long_l', '_signal_l', '_prev', '_last', '_macds'
+    __slots__ = '_short_l', '_long_l', '_signal_l', '_prev', '_last', '_macds', '_signals', '_hists'
 
     @classmethod
     def indicator_type(cls):
@@ -38,6 +38,8 @@ class MACDIndicator(Indicator):
         self._last = 0.0
 
         self._macds = np.array([])
+        self._signals = np.array([])
+        self._hists = np.array([])
 
     @property
     def prev(self):
@@ -65,7 +67,15 @@ class MACDIndicator(Indicator):
 
     @property
     def macds(self):
-        return self._macds    
+        return self._macds
+
+    @property
+    def hists(self):
+        return self._hists
+
+    @property
+    def signals(self):
+        return self._signals
 
     @staticmethod
     def MACD(N_short, N_long, data):
@@ -93,7 +103,7 @@ class MACDIndicator(Indicator):
         self._prev = self._last
 
         # self._macds = MACDIndicator.MACD(self._short_l, self._long_l, prices)
-        self._macds, macdsignal, macdhist = MACD(prices, fastperiod=self._short_l, slowperiod=self._long_l, signalperiod=self._short_l)
+        self._macds, self._signals, self._hists = ta_MACD(prices, fastperiod=self._short_l, slowperiod=self._long_l, signalperiod=self._short_l)
 
         self._last = self._macds[-1]
         self._last_timestamp = timestamp

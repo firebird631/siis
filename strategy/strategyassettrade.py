@@ -488,6 +488,9 @@ class StrategyAssetTrade(StrategyTrade):
                     self._entry_state = StrategyTrade.STATE_FILLED
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                
+                # retains the last trade timestamp
+                self._stats['realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
                 #
                 # fees/commissions
@@ -546,6 +549,9 @@ class StrategyAssetTrade(StrategyTrade):
                     else:
                         # there is no longer entry order, then we have fully filled the exit
                         self._exit_state = StrategyTrade.STATE_FILLED
+
+                # retains the last trade timestamp
+                self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
                 #
                 # fees/commissions

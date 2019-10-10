@@ -161,9 +161,10 @@ class IGWatcher(Watcher):
                     self.insert_watched_instrument(symbol, [0])
 
                     # avoid blocking websocket during sleep
-                    # self.unlock()
-                    # time.sleep(8.0)  # 1 sec per query + 1 extra second
-                    # self.lock()
+                    self.unlock()
+                    # time.sleep(9.0)  # 1 sec per query + 1 extra second
+                    time.sleep(1.0)
+                    self.lock()
 
                 # logger.info("Watcher %s wait 10 seconds to limit to a fair API usage" % (self.name,))
 
@@ -368,6 +369,8 @@ class IGWatcher(Watcher):
         #
 
         if time.time() - self._last_market_update >= IGWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
+            # self.update_session()  # session must at least be obtained each 6h, so ask at the same time each 4h
+
             self.update_markets_info()
             self._last_market_update = time.time()
 
@@ -578,52 +581,113 @@ class IGWatcher(Watcher):
                 #
 
                 if values.get('CONFIRMS'):
-                    # not use them because we only want CRUD operations => OPU only so
                     data = json.loads(values.get('CONFIRMS'))
                     exec_logger.info("ig.com CONFIRMS %s" % str(data))
 
                     epic = data.get('epic')
-                    level = float(data['level']) if data.get('level') is not None else None
-                    quantity = float(data['size']) if data.get('size') is not None else None
 
-                    if data['dealStatus'] == 'REJECTED':
+                    if data.get('dealStatus', "") == "REJECTED":
                         ref_order_id = data['dealReference']
-
-                        # if data['reason'] == 'INSUFFICIENT_BALANCE':
-                        #   reason = 'insufficient balance'
 
                         self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (epic, ref_order_id))
 
-                    elif data['dealStatus'] == 'ACCEPTED':
+                    elif data.get('dealStatus', "") == "ACCEPTED":
                         # deal confirmed and accepted
                         order_id = data['dealId']
                         ref_order_id = data['dealReference']
 
-                        exec_logger.info("ig 538 'CONFIRMS' %s" % str(data))
-
                         # date 2018-09-13T20:36:01.096 without Z
                         event_time = datetime.strptime(data['date'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
 
+                        # direction of the trade
                         if data['direction'] == 'BUY':
                             direction = Order.LONG
                         elif data['direction'] == 'SELL':
                             direction = Order.SHORT
                         else:
-                            direction = Order.LONG                        
+                            direction = 0
 
-                        quantity = float(data.get('size')) if data.get('size') is not None else 0.0
+                        level = float(data['level']) if data.get('level') is not None else None   # exec price
+                        quantity = float(data['size']) if data.get('size') is not None else 0.0
 
-                        # don't send event because create_order return True in that case
+                        # 'limitLevel', 'stopLevel', 'expiry', 'guaranteedStop'
 
-                        if quantity and level:
-                            # signal of updated order
-                            order_data = {
+                        # affected positions, normaly should not be necessary except if user create a manual trade that could reduce an existing position
+                        # for affected_deal in data.get('affectedDeals', []):
+                        #     position_id = affected_deal['dealId']
+                        #     status = affected_deal.get('status', "")
+                        #     if status == "AMENDED":
+                        #         pass
+                        #     elif status == "DELETED":
+                        #         pass
+                        #     elif status == "FULLY_CLOSED":
+                        #         pass
+                        #     elif status == "OPENED":
+                        #         pass
+                        #     elif status == "PARTIALLY_CLOSED":
+                        #         pass
+
+                        status = data.get('status', "")
+
+                        if status == "AMENDED":
+                            # amended why for ?
+                            pass
+
+                        elif status == "CLOSED":
+                            # traded and completed
+                            order = {
                                 'id': order_id,
-                                # @todo important we want TRADED and UPDATED distinct
+                                'symbol': epic,
+                                'timestamp': event_time,
+                                'direction': direction,
+                                'quantity': None,  # no have
+                                'filled': quantity,
+                                'cumulative-filled': None,  # no have
+                                'exec-price': level,
+                                'avg-price': None,  # no have
+                                # 'maker': False,  # no have
                             }
 
-                            # @todo to be completed before signal, but not really necessary we can work with position update
-                            # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order_data, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
+
+                        elif status == "DELETED":
+                            # deleted why for, we never receive them
+                            # self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (epic, order_id, ""))
+                            pass
+
+                        elif status == "OPEN":
+                            # traded and initial
+                            order = {
+                                'id': order_id,
+                                'symbol': epic,
+                                'timestamp': event_time,
+                                'direction': direction,
+                                'quantity': None,  # no have
+                                'filled': quantity,
+                                'cumulative-filled': None,  # no have
+                                'exec-price': level,
+                                'avg-price': None,  # no have
+                                # 'maker': False,  # no have
+                            }
+
+                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
+
+                        elif status == "PARTIALLY_CLOSED":
+                            # traded and partially completed
+                            order = {
+                                'id': order_id,
+                                'symbol': epic,
+                                'timestamp': event_time,
+                                'direction': direction,
+                                'quantity': None,  # no have
+                                'filled': quantity,
+                                'cumulative-filled': None,  # no have
+                                'exec-price': level,
+                                'avg-price': None,  # no have
+                                # 'maker': False,  # no have
+                            }
+
+                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
 
                 #
                 # active waiting order (open/updated/deleted)
@@ -638,45 +702,61 @@ class IGWatcher(Watcher):
 
                     epic = data['epic']
 
-                    # level = float(data['level']) if data.get('level') is not None else None
-                    # stop_level = float(data['stopLevel']) if data.get('stopLevel') is not None else None
-                    # limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else None
-                    # stop_distance = float(data['stopDistance']) if data.get('stopDistance') is not None else None
-                    # limit_distance = float(data['limitDistance']) if data.get('limitDistance') is not None else None
-                    # profit_loss = float(data['profit']) if data.get('profit') is not None else 0.0
-                    # epic, level, guaranteedStop, currency, timeInForce (GOOD_TILL_CANCELLED, GOOD_TILL_DATE)
-                    # goodTillDate, size, timestamp, stopDistance, limitDistance
+                    # date of the event 2018-09-13T20:36:01.096 without Z
+                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
 
-                    # if data['orderType'] == "LIMIT":
-                    #   pass
-                    # elif data['orderType'] == "STOP":
-                    #   pass
+                    if data.get('direction', '') == 'BUY':
+                        direction = Order.LONG
+                    elif data.get('direction', '') == 'SELL':
+                        direction = Order.SHORT
+                    else:
+                        direction = 0
 
-                    # status OPEN, DELETED, FULLY_CLOSED
-                    if data['status'] == "OPEN":
-                        order_data = {
-                            'id': order_id,
-                            # @todo important
-                        }
-
-                        self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order_data, ref_order_id))
-
-                    elif data['status'] == "UPDATED":
-                        # signal of updated order
-                        order_data = {
-                            'id': order_id,
-                            # @todo important we want TRADED and UPDATED distinct
-                        }
-
-                        self.service.notify(Signal.SIGNAL_ORDER_UPDATED, self.name, (epic, order_data, ref_order_id))
-
-                    elif data['status'] == "DELETED":
-                        # signal of deleted order
-                        self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (epic, order_id, ref_order_id))
-
-                    elif data['status'] == "FULLY_CLOSED":
-                        # @todo ??
+                    if data.get('dealStatus', "") == 'REJECTED':
                         pass
+                    elif data.get('dealStatus', "") == 'ACCEPTED':
+                        quantity = float(data.get('size')) if data.get('size') is not None else 0.0
+                        level = float(data['level']) if data.get('level') is not None else None
+                        stop_distance = float(data['stopDistance']) if data.get('stopDistance') is not None else None
+                        limit_distance = float(data['limitDistance']) if data.get('limitDistance') is not None else None
+                        guaranteed_stop = data.get('guaranteedStop', False)
+                        currency = data.get('currency', "")
+
+                        if data.get('orderType'):
+                            if data['orderType'] == "LIMIT":
+                                pass  # @todo
+                            elif data['orderType'] == "STOP":
+                                pass  # @todo
+
+                        if data.get('timeInForce'):
+                            if data['timeInForce'] == "GOOD_TILL_CANCELLED":
+                                pass  # @todo
+                            elif data['timeInForce'] == "GOOD_TILL_DATE":
+                                # data['goodTillDate']
+                                pass  # @todo
+
+                        status = data.get('status', "")
+
+                        if status == "OPEN":
+                            order_data = {
+                                'id': order_id,
+                                # @todo
+                            }
+
+                            self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order_data, ref_order_id))
+
+                        elif status == "UPDATED":
+                            # signal of updated order
+                            order_data = {
+                                'id': order_id,
+                                # @todo
+                            }
+
+                            self.service.notify(Signal.SIGNAL_ORDER_UPDATED, self.name, (epic, order_data, ref_order_id))
+
+                        elif status == "DELETED":
+                            # signal of deleted order
+                            self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (epic, order_id, ref_order_id))
 
                 #
                 # active position (open/updated/deleted)
@@ -686,6 +766,15 @@ class IGWatcher(Watcher):
                     data = json.loads(values.get('OPU'))
                     exec_logger.info("ig.com OPU %s" % str(data))
 
+                    position_id = data['dealId']
+                    ref_order_id = data['dealReference']
+
+                    epic = data.get('epic')
+                    # "channel": "WTP", "expiry": "-"
+
+                    # date of the event 2018-09-13T20:36:01.096 without Z
+                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+
                     if data.get('direction', '') == 'BUY':
                         direction = Order.LONG
                     elif data.get('direction', '') == 'SELL':
@@ -693,89 +782,78 @@ class IGWatcher(Watcher):
                     else:
                         direction = Order.LONG
 
-                    position_id = data['dealId']
-                    ref_order_id = data['dealReference']
+                    if data.get('dealStatus', "") == "REJECTED":
+                        pass
+                    elif data.get('dealStatus', "") == "ACCEPTED":
+                        quantity = float(data.get('size')) if data.get('size') is not None else 0.0
+                        level = float(data['level']) if data.get('level') is not None else None
+                        stop_level = float(data['stopLevel']) if data.get('stopLevel') is not None else None
+                        limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else None
+                        profit_loss = float(data['profit']) if data.get('profit') is not None else 0.0
+                        currency = data.get('currency', "")
+                        # @todo trailingStep, trailingStopDistance, guaranteedStop
 
-                    epic = data.get('epic')
-                    quantity = float(data.get('size')) if data.get('size') is not None else 0.0
+                        status = data.get('status', "")
 
-                    level = float(data['level']) if data.get('level') is not None else None
-                    stop_level = float(data['stopLevel']) if data.get('stopLevel') is not None else None
-                    limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else None
-                    stop_distance = float(data['stopDistance']) if data.get('stopDistance') is not None else None
-                    limit_distance = float(data['limitDistance']) if data.get('limitDistance') is not None else None                        
-                    profit_loss = float(data['profit']) if data.get('profit') is not None else 0.0
+                        if status == "OPEN":
+                            # signal of opened position
+                            position_data = {
+                                'id': position_id,
+                                'symbol': epic,
+                                'direction': direction,
+                                'timestamp': event_time,
+                                'quantity': quantity,
+                                'exec-price': level,
+                                'stop-loss': stop_level,
+                                'take-profit': limit_level,
+                                'profit-loss': profit_loss,
+                                'profit-currency': currency,
+                                'cumulative-filled': quantity,
+                                'filled': None,  # no have
+                                'liquidation-price': None  # no have
+                            }
 
-                    # "dealStatus": "ACCEPTED",
-                    # "channel": "WTP", "expiry": "-", "currency": "EUR", "guaranteedStop": false,
-                    # @todo "orderType": "LIMIT", "timeInForce": "GOOD_TILL_CANCELLED", "goodTillDate": null
+                            self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (epic, position_data, ref_order_id))
 
-                    # date of the event 2018-09-13T20:36:01.096 without Z
-                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+                        elif status == "UPDATED":
+                            # signal of updated position
+                            position_data = {
+                                'id': position_id,
+                                'symbol': epic,
+                                'direction': direction,
+                                'timestamp': event_time,
+                                'quantity': quantity,
+                                'exec-price': level,
+                                'stop-loss': stop_level,
+                                'take-profit': limit_level,
+                                'profit-loss': profit_loss,
+                                'profit-currency': currency,
+                                'cumulative-filled': quantity,
+                                'filled': None,  # no have
+                                'liquidation-price': None  # no have
+                            }
 
-                    # status OPEN, UPDATED, DELETED
-                    if data['status'] == "OPEN":
-                        # signal of opened position
-                        position_data = {
-                            'id': position_id,
-                            'symbol': epic,
-                            'direction': direction,
-                            'timestamp': event_time,
-                            'quantity': quantity,
-                            'exec-price': level,
-                            'stop-loss': stop_distance,
-                            'take-profit': limit_level,
-                            'profit-loss': profit_loss,
-                            'cumulative-filled': quantity,
-                            'filled': None,  # no have
-                            'liquidation-price': None  # no have
-                        }
+                            self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (epic, position_data, ref_order_id))
 
-                        self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (epic, position_data, ref_order_id))
+                        elif status == "DELETED":
+                            # signal of deleted position
+                            position_data = {
+                                'id': position_id,
+                                'symbol': epic,
+                                'direction': direction,
+                                'timestamp': event_time,
+                                'quantity': quantity,
+                                'exec-price': level,
+                                'stop-loss': stop_level,
+                                'take-profit': limit_level,
+                                'profit-loss': profit_loss,
+                                'profit-currency': currency,
+                                'cumulative-filled': quantity,
+                                'filled': None,  # no have
+                                'liquidation-price': None  # no have
+                            }
 
-                    elif data['status'] == "UPDATED":
-                        # signal of updated position
-                        position_data = {
-                            'id': position_id,
-                            'symbol': epic,
-                            'direction': direction,
-                            'timestamp': event_time,
-                            'quantity': quantity,
-                            'exec-price': level,
-                            'stop-loss': stop_distance,
-                            'take-profit': limit_level,
-                            # 'profit-currency': '', 'profitCurrency'
-                            'profit-loss': profit_loss,
-                            # @todo trailingStep, trailingStopDistance, guaranteedStop
-                            'cumulative-filled': quantity,
-                            'filled': None,  # no have
-                            'liquidation-price': None  # no have
-                        }
-
-                        self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (epic, position_data, ref_order_id))
-
-                    elif data['status'] == "DELETED":
-                        # signal of updated position
-                        position_data = {
-                            'id': position_id,
-                            'symbol': epic,
-                            'direction': direction,
-                            'timestamp': event_time,
-                            'quantity': quantity,
-                            'exec-price': level,
-                            'stop-loss': stop_distance,
-                            'take-profit': limit_level,
-                            # 'profit-currency': '', 'profitCurrency'
-                            'profit-loss': profit_loss,
-                            # @todo trailingStep, trailingStopDistance, guaranteedStop
-                            'cumulative-filled': quantity,
-                            'filled': None,  # no have
-                            'liquidation-price': None  # no have
-                        }
-
-                        self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (epic, position_data, ref_order_id))
-                    else:
-                        exec_logger.info("ig l695 'OPU' %s" % str(data))
+                            self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (epic, position_data, ref_order_id))
 
         except Exception as e:
             logger.debug(repr(e))

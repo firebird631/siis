@@ -121,7 +121,7 @@ class StrategyTrader(object):
             t_data = trade.dumps()
             ops_data = [operation.dumps() for operation in trade.operations]
 
-            # store per trade    
+            # store per trade
             Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,
                     self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
 

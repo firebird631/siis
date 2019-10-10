@@ -339,6 +339,12 @@ class IGTrader(Trader):
                 order.created_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
                 order.transact_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
 
+                if not order.created_time:
+                    order.created_time = self.timestamp
+
+                if not order.transact_time:
+                    order.created_time = self.timestamp
+
                 # executed price (no change in limit, but useful when market order)
                 order.entry_price = results.get('level')
 
@@ -354,9 +360,6 @@ class IGTrader(Trader):
                 # position.entry_price = results.get('level')
                 # position.stop_loss = results.get('stopLevel') 
                 # position.take_profit = results.get('limitLevel')
-
-                # but it's in local account timezone, not createdDateUTC... but API v2 provides that (@todo look with header v=2 in place of v=1)
-                # position.created_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
 
                 # @todo 'trailingStep' 'trailingStopDistance' 'controlledRisk'
 

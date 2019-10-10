@@ -21,6 +21,8 @@ class StrategyMarginTrade(StrategyTrade):
 
     @todo do we need like with asset trade an exit_trades list to compute the axp and x values, because
         if we use cumulative-filled and avg-price we have the same probleme here too.
+    @todo have to check about position_updated qty with direction maybe or take care to have trade signal and 
+        distinct entry from exit
     """
 
     __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', 'position_id', \
@@ -365,13 +367,11 @@ class StrategyMarginTrade(StrategyTrade):
                 self.stop_oid = data['id']
 
                 self.xot = data['timestamp']
-                # self._exit_state = StrategyTrade.STATE_OPENED
 
             elif ref_order_id == self.limit_ref_oid:
                 self.limit_oid = data['id']
 
                 self.xot = data['timestamp']
-                # self._exit_state = StrategyTrade.STATE_OPENED
 
         elif signal_type == Signal.SIGNAL_ORDER_DELETED:
             # order is no longer active
@@ -421,7 +421,7 @@ class StrategyMarginTrade(StrategyTrade):
                 elif data.get('filled') is not None and data['filled'] > 0:
                     filled = data['filled']
                 else:
-                    filled = 0                    
+                    filled = 0
 
                 if data.get('avg-price') is not None and data['avg-price'] > 0:
                     # in that case we have avg-price already computed
@@ -443,6 +443,9 @@ class StrategyMarginTrade(StrategyTrade):
                 if filled > 0:
                     # probably need to update exit orders
                     self._dirty = True
+
+                    # retains the last trade timestamp
+                    self._stats['realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
                 # logger.info("Entry avg-price=%s cum-filled=%s" % (self.aep, self.e))
 
@@ -492,6 +495,10 @@ class StrategyMarginTrade(StrategyTrade):
 
                 logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
 
+                if filled > 0.0:
+                    # retains the last trade timestamp
+                    self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
                 if self.x >= self.oq:
                     self._exit_state = StrategyTrade.STATE_FILLED
 
@@ -504,6 +511,9 @@ class StrategyMarginTrade(StrategyTrade):
                         self.stop_ref_oid = None
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+                # retains the last trade timestamp
+                self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
     def position_signal(self, signal_type, data, ref_order_id, instrument):
         if signal_type == Signal.SIGNAL_POSITION_OPENED:
@@ -527,7 +537,7 @@ class StrategyMarginTrade(StrategyTrade):
                 # compute the average price
                 self.aep = ((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
 
-            self.e += filled
+            self.e = filled
 
             # logger.info("Entry avg-price=%s cum-filled=%s" % (self.aep, self.e))
 
@@ -535,6 +545,9 @@ class StrategyMarginTrade(StrategyTrade):
                 self._entry_state = StrategyTrade.STATE_FILLED
             else:
                 self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+            # retains the last trade timestamp
+            self._stats['realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
         elif signal_type == Signal.SIGNAL_POSITION_UPDATED:
             if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -568,7 +581,11 @@ class StrategyMarginTrade(StrategyTrade):
             # if data.get('profit-loss') is not None:
             #     self.pl = data['profit-loss']
 
-            self.x += filled
+            self.x = filled
+
+            # if filled > 0.0:
+            #     # retains the last trade timestamp
+            #     self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
             logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
 
@@ -601,11 +618,15 @@ class StrategyMarginTrade(StrategyTrade):
                 # if data.get('profit-loss') is not None:
                 #     self.pl = data['profit-loss']
 
-                self.x += filled
-
-                logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
+                self.x = filled
 
                 self._exit_state = StrategyTrade.STATE_FILLED
+
+                # retains the last trade timestamp
+                if filled > 0.0:
+                    self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
+                logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
 
         elif signal_type == Signal.SIGNAL_POSITION_AMENDED:
             # update stop_loss/take_profit from outside

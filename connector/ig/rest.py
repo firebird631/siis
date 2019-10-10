@@ -851,8 +851,7 @@ class IGService:
         self._req(action, endpoint, params, session)
 
     def create_session(self, session=None):
-        """Creates a trading session, obtaining session tokens for
-        subsequent API access"""
+        """Creates a trading session, obtaining session tokens for subsequent API access"""
         params = {
             'identifier': self.IG_USERNAME,
             'password': self.IG_PASSWORD

@@ -416,6 +416,9 @@ class StrategyIndMarginTrade(StrategyTrade):
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
+                # retains the last trade timestamp
+                self._stats['realized-entry-timestamp'] = data.get('timestamp', 0.0)
+
             elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
                 # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twices
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -478,6 +481,9 @@ class StrategyIndMarginTrade(StrategyTrade):
                         self.stop_ref_oid = None
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+                # retains the last trade timestamp
+                self._stats['realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
     def position_signal(self, signal_type, data, ref_order_id, instrument):
         if signal_type == Signal.SIGNAL_POSITION_DELETED:

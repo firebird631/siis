@@ -454,7 +454,7 @@ class PgSql(Database):
                 self.unlock()
 
         #
-        # inset user_trade
+        # insert user_trade
         #
 
         self.lock()

@@ -1949,7 +1949,7 @@ class Strategy(Runnable):
             # modify SL
             if action == 'stop-loss' and 'stop-loss' in data and type(data['stop-loss']) is float:
                 if data['stop-loss'] > 0.0:
-                    if trade.has_stop_order():
+                    if trade.has_stop_order() or data.get('force', False):
                         trade.modify_stop_loss(self.trader(), strategy_trader.instrument, data['stop-loss'])
                     else:
                         trade.sl = data['stop-loss']
@@ -1960,7 +1960,7 @@ class Strategy(Runnable):
             # modify TP
             elif action == 'take-profit' and 'take-profit' in data and type(data['take-profit']) is float:
                 if data['take-profit'] > 0.0:
-                    if trade.has_limit_order():
+                    if trade.has_limit_order() or data.get('force', False):
                         trade.modify_take_profit(self.trader(), strategy_trader.instrument, data['take-profit'])
                     else:
                         trade.tp = data['take-profit']

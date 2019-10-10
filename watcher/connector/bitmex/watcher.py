@@ -10,6 +10,7 @@ import traceback
 import math
 
 from datetime import datetime
+from common.utils import UTC
 
 from watcher.watcher import Watcher
 from notifier.signal import Signal
@@ -417,14 +418,14 @@ class BitMexWatcher(Watcher):
                         operation_time = datetime.strptime(ld.get('timestamp', '1970-01-01 00:00:00.000Z'), "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
                         # 'workingIndicator': False, if fully filled
                         #  'leavesQty': 0, if fully filled
-
                         # 'currency': 'XBT', 'settlCurrency': 'XBt', 'triggered': '', 'simpleLeavesQty': None, 'leavesQty': 10000, 'simpleCumQty': None, 'cumQty': 0, 'avgPx': None, ...
 
                         order = {
                           'id': ld['orderID'],
                           'symbol': symbol,
+                          # 'direction': direction,  # no have
                           'timestamp': operation_time,
-                          'quantity': ld.get('orderQty', 0),
+                          'quantity': ld.get('orderQty', 0.0),
                           'filled': None,  # no have
                           'cumulative-filled': ld.get('cumQty', 0),
                           'exec-price': None,  # no have
@@ -479,7 +480,7 @@ class BitMexWatcher(Watcher):
                     #
 
                     tradeable = instrument.get('state', 'Closed') == 'Open'
-                    update_time = datetime.strptime(instrument.get('timestamp', '1970-01-01 00:00:00.000Z'), "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+                    update_time = datetime.strptime(instrument.get('timestamp', '1970-01-01 00:00:00.000Z'), "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
                     symbol = instrument.get('symbol', '')
                     base_symbol = instrument.get('rootSymbol', 'USD')
                     quote_symbol = symbol[-3:]
