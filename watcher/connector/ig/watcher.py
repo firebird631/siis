@@ -635,8 +635,8 @@ class IGWatcher(Watcher):
                                 'id': order_id,
                                 'type': order_type,
                                 'time-in-force': time_in_force,
-                                'price': level if order_type == Order.ORDER_LIMIT,
-                                'stop-price': level if order_type == Order.ORDER_STOP,
+                                'price': level if order_type == Order.ORDER_LIMIT else None,
+                                'stop-price': level if order_type == Order.ORDER_STOP else None,
                                 'stop-loss': stop_distance,
                                 'take-profit': limit_distance
                             }
@@ -649,8 +649,8 @@ class IGWatcher(Watcher):
                                 'id': order_id,
                                 'type': order_type,
                                 'time-in-force': time_in_force,
-                                'price': level if order_type == Order.ORDER_LIMIT,
-                                'stop-price': level if order_type == Order.ORDER_STOP,
+                                'price': level if order_type == Order.ORDER_LIMIT else None,
+                                'stop-price': level if order_type == Order.ORDER_STOP else None,
                                 'stop-loss': stop_distance,
                                 'take-profit': limit_distance
                             }
