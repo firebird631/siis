@@ -746,7 +746,7 @@ class IGWatcher(Watcher):
                                 'avg-price': None,  # no have
                             }
 
-                            if data.get('limitLevel') and if data.get('stopLevel'):
+                            if data.get('limitLevel') and data.get('stopLevel'):
                                 order['type'] = Order.ORDER_STOP_LIMIT
                                 order['price'] = float(data.get('limitLevel'))
                                 order['stop-price'] = float(data.get('stopLevel'))
