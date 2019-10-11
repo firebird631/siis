@@ -781,6 +781,19 @@ class IGWatcher(Watcher):
                                 'avg-price': None,  # no have
                             }
 
+                            if data.get('limitLevel') and data.get('stopLevel'):
+                                order['type'] = Order.ORDER_STOP_LIMIT
+                                order['price'] = float(data.get('limitLevel'))
+                                order['stop-price'] = float(data.get('stopLevel'))
+                            elif data.get('limitLevel'):
+                                order['type'] = Order.ORDER_LIMIT
+                                order['price'] = float(data.get('limitLevel'))
+                            elif data.get('stopLevel'):
+                                order['type'] = Order.ORDER_STOP
+                                order['stop-price'] = float(data.get('stopLevel'))
+                            else:
+                                order['type'] = Order.ORDER_MARKET
+
                             self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order, ref_order_id))
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
 
