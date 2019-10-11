@@ -464,7 +464,8 @@ class StrategyMarginTrade(StrategyTrade):
 
                 self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
-            elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
+            elif data['id'] == self.limit_oid or data['id'] == self.stop_oid or data['id'] == self.position_id:
+                # we test position_id to because IG use dealId as ref
                 # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twices
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     filled = data['cumulative-filled'] - self.x   # computed filled qty

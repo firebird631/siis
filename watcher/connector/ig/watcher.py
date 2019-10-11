@@ -746,6 +746,8 @@ class IGWatcher(Watcher):
                                 'avg-price': None,  # no have
                             }
 
+                            # 'profit' 'profitCurrency'
+
                             if data.get('limitLevel') and data.get('stopLevel'):
                                 order['type'] = Order.ORDER_STOP_LIMIT
                                 order['price'] = float(data.get('limitLevel'))
@@ -765,7 +767,6 @@ class IGWatcher(Watcher):
                         elif status == "DELETED":
                             # deleted why for, we never receive them
                             self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (epic, order_id, ""))
-                            pass
 
                         elif status == "OPEN":
                             # traded and initial
@@ -793,6 +794,9 @@ class IGWatcher(Watcher):
                                 order['stop-price'] = float(data.get('stopLevel'))
                             else:
                                 order['type'] = Order.ORDER_MARKET
+
+                            # @todo 'limitDistance' 'stopDistance' 'trailingStop'
+                            # 'profit': -0.82, 'profitCurrency': 'EUR'
 
                             self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order, ref_order_id))
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
