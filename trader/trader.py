@@ -849,7 +849,7 @@ class Trader(Runnable):
             # depending of the type
             order.price = order_data.get('price')
             order.stop_price = order_data.get('stop-price')
-            order.time_in_force = order_data.get('time-in-force')
+            order.time_in_force = order_data.get('time-in-force', Order.TIME_IN_FORCE_GTC)
 
             order.close_only = order_data.get('close-only', False)
             order.reduce_only = order_data.get('reduce-only', False)
