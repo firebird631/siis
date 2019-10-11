@@ -81,6 +81,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         if trader.create_order(order):
             # keep the related create position identifier if available
+            self.create_ref_oid = order.order_id
             self.position_id = order.position_id
 
             if not self.eot and order.created_time:
@@ -100,7 +101,6 @@ class StrategyMarginTrade(StrategyTrade):
             # cancel the remaining buy order
             if trader.cancel_order(self.create_oid):
                 self.create_ref_oid = None
-                self.create_oid = None
 
                 if self.e <= 0:
                     # no entry qty processed, entry canceled

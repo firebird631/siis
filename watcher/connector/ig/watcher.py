@@ -662,10 +662,11 @@ class IGWatcher(Watcher):
                             }
 
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (epic, order_id, ""))
 
                         elif status == "DELETED":
                             # deleted why for, we never receive them
-                            # self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (epic, order_id, ""))
+                            self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (epic, order_id, ""))
                             pass
 
                         elif status == "OPEN":
@@ -682,6 +683,7 @@ class IGWatcher(Watcher):
                                 'avg-price': None,  # no have
                             }
 
+                            self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order, ref_order_id))
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
 
                         elif status == "PARTIALLY_CLOSED":
