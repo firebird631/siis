@@ -616,7 +616,7 @@ class IGWatcher(Watcher):
                                 order_type = Order.ORDER_STOP
                             else:
                                 order_type = Order.ORDER_MARKET
-                        else:i
+                        else:
                             order_type = Order.ORDER_MARKET
 
                         if data.get('timeInForce'):
