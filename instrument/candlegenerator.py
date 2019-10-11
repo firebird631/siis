@@ -52,7 +52,7 @@ class CandleGenerator(object):
     @property
     def to_tf(self):
         return self._to_tf
-    
+
     def generate_from_candles(self, from_candles, ignore_non_ended=True):
         """
         Generate as many higher candles as possible from the array of candles given in parameters.

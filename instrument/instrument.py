@@ -312,6 +312,8 @@ class Instrument(object):
     TF_1S = TF_SEC
     TF_10SEC = 10
     TF_10S = TF_10SEC
+    TF_15SEC = 15
+    TF_15S = TF_15SEC
     TF_30SEC = 30
     TF_30S = TF_30SEC
     TF_MIN = 60
