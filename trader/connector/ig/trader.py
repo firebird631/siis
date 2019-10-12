@@ -217,6 +217,7 @@ class IGTrader(Trader):
     def create_order(self, order):
         """
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
+        @todo Could used close_open_position if reduce only is defined.
         """
         if not self.has_market(order.symbol):
             logger.error("Trader %s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
@@ -398,7 +399,13 @@ class IGTrader(Trader):
 
     @Trader.mutexed
     def close_position(self, position_id, market=True, limit_price=None):
-        # @todo check why error, if we have "errorCode":"unable to aggregate close positions - no compatible position found" cancel the stop order
+        """
+        Close an existing position by its position identifier.
+        @param position_id str Unique position identifier (dealId)
+        @param market boolean True if close at market (no limit price)
+        @param limit_price float If market is False then use this limit price
+        @note epic and expiry must be none if there is a defined dealId.
+        """
         if not self._activity:
             return False
 
@@ -411,17 +418,21 @@ class IGTrader(Trader):
             logger.error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id))
             return False
 
-        epic = position.symbol
-
         # EPIC market detail fetched once next use cached
-        market_info = self.market(epic)
+        market_info = self.market(position.symbol)
         if market_info is None:
             return False
 
+        epic = position.symbol
+        expiry = market_info.expiry
+        deal_id = position.position_id
         quote_id = None
         size = position.quantity
-        expiry = market_info.expiry
-        deal_id = None  # position.position_id
+
+        if deal_id:
+            # dealId then no epic neither expiry
+            epic = None
+            expiry = None
 
         if market:
             order_type = 'MARKET'
@@ -432,17 +443,19 @@ class IGTrader(Trader):
 
         direction = 'SELL' if position.direction == Position.LONG else 'BUY'
 
-        # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
-        logger.info(self._previous_order)
-        if epic in self._previous_order and (self._previous_order[epic] == (expiry, size, direction)):
-            logger.warning("%s wait 1sec before passing a duplicate order..." % (self.name,))
-            time.sleep(1.0)
+        if epic and expiry:
+            # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
+            logger.info(self._previous_order)
+            if epic in self._previous_order and (self._previous_order[epic] == (expiry, size, direction)):
+                logger.warning("%s wait 1sec before passing a duplicate order..." % (self.name,))
+                time.sleep(1.0)
 
         try:
             results = self._watcher.connector.ig.close_open_position(deal_id, direction, epic, expiry, level, order_type, quote_id, size)
      
             if results.get('dealStatus', '') == 'ACCEPTED':
-                self._previous_order[epic] = (expiry, size, direction)
+                if epic and expiry:
+                    self._previous_order[epic] = (expiry, size, direction)
 
                 # set position closing until we get confirmation on a next update
                 position.closing(limit_price)
