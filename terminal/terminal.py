@@ -102,7 +102,10 @@ class View(object):
         self._mutex = threading.Lock()
 
         if mode == View.MODE_STREAM:
-            self._content = [""]
+            if not stdscr:
+                self._content = [""]
+            else:
+                self._content = []
 
         elif mode == View.MODE_BLOCK:
             self._content = []
@@ -124,11 +127,13 @@ class View(object):
         self._cur_table = (0, 0)
 
         self._parent_win = stdscr
+        self._parent_size = (0, 0)
 
         if stdscr:
             height, width = stdscr.getmaxyx()
             # H, W, Y, X...
             self._rect = (size[1] or height, size[0] or width, pos[1], pos[0])
+            self._parent_size = (height, width)
 
             if 1: # window:
                 self._win = curses.newwin(*self._rect)
@@ -137,7 +142,8 @@ class View(object):
                 # self._win = stdscr.subpad(*self._rect)
 
             if mode == View.MODE_STREAM:
-                self._win.scrollok(1)
+                # self._win.scrollok(1)
+                self._win.scrollok(0)
             elif mode == View.MODE_BLOCK:
                 self._win.scrollok(0)
 
@@ -162,9 +168,9 @@ class View(object):
     def mode(self):
         return self._mode
     
-    @property
-    def content(self):
-        return self._content
+    # @property
+    # def content(self):
+    #     return self._content
     
     @property
     def name(self):
@@ -185,8 +191,13 @@ class View(object):
             self._n = 0
 
             if self._mode == View.MODE_STREAM:
-                self._content = [""]
+                if not self._parent_win:
+                    self._content = [""]
+                else:
+                    self._content = []
+
                 self._first_row = 0
+
             elif self._mode == View.MODE_BLOCK:
                 self._content = []
 
@@ -285,25 +296,26 @@ class View(object):
 
         if self._win:
             if self._mode == View.MODE_STREAM:
-                rows = content.split('\n')
-                nl = self._need_nl
+                self.erase()
 
-                n = 0  # relative row count because scroll auto in stream mode
+                rows = content.split('\n')
+                n = 0
 
                 for row in rows:
-                    if nl:
-                        # new line needed
-                        self._content.append("")
-                        self._win.addstr('\n')
-                        nl = False
+                    self._content.append(color+row+Terminal.DEFAULT)
 
-                    self._content[-1] += color+row+Terminal.DEFAULT
+                if len(self._content) > Terminal.MAX_NUM_ENTRIES:
+                    m = len(self._content) - Terminal.MAX_NUM_ENTRIES
+                    self._content = self._content[-Terminal.MAX_NUM_ENTRIES:]
 
+                    self._n -= m
+                    self._first_row -= m
+
+                self._first_row = 0  # auto scroll
+                start = max(0, len(self._content)-self.height+self._first_row)
+
+                for row in self._content[start:]:
                     if self._active:
-                        _y, _x = self._win.getyx()
-                        if _y >= self.height:
-                            self.clear()
-
                         if self._right_align:
                             # @todo not perfect because count non color escapes
                             rm = row.count('\\')
@@ -312,23 +324,13 @@ class View(object):
                             x = 0
 
                         try:
-                            self._win.move(_y-self._first_row, x)
-                            self.__cprint(self._first_row+n+_y, x, row)
-                            n += 1
-                            # self._n += 1
+                            self._win.move(n, x)
+                            self.__cprint(n, x, row, self._first_col)
                         except:
                             pass
 
-                    # self._n += 1
-                    #n += 1
-                    nl = True
-
-                    # self._first_row = max(0, self._n - self.height)
-
-                self._n, _x = self._win.getyx()
-
-                # new line for the next draw call
-                self._need_nl = endl
+                        self._n += 1
+                        n += 1
 
             elif self._mode == View.MODE_BLOCK:
                 self.clear()
@@ -340,7 +342,7 @@ class View(object):
                 n = 0
 
                 for row in rows:
-                    self._content.append(color+content+Terminal.DEFAULT)
+                    self._content.append(color+row+Terminal.DEFAULT)
 
                     if self._active:
                         if n >= self._first_row and n < self.height:
@@ -388,38 +390,74 @@ class View(object):
 
         self.unlock()
 
-    def reshape(self, w, h):
+    def reshape(self, h, w):
         """
         When terminal size changes.
         @todo Have to reshape any of the views and redraw the actives.
         """
-        pass
+        self._n = 0
+
+        self._first_row = 0
+        self._first_col = 0
+
+        self._table_first_row = 0
+        self._table_first_col = 0
+
+        self._win = None
+
+        if self._parent_win:
+            height, width = self._parent_win.getmaxyx()
+
+            hr = height / self._parent_size[0]
+            wr = width / self._parent_size[1]
+
+            self._parent_size = (height, width)
+
+            # H, W, Y, X...
+            self._rect = (
+                int(round(self._rect[0] * hr)),
+                int(round(self._rect[1] * wr)),
+                int(round(self._rect[2] * hr)),
+                int(round(self._rect[3] * wr))
+            )
+
+            if 1: # window:
+                self._win = curses.newwin(*self._rect)
+            else:
+                self._win = stdscr.subwin(*self._rect)
+                # self._win = stdscr.subpad(*self._rect)
+
+            if self._mode == View.MODE_STREAM:
+                # self._win.scrollok(1)
+                self._win.scrollok(0)
+                self._first_row = 0 # max(0, len(self._content) - self.height - 1)
+            elif self._mode == View.MODE_BLOCK:
+                self._win.scrollok(0)
 
     def redraw(self):
         self.lock()
 
         if self._win:
-            self.erase()  # self.clear()
+            self.erase()
 
             if self._mode == View.MODE_STREAM:
                 if self._active:
                     # max n rows
-                    self._n = self._first_row
-                    start = max(0, len(self._content) - self.height)
+                    n = 0
 
-                    for row in self._content[self._first_row+start : self._first_row+start+self.height]:
+                    start = max(0, len(self._content)-self.height+self._first_row)
+
+                    for row in self._content[start:]:
+                        if self._right_align:
+                            rm = row.count('\\')
+                            x = max(0, self.width - len(row) - rm - 1)
+                        else:
+                            x = 0
+
                         try:
-                            if self._right_align:
-                                rm = row.count('\\')
-                                x = max(0, self.width - len(row) - rm - 1)
-                            else:
-                                x = 0
-
-                            if self._n > 0:
-                                self._win.addstr('\n')
-
-                            self.__cprint(self._n, x, row)
-                            self._n += 1
+                            self._win.move(n, x)
+                            self.__cprint(n, x, row, self._first_col)
+                            n += 1
                         except:
                             pass
 
@@ -492,22 +530,16 @@ class View(object):
             if n < 0:
                 self._first_row += n
 
-                if self._first_row < 0:
-                    self._first_row = 0
-
-                if self._win:
-                    self._win.scroll(n)
+                if self._first_row < -len(self._content)+self.height:
+                    self._first_row = -len(self._content)+self.height
 
                 self._dirty = True
 
             elif n > 0:
                 self._first_row += n
 
-                if self._first_row > len(self._content):
-                    self._first_row = len(self._content)-1
-
-                if self._win:
-                    self._win.scroll(n)
+                if self._first_row > 0:
+                    self._first_row = 0
 
                 self._dirty = True
 
@@ -722,6 +754,7 @@ class Terminal(object):
         self._old_default = None
         self._key = None
         self._mode = Terminal.MODE_DEFAULT
+        self._query_reshape = 0.0
 
     def upgrade(self):
         self.setup_term(True)
@@ -925,7 +958,6 @@ class Terminal(object):
                 # print("\033c")
                 print(chr(27) + "[2J", end='')
         elif self._stdscr:
-            # self._stdscr.clear()
             self._win.erase()
 
     def style(self):
@@ -1064,29 +1096,30 @@ class Terminal(object):
                     return None
 
                 elif c == 'KEY_RESIZE':  # ch == curses.KEY_RESIZE:
-                    for k, view in self._views.items():
-                        # reshape any views
-                        view.reshape(*self._stdscr.getmaxyx())
-
-                        # force redraw the active content
-                        if self._active_content:
-                            view = self._views.get(self._active_content)
-                            if view:
-                                view.redraw()
+                    if not self._query_reshape:
+                        self._query_reshape = time.time() + 0.5
 
                 # shift + keys arrows for table navigation only in default mode (ch == curses.KEY_SUP)
                 elif (c == 'KEY_SR' or c == 'j'):
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
-                            view.table_scroll_row(-1)
+                            if view.mode == View.MODE_STREAM:
+                                view.scroll(-1)
+                                view.redraw()
+                            elif view.mode == View.MODE_BLOCK:
+                                view.table_scroll_row(-1)
 
                     self._key = c
                 elif (c == 'KEY_SF' or c == 'k'):
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
-                            view.table_scroll_row(1)
+                            if view.mode == View.MODE_STREAM:
+                                view.scroll(1)
+                                view.redraw()
+                            elif view.mode == View.MODE_BLOCK:
+                                view.table_scroll_row(1)
 
                     self._key = c
                 elif (c == 'KEY_SLEFT' or c == 'h'):
@@ -1109,14 +1142,22 @@ class Terminal(object):
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
-                            view.table_scroll_row(-(view.height-4))
+                            if view.mode == View.MODE_STREAM:
+                                view.scroll(-(view.height-4))
+                                view.redraw()
+                            elif view.mode == View.MODE_BLOCK:
+                                view.table_scroll_row(-(view.height-4))
 
                     self._key = c
                 elif c == 'KEY_NPAGE':
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
-                            view.table_scroll_row(view.height-4)
+                            if view.mode == View.MODE_STREAM:
+                                view.scroll((view.height-4))
+                                view.redraw()
+                            elif view.mode == View.MODE_BLOCK:
+                                view.table_scroll_row(view.height-4)
 
                     self._key = c
 
@@ -1149,6 +1190,36 @@ class Terminal(object):
         self._mutex.release()
 
     def update(self):
+        if self._query_reshape < 0 and time.time() > -self._query_reshape:
+            self._query_reshape = 0.0
+
+        if self._query_reshape > 0 and time.time() > self._query_reshape + 0.5:
+            height, width = self._stdscr.getmaxyx()
+
+            self._stdscr.clear()
+            curses.resizeterm(height, width)
+
+            for k, view in self._views.items():
+                # reshape any views
+                view.reshape(height, width)
+
+            self._views.get('info').redraw()
+            self._views.get('help').redraw()
+            self._views.get('default').redraw()
+            self._views.get('command').redraw()
+            self._views.get('status').redraw()
+            self._views.get('notice').redraw()
+            self._views.get('panel').redraw()
+            self._views.get('panel-head').redraw()
+
+            if self._active_content:
+                view = self._views.get(self._active_content)
+                if view:
+                    view.redraw()
+
+            self._stdscr.refresh()
+            self._query_reshape = -time.time() - 0.5
+
         for k, view in self._views.items():
             view.refresh()
 
