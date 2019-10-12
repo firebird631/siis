@@ -23,8 +23,8 @@ from trader.order import Order
 from database.database import Database
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
+logger = logging.getLogger('siis.strategy.trader')
+error_logger = logging.getLogger('siis.error.strategy.trader')
 
 
 class StrategyTrader(object):
@@ -153,13 +153,13 @@ class StrategyTrader(object):
                         # append the region to the strategy trader
                         strategy_trader.add_region(region)
                     else:
-                        logger.error("During loads, region checking error %s" % (r['name'],))
+                        error_logger.error("During loads, region checking error %s" % (r['name'],))
 
                     self.add_region(region)
                 except Exception as e:
-                    logger.error(repr(e))
+                    error_logger.error(repr(e))
             else:
-                logger.error("During loads, unsupported region %s" % (r['name'],))
+                error_logger.error("During loads, unsupported region %s" % (r['name'],))
 
     def loads_trade(self, trade_id, trade_type, data, operations):
         """
@@ -180,7 +180,7 @@ class StrategyTrader(object):
         elif trade_type == StrategyTrade.TRADE_IND_MARGIN:
             trade = StrategyIndMarginTrade(0)
         else:
-            logger.error("During loads, usupported trade type %i" % (trade_type,))
+            error_logger.error("During loads, usupported trade type %i" % (trade_type,))
             return
 
         trade.loads(data, self.strategy.service)
@@ -196,11 +196,11 @@ class StrategyTrader(object):
                         # append the operation to the trade
                         trade.add_operation(operation)
                     else:
-                        logger.error("During loads, operation checking error %s" % (op_name,))
+                        error_logger.error("During loads, operation checking error %s" % (op_name,))
                 except Exception as e:
-                    logger.error(repr(e))
+                    error_logger.error(repr(e))
             else:
-                logger.error("During loads, region checking error %s" % (r['name'],))
+                error_logger.error("During loads, region checking error %s" % (r['name'],))
 
         # ignored for now because need to check assets/positions/orders
         # self.add_trade(trade)
@@ -225,7 +225,8 @@ class StrategyTrader(object):
                     trade.order_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
 
         except Exception as e:
-            logger.error(repr(e))
+            error_logger.error(traceback.format_exc())
+            error_logger.error(repr(e))
 
         self.unlock()
 
@@ -245,7 +246,8 @@ class StrategyTrader(object):
                     trade.position_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
 
         except Exception as e:
-            logger.error(repr(e))
+            error_logger.error(traceback.format_exc())
+            error_logger.error(repr(e))
 
         self.unlock()
 

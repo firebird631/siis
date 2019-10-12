@@ -11,7 +11,7 @@ from common.utils import timeframe_to_str, timeframe_from_str
 from trader.order import Order
 
 import logging
-logger = logging.getLogger('siis.strategy')
+logger = logging.getLogger('siis.strategy.trade')
 
 
 class StrategyTrade(object):
@@ -421,6 +421,20 @@ class StrategyTrade(object):
     def support_both_order(self):
         """
         Overrides, must return true if the trader support stop and limit order at the same time
+        """
+        return False
+
+    @classmethod
+    def is_margin(cls):
+        """
+        Overrides, must return true if the trader is margin based.
+        """
+        return False
+
+    @classmethod
+    def is_spot(cls):
+        """
+        Overrides, must return true if the trader is spot based.
         """
         return False
 

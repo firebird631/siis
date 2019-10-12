@@ -10,7 +10,7 @@ from trader.order import Order
 from common.utils import timeframe_to_str
 
 import logging
-logger = logging.getLogger('siis.strategy')
+logger = logging.getLogger('siis.strategy.signal')
 
 
 class StrategySignal(object):

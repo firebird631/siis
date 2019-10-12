@@ -10,7 +10,7 @@ from trader.order import Order
 from .strategytrade import StrategyTrade
 
 import logging
-logger = logging.getLogger('siis.strategy')
+logger = logging.getLogger('siis.strategy.assettrade')
 
 
 class StrategyAssetTrade(StrategyTrade):
@@ -383,6 +383,14 @@ class StrategyAssetTrade(StrategyTrade):
             return True
         else:
             return False
+
+    @classmethod
+    def is_margin(cls):
+        return False
+
+    @classmethod
+    def is_spot(cls):
+        return True
 
     #
     # signals

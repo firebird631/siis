@@ -24,7 +24,7 @@ class Position(Keyed):
     """
 
     __slots_ = '_trader', '_position_id', '_state', '_symbol', '_shared', '_symbol', '_quantity', '_profit_loss', '_profit_loss_rate', \
-               '_profit_loss_market', '_profit_loss_market_rate', '_created_time', '_market_close', '_leverage', '_entry_price', \
+               '_profit_loss_market', '_profit_loss_market_rate', '_created_time', '_market_close', '_leverage', '_entry_price', '_exit_price' \
                '_stop_loss', '_take_profit', '_trailing_stop', '_direction', '_author', '_copied_position_id'
 
     LONG = 1    # long direction
@@ -56,6 +56,7 @@ class Position(Keyed):
         self._market_close = False
         self._leverage = 1.0
         self._entry_price = 0.0
+        self._exit_price = 0.0
         self._take_profit = None
         self._stop_loss = None
         self._trailing_stop = False

@@ -10,7 +10,7 @@ from trader.order import Order
 from .strategytrade import StrategyTrade
 
 import logging
-logger = logging.getLogger('siis.strategy')
+logger = logging.getLogger('siis.strategy.positiontrade')
 
 
 class StrategyPositionTrade(StrategyTrade):
@@ -21,7 +21,7 @@ class StrategyPositionTrade(StrategyTrade):
     Works with CFD brokers (ig...).
     """
 
-    __slots__ = 'create_ref_oid', 'create_oid', 'position_id', 'position_stop', 'position_limit', 'leverage'
+    __slots__ = 'create_ref_oid', 'create_oid', 'position_id', 'position_stop', 'position_limit', 'position_quantity', 'leverage'
 
     def __init__(self, timeframe):
         super().__init__(StrategyTrade.TRADE_POSITION, timeframe)
@@ -73,7 +73,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         if trader.create_order(order):
             # keep the related create position identifier if available
-            self.create_ref_oid = order.order_id
+            self.create_oid = order.order_id
             self.position_id = order.position_id
 
             if not self.eot and order.created_time:
@@ -172,6 +172,14 @@ class StrategyPositionTrade(StrategyTrade):
     def support_both_order(self):
         return True
 
+    @classmethod
+    def is_margin(cls):
+        return True
+
+    @classmethod
+    def is_spot(cls):
+        return False
+
     #
     # signal
     #
@@ -199,14 +207,18 @@ class StrategyPositionTrade(StrategyTrade):
             if data == self.create_oid:
                 self.create_ref_oid = None                
                 self.create_oid = None
-                self._entry_state = StrategyTrade.STATE_DELETED
+
+                if not self.position_id:
+                    self._entry_state = StrategyTrade.STATE_DELETED
 
         elif signal_type == Signal.SIGNAL_ORDER_CANCELED:
             # order is no longer active
             if data == self.create_oid:
                 self.create_ref_oid = None                
                 self.create_oid = None
-                self._entry_state = StrategyTrade.STATE_CANCELED
+
+                if not self.position_id:
+                    self._entry_state = StrategyTrade.STATE_CANCELED
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price/qty modified, cannot really be used because the strategy might
@@ -218,7 +230,7 @@ class StrategyPositionTrade(StrategyTrade):
             # order fully or partially filled
             filled = 0
 
-            if (data['id'] == self.create_oid):
+            if (data['id'] == self.create_oid or data['id'] == self.position_id):
                 pass
                 # if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                 #     filled = data['cumulative-filled'] - self.e  # compute filled qty
@@ -265,10 +277,10 @@ class StrategyPositionTrade(StrategyTrade):
 
                 # self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
-        if data.get('profit-loss'):
-            self._stats['unrealized-profit-loss'] = data['profit-loss']
-        if data.get('profit-currency'):
-            self._stats['profit-loss-currency'] = data['profit-currency']
+            if data.get('profit-loss'):
+                self._stats['unrealized-profit-loss'] = data['profit-loss']
+            if data.get('profit-currency'):
+                self._stats['profit-loss-currency'] = data['profit-currency']
 
     def position_signal(self, signal_type, data, ref_order_id, instrument):
         if signal_type == Signal.SIGNAL_POSITION_OPENED:
@@ -287,6 +299,20 @@ class StrategyPositionTrade(StrategyTrade):
 
             if not self.xot and (data.get('take-profit') or data.get('stop-loss')):
                 self.xot = data['timestamp']
+
+            last_qty = data.get('quantity', 0.0)
+
+            if last_qty > 0.0:
+                # increase entry
+                self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
+
+                # filled entry quantity from the diff with the previous one
+                self.e += last_qty - self.position_quantity
+
+                if last_qty < self.oq:
+                    self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                if last_qty >= self.oq:
+                    self._entry_state = StrategyTrade.STATE_FILLED
 
             # retains the trade timestamp
             self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
@@ -417,12 +443,12 @@ class StrategyPositionTrade(StrategyTrade):
         if self.direction > 0:
             if self.aep > 0 and self.axp > 0:
                 self.pl = (self.axp - self.aep) / self.aep
-            else:
+            elif self.aep > 0:
                 self.pl = (instrument.close_exec_price(1) - self.aep) / self.aep
         elif self.direction < 0:
             if self.aep > 0 and self.axp > 0:
                 self.pl = (self.aep - self.axp) / self.aep
-            else:
+            elif self.aep > 0:
                 self.pl = (self.aep - instrument.close_exec_price(-1)) / self.aep
 
     def is_target_order(self, order_id, ref_order_id):
@@ -440,6 +466,8 @@ class StrategyPositionTrade(StrategyTrade):
 
         if ref_order_id and (ref_order_id == self.create_ref_oid):
             return True
+
+        return False
 
     #
     # persistance

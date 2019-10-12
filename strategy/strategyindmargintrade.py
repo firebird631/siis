@@ -10,7 +10,7 @@ from trader.order import Order
 from .strategytrade import StrategyTrade
 
 import logging
-logger = logging.getLogger('siis.strategy')
+logger = logging.getLogger('siis.strategy.indmargintrade')
 
 
 class StrategyIndMarginTrade(StrategyTrade):
@@ -302,6 +302,14 @@ class StrategyIndMarginTrade(StrategyTrade):
 
     def support_both_order(self):
         return True
+
+    @classmethod
+    def is_margin(cls):
+        return True
+
+    @classmethod
+    def is_spot(cls):
+        return False
 
     #
     # signals

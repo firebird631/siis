@@ -6,7 +6,7 @@
 from strategy.indicator.indicator import Indicator
 
 import logging
-logger = logging.getLogger('siis.strategy')
+logger = logging.getLogger('siis.strategy.indicator.history')
 
 
 class HistoryIndicator(Indicator):

@@ -1623,7 +1623,7 @@ class PaperTrader(Trader):
                     'exec-price': exec_price,
                     'stop-loss': None,
                     'take-profit': None,
-                    'profit-loss': current_position.profit_loss(),
+                    'profit-loss': current_position.profit_loss,
                     'profit-loss-currency': market.quote
                 }
 
@@ -1642,7 +1642,7 @@ class PaperTrader(Trader):
                     'exec-price': exec_price,
                     'stop-loss': current_position.stop_loss,
                     'take-profit': current_position.take_profit,
-                    'profit-loss': current_position.profit_loss(),
+                    'profit-loss': current_position.profit_loss,
                     'profit-loss-currency': market.quote
                 }
 

@@ -298,7 +298,7 @@ class PgSql(Database):
                             if row[19] == '-':  # not defined mean 1.0 or no margin
                                 market_info.margin_factor = 1.0
                             else:
-                                market_info.margin_factor = float(row[19])
+                                market_info.margin_factor = float(row[19] or "1.0")
 
                         market_info.set_size_limits(float(row[20]), float(row[21]), float(row[22]))
                         market_info.set_notional_limits(float(row[23]), float(row[24]), float(row[25]))
