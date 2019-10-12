@@ -384,6 +384,7 @@ class Instrument(object):
     TRADE_MARGIN = 2       # margin, long and short
     TRADE_IND_MARGIN = 4   # indivisible position, margin, long and short
     TRADE_FIFO = 8         # positions are closed in FIFO order
+    TRADE_POSITION = 16    # individual position on the broker side
 
     ORDER_MARKET = 0
     ORDER_LIMIT = 1
@@ -495,6 +496,10 @@ class Instrument(object):
     @property
     def fifo_position(self):
         return self._trade & Instrument.TRADE_FIFO == Instrument.TRADE_FIFO
+
+    @property
+    def has_position(self):
+        return self._trade & Instrument.TRADE_POSITION == Instrument.TRADE_POSITION
 
     @property
     def orders(self):

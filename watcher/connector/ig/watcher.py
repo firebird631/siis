@@ -66,6 +66,7 @@ class IGWatcher(Watcher):
 
     @todo get vol24 in base and quote unit
     @todo base_exchange_rate must be updated as price changes
+    @todo why don't receive WOU
     """
 
     MAX_CONCURRENT_SUBSCRIPTIONS = 40
@@ -369,10 +370,13 @@ class IGWatcher(Watcher):
         #
 
         if time.time() - self._last_market_update >= IGWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
-            # self.update_session()  # session must at least be obtained each 6h, so ask at the same time each 4h
-
-            self.update_markets_info()
-            self._last_market_update = time.time()
+            try:
+                self.update_markets_info()
+                self._last_market_update = time.time()
+            except Exception as e:
+                # session must at least be obtained each 6h, we call each 4h at least but if we have a server invalidation
+                # @todo and is the WS still valid ?
+                self._connector.update_session()
 
         return True
 
@@ -694,6 +698,10 @@ class IGWatcher(Watcher):
 
                         level = float(data['level']) if data.get('level') is not None else None   # exec price
                         quantity = float(data['size']) if data.get('size') is not None else 0.0
+                        stop_level = float(data['stopLevel']) if data.get('stopLevel') is not None else 0.0
+                        limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else 0.0
+                        profit_loss = float(data['profit']) if data.get('profit') is not None else 0.0
+                        profit_currency = data.get('profitCurrency', "")
 
                         # 'expiry', 'guaranteedStop'
 
@@ -722,12 +730,14 @@ class IGWatcher(Watcher):
                                 'timestamp': event_time,
                                 'direction': direction,
                                 'quantity': None,  # no have
-                                'filled': quantity,
-                                'cumulative-filled': None,  # no have
+                                'filled': None,  # no have
+                                'cumulative-filled': quantity,
                                 'exec-price': level,
-                                'avg-price': None,  # no have
-                                # 'stop-loss': order_stop_loss,  'stopLevel'
-                                # 'take-profit': order_take_profit,  'limitLevel'
+                                'avg-price': None,
+                                'stop-loss': stop_level,
+                                'take-profit': limit_level,
+                                'profit-loss': profit_loss,
+                                'profit-currency': profit_currency,
                             }
 
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
@@ -739,25 +749,21 @@ class IGWatcher(Watcher):
                                 'symbol': epic,
                                 'timestamp': event_time,
                                 'direction': direction,
-                                'quantity': None,  # no have
-                                'filled': quantity,
-                                'cumulative-filled': None,  # no have
+                                'quantity': None,
+                                'filled': None,
+                                'cumulative-filled': quantity,
                                 'exec-price': level,
-                                'avg-price': None,  # no have
+                                'avg-price': None,
+                                'profit-loss': profit_loss,
+                                'profit-currency': profit_currency,
                             }
-
-                            # 'profit' 'profitCurrency'
 
                             if data.get('limitLevel') and data.get('stopLevel'):
                                 order['type'] = Order.ORDER_STOP_LIMIT
-                                order['price'] = float(data.get('limitLevel'))
-                                order['stop-price'] = float(data.get('stopLevel'))
                             elif data.get('limitLevel'):
                                 order['type'] = Order.ORDER_LIMIT
-                                order['price'] = float(data.get('limitLevel'))
                             elif data.get('stopLevel'):
                                 order['type'] = Order.ORDER_STOP
-                                order['stop-price'] = float(data.get('stopLevel'))
                             else:
                                 order['type'] = Order.ORDER_MARKET
 
@@ -776,10 +782,14 @@ class IGWatcher(Watcher):
                                 'timestamp': event_time,
                                 'direction': direction,
                                 'quantity': None,  # no have
-                                'filled': quantity,
-                                'cumulative-filled': None,  # no have
+                                'filled': None,  # no have
+                                'cumulative-filled': quantity,
                                 'exec-price': level,
-                                'avg-price': None,  # no have
+                                'avg-price': None,
+                                'stop-loss': stop_level,
+                                'take-profit': limit_level,
+                                'profit-loss': profit_loss,
+                                'profit-currency': profit_currency,
                             }
 
                             if data.get('limitLevel') and data.get('stopLevel'):
@@ -796,7 +806,6 @@ class IGWatcher(Watcher):
                                 order['type'] = Order.ORDER_MARKET
 
                             # @todo 'limitDistance' 'stopDistance' 'trailingStop'
-                            # 'profit': -0.82, 'profitCurrency': 'EUR'
 
                             self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order, ref_order_id))
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
@@ -809,10 +818,12 @@ class IGWatcher(Watcher):
                                 'timestamp': event_time,
                                 'direction': direction,
                                 'quantity': None,  # no have
-                                'filled': quantity,
-                                'cumulative-filled': None,  # no have
+                                'filled': None,  # no have
+                                'cumulative-filled': quantity,
                                 'exec-price': level,
-                                'avg-price': None,  # no have
+                                'avg-price': None,
+                                'profit-loss': profit_loss,
+                                'profit-currency': profit_currency,
                             }
 
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
@@ -843,13 +854,14 @@ class IGWatcher(Watcher):
 
                     if data.get('dealStatus', "") == "REJECTED":
                         pass
+
                     elif data.get('dealStatus', "") == "ACCEPTED":
                         quantity = float(data.get('size')) if data.get('size') is not None else 0.0
                         level = float(data['level']) if data.get('level') is not None else None
                         stop_level = float(data['stopLevel']) if data.get('stopLevel') is not None else None
                         limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else None
                         profit_loss = float(data['profit']) if data.get('profit') is not None else 0.0
-                        currency = data.get('currency', "")
+                        profit_currency = data.get('profitCurrency', "")
                         # @todo trailingStep, trailingStopDistance, guaranteedStop
 
                         status = data.get('status', "")
@@ -863,13 +875,15 @@ class IGWatcher(Watcher):
                                 'timestamp': event_time,
                                 'quantity': quantity,
                                 'exec-price': level,
+                                'avg-price': level,
+                                'avg-entry-price': level,  # entry
                                 'stop-loss': stop_level,
                                 'take-profit': limit_level,
                                 'profit-loss': profit_loss,
-                                'profit-currency': currency,
-                                'cumulative-filled': quantity,
-                                'filled': None,  # no have
-                                'liquidation-price': None  # no have
+                                'profit-currency': profit_currency,
+                                'cumulative-filled': None,
+                                'filled': None,
+                                'liquidation-price': None
                             }
 
                             self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (epic, position_data, ref_order_id))
@@ -883,13 +897,15 @@ class IGWatcher(Watcher):
                                 'timestamp': event_time,
                                 'quantity': quantity,
                                 'exec-price': level,
+                                'avg-entry-price': level,  # entry
+                                'avg-price': level,
                                 'stop-loss': stop_level,
                                 'take-profit': limit_level,
                                 'profit-loss': profit_loss,
-                                'profit-currency': currency,
-                                'cumulative-filled': quantity,
-                                'filled': None,  # no have
-                                'liquidation-price': None  # no have
+                                'profit-currency': profit_currency,
+                                'cumulative-filled': None,
+                                'filled': None,
+                                'liquidation-price': None
                             }
 
                             self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (epic, position_data, ref_order_id))
@@ -903,13 +919,15 @@ class IGWatcher(Watcher):
                                 'timestamp': event_time,
                                 'quantity': quantity,
                                 'exec-price': level,
+                                'avg-price': level,
+                                'avg-exit-price': level,  # exit
                                 'stop-loss': stop_level,
                                 'take-profit': limit_level,
                                 'profit-loss': profit_loss,
-                                'profit-currency': currency,
-                                'cumulative-filled': quantity,
-                                'filled': None,  # no have
-                                'liquidation-price': None  # no have
+                                'profit-currency': profit_currency,
+                                'cumulative-filled': None,
+                                'filled': None,
+                                'liquidation-price': None
                             }
 
                             self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (epic, position_data, ref_order_id))
@@ -994,7 +1012,7 @@ class IGWatcher(Watcher):
         elif instrument['type'] == 'SECTORS':
             market.market_type = Market.TYPE_SECTOR
 
-        market.trade = Market.TRADE_MARGIN
+        market.trade = Market.TRADE_MARGIN | Market.TRADE_POSITION
         market.contract_type = Market.CONTRACT_CFD
 
         # take minDealSize as tick size

@@ -9,7 +9,7 @@ from common.utils import UTC
 from terminal.terminal import Terminal
 from trader.order import Order
 
-from strategy.strategymargintrade import StrategyMarginTrade
+from strategy.strategypositiontrade import StrategyPositionTrade
 from strategy.strategysignal import StrategySignal
 from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
 
@@ -479,7 +479,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         #
 
         if do_order:
-            trade = StrategyMarginTrade(timeframe)
+            trade = StrategyPositionTrade(timeframe)
 
             logger.info("Order %s %s qty=%s p=%s sl=%s tp=%s ts=%s" % ("long" if direction > 0 else "short", self.instrument.market_id,
                 market.format_quantity(order_quantity), market.format_price(order_price), market.format_price(stop_loss), market.format_price(take_profit), date_str))

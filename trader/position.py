@@ -135,6 +135,10 @@ class Position(Keyed):
         return self._entry_price
 
     @property
+    def exit_price(self):
+        return self._exit_price
+
+    @property
     def trailing_stop(self):
         return self._trailing_stop
     

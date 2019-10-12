@@ -18,6 +18,7 @@ class StrategyIndMarginTrade(StrategyTrade):
     Specialization for indivisible margin position trade.
 
     In this case we only have a single position per market without integrated stop/limit.
+    Works with crypto futures brokers (bitmex...).
 
     We cannot deal in opposite direction at the same time (no hedging),
     but we can evantually manage many trade on the same direction.
@@ -25,7 +26,7 @@ class StrategyIndMarginTrade(StrategyTrade):
     We prefers here to update on trade order signal. A position deleted mean any related trade closed.
 
     @todo fill the exit_trades and update the x and axp each time and compute the axg and x correctly,
-        specially with bitmex which only returns a cummulative filled
+        specially with bitmex which only returns a cumulative filled
     """
 
     __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', 'position_id', \

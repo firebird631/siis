@@ -50,6 +50,7 @@ class Market(object):
     TRADE_MARGIN = 2       # margin, long and short
     TRADE_IND_MARGIN = 4   # indivisible position, margin, long and short
     TRADE_FIFO = 8         # position are closed in FIFO order
+    TRADE_POSITION = 16    # individual position on the broker side
 
     ORDER_MARKET = 0
     ORDER_LIMIT = 1
@@ -178,6 +179,10 @@ class Market(object):
     @property
     def fifo_position(self):
         return self._trade & Market.TRADE_FIFO == Market.TRADE_FIFO
+
+    @property
+    def has_position(self):
+        return self._trade & Market.TRADE_POSITION == Market.TRADE_POSITION
 
     @property
     def orders(self):

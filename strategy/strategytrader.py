@@ -12,6 +12,7 @@ from datetime import datetime
 from strategy.strategytrade import StrategyTrade
 from strategy.strategyassettrade import StrategyAssetTrade
 from strategy.strategymargintrade import StrategyMarginTrade
+from strategy.strategypositiontrade import StrategyPositionTrade
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
 
 from terminal.terminal import Terminal
@@ -174,6 +175,8 @@ class StrategyTrader(object):
             trade = StrategyAssetTrade(0)
         elif trade_type == StrategyTrade.TRADE_MARGIN:
             trade = StrategyMarginTrade(0)
+        elif trade_type == StrategyTrade.TRADE_POSITION:
+            trade = StrategyPositionTrade(0)
         elif trade_type == StrategyTrade.TRADE_IND_MARGIN:
             trade = StrategyIndMarginTrade(0)
         else:
@@ -340,7 +343,7 @@ class StrategyTrader(object):
                 # potential order exec close price (always close a long)
                 close_exec_price = self.instrument.close_exec_price(Order.LONG)
 
-                if (trade.tp > 0) and (close_exec_price >= trade.tp) and not trade.has_limit_order() and not trade.true_position():
+                if (trade.tp > 0) and (close_exec_price >= trade.tp) and not trade.has_limit_order():
                     # take profit trigger stop, close at market (taker fee)
                     if trade.close(trader, self.instrument):
                         # notify
@@ -352,7 +355,7 @@ class StrategyTrader(object):
                         if self._global_streamer:
                             self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
 
-                elif (trade.sl > 0) and (close_exec_price <= trade.sl) and not trade.has_stop_order() and not trade.true_position():
+                elif (trade.sl > 0) and (close_exec_price <= trade.sl) and not trade.has_stop_order():
                     # stop loss trigger stop, close at market (taker fee)
                     if trade.close(trader, self.instrument):
                         # notify
@@ -368,7 +371,7 @@ class StrategyTrader(object):
             # margin trade
             #
 
-            elif trade.trade_type == StrategyTrade.TRADE_MARGIN or trade.trade_type == StrategyTrade.TRADE_IND_MARGIN:
+            elif trade.trade_type in (StrategyTrade.TRADE_MARGIN, StrategyTrade.TRADE_POSITION, StrategyTrade.TRADE_IND_MARGIN):
                 # process only on active trades
                 if not trade.is_active():
                     # @todo timeout if not filled before condition...
@@ -386,9 +389,7 @@ class StrategyTrader(object):
                 # potential order exec close price
                 close_exec_price = self.instrument.close_exec_price(trade.direction)
 
-                if ((trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (trade.direction < 0 and close_exec_price <= trade.tp)) and
-                        not trade.has_limit_order() and not trade.has_position_limit()):
-
+                if (trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (trade.direction < 0 and close_exec_price <= trade.tp)) and not trade.has_limit_order():
                     # close in profit at market (taker fee)
                     if trade.close(trader, self.instrument):
                         # and notify
@@ -400,9 +401,7 @@ class StrategyTrader(object):
                         if self._global_streamer:
                             self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
 
-                elif ((trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and
-                        not trade.has_stop_order() and not trade.has_position_stop()):
-
+                elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_stop_order():
                     # close a long or a short position at stop-loss level at market (taker fee)
                     if trade.close(trader, self.instrument):
                         # and notify

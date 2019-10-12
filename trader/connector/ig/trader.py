@@ -469,6 +469,7 @@ class IGTrader(Trader):
         position = self._positions.get(position_id)
 
         if position is None or not position.is_opened():
+            logger.error("%s position %s not found !" % (self.name, position_id,))
             return False
 
         limit_level = None

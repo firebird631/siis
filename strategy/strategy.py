@@ -27,6 +27,7 @@ from trader.order import Order
 
 from strategy.strategyassettrade import StrategyAssetTrade
 from strategy.strategymargintrade import StrategyMarginTrade
+from strategy.strategypositiontrade import StrategyPositionTrade
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
 
 from database.database import Database
@@ -1804,6 +1805,15 @@ class Strategy(Runnable):
                     results['error'] = True
                     results['messages'].append("Not enought free quote asset %s, has %s but need %s" % (
                             market.quote, market.format_quantity(trader.asset(market.quote).free), market.format_quantity(qty)))
+
+        elif market.has_margin and not market.has_position:
+            trade = StrategyPositionTrade(timeframe)
+
+            if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
+                results['error'] = True
+                results['messages'].append("Not enought margin")
+
+            order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
         elif market.has_margin and not market.indivisible_position:
             trade = StrategyMarginTrade(timeframe)

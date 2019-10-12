@@ -1618,9 +1618,13 @@ class PaperTrader(Trader):
                     'direction': current_position.direction,
                     'timestamp': order.transact_time,
                     'quantity': 0,
+                    'avg-entry-price': current_position.entry_price,
+                    'avg-exit-price': current_position.exit_price,
                     'exec-price': exec_price,
                     'stop-loss': None,
-                    'take-profit': None
+                    'take-profit': None,
+                    'profit-loss': current_position.profit_loss(),
+                    'profit-loss-currency': market.quote
                 }
 
                 self.service.watcher_service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (order.symbol, position_data, order.ref_order_id))
@@ -1633,10 +1637,13 @@ class PaperTrader(Trader):
                     'timestamp': order.transact_time,
                     'quantity': current_position.quantity,
                     # 'avg-price': current_position.entry_price,
+                    'avg-entry-price': current_position.entry_price,
+                    'avg-exit-price': current_position.exit_price,
                     'exec-price': exec_price,
                     'stop-loss': current_position.stop_loss,
                     'take-profit': current_position.take_profit,
-                    # 'profit-loss': @todo here
+                    'profit-loss': current_position.profit_loss(),
+                    'profit-loss-currency': market.quote
                 }
 
                 self.service.watcher_service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (order.symbol, position_data, order.ref_order_id))
@@ -1773,7 +1780,10 @@ class PaperTrader(Trader):
                 'quantity': position.quantity,
                 'exec-price': position.entry_price,
                 'stop-loss': position.stop_loss,
-                'take-profit': position.take_profit
+                'take-profit': position.take_profit,
+                'avg-entry-price': position.entry_price,
+                'profit-loss': 0.0,
+                'profit-loss-currency': market.quote
             }
 
             # signal as watcher service (position opened fully completed)

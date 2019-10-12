@@ -35,8 +35,9 @@ class StrategyTrade(object):
     TRADE_BUY_SELL = 0    # spot/asset trade
     TRADE_ASSET = 0
     TRADE_SPOT = 0
-    TRADE_MARGIN = 1      # individual margin trade position (potentially compatible with hedging markets)
-    TRADE_IND_MARGIN = 2  # indivisible margin trade position (incompatible with hedging markets), currently found on crypto
+    TRADE_MARGIN = 1      # individual margin trade but as FIFO position (incompatible with hedging markets)
+    TRADE_IND_MARGIN = 2  # indivisible margin trade position (incompatible with hedging markets)
+    TRADE_POSITION = 3    # individual margin trade position (compatible with hedging markets)
 
     STATE_UNDEFINED = -1
     STATE_NEW = 0
@@ -504,8 +505,10 @@ class StrategyTrade(object):
             return 'asset'
         elif self._trade_type == StrategyTrade.TRADE_MARGIN:
             return 'margin'
-        elif self._trade_type == StrategyTrade.TRADE_MARGIN:
-            return 'indisible-margin'
+        elif self._trade_type == StrategyTrade.TRADE_IND_MARGIN:
+            return 'ind-margin'
+        elif self._trade_type == StrategyTrade.TRADE_POSITION:
+            return 'position'
         else:
             return "undefined"
 
@@ -517,6 +520,8 @@ class StrategyTrade(object):
             return StrategyTrade.TRADE_MARGIN
         elif trade_type == 'ind-margin':
             return StrategyTrade.TRADE_IND_MARGIN
+        elif trade_type == 'position':
+            return StrategyTrade.TRADE_POSITION
         else:
             return StrategyTrade.TRADE_UNDEFINED
 
