@@ -12,8 +12,11 @@ from common.utils import UTC, TIMEFRAME_FROM_STR_MAP
 from terminal.terminal import Terminal
 from database.database import Database
 
+import logging
+logger = logging.getLogger('siis.tools.fetcher')
 
-def do_binarizer(options, siis_logger):
+
+def do_binarizer(options):
     from database.tickstorage import TextToBinary
 
     Terminal.inst().info("Starting SIIS binarizer...")
@@ -33,7 +36,7 @@ def do_binarizer(options, siis_logger):
                 pass
 
     if timeframe < 0:
-        siis_logger.error("Invalid timeframe !")
+        logger.error("Invalid timeframe !")
         sys.exit(-1)
 
     converter = TextToBinary(options['markets-path'], options['broker'], options['market'], options.get('from'), options.get('to'))

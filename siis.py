@@ -198,7 +198,7 @@ def application(argv):
     if options.get('binarize'):
         if options.get('market') and options.get('from') and options.get('to') and options.get('broker'):
             from tools.binarizer import do_binarizer
-            do_binarizer(options, siis_logger)
+            do_binarizer(options)
         else:
             display_cli_help()
 
@@ -211,7 +211,7 @@ def application(argv):
     if options.get('fetch'):
         if options.get('market') and options.get('broker') and options.get('timeframe'):
             from tools.fetcher import do_fetcher
-            do_fetcher(options, siis_logger)
+            do_fetcher(options)
         else:
             display_cli_help()
 
@@ -224,7 +224,7 @@ def application(argv):
     if options.get('optimize'):
         if options.get('market') and options.get('from') and options.get('to') and options.get('broker') and options.get('timeframe'):
             from tools.optimizer import do_optimizer
-            do_optimizer(options, siis_logger)
+            do_optimizer(options)
         else:
             display_cli_help()
 
@@ -237,7 +237,7 @@ def application(argv):
     if options.get('sync'):
         if options.get('broker'):
             from tools.syncer import do_syncer
-            do_syncer(options, siis_logger)
+            do_syncer(options)
         else:
             display_cli_help()
 
@@ -250,7 +250,7 @@ def application(argv):
     if options.get('rebuild'):
         if options.get('market') and options.get('from') and options.get('to') and options.get('broker') and options.get('timeframe'):
             from tools.rebuilder import do_rebuilder
-            do_rebuilder(options, siis_logger)
+            do_rebuilder(options)
         else:
             display_cli_help()
 

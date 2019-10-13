@@ -12,8 +12,11 @@ from common.utils import UTC, TIMEFRAME_FROM_STR_MAP
 from terminal.terminal import Terminal
 from database.database import Database
 
+import logging
+logger = logging.getLogger('siis.tools.optimizer')
 
-def do_optimizer(options, siis_logger):
+
+def do_optimizer(options):
     Terminal.inst().info("Starting SIIS optimizer...")
     Terminal.inst().flush()
 
@@ -36,7 +39,7 @@ def do_optimizer(options, siis_logger):
             pass
 
     if timeframe < 0:
-        siis_logger.error("Invalid timeframe")
+        logger.error("Invalid timeframe")
         sys.exit(-1)
 
     if timeframe == 0:

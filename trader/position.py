@@ -23,7 +23,8 @@ class Position(Keyed):
     @deprecated author and copied_position_id must be managed at social strategy level.
     """
 
-    __slots_ = '_trader', '_position_id', '_state', '_symbol', '_shared', '_symbol', '_quantity', '_profit_loss', '_profit_loss_rate', \
+    __slots_ = '_trader', '_position_id', '_state', '_symbol', '_shared', '_symbol', '_quantity', \
+                '_profit_loss', '_profit_loss_rate', '_profit_loss_currency', \
                '_profit_loss_market', '_profit_loss_market_rate', '_created_time', '_market_close', '_leverage', '_entry_price', '_exit_price' \
                '_stop_loss', '_take_profit', '_trailing_stop', '_direction', '_author', '_copied_position_id'
 
@@ -51,6 +52,8 @@ class Position(Keyed):
         
         self._profit_loss_market = 0.0
         self._profit_loss_market_rate = 0.0
+
+        self._profit_loss_currency = ""
 
         self._created_time = None
         self._market_close = False
@@ -152,6 +155,10 @@ class Position(Keyed):
         return self._shared
 
     @property
+    def profit_loss_currency(self):
+        return self._profit_loss_currency
+
+    @property
     def profit_loss(self):
         return self._profit_loss
 
@@ -198,6 +205,10 @@ class Position(Keyed):
     @direction.setter
     def direction(self, direction):
         self._direction = direction
+
+    @profit_loss_currency.setter
+    def profit_loss_currency(self, currency):
+        self._profit_loss_currency = currency
 
     @profit_loss.setter
     def profit_loss(self, profit_loss):
@@ -250,6 +261,10 @@ class Position(Keyed):
     @stop_loss.setter
     def stop_loss(self, sl):
         self._stop_loss = sl
+
+    @exit_price.setter
+    def exit_price(self, price):
+        self._exit_price = price
 
     def change_rate(self, market):
         """

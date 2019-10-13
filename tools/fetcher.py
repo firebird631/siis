@@ -16,8 +16,11 @@ from watcher.service import WatcherService
 from terminal.terminal import Terminal
 from database.database import Database
 
+import logging
+logger = logging.getLogger('siis.tools.fetcher')
 
-def do_fetcher(options, siis_logger):
+
+def do_fetcher(options):
     Terminal.inst().info("Starting SIIS fetcher using %s identity..." % options['identity'])
     Terminal.inst().flush()
 
@@ -54,7 +57,7 @@ def do_fetcher(options, siis_logger):
                 pass
 
     if timeframe < 0:
-        siis_logger.error("Invalid timeframe")
+        logger.error("Invalid timeframe")
         sys.exit(-1)
 
     try:
@@ -63,14 +66,14 @@ def do_fetcher(options, siis_logger):
         sys.exit(-1)
 
     if fetcher.connected:
-        siis_logger.info("Fetcher authentified to %s, trying to collect data..." % fetcher.name)
+        logger.info("Fetcher authentified to %s, trying to collect data..." % fetcher.name)
 
         markets = fetcher.matching_symbols_set(options['market'].split(','), fetcher.available_instruments())
 
         try:
             for market_id in markets:
                 if not fetcher.has_instrument(market_id, options.get('spec')):
-                    siis_logger.error("Market %s not found !" % (market_id,))
+                    logger.error("Market %s not found !" % (market_id,))
                 else:
                     fetcher.fetch_and_generate(market_id, timeframe,
                         options.get('from'), options.get('to'), options.get('last'),

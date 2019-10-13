@@ -463,7 +463,7 @@ class StrategyTrader(object):
                         'lreot': trade.last_realized_entry_time,
                         'lrxot': trade.last_realized_exit_time,
                         'd': trade.direction_to_str(),
-                        'p': self.instrument.format_price(trade.entry_price),
+                        'l': self.instrument.format_quantity(trade.order_price),
                         'q': self.instrument.format_quantity(trade.order_quantity),
                         'e': self.instrument.format_quantity(trade.exec_entry_qty),
                         'x': self.instrument.format_quantity(trade.exec_exit_qty),
@@ -481,7 +481,7 @@ class StrategyTrader(object):
                         'fees': trade.entry_fees_rate() + trade.exit_fees_rate(),
                         'c': trade.get_conditions(),
                         'com': trade.comment,
-                        'rpnl': trade.unrealized_profit_loss,  # once close its realized
+                        'rpnl': self.instrument.format_price(trade.unrealized_profit_loss),  # once close its realized
                         'pnlcur': trade.profit_loss_currency
                     }
 

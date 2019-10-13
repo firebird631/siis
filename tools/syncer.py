@@ -10,8 +10,11 @@ import traceback
 from terminal.terminal import Terminal
 from database.database import Database
 
+import logging
+logger = logging.getLogger('siis.tools.syncer')
 
-def do_sync(options, siis_logger):
+
+def do_sync(options):
     """
     Make a connection and synchronize the market data in local DB.
     @todo

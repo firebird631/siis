@@ -24,11 +24,16 @@ class Fetcher(object):
     """
     Fetcher base class.
     Fetch trade if support else candles of a base timeframe, and then generate the higher candle according to
-    thie GENERATED_TF list (from 1 sec to 1 week).
+
+    GENERATED_TF list (from 1 sec to 1 week).
+
+    @todo Manage the case of 3m because, high 5m is not a multiple of 3m, so 5m need 1m like 3m, but
+        the method remove the 1m generated candle once used for the 3m, maybe use a ref counter
     """
 
     # candles from 1m to 1 week
-    GENERATED_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
+    # GENERATED_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
+    GENERATED_TF = [60, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
 
     TICK_STORAGE_DELAY = 0.05  # 50ms
     MAX_PENDING_TICK = 10000
@@ -118,8 +123,7 @@ class Fetcher(object):
             else:
                 to_date = today + timedelta(seconds=timeframe)
 
-            to_date= to_date.replace(microsecond=0)
-            # print(to_date)
+            to_date = to_date.replace(microsecond=0)
 
         # cascaded generation of candles
         if cascaded:
@@ -228,7 +232,7 @@ class Fetcher(object):
                     n = 0
                     Terminal.inst().info("%i..." % t)
 
-        logger.info("Fetched %i candles" % t)
+            logger.info("Fetched %i candles" % t)
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
         """

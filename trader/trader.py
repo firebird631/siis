@@ -720,13 +720,13 @@ class Trader(Runnable):
             position_data.get('leverage'),
             position_data.get('trailing-stop'))
 
-        if position_data.get('avg-price') is not None:
+        if position_data.get('avg-entry-price') is not None:
+            position.entry_price = position_data['avg-entry-price']
+        elif position_data.get('avg-price') is not None:
             position.entry_price = position_data['avg-price']
-        elif position_data.get('entry-price') is not None:
-            position.entry_price = position_data['entry-price']
         elif position_data.get('exec-price') is not None:
             position.entry_price = position_data['exec-price']
-        
+
         # logger.debug("position opened %s size=%s" %(position.symbol, position.quantity))
 
         self._positions[position.position_id] = position
@@ -758,12 +758,15 @@ class Trader(Runnable):
                 position_data.get('leverage'),
                 position_data.get('trailing-stop'))
 
-            if position_data.get('avg-price') is not None:
-                position.entry_price = position_data['avg-price']
-            elif position_data.get('entry-price') is not None:
+            if position_data.get('avg-entry-price') is not None:
                 position.entry_price = position_data['entry-price']
+            elif position_data.get('avg-price') is not None:
+                position.entry_price = position_data['avg-price']
             elif position_data.get('exec-price') is not None:
                 position.entry_price = position_data['exec-price']
+
+            if position_data.get('avg-exit-price') is not None:
+                position.exit_price = position_data['avg-exit-price']
         else:
             # not found, insert and change state 
             position = Position(self)
@@ -779,12 +782,15 @@ class Trader(Runnable):
                 position_data.get('leverage'),
                 position_data.get('trailing-stop'))
 
-            if position_data.get('avg-price') is not None:
-                position.entry_price = position_data['avg-price']
-            elif position_data.get('entry-price') is not None:
+            if position_data.get('avg-entry-price') is not None:
                 position.entry_price = position_data['entry-price']
+            elif position_data.get('avg-price') is not None:
+                position.entry_price = position_data['avg-price']
             elif position_data.get('exec-price') is not None:
                 position.entry_price = position_data['exec-price']
+
+            if position_data.get('avg-exit-price') is not None:
+                position.exit_price = position_data['avg-exit-price']
 
             self._positions[position.position_id] = position
 

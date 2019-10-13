@@ -1193,7 +1193,7 @@ class Strategy(Runnable):
             lreot: float last realized trade in entry UTC timestamp
             lrxot: float last realized trade in exit UTC timestamp
             d: str 'long' or 'short'
-            p: str formatted entry price
+            l: str formatted order price
             tp: str formatted take-profit price
             sl: str formatted stop-loss price
             rate: float profit/loss rate
@@ -1234,7 +1234,8 @@ class Strategy(Runnable):
                         'lrxot': trade.last_realized_exit_time,
                         'd': trade.direction_to_str(),
                         'l': market.format_price(trade.order_price),
-                        'p': market.format_price(trade.entry_price),
+                        'aep': market.format_price(trade.entry_price),
+                        'axp': market.format_price(trade.exit_price),
                         'q': market.format_quantity(trade.order_quantity),
                         'e': market.format_quantity(trade.exec_entry_qty),
                         'x': market.format_quantity(trade.exec_exit_qty),
@@ -1247,10 +1248,8 @@ class Strategy(Runnable):
                         'w': market.format_price(trade.worst_price()),
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
-                        'aep': trade.entry_price,
-                        'axp': trade.exit_price,
                         'com': trade.comment,
-                        'upnl': trade.unrealized_profit_loss,
+                        'upnl': market.format_price(trade.unrealized_profit_loss),
                         'pnlcur': trade.profit_loss_currency
                     })
 
@@ -1325,7 +1324,9 @@ class Strategy(Runnable):
                 id: int trade identifier
                 ts: float entry UTC timestamp
                 d: str 'long' or 'short'
-                p: str formatted entry price
+                l: str formatted order price
+                aep: str formatted entry price
+                axp: str formatted average exit price
                 tp: str formatted take-profit price
                 sl: str formatted stop-loss price
                 pl: float profit/loss rate
@@ -1337,8 +1338,6 @@ class Strategy(Runnable):
                 q: ordered qty
                 e: executed entry qty
                 x: executed exit qty
-                aep: average entry price
-                axp: average exit price
                 com: trade comment
                 upnl: trade unrealized profit loss
                 pnlcur: trade profit loss currency
@@ -1372,7 +1371,8 @@ class Strategy(Runnable):
                         'eot': trade.entry_open_time,
                         'd': trade.direction_to_str(),
                         'l': market.format_price(trade.order_price),
-                        'p': market.format_price(trade.entry_price),
+                        'aep': market.format_price(trade.entry_price),
+                        'axp': market.format_price(trade.exit_price),
                         'q': market.format_quantity(trade.order_quantity),
                         'e': market.format_quantity(trade.exec_entry_qty),
                         'x': market.format_quantity(trade.exec_exit_qty),
@@ -1385,10 +1385,8 @@ class Strategy(Runnable):
                         'w': market.format_price(trade.worst_price()),
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
-                        'aep': trade.entry_price,
-                        'axp': trade.exit_price,
                         'com': trade.comment,
-                        'upnl': trade.unrealized_profit_loss,
+                        'upnl': market.format_profit_loss_price(trade.unrealized_profit_loss),
                         'pnlcur': trade.profit_loss_currency
                     })
 
@@ -1433,12 +1431,14 @@ class Strategy(Runnable):
                         'id': trade['id'],
                         'eot': trade['eot'],
                         'xot': trade['xot'],
+                        'l': trade['l'],
                         'lreot': trade['lreot'],
                         'lrxot': trade['lrxot'],
                         'freot': trade['freot'],
                         'frxot': trade['frxot'],
                         'd': trade['d'],
-                        'p': trade['p'],
+                        'aep': trade['aep'],
+                        'axp': trade['axp'],
                         'q': trade['q'],
                         'e': trade['e'],
                         'x': trade['e'],
@@ -1452,8 +1452,6 @@ class Strategy(Runnable):
                         'bt': trade['bt'],
                         'w': trade['w'],
                         'wt': trade['wt'],
-                        'aep': trade['aep'],
-                        'axp': trade['axp'],
                         'com': trade['com'],
                         'fees': trade['fees'],
                         'rpnl': trade['rpnl'],
@@ -1567,7 +1565,7 @@ class Strategy(Runnable):
         """
         Returns a table of any active trades.
         """
-        columns = ['Market', 'Id', 'P/L(%)', 'Price', 'EP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Exit date', 'Comment', 'UPNL']
+        columns = ['Market', 'Id', 'Dir', 'P/L(%)', 'Ord p', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP.', 'Exit date', 'Avg XP', 'Comment', 'UPNL']
 
         if quantities:
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -1593,6 +1591,8 @@ class Strategy(Runnable):
         trades = trades[offset:limit]
 
         for t in trades:
+            direction = Color.colorize_cond(t['d'], t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+
             if t['pl'] < 0 and ((t['d'] == 'long' and float(t['b']) > float(t['aep'])) or (t['d'] == 'short' and float(t['b']) < float(t['aep']))):
                 # have been profitable but loss
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
@@ -1618,9 +1618,9 @@ class Strategy(Runnable):
             row = [
                 t['mid'],
                 t['id'],
+                direction,
                 cr,
                 t['l'],
-                t['p'],
                 t['sl'],
                 t['tp'],
                 "%s (%.2f)" % (t['b'], bpct * 100),
@@ -1628,7 +1628,9 @@ class Strategy(Runnable):
                 t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S') if t['eot'] > 0 else "",
                 datetime.fromtimestamp(t['freot']).strftime('%Y-%m-%d %H:%M:%S') if t['freot'] > 0 else "",
+                t['aep'],
                 datetime.fromtimestamp(t['lrxot']).strftime('%Y-%m-%d %H:%M:%S') if t['lrxot'] > 0 else "",
+                t['axp'],
                 t['com'],
                 "%s%s" % (t['upnl'], t['pnlcur'])
             ]
@@ -1649,7 +1651,7 @@ class Strategy(Runnable):
         """
         Returns a table of any closed trades.
         """
-        columns = ['Market', 'Id', 'Dir', 'P/L(%)', 'Fees(%)', 'Price', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Exit date', 'Comment', 'RPNL']
+        columns = ['Market', 'Id', 'Dir', 'P/L(%)', 'Fees(%)', 'Ord p', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Comment', 'RPNL']
 
         if quantities:
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -1675,6 +1677,8 @@ class Strategy(Runnable):
         closed_trades = closed_trades[offset:limit]
 
         for t in closed_trades:
+            direction = Color.colorize_cond(t['d'], t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+
             # @todo direction
             if t['pl'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
@@ -1704,10 +1708,10 @@ class Strategy(Runnable):
             row = [
                 t['mid'],
                 t['id'],
-                t['d'],
+                direction,
                 cr,
                 "%.2f%%" % (t['fees'] * 100),
-                t['p'],
+                t['l'],
                 _sl,
                 _tp,
                 "%s (%.2f)" % (t['b'], bpct * 100),
@@ -1715,7 +1719,9 @@ class Strategy(Runnable):
                 t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'),
                 datetime.fromtimestamp(t['freot']).strftime('%Y-%m-%d %H:%M:%S'),
+                t['aep'],
                 datetime.fromtimestamp(t['lrxot']).strftime('%Y-%m-%d %H:%M:%S'),
+                t['axp'],
                 t['com'],
                 "%s%s" % (t['rpnl'], t['pnlcur'])
             ]

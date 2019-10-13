@@ -1468,6 +1468,8 @@ class PaperTrader(Trader):
                     # entry price might not move...
                     # current_position.entry_price = ((current_position.entry_price * current_position.quantity) - (close_exec_price * order.quantity)) / 2
                     current_position.quantity -= order.quantity
+                    current_position.exit_price = close_exec_price
+
                     exec_price = close_exec_price
 
                     # directly executed quantity
@@ -1478,6 +1480,7 @@ class PaperTrader(Trader):
 
                     position_gain_loss = effective_price * current_position.quantity
                     current_position.quantity = 0.0
+                    current_position.exit_price = close_exec_price
 
                     # it's what we have really closed
                     realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
@@ -1636,7 +1639,6 @@ class PaperTrader(Trader):
                     'direction': current_position.direction,
                     'timestamp': order.transact_time,
                     'quantity': current_position.quantity,
-                    # 'avg-price': current_position.entry_price,
                     'avg-entry-price': current_position.entry_price,
                     'avg-exit-price': current_position.exit_price,
                     'exec-price': exec_price,
