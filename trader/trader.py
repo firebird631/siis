@@ -759,7 +759,7 @@ class Trader(Runnable):
                 position_data.get('trailing-stop'))
 
             if position_data.get('avg-entry-price') is not None:
-                position.entry_price = position_data['entry-price']
+                position.entry_price = position_data['avg-entry-price']
             elif position_data.get('avg-price') is not None:
                 position.entry_price = position_data['avg-price']
             elif position_data.get('exec-price') is not None:
@@ -783,7 +783,7 @@ class Trader(Runnable):
                 position_data.get('trailing-stop'))
 
             if position_data.get('avg-entry-price') is not None:
-                position.entry_price = position_data['entry-price']
+                position.entry_price = position_data['avg-entry-price']
             elif position_data.get('avg-price') is not None:
                 position.entry_price = position_data['avg-price']
             elif position_data.get('exec-price') is not None:

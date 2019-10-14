@@ -40,7 +40,7 @@ def identities(config_path):
             with open(str(user_file), 'r') as f:
                 identities = json.load(f)
         except Exception as e:
-            error_logger.error(repr(e))
+            error_logger.error("During parsing of %s %s" % (config_path, repr(e)))
 
     return identities
 
@@ -54,7 +54,7 @@ def load_config(options, attr_name):
             with open(str(default_file), 'r') as f:
                 default_config = json.load(f)
         except Exception as e:
-            error_logger.error(repr(e))
+            error_logger.error("During parsing of %s %s" % (default_file, repr(e)))
 
     user_config = {}
 
@@ -65,6 +65,7 @@ def load_config(options, attr_name):
                 user_config = json.load(f)
         except Exception as e:
             error_logger.error("%s %s%s" % (repr(e), attr_name, '.json'))
+            error_logger.error("During parsing of %s" % (user_file, repr(e)))
 
     return merge_parameters(default_config, user_config)
 
