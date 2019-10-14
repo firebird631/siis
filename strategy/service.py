@@ -5,6 +5,7 @@
 
 import time
 import threading
+import traceback
 
 from datetime import datetime
 from importlib import import_module
@@ -23,6 +24,7 @@ from config import utils
 
 import logging
 logger = logging.getLogger('siis.strategy.service')
+error_logger = logging.getLogger('siis.strategy.service')
 
 
 class StrategyService(Service):
@@ -242,7 +244,11 @@ class StrategyService(Service):
 
             # and save state to database
             if not self.backtesting and (appl.trader() and not appl.trader().paper_mode):
-                appl.save()
+                try:
+                    appl.save()
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    error_logger.error(traceback.format_exc())
 
         # terminate the worker pool
         self._worker_pool.stop()

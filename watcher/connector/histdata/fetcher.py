@@ -25,6 +25,8 @@ logger = logging.getLogger('siis.fetcher.histdata')
 class HistDataFetcher(Fetcher):
     """
     HistData market data fetcher.
+
+    Identity configuration must contains an entry with a "base-path" defined where the raw histdata are located.
     """
 
     BASE_PATH = "/mnt/storage/Data/market/histdata.com"
@@ -58,9 +60,8 @@ class HistDataFetcher(Fetcher):
         try:
             identity = self.service.identity(self._name)
 
-            # if identity:
-            #   self._connector = Connector(self.service, identity.get('host'))
-            #   self._connector.connect()
+            if identity:
+                self._base_path = identity.get('base-path', HistDataFetcher.BASE_PATH)
 
         except Exception as e:
             logger.error(repr(e))

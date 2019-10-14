@@ -291,7 +291,7 @@ class BitMexWatcher(Watcher):
                         'direction': direction,
                         'timestamp': operation_time,
                         'quantity': quantity,
-                        'avg-price': ld.get('avgEntryPrice', None),
+                        'avg-entry-price': ld.get('avgEntryPrice', None),
                         'exec-price': None,
                         'stop-loss': None,
                         'take-profit': None,

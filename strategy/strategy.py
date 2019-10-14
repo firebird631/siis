@@ -1512,8 +1512,8 @@ class Strategy(Runnable):
             for t in agg_trades:
                 pl_sum += t['pl']
                 perf_sum += t['perf']
-                worst_sum = min(worst_sum, t['worst'])
                 best_sum = max(best_sum, t['best'])
+                worst_sum = min(worst_sum, t['worst'])
                 success_sum += t['success']
                 failed_sum += t['failed']
                 roe_sum += t['roe']
@@ -1528,8 +1528,8 @@ class Strategy(Runnable):
                 t['mid'],
                 cr,
                 cp,
-                "%.2f" % (t['worst']*100.0),
                 "%.2f" % (t['best']*100.0),
+                "%.2f" % (t['worst']*100.0),
                 t['success'],
                 t['failed'],
                 t['roe']
@@ -1549,8 +1549,8 @@ class Strategy(Runnable):
                 'Total',
                 cpl_sum,
                 cperf_sum,
-                "%.2f" % (worst_sum*100.0),
                 "%.2f" % (best_sum*100.0),
+                "%.2f" % (worst_sum*100.0),
                 success_sum,
                 failed_sum,
                 roe_sum)
