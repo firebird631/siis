@@ -202,15 +202,15 @@ class HistDataFetcher(Fetcher):
 
     def is_yearly_or_monthly(self, tick, market_id, cur_date):
         if tick:
-            filename = "%s/%s/T/%s/HISTDATA_COM_ASCII_%s_T%s%02i.zip" % (HistDataFetcher.BASE_PATH, market_id, cur_date.year, market_id, cur_date.year, cur_date.month)
+            filename = "%s/%s/T/%s/HISTDATA_COM_ASCII_%s_T%s%02i.zip" % (self._base_path, market_id, cur_date.year, market_id, cur_date.year, cur_date.month)
             if os.path.isfile(filename):
                 return HistDataFetcher.FILE_MONTHLY, filename
         else:
-            filename = "%s/%s/1M/%s/HISTDATA_COM_ASCII_%s_M%s%02i.zip" % (HistDataFetcher.BASE_PATH, market_id, cur_date.year, market_id, cur_date.year, cur_date.month)
+            filename = "%s/%s/1M/%s/HISTDATA_COM_ASCII_%s_M%s%02i.zip" % (self._base_path, market_id, cur_date.year, market_id, cur_date.year, cur_date.month)
             if os.path.isfile(filename):
                 return HistDataFetcher.FILE_MONTHLY, filename
 
-            filename = "%s/%s/1M/%s/HISTDATA_COM_ASCII_%s_M%s.zip" % (HistDataFetcher.BASE_PATH, market_id, cur_date.year, market_id, cur_date.year)
+            filename = "%s/%s/1M/%s/HISTDATA_COM_ASCII_%s_M%s.zip" % (self._base_path, market_id, cur_date.year, market_id, cur_date.year)
             if os.path.isfile(filename):
                 return HistDataFetcher.FILE_YEARLY, filename
 
