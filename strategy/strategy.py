@@ -1812,17 +1812,8 @@ class Strategy(Runnable):
                     results['messages'].append("Not enought free quote asset %s, has %s but need %s" % (
                             market.quote, market.format_quantity(trader.asset(market.quote).free), market.format_quantity(qty)))
 
-        elif market.has_margin and not market.has_position:
+        elif market.has_margin and market.has_position:
             trade = StrategyPositionTrade(timeframe)
-
-            if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
-                results['error'] = True
-                results['messages'].append("Not enought margin")
-
-            order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
-
-        elif market.has_margin and not market.indivisible_position:
-            trade = StrategyMarginTrade(timeframe)
 
             if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
                 results['error'] = True
@@ -1833,9 +1824,18 @@ class Strategy(Runnable):
         elif market.has_margin and market.indivisible_position:
             trade = StrategyIndMarginTrade(timeframe)
 
-            # if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
-            #     results['error'] = True
-            #     results['messages'].append("Not enought margin")
+            if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
+                results['error'] = True
+                results['messages'].append("Not enought margin")
+
+            order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+
+        elif market.has_margin and not market.indivisible_position and not markets.has_position:
+            trade = StrategyMarginTrade(timeframe)
+
+            if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
+                results['error'] = True
+                results['messages'].append("Not enought margin")
 
             order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 

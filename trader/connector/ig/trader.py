@@ -3,6 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Trader/autotrader connector for ig.com
 
+import traceback
 import time
 import base64
 import uuid
@@ -153,7 +154,6 @@ class IGTrader(Trader):
                 self.lock()
                 self._account.update(self._watcher.connector)
             except Exception as e:
-                import traceback
                 logger.error(traceback.format_exc())
             finally:
                 self.unlock()
@@ -169,7 +169,6 @@ class IGTrader(Trader):
                     self.__fetch_positions()
                     self._last_position_update = time.time()
             except Exception as e:
-                import traceback
                 logger.error(traceback.format_exc())
             finally:
                 self.unlock()
@@ -185,7 +184,6 @@ class IGTrader(Trader):
                     self.__fetch_orders()
                     self._last_order_update = time.time()
             except Exception as e:
-                import traceback
                 logger.error(traceback.format_exc())
             finally:
                 self.unlock()

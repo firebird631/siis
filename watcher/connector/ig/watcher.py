@@ -738,6 +738,7 @@ class IGWatcher(Watcher):
                                 'take-profit': limit_level,
                                 'profit-loss': profit_loss,
                                 'profit-currency': profit_currency,
+                                'info': 'amended'
                             }
 
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
@@ -756,6 +757,7 @@ class IGWatcher(Watcher):
                                 'avg-price': None,
                                 'profit-loss': profit_loss,
                                 'profit-currency': profit_currency,
+                                'info': 'closed'
                             }
 
                             if data.get('limitLevel') and data.get('stopLevel'):
@@ -790,6 +792,7 @@ class IGWatcher(Watcher):
                                 'take-profit': limit_level,
                                 'profit-loss': profit_loss,
                                 'profit-currency': profit_currency,
+                                'info': 'open'
                             }
 
                             if data.get('limitLevel') and data.get('stopLevel'):
@@ -824,6 +827,7 @@ class IGWatcher(Watcher):
                                 'avg-price': None,
                                 'profit-loss': profit_loss,
                                 'profit-currency': profit_currency,
+                                'info': 'partially-closed'
                             }
 
                             self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
@@ -929,7 +933,6 @@ class IGWatcher(Watcher):
                                 'filled': None,
                                 'liquidation-price': None
                             }
-
                             self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (epic, position_data, ref_order_id))
 
         except Exception as e:

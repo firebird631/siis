@@ -231,7 +231,11 @@ class StrategyPositionTrade(StrategyTrade):
             filled = 0
 
             if (data['id'] == self.create_oid or data['id'] == self.position_id):
-                pass
+                info = data.get('info', "")
+
+                # if info == "closed" or info == "partially-closed":
+                #     print(data)
+
                 # if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                 #     filled = data['cumulative-filled'] - self.e  # compute filled qty
                 # elif data.get('filled') is not None and data['filled'] > 0:
@@ -363,6 +367,7 @@ class StrategyPositionTrade(StrategyTrade):
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position
             self.position_id = None
+            print(data)
 
             if data.get('profit-loss'):
                 self._stats['unrealized-profit-loss'] = data['profit-loss']
@@ -443,12 +448,12 @@ class StrategyPositionTrade(StrategyTrade):
         if self.direction > 0:
             if self.aep > 0 and self.axp > 0:
                 self.pl = (self.axp - self.aep) / self.aep
-            elif self.aep > 0:
+            elif self.aep > 0 and instrument.close_exec_price(1) > 0:
                 self.pl = (instrument.close_exec_price(1) - self.aep) / self.aep
         elif self.direction < 0:
             if self.aep > 0 and self.axp > 0:
                 self.pl = (self.aep - self.axp) / self.aep
-            elif self.aep > 0:
+            elif self.aep > 0 and instrument.close_exec_price(-1) > 0:
                 self.pl = (self.aep - instrument.close_exec_price(-1)) / self.aep
 
     def is_target_order(self, order_id, ref_order_id):
