@@ -86,25 +86,27 @@ class BitMexWatcher(Watcher):
                         self.insert_watched_instrument(symbol, [0])
 
                         # fetch from 1M to 1W
-                        self.fetch_and_generate(symbol, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
-                        self.fetch_and_generate(symbol, Instrument.TF_5M, 6*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
-                        self.fetch_and_generate(symbol, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
-                        self.fetch_and_generate(symbol, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)
+                        if self._initial_fetch:
+                            self.fetch_and_generate(symbol, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
+                            self.fetch_and_generate(symbol, Instrument.TF_5M, 6*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
+                            self.fetch_and_generate(symbol, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
+                            self.fetch_and_generate(symbol, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)
 
-                        logger.info("%s prefetch for %s" % (self.name, symbol))
+                            logger.info("%s prefetch for %s" % (self.name, symbol))
 
-                        # debug only
-                        # if symbol == "XBTUSD":
-                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60)))
-                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*5)))
-                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*15)))
-                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60)))
-                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*4)))
-                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*2)))
-                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24)))
-                        #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24*7)))
+                            # debug only
+                            # if symbol == "XBTUSD":
+                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60)))
+                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*5)))
+                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*15)))
+                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60)))
+                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*4)))
+                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*2)))
+                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24)))
+                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24*7)))
 
-                    logger.info("Done fetching %s current OHLCs !" % self.name)
+                    if self._initial_fetch:
+                        logger.info("Done fetching %s current OHLCs !" % self.name)
 
                     self._ready = True
 

@@ -121,16 +121,17 @@ class KrakenWatcher(Watcher):
                         self._wsname_lookup[instrument['wsname']] = market_id
 
                         # fetch from 1m to 1w
-                        self.fetch_and_generate(market_id, Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE*3, Instrument.TF_3M)
-                        self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
-                        self.fetch_and_generate(market_id, Instrument.TF_15M, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_30M)
-                        self.fetch_and_generate(market_id, Instrument.TF_1H, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_2H)
-                        self.fetch_and_generate(market_id, Instrument.TF_4H, self.DEFAULT_PREFETCH_SIZE, None)
-                        self.fetch_and_generate(market_id, Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE*7, Instrument.TF_1W)
+                        if self._initial_fetch:
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE*3, Instrument.TF_3M)
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_15M, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_30M)
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_2H)
+                            self.fetch_and_generate(market_id, Instrument.TF_4H, self.DEFAULT_PREFETCH_SIZE, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE*7, Instrument.TF_1W)
 
-                        time.sleep(6.0)
+                            time.sleep(6.0)
 
-                        logger.info("%s prefetch for %s" % (self.name, market_id))
+                            logger.info("%s prefetch for %s" % (self.name, market_id))
 
                         # one more watched instrument
                         self.insert_watched_instrument(market_id, [0])

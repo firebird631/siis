@@ -148,24 +148,26 @@ class IGWatcher(Watcher):
                     # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
                     # prefetch for the last of each except for 1m and 5m we assume we have a delay of 5 minutes
                     # from the manual prefetch script execution and assuming the higher timeframe are already up-to-date.
-                    self.fetch_and_generate(symbol, Instrument.TF_1M, 5, None)
-                    self.fetch_and_generate(symbol, Instrument.TF_3M, 2, None)
-                    self.fetch_and_generate(symbol, Instrument.TF_5M, 1, None)
-                    self.fetch_and_generate(symbol, Instrument.TF_15M, 1, None)
-                    self.fetch_and_generate(symbol, Instrument.TF_1H, 1, None)
-                    self.fetch_and_generate(symbol, Instrument.TF_4H, 1, None)
-                    self.fetch_and_generate(symbol, Instrument.TF_1D, 1, None)
-                    self.fetch_and_generate(symbol, Instrument.TF_1W, 1, None)
+                    if self._initial_fetch:
+                        self.fetch_and_generate(symbol, Instrument.TF_1M, 5, None)
+                        self.fetch_and_generate(symbol, Instrument.TF_3M, 2, None)
+                        self.fetch_and_generate(symbol, Instrument.TF_5M, 1, None)
+                        self.fetch_and_generate(symbol, Instrument.TF_15M, 1, None)
+                        self.fetch_and_generate(symbol, Instrument.TF_1H, 1, None)
+                        self.fetch_and_generate(symbol, Instrument.TF_4H, 1, None)
+                        self.fetch_and_generate(symbol, Instrument.TF_1D, 1, None)
+                        self.fetch_and_generate(symbol, Instrument.TF_1W, 1, None)
 
-                    logger.info("%s prefetch for %s" % (self.name, symbol))
+                        logger.info("%s prefetch for %s" % (self.name, symbol))
 
                     self.insert_watched_instrument(symbol, [0])
 
-                    # avoid blocking websocket during sleep
-                    self.unlock()
-                    # time.sleep(9.0)  # 1 sec per query + 1 extra second
-                    time.sleep(1.0)
-                    self.lock()
+                    if self._initial_fetch:
+                        # avoid blocking websocket during sleep
+                        self.unlock()
+                        # time.sleep(9.0)  # 1 sec per query + 1 extra second
+                        time.sleep(1.0)
+                        self.lock()
 
                 # logger.info("Watcher %s wait 10 seconds to limit to a fair API usage" % (self.name,))
 
@@ -322,7 +324,7 @@ class IGWatcher(Watcher):
 
                 self._subscriptions = []
                 self._lightstreamer.disconnect()
-                self._lightstreamer._join()
+                # self._lightstreamer._join()
                 self._lightstreamer = None
 
             if self._connector:
@@ -966,17 +968,30 @@ class IGWatcher(Watcher):
 
         market.base_exchange_rate = instrument['currencies'][0]['baseExchangeRate']   # "exchangeRate": 0.77
 
-        market.one_pip_means = float(instrument['onePipMeans'].split(' ')[0])
+        market.one_pip_means = float(instrument['onePipMeans'].split(' ')[0])  # "1 Index Point", "0.0001 USD/EUR"
         market.value_per_pip = float(instrument['valueOfOnePip'])
         market.contract_size = float(instrument['contractSize'])
         market.lot_size = float(instrument['lotSize'])
 
-        # @todo how to determine base precision ?
-        market.set_base(base_symbol, base_symbol)
+        market.set_base(
+            base_symbol,
+            base_symbol,
+            decimal_place(market.one_pip_means))
+
+        if instrument['type'] in ('CURRENCIES'):
+            pass  # quote_precision = 
+        elif instrument['type'] in ('INDICES', 'COMMODITIES', 'SHARES', 'RATES', 'SECTORS'):
+            pass  # quote_precision = 
+
         market.set_quote(
             instrument["currencies"][0]["name"],
             instrument["currencies"][0]['symbol'],
-            decimal_place(market.one_pip_means))  # "USD", "$" 
+            decimal_place(market.one_pip_means))
+
+        # "forceOpenAllowed": true,
+        # "stopsLimitsAllowed": true,
+        # "controlledRiskAllowed": true,
+        # "streamingPricesAvailable": true,
 
         if snapshot:
             market.is_open = snapshot["marketStatus"] == "TRADEABLE"
@@ -1022,12 +1037,11 @@ class IGWatcher(Watcher):
         market.set_size_limits(dealing_rules["minDealSize"]["value"], 0.0, dealing_rules["minDealSize"]["value"])
         # @todo there is some limits in contract size
         market.set_notional_limits(0.0, 0.0, 0.0)
-        # @todo maybe decimal_place of onePipMeans for tick_size
-        market.set_price_limits(0.0, 0.0, 0.0)
+        # use one pip means for minimum and tick price size
+        market.set_price_limits(market.one_pip_means, 0.0, market.one_pip_means)
 
-        # commission for stocks
+        # commission for stocks @todo
         commission = "0.0"
-        # @todo
 
         # store the last market info to be used for backtesting
         if not self._read_only:
@@ -1044,6 +1058,8 @@ class IGWatcher(Watcher):
                 "0.0", "0.0", "0.0",  # price limits
                 "0.0", "0.0", commission, commission)  # fees
             )
+
+        # print(market.symbol, market._size_limits, market._price_limits)
 
         # notify for strategy
         self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (epic, market))

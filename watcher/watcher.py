@@ -69,6 +69,7 @@ class Watcher(Runnable):
         self._data_streams = {}
         self._read_only = service.read_only  # no db storage in read-only mode
         self._store_trade = False            # default never store trade/tick/quote during watching
+        self._initial_fetch = True           # default fetch history of OHLC at connection
 
         self._last_tick = {}  # last tick per market id
         self._last_ohlc = {}  # last ohlc per market id and then per timeframe
@@ -116,6 +117,14 @@ class Watcher(Runnable):
     @property
     def ready(self):
         return self._ready
+
+    @property
+    def initial_fetch(self):
+        return self._initial_fetch
+    
+    @initial_fetch.setter
+    def initial_fetch(self, value):
+        self._initial_fetch = value
 
     #
     # instruments

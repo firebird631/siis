@@ -367,7 +367,6 @@ class StrategyPositionTrade(StrategyTrade):
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position
             self.position_id = None
-            print(data)
 
             if data.get('profit-loss'):
                 self._stats['unrealized-profit-loss'] = data['profit-loss']

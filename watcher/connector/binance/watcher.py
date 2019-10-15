@@ -132,13 +132,14 @@ class BinanceWatcher(Watcher):
                             # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
 
                             # fetch from 1M to 1W
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_15M, 2*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
-                            self.fetch_and_generate(instrument['symbol'], Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)
+                            if self._initial_fetch:
+                                self.fetch_and_generate(instrument['symbol'], Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
+                                self.fetch_and_generate(instrument['symbol'], Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
+                                self.fetch_and_generate(instrument['symbol'], Instrument.TF_15M, 2*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
+                                self.fetch_and_generate(instrument['symbol'], Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
+                                self.fetch_and_generate(instrument['symbol'], Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)
 
-                            logger.info("%s prefetch for %s" % (self.name, instrument['symbol']))
+                                logger.info("%s prefetch for %s" % (self.name, instrument['symbol']))
 
                             # one more watched instrument
                             self.insert_watched_instrument(instrument['symbol'], [0])

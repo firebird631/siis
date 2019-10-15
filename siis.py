@@ -79,7 +79,7 @@ def application(argv):
         'log-path': './user/log',
         'reports-path': './user/reports',
         'markets-path': './user/markets',
-        'log-name': 'siis.log'
+        'log-name': 'siis.log',
     }
 
     # create initial siis data structure if necessary
@@ -114,6 +114,9 @@ def application(argv):
                     # use the rebuilder
                     options['rebuild'] = True
 
+                elif arg == '--initial-fetch':
+                    # do the initial OHLC fetch for watchers
+                    options['initial-fetch'] = True
                 elif arg == '--backtest':
                     # backtest mean always paper-mode
                     options['paper-mode'] = True
@@ -235,7 +238,7 @@ def application(argv):
     #
 
     if options.get('sync'):
-        if options.get('broker'):
+        if options.get('market') and options.get('broker'):
             from tools.syncer import do_syncer
             do_syncer(options)
         else:

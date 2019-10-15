@@ -317,7 +317,6 @@ class IGTrader(Trader):
             logger.debug("%s wait 1sec before passing a duplicate order..." % (self.name,))
             time.sleep(1.0)
 
-        # @todo how to set the deal reference id ?
         try:
             results = self._watcher.connector.ig.create_open_position(currency_code, direction, epic, expiry,
                                                     force_open, guaranteed_stop, level,

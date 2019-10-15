@@ -13,6 +13,9 @@ from common.service import Service
 
 from notifier.signal import Signal
 
+import logging
+logger = logging.getLogger('siis.service.watcher')
+
 
 class WatcherService(Service):
 
@@ -57,6 +60,26 @@ class WatcherService(Service):
 
         return Clazz(self)
 
+    def create_watcher(self, options, watcher_name, markets):
+        watcher_config = utils.load_config(options, 'watchers/' + watcher_name)
+        if not watcher_config:
+            logger.error("Watcher %s not found !" % watcher_name)
+            return None
+
+        if markets:
+            watcher_config['symbols'] = markets
+
+        # force watcher config
+        self._watchers_config[watcher_name] = watcher_config
+
+        # retrieve the classname and instanciate it
+        parts = watcher_config.get('classpath').split('.')
+
+        module = import_module('.'.join(parts[:-1]))
+        Clazz = getattr(module, parts[-1])
+
+        return Clazz(self)
+
     def start(self, options):
         from watcher.connector.dummywatcher.watcher import DummyWatcher
         
@@ -87,6 +110,9 @@ class WatcherService(Service):
                     inst_watcher = DummyWatcher(self, k)
                 else:
                     inst_watcher = Clazz(self)
+
+                    # default do the initial fetching of OHLCs, but could be disabled at command line, opt-out
+                    inst_watcher.initial_fetch = options.get('initial-fetch', True)
 
                 if inst_watcher.start():
                     self._watchers[k] = inst_watcher
