@@ -11,6 +11,7 @@ from .rest import IGService
 
 import logging
 logger = logging.getLogger('siis.connector.ig')
+error_logger = logging.getLogger('siis.error.connector.ig')
 
 
 class IGConnector(object):
@@ -76,9 +77,11 @@ class IGConnector(object):
         try:
             res = self._ig_service.create_session()
             self._client_id = res.get('clientId')
-        except:
+        except Exception as e:
             self._session = None
             self._ig_service = None
+
+            raise e
 
     def disconnect(self):
         self._ig_service = None
