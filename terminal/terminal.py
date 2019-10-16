@@ -85,7 +85,7 @@ class View(object):
     UTERM_COLORS = [
         colorama.Style.RESET_ALL,  # Terminal.DEFAULT
         colorama.Fore.RED,  # Terminal.ERROR
-        colorama.Back.YELLOW + colorama.Fore.WHITE,  # Terminal.WARNING
+        colorama.Fore.YELLOW + colorama.Style.BRIGHT,  # Terminal.WARNING
         colorama.Fore.YELLOW,  # Terminal.ACTION
         colorama.Fore.CYAN,  # Terminal.NOTICE
         colorama.Fore.GREEN,  # Terminal.HIGH

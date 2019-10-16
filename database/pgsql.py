@@ -161,7 +161,7 @@ class PgSql(Database):
         """
         Create a new tick streamer.
         """
-        return OhlcStreamer(self._db, timeframe, broker_id, market_id, from_date, to_date, buffer_size)
+        return OhlcStreamer(self._db, broker_id, market_id, timeframe, from_date, to_date, buffer_size)
 
     #
     # Processing

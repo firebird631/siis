@@ -8,9 +8,14 @@ import json
 import time
 import threading
 import traceback
+import collections
+
+from datetime import datetime, timedelta
 
 from notifier.signal import Signal
 from instrument.instrument import Candle
+
+from common.utils import UTC
 
 import logging
 logger = logging.getLogger('siis.database')
@@ -214,7 +219,7 @@ class OhlcStorage(object):
         for query in queries:
             try:
                 ohlcs = self.query(query[1], query[2], query[3], query[4], False)
-                
+
                 # and signal notification
                 service.notify(Signal.SIGNAL_CANDLE_DATA_BULK, self._broker_id, (self._market_id, query[1], ohlcs))
             except Exception as e:
@@ -259,13 +264,17 @@ class OhlcStreamer(object):
     @note Generic SQL.
     """
 
-    def __init__(self, db, timeframe, from_date, to_date=None, buffer_size=1000):
+    def __init__(self, db, broker_id, market_id, timeframe, from_date, to_date=None, buffer_size=1000):
         """
         @param from_date datetime Object
         @param to_date datetime Object
         """
 
         self._db = db
+
+        self._broker_id = broker_id
+        self._market_id = market_id
+
         self._timeframe = timeframe
 
         self._from_date = from_date
@@ -273,19 +282,34 @@ class OhlcStreamer(object):
         
         self._curr_date = from_date
 
+        self._buffer = collections.deque()
         self._buffer_size = buffer_size
 
     def finished(self):
-        return self._curr_date >= self._to_date and not self._ohlcs
+        return self._curr_date >= self._to_date and not self._buffer
 
     def next(self, timestamp):
-        # @todo
-        return []
+        results = []
+
+        while 1:
+            if not self._buffer:
+                self.__bufferize()
+
+            while self._buffer and self._buffer[0].timestamp <= timestamp:
+                results.append(self._buffer.popleft())
+
+            if self.finished() or (self._buffer and self._buffer[0].timestamp > timestamp):
+                break
+
+        return results
 
     def __bufferize(self):
-        results = self.query(self, self._timeframe, self._curr_date, None, limit, False)
+        results = self.query(self._timeframe, self._curr_date, None, self._buffer_size, False)
         if results:
             self._buffer.extend(results)
+            self._curr_date = datetime.fromtimestamp(results[-1].timestamp).replace(tzinfo=UTC())
+        else:
+            self._curr_date = self._curr_date + timedelta(seconds=self._timeframe)
 
     def query(self, timeframe, from_date, to_date, limit_or_last_n, auto_close=True):
         """
@@ -300,13 +324,13 @@ class OhlcStreamer(object):
             if from_date and to_date:
                 from_ts = int(from_date.timestamp() * 1000.0)
                 to_ts = int(to_date.timestamp() * 1000.0)
-                self.query_from_to(cursor, timeframe, from_date, to_date)
+                self.query_from_to(cursor, timeframe, from_ts, to_ts)
             elif from_date:
                 from_ts = int(from_date.timestamp() * 1000.0)
-                self.query_from_limit(cursor, timeframe, from_date, limit_or_last_n)
+                self.query_from_limit(cursor, timeframe, from_ts, limit_or_last_n)
             elif to_date:
                 to_ts = int(to_date.timestamp() * 1000.0)
-                self.query_from_limit(cursor, timeframe, to_date)
+                self.query_from_limit(cursor, timeframe, to_ts)
             elif limit:
                 self.query_last(cursor, timeframe, limit_or_last_n)
             else:
@@ -329,32 +353,36 @@ class OhlcStreamer(object):
 
             ohlcs.append(ohlc)
 
-        return data
+        return ohlcs
 
     def query_all(self, cursor, timeframe):
         cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                            WHERE timeframe = %s ORDER BY timestamp ASC""" % (timeframe,))
+                            WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
+                                self._broker_id, self._market_id, timeframe))
 
     def query_last(self, cursor, timeframe, limit):
-        cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE timeframe = %s""" % (timeframe,))
+        cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s""" % (
+            self._broker_id, self._market_id, timeframe))
+
         count = int(cursor.fetchone()[0])
         offset = max(0, count - limit)
 
         # LIMIT should not be necessary then
         cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                        WHERE timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (timeframe, limit, offset))
+                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (
+                            self._broker_id, self._market_id, timeframe, limit, offset))
 
     def query_from_to(self, cursor, timeframe, from_ts, to_ts):
         cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                        WHERE timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                            timeframe, from_ts, to_ts))
+                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
+                            self._broker_id, self._market_id, timeframe, from_ts, to_ts))
 
     def query_from_limit(self, cursor, timeframe, from_ts, limit):
         cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                        WHERE timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC LIMIT %i""" % (
-                            timeframe, from_ts, limit))
+                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC LIMIT %i""" % (
+                            self._broker_id, self._market_id, timeframe, from_ts, limit))
 
     def query_to(self, cursor, timeframe, to_ts):
         cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                        WHERE timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                            timeframe, to_ts))
+                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
+                            self._broker_id, self._market_id, timeframe, to_ts))

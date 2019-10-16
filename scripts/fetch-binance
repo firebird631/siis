@@ -2,19 +2,19 @@
 # update FROM= each time or use --last= and do it every day/week using a crontab
 TO='2019-12-31T23:59:59'
 
-FROM='2019-09-30T00:00:00'
+FROM='2019-10-14T00:00:00'
 python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=1w &
 
-FROM='2019-10-01T00:00:00'
+FROM='2019-10-16T00:00:00'
 python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=1d &
 
-FROM='2019-10-01T12:00:00'
+FROM='2019-10-16T12:00:00'
 python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=4h &
 
-FROM='2019-10-01T12:00:00'
+FROM='2019-10-16T12:00:00'
 python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=1h --cascaded=2h
 
-# FROM='2019-09-18T12:00:00'
+# FROM='2019-10-16T12:00:00'
 # python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=15m --cascaded=30m
 # python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=5m
 # python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=$FROM --to=$TO --timeframe=1m --cascaded=3m

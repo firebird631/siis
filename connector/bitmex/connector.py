@@ -68,9 +68,10 @@ class Connector(object):
 
             self._all_instruments = []
 
-            for instrument in result:
-                if instrument['typ'] in ('FFCCSX', 'FFWCSX'):
-                    self._all_instruments.append(instrument['symbol'])
+            if isinstance(result, list):
+                for instrument in result:
+                    if instrument['typ'] in ('FFCCSX', 'FFWCSX'):
+                        self._all_instruments.append(instrument['symbol'])
 
         if self._ws is not None and not self._ws.connected and use_ws:
             # only subscribe to avalaibles instruments

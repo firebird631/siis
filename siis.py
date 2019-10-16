@@ -225,7 +225,7 @@ def application(argv):
     #
 
     if options.get('optimize'):
-        if options.get('market') and options.get('from') and options.get('to') and options.get('broker') and options.get('timeframe'):
+        if options.get('market') and options.get('from') and options.get('to') and options.get('broker'):
             from tools.optimizer import do_optimizer
             do_optimizer(options)
         else:

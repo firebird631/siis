@@ -94,7 +94,7 @@ def do_rebuilder(options):
         return
 
     for market in options['market'].split(','):
-        if market.startsiwth('!') or market.startsiwth['*']:
+        if market.startswith('!') or market.startswith('*'):
             continue
 
         generators = []
