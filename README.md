@@ -382,8 +382,10 @@ python siis.py <identity> [--help, --options...]
 * --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.
 * --read-only Don't write market neither candles data to the database. Default is writing to the database.
 * --fetch Process the data fetcher.
+* --install-market Used only with --fetch to only install the fake market data info to database without trying to fetch anything.
 * --binarize Process to text file to binary conversion for a market (text version of data could be removed on the futur).
 * --rebuild Rebuild OHLC from the trades/ticks data for a market (WIP).
+* --optimize Check one ore many market for trades/ticks or OHLCs. Need to specify --broker, --market, --timeframe, --from and --to date
 
 You need to define the name of the identity to use. This is related to the name defined into the identity.json file.
 Excepted for fetch/binarize/check-data the name of the profile of appliances to use --profile=\<profilename> must be specified.

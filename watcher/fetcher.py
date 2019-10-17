@@ -16,6 +16,8 @@ from instrument.candlegenerator import CandleGenerator
 from notifier.signal import Signal
 from database.database import Database
 
+from trader.market import Market
+
 import logging
 logger = logging.getLogger('siis.fetcher')
 
@@ -260,3 +262,145 @@ class Fetcher(object):
             str(candle.bid_open), str(candle.bid_high), str(candle.bid_low), str(candle.bid_close),
             str(candle.ofr_open), str(candle.ofr_high), str(candle.ofr_low), str(candle.ofr_close),
             str(candle.volume)))
+
+    def install_market(self, market_id):
+        """
+        From what is locally defined install the market data for a specific market id
+        """
+        pass
+
+    def install_market_data(self, market_id, market_data):
+        """
+        Install a market info data into the database.
+        """
+        market = Market(market_id, market_data.get('symbol', market_id))
+
+        market.base_exchange_rate = market_data.get('base-exchange-rate', 1.0)
+
+        market.one_pip_means = market_data.get('one-pip-means', 1.0)
+        market.value_per_pip = market_data.get('value-per-pip', 1.0)
+        market.contract_size = market_data.get('contract-size', 1.0)
+        market.lot_size = market_data.get('lot-size', 1.0)
+
+        market.expiry = market_data.get('expiry', '-')
+
+        base = market_data.get('base', {})
+        market.set_base(base.get('symbol', 'USD'), base.get('display', '$'), base.get('precision', 2))
+
+        quote = market_data.get('quote', {})
+        market.set_base(quote.get('symbol', 'USD'), quote.get('display', '$'), quote.get('precision', 2))
+
+        market.is_open = True
+
+        market.margin_factor = market_data.get('margin-factor', 1.0)
+
+        if 'unit' in market_data:
+            if market_data['unit'] == 'amount':
+                market.unit_type = Market.UNIT_AMOUNT
+            elif market_data['unit'] == 'contracts':
+                market.unit_type = Market.UNIT_CONTRACTS
+            elif market_data['unit'] == 'shares':
+                market.unit_type = Market.UNIT_SHARES
+            else:
+                market.unit_type = Market.UNIT_CONTRACTS
+        else:
+            market.unit_type = Market.UNIT_CONTRACTS
+
+        if 'type' in market_data:
+            if market_data['type'] == 'currency':
+                market.market_type = Market.TYPE_CURRENCY
+            elif market_data['type'] == 'indice':
+                market.market_type = Market.TYPE_INDICE
+            elif market_data['type'] == 'commodity':
+                market.market_type = Market.TYPE_COMMODITY
+            elif market_data['type'] == 'stock':
+                market.market_type = Market.TYPE_STOCK
+            elif market_data['type'] == 'rate':
+                market.market_type = Market.TYPE_RATE
+            elif market_data['type'] == 'sector':
+                market.market_type = Market.TYPE_SECTOR
+            else:
+                market.market_type = Market.TYPE_UNKNOWN
+        else:
+            market.market_type = Market.TYPE_UNKNOWN
+
+        if 'contract' in market_data:
+            if market_data['contract'] == 'spot':
+                market.contract_type = Market.CONTRACT_SPOT
+            elif market_data['contract'] == 'cfd':
+                market.contract_type = Market.CONTRACT_CFD
+            elif market_data['contract'] == 'futur':
+                market.contract_type = Market.CONTRACT_FUTUR
+            elif market_data['contract'] == 'option':
+                market.contract_type = Market.CONTRACT_OPTION
+            elif market_data['contract'] == 'warrant':
+                market.contract_type = Market.CONTRACT_WARRANT
+            elif market_data['contract'] == 'turbo':
+                market.contract_type = Market.CONTRACT_TURBO
+            else:
+                market.contract_type = Market.CONTRACT_SPOT
+        else:
+            market.contract_type = Market.CONTRACT_SPOT
+
+        market.trade = 0
+
+        if market_data.get('spot', False):
+            market.trade |= Market.TRADE_BUY_SELL
+        if market_data.get('margin', False):
+            market.trade |= Market.TRADE_MARGIN
+        if market_data.get('indivisible', False):
+            market.trade |= Market.TRADE_IND_MARGIN
+        if market_data.get('fifo', False):
+            market.trade |= Market.TRADE_FIFO
+        if market_data.get('position', False):
+            market.trade |= Market.TRADE_POSITION
+
+        orders = market_data.get('orders', ('market', 'limit', 'stop-market', 'stop-limit', 'take-profit-market', 'take-profit-limit'))
+
+        if 'market' in orders:
+            market.orders |= Market.ORDER_MARKET
+        if 'limit' in orders:
+            market.orders |= Market.ORDER_LIMIT
+        if 'stop-market' in orders:
+            market.orders |= Market.ORDER_STOP_MARKET
+        if 'stop-limit' in orders:
+            market.orders |= Market.ORDER_STOP_LIMIT
+        if 'take-profit-market' in orders:
+            market.orders |= Market.ORDER_TAKE_PROFIT_MARKET
+        if 'take-profit-limit' in orders:
+            market.orders |= Market.ORDER_TAKE_PROFIT_LIMIT
+        if 'one-cancel-other' in orders:
+            market.orders |= Market.ORDER_ONE_CANCEL_OTHER
+
+        size_limits = market_data.get('size-limits', {'min': 0.0, 'max': 0.0, 'step': 0.0})
+        market.set_size_limits(size_limits.get('min', 0.0), size_limits.get('max', 0.0), size_limits.get('step', 0.0))
+
+        notional_limits = market_data.get('notional-limits', {'min': 0.0, 'max': 0.0, 'step': 0.0})
+        market.set_size_limits(notional_limits.get('min', 0.0), notional_limits.get('max', 0.0), notional_limits.get('step', 0.0))
+
+        price_limits = market_data.get('price-limits', {'min': 0.0, 'max': 0.0, 'step': 0.0})
+        market.set_size_limits(price_limits.get('min', 0.0), price_limits.get('max', 0.0), price_limits.get('step', 0.0))
+
+        # fees & commissions
+        fees = market_data.get('fees', {})
+        market.maker_fee = fees.get('maker', 0.0)
+        market.taker_fee = fees.get('taker', 0.0)
+
+        commissions = market_data.get('commissions', {})
+        market.maker_commission = commissions.get('maker', 0.0)
+        market.taker_commission = commissions.get('maker', 0.0)
+
+        # store the last market info to be used for backtesting
+        Database.inst().store_market_info((self.name, market.market_id, market.symbol,
+            market.market_type, market.unit_type, market.contract_type,  # type
+            market.trade, market.orders,  # type
+            market.base, market.base_display, market.base_precision,  # base
+            market.quote, market.quote_display, market.quote_precision,  # quote
+            market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
+            str(market.lot_size), str(market.contract_size), str(market.base_exchange_rate),
+            str(market.value_per_pip), str(market.one_pip_means), str(market.margin_factor),
+            str(market.min_size), str(market.max_size), str(market.step_size),  # size limits
+            str(market.min_notional), str(market.max_notional), str(market.step_notional),  # notional limits
+            str(market.min_price), str(market.max_price), str(market.tick_price),  # price limits
+            str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))  # fees
+        )

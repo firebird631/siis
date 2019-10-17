@@ -12,6 +12,7 @@ from config import utils
 from common.service import Service
 
 from notifier.signal import Signal
+from config.utils import merge_parameters
 
 import logging
 logger = logging.getLogger('siis.service.watcher')
@@ -46,11 +47,18 @@ class WatcherService(Service):
         # read-only, means to do not write to the market DB
         self._read_only = options.get('read-only', False)
 
-    def create_fetcher(self, watcher_name):
+    def create_fetcher(self, options, watcher_name):
         fetcher = self._fetchers_config.get(watcher_name)
         if not fetcher:
             logger.error("Fetcher %s not found !" % watcher_name)
             return None
+
+        # additional configuration and user specifications
+        specific_config = utils.load_config(options, 'fetchers/' + watcher_name)
+        fetcher = merge_parameters(fetcher, specific_config)
+
+        # force fetcher config
+        self._fetchers_config[watcher_name] = fetcher
 
         # retrieve the classname and instanciate it
         parts = fetcher.get('classpath').split('.')
@@ -177,6 +185,12 @@ class WatcherService(Service):
     def identity(self, name):
         return self._identities_config.get(name, {}).get(self._identity)
 
+    def fetcher_config(self, name):
+        """
+        Get the configurations for a fetcher as dict.
+        """
+        return self._fetchers_config.get(name, {})
+
     def watcher_config(self, name):
         """
         Get the configurations for a watcher as dict.
@@ -185,7 +199,7 @@ class WatcherService(Service):
 
     def _init_watchers_config(self, options):
         """
-        Get the profile configuration for a specific watche name.
+        Get the profile configuration for a specific watcher name.
         """
         watchers_profile = self._profile_config.get('watchers', {})
 

@@ -255,3 +255,14 @@ class HistDataFetcher(Fetcher):
         ts = int(datetime.strptime(parts[0], '%Y%m%d %H%M%S').replace(tzinfo=UTC()) * 1000)
 
         return ts, parts[1], parts[2], parts[3], parts[4], parts[1], parts[2], parts[3], parts[4], parts[5]
+
+    def install_market(self, market_id):
+        fetcher_config = self.service.fetcher_config(self._name)
+        if fetcher_config:
+            markets = fetcher_config.get('markets', {})
+            
+            if market_id in markets:
+                logger.info("Fetcher %s retrieve and install market %s from local data" % (self.name, market_id))
+                self.install_market_data(market_id, markets[market_id])
+            else:
+                logger.error("Fetcher %s cannot retrieve market %s on local data" % (self.name, market_id))

@@ -114,6 +114,8 @@ def application(argv):
                     # use the rebuilder
                     options['rebuild'] = True
 
+                elif arg == '--install-market':
+                    options['install-market'] = True
                 elif arg == '--initial-fetch':
                     # do the initial OHLC fetch for watchers
                     options['initial-fetch'] = True
@@ -212,7 +214,7 @@ def application(argv):
     #
 
     if options.get('fetch'):
-        if options.get('market') and options.get('broker') and options.get('timeframe'):
+        if options.get('market') and options.get('broker'):
             from tools.fetcher import do_fetcher
             do_fetcher(options)
         else:

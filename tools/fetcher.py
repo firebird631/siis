@@ -29,7 +29,7 @@ def do_fetcher(options):
     Database.inst().setup(options)
 
     watcher_service = WatcherService(options)
-    fetcher = watcher_service.create_fetcher(options['broker'])
+    fetcher = watcher_service.create_fetcher(options, options['broker'])
 
     timeframe = -1
     cascaded = None
@@ -75,9 +75,13 @@ def do_fetcher(options):
                 if not fetcher.has_instrument(market_id, options.get('spec')):
                     logger.error("Market %s not found !" % (market_id,))
                 else:
-                    fetcher.fetch_and_generate(market_id, timeframe,
-                        options.get('from'), options.get('to'), options.get('last'),
-                        options.get('spec'), cascaded)
+                    if options.get('install-market', False):
+                        fetcher.install_market(market_id)
+                    else:
+                        fetcher.fetch_and_generate(market_id, timeframe,
+                            options.get('from'), options.get('to'), options.get('last'),
+                            options.get('spec'), cascaded)
+
         except KeyboardInterrupt:
             pass
         finally:

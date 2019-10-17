@@ -227,35 +227,40 @@ def do_optimizer(options):
             except:
                 pass
 
-    # checking data integrity, gap...
-    if timeframe is None:
-        for market in options['market'].split(','):
-            if market.startswith('!') or market.startswith('*'):
-                continue
+    try:
+        # checking data integrity, gap...
+        if timeframe is None:
+            for market in options['market'].split(','):
+                if market.startswith('!') or market.startswith('*'):
+                    continue
 
-            for tf in GENERATED_TF:
-                Terminal.inst().info("Verifying %s OHLC %s..." % (market, timeframe_to_str(tf)))
+                for tf in GENERATED_TF:
+                    Terminal.inst().info("Verifying %s OHLC %s..." % (market, timeframe_to_str(tf)))
 
-                check_ohlcs(options['broker'], market, tf, from_date, to_date)
+                    check_ohlcs(options['broker'], market, tf, from_date, to_date)
 
-    elif timeframe == Instrument.TF_TICK:
-        for market in options['market'].split(','):
-            if market.startswith('!') or market.startswith('*'):
-                continue
+        elif timeframe == Instrument.TF_TICK:
+            for market in options['market'].split(','):
+                if market.startswith('!') or market.startswith('*'):
+                    continue
 
-            Terminal.inst().info("Verifying %s ticks/trades..." % (market,))
+                Terminal.inst().info("Verifying %s ticks/trades..." % (market,))
 
-            check_ticks(options['broker'], market, from_date, to_date)
+                check_ticks(options['broker'], market, from_date, to_date)
 
-    elif timeframe > 0:
-        # particular ohlc
-        for market in options['market'].split(','):
-            if market.startswith('!') or market.startswith('*'):
-                continue
+        elif timeframe > 0:
+            # particular ohlc
+            for market in options['market'].split(','):
+                if market.startswith('!') or market.startswith('*'):
+                    continue
 
-            Terminal.inst().info("Verifying %s OHLC %s..." % (market, timeframe_to_str(timeframe)))
+                Terminal.inst().info("Verifying %s OHLC %s..." % (market, timeframe_to_str(timeframe)))
 
-            check_ohlcs(options['broker'], market, timeframe, from_date, to_date)
+                check_ohlcs(options['broker'], market, timeframe, from_date, to_date)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        pass
 
     Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 
