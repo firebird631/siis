@@ -1604,13 +1604,15 @@ class Strategy(Runnable):
                 cr = "0.0"
 
             aep = float(t['aep'])
+            best = float(t['b'])
+            worst = float(t['w'])
 
-            if t['d'] == 'long' and aep > 0:
-                bpct = (float(t['b']) - aep) / aep
-                wpct = (float(t['w']) - aep) / aep
-            elif t['d'] == 'short' and aep > 0:
-                bpct = (aep - float(t['b'])) / aep
-                wpct = (aep - float(t['w'])) / aep
+            if t['d'] == 'long' and aep > 0 and best > 0 and worst > 0:
+                bpct = (best - aep) / aep
+                wpct = (worst - aep) / aep
+            elif t['d'] == 'short' and aep > 0 and best > 0 and worst > 0:
+                bpct = (aep - best) / aep
+                wpct = (aep - worst) / aep
             else:
                 bpct = 0
                 wpct = 0

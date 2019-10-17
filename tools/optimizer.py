@@ -76,9 +76,6 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
 
         for ohlc in ohlcs:
             tts = ohlc.timestamp
-            # bid = @todo bid/ofr
-            # ofr = 
-            vol = ohlc.volume
 
             if not prev_tts:
                 prev_tts = tts
@@ -87,17 +84,28 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
 
             if gap_duration > timeframe:
                 date = format_datetime(timestamp)
-
                 Terminal.inst().warning("Ohlc gap of %s on %s !" % (format_delta(gap_duration), date))
 
-            # if bid <= 0.0:
-            #     Terminal.inst().warning("Bid price is lesser than 0 %s on %s !" % (bid, date))
+            if ohlc.bid_open <= 0.0:
+                Terminal.inst().warning("Bid open price is lesser than 0 %s on %s !" % (ohlc.bid_open, date))
+            if ohlc.bid_high <= 0.0:
+                Terminal.inst().warning("Bid high price is lesser than 0 %s on %s !" % (ohlc.bid_high, date))
+            if ohlc.bid_low <= 0.0:
+                Terminal.inst().warning("Bid close price is lesser than 0 %s on %s !" % (ohlc.bid_low, date))
+            if ohlc.bid_close <= 0.0:
+                Terminal.inst().warning("Bid close price is lesser than 0 %s on %s !" % (ohlc.bid_close, date))
 
-            # if ofr <= 0.0:
-            #     Terminal.inst().warning("Ofr price is lesser than 0 %s on %s !" % (ofr, date))
+            if ohlc.ofr_open <= 0.0:
+                Terminal.inst().warning("Ofr open price is lesser than 0 %s on %s !" % (ohlc.ofr_open, date))
+            if ohlc.ofr_high <= 0.0:
+                Terminal.inst().warning("Ofr high price is lesser than 0 %s on %s !" % (ohlc.ofr_high, date))
+            if ohlc.ofr_low <= 0.0:
+                Terminal.inst().warning("Ofr low price is lesser than 0 %s on %s !" % (ohlc.ofr_low, date))
+            if ohlc.ofr_close <= 0.0:
+                Terminal.inst().warning("Ofr close price is lesser than 0 %s on %s !" % (ohlc.ofr_close, date))
 
-            if vol <= 0.0:
-                Terminal.inst().warning("Volume quantity is lesser than 0 %s on %s !" % (vol, date))
+            if ohlc.volume <= 0.0:
+                Terminal.inst().warning("Volume quantity is lesser than 0 %s on %s !" % (ohlc.volume, date))
 
             prev_tts = tts
 
@@ -153,12 +161,10 @@ def check_ticks(broker_id, market_id, from_date, to_date):
 
             if gap_duration > 60.0:
                 date = format_datetime(timestamp)
-
                 Terminal.inst().warning("Tick gap of %s on %s !" % (format_delta(gap_duration), date))
 
             if bid <= 0.0:
                 Terminal.inst().warning("Bid price is lesser than 0 %s on %s !" % (bid, date))
-
             if ofr <= 0.0:
                 Terminal.inst().warning("Ofr price is lesser than 0 %s on %s !" % (ofr, date))
 

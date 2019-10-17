@@ -342,7 +342,7 @@ class StrategyMarginTrade(StrategyTrade):
                 self.create_oid = data['id']
 
                 # init created timestamp at the create order open
-                if self.eot:
+                if not self.eot:
                     self.eot = data['timestamp']
 
                 if data.get('stop-loss'):

@@ -191,7 +191,7 @@ class StrategyPositionTrade(StrategyTrade):
                 self.create_oid = data['id']
 
                 # init created timestamp at the create order open
-                if self.eot:
+                if not self.eot:
                     self.eot = data['timestamp']
 
                 if data.get('stop-loss'):
@@ -200,7 +200,9 @@ class StrategyPositionTrade(StrategyTrade):
                 if data.get('take-profit'):
                     self.tp = data['take-profit']
 
-                self._entry_state = StrategyTrade.STATE_OPENED
+                if self.e == 0:
+                    # because could occurs after position open signal
+                    self._entry_state = StrategyTrade.STATE_OPENED
 
         elif signal_type == Signal.SIGNAL_ORDER_DELETED:
             # order is no longer active

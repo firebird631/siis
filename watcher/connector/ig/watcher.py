@@ -24,7 +24,7 @@ from database.database import Database
 from trader.order import Order
 from trader.market import Market
 
-from common.utils import decimal_place
+from common.utils import decimal_place, UTC
 
 import logging
 logger = logging.getLogger('siis.watcher.ig')
@@ -596,7 +596,7 @@ class IGWatcher(Watcher):
                     epic = data['epic']
 
                     # date of the event 2018-09-13T20:36:01.096 without Z
-                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC()).timestamp()
 
                     if data.get('direction', '') == 'BUY':
                         direction = Order.LONG
@@ -688,7 +688,7 @@ class IGWatcher(Watcher):
                         ref_order_id = data['dealReference']
 
                         # date 2018-09-13T20:36:01.096 without Z
-                        event_time = datetime.strptime(data['date'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+                        event_time = datetime.strptime(data['date'], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC()).timestamp()
 
                         # direction of the trade
                         if data['direction'] == 'BUY':
@@ -813,7 +813,9 @@ class IGWatcher(Watcher):
                             # @todo 'limitDistance' 'stopDistance' 'trailingStop'
 
                             self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order, ref_order_id))
-                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
+
+                            if quantity > 0.0:
+                                self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
 
                         elif status == "PARTIALLY_CLOSED":
                             # traded and partially completed
@@ -849,7 +851,7 @@ class IGWatcher(Watcher):
                     # "channel": "WTP", "expiry": "-"
 
                     # date of the event 2018-09-13T20:36:01.096 without Z
-                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC()).timestamp()
 
                     if data.get('direction', '') == 'BUY':
                         direction = Order.LONG
