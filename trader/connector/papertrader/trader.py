@@ -428,9 +428,6 @@ class PaperTrader(Trader):
             self.lock()
 
             for k, position in self._positions.items():
-                # simulate liquidation of positions
-                # @todo but its complex
-
                 # remove empty and closed positions
                 if position.quantity <= 0.0:
                     rm_list.append(k)
@@ -941,9 +938,13 @@ class PaperTrader(Trader):
         self.lock()
 
         position = self._positions.get(position_id)
-        if position and position.is_opened():
-            position.stop_loss = stop_loss_price
-            position.take_profit = take_profit_price
+        if position:
+            if stop_loss_price:
+                position.stop_loss = stop_loss_price
+
+            if take_profit_price:
+                position.take_profit = take_profit_price
+
             result = True
 
         self.unlock()
@@ -1692,14 +1693,15 @@ class PaperTrader(Trader):
 
             # if position is empty -> closed -> delete it
             if current_position.quantity <= 0.0:
-                self.lock()
-
                 current_position.exit(None)
 
-                if current_position.position_id in self._positions:
-                    del self._positions[current_position.position_id]
+                # done during next update
+                # self.lock()
 
-                self.unlock()
+                # if current_position.position_id in self._positions:
+                #     del self._positions[current_position.position_id]
+
+                # self.unlock()
         else:
             # get a new distinct position id
             position_id = "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
@@ -2112,15 +2114,16 @@ class PaperTrader(Trader):
 
             # if position is empty -> closed -> delete it
             if current_position.quantity <= 0.0:
-                self.lock()
-
                 # take care this does not make an issue
                 current_position.exit(None)
 
-                if current_position.symbol in self._positions:
-                    del self._positions[current_position.symbol]
+                # dont a next update
+                # self.lock()
 
-                self.unlock()
+                # if current_position.symbol in self._positions:
+                #     del self._positions[current_position.symbol]
+
+                # self.unlock()
         else:
             # unique position per market
             position_id = market.market_id

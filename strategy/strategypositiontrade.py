@@ -124,6 +124,7 @@ class StrategyPositionTrade(StrategyTrade):
             # if not accepted as modification do it as limit order
             if trader.modify_position(self.position_id, take_profit_price=limit_price):
                 self.tp = limit_price
+                self.position_limit = limit_price
                 return True
 
         return False
