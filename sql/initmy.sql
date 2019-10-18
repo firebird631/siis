@@ -1,4 +1,4 @@
-7-- initial, create tables for mysql
+-- initial, create tables for mysql
 -- usage example :
 -- $ mysql -u root -p
 -- > CREATE DATABASE siis;

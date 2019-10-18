@@ -54,12 +54,20 @@ class PgSql(Database):
 
     def connect(self, config):
         if 'siis' in config and self.psycopg2:
-            self._conn_str = "dbname=%s user=%s password=%s host=%s port=%i" % (
-                config['siis'].get('name', 'siis'),
-                config['siis'].get('user', 'siis'),
-                config['siis'].get('password', 'siis'),
-                config['siis'].get('host', 'localhost'),
-                config['siis'].get('port', 5432))
+            if config['siis'].get('host'):
+                # hostname provided
+                self._conn_str = "dbname=%s user=%s password=%s host=%s port=%i" % (
+                    config['siis'].get('name', 'siis'),
+                    config['siis'].get('user', 'siis'),
+                    config['siis'].get('password', 'siis'),
+                    config['siis'].get('host', 'localhost'),
+                    config['siis'].get('port', 5432))
+            else:
+                # local unix socket
+                self._conn_str = "dbname=%s user=%s password=%s" % (
+                    config['siis'].get('name', 'siis'),
+                    config['siis'].get('user', 'siis'),
+                    config['siis'].get('password', 'siis'))
 
             self._db = self.psycopg2.connect(self._conn_str)
 
