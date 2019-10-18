@@ -440,6 +440,43 @@ class PaperTrader(Trader):
                         # update profit/loss of each position
                         position.update_profit_loss(market)
 
+                        # managed position take-profit and stop-loss
+                        if position.take_profit or position.stop_loss:
+                            open_exec_price = market.close_exec_price(position.direction)
+                            close_exec_price = market.close_exec_price(position.direction)
+
+                            exit_position = None
+
+                            if position.direction > 0:
+                                if position.take_profit and close_exec_price >= position.take_profit:
+                                    exit_position = Order.ORDER_LIMIT
+
+                                elif position.stop_loss and close_exec_price <= position.stop_loss:
+                                    exit_position = Order.ORDER_MARKET
+
+                            elif position.direction < 0:
+                                if position.take_profit and close_exec_price <= position.take_profit:
+                                    exit_position = Order.ORDER_LIMIT
+
+                                elif position.stop_loss and close_exec_price >= position.stop_loss:
+                                    exit_position = Order.ORDER_MARKET
+
+                            if exit_position:
+                                order = Order(self, position.symbol)
+                                order.set_position_id(position.position_id)
+
+                                order.direction = position.close_direction()
+                                order.order_type = exit_position
+                                order.price = position.take_profit
+
+                                order.quantity = position.quantity
+                                order.leverage = position.leverage
+
+                                order.close_only = True
+                                order.reduce_only = True
+
+                                self.__exec_margin_order(order, market, open_exec_price, close_exec_price)
+
             for rm in rm_list:
                 # remove empty positions
                 del self._positions[rm]
