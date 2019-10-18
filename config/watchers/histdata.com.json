@@ -1,0 +1,6 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.dummywatcher.watcher.DummyWatcher",
+    "symbols": ["*"],
+    "__comment": "Use dummy watcher"
+}

@@ -1,0 +1,6 @@
+{
+    "status": "load",
+    "classpath": "trader.connector.papertrader.trader.PaperTrader",
+    "symbols": ["*"],
+    "__comment": "Uses the paper trader"
+}

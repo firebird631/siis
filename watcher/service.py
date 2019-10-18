@@ -90,7 +90,7 @@ class WatcherService(Service):
 
     def start(self, options):
         from watcher.connector.dummywatcher.watcher import DummyWatcher
-        
+
         for k, watcher in self._watchers_config.items():
             ignore = False
 
