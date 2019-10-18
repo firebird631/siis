@@ -1146,8 +1146,10 @@ class Strategy(Runnable):
             if len(self._signals) > Strategy.MAX_SIGNALS:
                 # if strategy message queue saturate its mostly because of market data too many update
                 logger.warning("More than %s signals in strategy %s - %s" % (Strategy.MAX_SIGNALS, self.name, self.identifier))
-            #     # from the watcher (in live) so then ignore some of those message, the others ones are too important to be ignored
-            #     return
+                
+                # from the watcher (in live) so then ignore some of those message, the others ones are too important to be ignored
+                if signal.signal_type in (Signal.SIGNAL_TICK_DATA, Signal.SIGNAL_MARKET_DATA):
+                    return
 
             # signal of interest
             self._signals.append(signal)
