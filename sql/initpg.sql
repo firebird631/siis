@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS user_trade(
     trade_type INTEGER NOT NULL,
     data TEXT NOT NULL DEFAULT '{}',
     operations TEXT NOT NULL DEFAULT '{}',
-    UNIQUE(broker_id, account_id, market_id, appliance_id, trade_id))
+    UNIQUE(broker_id, account_id, market_id, appliance_id, trade_id));
 
 -- user_trader
 CREATE TABLE IF NOT EXISTS user_trader(
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS user_trader(
     activity INTEGER NOT NULL DEFAULT 1,
     data TEXT NOT NULL DEFAULT '{}',
     regions TEXT NOT NULL DEFAULT '{}',
-    UNIQUE(broker_id, account_id, market_id, appliance_id))
+    UNIQUE(broker_id, account_id, market_id, appliance_id));
 
 -- liquidation
 CREATE TABLE IF NOT EXISTS liquidation(
@@ -70,4 +70,4 @@ CREATE TABLE IF NOT EXISTS liquidation(
     timestamp BIGINT NOT NULL,
     direction INTEGER NOT NULL,
     price VARCHAR(32) NOT NULL,
-    quantity VARCHAR(32) NOT NULL)
+    quantity VARCHAR(32) NOT NULL);
