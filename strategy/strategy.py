@@ -1307,8 +1307,8 @@ class Strategy(Runnable):
                     'sym': sym,
                     'pl': pl,
                     'perf': perf,
-                    'worst': worst,
                     'best': best,
+                    'worst': worst,
                     'success': success,
                     'failed': failed,
                     'roe': roe
@@ -1402,8 +1402,8 @@ class Strategy(Runnable):
                 'pl': profit_loss,
                 'perf': perf,
                 'trades': trades,
-                'worst': worst,
                 'best': best,
+                'worst': worst,
                 'success': success,
                 'failed': failed,
                 'roe': roe
@@ -1503,8 +1503,8 @@ class Strategy(Runnable):
 
         pl_sum = 0.0
         perf_sum = 0.0
-        worst_sum = 0.0
         best_sum = 0.0
+        worst_sum = 0.0
         success_sum = 0
         failed_sum = 0
         roe_sum = 0

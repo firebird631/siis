@@ -281,7 +281,7 @@ class BitMexWatcher(Watcher):
                     else:
                         direction = 0
 
-                    operation_time = self._parse_datetime(ld.get('timestamp')).timestamp()
+                    operation_time = self._parse_datetime(ld.get('timestamp')).replace(tzinfo=UTC()).timestamp()
                     quantity = abs(float(ld['currentQty']))
 
                     # 'execQty': ?? 'execBuyQty', 'execSellQty': ??
@@ -328,7 +328,7 @@ class BitMexWatcher(Watcher):
                     status = ld.get('ordStatus', None)
 
                     if not status:  # updated
-                        operation_time = self._parse_datetime(ld.get('timestamp')).timestamp()
+                        operation_time = self._parse_datetime(ld.get('timestamp')).replace(tzinfo=UTC()).timestamp()
 
                         # quantity or price modified
                         if (ld.get('orderQty') or ld.get('price') or ld.get('stopPx')) and ld.get('workingIndicator'):
@@ -346,7 +346,7 @@ class BitMexWatcher(Watcher):
                             self.service.notify(Signal.SIGNAL_ORDER_UPDATED, self.name, (symbol, order, ""))
 
                     elif status == 'New':  # action='insert'
-                        transact_time = self._parse_datetime(ld.get('transactTime')).timestamp()
+                        transact_time = self._parse_datetime(ld.get('transactTime')).replace(tzinfo=UTC()).timestamp()
 
                         if ld['ordType'] == 'Market':
                             order_type = Order.ORDER_MARKET
@@ -417,7 +417,7 @@ class BitMexWatcher(Watcher):
                         self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, ld.get('clOrdID', "")))
 
                     elif status == 'Filled':  # action='update'
-                        operation_time = datetime.strptime(ld.get('timestamp', '1970-01-01 00:00:00.000Z'), "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+                        operation_time = datetime.strptime(ld.get('timestamp', '1970-01-01 00:00:00.000Z'), "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
                         # 'workingIndicator': False, if fully filled
                         #  'leavesQty': 0, if fully filled
                         # 'currency': 'XBT', 'settlCurrency': 'XBt', 'triggered': '', 'simpleLeavesQty': None, 'leavesQty': 10000, 'simpleCumQty': None, 'cumQty': 0, 'avgPx': None, ...
@@ -447,7 +447,7 @@ class BitMexWatcher(Watcher):
             #     for trade in data[3]:
             #         # trade data
             #         market_id = trade['symbol']
-            #         trade_time = datetime.strptime(trade['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+            #         trade_time = datetime.strptime(trade['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
             #         direction = Order.LONG if trade['side'] == 'Buy' else Order.SHORT
             #         quantity = trade['size']
             #         price = trade['price']
@@ -604,7 +604,7 @@ class BitMexWatcher(Watcher):
         if instrument:
             # tickSize is the minimum price increment (0.5USD for XBTUSD)
             tradeable = instrument.get('state', 'Closed') == 'Open'
-            update_time = self._parse_datetime(instrument.get('timestamp')).timestamp()
+            update_time = self._parse_datetime(instrument.get('timestamp')).replace(tzinfo=UTC()).timestamp()
             symbol = instrument.get('symbol', '')
             base_symbol = instrument.get('rootSymbol', '')
             quote_symbol = symbol[-3:]

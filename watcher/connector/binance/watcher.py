@@ -736,7 +736,7 @@ class BinanceWatcher(Watcher):
 
             elif data['x'] == 'EXPIRED' and data['X'] == 'EXPIRED':
                 order_id = str(data['i'])
-                
+
                 self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
 
             elif data['x'] == 'REPLACED' or data['X'] == 'REPLACED':

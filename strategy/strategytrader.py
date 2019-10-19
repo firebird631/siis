@@ -443,8 +443,8 @@ class StrategyTrader(object):
                     # perf sommed here it means that its not done during partial closing
                     if profit_loss != 0.0:
                         self._stats['perf'] += profit_loss
-                        self._stats['worst'] = min(self._stats['worst'], profit_loss)
                         self._stats['best'] = max(self._stats['best'], profit_loss)
+                        self._stats['worst'] = min(self._stats['worst'], profit_loss)
 
                     if profit_loss <= 0.0:
                         self._stats['cont-loss'] += 1
