@@ -100,10 +100,6 @@ class ATRIndicator(Indicator):
 
     # def compute(self, timestamp, candles, high=None, low=None, close=None):
     def compute(self, timestamp, high, low, close):
-        """
-        - prices : at least N prices from current timeframe (ie 9 4hours prices)
-        - candles : at least 1 candle from the higher timeframe (ie 1 daily candle)
-        """
         self._prev = self._last
 
         # n = len(candles)

@@ -128,5 +128,10 @@
         "status": "load",
         "classpath": "strategy.indicator.ichimoku.ichimoku.IchimokuIndicator",
         "options": {}
+    },
+    "atrstr": {
+        "status": "load",
+        "classpath": "strategy.indicator.atrsr.atrsr.ATRSRIndicator",
+        "options": {}
     }
 }
