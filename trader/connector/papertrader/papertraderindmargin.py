@@ -19,7 +19,7 @@ logger = logging.getLogger('siis.trader.papertrader.indmargin')
 
 def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_price):
     """
-    Execute the order for indivisable margin position.
+    Execute the order for indivisible margin position.
     @todo update to support only indivisible margin order
     """
     current_position = None

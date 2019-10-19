@@ -27,6 +27,7 @@ from .papertraderhistory import PaperTraderHistory, PaperTraderHistoryEntry
 from .papertradermargin import exec_margin_order
 from .papertraderindmargin import exec_indmargin_order
 from .papertraderspot import exec_buysell_order
+from .papertraderposition import close_position
 
 import logging
 logger = logging.getLogger('siis.trader.papertrader')
@@ -218,37 +219,24 @@ class PaperTrader(Trader):
                             open_exec_price = market.close_exec_price(position.direction)
                             close_exec_price = market.close_exec_price(position.direction)
 
-                            exit_position = None
+                            order_type = None
 
                             if position.direction > 0:
                                 if position.take_profit and close_exec_price >= position.take_profit:
-                                    exit_position = Order.ORDER_LIMIT
+                                    order_type = Order.ORDER_LIMIT
 
                                 elif position.stop_loss and close_exec_price <= position.stop_loss:
-                                    exit_position = Order.ORDER_MARKET
+                                    order_type = Order.ORDER_MARKET
 
                             elif position.direction < 0:
                                 if position.take_profit and close_exec_price <= position.take_profit:
-                                    exit_position = Order.ORDER_LIMIT
+                                    order_type = Order.ORDER_LIMIT
 
                                 elif position.stop_loss and close_exec_price >= position.stop_loss:
-                                    exit_position = Order.ORDER_MARKET
+                                    order_type = Order.ORDER_MARKET
 
-                            if exit_position:
-                                order = Order(self, position.symbol)
-                                order.set_position_id(position.position_id)
-
-                                order.direction = position.close_direction()
-                                order.order_type = exit_position
-                                order.price = position.take_profit
-
-                                order.quantity = position.quantity
-                                order.leverage = position.leverage
-
-                                order.close_only = True
-                                order.reduce_only = True
-
-                                exec_margin_order(self, order, market, open_exec_price, close_exec_price)
+                            if order_type:
+                                close_position(self, market, position, close_exec_price, order_type)
 
             for rm in rm_list:
                 # remove empty positions

@@ -17,8 +17,10 @@ logger = logging.getLogger('siis.trader.papertrader.history')
 class PaperTraderHistoryEntry(object):
     """
     History entry when paper trading, but could be done by an external listener, eventually a webapp.
+
     @todo Report the duration of the trade.
     @todo Streamable and for any trader, and more uniform.
+    @todo Or maybe remove because we can use reporting from strategy directly with more details.
     """
 
     def __init__(self, order, balance, margin_balance, gain_loss_pip=None, gain_loss_rate=None, gain_loss_currency=None, gain_loss_account_currency=None):

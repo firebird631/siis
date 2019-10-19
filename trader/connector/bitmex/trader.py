@@ -10,6 +10,7 @@ import copy
 import requests
 
 from datetime import datetime
+from common.utils import UTC
 
 from notifier.notifiable import Notifiable
 from notifier.signal import Signal
@@ -296,8 +297,8 @@ class BitMexTrader(Trader):
         # store the order with its order id
         order.set_order_id(result['orderID'])
 
-        order.created_time = self._parse_datetime(result.get('timestamp')).timestamp()
-        order.transact_time = self._parse_datetime(result.get('transactTime')).timestamp()
+        order.created_time = self._parse_datetime(result.get('timestamp')).replace(tzinfo=UTC()).timestamp().timestamp()
+        order.transact_time = self._parse_datetime(result.get('transactTime')).replace(tzinfo=UTC()).timestamp().timestamp()
 
         self._orders[order.order_id] = order
 
@@ -505,7 +506,7 @@ class BitMexTrader(Trader):
                 position.leverage = pos['leverage']
 
                 position.entry_price = pos['avgEntryPrice']
-                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()  # .%fZ")
+                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp().timestamp()  # .%fZ")
 
                 # id is symbol
                 self._positions[symbol] = position
@@ -524,7 +525,7 @@ class BitMexTrader(Trader):
 
                 # position.market_close = pos['market_close']
                 position.entry_price = pos['avgEntryPrice']
-                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()  # .%fZ")
+                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp().timestamp()  # .%fZ")
 
                 # XBt to XBT
                 # ratio = 1.0
@@ -596,7 +597,7 @@ class BitMexTrader(Trader):
             order.quantity = src_order.get('leavesQty', src_order.get('orderQty', 0))
 
             if src_order.get('transactTime'):
-                order.transact_time = self._parse_datetime(src_order.get('transactTime')).timestamp()
+                order.transact_time = self._parse_datetime(src_order.get('transactTime')).replace(tzinfo=UTC()).timestamp()
 
             if src_order['ordType'] == "Market":
                 order.order_type = Order.ORDER_MARKET

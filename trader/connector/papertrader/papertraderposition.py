@@ -20,7 +20,7 @@ import logging
 logger = logging.getLogger('siis.trader.papertrader.position')
 
 
-def close_position(trader, position, close_exec_price):
+def close_position(trader, market, position, close_exec_price, order_type=Order.ORDER_LIMIT):
     """
     Close a position.
     """
@@ -29,13 +29,25 @@ def close_position(trader, position, close_exec_price):
     trader.lock()
 
     if position and position.is_opened():
+        # create an order for the close
+        order = Order(trader, position.symbol)
+        order.set_position_id(position.position_id)
+
+        order.direction = position.close_direction()
+        order.order_type = order_type
+
+        if order_type == Order.ORDER_LIMIT:
+            order.price = close_exec_price
+
+        order.quantity = position.quantity
+        order.leverage = position.leverage
+
+        order.close_only = True
+        order.reduce_only = True
+
         # increase or reduce the current position
         org_quantity = position.quantity
         exec_price = 0.0
-
-        #
-        # and adjust the position quantity (no hedging)
-        #
 
         # price difference depending of the direction
         delta_price = 0
@@ -163,7 +175,7 @@ def close_position(trader, position, close_exec_price):
             'stop-loss': order.stop_loss,
             'take-profit': order.take_profit,
             'time-in-force': order.time_in_force,
-            'commission-amount': 0,  # @todo
+            'commission-amount': 0,
             'commission-asset': trader.account.currency
         }
 
@@ -173,49 +185,27 @@ def close_position(trader, position, close_exec_price):
         # position signal
         #
 
-        # signal as watcher service
-        if position.quantity <= 0:
-            # closed position
-            position_data = {
-                'id': position.position_id,
-                'symbol': position.symbol,
-                'direction': position.direction,
-                'timestamp': order.transact_time,
-                'quantity': 0,
-                'avg-entry-price': position.entry_price,
-                'avg-exit-price': position.exit_price,
-                'exec-price': exec_price,
-                'stop-loss': None,
-                'take-profit': None,
-                'profit-loss': position.profit_loss,
-                'profit-loss-currency': market.quote
-            }
+        # closed position
+        position_data = {
+            'id': position.position_id,
+            'symbol': position.symbol,
+            'direction': position.direction,
+            'timestamp': order.transact_time,
+            'quantity': 0,
+            'avg-entry-price': position.entry_price,
+            'avg-exit-price': position.exit_price,
+            'exec-price': exec_price,
+            'stop-loss': None,
+            'take-profit': None,
+            'profit-loss': position.profit_loss,
+            'profit-loss-currency': market.quote
+        }
 
-            trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_DELETED, trader.name, (order.symbol, position_data, order.ref_order_id))
-        else:
-            # updated position
-            position_data = {
-                'id': position.position_id,
-                'symbol': position.symbol,
-                'direction': position.direction,
-                'timestamp': order.transact_time,
-                'quantity': position.quantity,
-                'avg-entry-price': position.entry_price,
-                'avg-exit-price': position.exit_price,
-                'exec-price': exec_price,
-                'stop-loss': position.stop_loss,
-                'take-profit': position.take_profit,
-                'profit-loss': position.profit_loss,
-                'profit-loss-currency': market.quote
-            }
-
-            trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_UPDATED, trader.name, (order.symbol, position_data, order.ref_order_id))
+        trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_DELETED, trader.name, (order.symbol, position_data, order.ref_order_id))
 
         # and then deleted order
         trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (order.symbol, order.order_id, ""))
 
-        # if position is empty -> closed -> delete it
-        if position.quantity <= 0.0:
-            position.exit(None)
+        position.exit(exec_price)
 
     return result
