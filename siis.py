@@ -434,8 +434,9 @@ def application(argv):
                                     running = False
 
                                 elif value.startswith(':x '):
-                                    # manually exit position at market @todo move as command
-                                    target = value[2:]
+                                    # manually exit position at market 
+                                    # @todo move as command
+                                    target = value[3:]
 
                                     if target == "all" or target == "ALL":
                                         Terminal.inst().action("Send close to market command for any positions", view='status')
@@ -447,7 +448,7 @@ def application(argv):
                                 elif value.startswith(':d '):
                                     # @deprecated manually duplicate a position entry or exit must be associated to social strategy
                                     # @todo move as command
-                                    target = value[2:]
+                                    target = value[3:]
 
                                     Terminal.inst().action("Send replicate to market command for position %s" % (target,), view='status')
                                     trader_service.command(Trader.COMMAND_TRIGGER, {'key': target})

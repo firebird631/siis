@@ -222,6 +222,7 @@ class PaperTrader(Trader):
                             order_type = None
 
                             if position.direction > 0:
+
                                 if position.take_profit and close_exec_price >= position.take_profit:
                                     order_type = Order.ORDER_LIMIT
 
@@ -236,7 +237,8 @@ class PaperTrader(Trader):
                                     order_type = Order.ORDER_MARKET
 
                             if order_type:
-                                close_position(self, market, position, close_exec_price, order_type)
+                                if close_position(self, market, position, close_exec_price, order_type):
+                                    rm_list.append(k)
 
             for rm in rm_list:
                 # remove empty positions
@@ -620,7 +622,7 @@ class PaperTrader(Trader):
 
         return result
 
-    def close_position(self, position_id, market=True, limit_price=None):
+    def close_position(self, position_id, limit_price=None):
         if not self._activity:
             return False
 
@@ -636,7 +638,7 @@ class PaperTrader(Trader):
 
             order.direction = position.close_direction()
 
-            if market and limit_price:
+            if limit_price:
                 order.order_type = Order.ORDER_LIMIT
                 order.price = limit_price
             else:
@@ -669,10 +671,10 @@ class PaperTrader(Trader):
 
             # open long are executed on bid and short on ofr, close the inverse
             if order.direction == Position.LONG:
-                open_exec_price = ofr_price  # bid_price
+                open_exec_price = ofr_price   # bid_price
                 close_exec_price = bid_price  # ofr_price
             elif order.direction == Position.SHORT:
-                open_exec_price = bid_price  # ofr_price
+                open_exec_price = bid_price   # ofr_price
                 close_exec_price = ofr_price  # bid_price
             else:
                 logger.error("Unsupported direction")
@@ -683,14 +685,19 @@ class PaperTrader(Trader):
                 return False
 
             if self._slippage > 0.0:
-                # @todo
+                # @todo deferred to update
                 return False
             else:
                 # immediate execution of the order
-                result = exec_margin_order(self, order, market, open_exec_price, close_exec_price)
+                if market.has_position:
+                    # close isolated position
+                    result = close_position(self, market, position, close_exec_price, Order.ORDER_MARKET)
+                else:
+                    # close position (could be using FIFO method)
+                    result = exec_margin_order(self, order, market, open_exec_price, close_exec_price)
         else:
             self.unlock()
-            result = False         
+            result = False
 
         return result
 
@@ -703,26 +710,31 @@ class PaperTrader(Trader):
 
         position = self._positions.get(position_id)
         if position:
-            if stop_loss_price:
-                position.stop_loss = stop_loss_price
+            market = self.market(position.symbol)
+            if market and market.has_position:
+                if stop_loss_price:
+                    position.stop_loss = stop_loss_price
+                if take_profit_price:
+                    position.take_profit = take_profit_price
 
-            if take_profit_price:
-                position.take_profit = take_profit_price
-
-            result = True
+                result = True
 
         self.unlock()
 
         return result
 
     def positions(self, market_id):
-        # possible hedging... filter by market id
+        """
+        @deprecated
+        """
         positions = []
 
         self.lock()
+
         for k, position in self._positions.items():
             if position.symbol == market_id:
                 positions.append(copy.copy(position))
+
         self.unlock()
 
         return positions
@@ -739,6 +751,10 @@ class PaperTrader(Trader):
             self.lock()
             self._markets[market.market_id] = market
             self.unlock()
+
+    #
+    # slots
+    #
 
     def on_account_updated(self, balance, free_margin, unrealized_pnl, currency, risk_limit):
         # not interested in account details

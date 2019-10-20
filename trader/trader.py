@@ -329,7 +329,7 @@ class Trader(Runnable):
 
                         Terminal.inst().info("Close position %s" % (copied_position.position_id, ), view='info')
 
-                        self.close_position(command['position'].position_id, market=True)
+                        self.close_position(command['position'].position_id)
                     else:
                         # copy a position entry
                         copied_position = command['copied_position']
@@ -407,11 +407,16 @@ class Trader(Runnable):
 
                         created_date = datetime.fromtimestamp(p.created_time).strftime('%Y-%m-%d %H:%M:%S') if p.created_time else "???"
 
-                        Terminal.inst().info("Quantity %s / Margin %s (x%s)" % (p.quantity, margin, 1.0 / margin_factor), view='content')
-                        Terminal.inst().info("Date %s / Entry price %s / Take profit %s / Current exit price %s" % (
-                            created_date, p.entry_price, p.take_profit, market.close_exec_price(p.direction)), view='content')
+                        Terminal.inst().info("Quantity %s / Margin %s (x%s)" % (market.format_quantity(p.quantity), margin, 1.0 / margin_factor), view='content')
+                        Terminal.inst().info("Created %s / Entry-price %s / Current exit-price %s" % (
+                            created_date,
+                            market.format_price(p.entry_price),
+                            market.format_price(market.close_exec_price(p.direction))), view='content')
 
-                        Terminal.inst().info("Stop loss %s / Trailing stop %s" % (p.stop_loss, p.trailing_stop), view='content')
+                        Terminal.inst().info("Stop-loss %s / Take-profit %s / Trailing-stop %s" % (
+                            market.format_price(p.stop_loss),
+                            market.format_price(p.take_profit),
+                            "YES" if p.trailing_stop else "NO"), view='content')
 
                         # display unrealized P/L
                         profit_loss_msg = "Profit/Loss %s%s (%.2f%%) [%s%s]" % (
@@ -462,7 +467,7 @@ class Trader(Runnable):
                     # query close position
 
                     self.unlock()
-                    self.close_position(position.position_id, market=True)
+                    self.close_position(position.position_id)
                     self.lock()
 
                     Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='info')
@@ -476,14 +481,14 @@ class Trader(Runnable):
             self.lock()
 
             for k, position in self._positions.items():
-                    # query close position
-                    self.unlock()
-                    self.close_position(position.position_id, market=True)
-                    self.lock()
+                # query close position
+                self.unlock()
+                self.close_position(position.position_id)
+                self.lock()
 
-                    Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='info')
+                Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='info')
 
-                    break
+                break
 
             self.unlock()            
 

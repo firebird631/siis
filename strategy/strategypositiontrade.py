@@ -369,6 +369,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position
+            logger.warning("%s closed %s" % (self.id, self.position_id))
             self.position_id = None
 
             if data.get('profit-loss'):

@@ -262,6 +262,7 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
 def update_asset(trader, order_type, asset, market, trade_id, exec_price, trade_qty, buy_or_sell, timestamp):
     """
     Update asset price and quantity.
+    @todo It seems sometime we have a quantiy lacking issue.
     """
     curr_price = asset.price  # in asset prefered quote symbol
     curr_qty = asset.quantity
