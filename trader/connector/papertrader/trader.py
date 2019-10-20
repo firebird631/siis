@@ -3,10 +3,10 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Generic paper trader.
 
+import base64
+import copy
 import json
 import time
-import copy
-import base64
 import uuid
 
 from datetime import datetime
@@ -17,17 +17,17 @@ from notifier.signal import Signal
 from trader.trader import Trader
 
 from .account import PaperTraderAccount
-from trader.position import Position
-from trader.order import Order
-from trader.asset import Asset
 from terminal.terminal import Terminal
+from trader.asset import Asset
+from trader.order import Order
+from trader.position import Position
 
 from .papertraderhistory import PaperTraderHistory, PaperTraderHistoryEntry
 
-from .papertradermargin import exec_margin_order
 from .papertraderindmargin import exec_indmargin_order
-from .papertraderspot import exec_buysell_order
+from .papertradermargin import exec_margin_order
 from .papertraderposition import close_position
+from .papertraderspot import exec_buysell_order
 
 import logging
 logger = logging.getLogger('siis.trader.papertrader')

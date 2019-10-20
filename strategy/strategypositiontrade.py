@@ -158,6 +158,7 @@ class StrategyPositionTrade(StrategyTrade):
         if self.position_id:
             # most of the margin broker case we have a position id
             if trader.close_position(self.position_id):
+                self._closing = True
                 return True
             else:
                 return False
@@ -165,10 +166,10 @@ class StrategyPositionTrade(StrategyTrade):
         return True
 
     def has_stop_order(self):
-        return self.position_stop > 0.0
+        return False # self.position_stop > 0.0
 
     def has_limit_order(self):
-        return self.position_limit > 0.0
+        return False # self.position_limit > 0.0
 
     def support_both_order(self):
         return True

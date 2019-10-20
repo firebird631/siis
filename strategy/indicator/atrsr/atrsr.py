@@ -4,8 +4,8 @@
 # Average True Range support and resistance indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MM_n
-from talib import ATR as ta_ATR, SMA as ta_SMA, EMA as ta_EMA, MIN as ta_MIN, MAX as ta_MAX
+from strategy.indicator.utils import MM_n, down_sample
+from talib import ATR as ta_ATR, EMA as ta_EMA, MAX as ta_MAX, MIN as ta_MIN, SMA as ta_SMA
 
 import numpy as np
 
