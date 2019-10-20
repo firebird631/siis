@@ -297,8 +297,8 @@ class BitMexTrader(Trader):
         # store the order with its order id
         order.set_order_id(result['orderID'])
 
-        order.created_time = self._parse_datetime(result.get('timestamp')).replace(tzinfo=UTC()).timestamp().timestamp()
-        order.transact_time = self._parse_datetime(result.get('transactTime')).replace(tzinfo=UTC()).timestamp().timestamp()
+        order.created_time = self._parse_datetime(result.get('timestamp')).replace(tzinfo=UTC()).timestamp()
+        order.transact_time = self._parse_datetime(result.get('transactTime')).replace(tzinfo=UTC()).timestamp()
 
         self._orders[order.order_id] = order
 
@@ -506,7 +506,7 @@ class BitMexTrader(Trader):
                 position.leverage = pos['leverage']
 
                 position.entry_price = pos['avgEntryPrice']
-                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp().timestamp()  # .%fZ")
+                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()  # .%fZ")
 
                 # id is symbol
                 self._positions[symbol] = position
@@ -525,7 +525,7 @@ class BitMexTrader(Trader):
 
                 # position.market_close = pos['market_close']
                 position.entry_price = pos['avgEntryPrice']
-                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp().timestamp()  # .%fZ")
+                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()  # .%fZ")
 
                 # XBt to XBT
                 # ratio = 1.0
