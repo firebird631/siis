@@ -414,8 +414,8 @@ class Trader(Runnable):
                             market.format_price(market.close_exec_price(p.direction))), view='content')
 
                         Terminal.inst().info("Stop-loss %s / Take-profit %s / Trailing-stop %s" % (
-                            market.format_price(p.stop_loss),
-                            market.format_price(p.take_profit),
+                            market.format_price(p.stop_loss) if p.stop_loss else "NO",
+                            market.format_price(p.take_profit or 0.0) if p.take_profit else "NO",
                             "YES" if p.trailing_stop else "NO"), view='content')
 
                         # display unrealized P/L
