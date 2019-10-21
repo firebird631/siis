@@ -506,7 +506,7 @@ class BitMexTrader(Trader):
                 position.leverage = pos['leverage']
 
                 position.entry_price = pos['avgEntryPrice']
-                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()  # .%fZ")
+                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
 
                 # id is symbol
                 self._positions[symbol] = position
@@ -516,7 +516,6 @@ class BitMexTrader(Trader):
                 del self._positions[symbol]
 
             if position:
-
                 # absolute value because we work with positive quantity + direction information
                 position.quantity = abs(float(pos['currentQty']))
                 position.direction = Position.SHORT if pos['currentQty'] < 0 else Position.LONG
@@ -525,23 +524,22 @@ class BitMexTrader(Trader):
 
                 # position.market_close = pos['market_close']
                 position.entry_price = pos['avgEntryPrice']
-                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()  # .%fZ")
+                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
 
                 # XBt to XBT
-                # ratio = 1.0
-                # if pos['currency'] == 'XBt':
-                #   ratio = 1.0 / 100000000.0
+                ratio = 1.0
+                if pos['currency'] == 'XBt':
+                    ratio = 1.0 / 100000000.0
 
-                # don't want them because they are in XBt or XBT
-                # position.profit_loss = (float(pos['unrealisedPnl']) * ratio)
-                # position.profit_loss_rate = float(pos['unrealisedPnlPcnt'])
+                # @todo minus taker-fee
+                position.profit_loss = (float(pos['unrealisedPnl']) * ratio)
+                position.profit_loss_rate = float(pos['unrealisedPnlPcnt'])
 
-                # # must be updated using the market taker fee
-                # position.profit_loss_market = (float(pos['unrealisedPnl']) * ratio)
-                # position.profit_loss_market_rate = float(pos['unrealisedPnlPcnt'])
+                # @todo minus maker-fee
+                position.profit_loss_market = (float(pos['unrealisedPnl']) * ratio)
+                position.profit_loss_market_rate = float(pos['unrealisedPnlPcnt'])
 
-                # compute profit loss in base currency
-                # @todo disabled for now util fix contract_size and value_per_pip calculation
+                # compute profit loss in base currency (disabled, uses values aboves)
                 # position.update_profit_loss(market)
 
     def __update_orders(self):
@@ -666,10 +664,3 @@ class BitMexTrader(Trader):
                 order.price_type = Order.PRICE_MARK
             elif 'MarkPrice' in exec_inst:
                 order.price_type = Order.PRICE_INDEX
-
-            # {'orderID': 'f1b0e6b1-3459-9fc8-d948-911d5032a521', 'clOrdID': '', 'clOrdLinkID': '', 'account': 513190, 'symbol': 'XBTUSD', 'side': 'Buy', 'simpleOrderQty': None,
-            # 'orderQty': 500, 'price': 7092.5, 'displayQty': None, 'stopPx': None, 'pegOffsetValue': None, 'pegPriceType': '', 'currency': 'USD', 'settlCurrency': 'XBt',
-            # 'ordType': 'Limit', 'timeInForce': 'GoodTillCancel', 'execInst': 'ParticipateDoNotInitiate', 'contingencyType': '', 'exDestination': 'XBME', 'ordStatus': 'New',
-            # 'triggered': '', 'workingIndicator': True, 'ordRejReason': '', 'simpleLeavesQty': 0.0705, 'leavesQty': 500, 'simpleCumQty': 0, 'cumQty': 0, 'avgPx': None,
-            # 'multiLegReportingType': 'SingleSecurity', 'text': 'Amended price: Amend from www.bitmex.com\nSubmission from www.bitmex.com', 'transactTime': '2018-09-01T21:09:09.688Z',
-            # 'timestamp': '2018-09-01T21:09:09.688Z'}

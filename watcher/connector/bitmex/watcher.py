@@ -610,12 +610,12 @@ class BitMexWatcher(Watcher):
             quote_symbol = symbol[-3:]
 
             # if funds['currency'] == 'XBt':
-            #   # XBt to XBT
-            #   ratio = 1.0 / 100000000.0
+            #     # XBt to XBT
+            #     ratio = 1.0 / 100000000.0
 
             # if base_symbol == 'USD':
-            #   # USD is base then convert to XBT
-            #   ratio *= to_base_rate
+            #     # USD is base then convert to XBT
+            #     ratio *= to_base_rate
 
             bid = instrument.get('bidPrice')
             ofr = instrument.get('askPrice')

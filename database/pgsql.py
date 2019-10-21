@@ -24,7 +24,7 @@ from trader.asset import Asset
 from .tickstorage import TickStorage, TickStreamer
 from .ohlcstorage import OhlcStorage, OhlcStreamer
 
-from .database import Database
+from .database import Database, DatabaseException
 
 import logging
 logger = logging.getLogger('siis.database.pgsql')
@@ -70,6 +70,9 @@ class PgSql(Database):
                     config['siis'].get('password', 'siis'))
 
             self._db = self.psycopg2.connect(self._conn_str)
+
+        if not self._db:
+            raise DatabaseException("Unable to connect to postgresql database ! Verify you have psycopg2 installed and your user database.json file.")
 
     def disconnect(self):
         # postresql db

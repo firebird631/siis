@@ -22,7 +22,7 @@ from trader.asset import Asset
 from .tickstorage import TickStorage, TickStreamer
 from .ohlcstorage import OhlcStorage, OhlcStreamer
 
-from .database import Database
+from .database import Database, DatabaseException
 
 import logging
 logger = logging.getLogger('siis.database.mysql')
@@ -57,6 +57,9 @@ class MySql(Database):
             }
 
             self._db = self.MySQLdb.connect(**self._conn_params)
+
+        if not self._db:
+            raise DatabaseException("Unable to connect to mysql database ! Verify you have MySQLdb installed and your user database.json file.")
 
     def disconnect(self):
         # postresql db

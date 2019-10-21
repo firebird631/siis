@@ -28,6 +28,10 @@ import logging
 logger = logging.getLogger('siis.database')
 
 
+class DatabaseException(Exception):
+    pass
+
+
 class Database(object):
     """
     Persistance database.

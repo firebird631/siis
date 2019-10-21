@@ -266,8 +266,8 @@ def application(argv):
     #
 
     Terminal.inst().info("Starting SIIS using %s identity..." % options['identity'])
-    Terminal.inst().action("- (Press 'q' twice to terminate)")
-    Terminal.inst().action("- (Press 'h' for help)")
+    Terminal.inst().action("- (Type ':q<enter>' to terminate)")
+    Terminal.inst().action("- (Type ':h<enter>' to display help)")
     Terminal.inst().flush()
 
     if options.get('backtesting'):  
@@ -291,7 +291,12 @@ def application(argv):
 
     # database manager
     Database.create(options)
-    Database.inst().setup(options)
+
+    try:
+        Database.inst().setup(options)
+    except Exception as e:
+        Terminal.inst().error(str(e))
+        sys.exit(-1)
 
     # watcher service
     Terminal.inst().info("Starting watcher's service...")
