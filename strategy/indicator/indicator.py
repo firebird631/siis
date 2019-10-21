@@ -9,7 +9,7 @@ class Indicator(object):
     @todo https://www.centralcharts.com/fr/forums/12-analyse-technique/1366-indicateur-chande-kroll-stop
     """
 
-    __slots__ = '_name', '_timeframe', '_last_timestamp'
+    __slots__ = '_name', '_timeframe', '_last_timestamp', '_compute_at_close'
 
     TYPE_UNKNOWN = 0
     TYPE_AVERAGE_PRICE = 1
@@ -41,6 +41,7 @@ class Indicator(object):
         self._timeframe = timeframe
 
         self._last_timestamp = 0  # last compute timestamp
+        self._compute_at_close = False
 
     @property
     def name(self):
@@ -60,3 +61,10 @@ class Indicator(object):
 
     def compute(self, timestamp):
         return None
+
+    @property
+    def compute_at_close(self):
+        """
+        Some indicator could be only computed at an OHLC close
+        """
+        return self._compute_at_close

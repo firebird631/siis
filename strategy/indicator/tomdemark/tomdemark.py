@@ -53,6 +53,7 @@ class TomDemarkIndicator(Indicator):
     def __init__(self, timeframe, length=9):
         super().__init__("tomdemark", timeframe)
 
+        self._compute_at_close = True  # compute at close
         self._length = length   # periods number for the price SMA
 
         self._c = CToken()         # last computed count, relative to last/current candle/price

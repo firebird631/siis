@@ -131,7 +131,6 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 ema_sma_height = -1
 
         if self.bollingerbands:
-
             self.bollingerbands.compute(last_timestamp, prices)
 
             bb_break = 0
@@ -148,147 +147,149 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 bb_ma = 1
 
         if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
+            if self.last_closed:
+                self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
+            if self.tomdemark.compute_at_close and self.last_closed:
+                self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
-            #
-            # setup entry
-            #
+                #
+                # setup entry
+                #
 
-            # long entry on sell-setup + rsi oversell
-            if (self.tomdemark.c.c == 2 and self.tomdemark.c.d < 0 and self.price.close[-1] > self.price.close[-2]) or (self.tomdemark.c.c == 3):  # avec td3            
-                # # if (td.c == 1 and td.d < 0 and candles[-1].close > candles[-2].close):
-                # if (td.c == 2 and td.d < 0 and candles[-1].close > candles[-2].close):
-                # if ((td.c == 2 or td.c == 3) and td.d < 0 and candles[-1].close > candles[-2].close):
-                # if ((td.c == 2 or td.c == 3) and td.d < 0) and candles[-1].close > candles[-2].close:
-                # if bb_break == 0:
-                # if (bb_break == 0 and bb_ma < 0):  # test with aggressive + bb
-                # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):
-                # if (ema_sma_height > 0 or rsi_30_70 > 0) and bb_break >= 0:
-                # if (bb_break == 0 and bb_ma < 0) and (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # used with average case but not with aggressive
-                # if (bb_break == 0 and bb_ma < 0) and (ema_sma_height > 0 or rsi_30_70 > 0):  #  and volume_signal > 0:
-                # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # la classique mais prend des risk, a voir avec un bon SL peut-être
-                # if (rsi_trend > 0) and (ema_sma_height > 0 or rsi_30_70 > 0):  # protege de perte mais rate des gains
-                # if (ema_sma_height > 0 or rsi_30_70 > 0):  #  and volume_signal > 0:  # C4
-                # if ema_sma_height > 0:  # C5
-                # if ema_sma_height > 0 and bb_break >= 0 and rsi_trend > 0:  # C6
-                # if ema_sma_height > 0 and bb_break >= 0 and stochrsi_20_80 > 0:
-                # if 1:  # C1
-                # if rsi_trend > 0 and bb_break > 0:  # pas mal evite des entrees foireuses mais pas assez de profits
-                # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # la classique mais prend des risk, il faut un bon stop-loss
-                if (ema_sma_height > 0 or rsi_30_70 > 0) and bb_break <= 0:
-                    # if rsi_trend and (stochrsi_20_80 > 0 or rsi_30_70 > 0):
-                    # if (stochrsi_20_80 > 0 and rsi_30_70 > 0):
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_ENTRY
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
+                # long entry on sell-setup + rsi oversell
+                if (self.tomdemark.c.c == 2 and self.tomdemark.c.d < 0 and self.price.close[-1] > self.price.close[-2]) or (self.tomdemark.c.c == 3):  # avec td3            
+                    # # if (td.c == 1 and td.d < 0 and candles[-1].close > candles[-2].close):
+                    # if (td.c == 2 and td.d < 0 and candles[-1].close > candles[-2].close):
+                    # if ((td.c == 2 or td.c == 3) and td.d < 0 and candles[-1].close > candles[-2].close):
+                    # if ((td.c == 2 or td.c == 3) and td.d < 0) and candles[-1].close > candles[-2].close:
+                    # if bb_break == 0:
+                    # if (bb_break == 0 and bb_ma < 0):  # test with aggressive + bb
+                    # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):
+                    # if (ema_sma_height > 0 or rsi_30_70 > 0) and bb_break >= 0:
+                    # if (bb_break == 0 and bb_ma < 0) and (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # used with average case but not with aggressive
+                    # if (bb_break == 0 and bb_ma < 0) and (ema_sma_height > 0 or rsi_30_70 > 0):  #  and volume_signal > 0:
+                    # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # la classique mais prend des risk, a voir avec un bon SL peut-être
+                    # if (rsi_trend > 0) and (ema_sma_height > 0 or rsi_30_70 > 0):  # protege de perte mais rate des gains
+                    # if (ema_sma_height > 0 or rsi_30_70 > 0):  #  and volume_signal > 0:  # C4
+                    # if ema_sma_height > 0:  # C5
+                    # if ema_sma_height > 0 and bb_break >= 0 and rsi_trend > 0:  # C6
+                    # if ema_sma_height > 0 and bb_break >= 0 and stochrsi_20_80 > 0:
+                    # if 1:  # C1
+                    # if rsi_trend > 0 and bb_break > 0:  # pas mal evite des entrees foireuses mais pas assez de profits
+                    # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # la classique mais prend des risk, il faut un bon stop-loss
+                    if (ema_sma_height > 0 or rsi_30_70 > 0) and bb_break <= 0:
+                        # if rsi_trend and (stochrsi_20_80 > 0 or rsi_30_70 > 0):
+                        # if (stochrsi_20_80 > 0 and rsi_30_70 > 0):
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_ENTRY
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
 
-                    if self.tomdemark.c.tdst:
+                        if self.tomdemark.c.tdst:
+                            signal.sl = self.tomdemark.c.tdst
+
+                        # Terminal.inst().info("Entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
+
+                # aggressive entry
+                if ((self.tomdemark.c.c == 9 or (self.tomdemark.c.c == 8 and self.tomdemark.c.p)) and self.tomdemark.c.d > 0):
+                    # if stochrsi_20_80 > 0 and rsi_30_70 > 0 and candles[-1].close > candles[-2].close:  # C1 -
+                    # if 1:  # C4 +++
+                    # if stochrsi_20_80 > 0 and candles[-1].close > candles[-2].close:  # C3  ++
+                    # if rsi_30_70 > 0 and candles[-1].close > candles[-2].close:  # C5  ??
+                    # if ema_sma_height > 0 and bb_break >= 0 and rsi_trend > 0:  # C6 ??
+                    # if ema_sma_height > 0 and bb_break >= 0 and stochrsi_20_80 > 0:  # C7 ??
+                    # if (ema_sma_height > 0 or rsi_30_70 > 0):  # C2 +
+                    # if stochrsi_20_80 > 0 and candles[-1].close > candles[-2].close:  # C3  ++
+                    if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # C8 ??
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_ENTRY
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
+
+                        # Terminal.inst().info("Aggressive entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
+
+                #
+                # invalidation 2 of opposite setup
+                #
+
+                # @todo or if a >= 3 <= 7 close below the previous candle close
+                # can make loss in bull run
+                # second condition might be optimized
+                elif (self.tomdemark.c.c == 2 and self.tomdemark.c.d > 0 and self.price.close[-1] < self.price.close[-2]) or (self.tomdemark.c.c == 3 and self.tomdemark.c.d > 0):
+                    # elif td.c == 3 and td.d > 0:  # and candles[-1].close < candles[-2].close:
+                    # long cancelation on buy-setup formation 
+                    # if ema_sma_height < 0 or rsi_40_60 > 0:  # (excess of volume and ema under sma)
+                    # if stochrsi_20_80 < 0:  # and volume_signal > 0:
+                    # if bb_break < 0:
+                    # if (rsi_trend < 0):  # C2
+                    # if 1:  # C1 +
+                    # if (bb_break == 0 and bb_ma < 0):  # C3 ++
+                    if ema_sma_height < 0:  #  and volume_signal > 0:
+                        # Terminal.inst().info("rsi_30_70 %s / rsi_40_60 %s / ema_sma_height %s / volume_signal %s" % (rsi_30_70, rsi_40_60, ema_sma_height, volume_signal), view='default')
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_EXIT  # CANCEL
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
+                        # Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
+
+                #
+                # setup completed
+                #
+
+                elif (((self.tomdemark.c.c >= 8 and self.tomdemark.c.p) or (self.tomdemark.c.c == 9)) and self.tomdemark.c.d < 0):  # and candles[-1].close > candles[-2].close:
+                    if 1:  # stochrsi_20_80 > 1:
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_EXIT
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
+                        # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+
+                #
+                # setup aborted
+                #
+
+                elif ((self.tomdemark.c.c >= 2 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d < 0) and self.price.close[-1] < self.price.close[-2]:  # C1
+                    # if stochrsi_20_80 < 0 or rsi_30_70 < 0:  # bearish stoch OR rsi  # C1
+                    if stochrsi_20_80 < 0 and rsi_30_70 < 0:  # bearish stoch AND rsi (seems better)  # C2
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_EXIT
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
+                        #Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, td.c, 'p' if signal.p else ''), view='default')
+
+                #
+                # CD entry
+                #
+
+                if self.tomdemark.cd.c > 1:
+                    Terminal.inst().info("CD%s" % self.tomdemark.cd.c)
+
+                if self.tomdemark.cd.c == 1:
+                    # count-down buy-setup + rsi oversell
+                    Terminal.inst().info("CD1")
+                    if self.tomdemark.c.d < 0:  # and candles[-1].close > candles[-2].high:
+                        # if rsi_30_70 > 0:
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_ENTRY
+                        signal.dir = 1
+                        signal.p = self.price.last
                         signal.sl = self.tomdemark.c.tdst
+                        Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.strategy_trader.instrument.symbol, self.tf, signal.sl,), view='default')
 
-                    # Terminal.inst().info("Entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
+                #
+                # CD13 setup
+                #
 
-            # aggressive entry
-            if ((self.tomdemark.c.c == 9 or (self.tomdemark.c.c == 8 and self.tomdemark.c.p)) and self.tomdemark.c.d > 0):
-                # if stochrsi_20_80 > 0 and rsi_30_70 > 0 and candles[-1].close > candles[-2].close:  # C1 -
-                # if 1:  # C4 +++
-                # if stochrsi_20_80 > 0 and candles[-1].close > candles[-2].close:  # C3  ++
-                # if rsi_30_70 > 0 and candles[-1].close > candles[-2].close:  # C5  ??
-                # if ema_sma_height > 0 and bb_break >= 0 and rsi_trend > 0:  # C6 ??
-                # if ema_sma_height > 0 and bb_break >= 0 and stochrsi_20_80 > 0:  # C7 ??
-                # if (ema_sma_height > 0 or rsi_30_70 > 0):  # C2 +
-                # if stochrsi_20_80 > 0 and candles[-1].close > candles[-2].close:  # C3  ++
-                if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # C8 ??
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_ENTRY
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
-
-                    # Terminal.inst().info("Aggressive entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
-
-            #
-            # invalidation 2 of opposite setup
-            #
-
-            # @todo or if a >= 3 <= 7 close below the previous candle close
-            # can make loss in bull run
-            # second condition might be optimized
-            elif (self.tomdemark.c.c == 2 and self.tomdemark.c.d > 0 and self.price.close[-1] < self.price.close[-2]) or (self.tomdemark.c.c == 3 and self.tomdemark.c.d > 0):
-                # elif td.c == 3 and td.d > 0:  # and candles[-1].close < candles[-2].close:
-                # long cancelation on buy-setup formation 
-                # if ema_sma_height < 0 or rsi_40_60 > 0:  # (excess of volume and ema under sma)
-                # if stochrsi_20_80 < 0:  # and volume_signal > 0:
-                # if bb_break < 0:
-                # if (rsi_trend < 0):  # C2
-                # if 1:  # C1 +
-                # if (bb_break == 0 and bb_ma < 0):  # C3 ++
-                if ema_sma_height < 0:  #  and volume_signal > 0:
-                    # Terminal.inst().info("rsi_30_70 %s / rsi_40_60 %s / ema_sma_height %s / volume_signal %s" % (rsi_30_70, rsi_40_60, ema_sma_height, volume_signal), view='default')
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_EXIT  # CANCEL
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
-                    # Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
-
-            #
-            # setup completed
-            #
-
-            elif (((self.tomdemark.c.c >= 8 and self.tomdemark.c.p) or (self.tomdemark.c.c == 9)) and self.tomdemark.c.d < 0):  # and candles[-1].close > candles[-2].close:
-                if 1:  # stochrsi_20_80 > 1:
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_EXIT
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
-                    # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
-
-            #
-            # setup aborted
-            #
-
-            elif ((self.tomdemark.c.c >= 2 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d < 0) and self.price.close[-1] < self.price.close[-2]:  # C1
-                # if stochrsi_20_80 < 0 or rsi_30_70 < 0:  # bearish stoch OR rsi  # C1
-                if stochrsi_20_80 < 0 and rsi_30_70 < 0:  # bearish stoch AND rsi (seems better)  # C2
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_EXIT
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
-                    #Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, td.c, 'p' if signal.p else ''), view='default')
-
-            #
-            # CD entry
-            #
-
-            if self.tomdemark.cd.c > 1:
-                Terminal.inst().info("CD%s" % self.tomdemark.cd.c)
-
-            if self.tomdemark.cd.c == 1:
-                # count-down buy-setup + rsi oversell
-                Terminal.inst().info("CD1")
-                if self.tomdemark.c.d < 0:  # and candles[-1].close > candles[-2].high:
-                    # if rsi_30_70 > 0:
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_ENTRY
-                    signal.dir = 1
-                    signal.p = self.price.last
-                    signal.sl = self.tomdemark.c.tdst
-                    Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.strategy_trader.instrument.symbol, self.tf, signal.sl,), view='default')
-
-            #
-            # CD13 setup
-            #
-
-            elif self.tomdemark.cd.c == 13:
-                # count-down sell-setup completed
-                if self.tomdemark.cd.d < 0:
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_EXIT
-                    signal.p = self.price.close[-1]
-                    signal.dir = 1
-                    Terminal.inst().info("Exit long cd13", view='default')
+                elif self.tomdemark.cd.c == 13:
+                    # count-down sell-setup completed
+                    if self.tomdemark.cd.d < 0:
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_EXIT
+                        signal.p = self.price.close[-1]
+                        signal.dir = 1
+                        Terminal.inst().info("Exit long cd13", view='default')
 
         return signal
 
@@ -423,7 +424,8 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 bb_ma = 1
 
         if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
+            if self.last_closed:
+                self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         level1_signal = 0
 
@@ -441,146 +443,147 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 level1_signal = 1
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.close)
+            if self.tomdemark.compute_at_close and self.last_closed:
+                self.tomdemark.compute(last_timestamp, candles, self.price.high, self.price.low, self.price.close)
 
-            #
-            # setup entry
-            #
+                #
+                # setup entry
+                #
 
-            # long entry on sell-setup + rsi oversell
-            if (self.tomdemark.c.c == 2 and self.tomdemark.c.d < 0 and self.price.close[-1] > self.price.close[-2]) or (self.tomdemark.c.c == 3):  # avec td3
-                # if (td.c == 1 and td.d < 0 and candles[-1].close > candles[-2].close):
-                # if (td.c == 2 and td.d < 0 and candles[-1].close > candles[-2].close):
-                # if ((td.c == 2 or td.c == 3) and td.d < 0 and candles[-1].close > candles[-2].close):
-                # if ((td.c == 2 or td.c == 3) and td.d < 0) and candles[-1].close > candles[-2].close:
-                # if bb_break == 0:
-                # if (bb_break == 0 and bb_ma < 0):  # test with aggressive + bb
-                # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):
-                # if (ema_sma_height > 0 or rsi_30_70 > 0) and bb_break >= 0:
-                # if (bb_break == 0 and bb_ma < 0) and (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # used with average case but not with aggressive
-                # if (bb_break == 0 and bb_ma < 0) and (ema_sma_height > 0 or rsi_30_70 > 0):  #  and volume_signal > 0:
-                # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # la classique mais prend des risk, a voir avec un bon SL peut-être
-                # if (rsi_trend > 0) and (ema_sma_height > 0 or rsi_30_70 > 0):  # protege de perte mais rate des gains
-                # if (ema_sma_height > 0 or rsi_30_70 > 0):  #  and volume_signal > 0:  # C4
-                # if ema_sma_height > 0:  # C5
-                # if ema_sma_height > 0 and bb_break >= 0 and rsi_trend > 0:  # C6
-                # if ema_sma_height > 0 and bb_break >= 0 and stochrsi_20_80 > 0:
-                # if 1:  # C1
-                # if rsi_trend > 0 and bb_break > 0:  # pas mal evite des entrees foireuses mais pas assez de profits
-                if level1_signal > 0:
-                    # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # la classique mais prend des risk, il faut un bon stop-loss
-                    # if rsi_trend and (stochrsi_20_80 > 0 or rsi_30_70 > 0):
-                    # if (stochrsi_20_80 > 0 and rsi_30_70 > 0):
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_ENTRY
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
+                # long entry on sell-setup + rsi oversell
+                if (self.tomdemark.c.c == 2 and self.tomdemark.c.d < 0 and self.price.close[-1] > self.price.close[-2]) or (self.tomdemark.c.c == 3):  # avec td3
+                    # if (td.c == 1 and td.d < 0 and candles[-1].close > candles[-2].close):
+                    # if (td.c == 2 and td.d < 0 and candles[-1].close > candles[-2].close):
+                    # if ((td.c == 2 or td.c == 3) and td.d < 0 and candles[-1].close > candles[-2].close):
+                    # if ((td.c == 2 or td.c == 3) and td.d < 0) and candles[-1].close > candles[-2].close:
+                    # if bb_break == 0:
+                    # if (bb_break == 0 and bb_ma < 0):  # test with aggressive + bb
+                    # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):
+                    # if (ema_sma_height > 0 or rsi_30_70 > 0) and bb_break >= 0:
+                    # if (bb_break == 0 and bb_ma < 0) and (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # used with average case but not with aggressive
+                    # if (bb_break == 0 and bb_ma < 0) and (ema_sma_height > 0 or rsi_30_70 > 0):  #  and volume_signal > 0:
+                    # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # la classique mais prend des risk, a voir avec un bon SL peut-être
+                    # if (rsi_trend > 0) and (ema_sma_height > 0 or rsi_30_70 > 0):  # protege de perte mais rate des gains
+                    # if (ema_sma_height > 0 or rsi_30_70 > 0):  #  and volume_signal > 0:  # C4
+                    # if ema_sma_height > 0:  # C5
+                    # if ema_sma_height > 0 and bb_break >= 0 and rsi_trend > 0:  # C6
+                    # if ema_sma_height > 0 and bb_break >= 0 and stochrsi_20_80 > 0:
+                    # if 1:  # C1
+                    # if rsi_trend > 0 and bb_break > 0:  # pas mal evite des entrees foireuses mais pas assez de profits
+                    if level1_signal > 0:
+                        # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # la classique mais prend des risk, il faut un bon stop-loss
+                        # if rsi_trend and (stochrsi_20_80 > 0 or rsi_30_70 > 0):
+                        # if (stochrsi_20_80 > 0 and rsi_30_70 > 0):
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_ENTRY
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
 
-                    if self.tomdemark.c.tdst:
+                        if self.tomdemark.c.tdst:
+                            signal.sl = self.tomdemark.c.tdst
+
+                        Terminal.inst().info("Entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
+
+                # aggressive entry
+                if self.tomdemark.c.c == 9 and self.tomdemark.c.d > 0:
+                    # if ((self.tomdemark.c.c == 9 or (self.tomdemark.c.c == 8 and self.tomdemark.c.p)) and self.tomdemark.c.d > 0):
+                    # if stochrsi_20_80 > 0 and rsi_30_70 > 0 and candles[-1].close > candles[-2].close:  # C1 -
+                    # if 1:  # C4 +++
+                    # if stochrsi_20_80 > 0 and candles[-1].close > candles[-2].close:  # C3  ++
+                    # if rsi_30_70 > 0 and candles[-1].close > candles[-2].close:  # C5  ??
+                    # if ema_sma_height > 0 and bb_break >= 0 and rsi_trend > 0:  # C6 ??
+                    # if ema_sma_height > 0 and bb_break >= 0 and stochrsi_20_80 > 0:  # C7 ??
+                    # if (ema_sma_height > 0 or rsi_30_70 > 0):  # C2 +
+                    # if 1:
+                    # if stochrsi_20_80 > 0 and candles[-1].close > candles[-2].close:  # C3  ++
+                    # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # C8 ??
+                    if level1_signal > 0:
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_ENTRY
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
+
+                        Terminal.inst().info("Aggressive entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
+
+                #
+                # invalidation 2 of opposite setup
+                #
+
+                # @todo or if a >= 3 <= 7 close below the previous candle close
+                # can make loss in bull run
+                # second condition might be optimized
+                elif (self.tomdemark.c.c == 2 and self.tomdemark.c.d > 0 and self.price.close[-1] < self.price.close[-2]) or (self.tomdemark.c.c == 3 and self.tomdemark.c.d > 0):
+                    # elif td.c == 3 and td.d > 0:  # and self.price.close < self.price.close:
+                    # long cancelation on buy-setup formation 
+                    # if ema_sma_height < 0 or rsi_40_60 > 0:  # (excess of volume and ema under sma)
+                    # if stochrsi_20_80 < 0:  # and volume_signal > 0:
+                    # if bb_break < 0:
+                    # if (rsi_trend < 0):  # C2
+                    # if ema_sma_height < 0:  #  and volume_signal > 0:
+                    if 1:  # C1 +
+                        # if level1_signal < 0:
+                        # if (bb_break == 0 and bb_ma < 0):  # C3 ++
+                        # Terminal.inst().info("rsi_30_70 %s / rsi_40_60 %s / ema_sma_height %s / volume_signal %s" % (rsi_30_70, rsi_40_60, ema_sma_height, volume_signal), view='default')
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_EXIT  # CANCEL
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
+                        Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
+
+                #
+                # setup completed
+                #
+
+                elif (((self.tomdemark.c.c >= 8 and self.tomdemark.c.p) or (self.tomdemark.c.c == 9)) and self.tomdemark.c.d < 0):  # and self.price.close[-1] > self.price.close[-2]:
+                    # if 1:  # stochrsi_20_80 > 1:
+                    if 1: # if level1_signal < 0:
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_EXIT
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
+                        Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+
+                #
+                # setup aborted
+                #
+
+                elif ((self.tomdemark.c.c >= 2 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d < 0) and self.price.close[-1] < self.price.close[-2]:  # C1
+                    # if stochrsi_20_80 < 0 or rsi_30_70 < 0:  # bearish stoch OR rsi  # C1
+                    # if stochrsi_20_80 < 0 and rsi_30_70 < 0:  # bearish stoch AND rsi (seems better)  # C2
+                    if 1:  # level1_signal < 0:
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_EXIT
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
+                        Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+
+                #
+                # CD entry
+                #
+
+                if self.tomdemark.cd.c >= 1 and self.tomdemark.cd.c <= 3:
+                    # count-down buy-setup + rsi oversell
+                    if self.tomdemark.cd.d < 0:  # and self.price.close[-1] > self.price.high[-2]:
+                        # if rsi_30_70 > 0:
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_ENTRY
+                        signal.dir = 1
+                        signal.p = self.price.close[-1]
                         signal.sl = self.tomdemark.c.tdst
+                        Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.strategy_trader.instrument.symbol, self.tf, signal.sl,), view='default')
 
-                    Terminal.inst().info("Entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
+                #
+                # CD13 setup
+                #
 
-            # aggressive entry
-            if self.tomdemark.c.c == 9 and self.tomdemark.c.d > 0:
-                # if ((self.tomdemark.c.c == 9 or (self.tomdemark.c.c == 8 and self.tomdemark.c.p)) and self.tomdemark.c.d > 0):
-                # if stochrsi_20_80 > 0 and rsi_30_70 > 0 and candles[-1].close > candles[-2].close:  # C1 -
-                # if 1:  # C4 +++
-                # if stochrsi_20_80 > 0 and candles[-1].close > candles[-2].close:  # C3  ++
-                # if rsi_30_70 > 0 and candles[-1].close > candles[-2].close:  # C5  ??
-                # if ema_sma_height > 0 and bb_break >= 0 and rsi_trend > 0:  # C6 ??
-                # if ema_sma_height > 0 and bb_break >= 0 and stochrsi_20_80 > 0:  # C7 ??
-                # if (ema_sma_height > 0 or rsi_30_70 > 0):  # C2 +
-                # if 1:
-                # if stochrsi_20_80 > 0 and candles[-1].close > candles[-2].close:  # C3  ++
-                # if (stochrsi_20_80 > 0 or rsi_30_70 > 0):  # C8 ??
-                if level1_signal > 0:
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_ENTRY
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
-
-                    Terminal.inst().info("Aggressive entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
-
-            #
-            # invalidation 2 of opposite setup
-            #
-
-            # @todo or if a >= 3 <= 7 close below the previous candle close
-            # can make loss in bull run
-            # second condition might be optimized
-            elif (self.tomdemark.c.c == 2 and self.tomdemark.c.d > 0 and self.price.close[-1] < self.price.close[-2]) or (self.tomdemark.c.c == 3 and self.tomdemark.c.d > 0):
-                # elif td.c == 3 and td.d > 0:  # and self.price.close < self.price.close:
-                # long cancelation on buy-setup formation 
-                # if ema_sma_height < 0 or rsi_40_60 > 0:  # (excess of volume and ema under sma)
-                # if stochrsi_20_80 < 0:  # and volume_signal > 0:
-                # if bb_break < 0:
-                # if (rsi_trend < 0):  # C2
-                # if ema_sma_height < 0:  #  and volume_signal > 0:
-                if 1:  # C1 +
-                    # if level1_signal < 0:
-                    # if (bb_break == 0 and bb_ma < 0):  # C3 ++
-                    # Terminal.inst().info("rsi_30_70 %s / rsi_40_60 %s / ema_sma_height %s / volume_signal %s" % (rsi_30_70, rsi_40_60, ema_sma_height, volume_signal), view='default')
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_EXIT  # CANCEL
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
-                    Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
-
-            #
-            # setup completed
-            #
-
-            elif (((self.tomdemark.c.c >= 8 and self.tomdemark.c.p) or (self.tomdemark.c.c == 9)) and self.tomdemark.c.d < 0):  # and self.price.close[-1] > self.price.close[-2]:
-                # if 1:  # stochrsi_20_80 > 1:
-                if 1: # if level1_signal < 0:
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_EXIT
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
-                    Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
-
-            #
-            # setup aborted
-            #
-
-            elif ((self.tomdemark.c.c >= 2 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d < 0) and self.price.close[-1] < self.price.close[-2]:  # C1
-                # if stochrsi_20_80 < 0 or rsi_30_70 < 0:  # bearish stoch OR rsi  # C1
-                # if stochrsi_20_80 < 0 and rsi_30_70 < 0:  # bearish stoch AND rsi (seems better)  # C2
-                if 1:  # level1_signal < 0:
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_EXIT
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
-                    Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
-
-            #
-            # CD entry
-            #
-
-            if self.tomdemark.cd.c >= 1 and self.tomdemark.cd.c <= 3:
-                # count-down buy-setup + rsi oversell
-                if self.tomdemark.cd.d < 0:  # and self.price.close[-1] > self.price.high[-2]:
-                    # if rsi_30_70 > 0:
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_ENTRY
-                    signal.dir = 1
-                    signal.p = self.price.close[-1]
-                    signal.sl = self.tomdemark.c.tdst
-                    Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.strategy_trader.instrument.symbol, self.tf, signal.sl,), view='default')
-
-            #
-            # CD13 setup
-            #
-
-            elif self.tomdemark.cd.c == 13:
-                # count-down sell-setup completed
-                if self.tomdemark.cd.d < 0:
-                    signal = StrategySignal(self.tf, timestamp)
-                    signal.signal = StrategySignal.SIGNAL_EXIT
-                    signal.p = self.price.close[-1]
-                    signal.dir = 1
-                    Terminal.inst().info("Exit long cd13", view='default')
+                elif self.tomdemark.cd.c == 13:
+                    # count-down sell-setup completed
+                    if self.tomdemark.cd.d < 0:
+                        signal = StrategySignal(self.tf, timestamp)
+                        signal.signal = StrategySignal.SIGNAL_EXIT
+                        signal.p = self.price.close[-1]
+                        signal.dir = 1
+                        Terminal.inst().info("Exit long cd13", view='default')
 
         return signal
 
@@ -671,10 +674,12 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
         #         bb_ma = 1
 
         if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
+            if self.last_closed:
+                self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.pivotpoint:
-            self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
+            if self.pivotpoint.compute_at_close and self.last_closed:
+                self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
 
         level1_signal = 0
 
@@ -692,121 +697,122 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 level1_signal = 1
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
+            if self.tomdemark.compute_at_close and self.last_closed:
+                self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
-            # long entry on sell-setup
-            if self.tomdemark.c.c >= 1 and self.tomdemark.c.c <= 6 and self.tomdemark.c.d < 0 and level1_signal > 0:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_ENTRY
-                signal.dir = 1
-                signal.p = self.price.close[-1]
+                # long entry on sell-setup
+                if self.tomdemark.c.c >= 1 and self.tomdemark.c.c <= 6 and self.tomdemark.c.d < 0 and level1_signal > 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_ENTRY
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-                if self.tomdemark.c.tdst:
-                    signal.sl = self.tomdemark.c.tdst
+                    if self.tomdemark.c.tdst:
+                        signal.sl = self.tomdemark.c.tdst
 
-                if len(self.pivotpoint.resistances[1]):
-                    signal.tp = np.max(self.pivotpoint.resistances[1])
+                    if len(self.pivotpoint.resistances[1]):
+                        signal.tp = np.max(self.pivotpoint.resistances[1])
 
-                # Terminal.inst().info("Entry long %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
+                    # Terminal.inst().info("Entry long %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
 
-            # short entry on buy-setup
-            elif self.tomdemark.c.c >= 1 and self.tomdemark.c.c <= 6 and self.tomdemark.c.d > 0 and level1_signal < 0:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_ENTRY
-                signal.dir = -1
-                signal.p = self.price.close[-1]
+                # short entry on buy-setup
+                elif self.tomdemark.c.c >= 1 and self.tomdemark.c.c <= 6 and self.tomdemark.c.d > 0 and level1_signal < 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_ENTRY
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]
 
-                if self.tomdemark.c.tdst:
-                    signal.sl = self.tomdemark.c.tdst
+                    if self.tomdemark.c.tdst:
+                        signal.sl = self.tomdemark.c.tdst
 
-                if len(self.pivotpoint.supports[1]):
-                    signal.tp = np.min(self.pivotpoint.supports[1])
+                    if len(self.pivotpoint.supports[1]):
+                        signal.tp = np.min(self.pivotpoint.supports[1])
 
-                # Terminal.inst().info("Entry short %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
+                    # Terminal.inst().info("Entry short %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
 
-            # aggressive long entry
-            elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d > 0 and level1_signal > 0:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_ENTRY
-                signal.dir = 1
-                signal.p = self.price.close[-1]
+                # aggressive long entry
+                elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d > 0 and level1_signal > 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_ENTRY
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-                if len(self.pivotpoint.resistances[1]):
-                    signal.tp = np.max(self.pivotpoint.resistances[1])
+                    if len(self.pivotpoint.resistances[1]):
+                        signal.tp = np.max(self.pivotpoint.resistances[1])
 
-                # td9 cannot provide us a SL, take it from ATR
-                signal.sl = self.atr.stop_loss(signal.dir)
+                    # td9 cannot provide us a SL, take it from ATR
+                    signal.sl = self.atr.stop_loss(signal.dir)
 
-                # Terminal.inst().info("Aggressive long entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
+                    # Terminal.inst().info("Aggressive long entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
 
-            # aggressive long entry
-            elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and level1_signal < 0:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_ENTRY
-                signal.dir = -1
-                signal.p = self.price.close[-1]
+                # aggressive long entry
+                elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and level1_signal < 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_ENTRY
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]
 
-                if len(self.pivotpoint.supports[1]):
-                    signal.tp = np.min(self.pivotpoint.supports[1])
+                    if len(self.pivotpoint.supports[1]):
+                        signal.tp = np.min(self.pivotpoint.supports[1])
 
-                # td9 cannot provide us a SL, take it from ATR
-                signal.sl = self.atr.stop_loss(signal.dir)
+                    # td9 cannot provide us a SL, take it from ATR
+                    signal.sl = self.atr.stop_loss(signal.dir)
 
-                # Terminal.inst().info("Aggressive short entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
+                    # Terminal.inst().info("Aggressive short entry %s %s" % (self.tomdemark.c.tdst, signal.sl), view='default')
 
-            #
-            # setup completed
-            #
+                #
+                # setup completed
+                #
 
-            # sell-setup
-            elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and level1_signal < 0:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = 1
-                signal.p = self.price.close[-1]
+                # sell-setup
+                elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and level1_signal < 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-                # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                    # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
-            # buy-setup
-            elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d > 0 and level1_signal > 0:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = -1
-                signal.p = self.price.close[-1]
-                
-                # Terminal.inst().info("Exit short %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                # buy-setup
+                elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d > 0 and level1_signal > 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]
+                    
+                    # Terminal.inst().info("Exit short %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
-            #
-            # setup aborted (@todo how to in this long/short case)
-            #
+                #
+                # setup aborted (@todo how to in this long/short case)
+                #
 
-            elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d < 0) and level1_signal < 0:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = 1
-                signal.p = self.price.close[-1]
+                elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d < 0) and level1_signal < 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-                # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                    # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
-            elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d > 0) and level1_signal > 0:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = -1
-                signal.p = self.price.close[-1]
+                elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d > 0) and level1_signal > 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]
 
-                # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                    # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
-            # #
-            # # invalidation 2 of opposite setup
-            # #
+                # #
+                # # invalidation 2 of opposite setup
+                # #
 
-            # elif self.tomdemark.c.c > 2 and self.tomdemark.c.d > 0 and level1_signal < 0:
-            #     signal = StrategySignal(self.tf, timestamp)
-            #     signal.signal = StrategySignal.SIGNAL_EXIT
-            #     signal.dir = 1
-            #     signal.p = self.price.close[-1]
+                # elif self.tomdemark.c.c > 2 and self.tomdemark.c.d > 0 and level1_signal < 0:
+                #     signal = StrategySignal(self.tf, timestamp)
+                #     signal.signal = StrategySignal.SIGNAL_EXIT
+                #     signal.dir = 1
+                #     signal.p = self.price.close[-1]
 
-            #     Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
+                #     Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
 
         if signal and signal.signal == StrategySignal.SIGNAL_ENTRY:
             # if level1_signal > 0 and len(self.pivotpoint.supports[1]):
@@ -920,110 +926,112 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
         # #         bb_ma = 1
 
         if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
+            if self.last_closed:
+                self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.pivotpoint:
-            self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
+            if self.pivotpoint.compute_at_close and self.last_closed:
+                self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
 
         if self.bbawe:
-            # use OHLC4 as price in place of close
-            bbawe = self.bbawe.compute(last_timestamp, self.price.high, self.price.low, self.price.prices)
+            if self.last_closed:
+                # use OHLC4 as price in place of close
+                bbawe = self.bbawe.compute(last_timestamp, self.price.high, self.price.low, self.price.prices)
 
-        #
-        # trend signal
-        #
+                #
+                # trend signal
+                #
 
-        ema_rsi_signal = 0
+                ema_rsi_signal = 0
 
-        if self.ema.last < self.sma.last:
-            # bear trend
-            if self.rsi.last > 0.5:  # initial: 0.5
-                ema_rsi_signal = -1
-            elif self.rsi.last < 0.2:  # initial: 0.2
-                ema_rsi_signal = 1
-        else:
-            # bull trend
-            if self.rsi.last > 0.8:  # initial: 0.8
-                ema_rsi_signal = -1
-            elif self.rsi.last < 0.6:  # initial: 0.6
-                ema_rsi_signal = 1
-        #
-        # entry computation
-        #
+                if self.ema.last < self.sma.last:
+                    # bear trend
+                    if self.rsi.last > 0.5:  # initial: 0.5
+                        ema_rsi_signal = -1
+                    elif self.rsi.last < 0.2:  # initial: 0.2
+                        ema_rsi_signal = 1
+                else:
+                    # bull trend
+                    if self.rsi.last > 0.8:  # initial: 0.8
+                        ema_rsi_signal = -1
+                    elif self.rsi.last < 0.6:  # initial: 0.6
+                        ema_rsi_signal = 1
+                #
+                # entry computation
+                #
 
-        if bbawe > 0 and ema_rsi_signal != -1:
-            # long entry
-            signal = StrategySignal(self.tf, timestamp)
-            signal.signal = StrategySignal.SIGNAL_ENTRY
-            signal.dir = 1
-            signal.p = self.price.close[-1]
+                if bbawe > 0 and ema_rsi_signal != -1:
+                    # long entry
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_ENTRY
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-            if self.tomdemark.c.tdst and signal.sl < signal.p:
-                signal.sl = self.tomdemark.c.tdst
+                    if self.tomdemark.c.tdst and signal.sl < signal.p:
+                        signal.sl = self.tomdemark.c.tdst
 
-            if len(self.pivotpoint.resistances[2]):
-                tp = np.max(self.pivotpoint.resistances[2])
-                if tp > self.atr.stop_loss(-1):
-                    # try with twice (same for short)
-                    signal.tp = (tp - signal.p) * 2.0 + signal.p
-                    # signal.tp = tp
+                    if len(self.pivotpoint.resistances[2]):
+                        tp = np.max(self.pivotpoint.resistances[2])
+                        if tp > self.atr.stop_loss(-1):
+                            # try with twice (same for short)
+                            signal.tp = (tp - signal.p) * 2.0 + signal.p
+                            # signal.tp = tp
 
-        elif bbawe < 0 and ema_rsi_signal != 1:
-            # short entry
-            signal = StrategySignal(self.tf, timestamp)
-            signal.signal = StrategySignal.SIGNAL_ENTRY
-            signal.dir = -1
-            signal.p = self.price.close[-1]
+                elif bbawe < 0 and ema_rsi_signal != 1:
+                    # short entry
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_ENTRY
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]
 
-            if self.tomdemark.c.tdst and signal.sl > signal.p:
-                signal.sl = self.tomdemark.c.tdst
+                    if self.tomdemark.c.tdst and signal.sl > signal.p:
+                        signal.sl = self.tomdemark.c.tdst
 
-            if len(self.pivotpoint.supports[2]):
-                tp = np.min(self.pivotpoint.supports[2])
-                if tp < self.atr.stop_loss(1):
-                    signal.tp = signal.p - (signal.p - tp) * 2.0
-                    # signal.tp = tp
+                    if len(self.pivotpoint.supports[2]):
+                        tp = np.min(self.pivotpoint.supports[2])
+                        if tp < self.atr.stop_loss(1):
+                            signal.tp = signal.p - (signal.p - tp) * 2.0
+                            # signal.tp = tp
 
         #
         # exit computation
         #
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
+            if self.tomdemark.compute_at_close and self.last_closed:
+                self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
-            # only on 5min timeframe, or could manage at strategy only for parent timeframe
+                # only on 5min timeframe, or could manage at strategy only for parent timeframe
 
-            # sell-setup
-            if self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and ema_rsi_signal < 0 and self.tf == Instrument.TF_5MIN:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = 1
-                signal.p = self.price.close[-1]
+                # sell-setup
+                if self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and ema_rsi_signal < 0 and self.tf == Instrument.TF_5MIN:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-            # buy-setup
-            elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d > 0 and ema_rsi_signal > 0 and self.tf == Instrument.TF_5MIN:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = -1
-                signal.p = self.price.close[-1]
+                # buy-setup
+                elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d > 0 and ema_rsi_signal > 0 and self.tf == Instrument.TF_5MIN:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]
 
-            #
-            # setup aborted (@todo how to in this long/short case)
-            #
+                #
+                # setup aborted (@todo how to in this long/short case)
+                #
 
-            elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d < 0) and ema_rsi_signal < 0 and self.tf == Instrument.TF_5MIN:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = 1
-                signal.p = self.price.close[-1]
+                elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d < 0) and ema_rsi_signal < 0 and self.tf == Instrument.TF_5MIN:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-            elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d > 0) and ema_rsi_signal > 0 and self.tf == Instrument.TF_5MIN:
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = -1
-                signal.p = self.price.close[-1]
-
-        # @todo depending of the pattern, break, triangle... cancel the entry or compute a better target
+                elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d > 0) and ema_rsi_signal > 0 and self.tf == Instrument.TF_5MIN:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]
 
         return signal
 

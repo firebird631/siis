@@ -33,6 +33,8 @@ class HistoryIndicator(Indicator):
     def __init__(self, timeframe, length=9):
         super().__init__("history", timeframe)
 
+        self._compute_at_close = True  # only at close
+
         self._length = length   # number of stored values
         self._values = np.array([0.0]*length)
 

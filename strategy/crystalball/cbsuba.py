@@ -75,86 +75,60 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
         if self.rsi:
             self.rsi.compute(last_timestamp, prices)
 
-        # if self.volume_ema:
-        #     self.volume_ema.compute(last_timestamp, volumes)
-
-        #     if self.volume.last > self.volume_ema.last:
-        #         volume_signal = 1
-        #     elif self.volume.last < self.volume_ema.last:
-        #         volume_signal = -1
-
         if self.pivotpoint:
-            self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
-
-        # if self.bollingerbands:
-        #     self.bollingerbands.compute(last_timestamp, prices)
-
-        #     bb_break = 0
-        #     bb_ma = 0
-
-        #     if prices[-1] > self.bollingerbands.last_top:
-        #         bb_break = 1
-        #     elif prices[-1] < self.bollingerbands.last_bottom:
-        #         bb_break = -1
-
-        #     if prices[-1] > self.bollingerbands.last_ma:
-        #         bb_ma = -1
-        #     elif prices[-1] > self.bollingerbands.last_ma:
-        #         bb_ma = 1
+            if self.pivotpoint.compute_at_close and self.last_closed:
+                self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
 
         if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
-
-        if self.bbawe:
-            # use OHLC4 as price in place of close
-            bbawe = self.bbawe.compute(last_timestamp, self.price.high, self.price.low, self.price.prices)
+            if self.last_closed:
+                self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.prices)
+            if self.tomdemark.compute_at_close and self.last_closed:
+                self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.prices)
 
-        level1_signal = 0
+                # sell-setup
+                if self.tomdemark.c.c == 9 and self.tomdemark.c.d < 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-        if bbawe > 0:
-            signal = StrategySignal(self.tf, timestamp)
-            signal.signal = StrategySignal.SIGNAL_ENTRY
-            signal.dir = 1
-            signal.p = self.price.close[-1]
+                # buy-setup
+                elif self.tomdemark.c.c == 9 and self.tomdemark.c.d > 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]
 
-            if self.tomdemark.c.tdst:
-                signal.sl = self.tomdemark.c.tdst
+        if self.bbawe:
+            if self.last_closed:
+                # use OHLC4 as price in place of close
+                bbawe = self.bbawe.compute(last_timestamp, self.price.high, self.price.low, self.price.prices)
 
-            if len(self.pivotpoint.resistances[2]):
-                signal.tp = np.max(self.pivotpoint.resistances[2])
+                if bbawe > 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_ENTRY
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-        elif bbawe < 0:
-            signal = StrategySignal(self.tf, timestamp)
-            signal.signal = StrategySignal.SIGNAL_ENTRY
-            signal.dir = -1
-            signal.p = self.price.close[-1]
+                    if self.tomdemark.c.tdst:
+                        signal.sl = self.tomdemark.c.tdst
 
-            if self.tomdemark.c.tdst:
-                signal.sl = self.tomdemark.c.tdst
+                    if len(self.pivotpoint.resistances[2]):
+                        signal.tp = np.max(self.pivotpoint.resistances[2])
 
-            if len(self.pivotpoint.supports[2]):
-                signal.tp = np.min(self.pivotpoint.supports[2])
+                elif bbawe < 0:
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_ENTRY
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]
 
-        #
-        # setup completed
-        #
+                    if self.tomdemark.c.tdst:
+                        signal.sl = self.tomdemark.c.tdst
 
-        # sell-setup
-        if self.tomdemark.c.c == 9 and self.tomdemark.c.d < 0:
-            signal = StrategySignal(self.tf, timestamp)
-            signal.signal = StrategySignal.SIGNAL_EXIT
-            signal.dir = 1
-            signal.p = self.price.close[-1]
-
-        # buy-setup
-        elif self.tomdemark.c.c == 9 and self.tomdemark.c.d > 0:
-            signal = StrategySignal(self.tf, timestamp)
-            signal.signal = StrategySignal.SIGNAL_EXIT
-            signal.dir = -1
-            signal.p = self.price.close[-1]
+                    if len(self.pivotpoint.supports[2]):
+                        signal.tp = np.min(self.pivotpoint.supports[2])
 
         return signal
 

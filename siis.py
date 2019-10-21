@@ -283,8 +283,8 @@ def application(argv):
     #
 
     Terminal.inst().info("Starting SIIS using %s identity..." % options['identity'])
-    Terminal.inst().action("- (Type ':q<enter>' to terminate)")
-    Terminal.inst().action("- (Type ':h<enter>' to display help)")
+    Terminal.inst().action("- (Input ':q<enter>' to terminate)")
+    Terminal.inst().action("- (Input ':h<enter>' to display help)")
     Terminal.inst().flush()
 
     if options.get('backtesting'):  

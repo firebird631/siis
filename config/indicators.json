@@ -129,7 +129,7 @@
         "classpath": "strategy.indicator.ichimoku.ichimoku.IchimokuIndicator",
         "options": {}
     },
-    "atrstr": {
+    "atrsr": {
         "status": "load",
         "classpath": "strategy.indicator.atrsr.atrsr.ATRSRIndicator",
         "options": {}

@@ -203,41 +203,44 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
         self.can_short = self.trend <= 0
 
         if self.pivotpoint:
-            self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
+            if self.pivotpoint.compute_at_close and self.last_closed:
+                self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
 
         if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
+            if self.last_closed:
+                self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
+            if self.tomdemark.compute_at_close and self.last_closed:
+                self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
-            if self.tomdemark.c.c == 9 and self.tomdemark.c.d < 0:
-                # setup complete and trend change
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = 1
-                signal.p = self.price.close[-1]
+                if self.tomdemark.c.c == 9 and self.tomdemark.c.d < 0:
+                    # setup complete and trend change
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-            elif self.tomdemark.c.c == 9 and self.tomdemark.c.d > 0:
-                # setup complete and trend change
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = -1
-                signal.p = self.price.close[-1]
+                elif self.tomdemark.c.c == 9 and self.tomdemark.c.d > 0:
+                    # setup complete and trend change
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]
 
-            elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0:  # and (ema_sma < 0):
-                # cancelation
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = 1
-                signal.p = self.price.close[-1]
+                elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0:  # and (ema_sma < 0):
+                    # cancelation
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = 1
+                    signal.p = self.price.close[-1]
 
-            elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d < 0:  # and (ema_sma > 0):
-                # cancelation
-                signal = StrategySignal(self.tf, timestamp)
-                signal.signal = StrategySignal.SIGNAL_EXIT
-                signal.dir = -1
-                signal.p = self.price.close[-1]                
+                elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d < 0:  # and (ema_sma > 0):
+                    # cancelation
+                    signal = StrategySignal(self.tf, timestamp)
+                    signal.signal = StrategySignal.SIGNAL_EXIT
+                    signal.dir = -1
+                    signal.p = self.price.close[-1]                
 
         return signal
 

@@ -20,6 +20,7 @@ class StrategyAssetTrade(StrategyTrade):
 
     @todo fill the exit_trades and update the x and axp each time
     @todo for modify_sl/tp could use OCO order if avaible from market
+    @todo support of OCO order
     """
 
     __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', 'entry_oid', 'stop_oid', 'limit_oid', 'oco_oid', \
@@ -57,11 +58,6 @@ class StrategyAssetTrade(StrategyTrade):
         order.order_type = order_type
         order.quantity = quantity
 
-        # if need to retry @todo or cancel
-        # self._market_id = instrument.market_id
-        # self._order_type = order_type
-        # self._leverage = leverage
-
         # generated a reference order id
         trader.set_ref_order_id(order)
         self.entry_ref_oid = order.ref_order_id
@@ -74,7 +70,6 @@ class StrategyAssetTrade(StrategyTrade):
         self.tp = take_profit
         self.sl = stop_loss
 
-        # @todo support OCO
         self._use_oco = use_oco
 
         self._stats['entry-order-type'] = order.order_type

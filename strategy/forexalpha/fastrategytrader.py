@@ -16,7 +16,7 @@ from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
 from instrument.instrument import Instrument
 
 from strategy.indicator import utils
-from strategy.indicator.score import Score, Scorify
+from strategy.indicator.score import Score
 
 from common.utils import timeframe_to_str
 

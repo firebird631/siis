@@ -32,6 +32,7 @@ class TriangleIndicator(Indicator):
     def __init__(self, timeframe, length=20):
         super().__init__("triangle", timeframe)
 
+        self._compute_at_close = True  # only at close
         self._length = length   # periods number
 
         self._split_idx = []

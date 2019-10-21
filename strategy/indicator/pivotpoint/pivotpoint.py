@@ -66,6 +66,8 @@ class PivotPointIndicator(Indicator):
     def __init__(self, timeframe, method=METHOD_CLASSICAL, num=6):
         super().__init__("pivotpoint", timeframe)
 
+        self._compute_at_close = True  # only at close
+
         if method == self.METHOD_CAMARILLA:
             num = 4
         elif method == self.METHOD_FIBONACCI:

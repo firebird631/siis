@@ -28,6 +28,8 @@ class ATRSRIndicator(Indicator):
     def __init__(self, timeframe, length=14, coeff=2, length_MA=7):
         super().__init__("atrsr", timeframe)
 
+        self._compute_at_close = True  # only at close
+
         self._length = length   # MA periods number
         self._coeff = coeff
         self._length_MA = length_MA

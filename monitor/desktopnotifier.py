@@ -266,8 +266,7 @@ class DesktopNotifier(Notifiable):
             if not self.backtesting and self.popups and message:
                 if self.notify2:
                     n = self.notify2.Notification(label, message, icon)
-
-                n.show()
+                    n.show()
 
             count += 1
             if count > 10:

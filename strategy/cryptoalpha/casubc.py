@@ -113,10 +113,12 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
                 ema_sma_height = -1
 
         if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
+            if self.last_closed:
+                self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.pivotpoint:
-            self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)            
+            if self.pivotpoint.compute_at_close and self.last_closed:
+                self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)            
 
         return signal
 

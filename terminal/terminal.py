@@ -100,15 +100,7 @@ class View(object):
         self._active = active
 
         self._mutex = threading.Lock()
-
-        if mode == View.MODE_STREAM:
-            if not stdscr:
-                self._content = [""]
-            else:
-                self._content = []
-
-        elif mode == View.MODE_BLOCK:
-            self._content = []
+        self._content = []
 
         self._right_align = right_align
         self._border = border
@@ -167,11 +159,7 @@ class View(object):
     @property
     def mode(self):
         return self._mode
-    
-    # @property
-    # def content(self):
-    #     return self._content
-    
+
     @property
     def name(self):
         return self._name
@@ -191,11 +179,7 @@ class View(object):
             self._n = 0
 
             if self._mode == View.MODE_STREAM:
-                if not self._parent_win:
-                    self._content = [""]
-                else:
-                    self._content = []
-
+                self._content = []
                 self._first_row = 0
 
             elif self._mode == View.MODE_BLOCK:
@@ -365,28 +349,15 @@ class View(object):
 
         else:
             rows = content.split('\n')
-            nl = self._need_nl
-
-            n = 0  # relative row count because scroll auto in stream mode
 
             for row in rows:
-                if nl:
-                    # new line needed
-                    self._content.append("")
-                    nl = False
-
-                self._content[-1] += color+row+Terminal.DEFAULT
-                nl = True
-
-            # new line for the next draw call
-            self._need_nl = endl
+                self._content.append(color+row+Terminal.DEFAULT)
 
             if len(self._content) > Terminal.MAX_NUM_ENTRIES:
-                self._content.pop(0)
-                self._first_row -= 1
+                m = len(self._content) - Terminal.MAX_NUM_ENTRIES
+                self._content = self._content[-Terminal.MAX_NUM_ENTRIES:]
 
-                if self._first_row < 0:
-                    self._first_row = 0
+                self._first_row -= m
 
         self.unlock()
 
@@ -428,9 +399,8 @@ class View(object):
                 # self._win = stdscr.subpad(*self._rect)
 
             if self._mode == View.MODE_STREAM:
-                # self._win.scrollok(1)
                 self._win.scrollok(0)
-                self._first_row = 0 # max(0, len(self._content) - self.height - 1)
+                self._first_row = 0
             elif self._mode == View.MODE_BLOCK:
                 self._win.scrollok(0)
 
@@ -504,8 +474,6 @@ class View(object):
             if self._active and self._dirty:
                 for row in self._content[self._n:]:
                     self.__uprint(0, 0, row)
-
-                if self._need_nl:
                     sys.stdout.write('\n')
 
                 sys.stdout.flush()
@@ -742,8 +710,6 @@ class Terminal(object):
         self._views = {
             'default': View('default', View.MODE_STREAM, False),
             'content': View('content', View.MODE_STREAM, False),
-            'message': View('message', View.MODE_STREAM, False),
-            'error': View('error', View.MODE_STREAM, False),
             'debug': View('debug', View.MODE_STREAM, False)
         }
 
@@ -818,6 +784,10 @@ class Terminal(object):
         free_h = 4
         h1 = height - 2 - 2 - free_h
 
+        old_default_content = self._views['default']._content
+        old_content_content = self._views['content']._content
+        old_debug_content = self._views['debug']._content
+
         self._views = {
             # top
             'info': View('info', View.MODE_BLOCK, self._stdscr, pos=(0, 0), size=(width//2, 1), active=True),
@@ -865,6 +835,10 @@ class Terminal(object):
             'status': View('status', View.MODE_BLOCK, self._stdscr, pos=(0, height-1), size=(width//2, 1), active=True),
             'notice': View('notice', View.MODE_BLOCK, self._stdscr, pos=(width//2+1, height-1), size=(width//2, 1), active=True, right_align=True),
         }
+
+        self._views['default']._content = old_default_content
+        self._views['content']._content = old_content_content
+        self._views['debug']._content = old_debug_content
 
         Terminal.inst().info("Console", view='content-head')  # console/content
         Terminal.inst().info("Debug", view='debug-head')

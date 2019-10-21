@@ -46,6 +46,7 @@ class ZigZagIndicator(Indicator):
     def __init__(self, timeframe, threshold=0.05):
         super().__init__("zigzag", timeframe)
 
+        self._compute_at_close = True  # only at close
         self._threshold = threshold
 
         self._lowers = []

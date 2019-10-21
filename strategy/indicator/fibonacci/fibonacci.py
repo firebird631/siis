@@ -35,6 +35,7 @@ class FibonacciIndicator(Indicator):
     def __init__(self, timeframe):
         super().__init__("fibonacci", timeframe)
 
+        self._compute_at_close = True  # only at close
         self._threshold = 0.0001   # mostly a factor of the pip meaning
 
         self._lowers = []

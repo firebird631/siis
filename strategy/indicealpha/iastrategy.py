@@ -24,7 +24,7 @@ from charting.charting import Charting
 from database.database import Database
 
 from strategy.indicator import utils
-from strategy.indicator.score import Score, Scorify
+from strategy.indicator.score import Score
 from strategy.strategydatafeeder import StrategyDataFeeder
 
 
