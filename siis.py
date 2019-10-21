@@ -51,9 +51,6 @@ from app.regioncommands import register_region_commands
 def signal_handler(sig, frame):
     Terminal.inst().action('Tip command :q<ENTER> to exit !', view='status')
 
-def has_exception(siis_logger, e):
-    siis_logger.error(repr(e))
-    siis_logger.error(traceback.format_exc())
 
 def setup_views(siis_logger, view_service, watcher_service, trader_service, strategy_service):
     pass
@@ -65,6 +62,26 @@ def setup_views(siis_logger, view_service, watcher_service, trader_service, stra
     # 'account'
     # 'market'
     # 'ticker'
+
+
+def terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service):
+    if watcher_service:
+        watcher_service.terminate()
+    if trader_service:
+        trader_service.terminate()
+    if strategy_service:
+        strategy_service.terminate()
+    if monitor_service:
+        monitor_service.terminate()
+    if desktop_service:
+        desktop_service.terminate()
+    if view_service:
+        view_service.terminate()
+    # if notifier_service:
+        # notifier_service.terminate()
+
+    Database.terminate()
+
 
 def application(argv):
     fix_thread_set_name()
@@ -280,33 +297,64 @@ def application(argv):
 
     signal.signal(signal.SIGINT, signal_handler)
 
+    # application services
+    view_service = None
+    notifier_service = None
+    desktop_service = None
+    watcher_service = None
+    trader_service = None
+    strategy_service = None
+
     # monitoring service
     Terminal.inst().info("Starting monitor service...")
     monitor_service = MonitorService(options)
 
-    # desktop notifier
-    desktop_service = DesktopNotifier()
-    # discord_service = DiscordNotifier()
-    view_service = ViewService()
+    # desktop notifier (to be splitted in ViewService and in a DesktopNotifier managed by a NotifierService)
+    try:    
+        desktop_service = DesktopNotifier()
+    except Exception as e:
+        Terminal.inst().error(str(e))
+        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        sys.exit(-1)
+
+    # notifier service
+    # notifier_service = NotifierService()
+    # notifier_service.start() .. discord notifier... @todo
+    try:
+        view_service = ViewService()
+    except Exception as e:
+        Terminal.inst().error(str(e))
+        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        sys.exit(-1)
 
     # database manager
-    Database.create(options)
-
     try:
+        Database.create(options)
         Database.inst().setup(options)
     except Exception as e:
         Terminal.inst().error(str(e))
+        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
         sys.exit(-1)
 
     # watcher service
     Terminal.inst().info("Starting watcher's service...")
-    watcher_service = WatcherService(options)
-    watcher_service.start(options)
+    try:
+        watcher_service = WatcherService(options)
+        watcher_service.start(options)
+    except Exception as e:
+        Terminal.inst().error(str(e))
+        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        sys.exit(-1)
 
     # trader service
     Terminal.inst().info("Starting trader's service...")
-    trader_service = TraderService(watcher_service, monitor_service, options)
-    trader_service.start(options)
+    try:
+        trader_service = TraderService(watcher_service, monitor_service, options)
+        trader_service.start(options)
+    except Exception as e:
+        Terminal.inst().error(str(e))
+        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        sys.exit(-1)
 
     # want to display desktop notification and update views
     watcher_service.add_listener(desktop_service)
@@ -321,8 +369,13 @@ def application(argv):
 
     # strategy service
     Terminal.inst().info("Starting strategy's service...")
-    strategy_service = StrategyService(watcher_service, trader_service, monitor_service, options)
-    strategy_service.start(options)
+    try:
+        strategy_service = StrategyService(watcher_service, trader_service, monitor_service, options)
+        strategy_service.start(options)
+    except Exception as e:
+        Terminal.inst().error(str(e))
+        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        sys.exit(-1)
 
     # strategy service listen to watcher service
     watcher_service.add_listener(strategy_service)
@@ -551,12 +604,14 @@ def application(argv):
                                 command_timeout = 0
 
                         except Exception as e:
-                            has_exception(siis_logger, e)
+                            siis_logger.error(repr(e))
+                            siis_logger.error(traceback.format_exc())
 
             except IOError:
                 pass
             except Exception as e:
-                has_exception(siis_logger, e)
+                siis_logger.error(repr(e))
+                siis_logger.error(traceback.format_exc())
 
             # display advanced command only
             if value_changed:
@@ -595,8 +650,8 @@ def application(argv):
                 Terminal.inst().update()
 
             except BaseException as e:
+                siis_logger.error(repr(e))
                 siis_logger.error(traceback.format_exc())
-                Terminal.inst().error(repr(e))
 
             # don't waste CPU time on main thread
             time.sleep(LOOP_SLEEP)
@@ -616,8 +671,8 @@ def application(argv):
     trader_service.terminate()
     watcher_service.terminate()
     desktop_service.terminate()
-    # discord_service.terminate()
     view_service.terminate()
+    # notifier_service.terminate()
 
     Terminal.inst().info("Saving database...")
     Terminal.inst().flush() 

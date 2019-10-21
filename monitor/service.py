@@ -187,7 +187,7 @@ class MonitorService(Service):
 
                 self._thread = None
 
-            if self._fifo_read > 0:
+            if self._fifo_read:
                 try:
                     posix.close(self._fifo_read)
                     self._fifo_read = -1
@@ -198,7 +198,7 @@ class MonitorService(Service):
                     os.remove(self._filename_read)
                     self._filename_read = None
 
-            if self._fifo > 0:
+            if self._fifo:
                 try:
                     posix.close(self._fifo)
                     self._fifo = -1

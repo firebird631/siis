@@ -153,6 +153,9 @@ pip install -r deps/reqspgsql.txt  # if using PostgreSQL (recommended)
 pip install -r deps/reqsmysql.txt  # or if using MySQL
 ```
 
+You might need to install the C client library before. Please refers to psycopg2 or MySQLdb Python package documentation.
+On Debian based for PostgreSQL you will need to install libpq-dev (apt-get install libpq-dev) before.
+
 Before running the lib folder containing TA-Lib must be found in the LD_LIBRARY_PATH :
 
 With, if installed in the default directory (/usr/local/lib) :
