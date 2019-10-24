@@ -4,6 +4,7 @@
 -- > CREATE DATABASE siis;
 -- > CREATE USER siis WITH ENCRYPTED PASSWORD 'siis';
 -- > GRANT ALL PRIVILEGES ON DATABASE siis TO siis;
+-- > CREATE EXTENSION timescaledb;
 -- $ psql -h localhost -d siis -U siis -W -p 5432 -a -q -f initpg.sql
 
 -- market

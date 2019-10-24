@@ -6,7 +6,6 @@
 class Indicator(object):
     """
     Base class for an indicator.
-    @todo https://www.centralcharts.com/fr/forums/12-analyse-technique/1366-indicateur-chande-kroll-stop
     """
 
     __slots__ = '_name', '_timeframe', '_last_timestamp', '_compute_at_close'
@@ -35,6 +34,10 @@ class Indicator(object):
     @classmethod
     def indicator_class(cls):
         return Indicator.TYPE_UNKNOWN
+
+    @classmethod
+    def persistent(cls):
+        return False
 
     def __init__(self, name, timeframe):
         self._name = name

@@ -34,7 +34,7 @@ class StrategySignal(object):
     - ts for timestamp (UTC)
     """
 
-    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'alt_tp', 'expiry',  '_extra', '_comment'
+    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'alt_tp', 'entry_timeout', 'expiry',  '_extra', '_comment'
 
     SIGNAL_NONE = 0   # signal type undefined (must be entry or exit else its informal)
     SIGNAL_ENTRY = 1  # entry signal (this does not mean long. @see dir)
@@ -51,7 +51,8 @@ class StrategySignal(object):
         self.sl = 0.0      # possible stop-loss pricce
         self.tp = 0.0      # primary possible take profit price
         self.alt_tp = 0.0  # secondary possible take profit price
-        self.expiry = 0.0  # trade expiration if in profit after this delay
+        self.entry_timeout = 0.0   # trade entry expiration in seconds
+        self.expiry = 0.0          # trade expiration if in profit after this delay
 
         self._comment = ""  # optional comment
         self._extra = {}

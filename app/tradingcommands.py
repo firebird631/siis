@@ -229,6 +229,8 @@ class LongCommand(Command):
         take_profit = 0.0
         quantity_rate = 1.0
         timeframe = Instrument.TF_4HOUR
+        entry_timeout = None
+        leverage = None
 
         if len(args) < 2:
             Terminal.inst().action("Missing parameters", view='status')
@@ -257,6 +259,10 @@ class LongCommand(Command):
                     quantity_rate = float(value[1:])
                 elif value.endswith("%"):
                     quantity_rate = float(value[:-1]) * 0.01
+                elif value.startswith("/"):
+                    entry_timeout = timeframe_from_str(value[1:])
+                elif value.startswith("x"):
+                    leverage = float(value[1:])
 
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
@@ -284,7 +290,9 @@ class LongCommand(Command):
             'quantity-rate': quantity_rate,
             'stop-loss': stop_loss,
             'take-profit': take_profit,
-            'timeframe': timeframe
+            'timeframe': timeframe,
+            'entry-timeout': entry_timeout,
+            'leverage': leverage
         })
 
         return True
@@ -328,6 +336,8 @@ class ShortCommand(Command):
         take_profit = 0.0
         quantity_rate = 1.0
         timeframe = Instrument.TF_4HOUR
+        entry_timeout = None
+        leverage = None
 
         if len(args) < 2:
             Terminal.inst().action("Missing parameters", view='status')
@@ -356,6 +366,10 @@ class ShortCommand(Command):
                     quantity_rate = float(value[1:])
                 elif value.endswith("%"):
                     quantity_rate = float(value[:-1]) * 0.01
+                elif value.startswith("/"):
+                    entry_timeout = timeframe_from_str(value[1:])
+                elif value.startswith("x"):
+                    leverage = float(value[1:])
 
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
@@ -383,7 +397,9 @@ class ShortCommand(Command):
             'quantity-rate': quantity_rate,
             'stop-loss': stop_loss,
             'take-profit': take_profit,
-            'timeframe': timeframe
+            'timeframe': timeframe,
+            'entry-timeout': entry_timeout,
+            'leverage': leverage
         })
 
         return True

@@ -27,7 +27,7 @@ class StrategyTrade(object):
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
                 'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', '_stats', 'last_tp_ot', 'last_sl_ot', \
-                'exit_trades', '_comment', '_expiry', '_dirty', '_extra'
+                'exit_trades', '_comment', '_entry_timeout', '_expiry', '_dirty', '_extra'
 
     VERSION = "1.0.0"
 
@@ -61,7 +61,8 @@ class StrategyTrade(object):
         self._operations = []      # list containing the operation to process during the trade for semi-automated trading
         self._user_trade = False   # true if the user is responsible of the TP & SL adjustement else (default) strategy manage it
         self._comment = ""         # optionnal comment (must be few chars)
-        self._expiry = 0           # expiration delay in seconde or 0 if never
+        self._entry_timeout = 0    # expiration delay in seconds of the entry
+        self._expiry = 0           # expiration delay in seconds or 0 if never
 
         self._next_operation_id = 1
 
@@ -196,6 +197,10 @@ class StrategyTrade(object):
         return self._expiry
 
     @property
+    def entry_timeout(self):
+        return self._entry_timeout
+
+    @property
     def first_realized_entry_time(self):
         return self._stats['first-realized-entry-timestamp']
 
@@ -222,6 +227,10 @@ class StrategyTrade(object):
     @expiry.setter
     def expiry(self, expiry):
         self._expiry = expiry
+
+    @entry_timeout.setter
+    def entry_timeout(self, timeout):
+        self._entry_timeout = timeout
 
     def set_user_trade(self, user_trade=True):
         self._user_trade = user_trade
@@ -598,6 +607,8 @@ class StrategyTrade(object):
             'version': self.version(),
             'id': self.id,
             'trade': self._trade_type,  #  self.trade_type_to_str(),
+            'entry-timeout': self._entry_timeout,  #  self.trade_state_to_str(self._entry_timeout),
+            'expiry': self._expiry,
             'entry-state': self._entry_state,  #  self.trade_state_to_str(self._entry_state),
             'exit-state': self._exit_state,  # self.trade_state_to_str(self._exit_state),
             'closing': self._closing,
@@ -629,6 +640,8 @@ class StrategyTrade(object):
         """
         self.id = data.get('id', -1)
         self._trade_type = data.get('trade', 0)  # self.trade_type_from_str(data.get('type', ''))
+        self._entry_timeout = data.get('entry-timeout', 0)
+        self._expiry = data.get('expiry', 0)
         self._entry_state = data.get('entry-state', 0)  # self.trade_state_from_str(data.get('entry-state', ''))
         self._exit_state = data.get('exit-state', 0)  # self.trade_state_from_str(data.get('exit-state', ''))
         self._closing = data.get('closing', False)

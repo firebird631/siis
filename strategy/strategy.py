@@ -1767,6 +1767,7 @@ class Strategy(Runnable):
         leverage = data.get('leverage', 1.0)
         hedging = data.get('hedging', True)
         margin_trade = data.get('margin-trade', False)
+        entry_timeout = data.get('entry-timeout', None)
 
         if quantity_rate <= 0.0:
             results['messages'].append("Missing or empty quantity.")
@@ -1859,6 +1860,10 @@ class Strategy(Runnable):
         if trade:
             # user managed trade
             trade.set_user_trade()
+
+            if entry_timeout:
+                # entry timeout expiration defined
+                trade.entry_timeout = entry_timeout
 
             # the new trade must be in the trades list if the event comes before, and removed after only it failed
             strategy_trader.add_trade(trade)

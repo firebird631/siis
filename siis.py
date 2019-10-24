@@ -49,7 +49,8 @@ from app.regioncommands import register_region_commands
 
 
 def signal_handler(sig, frame):
-    Terminal.inst().action('Tip command :q<ENTER> to exit !', view='status')
+    if Terminal.inst():
+        Terminal.inst().action('Tip command :q<ENTER> to exit !', view='status')
 
 
 def setup_views(siis_logger, view_service, watcher_service, trader_service, strategy_service):
@@ -77,8 +78,8 @@ def terminate(watcher_service, trader_service, strategy_service, monitor_service
         desktop_service.terminate()
     if view_service:
         view_service.terminate()
-    # if notifier_service:
-        # notifier_service.terminate()
+    if notifier_service:
+        pass  # notifier_service.terminate()
 
     Database.terminate()
 
@@ -662,17 +663,17 @@ def application(argv):
     Terminal.inst().info("Terminate...")
     Terminal.inst().flush() 
 
-    commands_handler.terminate(options)
+    commands_handler.terminate(options) if commands_handler else None
     commands_handler = None
 
     # service terminate
-    monitor_service.terminate()
-    strategy_service.terminate()
-    trader_service.terminate()
-    watcher_service.terminate()
-    desktop_service.terminate()
-    view_service.terminate()
-    # notifier_service.terminate()
+    monitor_service.terminate() if monitor_service else None
+    strategy_service.terminate() if strategy_service else None
+    trader_service.terminate() if trader_service else None
+    watcher_service.terminate() if watcher_service else None
+    desktop_service.terminate() if desktop_service else None
+    view_service.terminate() if view_service else None
+    notifier_service.terminate() if notifier_service else None
 
     Terminal.inst().info("Saving database...")
     Terminal.inst().flush() 

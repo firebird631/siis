@@ -55,7 +55,7 @@ Features
     * Momentum, RSI, Stochastic, Stochastic RSI
     * SMA, EMA, HMA, WMA, VWMA, MAMA, MACD
     * Bollinger Bands, Donchian Channels
-    * ATR, SAR
+    * ATR, ATR based Supports Resistances, SAR
     * Ichimoku
     * SineWave
     * Pivot Point Supports Resistances
@@ -168,9 +168,78 @@ export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 ### Database ###
 
 Prefers the PostgreSQL database server for performance and because I have mostly tested with it.
+Another argument in favor of PostreSQL is the TimescalDB extension for timeseries data that increase incredibly the performance.
 
 The sql/ directory contains the initial SQL script for creations of the tables.
 The first line of comment in these files describe a possible way to install them.
+
+
+#### PostgreSQL ####
+
+The futur version will need the requirement of TimescaleDB for optimized timeserie data.
+
+##### TimescaleDB (not necessary at now) #####
+
+###### Debian / Ubuntu ######
+
+In root (or sudo) :
+
+```
+sh -c "echo 'deb https://packagecloud.io/timescale/timescaledb/debian/ `lsb_release -c -s` main' > /etc/apt/sources.list.d/timescaledb.list"
+wget --quiet -O - https://packagecloud.io/timescale/timescaledb/gpgkey | sudo apt-key add -
+sudo apt-get update
+sudo apt-get install timescaledb-postgresql-11
+```
+
+You could have to replace `lsb_release -c -s` by buster ou bulleye if your are on a Debian sid.
+
+##### Database creation #####
+
+```
+su - postgres
+```
+
+If you are using TCP socket connection do :
+
+```
+psql -h localhost -U root -W -p 5432
+```
+
+Or using local unix socket :
+
+```
+psql -U root -W
+```
+
+Then in psql CLI :
+
+```
+CREATE DATABASE siis;
+CREATE USER siis WITH ENCRYPTED PASSWORD 'siis';
+GRANT ALL PRIVILEGES ON DATABASE siis TO siis;
+```
+
+For the futur usage of TimescaleDB (not necessary at now)
+
+```
+CREATE EXTENSION timescaledb;
+```
+
+Now exit (CTRL-C) the psql CLI.
+
+You can run the table creation script :
+
+Using TCP socket connection do :
+
+```
+psql -h localhost -d siis -U siis -W -p 5432 -a -q -f sql/initpg.sql
+```
+
+Or using local unix socket :
+
+```
+psql -d siis -U siis -W -a -q -f sql/initpg.sql
+```
 
 
 Configuration
