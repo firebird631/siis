@@ -805,23 +805,24 @@ class PgSql(Database):
         # clean older ohlcs
         #
 
-        if time.time() - self._last_ohlc_clean >= OhlcStorage.CLEANUP_DELAY:
-            try:
-                now = time.time()
-                cursor = self._db.cursor()
+        if self._autocleanup:
+            if time.time() - self._last_ohlc_clean >= OhlcStorage.CLEANUP_DELAY:
+                try:
+                    now = time.time()
+                    cursor = self._db.cursor()
 
-                for timeframe, timestamp in OhlcStorage.CLEANERS:
-                    ts = int(now - timestamp) * 1000
-                    # @todo make a count before
-                    cursor.execute("DELETE FROM ohlc WHERE timeframe <= %i AND timestamp < %i" % (timeframe, ts))
+                    for timeframe, timestamp in OhlcStorage.CLEANERS:
+                        ts = int(now - timestamp) * 1000
+                        # @todo make a count before
+                        cursor.execute("DELETE FROM ohlc WHERE timeframe <= %i AND timestamp < %i" % (timeframe, ts))
 
-                self._db.commit()
-            except psycopg2.OperationalError as e:
-                self.try_reconnect(e)
-            except Exception as e:
-                self.on_error(e)
+                    self._db.commit()
+                except psycopg2.OperationalError as e:
+                    self.try_reconnect(e)
+                except Exception as e:
+                    self.on_error(e)
 
-            self._last_ohlc_clean = time.time()
+                self._last_ohlc_clean = time.time()
 
     def on_error(self, e):
         logger.error(repr(e))  # + '\n' + e.pgerror)

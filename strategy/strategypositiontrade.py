@@ -166,10 +166,10 @@ class StrategyPositionTrade(StrategyTrade):
         return True
 
     def has_stop_order(self):
-        return self.position_stop > 0.0
+        return False#self.position_stop > 0.0
 
     def has_limit_order(self):
-        return self.position_limit > 0.0
+        return False#self.position_limit > 0.0
 
     def support_both_order(self):
         return True
@@ -370,7 +370,6 @@ class StrategyPositionTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position
-            logger.warning("%s closed %s" % (self.id, self.position_id))
             self.position_id = None
 
             if data.get('profit-loss'):

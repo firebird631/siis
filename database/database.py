@@ -149,6 +149,8 @@ class Database(object):
         self._tick_storages = {}    # TickStorage per market
         self._pending_tick_insert = []
 
+        self._autocleanup = False
+
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)
 
@@ -158,6 +160,8 @@ class Database(object):
     def setup(self, options):
         # load database
         config = utils.load_config(options, 'databases')
+
+        self._autocleanup = config.get('auto-cleanup', False)
 
         self.connect(config)
 

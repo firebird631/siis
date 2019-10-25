@@ -6,6 +6,7 @@
         "password": "siis",
         "host": "127.0.0.1",
         "port": 5432,
-        "conn_max_age": 86400
+        "conn_max_age": 86400,
+        "auto-cleanup": false
     }
 }

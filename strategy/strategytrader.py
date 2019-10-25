@@ -819,6 +819,14 @@ class StrategyTrader(object):
 
         return False
 
+    def adjust_entry(self, trade, timeout):
+        # if trade.is_opened() and not trade.is_valid(timestamp, trade.timeframe):
+        #     # @todo re-adjust entry or cancel
+        #     Terminal.inst().info("Update order %s trade %s TODO" % (trade.id, self.instrument.market_id,), view='default')
+        #     continue
+
+        return False
+
     #
     # signal data streaming
     #

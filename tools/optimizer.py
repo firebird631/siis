@@ -81,7 +81,6 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
                 prev_tts = tts
 
             gap_duration = tts - prev_tts
-
             if gap_duration > timeframe:
                 date = format_datetime(timestamp)
                 Terminal.inst().warning("Ohlc gap of %s on %s !" % (format_delta(gap_duration), date))
@@ -104,26 +103,31 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
             if ohlc.ofr_close <= 0.0:
                 Terminal.inst().warning("Ofr close price is lesser than 0 %s on %s !" % (ohlc.ofr_close, date))
 
-            if ohlc.volume <= 0.0:
+            if ohlc.volume < 0.0:
                 Terminal.inst().warning("Volume quantity is lesser than 0 %s on %s !" % (ohlc.volume, date))
 
             prev_tts = tts
+            timestamp = tts
+
+            if timestamp > to_timestamp:
+                break
 
         if timestamp - prev_update >= progression_incr:
             progression += 1
-            
-            Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
-            
+
+            Terminal.inst().info("%i%% on %s, %s for last 100 candles, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
+
             prev_update = timestamp
             count = 0
 
         if timestamp > to_timestamp:
             break
 
-        timestamp += timeframe * 100  # per 100
+        if total_count == 0:
+            timestamp += timeframe * 100
 
     if progression < 100:
-        Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
+        Terminal.inst().info("100%% on %s, %s for last 100 candles, current total of %s..." % (format_datetime(timestamp), count, total_count))
 
 
 def check_ticks(broker_id, market_id, from_date, to_date):
@@ -159,6 +163,10 @@ def check_ticks(broker_id, market_id, from_date, to_date):
 
             gap_duration = tts - prev_tts
 
+            if gap_duration < 0.0:
+                date = format_datetime(timestamp)
+                Terminal.inst().error("Tick timestamp is before previous of %s on %s ! Broken file !" % (format_delta(gap_duration), date))
+
             if gap_duration > 60.0:
                 date = format_datetime(timestamp)
                 Terminal.inst().warning("Tick gap of %s on %s !" % (format_delta(gap_duration), date))
@@ -168,14 +176,17 @@ def check_ticks(broker_id, market_id, from_date, to_date):
             if ofr <= 0.0:
                 Terminal.inst().warning("Ofr price is lesser than 0 %s on %s !" % (ofr, date))
 
-            if vol <= 0.0:
+            if vol < 0.0:
                 Terminal.inst().warning("Volume quantity is lesser than 0 %s on %s !" % (vol, date))
 
             prev_tts = tts
 
+            if tts > to_timestamp:
+                break
+
         if timestamp - prev_update >= progression_incr:
             progression += 1
-            
+
             Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
             
             prev_update = timestamp

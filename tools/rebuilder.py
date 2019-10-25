@@ -29,7 +29,11 @@ TICK_STORAGE_DELAY = 0.05  # 50ms
 MAX_PENDING_TICK = 10000
 
 
-def store_ohlc(self, broker_name, market_id, timeframe, ohlc):
+def format_datetime(timestamp):
+    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+
+def store_ohlc(broker_name, market_id, timeframe, ohlc):
     Database.inst().store_market_ohlc((
         broker_name, market_id, int(ohlc.timestamp*1000.0), int(timeframe),
         str(ohlc.bid_open), str(ohlc.bid_high), str(ohlc.bid_low), str(ohlc.bid_close),
@@ -87,8 +91,6 @@ def do_rebuilder(options):
 
         to_date = to_date.replace(microsecond=0)
 
-    timeframe = options['timeframe']
-
     if timeframe > 0 and timeframe not in GENERATED_TF:
         logger.error("Timeframe %i is not allowed !" % (timeframe,))
         return
@@ -96,6 +98,19 @@ def do_rebuilder(options):
     for market in options['market'].split(','):
         if market.startswith('!') or market.startswith('*'):
             continue
+
+        timestamp = from_date.timestamp()
+        to_timestamp = to_date.timestamp()
+
+        progression = 0.0
+        prev_update = timestamp
+        count = 0
+        total_count = 0
+
+        progression_incr = (to_timestamp - timestamp) * 0.01
+
+        tts = 0.0
+        prev_tts = 0.0
 
         generators = []
         from_tf = timeframe
@@ -126,96 +141,104 @@ def do_rebuilder(options):
         if timeframe > 0:
             last_ohlcs[timeframe] = []
 
-        n = 0
-        t = 0
-
-        timestamp = from_date.timestamp() + Instrument.TF_1M
-
         if timeframe == 0:
             while not tick_streamer.finished():
-                ticks = tick_streamer.next(timestamp)
-                timestamp += Instrument.TF_1M  # by step of 1M
+                ticks = tick_streamer.next(timestamp + Instrument.TF_1M)
+
+                count = len(ticks)
+                total_count += len(ticks)
 
                 for data in ticks:
+                    if data[0] > to_timestamp:
+                        break
+
                     if generators:
-                        last_ticks.append((float(data[0]) * 0.001, float(data[1]), float(data[2]), float(data[3])))
+                        last_ticks.append(data)
 
-                    # generate higher candles
-                    for generator in generators:
-                        if generator.from_tf == 0:
-                            candles = generator.generate_from_ticks(last_ticks)
+                # generate higher candles
+                for generator in generators:
+                    if generator.from_tf == 0:
+                        candles = generator.generate_from_ticks(last_ticks)
 
-                            if candles:
-                                for c in candles:
-                                    store_ohlc(options['broker'], market, generator.to_tf, c)
-
-                                last_ohlcs[generator.to_tf] += candles
-
-                            # remove consumed ticks
-                            last_ticks = []
-                        else:
-                            candles = generator.generate_from_candles(last_ohlcs[generator.from_tf])
-
-                            if candles:
-                                for c in candles:
-                                    store_ohlc(options['broker'], market, generator.to_tf, c)
-
-                                last_ohlcs[generator.to_tf] += candles
-
-                            # remove consumed candles
-                            last_ohlcs[generator.from_tf] = []
-
-                    n += 1
-                    t += 1
-
-                    if n == 1000:
-                        n = 0
-                        Terminal.inst().info("%i..." % t)
-                        Terminal.inst().flush()
-
-                        # calm down the storage of tick, if parsing is faster
-                        while Database.inst().num_pending_ticks_storage() > TICK_STORAGE_DELAY:
-                            time.sleep(TICK_STORAGE_DELAY)  # wait a little before continue
-
-            logger.info("Read %i trades" % t)
-
-        elif timeframe > 0:
-            while not ohlc_streamer.finished():
-                ohlcs = ohlc_streamer.next(timestamp)
-                timestamp += Instrument.TF_1M  # by step of 1M
-
-                for data in ohlcs:
-                    if generators:
-                        candle = Candle(float(data[0]) * 0.001, timeframe)
-
-                        candle.set_bid_ohlc(float(data[1]), float(data[2]), float(data[3]), float(data[4]))
-                        candle.set_ofr_ohlc(float(data[5]), float(data[6]), float(data[7]), float(data[8]))
-
-                        candle.set_volume(float(data[9]))
-                        candle.set_consolidated(True)
-
-                        last_ohlcs[timeframe].append(candle)
-
-                    # generate higher candles
-                    for generator in generators:
-                        candles = generator.generate_from_candles(last_ohlcs[generator.from_tf])
                         if candles:
                             for c in candles:
                                 store_ohlc(options['broker'], market, generator.to_tf, c)
 
-                            last_ohlcs[generator.to_tf].extend(candles)
+                            last_ohlcs[generator.to_tf] += candles
+
+                        # remove consumed ticks
+                        last_ticks = []
+                    else:
+                        candles = generator.generate_from_candles(last_ohlcs[generator.from_tf])
+
+                        if candles:
+                            for c in candles:
+                                store_ohlc(options['broker'], market, generator.to_tf, c)
+
+                            last_ohlcs[generator.to_tf] += candles
 
                         # remove consumed candles
                         last_ohlcs[generator.from_tf] = []
 
-                    n += 1
-                    t += 1
+                if timestamp - prev_update >= progression_incr:
+                    progression += 1
 
-                    if n == 1000:
-                        n = 0
-                        Terminal.inst().info("%i..." % t)
+                    Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
 
-            logger.info("Read %i candles" % t)
+                    prev_update = timestamp
+                    count = 0
+
+                if timestamp > to_timestamp:
+                    break
+
+                timestamp += Instrument.TF_1M  # by step of 1m
+
+                # calm down the storage of tick, if parsing is faster
+                while Database.inst().num_pending_ticks_storage() > TICK_STORAGE_DELAY:
+                   time.sleep(TICK_STORAGE_DELAY)  # wait a little before continue
+
+        elif timeframe > 0:
+            while not ohlc_streamer.finished():
+                ohlcs = ohlc_streamer.next(timestamp + timeframe * 100)  # per 100
+
+                count = len(ohlcs)
+                total_count += len(ohlcs)
+
+                for data in ohlcs:
+                    if data.timestamp > to_timestamp:
+                        break
+
+                    if generators:
+                        last_ohlcs[timeframe].append(candle)
+
+                # generate higher candles
+                for generator in generators:
+                    candles = generator.generate_from_candles(last_ohlcs[generator.from_tf])
+                    if candles:
+                        for c in candles:
+                            store_ohlc(options['broker'], market, generator.to_tf, c)
+
+                        last_ohlcs[generator.to_tf].extend(candles)
+
+                    # remove consumed candles
+                    last_ohlcs[generator.from_tf] = []
+
+                prev_tts = tts
+                timestamp = tts
+
+                if timestamp - prev_update >= progression_incr:
+                    progression += 1
+
+                    Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
+
+                    prev_update = timestamp
+                    count = 0
+
+                if timestamp > to_timestamp:
+                    break
+
+                if total_count == 0:
+                    timestamp += timeframe * 100
 
     Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 
