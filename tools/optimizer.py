@@ -7,7 +7,7 @@ import sys
 import logging
 import traceback
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from instrument.instrument import Instrument
 from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str
@@ -28,7 +28,7 @@ def format_datetime(timestamp):
 
 def format_delta(td):
     if td < 60.0:
-        return "%.2f seconds" % timedelta
+        return "%.6f seconds" % td
 
     if td < 60*60:
         m, r = divmod(td, 60)
@@ -163,7 +163,7 @@ def check_ticks(broker_id, market_id, from_date, to_date):
 
             gap_duration = tts - prev_tts
 
-            if gap_duration < 0.0:
+            if tts != prev_tts and gap_duration < 0.0:
                 date = format_datetime(timestamp)
                 Terminal.inst().error("Tick timestamp is before previous of %s on %s ! Broken file !" % (format_delta(gap_duration), date))
 
