@@ -128,6 +128,8 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
 
     if progression < 100:
         Terminal.inst().info("100%% on %s, %s for last 100 candles, current total of %s..." % (format_datetime(timestamp), count, total_count))
+    
+    Terminal.inst().info("Last candle datetime is %s" % (format_datetime(tts),))
 
 
 def check_ticks(broker_id, market_id, from_date, to_date):
@@ -153,10 +155,10 @@ def check_ticks(broker_id, market_id, from_date, to_date):
         total_count += len(ticks)
 
         for data in ticks:
-            tts = float(data[0]) * 0.001
-            bid = float(data[1])
-            ofr = float(data[2])
-            vol = float(data[3])
+            tts = data[0]
+            bid = data[1]
+            ofr = data[2]
+            vol = data[3]
 
             if not prev_tts:
                 prev_tts = tts
@@ -199,6 +201,8 @@ def check_ticks(broker_id, market_id, from_date, to_date):
 
     if progression < 100:
         Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
+    
+    Terminal.inst().info("Last tick datetime is %s" % (format_datetime(tts),))
 
 
 def do_optimizer(options):

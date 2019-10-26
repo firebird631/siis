@@ -803,11 +803,11 @@ class StrategyTrader(object):
 
         return False
 
-    def check_trade_timeout(self, trade, timestamp, profit_loss_rate=0.0):
+    def check_trade_timeout(self, trade, timestamp, profit_loss_rate):
         """
         Close a profitable trade that has passed its expiry.
         """
-        if trade.is_trade_timeout(timestamp) and trade.profit_loss > profit_loss_rate:
+        if trade.is_trade_timeout(timestamp) and profit_loss_rate > 0.0 and trade.profit_loss > profit_loss_rate:
             trader = self.strategy.trader()
             trade.close(trader, self.instrument)
 
