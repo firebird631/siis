@@ -240,6 +240,9 @@ def do_rebuilder(options):
                 if total_count == 0:
                     timestamp += timeframe * 100
 
+    if progression < 100:
+        Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
+
     Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 
 

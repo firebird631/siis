@@ -187,7 +187,7 @@ class Fetcher(object):
                 if n == 1000:
                     n = 0
                     Terminal.inst().info("%i..." % t)
-                    Terminal.inst().flush()
+                    # Terminal.inst().flush()
 
                     # calm down the storage of tick, if parsing is faster
                     while Database.inst().num_pending_ticks_storage() > Fetcher.TICK_STORAGE_DELAY:

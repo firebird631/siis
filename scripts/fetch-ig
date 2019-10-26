@@ -7,14 +7,23 @@ IDENTITY='demo'
 FROM='2019-10-21T00:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1w &
 
-FROM='2019-10-22T00:00:00'
+FROM='2019-10-26T00:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1d &
 
-FROM='2019-10-22T04:00:00'
+FROM='2019-10-26T00:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=4h &
 
-FROM='2019-10-22T04:00:00'
+FROM='2019-10-26T00:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=2h &
 
-FROM='2019-10-22T04:00:00'
+FROM='2019-10-26T00:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1h
+
+FROM='2019-10-26T00:00:00'
+python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=30m
+
+FROM='2019-10-26T00:00:00'
+python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=15m
+
+# FROM='2019-10-26T00:00:00'
+# python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=5m

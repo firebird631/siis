@@ -8,9 +8,9 @@ FROM='2019-10-21T00:00:00'
 python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1d --cascaded=1w
 
 # need the last 4 1h to reconstruct the 4h
-FROM='2019-10-22T00:00:00'
+FROM='2019-10-26T00:00:00'
 python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1h --cascaded=4h
 
 # need the last 3 5m to reconstruct the 15m
-FROM='2019-10-22T00:00:00'
+FROM='2019-10-26T00:00:00'
 python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=5m --cascaded=15m
