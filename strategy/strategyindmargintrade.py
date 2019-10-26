@@ -411,8 +411,6 @@ class StrategyIndMarginTrade(StrategyTrade):
                 elif filled > 0:
                     self.e = instrument.adjust_quantity(self.e + filled)
 
-                # logger.info("Entry avg-price=%s cum-filled=%s" % (self.aep, self.e))
-
                 if filled > 0:
                     # probably need to update exit orders
                     self._dirty = True
@@ -431,6 +429,23 @@ class StrategyIndMarginTrade(StrategyTrade):
                     self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
                 self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
+
+                #
+                # fees/commissions
+                #
+
+                maker = False
+
+                if self._stats.get('entry-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
+                    maker = True
+
+                if filled > 0 and self.e == 0:
+                    # initial fill we count the commission fee
+                    self._stats['entry-fees'] = instrument.maker_commission if maker else instrument.taker_commission
+
+                # realized fees
+                if filled > 0:
+                    self._stats['entry-fees'] += filled * (instrument.maker_fee if maker else instrument.taker_fee)
 
             elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
                 # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twices
@@ -500,6 +515,23 @@ class StrategyIndMarginTrade(StrategyTrade):
                     self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
                 self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
+                #
+                # fees/commissions
+                #
+
+                maker = False
+
+                if data['id'] == self.limit_oid and self._stats.get('limit-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
+                    maker = True
+
+                if filled > 0 and self.x == 0:
+                    # initial fill we count the commission fee
+                    self._stats['exit-fees'] = instrument.maker_commission if maker else instrument.taker_commission
+
+                # realized fees
+                if filled > 0:
+                    self._stats['exit-fees'] += filled * (instrument.maker_fee if maker else instrument.taker_fee)
 
     def position_signal(self, signal_type, data, ref_order_id, instrument):
         # how to manage it correctly because cumulated position on the same size wrong its local trade value

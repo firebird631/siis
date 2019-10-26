@@ -797,6 +797,16 @@ class Instrument(object):
                 while(len(candles)) > max_candles:
                     candles.pop(0)
 
+    def reduce_candles(self, timeframe, max_candles):
+        """
+        Reduce the number of candle to max_candles.
+        """
+        if not max_candles or not timeframe:
+            return
+
+        if self._candles.get(timeframe):
+            candles = self._candles[timeframe][-max_candles:]
+
     def last_prices(self, tf, price_type, number):
         prices = [0] * number
 

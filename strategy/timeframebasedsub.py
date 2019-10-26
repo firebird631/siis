@@ -83,6 +83,13 @@ class TimeframeBasedSub(object):
         # last closed candle processed
         self._last_closed = False
 
+        if self.history > self.depth:
+            # history is only for initial computation
+            self.history = self.depth
+
+            # don't kept the initials candles
+            self.strategy_trader.instrument.reduce_candles(self.tf, self.depth)
+
     #
     # properties
     #
