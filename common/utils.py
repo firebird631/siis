@@ -122,9 +122,11 @@ def fix_thread_set_name():
         threading.Thread._bootstrap_original = threading.Thread._bootstrap
         threading.Thread._bootstrap = _thread_name_hack
     except ImportError:
-        print('WARN: prctl module is not installed. You will not be able to see thread names')
         def set_thread_name(name): pass
 
+        import logging
+        error_logger = logging.getLogger('siis.error.utils')
+        error_logger.warning('prctl module is not installed. You will not be able to see thread names')
 
 def truncate(number, digits) -> float:
     stepper = pow(10.0, digits)

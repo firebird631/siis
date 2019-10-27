@@ -34,7 +34,7 @@ class StrategySignal(object):
     - ts for timestamp (UTC)
     """
 
-    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'alt_tp', 'entry_timeout', 'expiry',  '_extra', '_comment'
+    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'entry_timeout', 'expiry',  '_extra', '_comment'
 
     SIGNAL_NONE = 0   # signal type undefined (must be entry or exit else its informal)
     SIGNAL_ENTRY = 1  # entry signal (this does not mean long. @see dir)
@@ -50,7 +50,6 @@ class StrategySignal(object):
         self.p = 0.0       # signal price / possible entry-price
         self.sl = 0.0      # possible stop-loss pricce
         self.tp = 0.0      # primary possible take profit price
-        self.alt_tp = 0.0  # secondary possible take profit price
         self.entry_timeout = 0.0   # trade entry expiration in seconds
         self.expiry = 0.0          # trade expiration if in profit after this delay
 
@@ -76,10 +75,6 @@ class StrategySignal(object):
     @property
     def take_profit(self):
         return self.tp
-
-    @property
-    def alt_take_profit(self):
-        return self.alt_tp
 
     @property
     def comment(self):
@@ -142,7 +137,8 @@ class StrategySignal(object):
         self.p = _from.p
         self.sl = _from.sl
         self.tp = _from.tp
-        self.alt_tp = _from.alt_tp
+        # self._extra = copy.copy(_from._extra)
+        # self._comment = _from.comment
 
     def compare(self, _to) -> bool:
         """

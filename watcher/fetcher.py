@@ -115,7 +115,6 @@ class Fetcher(object):
                 from_date = (today - timedelta(seconds=int(timeframe/Instrument.TF_1S)*n_last))
 
             from_date = from_date.replace(microsecond=0)
-            # print(from_date)
 
         if not to_date:
             today = datetime.now().astimezone(UTC())
@@ -184,14 +183,13 @@ class Fetcher(object):
                 n += 1
                 t += 1
 
-                if n == 1000:
+                if n == 10000:
                     n = 0
                     Terminal.inst().info("%i..." % t)
-                    # Terminal.inst().flush()
 
-                    # calm down the storage of tick, if parsing is faster
-                    while Database.inst().num_pending_ticks_storage() > Fetcher.TICK_STORAGE_DELAY:
-                        time.sleep(Fetcher.TICK_STORAGE_DELAY)  # wait a little before continue
+                # calm down the storage of tick, if parsing is faster
+                while Database.inst().num_pending_ticks_storage() > Fetcher.MAX_PENDING_TICK:
+                    time.sleep(Fetcher.TICK_STORAGE_DELAY)  # wait a little before continue
 
             logger.info("Fetched %i trades" % t)
 

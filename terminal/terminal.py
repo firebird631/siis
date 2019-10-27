@@ -864,6 +864,14 @@ class Terminal(object):
             self._views = self._old_default
             self._old_default = None
 
+        # clear content
+        if 'default' in self._views:
+            self._views['default']._content = []
+        if 'content' in self._views:
+            self._views['content']._content = []
+        if 'debug' in self._views:
+            self._views['debug']._content = []
+
         self._direct_draw = True
 
     def cleanup(self):

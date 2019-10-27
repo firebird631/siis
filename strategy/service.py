@@ -338,7 +338,7 @@ class StrategyService(Service):
                                 if self.abort:
                                     break
                         else:
-                            # multiple appliances, parralelise them
+                            # multiple appliances, parallelise them
                             while self.c < self.e + self.ts:
                                 if not wait:
                                     # now sync the trader base time
