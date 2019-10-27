@@ -309,7 +309,7 @@ class IGTrader(Trader):
 
         size = str(size)
 
-        logger.info("Trader %s order %s %s EP@%s %s" % (self.name, order.direction_to_str(), epic, limit_level, size))
+        logger.info("Trader %s order %s %s @%s %s" % (self.name, order.direction_to_str(), epic, limit_level, size))
 
         # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
         logger.info(self._previous_order)
@@ -382,6 +382,7 @@ class IGTrader(Trader):
         order = self._orders.get(order_id)
 
         if order is None:
+            logger.error("%s does not found order %s !" % (self.name, order_id))
             return False
 
         deal_id = order.order_id
@@ -409,6 +410,7 @@ class IGTrader(Trader):
         position = self._positions.get(position_id)
 
         if position is None or not position.is_opened():
+            logger.error("%s does not found opened position %s !" % (self.name, position_id))
             return False
 
         if not self.has_market(position.symbol):
@@ -418,6 +420,7 @@ class IGTrader(Trader):
         # EPIC market detail fetched once next use cached
         market_info = self.market(position.symbol)
         if market_info is None:
+            logger.error("%s does not found market info when trying to close position %s !" % (self.name, position_id))
             return False
 
         epic = position.symbol
@@ -479,7 +482,7 @@ class IGTrader(Trader):
         position = self._positions.get(position_id)
 
         if position is None or not position.is_opened():
-            logger.error("%s position %s not found !" % (self.name, position_id,))
+            logger.error("%s does not found opened position %s !" % (self.name, position_id))
             return False
 
         limit_level = None

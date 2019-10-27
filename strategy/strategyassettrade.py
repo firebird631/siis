@@ -165,18 +165,18 @@ class StrategyAssetTrade(StrategyTrade):
 
         return True
 
-    def modify_take_profit(self, trader, instrument, price):
+    def modify_take_profit(self, trader, instrument, limit_price):
         if self._closing:
             # already closing order
-            return False
+            return self.NOTHING_TO_DO
 
         if self._exit_state == StrategyTrade.STATE_FILLED:
             # exit already fully filled
-            return False
+            return self.NOTHING_TO_DO
 
         if self.oco_oid:
             # @todo need recreate stop and limit OCO order
-            return False
+            return self.ERROR
         else:
             if self.limit_oid:
                 # cancel the sell limit order and create a new one
@@ -186,9 +186,11 @@ class StrategyAssetTrade(StrategyTrade):
                     self.limit_oid = None
                     self.limit_order_type = Order.ORDER_MARKET
                     self.limit_order_qty = 0.0
+                else:
+                    return self.ERROR
 
-                # cancel the sell stop order (only one or the other)
             if self.stop_oid:
+                # cancel the sell stop order (only one or the other)
                 if trader.cancel_order(self.stop_oid):
                     # REST sync
                     # returns true, no need to wait signal confirmation
@@ -196,16 +198,18 @@ class StrategyAssetTrade(StrategyTrade):
                     self.stop_oid = None
                     self.stop_order_type = Order.ORDER_MARKET
                     self.stop_order_qty = 0.0
+                else:
+                    return self.ERROR
 
             if self.x >= self.e:
                 # all entry qty is filled
-                return True
+                return self.NOTHING_TO_DO
 
-            if price:
+            if limit_price:
                 order = Order(trader, instrument.market_id)
                 order.direction = -self.dir  # neg dir
                 order.order_type = Order.ORDER_LIMIT
-                order.price = price
+                order.price = limit_price
                 order.quantity = self.e - self.x  # remaining
 
                 self._stats['limit-order-type'] = order.order_type
@@ -222,28 +226,28 @@ class StrategyAssetTrade(StrategyTrade):
                     self.last_tp_ot[0] = order.created_time
                     self.last_tp_ot[1] += 1
 
-                    self.tp = price
+                    self.tp = limit_price
 
-                    return True
+                    return self.ACCEPTED
                 else:
                     # rejected
                     self.limit_ref_oid = None
-                    return False
+                    return self.REJECTED
 
-            return True
+            return self.NOTHING_TO_DO
 
     def modify_stop_loss(self, trader, instrument, stop_price):
         if self._closing:
             # already closing order
-            return False
+            return self.NOTHING_TO_DO
 
         if self._exit_state == StrategyTrade.STATE_FILLED:
             # exit already fully filled
-            return False
+            return self.NOTHING_TO_DO
 
         if self.oco_oid:
             # @todo need recreate stop and limit OCO order
-            return False
+            return self.ERROR
         else:
             if self.stop_oid:
                 # cancel the sell stop order and create a new one
@@ -254,6 +258,8 @@ class StrategyAssetTrade(StrategyTrade):
                     self.stop_oid = None
                     self.stop_order_type = Order.ORDER_MARKET
                     self.stop_order_qty = 0.0
+                else:
+                    return self.ERROR
 
             if self.limit_oid:
                 # cancel the sell limit order (only one or the other)
@@ -264,10 +270,12 @@ class StrategyAssetTrade(StrategyTrade):
                     self.limit_oid = None
                     self.limit_order_type = Order.ORDER_MARKET
                     self.limit_order_qty = 0.0
+                else:
+                    return self.ERROR
 
             if self.x >= self.e:
                 # all entry qty is filled
-                return True
+                return self.NOTHING_TO_DO
 
             if stop_price:
                 order = Order(trader, instrument.market_id)
@@ -292,32 +300,38 @@ class StrategyAssetTrade(StrategyTrade):
 
                     self.sl = stop_price
 
-                    return True
+                    return self.ACCEPTED
                 else:
                     # rejected
                     self.stop_ref_oid = None
-                    return False
+                    return self.REJECTED
 
-            return True
+            return self.NOTHING_TO_DO
+
+    def modify_oco(self, trader, instrument, limit_price, stop_price):
+        # @todo
+        return self.REJECTED
 
     def close(self, trader, instrument):
         if self._closing:
             # already closing order
-            return False
+            return self.NOTHING_TO_DO
 
         if self.oco_oid:
             # @todo cancel OCO order and create an order market
-            return False
+            return self.ERROR
         else:
-            # if self.stop_ref_oid:
-            #     logger.error("Trade %s has already ordered an exit !" % self.id)
-            #     return False
+            if self.stop_ref_oid:
+                logger.error("Trade %s has already ordered an exit !" % self.id)
+                return self.NOTHING_TO_DO
 
             if self.entry_oid:
                 # cancel the remaining buy order
                 if trader.cancel_order(self.entry_oid):
                     self.entry_ref_oid = None
                     self.entry_oid = None
+                else:
+                    return self.ERROR
 
             if self.limit_oid:
                 # cancel the sell limit order
@@ -326,6 +340,8 @@ class StrategyAssetTrade(StrategyTrade):
                     self.limit_oid = None
                     self.limit_order_type = Order.ORDER_MARKET
                     self.limit_order_qty = 0.0
+                else:
+                    return self.ERROR
 
             if self.stop_oid:
                 # cancel the sell stop order and create a new one
@@ -334,10 +350,12 @@ class StrategyAssetTrade(StrategyTrade):
                     self.stop_oid = None
                     self.stop_order_type = Order.ORDER_MARKET
                     self.stop_order_qty = 0.0
+                else:
+                    return self.ERROR
 
             if self.x >= self.e:
                 # all qty is filled
-                return True
+                return self.NOTHING_TO_DO
 
             order = Order(trader, instrument.market_id)
             order.direction = -self.dir  # neg dir
@@ -357,11 +375,13 @@ class StrategyAssetTrade(StrategyTrade):
                 # closing order defined
                 self._closing = True
 
-                return True
+                return self.ACCEPTED
             else:
                 # rejected
                 self.stop_ref_oid = None
-                return False
+                return self.REJECTED
+
+        return self.NOTHING_TO_DO
 
     def has_stop_order(self):
         return self.stop_oid != None and self.stop_oid != ""
@@ -398,12 +418,12 @@ class StrategyAssetTrade(StrategyTrade):
             done = False
             # @todo
         else:
-            if self.has_limit_order():
-                if not self.modify_take_profit(trader, instrument, self.tp):
+            if self.has_limit_order() and self.tp > 0.0:
+                if self.modify_take_profit(trader, instrument, self.tp) <= 0:
                     done = False
 
-            if self.has_stop_order():
-                if not self.modify_stop_loss(trader, instrument, self.sl):
+            if self.has_stop_order() and self.sl > 0.0:
+                if self.modify_stop_loss(trader, instrument, self.sl) <= 0:
                     done = False
 
         if done:

@@ -166,15 +166,15 @@ class StrategyMarginTrade(StrategyTrade):
                 self.limit_oid = None
                 self.limit_order_qty = 0.0
             else:
-                return False
+                return self.ERROR
 
         if self.e == self.x:
             # all entry qty is filled
-            return True
+            return self.NOTHING_TO_DO
 
         if self.e < self.x:
             # something wrong but its ok
-            return False
+            return self.NOTHING_TO_DO
 
         if self.e > 0 and limit_price > 0.0:
             # only if filled entry partially or totally
@@ -201,12 +201,14 @@ class StrategyMarginTrade(StrategyTrade):
 
                 self.tp = limit_price
 
-                return True
+                return self.ACCEPTED
             else:
                 self.limit_ref_oid = None
                 self.limit_order_qty = 0.0
 
-        return False
+                return self.REJECTED
+
+        return self.NOTHING_TO_DO
 
     def modify_stop_loss(self, trader, instrument, stop_price):
         if self.stop_oid:
@@ -215,15 +217,15 @@ class StrategyMarginTrade(StrategyTrade):
                 self.stop_ref_oid = None
                 self.stop_oid = None
             else:
-                return False
+                return self.ERROR
 
         if self.e == self.x:
             # all entry qty is filled
-            return True
+            return self.NOTHING_TO_DO
 
         if self.e < self.x:
             # something wrong but its ok
-            return False
+            return self.NOTHING_TO_DO
 
         if self.e > 0 and stop_price > 0.0:
             # only if filled entry partially or totally
@@ -250,12 +252,14 @@ class StrategyMarginTrade(StrategyTrade):
 
                 self.sl = stop_price
 
-                return True
+                return self.ACCEPTED
             else:
                 self.stop_ref_oid = None
                 self.stop_order_qty = 0.0
 
-        return False
+                return self.REJECTED
+
+        return self.NOTHING_TO_DO
 
     def close(self, trader, instrument):
         """
@@ -263,7 +267,7 @@ class StrategyMarginTrade(StrategyTrade):
         """
         if self._closing:
             # already closing order
-            return False
+            return self.NOTHING_TO_DO
 
         if self.create_oid:
             # cancel the remaining buy order
@@ -272,12 +276,16 @@ class StrategyMarginTrade(StrategyTrade):
                 self.create_oid = None
 
                 self._entry_state = StrategyTrade.STATE_CANCELED
+            else:
+                return self.ERROR
 
         if self.stop_oid:
             # cancel the stop order
             if trader.cancel_order(self.stop_oid):
                 self.stop_ref_oid = None
                 self.stop_oid = None
+            else:
+                return self.ERROR
 
         if self.limit_oid:
             # cancel the limit order
@@ -307,12 +315,14 @@ class StrategyMarginTrade(StrategyTrade):
                 # closing order defined
                 self._closing = True
 
-                return True
+                return self.ACCEPTED
             else:
                 self.stop_ref_oid = None
-                return False
+                self.stop_order_qty = 0.0
 
-        return True
+                return self.REJECTED
+
+        return self.NOTHING_TO_DO
 
     def has_stop_order(self):
         return (self.stop_oid is not None and self.stop_oid != "")

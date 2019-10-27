@@ -125,9 +125,11 @@ class StrategyPositionTrade(StrategyTrade):
             if trader.modify_position(self.position_id, take_profit_price=limit_price):
                 self.tp = limit_price
                 self.position_limit = limit_price
-                return True
+                return self.ACCEPTED
+            else:
+                return self.REJECTED
 
-        return False
+        return self.NOTHING_TO_DO
 
     def modify_stop_loss(self, trader, instrument, stop_price):
         if self.position_id:
@@ -135,9 +137,11 @@ class StrategyPositionTrade(StrategyTrade):
             if trader.modify_position(self.position_id, stop_loss_price=stop_price):
                 self.sl = stop_price
                 self.position_stop = stop_price
-                return True
+                return self.ACCEPTED
+            else:
+                return self.REJECTED
 
-        return False
+        return self.NOTHING_TO_DO
 
     def close(self, trader, instrument):
         """
@@ -145,7 +149,7 @@ class StrategyPositionTrade(StrategyTrade):
         """
         if self._closing:
             # already closing order
-            return False
+            return self.NOTHING_TO_DO
 
         if self.create_oid:
             # cancel the remaining buy order
@@ -159,11 +163,11 @@ class StrategyPositionTrade(StrategyTrade):
             # most of the margin broker case we have a position id
             if trader.close_position(self.position_id):
                 self._closing = True
-                return True
+                return self.ACCEPTED
             else:
-                return False
+                return self.REJECTED
 
-        return True
+        return self.NOTHING_TO_DO
 
     def has_stop_order(self):
         return self.position_stop > 0.0

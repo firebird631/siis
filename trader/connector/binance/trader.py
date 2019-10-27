@@ -263,7 +263,7 @@ class BinanceTrader(Trader):
         data['newClientOrderId'] = order.ref_order_id
         # data['icebergQty'] = 0.0
 
-        logger.info("Trader %s order %s %s %s EP@%s" % (self.name, order.direction_to_str(), data.get('quantity'), symbol, data.get('price')))
+        logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('quantity'), symbol, data.get('price')))
 
         result = None
         reason = ""
@@ -314,6 +314,7 @@ class BinanceTrader(Trader):
         self.unlock()
 
         if order is None:
+            logger.error("%s does not found order %s !" % (self.name, order_id))
             return False
 
         if not self.has_market(order.symbol):
@@ -351,8 +352,10 @@ class BinanceTrader(Trader):
 
         # no longer managed (or wait the signal)
         self.lock()
+
         if order.order_id in self._orders:
             del self._orders[order.order_id]
+
         self.unlock()
 
         return True
@@ -368,6 +371,7 @@ class BinanceTrader(Trader):
         position = self._positions.get(position_id)
 
         if position is None or not position.is_opened():
+            logger.error("%s does not found opened position %s for closing !" % (self.name, position.position_id))
             return False
 
         if not self.has_market(position.symbol):
@@ -395,12 +399,10 @@ class BinanceTrader(Trader):
 
         position = self._positions.get(position_id)
         if position is None or not position.is_opened():
+            logger.error("%s does not found opened position %s for modification !" % (self.name, position.position_id))
             return False
 
-        # @todo
         return False
-
-        # return True
 
     def positions(self, market_id):
         """

@@ -48,6 +48,11 @@ class StrategyTrade(object):
     STATE_PARTIALLY_FILLED = 5
     STATE_FILLED = 6
 
+    ERROR = -1
+    REJECTED = 0
+    ACCEPTED = 1
+    NOTHING_TO_DO = 2
+
     def __init__(self, trade_type, timeframe):
         self._trade_type = trade_type
         
@@ -391,23 +396,29 @@ class StrategyTrade(object):
         """
         return False
 
-    def modify_take_profit(self, trader, instrument, price):
+    def modify_take_profit(self, trader, instrument, limit_price):
         """
         Create/modify the take-order limit order or position limit.
         """
-        return False
+        return self.NOTHING_TO_DO
 
-    def modify_stop_loss(self, trader, instrument, price):
+    def modify_stop_loss(self, trader, instrument, stop_price):
         """
         Create/modify the stop-loss taker order or position limit.
         """
-        return False
+        return self.NOTHING_TO_DO
+
+    def modify_oco(self, trader, instrument, limit_price, stop_price):
+        """
+        Create/modify the OCO order with both take-profit and stop-loss orders.
+        """
+        return self.NOTHING_TO_DO
 
     def close(self, trader, instrument):
         """
         Close the position or sell the asset.
         """
-        return False
+        return self.NOTHING_TO_DO
 
     def has_stop_order(self):
         """
