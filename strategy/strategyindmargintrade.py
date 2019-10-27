@@ -437,6 +437,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                 maker = False
 
                 if self._stats.get('entry-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
+                    # @todo only if execution price is equal or better then order price (depends of direction)
                     maker = True
 
                 if filled > 0 and self.e == 0:
@@ -523,6 +524,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                 maker = False
 
                 if data['id'] == self.limit_oid and self._stats.get('limit-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
+                    # @todo only if execution price is equal or better then order price (depends of direction)
                     maker = True
 
                 if filled > 0 and self.x == 0:
