@@ -163,7 +163,7 @@ class StrategySignal(object):
             return ((self.tp - self.p) / self.p) if self.p > 0.0 else 0.0
         elif self.dir < 0:
             return ((self.p - self.tp) / self.p) if self.p > 0.0 else 0.0
-        
+
         return 0.0
 
     def loss(self):

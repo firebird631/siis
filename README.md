@@ -456,8 +456,9 @@ python siis.py <identity> [--help, --options...]
 * --fetch Process the data fetcher.
 * --install-market Used only with --fetch to only install the fake market data info to database without trying to fetch anything.
 * --binarize Process to text file to binary conversion for a market (text version of data could be removed on the futur).
-* --rebuild Rebuild OHLC from the trades/ticks data for a market (WIP).
+* --rebuild Rebuild OHLC from the trades/ticks data for a market. Need to specify --broker, --market, --timeframe, --from and --to date, --cascaded
 * --optimize Check one ore many market for trades/ticks or OHLCs. Need to specify --broker, --market, --timeframe, --from and --to date
+* --sync Synchronize the market data from the broker. Need to specify --broker and --market
 
 You need to define the name of the identity to use. This is related to the name defined into the identity.json file.
 Excepted for fetch/binarize/check-data the name of the profile of appliances to use --profile=\<profilename> must be specified.
@@ -716,10 +717,6 @@ in the watcher.
 
 **IG candle limit 10k reached** : Do the maths, how many markets do you want to initiate, to fetch, how many candles history you will need,
 find your way, or try to ask if they can increase your limitations. I have no solution for this problem because its out of my possibility.
-
-**Help command goes out of the window** : Yes the help command can goes outside, and there is no scrolling at this time for the console view.
-It will be solved, but its the least of my priorities. I've some changes to improves view architectures, not finished for now, and
-the Web interface will be more friendly.
 
 **In paper-mode (live or backtesing) margin or asset quantity is missing** : A recent problem reapears with BitMex markets, I have to investigate,
 its annoying for live paper-mode and for backtesting. Similar issues could appears with assets quantities. Its in the priority list.

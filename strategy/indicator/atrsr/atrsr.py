@@ -18,7 +18,7 @@ class ATRSRIndicator(Indicator):
     Average True Range Support and Resistance indicator.
     """
 
-    __slots__ = '_length', '_coeff', '_length_MA', '_down', '_up', '_max_history', '_tup', '_tdn'
+    __slots__ = '_length', '_coeff', '_length_MA', '_down', '_up', '_both', '_max_history', '_tup', '_tdn'
 
     @classmethod
     def indicator_type(cls):
@@ -28,7 +28,7 @@ class ATRSRIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
 
-    def __init__(self, timeframe, length=14, coeff=2, length_MA=7):
+    def __init__(self, timeframe, length=14, coeff=2, length_MA=7, max_history=100):
         super().__init__("atrsr", timeframe)
 
         self._compute_at_close = True  # only at close
@@ -37,10 +37,11 @@ class ATRSRIndicator(Indicator):
         self._coeff = coeff
         self._length_MA = length_MA
 
-        self._max_history = 100
+        self._max_history = max_history
 
         self._down = []
         self._up = []
+        self._both = []
 
         self._tup = np.array([])
         self._tdn = np.array([])
@@ -61,13 +62,13 @@ class ATRSRIndicator(Indicator):
     def up(self):
         return self._up
 
-    def search_up(self, direction, last_price, depth=1):
+    def search_up(self, direction, last_price, depth=1, epsilon=0.0):
         n = 0
         stop_loss = last_price
 
         if direction > 0:
             for x in reversed(self._up):
-                if x > stop_loss:
+                if x > stop_loss + epsilon:
                     stop_loss = x
                     n += 1
 
@@ -78,7 +79,7 @@ class ATRSRIndicator(Indicator):
 
         elif direction < 0:
             for x in reversed(self._up):
-                if x < stop_loss:
+                if x < stop_loss - epsilon:
                     stop_loss = x
                     n += 1
 
@@ -89,13 +90,13 @@ class ATRSRIndicator(Indicator):
 
         return 0.0
 
-    def search_down(self, direction, last_price, depth=1):
+    def search_down(self, direction, last_price, depth=1, epsilon=0.0):
         n = 0
         stop_loss = last_price
 
         if direction > 0:
             for x in reversed(self._down):
-                if x > stop_loss:
+                if x > stop_loss + epsilon:
                     stop_loss = x
                     n += 1
 
@@ -106,7 +107,35 @@ class ATRSRIndicator(Indicator):
 
         elif direction < 0:
             for x in reversed(self._down):
-                if x < stop_loss:
+                if x < stop_loss - epsilon:
+                    stop_loss = x
+                    n += 1
+
+                if n == depth:
+                    break
+
+            return stop_loss
+
+        return 0.0
+
+    def search_both(self, direction, last_price, depth=1, epsilon=0.0):
+        n = 0
+        stop_loss = last_price
+
+        if direction > 0:
+            for x in reversed(self._both):
+                if x > stop_loss + epsilon:
+                    stop_loss = x
+                    n += 1
+
+                if n == depth:
+                    break
+
+            return stop_loss
+
+        elif direction < 0:
+            for x in reversed(self._both):
+                if x < stop_loss - epsilon:
                     stop_loss = x
                     n += 1
 
@@ -181,16 +210,24 @@ class ATRSRIndicator(Indicator):
                 if not np.isnan(self._tup[b]) and self._tup[b] != last_up:
                     last_up = self._tup[b]
                     self._up.append(last_up)
+                    self._both.append(last_up)
 
                     if len(self._up) > self._max_history:
                         self._up.pop(0)
 
+                    if len(self._both) > 2*self._max_history:
+                        self._both.pop(0)
+
                 if not np.isnan(self._tdn[b]) and self._tdn[b] != last_dn:
                     last_dn = self._tdn[b]
                     self._down.append(last_dn)
+                    self._both.append(last_dn)
 
                     if len(self._down) > self._max_history:
                         self._down.pop(0)
+
+                    if len(self._both) > 2*self._max_history:
+                        self._both.pop(0)
 
         # logger.info("%s %s" % (self._tup, self._tdn))
         # logger.info("%s %s" % (self._up, self._down))
