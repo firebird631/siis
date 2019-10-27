@@ -463,7 +463,7 @@ class StrategyTrade(object):
     def is_target_position(self, position_id, ref_order_id):
         return False
 
-    def update_dirty(self):
+    def update_dirty(self, trader, instrument):
         pass
 
     #
