@@ -222,7 +222,6 @@ class PaperTrader(Trader):
                             order_type = None
 
                             if position.direction > 0:
-
                                 if position.take_profit and close_exec_price >= position.take_profit:
                                     order_type = Order.ORDER_LIMIT
 
@@ -236,7 +235,7 @@ class PaperTrader(Trader):
                                 elif position.stop_loss and close_exec_price >= position.stop_loss:
                                     order_type = Order.ORDER_MARKET
 
-                            if order_type:
+                            if order_type is not None:
                                 if close_position(self, market, position, close_exec_price, order_type):
                                     rm_list.append(k)
 

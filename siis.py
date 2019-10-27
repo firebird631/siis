@@ -254,7 +254,7 @@ def application(argv):
         sys.exit(0)
 
     #
-    # sync mode
+    # syncer mode
     #
 
     if options.get('sync'):
@@ -586,13 +586,13 @@ def application(argv):
                                     # a simple mark on the terminal
                                     Terminal.inst().notice("Trading time %s" % (datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='status')
 
-                                elif value == 'a':
+                                elif value == 'a' and desktop_service:
                                     desktop_service.audible = not desktop_service.audible
                                     Terminal.inst().action("Audible notification are now %s" % ("actives" if desktop_service.audible else "disabled",), view='status')
-                                elif value == 'n':
+                                elif value == 'n' and desktop_service:
                                     desktop_service.popups = not desktop_service.popups
                                     Terminal.inst().action("Desktop notification are now %s" % ("actives" if desktop_service.popups else "disabled",), view='status')
-                                elif value == 'e':
+                                elif value == 'e' and desktop_service:
                                     desktop_service.discord = not desktop_service.discord
                                     Terminal.inst().action("Discord notification are now %s" % ("actives" if desktop_service.discord else "disabled",), view='status')
 
@@ -644,9 +644,15 @@ def application(argv):
                 watcher_service.sync()
                 trader_service.sync()
                 strategy_service.sync()
-                monitor_service.sync()
-                desktop_service.sync()
-                view_service.sync()
+
+                if monitor_service:
+                    monitor_service.sync()
+
+                if desktop_service:
+                    desktop_service.sync()
+
+                if view_service:
+                    view_service.sync()
 
                 Terminal.inst().update()
 

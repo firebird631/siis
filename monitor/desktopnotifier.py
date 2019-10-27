@@ -35,10 +35,10 @@ class DesktopNotifier(Notifiable):
     """
     Desktop + audible notification from some particulars signals.
 
-    @todo seperate module and as a service + instance : one for the desktop, one for the terminal views, one for the email, one discord, to avoid blocking
-    @todo config
+    @todo seperate module and as a service + instance : desktop, views, discord...
     @todo the discord notifier part had to move to a DiscordNotifier module
-    @todo add alert when trade operation is processed
+    @todo manage more signal/alerts from strategy or even from a price evolution watchdog
+    @todo read audio.json conf for audio alert profile
     """
 
     AUDIO_ALERT_SIMPLE = 0
@@ -74,13 +74,14 @@ class DesktopNotifier(Notifiable):
         self._last_strategy_update = 0
         self._displayed_strategy = 0
 
-        # @todo cleanup and move as conf
+        # @todo cleanup and move as conf and read it from profile
         self._discord_webhook = {
             # 'binance-altusdt-top.trades': 'https://discordapp.com/api/webhooks/...',
             # 'binance-altusdt-top.agg-trades': 'https://discordapp.com/api/webhooks/...',
             # 'binance-altusdt-top.closed-trades': 'https://discordapp.com/api/webhooks/...',
         }
 
+        # read audio config @todo
         self._alerts = [
             ('/usr/share/sounds/info.wav', 3),
             ('/usr/share/sounds/phone.wav', 2),
@@ -254,26 +255,42 @@ class DesktopNotifier(Notifiable):
                 signal_logger.info(message)
 
             # process sound
-            if not self.backtesting and self.audible and audio_alert:
-                # if repeat
-                for i in range(0, self._alerts[audio_alert[1]]):
-                    subprocess.Popen(['aplay', '-D', self._audio_device, self._alerts[audio_alert[0]]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-                # duration = 1  # second
-                # freq = 440  # Hz
-                # os.system('play --no-show-progress --null --channels 1 synth %s sine %f' % (duration, freq))
+            if not self.backtesting and self.audible and audio_alert is not None:
+                self.play_audio_alert(audio_alert)
 
             if not self.backtesting and self.popups and message:
                 if self.notify2:
                     n = self.notify2.Notification(label, message, icon)
                     n.show()
 
+            elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
+                pass
+
+            elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
+                pass
+
             count += 1
             if count > 10:
                 # no more than per loop
                 break
 
-        # time.sleep(0.001)  # its sync to main thread no need more
+        # time.sleep(0.001)  # synced to main thread
+
+    def play_audio_alert(self, audio_alert):
+        # @todo using new conf
+        if not self.backtesting and self.audible and audio_alert is not None and 0 <= audio_alert <= len(self._alerts):
+            try:
+                for i in range(0, self._alerts[audio_alert][1]):
+                    subprocess.Popen(['aplay', '-D', self._audio_device, self._alerts[audio_alert][0]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except:
+                pass
+
+    def play_wave(self, freq, duration, mode="sine"):
+        if not self.backtesting and self.audible and freq and duration and mode:
+            try:
+                os.system('play --no-show-progress --null --channels 1 synth %s %s %f' % (duration, mode, freq))
+            except:
+                pass
 
     def terminate(self):
         if self.notify2:

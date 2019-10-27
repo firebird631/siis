@@ -166,10 +166,10 @@ class StrategyPositionTrade(StrategyTrade):
         return True
 
     def has_stop_order(self):
-        return False#self.position_stop > 0.0
+        return self.position_stop > 0.0
 
     def has_limit_order(self):
-        return False#self.position_limit > 0.0
+        return self.position_limit > 0.0
 
     def support_both_order(self):
         return True
