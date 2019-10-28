@@ -217,7 +217,12 @@ class StrategyService(Service):
                     self._appliances[k] = appl_inst
 
         # start the worker pool
-        self._worker_pool.start()
+        if self._backtesting:
+            # only if there is more than 1 appliance
+            if len(self._appliances) > 1:
+                self._worker_pool.start()
+        else:
+            self._worker_pool.start()
 
     def terminate(self):
         if self._timestep_thread and self._timestep_thread.is_alive():
@@ -313,7 +318,7 @@ class StrategyService(Service):
                                 traders.append(appl.trader())
 
                         if len(appliances) == 1:
-                            # a signe appliance, don't need to parellelize, and to sync, python sync suxx a lot, avoid the overload in most of the
+                            # a single appliance, don't need to parellelize, and to sync, python sync suxx a lot, avoid the overload in most of the
                             # backtesting usage
                             while self.c < self.e + self.ts:
                                 # now sync the trader base time
@@ -333,7 +338,11 @@ class StrategyService(Service):
                                 for trader in traders:
                                     trader.update()
 
-                                time.sleep(0)  # yield
+                                    if trader._ping:
+                                        trader.pong(time.time(), trader._ping[0], trader._ping[1], trader._ping[2])
+                                        trader._ping = None
+
+                                time.sleep(0.000001)  # yield
 
                                 if self.abort:
                                     break
@@ -371,6 +380,10 @@ class StrategyService(Service):
                                     # one more step then we can update traders (limits orders, P/L update...)
                                     for trader in traders:
                                         trader.update()
+
+                                        if trader._ping:
+                                            trader.pong(time.time(), trader._ping[0], trader._ping[1], trader._ping[2])
+                                            trader._ping = None
 
                                 time.sleep(0)  # yield
 
@@ -535,11 +548,27 @@ class StrategyService(Service):
         """
         return self._tradeops_config.get(name, {})
 
-    def ping(self):
-        self._mutex.acquire()
-        for k, appl, in self._appliances.items():
-            appl.ping()
+    def ping(self, timeout):
+        if self._mutex.acquire(timeout=timeout):
+            for k, appl, in self._appliances.items():
+                appl.ping(timeout)
 
-        self._worker_pool.ping()
+            self._worker_pool.ping(timeout)
 
-        self._mutex.release()
+            self._mutex.release()
+        else:
+            Terminal.inst().action("Unable to join service %s for %s seconds" % (self.name, timeout), view='content')
+
+    def watchdog(self, watchdog_service, timeout):
+        # try to acquire, see for deadlock
+        if self._mutex.acquire(timeout=timeout):
+            # if no deadlock lock for service ping appliances
+            for k, appl, in self._appliances.items():
+                appl.watchdog(watchdog_service, timeout)
+
+            # and workers
+            self._worker_pool.watchdog(watchdog_service, timeout)
+
+            self._mutex.release()
+        else:
+            watchdog_service.service_timeout(self.name, "Unable to join service %s for %s seconds" % (self.name, timeout))

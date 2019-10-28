@@ -44,7 +44,7 @@ class ColoredFormatter(logging.Formatter):
         #     }
 
     def format(self, record):
-        colors = self.colors(Terminal.inst().style())
+        colors = self.colors(Terminal.inst().style() if Terminal.inst() else "")
 
         if record.levelno == logging.ERROR and self.use_color:
             record.name = colors['ERROR'] + '- ' + copy.copy(record.name) + colors["DEFAULT"] + ' '
@@ -89,31 +89,38 @@ class TerminalHandler(logging.StreamHandler):
     def emit(self, record):
         msg = self.format(record)
 
+        if record.levelno == logging.CRITICAL:
+            if record.pathname.startswith('siis.error.'):
+                Terminal.inst().error(str(msg), view='content') if Terminal.inst() else print(str(msg))
+            else:
+                # Terminal.inst().error(str(msg), view='default') if Terminal.inst() else print(str(msg))
+                Terminal.inst().error(str(msg), view='content') if Terminal.inst() else print(str(msg))
+
         if record.levelno == logging.ERROR:
             if record.pathname.startswith('siis.error.'):
-                Terminal.inst().error(str(msg), view='debug')
+                Terminal.inst().error(str(msg), view='debug') if Terminal.inst() else print(str(msg))
             else:
                 # Terminal.inst().error(str(msg), view='default')
-                Terminal.inst().error(str(msg), view='content')
+                Terminal.inst().error(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
         elif record.levelno == logging.WARNING:
             if record.pathname.startswith('siis.error.'):
-                Terminal.inst().error(str(msg), view='debug')
+                Terminal.inst().error(str(msg), view='debug') if Terminal.inst() else print(str(msg))
             else:
                 # Terminal.inst().warning(str(msg), view='default')
-                Terminal.inst().warning(str(msg), view='content')
+                Terminal.inst().warning(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
         elif record.levelno == logging.INFO:
             if record.pathname.startswith('siis.error.'):
-                Terminal.inst().info(str(msg), view='debug')
+                Terminal.inst().info(str(msg), view='debug') if Terminal.inst() else print(str(msg))
             else:
-                Terminal.inst().info(str(msg), view='content')
+                Terminal.inst().info(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
         elif record.levelno == logging.DEBUG:
-            Terminal.inst().message(str(msg), view='debug')
+            Terminal.inst().message(str(msg), view='debug') if Terminal.inst() else print(str(msg))
 
         else:
-            Terminal.inst().message(str(msg), view='default')
+            Terminal.inst().message(str(msg), view='default') if Terminal.inst() else print(str(msg))
 
 
 class SiisLog(object):

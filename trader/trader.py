@@ -502,12 +502,19 @@ class Trader(Runnable):
                 for r in results:
                     Terminal.inst().info("Rate for market %s is %.2f%% / %.4f" % (r[0], r[1]*100, r[2]), view='content')
 
-    def pong(self, msg):
-        # display trader activity
-        if self.connected:
-            Terminal.inst().action("Trader worker %s is alive %s" % (self._name, msg), view='content')
-        else:
-            Terminal.inst().action("Trader worker %s is alive but waiting for (re)connection %s" % (self._name, msg), view='content')
+    def ping(self, timeout):
+        self._ping = (0, None, True)
+
+    def pong(self, timestamp, pid, watchdog_service, msg):
+        if msg:
+            # display trader activity
+            if self.connected:
+                Terminal.inst().action("Trader worker %s is alive %s" % (self._name, msg), view='content')
+            else:
+                Terminal.inst().action("Trader worker %s is alive but waiting for (re)connection %s" % (self._name, msg), view='content')
+
+        if watchdog_service:
+            watchdog_service.service_pong(pid, timestamp, msg)
 
     def has_margin(self, margin):
         """

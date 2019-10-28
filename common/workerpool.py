@@ -46,7 +46,7 @@ class Worker(threading.Thread):
         self._pool = pool
         self._uid = uid
         self._running = False
-        self._ping = False
+        self._ping = None
 
     def start(self):
         if not self._running:
@@ -80,8 +80,8 @@ class Worker(threading.Thread):
 
         if self._ping:
             # process the pong message
-            self.pong("")
-            self._ping = False
+            self.pong(time.time(), self._ping[0], self._ping[1], self._ping[2])
+            self._ping = None
 
     def run(self):
         # don't waste with try/catch, do it only at last level
@@ -105,12 +105,19 @@ class Worker(threading.Thread):
     @property
     def uid(self):
         return self._uid
-    
-    def ping(self):
-        self._ping = True
 
-    def pong(self, msg):
-        Terminal.inst().action("WokerPool::Worker %s is alive %s" % (self._uid, msg), view='content')
+    def ping(self, timeout):
+        self._ping = (0, None, True)
+
+    def watchdog(self, watchdog_service, timeout):
+        self._ping = (watchdog_service.gen_pid("worker-%s" % self._uid), watchdog_service, False)
+
+    def pong(self, timestamp, pid, watchdog_service, msg):
+        if msg:
+            Terminal.inst().action("WokerPool::Worker %s is alive %s" % (self._uid, msg), view='content')
+
+        if watchdog_service:
+            watchdog_service.service_pong(pid, timestamp, msg)
 
 
 class WorkerPool(object):
@@ -123,11 +130,13 @@ class WorkerPool(object):
         else:
             self._num_workers = num_workers
 
-        self._workers = [Worker(self, i) for i in range(0, self._num_workers)]
+        self._workers = []
         self._queue = collections.deque()
         self._mutex = threading.RLock()
 
     def start(self):
+        self._workers = [Worker(self, i) for i in range(0, self._num_workers)]
+
         for worker in self._workers:
             worker.start()
 
@@ -137,9 +146,22 @@ class WorkerPool(object):
                 worker.stop()
                 worker.join()
 
-    def ping(self):
-        for worker in self._workers:
-            worker.ping()
+    def ping(self, timeout):
+        if self._mutex.acquire(timeout=timeout):
+            for worker in self._workers:
+                worker.ping(timeout)
+
+            self._mutex.release()
+        else:
+            Terminal.inst().action("Unable to join worker pool for %s seconds" % (timeout,), view='content')
+
+    def watchdog(self, watchdog_service, timeout):
+        if self._mutex.acquire(timeout=timeout):
+            for worker in self._workers:
+                worker.watchdog(watchdog_service, timeout)
+            self._mutex.release()
+        else:
+            watchdog_service.service_timeout("workerpool", "Unable to join worker pool for %s seconds" % timeout)
 
     def add_job(self, count_down, job):
         self._mutex.acquire()

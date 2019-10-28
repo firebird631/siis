@@ -278,7 +278,7 @@ class BinanceTrader(Trader):
         except BinanceOrderException as e:
             reason = str(e)
 
-        if (result and result['status'] == Client.ORDER_STATUS_REJECTED) or reason:
+        if (result and result.get('status', "") == Client.ORDER_STATUS_REJECTED) or reason:
             logger.error("Trader %s rejected order %s %s %s reason %s !" % (self.name, order.direction_to_str(), quantity, symbol, reason))
             return False
 
@@ -371,7 +371,7 @@ class BinanceTrader(Trader):
         position = self._positions.get(position_id)
 
         if position is None or not position.is_opened():
-            logger.error("%s does not found opened position %s for closing !" % (self.name, position.position_id))
+            logger.error("%s does not found opened position %s for closing !" % (self.name, position_id))
             return False
 
         if not self.has_market(position.symbol):
@@ -399,7 +399,7 @@ class BinanceTrader(Trader):
 
         position = self._positions.get(position_id)
         if position is None or not position.is_opened():
-            logger.error("%s does not found opened position %s for modification !" % (self.name, position.position_id))
+            logger.error("%s does not found opened position %s for modification !" % (self.name, position_id))
             return False
 
         return False

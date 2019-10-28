@@ -25,7 +25,7 @@ class Runnable(object):
         self._thread = threading.Thread(name=thread_name, target=self.run)
         self._mutex = threading.RLock()  # reentrant locker
         self._error = None
-        self._ping = False
+        self._ping = None
 
         self._bench = Runnable.DEFAULT_USE_BENCH
         self._last_time = []
@@ -92,8 +92,8 @@ class Runnable(object):
 
         if self._ping:
             # process the pong message
-            self.pong("")
-            self._ping = False
+            self.pong(time.time(), self._ping[0], self._ping[1], self._ping[2])
+            self._ping = None
 
     def __process_once_bench(self):
         begin = time.time()
@@ -117,8 +117,8 @@ class Runnable(object):
             msg = "Last loop %.3fms / worst loop %.3fms / avg loop %.3fms" % (
                 self._last_time[-1]*1000, self._worst_time*1000, self._avg_time*1000)
 
-            self.pong(msg)
-            self._ping = False
+            self.pong(begin, self._ping[0], self._ping[1], self._ping[2])
+            self._ping = None
 
     def run(self):
         try:
@@ -193,11 +193,27 @@ class Runnable(object):
     def sync(self):
         pass
 
-    def ping(self):
-        self._ping = True
+    def ping(self, timeout):
+        if self._mutex.acquire(timeout=timeout):
+            self._ping = (0, None, True)
+            self._mutex.release()
+        else:
+            Terminal.inst().action("Unable to join thread %s for %s seconds" % (self._thread.name if self._thread else "unknown", timeout), view='content')
 
-    def pong(self, msg):
-        Terminal.inst().action("Worker %s is alive %s" % (self.name, msg), view='content')
+    def watchdog(self, watchdog_service, timeout):
+        if self._mutex.acquire(timeout=timeout):
+            self._ping = (watchdog_service.gen_pid(self._thread.name if self._thread else "unknown"), watchdog_service, False)
+            self._mutex.release()
+        else:
+            watchdog_service.service_timeout(self._thread.name if self._thread else "unknown",
+                    "Unable to join thread %s for %s seconds" % (self._thread.name if self._thread else "unknown", timeout))
+
+    def pong(self, timestamp, pid, watchdog_service, msg):
+        if msg:
+            Terminal.inst().action("Thread %s is alive %s" % (self.name, msg), view='content')
+
+        if watchdog_service:
+            watchdog_service.service_pong(pid, timestamp, msg)
 
     @classmethod
     def mutexed(cls, fn):

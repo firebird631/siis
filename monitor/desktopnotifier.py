@@ -101,6 +101,16 @@ class DesktopNotifier(Notifiable):
     def unlock(self):
         self._mutex.release()
 
+    @property
+    def name(self):
+        return "desktop"
+
+    def ping(self, timeout):
+        pass
+
+    def watchdog(self, watchdog_service, timeout):
+        pass
+
     def on_key_pressed(self, key):
         if Terminal.inst().mode == Terminal.MODE_DEFAULT:
             if key == 'KEY_SPREVIOUS':

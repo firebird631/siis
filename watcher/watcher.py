@@ -273,12 +273,16 @@ class Watcher(Runnable):
         """
         pass
 
-    def pong(self, msg):
-        # display watcher activity
-        if self.connected:
-            Terminal.inst().action("Watcher worker %s is alive %s" % (self._name, msg), view='content')
-        else:
-            Terminal.inst().action("Watcher worker %s is alive but waiting for (re)connection %s" % (self._name, msg), view='content')
+    def pong(self, timestamp, pid, watchdog_service, msg):
+        if msg:
+            # display watcher activity
+            if self.connected:
+                Terminal.inst().action("Watcher worker %s is alive %s" % (self._name, msg), view='content')
+            else:
+                Terminal.inst().action("Watcher worker %s is alive but waiting for (re)connection %s" % (self._name, msg), view='content')
+
+        if watchdog_service:
+            watchdog_service.service_pong(pid, timestamp, msg)
 
     def fetch_market(self, market_id):
         """

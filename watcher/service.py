@@ -168,11 +168,25 @@ class WatcherService(Service):
         for k, watcher in self._watchers.items():
             watcher.command(command_type, data)
 
-    def ping(self):
-        self._mutex.acquire()
-        for k, watcher, in self._watchers.items():
-            watcher.ping()
-        self._mutex.release()
+    def ping(self, timeout):
+        if self._mutex.acquire(timeout=timeout):
+            for k, watcher, in self._watchers.items():
+                watcher.ping(timeout)
+
+            self._mutex.release()
+        else:
+            Terminal.inst().action("Unable to join service %s for %s seconds" % (self.name, timeout), view='content')
+
+    def watchdog(self, watchdog_service, timeout):
+        # try to acquire, see for deadlock
+        if self._mutex.acquire(timeout=timeout):
+            # if no deadlock lock for service ping watchers
+            for k, watcher, in self._watchers.items():
+                watcher.watchdog(watchdog_service, timeout)
+
+            self._mutex.release()
+        else:
+            watchdog_service.service_timeout(self.name, "Unable to join service %s for %s seconds" % (self.name, timeout))
 
     @property
     def read_only(self):

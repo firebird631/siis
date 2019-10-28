@@ -27,6 +27,7 @@ from trader.service import TraderService
 from strategy.service import StrategyService
 from monitor.service import MonitorService
 from monitor.desktopnotifier import DesktopNotifier
+from common.watchdog import WatchdogService
 
 from notifier.notifiable import Notifiable
 from notifier.signal import Signal
@@ -65,7 +66,7 @@ def setup_views(siis_logger, view_service, watcher_service, trader_service, stra
     # 'ticker'
 
 
-def terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service):
+def terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service):
     if watcher_service:
         watcher_service.terminate()
     if trader_service:
@@ -83,6 +84,8 @@ def terminate(watcher_service, trader_service, strategy_service, monitor_service
 
     Database.terminate()
 
+    if watchdog_service:
+        watchdog_service.terminate()
 
 def application(argv):
     fix_thread_set_name()
@@ -298,6 +301,13 @@ def application(argv):
 
     signal.signal(signal.SIGINT, signal_handler)
 
+    #
+    # application
+    #
+
+    watchdog_service = WatchdogService(options)
+    watchdog_service.start(options)
+
     # application services
     view_service = None
     notifier_service = None
@@ -313,9 +323,11 @@ def application(argv):
     # desktop notifier (to be splitted in ViewService and in a DesktopNotifier managed by a NotifierService)
     try:    
         desktop_service = DesktopNotifier()
+        # desktop_service.start(options)
+        watchdog_service.add_service(desktop_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
         sys.exit(-1)
 
     # notifier service
@@ -323,6 +335,8 @@ def application(argv):
     # notifier_service.start() .. discord notifier... @todo
     try:
         view_service = ViewService()
+        # view_service.start(options)
+        watchdog_service.add_service(view_service)
     except Exception as e:
         Terminal.inst().error(str(e))
         terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
@@ -342,9 +356,10 @@ def application(argv):
     try:
         watcher_service = WatcherService(options)
         watcher_service.start(options)
+        watchdog_service.add_service(watcher_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
         sys.exit(-1)
 
     # trader service
@@ -352,9 +367,10 @@ def application(argv):
     try:
         trader_service = TraderService(watcher_service, monitor_service, options)
         trader_service.start(options)
+        watchdog_service.add_service(trader_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
         sys.exit(-1)
 
     # want to display desktop notification and update views
@@ -373,9 +389,10 @@ def application(argv):
     try:
         strategy_service = StrategyService(watcher_service, trader_service, monitor_service, options)
         strategy_service.start(options)
+        watchdog_service.add_service(strategy_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
         sys.exit(-1)
 
     # strategy service listen to watcher service
@@ -407,7 +424,13 @@ def application(argv):
 
     # setup and start the monitor service
     monitor_service.setup(watcher_service, trader_service, strategy_service)
-    monitor_service.start()
+    try:
+        monitor_service.start()
+        watchdog_service.add_service(monitor_service)
+    except Exception as e:
+        Terminal.inst().error(str(e))
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        sys.exit(-1)
 
     Terminal.inst().message("Running main loop...")
 
@@ -577,10 +600,7 @@ def application(argv):
 
                                 elif value == '?':
                                     # ping services and workers
-                                    watcher_service.ping()
-                                    trader_service.ping()
-                                    strategy_service.ping()
-                                    monitor_service.ping()
+                                    watchdog_service.ping(1.0)
 
                                 elif value == ' ':
                                     # a simple mark on the terminal
@@ -685,6 +705,8 @@ def application(argv):
     Terminal.inst().flush() 
 
     Database.terminate()
+
+    watchdog_service.terminate() if watchdog_service else None
 
     Terminal.inst().info("Bye!")
     Terminal.inst().flush()

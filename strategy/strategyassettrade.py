@@ -232,6 +232,8 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     # rejected
                     self.limit_ref_oid = None
+                    self.limit_order_qty = 0.0
+
                     return self.REJECTED
 
             return self.NOTHING_TO_DO
@@ -304,6 +306,8 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     # rejected
                     self.stop_ref_oid = None
+                    self.stop_order_qty = 0.0
+
                     return self.REJECTED
 
             return self.NOTHING_TO_DO
@@ -516,7 +520,7 @@ class StrategyAssetTrade(StrategyTrade):
                     self._entry_state = StrategyTrade.STATE_FILLED
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                
+
                 #
                 # fees/commissions
                 #

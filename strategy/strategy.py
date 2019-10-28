@@ -294,9 +294,16 @@ class Strategy(Runnable):
 
         self.unlock()
 
-    def pong(self, msg):
-        # display appliance activity
-        Terminal.inst().action("Appliance worker %s - %s is alive %s" % (self._name, self._identifier, msg), view='content')
+    def ping(self, timeout):
+        self._ping = (0, None, True)
+
+    def pong(self, timestamp, pid, watchdog_service, msg):
+        if msg:
+            # display appliance activity
+            Terminal.inst().action("Appliance worker %s - %s is alive %s" % (self._name, self._identifier, msg), view='content')
+
+        if watchdog_service:
+            watchdog_service.service_pong(pid, timestamp, msg)
 
     #
     # strategy-trader processing

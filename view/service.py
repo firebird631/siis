@@ -54,6 +54,16 @@ class ViewService(Notifiable):
 
     def terminate(self):
         pass
+ 
+    @property
+    def name(self):
+        return "view"
+
+    def ping(self, timeout):
+        pass
+
+    def watchdog(self, watchdog_service, timeout):
+        pass
 
     def set_active_view(self, view_id):
         Terminal.inst().switch_view(view_id)
