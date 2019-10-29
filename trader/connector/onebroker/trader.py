@@ -21,6 +21,8 @@ from trader.order import Order
 from terminal.terminal import Terminal
 
 from connector.onebroker.connector import OneBrokerConnector
+error_logger = logging.getLogger('siis.error.1broker')
+order_logger = logging.getLogger('siis.order.1broker')
 
 
 class OneBrokerTrader(Trader):

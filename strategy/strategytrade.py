@@ -26,7 +26,7 @@ class StrategyTrade(object):
     """
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
-                'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', '_stats', 'last_tp_ot', 'last_sl_ot', \
+                'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', '_stats', 'last_limit_ot', 'last_stop_ot', \
                 'exit_trades', '_comment', '_entry_timeout', '_expiry', '_dirty', '_extra'
 
     VERSION = "1.0.0"
@@ -91,8 +91,8 @@ class StrategyTrade(object):
 
         self.pl = 0.0    # once closed profit/loss in percent (valid once partially or fully closed)
 
-        self.last_tp_ot = [0, 0]
-        self.last_sl_ot = [0, 0]
+        self.last_limit_ot = [0, 0]
+        self.last_stop_ot = [0, 0]
 
         self.exit_trades = {}  # contain each executed exit trades {<orderId< : (<qty<, <price>)}
 
@@ -124,6 +124,20 @@ class StrategyTrade(object):
     @classmethod
     def version(cls):
         return cls.VERSION
+
+    @classmethod
+    def is_margin(cls):
+        """
+        Overrides, must return true if the trader is margin based.
+        """
+        return False
+
+    @classmethod
+    def is_spot(cls):
+        """
+        Overrides, must return true if the trader is spot based.
+        """
+        return False
 
     @property
     def trade_type(self):
@@ -246,12 +260,12 @@ class StrategyTrade(object):
     @property
     def last_take_profit(self):
         """Last take-profit order creation/modification timestamp"""
-        return self.last_tp_ot
+        return self.last_limit_ot
 
     @property
     def last_stop_loss(self):
         """Last stop-loss order creation/modification timestamp"""
-        return self.last_sl_ot
+        return self.last_stop_ot
 
     @property
     def comment(self):
@@ -444,18 +458,36 @@ class StrategyTrade(object):
         """
         return False
 
-    @classmethod
-    def is_margin(cls):
+    def can_modify_limit_order(self, timestamp, max_count=1, timeout=10.0):
         """
-        Overrides, must return true if the trader is margin based.
+        Can modify the limit order according to current timestamp and previous limit order timestamp,
+        and max change per count duration in seconds.
         """
+        if self.last_limit_ot[0] <= 0 or self.last_limit_ot[1] <= 0:
+            return True
+
+        if timestamp - self.last_limit_ot[0] < timeout:
+            return True
+
+        if not self.has_limit_order():
+            return True
+
         return False
 
-    @classmethod
-    def is_spot(cls):
+    def can_modify_stop_order(self, timestamp, max_count=1, timeout=10.0):
         """
-        Overrides, must return true if the trader is spot based.
+        Can modify the stop order according to current timestamp and previous stop order timestamp,
+        and max change per count duration in seconds.
         """
+        if self.last_stop_ot[0] <= 0 or self.last_stop_ot[1] <= 0:
+            return True
+
+        if timestamp - self.last_stop_ot[0] < timeout:
+            return True
+
+        if not self.has_stop_order():
+            return True
+
         return False
 
     #
@@ -638,8 +670,8 @@ class StrategyTrade(object):
             'filled-exit-qty': self.x,
             'profit-loss-rate': self.pl,
             'exit-trades': self.exit_trades,
-            'last-take-profit-order-time': self.last_tp_ot,
-            'last-stop-loss-order-time': self.last_sl_ot,
+            'last-take-profit-order-time': self.last_limit_ot,
+            'last-stop-loss-order-time': self.last_stop_ot,
             'statistics': self._stats,
             'extra': self._extra,
         }
@@ -680,8 +712,8 @@ class StrategyTrade(object):
 
         self.pl = data.get('profit-loss-rate', 0.0)
 
-        self.last_tp_ot = data.get('last-take-profit-order-time')
-        self.last_sl_ot = data.get('last-stop-loss-order-time')
+        self.last_limit_ot = data.get('last-take-profit-order-time')
+        self.last_stop_ot = data.get('last-stop-loss-order-time')
 
         self.exit_trades = data.get('exit-trades', {})
 

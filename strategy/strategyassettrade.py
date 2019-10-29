@@ -223,8 +223,8 @@ class StrategyAssetTrade(StrategyTrade):
                     self.limit_order_type = order.order_type
                     self.limit_order_qty = order.quantity
 
-                    self.last_tp_ot[0] = order.created_time
-                    self.last_tp_ot[1] += 1
+                    self.last_limit_ot[0] = order.created_time
+                    self.last_limit_ot[1] += 1
 
                     self.tp = limit_price
 
@@ -297,8 +297,8 @@ class StrategyAssetTrade(StrategyTrade):
                     self.stop_order_type = order.order_type
                     self.stop_order_qty = order.quantity
 
-                    self.last_sl_ot[0] = order.created_time
-                    self.last_sl_ot[1] += 1
+                    self.last_stop_ot[0] = order.created_time
+                    self.last_stop_ot[1] += 1
 
                     self.sl = stop_price
 

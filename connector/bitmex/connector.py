@@ -40,7 +40,7 @@ class Connector(object):
         self._timeout = 7   
         self._retries = 0  # initialize counter
         
-        self._watched_symbols = symbols  # followed instruments or ['*'] for any
+        self._watched_symbols = symbols  # followed instruments
         self._all_instruments = []   # availables listed instruments
 
         self.__api_key = api_key

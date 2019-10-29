@@ -29,6 +29,8 @@ from connector.binance.client import Client
 
 import logging
 logger = logging.getLogger('siis.trader.binance')
+error_logger = logging.getLogger('siis.error.binance')
+order_logger = logging.getLogger('siis.order.binance')
 
 
 class BinanceTrader(Trader):
@@ -193,8 +195,11 @@ class BinanceTrader(Trader):
         """
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
         """
+        if not order:
+            return False
+
         if not self.has_market(order.symbol):
-            logger.error("Trader %s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
+            error_logger.error("Trader %s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
             return False
 
         if not self._activity:
@@ -219,7 +224,7 @@ class BinanceTrader(Trader):
 
         if order.quantity < market.min_size:
             # reject if lesser than min size
-            logger.error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in order %s !" % (
+            error_logger.error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in order %s !" % (
                 self.name, order.quantity, market.min_size, symbol, order.order_id))
             return False
 
@@ -230,7 +235,7 @@ class BinanceTrader(Trader):
 
         if notional < market.min_notional:
             # reject if lesser than min notinal
-            logger.error("Trader %s refuse order because the min notional is not reached (%.f<%.f) %s in order %s !" % (
+            error_logger.error("Trader %s refuse order because the min notional is not reached (%.f<%.f) %s in order %s !" % (
                 self.name, notional, market.min_notional, symbol, order.order_id))
             return False
 
@@ -266,7 +271,7 @@ class BinanceTrader(Trader):
         logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('quantity'), symbol, data.get('price')))
 
         result = None
-        reason = ""
+        reason = None
 
         try:
             result = self._watcher.connector.client.create_order(**data)
@@ -278,27 +283,39 @@ class BinanceTrader(Trader):
         except BinanceOrderException as e:
             reason = str(e)
 
-        if (result and result.get('status', "") == Client.ORDER_STATUS_REJECTED) or reason:
-            logger.error("Trader %s rejected order %s %s %s reason %s !" % (self.name, order.direction_to_str(), quantity, symbol, reason))
+        if reason:
+            error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (self.name, order.direction_to_str(), quantity, symbol, reason))
             return False
 
-        if result and 'orderId' in result:
-            order.set_order_id(result['orderId'])
+        if result:
+            if result.get('status', "") == Client.ORDER_STATUS_REJECTED:
+                error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), quantity, symbol))
+                order_logger.error(result)
+                
+                return False
 
-            order.created_time = result['transactTime'] * 0.001
-            order.transact_time = result['transactTime'] * 0.001
+            if 'orderId' in result:
+                order_logger.info(result)
 
-            # commented because done in the order traded slot
-            # if result['executedQty']:
-            #     # partially or fully executed quantity
-            #     order.executed = float(result['executedQty'])
+                order.set_order_id(result['orderId'])
 
-            # store the order until fully completed or canceled
-            self.lock()
-            self._orders[order.order_id] = order
-            self.unlock()
+                order.created_time = result['transactTime'] * 0.001
+                order.transact_time = result['transactTime'] * 0.001
 
-            return True
+                # commented because done in the order traded slot
+                # if result['executedQty']:
+                #     # partially or fully executed quantity
+                #     order.executed = float(result['executedQty'])
+
+                # store the order until fully completed or canceled
+                self.lock()
+                self._orders[order.order_id] = order
+                self.unlock()
+
+                return True
+
+        error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), quantity, symbol))
+        order_logger.error(result)
 
         return False
 
@@ -314,11 +331,11 @@ class BinanceTrader(Trader):
         self.unlock()
 
         if order is None:
-            logger.error("%s does not found order %s !" % (self.name, order_id))
+            error_logger.error("%s does not found order %s !" % (self.name, order_id))
             return False
 
         if not self.has_market(order.symbol):
-            logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
+            error_logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
             return False
 
         # order type
@@ -338,24 +355,34 @@ class BinanceTrader(Trader):
             'recvWindow': 10000
         }
 
+        reason = None
+        result = None
+
         try:
             result = self._watcher.connector.client.cancel_order(**data)
         except BinanceRequestException as e:
             reason = str(e)
-            return False
         except BinanceAPIException as e:
             reason = str(e)
-            return False
         except BinanceOrderException as e:
             reason = str(e)
+
+        if reason:
+            error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol, reason))
             return False
+
+        if result:
+            if result.get('status', "") == Client.ORDER_STATUS_REJECTED:
+                error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol, reason))
+                order_logger.error(result)
+                return False
+
+            order_logger.info(result)
 
         # no longer managed (or wait the signal)
         self.lock()
-
         if order.order_id in self._orders:
             del self._orders[order.order_id]
-
         self.unlock()
 
         return True
@@ -371,11 +398,11 @@ class BinanceTrader(Trader):
         position = self._positions.get(position_id)
 
         if position is None or not position.is_opened():
-            logger.error("%s does not found opened position %s for closing !" % (self.name, position_id))
+            error_logger.error("%s does not found opened position %s for closing !" % (self.name, position_id))
             return False
 
         if not self.has_market(position.symbol):
-            logger.error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id))
+            error_logger.error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id))
             return False
 
         symbol = position.symbol
@@ -399,7 +426,7 @@ class BinanceTrader(Trader):
 
         position = self._positions.get(position_id)
         if position is None or not position.is_opened():
-            logger.error("%s does not found opened position %s for modification !" % (self.name, position_id))
+            error_logger.error("%s does not found opened position %s for modification !" % (self.name, position_id))
             return False
 
         return False

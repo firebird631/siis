@@ -54,6 +54,7 @@ class BitMexWatcher(Watcher):
         try:
             self.lock()
             self._ready = False
+            self._connecting = True
             
             identity = self.service.identity(self._name)
 
@@ -67,10 +68,6 @@ class BitMexWatcher(Watcher):
                         identity.get('host'),
                         (self, BitMexWatcher._ws_message))
 
-                # get list of all availables instruments, and list of subscribed
-                self._available_instruments = set(self._connector.all_instruments)
-                self._watched_instruments = set(self._connector.watched_instruments)
-
                 # testnet (demo) server doesn't provided real prices, so never store info from it !
                 if identity.get('host') == 'testnet.bitmex.com':
                     self._read_only = True
@@ -78,37 +75,12 @@ class BitMexWatcher(Watcher):
                 if not self._connector.connected or not self._connector.ws_connected:
                     self._connector.connect()
 
-                if self._connector and self._connector.connected:
-                    logger.info("Fetching %s current OHLCs..." % self.name)
+                # get list of all availables instruments, and list of subscribed
+                self._available_instruments = set(self._connector.all_instruments)
+                self._watched_instruments = set(self._connector.watched_instruments)
 
-                    for symbol in self._watched_instruments:
-                        # subscribed instrument
-                        self.insert_watched_instrument(symbol, [0])
-
-                        # fetch from 1M to 1W
-                        if self._initial_fetch:
-                            self.fetch_and_generate(symbol, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
-                            self.fetch_and_generate(symbol, Instrument.TF_5M, 6*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
-                            self.fetch_and_generate(symbol, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
-                            self.fetch_and_generate(symbol, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)
-
-                            logger.info("%s prefetch for %s" % (self.name, symbol))
-
-                            # debug only
-                            # if symbol == "XBTUSD":
-                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60)))
-                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*5)))
-                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*15)))
-                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60)))
-                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*4)))
-                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*2)))
-                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24)))
-                            #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24*7)))
-
-                    if self._initial_fetch:
-                        logger.info("Done fetching %s current OHLCs !" % self.name)
-
-                    self._ready = True
+                self._ready = True
+                self._connecting = False
 
         except Exception as e:
             logger.debug(repr(e))
@@ -150,13 +122,18 @@ class BitMexWatcher(Watcher):
         return self._connector and self._connector.authenticated
 
     def pre_update(self):
-        if self._connector is None or not self._connector.connected or not self._connector.ws_connected:
-            # retry in 2 second
-            self._connector = None
+        if not self._connecting and not self._ready:
+            self.lock()
+            if self._connector is None or not self._connector.connected or not self._connector.ws_connected:
+                # retry in 2 second
+                self._connector = None
+                self.unlock()
 
-            time.sleep(2)
-            self.connect()
-            return
+                time.sleep(2)
+                self.connect()
+                return
+            else:
+                self.unlock()
 
     def update(self):
         if not super().update():
@@ -189,6 +166,58 @@ class BitMexWatcher(Watcher):
 
     def post_run(self):
         super().post_run()
+
+    #
+    # instruments
+    #
+
+    def subscribe(self, market_id, timeframe):
+        self.lock()
+
+        if market_id in self._watched_instruments:
+            # subscribed instrument
+            self.insert_watched_instrument(market_id, [0])
+
+            # fetch from 1M to 1W
+            if self._initial_fetch:
+                logger.info("%s prefetch for %s" % (self.name, market_id))
+
+                self.fetch_and_generate(market_id, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
+                self.fetch_and_generate(market_id, Instrument.TF_5M, 6*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
+                self.fetch_and_generate(market_id, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
+                self.fetch_and_generate(market_id, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)
+
+                # debug only
+                # if market_id == "XBTUSD":
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*5)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*15)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*4)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*2)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24*7)))
+
+            self.unlock()
+
+            # connector by default any
+            # nothing to do, see connector
+
+            return True
+        else:
+            self.unlock()
+            return False
+
+    def unsubscribe(self, market_id, timeframe):
+        self.lock()
+
+        if market_id in self._watched_instruments:
+            # connector by default any
+            self.unlock()
+            return True
+        else:
+            self.unlock()
+            return False
 
     #
     # private

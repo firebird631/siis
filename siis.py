@@ -615,6 +615,8 @@ def application(argv):
                                 elif value == 'e' and desktop_service:
                                     desktop_service.discord = not desktop_service.discord
                                     Terminal.inst().action("Discord notification are now %s" % ("actives" if desktop_service.discord else "disabled",), view='status')
+                                elif value == '%' and desktop_service:
+                                    desktop_service.toggle_percents()
 
                                 else:
                                     result = False

@@ -470,7 +470,7 @@ class Trader(Runnable):
                     self.close_position(position.position_id)
                     self.lock()
 
-                    Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='info')
+                    Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
 
                     break
 
@@ -486,7 +486,7 @@ class Trader(Runnable):
                 self.close_position(position.position_id)
                 self.lock()
 
-                Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='info')
+                Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
 
                 break
 
@@ -559,7 +559,7 @@ class Trader(Runnable):
         """
         return False
 
-    def cancel_order(self, order_or_id):
+    def cancel_order(self, order_id):
         """
         Cancel an existing order. The symbol of the order must be on of the trader instruments.
         """

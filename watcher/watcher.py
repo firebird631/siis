@@ -35,7 +35,7 @@ class Watcher(Runnable):
 
     DEFAULT_PREFETCH_SIZE = 100  # by defaut prefetch 100 OHLCs for each stored timeframe
 
-    # ohlc timeframes of interest for storage
+    # stored ohlc timeframes
     STORED_TIMEFRAMES = (
         Instrument.TF_MIN,
         Instrument.TF_3MIN,
@@ -48,8 +48,18 @@ class Watcher(Runnable):
         Instrument.TF_DAY,
         Instrument.TF_WEEK)
 
-    # candles from 1m to 1 week
-    GENERATED_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
+    # generated ohlc timeframes
+    GENERATED_TF = (
+        Instrument.TF_MIN,
+        Instrument.TF_3MIN,
+        Instrument.TF_5MIN,
+        Instrument.TF_15MIN,
+        Instrument.TF_30MIN,
+        Instrument.TF_HOUR,
+        Instrument.TF_2HOUR,
+        Instrument.TF_4HOUR,
+        Instrument.TF_DAY,
+        Instrument.TF_WEEK)
 
     def __init__(self, name, service, watcher_type):
         super().__init__("wt-%s" % (name,))
@@ -59,7 +69,9 @@ class Watcher(Runnable):
         self._authors = {}
         self._positions = {}
         self._watcher_type = watcher_type
+        
         self._ready = False
+        self._connecting = False
 
         self._signals = collections.deque()
 
@@ -73,6 +85,7 @@ class Watcher(Runnable):
 
         self._last_tick = {}  # last tick per market id
         self._last_ohlc = {}  # last ohlc per market id and then per timeframe
+        self._last_update_times = {tf: 0.0 for tf in self.GENERATED_TF}
 
         self._last_market_update = time.time()
 
@@ -409,21 +422,56 @@ class Watcher(Runnable):
 
         return ohlc
 
+    def close_ohlc(self, market_id, last_ohlc_by_timeframe, tf, ts):
+        ohlc = last_ohlc_by_timeframe.get(tf)
+        ended_ohlc = None
+
+        if ohlc and ts >= ohlc.timestamp + tf:
+            # need to close the current ohlc
+            ohlc.set_consolidated(True)
+            ended_ohlc = ohlc
+
+            last_ohlc_by_timeframe[tf] = None
+
+        # stored timeframes only
+        if ended_ohlc and (tf in self.STORED_TIMEFRAMES):
+            Database.inst().store_market_ohlc((
+                self.name, market_id, int(ended_ohlc.timestamp*1000), tf,
+                ended_ohlc.bid_open, ended_ohlc.bid_high, ended_ohlc.bid_low, ended_ohlc.bid_close,
+                ended_ohlc.ofr_open, ended_ohlc.ofr_high, ended_ohlc.ofr_low, ended_ohlc.ofr_close,
+                ended_ohlc.volume))
+
+        return ended_ohlc
+
     def update_from_tick(self):
         """
-        During update processing, update currently opened candles.
+        During update processing, close OHLCs if not tick data arrive before.
         Then notify a signal if a ohlc is generated (and closed).
         """
-        for market_id in self._watched_instruments:
-            last_ohlc_by_timeframe = self._last_ohlc.get(market_id)
-            if not last_ohlc_by_timeframe:
-                continue
+        now = time.time()
 
-            for tf, _ohlc in last_ohlc_by_timeframe.items():
-                # for closing candles, generate them
-                ohlc = self.update_ohlc(market_id, tf, time.time(), None, None, None)
-                if ohlc:
-                    self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, ohlc))
+        # optimized version
+        for tf in self.GENERATED_TF:
+            base_time = Instrument.basetime(tf, now)
+            if base_time > self._last_update_times[tf]:
+                self._last_update_times[tf] = base_time
+
+                for market_id, last_ohlc_by_timeframe in self._last_ohlc.items():
+                    if last_ohlc_by_timeframe:
+                        ohlc = self.close_ohlc(market_id, last_ohlc_by_timeframe, tf, now)
+                        if ohlc:
+                            self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, ohlc))
+
+        # for market_id in self._watched_instruments:
+        #     last_ohlc_by_timeframe = self._last_ohlc.get(market_id)
+        #     if not last_ohlc_by_timeframe:
+        #         continue
+
+        #     for tf, _ohlc in last_ohlc_by_timeframe.items():
+        #         # for closing candles, generate them
+        #         ohlc = self.update_ohlc(market_id, tf, time.time(), None, None, None)
+        #         if ohlc:
+        #             self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, ohlc))
 
     def fetch_and_generate(self, market_id, timeframe, n_last=1, cascaded=None):
         """

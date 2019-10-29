@@ -27,6 +27,8 @@ from connector.bitmex.connector import Connector
 
 import logging
 logger = logging.getLogger('siis.trader.bitmex')
+error_logger = logging.getLogger('siis.error.bitmex')
+order_logger = logging.getLogger('siis.order.bitmex')
 
 
 class BitMexTrader(Trader):
@@ -203,9 +205,12 @@ class BitMexTrader(Trader):
 
     @Trader.mutexed
     def create_order(self, order):
+        if not order:
+            return False
+
         if not self.has_market(order.symbol):
             logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
-            return
+            return False
 
         if not self._activity:
             return False
@@ -286,12 +291,16 @@ class BitMexTrader(Trader):
         try:
             result = self._watcher.connector.request(path="order", postdict=postdict, verb='POST', max_retries=15)
         except Exception as e:
-            logger.error(str(e))
+            error_logger.error(str(e))
             return False
 
-        if result and result.get('ordRejReason'):
-            logger.error("%s rejected order %s from %s %s - cause : %s !" % (
+        order_logger.info(result)
+        
+        # rejected
+        if result.get('ordRejReason'):
+            error_logger.error("%s rejected order %s from %s %s - cause : %s !" % (
                 self.name, order.direction_to_str(), order.quantity, order.symbol, result['ordRejReason']))
+
             return False
 
         # store the order with its order id
@@ -305,20 +314,17 @@ class BitMexTrader(Trader):
         return True
 
     @Trader.mutexed
-    def cancel_order(self, order_or_id):
+    def cancel_order(self, order_id):
         # DELETE endpoint=order
-        if type(order_or_id) is str:
-            order = self._orders.get(order_or_id)
-        else:
-            order = order_or_id
-
         if not self._activity:
             return False
 
+        order = self._orders.get(order_id)
+
         if order is None:
+            logger.error("%s does not found order %s !" % (self.name, order_id))
             return False
 
-        order_id = order.order_id if order else order_or_id
         symbol = order.symbol or ""
 
         postdict = {
@@ -330,18 +336,16 @@ class BitMexTrader(Trader):
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
                 # no longer exist, accepts as ok
+                error_logger.warning("%s rejected cancel order %s %s - cause : no longer exists !" % (self.name, order_id, symbol))
                 return True
             else:
-                logger.error(str(e))
+                error_logger.error("%s rejected cancel order %s %s - cause : %s !" % (self.name, order_id, symbol, str(e)))
                 return False
         except Exception as e:
-            logger.error(str(e))
+            error_logger.error(str(e))
             return False
 
-        # if result and result.get('ordRejReason'):
-        #     logger.error("%s rejected cancel order %s from %s - cause : %s !" % (
-        #         self.name, order_id, symbol, result['ordRejReason']))
-        #     return False
+        order_logger.info(result)
 
         return True
 

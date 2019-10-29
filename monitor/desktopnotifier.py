@@ -73,6 +73,7 @@ class DesktopNotifier(Notifiable):
         self._last_strategy_view = 0
         self._last_strategy_update = 0
         self._displayed_strategy = 0
+        self._display_percents = False
 
         # @todo cleanup and move as conf and read it from profile
         self._discord_webhook = {
@@ -119,6 +120,9 @@ class DesktopNotifier(Notifiable):
                 self.next_item()
             elif key in ('KEY_SR', 'KEY_SF', 'KEY_SLEFT', 'KEY_SRIGHT', 'KEY_PPAGE', 'KEY_NPAGE', 'h', 'j', 'k', 'l'):
                 self._last_strategy_view = 0  # force refresh
+
+    def toggle_percents(self):
+        self._display_percents = not self._display_percents
 
     def prev_item(self):
         self._displayed_strategy -= 1
@@ -348,7 +352,7 @@ class DesktopNotifier(Notifiable):
                 closed_trades_dst = self._discord_webhook[strategy.identifier + '.closed-trades']
 
             if trades_dst:
-                columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True, percents=True)
                 if table:
                     arr = self.format_table(table)
                     self.split_and_send(trades_dst, arr)
@@ -360,7 +364,7 @@ class DesktopNotifier(Notifiable):
                     self.split_and_send(agg_trades_dst, arr)
 
             if closed_trades_dst:
-                columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True, percents=True)
                 if table:
                     arr = self.format_table(table)
                     self.split_and_send(closed_trades_dst, arr)
@@ -419,7 +423,9 @@ class DesktopNotifier(Notifiable):
                 num = 0
 
                 try:                
-                    columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                    columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(),
+                        quantities=True, percents=self._display_percents)
+
                     Terminal.inst().table(columns, table, total_size, view='strategy')
                     num = total_size[1]
                 except Exception as e:
@@ -445,7 +451,9 @@ class DesktopNotifier(Notifiable):
             num = 0
 
             try:
-                columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(),
+                    quantities=True, percents=self._display_percents)
+
                 Terminal.inst().table(columns, table, total_size, view='stats')
                 num = total_size[1]
             except Exception as e:

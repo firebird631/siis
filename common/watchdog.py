@@ -20,7 +20,7 @@ class WatchdogService(Service):
     """
 
     TIMER_DELAY = 5.0
-    PING_TIMEOUT = 5.0
+    PING_TIMEOUT = 10.0
 
     def __init__(self, options):
         super().__init__("watchdog", options)
@@ -56,9 +56,18 @@ class WatchdogService(Service):
 
         self.lock()
 
-        for k, d in self._pending.items():
-            if now - d[0] > WatchdogService.PING_TIMEOUT:
-                error_logger.fatal("Pid %s not joinable : %s for %s seconds. Potiential deadlock !" % (k, d[1] or "undefined", WatchdogService.PING_TIMEOUT))
+        if self._pending:
+            rm_it = []
+
+            for k, d in self._pending.items():
+                if now - d[0] > WatchdogService.PING_TIMEOUT:
+                    error_logger.fatal("Pid %s not joinable : %s for %s seconds. Potiential deadlock !" % (k, d[1] or "undefined", WatchdogService.PING_TIMEOUT))
+                    rm_it.append(k)
+
+            if rm_it:
+                for it in rm_it:
+                    # don't want continous signal
+                    del self._pending[it]
 
         self.unlock()
 

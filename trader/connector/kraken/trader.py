@@ -26,6 +26,8 @@ from connector.kraken.connector import Connector
 
 import logging
 logger = logging.getLogger('siis.trader.kraken')
+error_logger = logging.getLogger('siis.error.kraken')
+order_logger = logging.getLogger('siis.order.kraken')
 
 
 class KrakenTrader(Trader):
@@ -200,8 +202,11 @@ class KrakenTrader(Trader):
 
     @Trader.mutexed
     def create_order(self, order):
+        if not order:
+            return False
+
         if not self.has_market(order.symbol):
-            logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
+            error_logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
             return
 
         if not self._activity:
@@ -212,20 +217,17 @@ class KrakenTrader(Trader):
         return True
 
     @Trader.mutexed
-    def cancel_order(self, order_or_id):
+    def cancel_order(self, order_id):
         # DELETE endpoint=order
-        if type(order_or_id) is str:
-            order = self._orders.get(order_or_id)
-        else:
-            order = order_or_id
+        order = self._orders.get(order_id)
 
         if not self._activity:
             return False
 
         if order is None:
+            error_logger.error("%s does not found order %s !" % (self.name, order_id))
             return False
 
-        order_id = order.order_id if order else order_or_id
         symbol = order.symbol or ""
 
         # @todo

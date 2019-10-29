@@ -47,6 +47,8 @@ class OneBrokerWatcher(Watcher):
     def connect(self):
         super().connect()
 
+        self._connecting = True
+
         self._conn = http.client.HTTPSConnection(self._host, timeout=10)
 
         var = {
@@ -67,6 +69,8 @@ class OneBrokerWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
         else:
             self._connected = False
+
+        self._connecting = False
 
     @property
     def connected(self):
@@ -146,7 +150,7 @@ class OneBrokerWatcher(Watcher):
         if not super().update():
             return
 
-        if not self._connected:
+        if not self._connected and not self._connecting:
             # try reconnect
             time.sleep(10)
             self.connect()

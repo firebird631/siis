@@ -5,3 +5,6 @@
 
 HOURGLASS = u"\u231B"
 ROADBLOCK = u"\u26DD"
+ARROWUPDN = u"\u2B83"
+ARROWUP =  u"\u279A"
+ARROWDN =  u"\u2798"

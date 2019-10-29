@@ -46,9 +46,9 @@ class ColoredFormatter(logging.Formatter):
     def format(self, record):
         colors = self.colors(Terminal.inst().style() if Terminal.inst() else "")
 
-        if record.levelno == logging.ERROR and self.use_color:
+        if record.levelno in (logging.ERROR, logging.CRITICAL) and self.use_color:
             record.name = colors['ERROR'] + '- ' + copy.copy(record.name) + colors["DEFAULT"] + ' '
-            record.levelname = colors['ERROR'] + copy.copy(record.levelname) + colors["DEFAULT"]
+            record.levelname = colors['ERROR'] + copy.copy(record.levelname) + colors["DEFAULT"] + ' '
             record.msg = colors['ERROR'] + copy.copy(str(record.msg)) + colors["DEFAULT"]
             return logging.Formatter.format(self, record)
 
@@ -60,14 +60,14 @@ class ColoredFormatter(logging.Formatter):
 
         elif record.levelno == logging.INFO and self.use_color:
             record.name = ''
-            record.levelname = colors["HIGHLIGHT"] + '- ' + copy.copy(record.levelname) + colors["DEFAULT"] + ' '
-            record.msg = colors["HIGHLIGHT"] + copy.copy(str(record.msg)) + colors["DEFAULT"]
+            record.levelname = colors["DEFAULT"] + '- ' + copy.copy(record.levelname) + colors["DEFAULT"] + ' '
+            record.msg = colors["DEFAULT"] + copy.copy(str(record.msg)) + colors["DEFAULT"]
             return logging.Formatter.format(self, record)
 
         elif record.levelno == logging.DEBUG and self.use_color:
-            record.name = colors["HIGHLIGHT"] + '- ' + copy.copy(record.name) + colors["DEFAULT"] + ' '
-            record.levelname = colors["HIGHLIGHT"] + '- ' + copy.copy(record.levelname) + colors["DEFAULT"] + ' '
-            record.msg = colors["HIGHLIGHT"] + copy.copy(str(record.msg)) + colors["DEFAULT"]
+            record.name = colors["NOTICE"] + '- ' + copy.copy(record.name) + colors["DEFAULT"] + ' '
+            record.levelname = colors["NOTICE"] + '- ' + copy.copy(record.levelname) + colors["DEFAULT"] + ' '
+            record.msg = colors["NOTICE"] + copy.copy(str(record.msg)) + colors["DEFAULT"]
             return logging.Formatter.format(self, record)
 
         else:
@@ -80,7 +80,7 @@ class TerminalHandler(logging.StreamHandler):
         logging.StreamHandler.__init__(self)
 
     def filter(self, record):
-        if record.pathname.startswith('siis.exec.') or record.pathname.startswith('siis.signal.'):
+        if record.pathname.startswith('siis.exec.') or record.pathname.startswith('siis.signal.') or record.pathname.startswith('siis.order.'):
             # this only goes to loggers, not to stdout
             return False
 
@@ -96,7 +96,7 @@ class TerminalHandler(logging.StreamHandler):
                 # Terminal.inst().error(str(msg), view='default') if Terminal.inst() else print(str(msg))
                 Terminal.inst().error(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
-        if record.levelno == logging.ERROR:
+        elif record.levelno == logging.ERROR:
             if record.pathname.startswith('siis.error.'):
                 Terminal.inst().error(str(msg), view='debug') if Terminal.inst() else print(str(msg))
             else:
@@ -180,6 +180,24 @@ class SiisLog(object):
 
         # don't propagate signal trade to siis logger
         self.add_file_logger('siis.signal', self.signal_file_logger, False)
+
+        # a siis logger with order.siis.log
+        # self.order_file_logger = logging.FileHandler(options['log-path'] + '/' + "order." + options['log-name'])
+        self.order_file_logger = RotatingFileHandler(options['log-path'] + '/' + "order." + options['log-name'], maxBytes=1024*1024, backupCount=5)
+        self.order_file_logger.setFormatter(self.file_formatter)
+        self.order_file_logger.setLevel(logging.INFO)
+
+        # don't propagate signal trade to siis logger
+        self.add_file_logger('siis.order', self.order_file_logger, False)
+
+        # a siis logger with traceback.siis.log
+        # self.traceback_file_logger = logging.FileHandler(options['log-path'] + '/' + "traceback." + options['log-name'])
+        self.traceback_file_logger = RotatingFileHandler(options['log-path'] + '/' + "traceback." + options['log-name'], maxBytes=1024*1024, backupCount=5)
+        self.traceback_file_logger.setFormatter(self.file_formatter)
+        self.traceback_file_logger.setLevel(logging.INFO)
+
+        # don't propagate traceback to siis logger
+        self.add_file_logger('siis.traceback', self.traceback_file_logger, False)
 
     def add_file_logger(self, name, handler, level=logging.DEBUG, propagate=True):
         my_logger = logging.getLogger(name)

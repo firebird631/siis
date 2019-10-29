@@ -76,12 +76,21 @@ class BinanceWatcher(Watcher):
 
         self._last_trade_id = {}
 
+        self.__configured_symbols = set()  # cache for configured symbols set
+        self.__matching_symbols = set()    # cache for matching symbols
+
+        self._multiplex_handler = None  # WS multiple instruments
+        self._multiplex_handlers = {}   # WS instruments per instrument
+        self._tickers_handler = None    # WS all tickers
+        self._user_data_handler = None  # WS user data
+
     def connect(self):
         super().connect()
 
         try:
             self.lock()
             self._ready = False
+            self._connecting = True
 
             identity = self.service.identity(self._name)
 
@@ -109,58 +118,31 @@ class BinanceWatcher(Watcher):
                     configured_symbols = self.configured_symbols()
                     matching_symbols = self.matching_symbols_set(configured_symbols, [instrument['symbol'] for instrument in instruments])
 
+                    # cache them
+                    self.__configured_symbols = configured_symbols
+                    self.__matching_symbols = matching_symbols
+
                     # prefetch all markets data with a single request to avoid one per market
                     self.__prefetch_markets()
-
-                    multiplex = []
 
                     for instrument in instruments:
                         self._available_instruments.add(instrument['symbol'])
 
-                        # and watch it if configured or any
-                        if instrument['symbol'] in matching_symbols:
-                            # live data
-                            symbol = instrument['symbol'].lower()
-
-                            # depth - order book
-                            # multiplex.append(symbol + '@depth')
-
-                            # aggreged trade
-                            multiplex.append(symbol + '@aggTrade')
-
-                            # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
-                            # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
-
-                            # fetch from 1M to 1W
-                            if self._initial_fetch:
-                                self.fetch_and_generate(instrument['symbol'], Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
-                                self.fetch_and_generate(instrument['symbol'], Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
-                                self.fetch_and_generate(instrument['symbol'], Instrument.TF_15M, 2*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
-                                self.fetch_and_generate(instrument['symbol'], Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
-                                self.fetch_and_generate(instrument['symbol'], Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)
-
-                                logger.info("%s prefetch for %s" % (self.name, instrument['symbol']))
-
-                            # one more watched instrument
-                            self.insert_watched_instrument(instrument['symbol'], [0])
-
-                    # all 24h mini tickers (prefers ticker@arr)
-                    # multiplex.append('!miniTicker@arr')
-
                     # all tickers
-                    multiplex.append('!ticker@arr')
-
-                    # depth+kline+ticker
-                    self._multiplex_handler = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
+                    self._tickers_handler = self._connector.ws.start_ticker_socket(self.__on_tickers_data)
 
                     # userdata
                     self._user_data_handler = self._connector.ws.start_user_socket(self.__on_user_data)
 
-                    # and start ws manager
-                    self._connector.ws.start()
+                    # and start ws manager if necessarry
+                    try:
+                        self._connector.ws.start()
+                    except RuntimeError:
+                        pass
 
-                # once market are init
-                self._ready = True
+                    # once market are init
+                    self._ready = True
+                    self._connecting = False
 
         except Exception as e:
             logger.debug(repr(e))
@@ -180,6 +162,12 @@ class BinanceWatcher(Watcher):
             if self._connector:
                 self._connector.disconnect()
                 self._connector = None
+
+                # reset WS handlers
+                self._multiplex_handler = None
+                self._multiplex_handlers = {}
+                self._tickers_handler = None
+                self._user_data_handler = None
 
             self._ready = False
 
@@ -202,14 +190,82 @@ class BinanceWatcher(Watcher):
         return self._connector and self._connector.authenticated
 
     def pre_update(self):
-        if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
-            # retry in 2 second
-            self._ready = False
-            self._connector = None
+        if not self._connecting and not self._ready:
+            self.lock()
+            if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
+                # retry in 2 second
+                self._ready = False
+                self._connector = None
 
-            time.sleep(2)
-            self.connect()
-            return
+                self.unlock()
+
+                time.sleep(2)
+                self.connect()
+
+                return
+            else:
+                self.unlock()
+
+    #
+    # instruments
+    #
+
+    def subscribe(self, market_id, timeframe):
+        self.lock()
+
+        if market_id in self.__matching_symbols:
+            multiplex = []
+
+            # live data
+            symbol = market_id.lower()
+
+            # depth - order book
+            # multiplex.append(symbol + '@depth')
+
+            # aggreged trade
+            multiplex.append(symbol + '@aggTrade')
+
+            # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
+            # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
+
+            # fetch from 1M to 1W
+            if self._initial_fetch:
+                logger.info("%s prefetch for %s" % (self.name, market_id))
+
+                self.fetch_and_generate(market_id, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
+                self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
+                self.fetch_and_generate(market_id, Instrument.TF_15M, 2*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
+                self.fetch_and_generate(market_id, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
+                self.fetch_and_generate(market_id, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)               
+
+            # one more watched instrument
+            self.insert_watched_instrument(market_id, [0])
+
+            # trade+depth
+            self._multiplex_handlers[market_id] = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
+
+            self.unlock()
+            return True
+        else:
+            self.unlock()
+            return False
+
+    def unsubscribe(self, market_id, timeframe):
+        self.lock()
+
+        if market_id in self._multiplex_handlers:
+            self._multiplex_handlers[market_id].close()
+            del self._multiplex_handlers[market_id]
+
+            self.unlock()
+            return True
+        else:
+            self.unlock()
+            return False
+
+    #
+    # processing
+    #
 
     def update(self):
         if not super().update():
@@ -474,14 +530,14 @@ class BinanceWatcher(Watcher):
         if not data.get('stream'):
             return
 
-        if data['stream'] == '!ticker@arr':
-            self.__on_tickers_data(data['data'])
-        elif data['stream'].endswith('@aggTrade'):
+        if data['stream'].endswith('@aggTrade'):
             self.__on_trade_data(data['data'])
         elif data['stream'].endswith('@depth'):
             self.__on_depth_data(data['data'])
         elif '@kline_' in data['stream']:
             self.__on_kline_data(data['data'])
+        # elif data['stream'] == '!ticker@arr':
+        #     self.__on_tickers_data(data['data'])
 
     def __on_trade_data(self, data):
         event_type = data.get('e', "")

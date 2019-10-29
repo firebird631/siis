@@ -28,6 +28,8 @@ from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.trader.ig')
+error_logger = logging.getLogger('siis.error.ig')
+order_logger = logging.getLogger('siis.order.ig')
 
 
 class IGTrader(Trader):
@@ -217,6 +219,9 @@ class IGTrader(Trader):
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
         @todo Could used close_open_position if reduce only is defined.
         """
+        if not order:
+            return False
+
         if not self.has_market(order.symbol):
             logger.error("Trader %s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
             return False
@@ -254,6 +259,7 @@ class IGTrader(Trader):
         # EPIC market detail fetched once next use cached
         market_info = self.market(epic)
         if market_info is None:
+
             return False
 
         quote_id = None
@@ -312,7 +318,6 @@ class IGTrader(Trader):
         logger.info("Trader %s order %s %s @%s %s" % (self.name, order.direction_to_str(), epic, limit_level, size))
 
         # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
-        logger.info(self._previous_order)
         if epic in self._previous_order and (self._previous_order[epic] == (expiry, size, direction)):
             logger.debug("%s wait 1sec before passing a duplicate order..." % (self.name,))
             time.sleep(1.0)
@@ -323,6 +328,7 @@ class IGTrader(Trader):
                                                     limit_distance, limit_level, order_type,
                                                     quote_id, size, stop_distance, stop_level, time_in_force,
                                                     deal_reference)
+            order_logger.info(results)
 
             if results.get('dealStatus', '') == 'ACCEPTED':
                 # logger.debug("create_order :" + repr(results))
@@ -363,13 +369,11 @@ class IGTrader(Trader):
 
                 # self._positions[position.position_id] = position
             else:
-                reason = results
-                logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, reason))
-
+                error_logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, ""))
                 return False
 
         except IGException as e:
-            logger.error("Trader %s except on order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, repr(e)))
+            error_logger.error("Trader %s except on order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, repr(e)))
             return False
 
         return True
@@ -382,7 +386,7 @@ class IGTrader(Trader):
         order = self._orders.get(order_id)
 
         if order is None:
-            logger.error("%s does not found order %s !" % (self.name, order_id))
+            error_logger.error("%s does not found order %s !" % (self.name, order_id))
             return False
 
         deal_id = order.order_id
@@ -390,8 +394,10 @@ class IGTrader(Trader):
         try:
             results = self._watcher.connector.ig.delete_working_order(deal_id)
         except IGException as e:
-            logger.error("%s except on order %s cancelation - cause : %s !" % (self.name, deal_id, repr(e)))
+            error_logger.error("%s except on order %s cancelation - cause : %s !" % (self.name, deal_id, repr(e)))
             return False
+
+        order_logger.info(results)
 
         return True
 
@@ -410,17 +416,17 @@ class IGTrader(Trader):
         position = self._positions.get(position_id)
 
         if position is None or not position.is_opened():
-            logger.error("%s does not found opened position %s !" % (self.name, position_id))
+            error_logger.error("%s does not found opened position %s !" % (self.name, position_id))
             return False
 
         if not self.has_market(position.symbol):
-            logger.error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id))
+            error_logger.error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id))
             return False
 
         # EPIC market detail fetched once next use cached
         market_info = self.market(position.symbol)
         if market_info is None:
-            logger.error("%s does not found market info when trying to close position %s !" % (self.name, position_id))
+            error_logger.error("%s does not found market info when trying to close position %s !" % (self.name, position_id))
             return False
 
         epic = position.symbol
@@ -452,6 +458,7 @@ class IGTrader(Trader):
 
         try:
             results = self._watcher.connector.ig.close_open_position(deal_id, direction, epic, expiry, level, order_type, quote_id, size)
+            order_logger.info(results)
      
             if results.get('dealStatus', '') == 'ACCEPTED':
                 if epic and expiry:
@@ -464,12 +471,12 @@ class IGTrader(Trader):
                 # del self._positions[position.position_id]
             else:
                 position.closing(limit_price)
-                logger.error("%s rejected close position %s of %s %s !" % (self.name, direction, size, position.symbol))
+                error_logger.error("%s rejected close position %s of %s %s !" % (self.name, direction, size, position.symbol))
 
                 return False
 
         except IGException as e:
-            logger.error("%s except close position %s of %s %s !" % (self.name, direction, size, position.symbol))
+            error_logger.error("%s except close position %s of %s %s !" % (self.name, direction, size, position.symbol))
             return False
 
         return True
@@ -482,7 +489,7 @@ class IGTrader(Trader):
         position = self._positions.get(position_id)
 
         if position is None or not position.is_opened():
-            logger.error("%s does not found opened position %s !" % (self.name, position_id))
+            error_logger.error("%s does not found opened position %s !" % (self.name, position_id))
             return False
 
         limit_level = None
@@ -498,6 +505,7 @@ class IGTrader(Trader):
 
         try:
             results = self._watcher.connector.ig.update_open_position(limit_level, stop_level, deal_id)
+            order_logger.info(results)
 
             if results.get('dealStatus', '') == 'ACCEPTED':
                 position.take_profit = take_profit_price
@@ -505,12 +513,12 @@ class IGTrader(Trader):
 
                 return True
             else:
-                logger.error("%s rejected modifiy position %s - %s - %s !" % (self.name, position.position_id, position.symbol))
+                error_logger.error("%s rejected modifiy position %s - %s - %s !" % (self.name, position.position_id, position.symbol))
 
             return True
 
         except IGException as e:
-            logger.error("%s except close position %s of %s %s !" % (self.name, direction, size, position.symbol))
+            error_logger.error("%s except close position %s of %s %s !" % (self.name, direction, size, position.symbol))
             return False
 
         return False

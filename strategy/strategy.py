@@ -11,6 +11,7 @@ import collections
 from datetime import datetime
 
 from terminal.terminal import Terminal, Color
+from terminal import charmap
 
 from common.runnable import Runnable
 from monitor.streamable import Streamable, StreamMemberFloat, StreamMemberBool
@@ -334,7 +335,8 @@ class Strategy(Runnable):
                 continue
 
             # help with watcher matching method
-            strategy_symbols = watcher.matching_symbols_set(watcher_conf.get('symbols'), watcher.watched_instruments())
+            # strategy_symbols = watcher.matching_symbols_set(watcher_conf.get('symbols'), watcher.watched_instruments())
+            strategy_symbols = watcher.matching_symbols_set(watcher_conf.get('symbols'), watcher.available_instruments())
 
             # create an instrument per mapped symbol where to locally store received data
             for symbol in strategy_symbols:
@@ -1683,11 +1685,11 @@ class Strategy(Runnable):
 
         return columns[col_ofs:], data, total_size
 
-    def trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False):
+    def trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False):
         """
         Returns a table of any active trades.
         """
-        columns = ['Market', 'Id', 'Dir', 'P/L(%)', 'Ord p', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP.', 'Exit date', 'Avg XP', 'Comment', 'UPNL']
+        columns = ['Market', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Comment', 'UPNL']
 
         if quantities:
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -1713,10 +1715,17 @@ class Strategy(Runnable):
         trades = trades[offset:limit]
 
         for t in trades:
-            direction = Color.colorize_cond(t['d'], t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+            direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
-            if t['pl'] < 0 and ((t['d'] == 'long' and float(t['b']) > float(t['aep'])) or (t['d'] == 'short' and float(t['b']) < float(t['aep']))):
-                # have been profitable but loss
+            aep = float(t['aep'])
+            best = float(t['b'])
+            worst = float(t['w'])
+            op = float(t['l'])
+            sl = float(t['sl'])
+            tp = float(t['tp'])
+
+            if t['pl'] < 0 and ((t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep)):
+                # has been profitable but loss
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
             elif t['pl'] < 0:  # loss
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
@@ -1724,10 +1733,6 @@ class Strategy(Runnable):
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
             else:  # equity
                 cr = "0.0"
-
-            aep = float(t['aep'])
-            best = float(t['b'])
-            worst = float(t['w'])
 
             if t['d'] == 'long' and aep > 0 and best > 0 and worst > 0:
                 bpct = (best - aep) / aep
@@ -1739,16 +1744,26 @@ class Strategy(Runnable):
                 bpct = 0
                 wpct = 0
 
+            if t['d'] == 'long' and (aep or op):
+                slpct = (sl - (aep or op)) / (aep or op)
+                tppct = (tp - (aep or op)) / (aep or op)
+            elif t['d'] == 'short' and (aep or op):
+                slpct = ((aep or op) - sl) / (aep or op)
+                slpct = ((aep or op) - tp) / (aep or op)
+            else:
+                slpct = 0
+                tpcpt = 0
+
             row = [
                 t['mid'],
                 t['id'],
                 direction,
                 cr,
                 t['l'],
-                t['sl'],
-                t['tp'],
-                "%s (%.2f)" % (t['b'], bpct * 100),
-                "%s (%.2f)" % (t['w'], wpct * 100),
+                "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
+                "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
+                "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
+                "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
                 t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S') if t['eot'] > 0 else "",
                 datetime.fromtimestamp(t['freot']).strftime('%Y-%m-%d %H:%M:%S') if t['freot'] > 0 else "",
@@ -1771,11 +1786,11 @@ class Strategy(Runnable):
 
         return columns[col_ofs:], data, total_size
 
-    def closed_trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False):
+    def closed_trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False):
         """
         Returns a table of any closed trades.
         """
-        columns = ['Market', 'Id', 'Dir', 'P/L(%)', 'Fees(%)', 'Ord p', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Comment', 'RPNL']
+        columns = ['Market', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Comment', 'RPNL']
 
         if quantities:
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -1801,7 +1816,7 @@ class Strategy(Runnable):
         closed_trades = closed_trades[offset:limit]
 
         for t in closed_trades:
-            direction = Color.colorize_cond(t['d'], t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+            direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
             # @todo direction
             if t['pl'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
@@ -1813,21 +1828,29 @@ class Strategy(Runnable):
             else:
                 cr = "0.0"
 
+            aep = float(t['aep'])
+            sl = float(t['sl'])
+            tp = float(t['tp'])
+
             # color TP in green if hitted, similarely in red for SL
             # @todo not really true, could store the exit reason in trade stats
             if t['d'] == "long":
-                _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) >= float(t['tp']), style=style, true=Color.GREEN)
-                _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) <= float(t['sl']), style=style, true=Color.RED)
+                _tp = Color.colorize_cond(t['tp'], tp > 0 and float(t['axp']) >= tp, style=style, true=Color.GREEN)
+                _sl = Color.colorize_cond(t['sl'], sl > 0 and float(t['axp']) <= sl, style=style, true=Color.RED)
+                slpct = (sl - aep) / aep
+                tppct = (tp - aep) / aep
             else:
-                _tp = Color.colorize_cond(t['tp'], float(t['tp']) > 0 and float(t['axp']) <= float(t['tp']), style=style, true=Color.GREEN)
-                _sl = Color.colorize_cond(t['sl'], float(t['sl']) > 0 and float(t['axp']) >= float(t['sl']), style=style, true=Color.RED)
+                _tp = Color.colorize_cond(t['tp'], tp > 0 and float(t['axp']) <= tp, style=style, true=Color.GREEN)
+                _sl = Color.colorize_cond(t['sl'], sl > 0 and float(t['axp']) >= sl, style=style, true=Color.RED)
+                slpct = (aep - sl) / aep
+                tppct = (aep - tp) / aep
 
             if t['d'] == 'long':
-                bpct = (float(t['b']) - float(t['aep'])) / float(t['aep'])
-                wpct = (float(t['w']) - float(t['aep'])) / float(t['aep'])
+                bpct = (float(t['b']) - aep) / aep
+                wpct = (float(t['w']) - aep) / aep
             elif t['d'] == 'short':
-                bpct = (float(t['aep']) - float(t['b'])) / float(t['aep'])
-                wpct = (float(t['aep']) - float(t['w'])) / float(t['aep'])
+                bpct = (aep - float(t['b'])) / aep
+                wpct = (aep - float(t['w'])) / aep
 
             row = [
                 t['mid'],
@@ -1836,10 +1859,10 @@ class Strategy(Runnable):
                 cr,
                 "%.2f%%" % (t['fees'] * 100),
                 t['l'],
-                _sl,
-                _tp,
-                "%s (%.2f)" % (t['b'], bpct * 100),
-                "%s (%.2f)" % (t['w'], wpct * 100),
+                "%s (%.2f)" % (_sl, slpct * 100) if percents else _sl,
+                "%s (%.2f)" % (_tp, tppct * 100) if percents else _tp,
+                "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
+                "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
                 t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'),
                 datetime.fromtimestamp(t['freot']).strftime('%Y-%m-%d %H:%M:%S'),

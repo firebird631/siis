@@ -3,6 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # ig.com watcher implementation
 
+import copy
 import math
 import urllib
 import json
@@ -30,6 +31,7 @@ import logging
 logger = logging.getLogger('siis.watcher.ig')
 exec_logger = logging.getLogger('siis.exec.watcher.ig')
 error_logger = logging.getLogger('siis.error.watcher.ig')
+traceback_logger = logging.getLogger('siis.traceback.watcher.ig')
 
 
 class IGWatcher(Watcher):
@@ -66,7 +68,6 @@ class IGWatcher(Watcher):
 
     @todo get vol24 in base and quote unit
     @todo base_exchange_rate must be updated as price changes
-    @todo why don't receive WOU
     """
 
     MAX_CONCURRENT_SUBSCRIPTIONS = 40
@@ -80,6 +81,12 @@ class IGWatcher(Watcher):
         self._subscriptions = []
         self._account_id = ""
 
+        self._subscribed_markets = {}
+        self._subscribed_ticks = {}
+
+        self.__configured_symbols = set()  # cache for configured symbols set
+        self.__matching_symbols = set()    # cache for matching symbols
+
         self._cached_tick = {}    # caches for when a value is not defined
         self._store_trade = True  # default store trade because we can't get history else
 
@@ -89,6 +96,7 @@ class IGWatcher(Watcher):
         try:
             self.lock()
             self._ready = False
+            self._connecting = True
 
             identity = self.service.identity(self._name)
             self._subscriptions = []  # reset previous list
@@ -132,63 +140,22 @@ class IGWatcher(Watcher):
                 # default watched instruments
                 #
 
-                all_instruments = []
+                configured_instruments = self.configured_symbols()
 
-                if '*' in self.configured_symbols():
-                    self._available_instruments = set(all_instruments)
-                    instruments = all_instruments
-                else:
-                    instruments = self.configured_symbols()
+                # @todo could check with API if configured epic exists and put them into this list
+                instruments = copy.copy(configured_instruments)
 
-                # prefetching and then WS subscribtion because else it block the WS processing...
-                # look to see for a better solution
+                self._available_instruments = copy.copy(instruments)
 
-                # susbcribe for symbols
-                for symbol in instruments:
-                    # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
-                    # prefetch for the last of each except for 1m and 5m we assume we have a delay of 5 minutes
-                    # from the manual prefetch script execution and assuming the higher timeframe are already up-to-date.
-                    if self._initial_fetch:
-                        self.fetch_and_generate(symbol, Instrument.TF_1M, 5, None)
-                        self.fetch_and_generate(symbol, Instrument.TF_3M, 2, None)
-                        self.fetch_and_generate(symbol, Instrument.TF_5M, 1, None)
-                        self.fetch_and_generate(symbol, Instrument.TF_15M, 1, None)
-                        self.fetch_and_generate(symbol, Instrument.TF_1H, 1, None)
-                        self.fetch_and_generate(symbol, Instrument.TF_4H, 1, None)
-                        self.fetch_and_generate(symbol, Instrument.TF_1D, 1, None)
-                        self.fetch_and_generate(symbol, Instrument.TF_1W, 1, None)
+                configured_symbols = self.configured_symbols()
+                matching_symbols = self.matching_symbols_set(configured_symbols, instruments)
 
-                        logger.info("%s prefetch for %s" % (self.name, symbol))
-
-                    self.insert_watched_instrument(symbol, [0])
-
-                    if self._initial_fetch:
-                        # avoid blocking websocket during sleep
-                        self.unlock()
-                        # time.sleep(9.0)  # 1 sec per query + 1 extra second
-                        time.sleep(1.0)
-                        self.lock()
-
-                # logger.info("Watcher %s wait 10 seconds to limit to a fair API usage" % (self.name,))
-
-                # self.unlock()
-                # time.sleep(10.0)
-                # self.lock()
-
-                # susbcribe for symbols
-                for symbol in instruments:
-                    # to know when market close but could be an hourly REST API call, but it consume one subscriber...
-                    # @todo so maybe prefers REST call hourly ? but need bid/ofr properly defined at signals on trader.market and strategy.instrument !
-                    self.subscribe_market(symbol)
-
-                    # tick data
-                    self.subscribe_tick(symbol)
-
-                    # ohlc data (now generated)
-                    # for tf in IGWatcher.STORED_TIMEFRAMES:
-                    #     self.subscribe_ohlc(symbol, tf)
+                # cache them
+                self.__configured_symbols = configured_symbols
+                self.__matching_symbols = matching_symbols
 
             self._ready = True
+            self._connecting = False
 
         except Exception as e:
             logger.debug(repr(e))
@@ -210,107 +177,6 @@ class IGWatcher(Watcher):
     def connected(self):
         return self._ready and self._connector is not None and self._connector.connected
 
-    def subscribe_account(self, account_id):
-        fields = ["PNL", "AVAILABLE_TO_DEAL", "MARGIN", "FUNDS", "AVAILABLE_CASH"]
-
-        subscription = Subscription(
-                mode="MERGE",
-                items=["ACCOUNT:"+account_id],
-                fields=fields,
-                adapter="")
-
-        self.subscribe(subscription)
-        subscription.addlistener(self, IGWatcher.on_account_update)
-
-    def subscribe_trades(self, account_id):
-        fields = ["CONFIRMS", "OPU", "WOU"]
-
-        subscription = Subscription(
-                mode="DISTINCT",
-                items=["TRADE:"+account_id],
-                fields=fields,
-                adapter="")
-
-        self.subscribe(subscription)
-        subscription.addlistener(self, IGWatcher.on_trade_update)
-
-    def subscribe_tick(self, instrument):
-        """
-        Subscribe to an instrument tick updates.
-        """
-        fields = ["BID", "OFR", "LTP", "LTV", "TTV", "UTM"]
-
-        subscription = Subscription(
-            mode="DISTINCT",
-            items=["CHART:"+instrument+":TICK"],
-            fields=fields,
-            adapter="")
-
-        self.subscribe(subscription)
-        subscription.addlistener(self, IGWatcher.on_tick_update)
-
-    # def subscribe_ohlc(self, instrument, timeframe):
-    #     """
-    #     Subscribe to an instrument. Timeframe must be greater than 0.
-    #     """
-    #     fields = [
-    #         "BID_OPEN", "OFR_OPEN",
-    #         "BID_CLOSE", "OFR_CLOSE",
-    #         "BID_HIGH", "OFR_HIGH",
-    #         "BID_LOW", "OFR_LOW",
-    #         "LTP", "LTV", "TTV", "UTM",
-    #         "CONS_END"
-    #     ]
-
-    #     if timeframe == Instrument.TF_SEC:
-    #         tf = "SECOND"
-    #     elif timeframe == Instrument.TF_MIN:
-    #         tf = "1MINUTE"
-    #     elif timeframe == Instrument.TF_5MIN:
-    #         tf = "5MINUTE"
-    #     elif timeframe == Instrument.TF_HOUR:
-    #         tf = "HOUR"
-    #     else:
-    #         return
-
-    #     subscription = Subscription(
-    #         mode="MERGE",
-    #         items=["CHART:"+instrument+":"+tf],
-    #         fields=fields,
-    #         adapter="")
-
-    #     self.subscribe(subscription)
-    #     subscription.addlistener(self, IGWatcher.on_ohlc_update)
-
-    def subscribe_market(self, instrument):
-        """
-        Subscribe to an instrument.
-        """
-        fields = ["MARKET_STATE", "UPDATE_TIME", "BID", "OFFER"]
-
-        subscription = Subscription(
-            mode="MERGE",
-            items=["MARKET:"+instrument],
-            fields=fields,
-            adapter="")
-
-        self.subscribe(subscription)
-        subscription.addlistener(self, IGWatcher.on_market_update)
-
-    def subscribe(self, subscription):
-        """
-        Registering the Subscription
-        """
-        sub_key = self._lightstreamer.subscribe(subscription)
-        self._subscriptions.append(sub_key)
-
-        return sub_key
-
-    def unsubscribe(self, sub_key):
-        if sub_key in self._subscriptions:
-            self._lightstreamer.unsubscribe(sub_key)
-            del self._subscriptions[sub_key]
-
     def disconnect(self):
         super().disconnect()
 
@@ -331,6 +197,10 @@ class IGWatcher(Watcher):
                 self._connector.disconnect()
                 self._connector = None
 
+                # reset subscribed markets WS
+                self._subscribed_markets = {}
+                self._subscribed_ticks = {}
+
             self._ready = False
 
         except Exception as e:
@@ -342,15 +212,21 @@ class IGWatcher(Watcher):
     def pre_update(self):
         super().pre_update()
 
-        if self._connector is None or not self._connector.connected or self._lightstreamer is None or not self._lightstreamer.connected:
-            self._connector = None
-            self.connect()
+        if not self._connecting and not self._ready:
+            self.lock()
+            if self._connector is None or not self._connector.connected or self._lightstreamer is None or not self._lightstreamer.connected:
+                self._connector = None
+                self.unlock()
 
-            if not self.connected:
-                # retry in 2 second
-                time.sleep(2.0)
+                self.connect()
 
-            return
+                if not self.connected:
+                    # retry in 2 second
+                    time.sleep(2.0)
+
+                return
+            else:
+                self.unlock()
 
     def update(self):
         if not super().update():
@@ -388,6 +264,177 @@ class IGWatcher(Watcher):
 
     def post_run(self):
         super().post_run()
+
+    #
+    # instruments
+    #
+
+    def subscribe(self, market_id, timeframe):
+        self.lock()
+        logger.info(market_id)
+
+        if market_id in self.__matching_symbols:
+            # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
+            # prefetch for the last of each except for 1m and 5m we assume we have a delay of 5 minutes
+            # from the manual prefetch script execution and assuming the higher timeframe are already up-to-date.
+            if self._initial_fetch:
+                logger.info("%s prefetch for %s" % (self.name, market_id))
+
+                self.fetch_and_generate(market_id, Instrument.TF_1M, 5, None)
+                self.fetch_and_generate(market_id, Instrument.TF_3M, 2, None)
+                self.fetch_and_generate(market_id, Instrument.TF_5M, 1, None)
+                self.fetch_and_generate(market_id, Instrument.TF_15M, 1, None)
+                self.fetch_and_generate(market_id, Instrument.TF_1H, 1, None)
+                self.fetch_and_generate(market_id, Instrument.TF_4H, 1, None)
+                self.fetch_and_generate(market_id, Instrument.TF_1D, 1, None)
+                self.fetch_and_generate(market_id, Instrument.TF_1W, 1, None)              
+
+            self.insert_watched_instrument(market_id, [0])
+
+            # to know when market close but could be an hourly REST API call, but it consume one subscriber...
+            # @todo so maybe prefers REST call hourly ? but need bid/ofr properly defined at signals on trader.market and strategy.instrument !
+            self.subscribe_market(market_id)
+
+            # tick data
+            self.subscribe_tick(market_id)
+
+            self.unlock()
+
+            if self._initial_fetch:
+                logger.info("Watcher %s wait 8+1 seconds to limit to a fair API usage" % (self.name,))
+                time.sleep(9.0)  # 1 sec per query + 1 extra second
+
+            return True
+        else:
+            self.unlock()
+            return False
+
+    def unsubscribe(self, market_id, timeframe):
+        self.lock()
+
+        if market_id in self._subscribed_markets:
+            sub = self._subscribed_markets[market_id]
+            self.unsubscribe_ws(sub)
+            del self._subscribed_markets[market_id]
+
+            sub = self._subscribed_ticks[market_id]
+            self.unsubscribe_ws(sub)
+            del self._subscribed_ticks[market_id]
+
+            self.unlock()
+            return True
+        else:
+            self.unlock()
+            return False
+
+    #
+    # WS subscribtion
+    #
+
+    def subscribe_account(self, account_id):
+        fields = ["PNL", "AVAILABLE_TO_DEAL", "MARGIN", "FUNDS", "AVAILABLE_CASH"]
+
+        subscription = Subscription(
+                mode="MERGE",
+                items=["ACCOUNT:"+account_id],
+                fields=fields,
+                adapter="")
+
+        self.subscribe_ws(subscription)
+        subscription.addlistener(self, IGWatcher.on_account_update)
+
+    def subscribe_trades(self, account_id):
+        fields = ["CONFIRMS", "OPU", "WOU"]
+
+        subscription = Subscription(
+                mode="DISTINCT",
+                items=["TRADE:"+account_id],
+                fields=fields,
+                adapter="")
+
+        self.subscribe_ws(subscription)
+        subscription.addlistener(self, IGWatcher.on_trade_update)
+
+    def subscribe_tick(self, instrument):
+        """
+        Subscribe to an instrument tick updates.
+        """
+        fields = ["BID", "OFR", "LTP", "LTV", "TTV", "UTM"]
+
+        subscription = Subscription(
+            mode="DISTINCT",
+            items=["CHART:"+instrument+":TICK"],
+            fields=fields,
+            adapter="")
+
+        sub_key = self.subscribe_ws(subscription)
+        subscription.addlistener(self, IGWatcher.on_tick_update)
+
+        self._subscribed_ticks[instrument] = sub_key
+
+    # def subscribe_ohlc(self, instrument, timeframe):
+    #     """
+    #     Subscribe to an instrument. Timeframe must be greater than 0.
+    #     """
+    #     fields = [
+    #         "BID_OPEN", "OFR_OPEN",
+    #         "BID_CLOSE", "OFR_CLOSE",
+    #         "BID_HIGH", "OFR_HIGH",
+    #         "BID_LOW", "OFR_LOW",
+    #         "LTP", "LTV", "TTV", "UTM",
+    #         "CONS_END"
+    #     ]
+
+    #     if timeframe == Instrument.TF_SEC:
+    #         tf = "SECOND"
+    #     elif timeframe == Instrument.TF_MIN:
+    #         tf = "1MINUTE"
+    #     elif timeframe == Instrument.TF_5MIN:
+    #         tf = "5MINUTE"
+    #     elif timeframe == Instrument.TF_HOUR:
+    #         tf = "HOUR"
+    #     else:
+    #         return
+
+    #     subscription = Subscription(
+    #         mode="MERGE",
+    #         items=["CHART:"+instrument+":"+tf],
+    #         fields=fields,
+    #         adapter="")
+
+    #     self.subscribe_ws(subscription)
+    #     subscription.addlistener(self, IGWatcher.on_ohlc_update)
+
+    def subscribe_market(self, instrument):
+        """
+        Subscribe to an instrument.
+        """
+        fields = ["MARKET_STATE", "UPDATE_TIME", "BID", "OFFER"]
+
+        subscription = Subscription(
+            mode="MERGE",
+            items=["MARKET:"+instrument],
+            fields=fields,
+            adapter="")
+
+        sub_key = self.subscribe_ws(subscription)
+        subscription.addlistener(self, IGWatcher.on_market_update)
+
+        self._subscribed_markets[instrument] = sub_key
+
+    def subscribe_ws(self, subscription):
+        """
+        Registering the Subscription
+        """
+        sub_key = self._lightstreamer.subscribe(subscription)
+        self._subscriptions.append(sub_key)
+
+        return sub_key
+
+    def unsubscribe_ws(self, sub_key):
+        if sub_key in self._subscriptions:
+            self._lightstreamer.unsubscribe(sub_key)
+            del self._subscriptions[sub_key]
 
     #
     # WS data
@@ -1091,8 +1138,8 @@ class IGWatcher(Watcher):
             else:
                 data = self._connector.history_range(market_id, timeframe, from_date, to_date)
         except Exception as e:
-            logger.error(repr(e))
-            error_logger.error(traceback.format_exc())
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
 
             data = {}
 

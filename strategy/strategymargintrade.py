@@ -196,8 +196,8 @@ class StrategyMarginTrade(StrategyTrade):
                 self.limit_oid = order.order_id
                 self.limit_order_qty = order.quantity
 
-                self.last_tp_ot[0] = order.created_time
-                self.last_tp_ot[1] += 1
+                self.last_limit_ot[0] = order.created_time
+                self.last_limit_ot[1] += 1
 
                 self.tp = limit_price
 
@@ -247,8 +247,8 @@ class StrategyMarginTrade(StrategyTrade):
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
                 
-                self.last_sl_ot[0] = order.created_time
-                self.last_sl_ot[1] += 1
+                self.last_stop_ot[0] = order.created_time
+                self.last_stop_ot[1] += 1
 
                 self.sl = stop_price
 
