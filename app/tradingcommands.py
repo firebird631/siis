@@ -32,28 +32,36 @@ class PlayCommand(Command):
         if args[0] == 'traders':
             if len(args) == 1:
                 self._trader_service.set_activity(True)
-                Terminal.inst().action("Activated all traders", view='status')
+                Terminal.inst().action("Activated any markets for all traders", view='status')
                 return True
             elif len(args) == 2:
-                # @todo specific trader
-                return False
-
+                trader = self._trader_service.trader(args[1])
+                if trader:
+                    trader.set_activity(True)
+                    Terminal.inst().action("Activated any markets for trader %s" % args[1], view='status')
+                    return True
+            elif len(args) == 3:
+                trader = self._trader_service.trader(args[1])
+                if trader:
+                    trader.set_activity(True, args[2])
+                    Terminal.inst().action("Activated market %s for trader %s" % (args[2], args[1]), view='status')
+                return True
         elif args[0] == 'apps':
             if len(args) == 1:
                 self._strategy_service.set_activity(True)
-                Terminal.inst().action("Activated any markets for all appliances", view='status')
+                Terminal.inst().action("Activated any instruments for all appliances", view='status')
                 return True
             elif len(args) == 2:
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     appliance.set_activity(True)
-                    Terminal.inst().action("Activated any markets for appliances %s" % args[1], view='status')
+                    Terminal.inst().action("Activated any instrument for appliance %s" % args[1], view='status')
                 return True
             elif len(args) == 3:
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     appliance.set_activity(True, args[2])
-                    Terminal.inst().action("Activated instrument %s for appliances %s" % (args[2], args[1]), view='status')
+                    Terminal.inst().action("Activated instrument %s for appliance %s" % (args[2], args[1]), view='status')
                 return True
 
         return False
@@ -75,6 +83,11 @@ class PlayCommand(Command):
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     return self.iterate(2, appliance.symbols_ids(), args, tab_pos, direction)
+            elif args[0] == 'traders':
+                # market
+                trader = self._trader_service.trader(args[1])
+                if trader:
+                    return self.iterate(2, trader.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -97,28 +110,37 @@ class PauseCommand(Command):
         if args[0] == 'traders':
             if len(args) == 1:
                 self._trader_service.set_activity(False)
-                Terminal.inst().action("Paused all traders", view='status')
+                Terminal.inst().action("Paused any markets for all traders", view='status')
                 return True
             elif len(args) == 2:
-                # @todo specific trader
-                return False
+                trader = self._trader_service.trader(args[1])
+                if trader:
+                    trader.set_activity(False)
+                    Terminal.inst().action("Paused any markets for trader %s" % args[1], view='status')
+                    return True
+            elif len(args) == 3:
+                trader = self._trader_service.trader(args[1])
+                if trader:
+                    trader.set_activity(False, args[2])
+                    Terminal.inst().action("Paused market %s for trader %s" % (args[2], args[1]), view='status')
+                return True
         elif args[0] == 'apps':
             if len(args) == 1:
                 self._strategy_service.set_activity(False)
-                Terminal.inst().action("Paused all any market for all appliances", view='status')
+                Terminal.inst().action("Paused any instruments for all appliances", view='status')
                 return True
             elif len(args) == 2:
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     appliance.set_activity(False)
-                    Terminal.inst().action("Paused any markets for appliances %s" % args[1], view='status')
-                return True
+                    Terminal.inst().action("Paused any instruments for appliances %s" % args[1], view='status')
+                    return True
             elif len(args) == 3:
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     appliance.set_activity(False, args[2])
                     Terminal.inst().action("Paused instrument %s for appliances %s" % (args[2], args[1]), view='status')
-                return True
+                    return True
 
         return False
 
@@ -139,6 +161,11 @@ class PauseCommand(Command):
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     return self.iterate(2, appliance.symbols_ids(), args, tab_pos, direction)
+            elif args[0] == 'traders':
+                # market
+                trader = self._trader_service.trader(args[1])
+                if trader:
+                    return self.iterate(2, trader.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -198,6 +225,11 @@ class InfoCommand(Command):
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     return self.iterate(2, appliance.symbols_ids(), args, tab_pos, direction)
+            elif args[0] == 'traders':
+                # market
+                trader = self._trader_service.trader(args[1])
+                if trader:
+                    return self.iterate(2, trader.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 

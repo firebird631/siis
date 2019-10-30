@@ -450,8 +450,8 @@ class Watcher(Runnable):
         """
         now = time.time()
 
-        # optimized version
         for tf in self.GENERATED_TF:
+            # only if current base time is greater than the previous
             base_time = Instrument.basetime(tf, now)
             if base_time > self._last_update_times[tf]:
                 self._last_update_times[tf] = base_time
@@ -461,17 +461,6 @@ class Watcher(Runnable):
                         ohlc = self.close_ohlc(market_id, last_ohlc_by_timeframe, tf, now)
                         if ohlc:
                             self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, ohlc))
-
-        # for market_id in self._watched_instruments:
-        #     last_ohlc_by_timeframe = self._last_ohlc.get(market_id)
-        #     if not last_ohlc_by_timeframe:
-        #         continue
-
-        #     for tf, _ohlc in last_ohlc_by_timeframe.items():
-        #         # for closing candles, generate them
-        #         ohlc = self.update_ohlc(market_id, tf, time.time(), None, None, None)
-        #         if ohlc:
-        #             self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, ohlc))
 
     def fetch_and_generate(self, market_id, timeframe, n_last=1, cascaded=None):
         """

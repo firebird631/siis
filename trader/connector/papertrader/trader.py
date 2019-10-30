@@ -537,7 +537,7 @@ class PaperTrader(Trader):
             return False
 
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
-        quantity = order.quantity  # market.adjust_quantity(order.quantity)
+        quantity = order.quantity
         notional = quantity * open_exec_price
 
         if notional < market.min_notional:
@@ -553,7 +553,7 @@ class PaperTrader(Trader):
 
         if order.order_type == Order.ORDER_MARKET:
             # immediate execution of the order at market
-            # @todo or add to orders for emulate the slippage
+            # @todo add to orders for emulate the slippage
 
             if order.margin_trade and market.has_margin:
                 if market.indivisible_position:
@@ -811,17 +811,3 @@ class PaperTrader(Trader):
                 position.update_profit_loss(market)
 
         self.unlock()
-
-    #
-    # utils
-    #
-
-    def adjust_quantity(self, quantity, step_size=0.00000001, precision=8):
-        return round(step_size * round(quantity / step_size), precision)
-
-    def get_live_report(self):
-        self.lock()
-        results = self._history.get_live_report()
-        self.unlock()
-
-        return results

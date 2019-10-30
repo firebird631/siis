@@ -324,8 +324,11 @@ class DesktopNotifier(Notifiable):
 
             # strategy stats
             if time.time() - self._last_strategy_view >= 0.5:  # every 0.5 second, refresh
-                self.refresh_stats()
-                self._last_strategy_view = time.time()
+                try:
+                    self.refresh_stats()
+                    self._last_strategy_view = time.time()
+                except Exception as e:
+                    error_logger.error(str(e))
 
     #
     # discord notification @deprecated must be in a specific discordnotifier
@@ -532,5 +535,39 @@ class DesktopNotifier(Notifiable):
                     error_logger.error(repr(e))
 
                 Terminal.inst().info("Asset list (%i) trader %s on account %s" % (num, trader.name, trader.account.name), view='asset-head')
+
+        # position view
+        if Terminal.inst().is_active('position'):
+            traders = self.trader_service.get_traders()
+
+            if len(traders) > 0:
+                trader = next(iter(traders))
+                num = 0
+
+                try:
+                    columns, table, total_size = trader.positions_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+                    Terminal.inst().table(columns, table, total_size, view='position')
+                    num = total_size[1]
+                except Exception as e:
+                    error_logger.error(repr(e))
+
+                Terminal.inst().info("Position list (%i) trader %s on account %s" % (num, trader.name, trader.account.name), view='position-head')
+
+        # order view
+        if Terminal.inst().is_active('order'):
+            traders = self.trader_service.get_traders()
+
+            if len(traders) > 0:
+                trader = next(iter(traders))
+                num = 0
+
+                try:
+                    columns, table, total_size = trader.active_orders_table(*Terminal.inst().active_content().format(), quantities=True)
+                    Terminal.inst().table(columns, table, total_size, view='order')
+                    num = total_size[1]
+                except Exception as e:
+                    error_logger.error(repr(e))
+
+                Terminal.inst().info("Order list (%i) trader %s on account %s" % (num, trader.name, trader.account.name), view='order-head')
 
         self._last_strategy_update = self.strategy_service.timestamp

@@ -61,7 +61,7 @@ class WatchdogService(Service):
 
             for k, d in self._pending.items():
                 if now - d[0] > WatchdogService.PING_TIMEOUT:
-                    error_logger.fatal("Pid %s not joinable : %s for %s seconds. Potiential deadlock !" % (k, d[1] or "undefined", WatchdogService.PING_TIMEOUT))
+                    error_logger.fatal("Pid %s not joinable : %s for %s seconds !" % (k, d[1] or "undefined", WatchdogService.PING_TIMEOUT))
                     rm_it.append(k)
 
             if rm_it:
@@ -95,7 +95,7 @@ class WatchdogService(Service):
         self.unlock()
 
     def service_timeout(self, service, msg):
-        error_logger.fatal("Service %s not joinable : %s. Potiential deadlock !" % (service, msg))
+        error_logger.fatal("Service %s not joinable : %s !" % (service, msg))
 
     def gen_pid(self, ident):
         r = 0

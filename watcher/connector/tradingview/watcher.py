@@ -215,7 +215,7 @@ class TradingViewWatcher(Watcher):
 
 			# signal_data = {
 			# 	'watcher': self.name,      # name of the watcher
-			# 	'signal_id': signal_id,    # optional signal identifier
+			# 	'signal-id': signal_id,    # optional signal identifier
 			# 	'timestamp': timestamp,    # mandatory timestamp of the generation of the signal
 			# 	'timeframe': timeframe,    # mandatory timeframe used by the signal
 			# 	'strategy': strategy,      # if strategy its name

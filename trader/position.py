@@ -46,7 +46,7 @@ class Position(Keyed):
         self._symbol = ""
         self._shared = False
         self._quantity = 0.0
-    
+
         self._profit_loss = 0.0
         self._profit_loss_rate = 0.0
         
@@ -55,7 +55,9 @@ class Position(Keyed):
 
         self._profit_loss_currency = ""
 
-        self._created_time = None
+        self._created_time = 0.0
+        self._closed_time = 0.0
+
         self._market_close = False
         self._leverage = 1.0
         self._entry_price = 0.0
@@ -183,6 +185,10 @@ class Position(Keyed):
         return self._created_time
 
     @property
+    def closed_time(self):
+        return self._closed_time
+
+    @property
     def quantity(self):
         return self._quantity
 
@@ -237,6 +243,10 @@ class Position(Keyed):
     @created_time.setter
     def created_time(self, timestamp):
         self._created_time = timestamp
+
+    @closed_time.setter
+    def closed_time(self, timestamp):
+        self._closed_time = timestamp
 
     @quantity.setter
     def quantity(self, quantity):
@@ -348,3 +358,19 @@ class Position(Keyed):
             return 0.0
 
         return self.quantity * (market.lot_size * market.contract_size) * market.margin_factor
+
+    def direction_to_str(self):
+        if self._direction > 0:
+            return 'long'
+        elif self._direction < 0:
+            return 'short'
+        else:
+            return ''
+
+    def direction_from_str(self, direction):
+        if direction == 'long':
+            self._direction = 1
+        elif direction == 'short':
+            self._direction = -1
+        else:
+            self._direction = 0

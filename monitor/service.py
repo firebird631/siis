@@ -285,7 +285,7 @@ class MonitorService(Service):
                         break
 
             # don't waste the CPU
-            time.sleep(0.000001)  # yield 0.001)
+            time.sleep(0.0001)  # yield 0.001)
 
     def run_autobahn(self):
         # async def push(self):

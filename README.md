@@ -9,7 +9,7 @@ It also support semi-automated trading in way to manage your entries and exits
 with more possibilities than exchanges allows.
 
 This version is more a functionnal prototype than a final professional trading tool.
-It is developped in Python3, using TA-lib, numpy and matplotlib for the basic charting client.
+It is developped in Python3, using TA-lib, numpy, and matplotlib for the basic charting client.
 
 A more performant, but still in developpement, SiiS revisited is available at [github:siis-rev](https://github.com/dream-overflow/siis-rev)
 
@@ -19,7 +19,7 @@ Features
 
 * Initially developped for Linux, but should work on Window or MacOSX
 * Traditionnals and crypto markets brokers for trading are supported
-    * Binance (margin coming soon)
+    * Binance (done and margin planned)
     * Bitmex
     * Kraken (work in progress)
     * Kraken Futures (planned)
@@ -268,6 +268,7 @@ List of the files in config directory :
 * regions.json : Supported regions, except you create your own you don't have to override this file
 * fetchers.json : Supported fetchers, except you create your own you don't have to override this file
 * stratetgies.json : Supported strategies, except you create your own you don't have to override this file
+* audio.json : Only for the desktop-mode, configure your own sounds on notification (WIP)
 
 List of the sub-directories of config :
 * watchers/ : One file perf watcher to configure, name of file must refers to a valid watcher name.
@@ -423,7 +424,8 @@ the related broker identifier, and suffixed by :
 * report.log this is a summary
 * trades.log this a tabular file containing each trades with profit/loss and balance
 
-These files are subjects to evolves.
+This part is subject to evolves. I no longer use them, but I've implemented another reporting mecanisme directly from the
+strategy part, writting in this reports have sub-directory per appliance and market.
 
 
 Running
@@ -442,7 +444,6 @@ python siis.py <identity> [--help, --options...]
 * --backtest process a backtesting, uses paper mode traders and data history avalaible in the database.
 * --timestep=\<seconds> Timestep in seconds to increment the backesting. More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal candles size uses in the backtested strategies. Default is 60 seconds.
 * --time-factor=\<factor> in backtesting mode only allow the user to change the time factor and permit to interact during the backtesting. Default speed factor is as fast as possible.
-* --check-data @todo Process a test on candles data. Check if there is inconsitencies into the time of the candles and if there is some gaps. The test is done only on the defined range of time.
 * --from=<YYYY-MM-DDThh:mm:ss> define the date time from which start the backtesting, fetcher or binarizer. If ommited use whoole data set (take care).
 * --to=<YYYY-MM-DDThh:mm:ss> define the date time to which stop the backtesting, fetcher or binarizer. If ommited use now.
 * --last=\<number> Fast last number of candles for every watched market (take care can take all requests credits on the broker).
@@ -452,12 +453,12 @@ python siis.py <identity> [--help, --options...]
 * --cascaded=\<max-timeframe> During fetch process generate the candles of highers timeframe from lowers. Default is no. Take care to have entire multiple to fullfill the generated candles.
 * --spec=\<specific-option> Specific fetcher option (exemple STOCK for alphavantage.co fetcher to fetch a stock market).
 * --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.
-* --read-only Don't write market neither candles data to the database. Default is writing to the database.
+* --read-only Don't write OHLCs candles data to the database. Default is writing to the database.
 * --fetch Process the data fetcher.
 * --install-market Used only with --fetch to only install the fake market data info to database without trying to fetch anything.
-* --binarize Process to text file to binary conversion for a market (text version of data could be removed on the futur).
+* --binarize Process from text file to binary a conversion, for a market (text version of data could be removed on the futur).
 * --rebuild Rebuild OHLC from the trades/ticks data for a market. Need to specify --broker, --market, --timeframe, --from and --to date, --cascaded
-* --optimize Check one ore many market for trades/ticks or OHLCs. Need to specify --broker, --market, --timeframe, --from and --to date
+* --optimize Check one ore many market for trades/ticks or OHLCs, and returns data corruption or gaps (later could propose some fix). Need to specify --broker, --market, --timeframe, --from and --to date
 * --sync Synchronize the market data from the broker. Need to specify --broker and --market
 
 You need to define the name of the identity to use. This is related to the name defined into the identity.json file.
@@ -474,10 +475,11 @@ Because of the Python GIL, thread are not as efficient as in Java or C++ program
 In addition, to have a better stability it is more efficient to have distinct accounts, instance and profiles with the minimalist configuration.
 The lesser you have markets to watch and to trade, the more the instance will be fast.
 
-This version as a prototype is monolithic, the connector and the watcher is in the same instance as the strategies. Then stopping an instance mean stopping to watch and to store in local DB the related market data. This will be no longer a problem in the revisited version where connectors are standalones processes configured per broker and account.
+This version as a prototype is monolithic, the connector and the watcher is in the same instance as the strategies. Then stopping an instance mean stopping to watch and to store in local DB the related market data.
 ```
 
-So you have different running mode, the normal mode, will start the watching, trading capacity (paper-mode, live or backtesting) and offering an interactive terminal session or you can run only the fetcher or the binarizer functions.
+There are different running mode, the normal mode, will start the watching, trading capacity (paper-mode, live or backtesting) and offering an interactive terminal session,
+or you can run the specifics tools (fetcher, binarizer, optimizer, syncer, rebuilder...).
 
 
 Fetcher : importing some historical market data
@@ -501,8 +503,10 @@ The format of the datetime is 4 digits year, 2 digits month, 2 digts day of mont
 2 digits hour, 2 digits minutes, 2 digits seconds. The datetime is interpreted as UTC.
 
 The optionnal option --cascaded=\<max-timeframe> will generate the higher multiple of OHLC until one of (1m, 5m, 15m, 1h, 4h, 1d, 1w).
+The non multiple timeframe (like 3m, or 45m) are not generated with cascaded because of the nature of the implementation in cascad its not possible.
+You have to use the rebuild command option to generate theese OHLC from the direct submultiple.
 
-For example, this will fetch from 5m OHLC from the broker, and then generate 15m, 1h, 4h and 1d from them :
+For example, this will fetch from 5m OHLC from the broker, and then generate 15m, 30m, 1h, 2h, 4h and 1d from them :
 
 ```
 python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=5m --cascaded=1d
@@ -512,7 +516,7 @@ Market must be the unique market id of the broker, not the common usual name. Th
 the market identifier. Negation ! can be placed at the beginning of the market identifier to avoid a specific market when a wildchar filter is also used.
 Example of --market=\*USDT,!BCHUSDT will fetch for any USDT based excepted for BCHUSDT
 
-Common usage is to fetch only a certain number of recent OHLC, using the --last=\<number> option.
+If you need to only fetch the last n recents OHLCs, you can use the --last=\<number> option.
 
 The --spec optionnal option could be necessary for some fetchers, like with alphavantage.co where you have to specify the type of the market (--spec=STOCK).
 
@@ -520,6 +524,13 @@ Getting trade/tick level imply to defines --timeframe=t.
 
 ```
 python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=t
+```
+
+You can set the --cascaded option even from tick/trade timeframe.
+For example a complete fetching from 1m to 1w :
+
+```
+python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=t --cascaded=1w
 ```
 
 In the scripts/ directory there is some examples of how you can fetch your data using a bash script. Even these scripts could be added in a crontab entry.
@@ -538,7 +549,8 @@ Lets start with an example :
 python siis.py real --profile=my-backtest1 --backtest --from=2017-08-01T00:00:00 --to=2017-12-31T23:59:59 --timestep=15
 ```
 
-Backtesting, like live and paper-mode need to know which profile to use. Lets defines a profile named my-backtest1 in .siis/config/appliance.py file.
+Backtesting, like live and paper-mode need to know which profile to use. Lets defines a profile file named my-backtest1.json in .siis/config/profiles/,
+and an appliance file that must be refered from the profile file.
 
 The datetime range must be defined, --from and --to, and a timestep must be precised.
 This will be the minimal increment of time - in second - beetwen two iterations.
@@ -600,6 +612,7 @@ The order book is not used to look for the real offered quantities, then order a
 A slippage factor will be implemented sooner.
 
 In that case the watchers are running and stores OHLC and ticks/trade data (or not if --read-only is specified).
+In paper-mode OHLCs are stored to the database like in a normal live mode.
 
 
 Live-mode
@@ -619,7 +632,7 @@ I'll suggest in a first time to test with a demo account or a testnet.
 Then once your are ok with your strategy, with the interface, and the stability, and in a second time try with small amount,
 on real account, before finally letting the bot playing with biggers amount. Please read the disclaimer at the bottom of this file.
 
-By default, OHLC a stored to the database during the watching in live mode, but the trade/ticks are only manually fetched,
+By default, OHLCs are stored to the database in live mode, but the trade/ticks must be manually fetched,
 excepted for IG which by default store the ticks during live mode, because it is not possible to get them from history.
 
 
@@ -647,39 +660,46 @@ About data storage
 ------------------
 
 The tick or trade data (price, volume) are stored during the running or when fetching data at the tick timeframe.
-The OHLC data are stored in the SQL database. But only the 4h, 1D, 1W candle are kept forever :
+The OHLC data are stored in the SQL database. By default any candles from 1m to 1w are stored and kept indefinitively.
+The databases.json file defines an option "auto-cleanup", by default to false, if set to true it will cleanup each 4 hours
+the last OHLCs like :
 
-* Weekly, daily, 4h and 3h OHLC are always kept and store in the SQL DB.
-* 2h, 1h and 45m OHLC are kept for 90 days (if the cleaner is executed).
-* 30m, 15m, 10m are kept for 21 days.
-* 5m, 3m, 1m are kept for 8 days.
-* 1s, 10s are never kept.
+* Weekly, daily, 4h and 3h OHLC are always kept
+* 2h, 1h and 45m OHLC are kept for 90 days
+* 30m, 15m, 10m are kept for 21 days
+* 5m, 3m, 1m are kept for 8 days
+* 1s, 10s, 15s, 30s are never kept
 
-The cleaner is executed frequently by running instance of SiiS. It is necessary to clean some OHLC, else the DB
-will become to big. Each strategy look for an history of OHLC, look if you have prefetched any data before.
+I will probably do more options in **datbases.json** in way to configure the max kept OHLC for each timeframe,
+and create a special db-cleanup running mode that will only process the db-cleanup for the live servers.
 
-The watchers at least prefetch the current OHLC for differents timeframes, and can prefetch more. For the default
-values are set to 64 history OHLCs (binance, bitmex, kraken) but this could be a problem with IG because of the 10k sample
-history limit per week then for now I don't prefetch IG OHLC at its watcher startup.
+There is not interest for live mode to kept to many past for low timeframe, but its necessarry to keep them for
+the backtesting.
+
+You can use the rebuild command to rebuild missing OHLCs from submultiple or from ticks/trades data.
+
+It is possible to setup your own crontab with an SQL script the clean as your way.
+
+The strategy call the watchers to prefetch the last recents OHLC for the timeframes.
+The default value if 100 OHLCs (binance, bitmex, kraken) but this could be a problem with IG because of the 10k sample
+history limit per week then for now I don't prefetch more than 1 or 2 OHLCs per timeframe for IG.
 
 For conveniance I've made some bash scripts to frequently fetch OHLC, and some others script (look at the scripts/ directory for examples)
-that I run just before starting a live instance to make a prefetching (only the last N candles) in case the default value of 64
-will not suffise or for the IG case.
-
-Later I will improve the subscription to market at the watcher, to be related to markets the startegies ask, letting eventually a 
-pure watcher mode to only record live data.
+that I run just before starting a live instance to make a prefetching (only the last N candles).
 
 About the file containing the ticks, there is bad effect of that design. The good effect is the high performance, but because of Python
 performance this is not very impressive, but the C++ version could read millions of tick per seconds, its more performant than any
 timestamp based DB engine. So the bad side is that I've choosen to have 1 file per month (per market), and the problem is about temporal consistency
 of the data. I don't made any check of the timestamp before appending, then fetching could append to a file containing some more recent data,
-and maybe with some gaps. I know, its not the best design, for now if I need correct data set, I delete the months of the markets I want to be clean,
-and I fetch them completely.
+and maybe with some gaps.
 
-Where it is more problematic its with IG broker, where it's impossible to get history at tick level. So missed data are forever missing.
-For this case I realize the backtesting using other dataset. A cool solution could be to run an instance with a profile having only
-the watchers, (using your demo account for the IG broker case), always running, then you will have all data from live. And then
-when you run the others instances to avoid multiple writting, use the --read-only option (will not write generated OHLC, neither ticks in files).
+You can use the optimize command option to check your data, for trades/ticks and for any OHLC timeframes.
+
+Trades/ticks are by default not stored from watcher running, but excepted for IG, because its not possible to get back history from their API.
+The problem is if you don't let an instance all the week, you will have some gap. You could manage to restart only once per week, during the
+weekend the bot in that case, and to apply your strategies changes at this time.
+
+Finally you can disable writting of OHLCS generated during watcher using the option --read-only.
 
 
 Troubles
@@ -694,10 +714,6 @@ When I've more time or lot of feedbacks I will spend more time to develop the C+
 **Fetching historical data is slow** : It depends of the exchance and the timeframe. Fetching history trades from BitMex takes a lot of time,
 be more patient, this is due to theirs API limitations.
 
-**When restarting some old trades are reloaded** : Trades are saved but the loading part is not totally completed at this
-time, you can uses the assign command eventually to remap an existing trade, or eventually cleanup the DB table, or I will disable the
-saving until the reload is not completed.
-
 **Exception during fetch of BitMex trade** : It appears, and I have no idea at this time there is an unexpected API response that generate a program
 exception, that need to restart the fetch at the time of failure. I will investigate later on that issue. 
 
@@ -711,9 +727,8 @@ it could not suffise, consider you missed the train.
 there is a timestamp to far in the past or that is in the futur. If your server does not have a NTP service consider to install one,
 and update the datetime of your system, and then restart the bot.
 
-**Binance watcher starting is slow** : Yes, prefetching all USDT and BTC markets take a while, many minutes, be patient, your bot
-will does not have to be restarted every day, once your configured correctly. For testing considers limiting the configured symbols list 
-in the watcher.
+**Binance starting is slow** : Yes, prefetching lot of USDT and BTC markets take a while, many minutes, be patient, your bot
+will does not have to be restarted every day, once your configured correctly. For testing considers limiting the configured symbols lists.
 
 **IG candle limit 10k reached** : Do the maths, how many markets do you want to initiate, to fetch, how many candles history you will need,
 find your way, or try to ask if they can increase your limitations. I have no solution for this problem because its out of my possibility.

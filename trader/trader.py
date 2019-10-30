@@ -35,12 +35,8 @@ class Trader(Runnable):
     """
     Trader base class to specialize per broker.
 
-    @todo use precision formatter for messages where it is missing.
     @todo orders tabulated
     @todo positions tabulated
-    @todo tabulated might support columns shifting from left, and row offet to be displayed better in the terminal
-        after having added the tabulated support directly to terminal
-
     @deprecated Older social copy methods that must be move to social strategy (to be continued, very low priority).
     """
 
@@ -52,15 +48,9 @@ class Trader(Runnable):
     # general command
     COMMAND_INFO = 1
 
-    # bases command
-    COMMAND_LIST_ORDERS = 104                 # display list active orders
-    COMMAND_LIST_POSITIONS = 105              # display list current account positions
-
     # order commands
     COMMAND_CLOSE_MARKET = 110                # close a managed or unmanaged position at market now
     COMMAND_CLOSE_ALL_MARKET = 111            # close any positions of this account at market now
-
-    COMMAND_SHOW_PERFORMANCE = 130            # display the performance for each markets at trader level (prefers using from strategy level)
 
     COMMAND_TRIGGER = 150                     # trigger a posted command using its identifier @todo might be moved to social strategy
 
@@ -125,11 +115,22 @@ class Trader(Runnable):
         """
         return self._activity
     
-    def set_activity(self, status):
+    def set_activity(self, status, market_id=None):
         """
-        Enable/disable execution of orders.
+        Enable/disable execution of orders (create_order, cancel_order, modify_position...) for any markets of the trader or 
+        a specific instrument if market_id is defined.
         """
-        self._activity = status
+        if market_id:
+            self.lock()
+            market = self._markets.get(market_id)
+            if market:
+                maket.set_activity(status)
+            self.unlock()
+        else:
+            self.lock()
+            for k, market in self._markets.items():
+                market.set_activity(status)
+            self.unlock()
 
     def configured_symbols(self):
         """
@@ -191,6 +192,44 @@ class Trader(Runnable):
                 return fn(self, *args, **kwargs)
     
         return wrapped
+
+    def symbols_ids(self):
+        """
+        Returns the complete list containing market-ids, theirs alias and theirs related symbol name.
+        """
+        self.lock()
+
+        names = []
+
+        for k, market in self._markets.items():
+            names.append(market.market_id)
+
+            if market.symbol and market.symbol != market.market_id:
+                names.append(market.symbol)
+
+        self.unlock()
+
+        names.sort()
+
+        return names
+
+    def find_market(self, symbol_or_market_id):
+        """
+        Return market from its market-id or name or symbol.
+        """
+        if not symbol_or_market_id:
+            return None
+
+        market = self._markets.get(symbol_or_market_id)
+        if market:
+            return market
+
+        # or look with mapping of the name
+        for k, mark in self._markets.items():
+            if symbol_or_market_id == mark.market_id or symbol_or_market_id == mark.symbol:
+                return mark
+
+        return None
 
     def log_report(self):
         pass
@@ -350,7 +389,7 @@ class Trader(Runnable):
                             self.create_order(order)
                         else:
                             # manual or strategy copy
-                            Terminal.inst().info("Replicate strategy %s order %s" % (command['strategy'], command['signal_id']), view='info')
+                            Terminal.inst().info("Replicate strategy %s order %s" % (command['strategy'], command['signal-id']), view='info')
 
                             # @todo auto set a take_profit and stop_loss to account R:R if no TP and if SL is None or >=x%
                             order = Order(self, command['symbol'])
@@ -362,97 +401,6 @@ class Trader(Runnable):
                             order.leverage = command.get('leverage', 1)
 
                             self.create_order(order)
-        
-        elif command_type == Trader.COMMAND_LIST_POSITIONS:
-            # display the list of ALL positions of the account (managed or not by a strategy)
-            if self.connected and self._positions:
-                if self.account is None:
-                    return
-
-                Terminal.inst().notice("List %i positions for %s" % (len(self._positions.items()), self._name), view='content')
-
-                if 0:  # @todo  
-                    columns, table, total_size = self.positions_table(style=Terminal.inst().style())
-                    Terminal.inst().table(columns, table, total_size, view='content')
-                else:
-                    self.lock()
-
-                    # simple text
-                    for k, p in self._positions.items():
-                        # per position, profit/loss are in base pair currency, need base exchange rate
-                        market = self.market(p.symbol)
-                        if market is None:
-                            continue
-
-                        if p.quantity <= 0:
-                            continue
-
-                        if market.unit_type == Market.UNIT_AMOUNT:
-                            unit = market.quote
-                        elif market.unit_type == Market.UNIT_CONTRACTS:
-                            unit = ' contracts'
-                        elif market.unit_type == Market.UNIT_SHARES:
-                            unit = ' shares'
-
-                        direction = "Long" if p.direction > 0 else "Short"
-                        Terminal.inst().info("%s size %s%s on market %s from %s" % (direction, p.quantity, unit, p.symbol, self._name), view='content')
-
-                        # for social position
-                        if p.copied_position_id:
-                            Terminal.inst().info("Copied id %s from user %s" % (
-                                p.copied_position_id, p.author.name if p.author is not None else 'myself'), view='content')
-
-                        margin_factor = 1.0 / p.leverage if p.leverage else market.margin_factor
-                        margin = p.margin_cost(market) / market.base_exchange_rate * margin_factor
-
-                        created_date = datetime.fromtimestamp(p.created_time).strftime('%Y-%m-%d %H:%M:%S') if p.created_time else "???"
-
-                        Terminal.inst().info("Quantity %s / Margin %s (x%s)" % (market.format_quantity(p.quantity), margin, 1.0 / margin_factor), view='content')
-                        Terminal.inst().info("Created %s / Entry-price %s / Current exit-price %s" % (
-                            created_date,
-                            market.format_price(p.entry_price),
-                            market.format_price(market.close_exec_price(p.direction))), view='content')
-
-                        Terminal.inst().info("Stop-loss %s / Take-profit %s / Trailing-stop %s" % (
-                            market.format_price(p.stop_loss) if p.stop_loss else "NO",
-                            market.format_price(p.take_profit or 0.0) if p.take_profit else "NO",
-                            "YES" if p.trailing_stop else "NO"), view='content')
-
-                        # display unrealized P/L
-                        profit_loss_msg = "Profit/Loss %s%s (%.2f%%) [%s%s]" % (
-                            market.format_price(p.profit_loss), market.quote_display or market.quote,
-                            p.profit_loss_rate*100.0,
-                            self.account.format_price(p.profit_loss / market.base_exchange_rate), self.account.currency_display or self.account.currency)
-
-                        profit_loss_msg_at_market = "Profit/Loss at market %s%s (%.2f%%) [%s%s]" % (
-                            market.format_price(p.profit_loss_market), market.quote_display or market.quote,
-                            p.profit_loss_market_rate*100.0,
-                            self.account.format_price(p.profit_loss_market / market.base_exchange_rate), self.account.currency_display or self.account.currency)
-
-                        if p.profit_loss > 0.0:
-                            Terminal.inst().high(profit_loss_msg, view='content')
-                            Terminal.inst().high(profit_loss_msg_at_market, view='content')
-                        elif p.profit_loss < 0.0:
-                            Terminal.inst().low(profit_loss_msg, view='content')
-                            Terminal.inst().low(profit_loss_msg_at_market, view='content')
-                        else:
-                            Terminal.inst().info(profit_loss_msg, view='content')
-                            Terminal.inst().info(profit_loss_msg_at_market, view='content')
-
-                        if p.key:
-                            Terminal.inst().action("To close manually at market use key %s" % p.key, view='content')
-
-                        Terminal.inst().info("", view='content')
-
-                    self.unlock()
-
-        elif command_type == Trader.COMMAND_LIST_ORDERS:
-            # display the active orders details
-            if self.connected and self._orders:
-                Terminal.inst().notice("List %i actives orders for %s" % (len(self._orders), self._name), view='content')
-                
-                # columns, table, total_size = trader.orders_table(*Terminal.inst().active_content().format())
-                # Terminal.inst().table(columns, table, total_size, view='content')
 
         elif command_type == Trader.COMMAND_INFO:
             # info on the trade
@@ -491,16 +439,6 @@ class Trader(Runnable):
                 break
 
             self.unlock()            
-
-        elif command_type == Trader.COMMAND_SHOW_PERFORMANCE:
-            results = self.get_live_report()
-
-            if results:
-                Terminal.inst().notice("Performance for markets of %s" % self._name, view='content')
-
-                # @todo display in table
-                for r in results:
-                    Terminal.inst().info("Rate for market %s is %.2f%% / %.4f" % (r[0], r[1]*100, r[2]), view='content')
 
     def ping(self, timeout):
         self._ping = (0, None, True)
@@ -1032,14 +970,7 @@ class Trader(Runnable):
         return price
 
     #
-    # stats
-    #
-
-    def get_live_report(self):
-        return []
-
-    #
-    # data tables
+    # display views
     #
 
     def markets_table(self, style='', offset=None, limit=None, col_ofs=None):
@@ -1291,8 +1222,276 @@ class Trader(Runnable):
 
         return columns[col_ofs:], data, (len(columns), 1)
 
+    def get_active_orders(self):
+        """
+        Generate and return an array of all active orders :
+            symbol: str market identifier
+            id: int order identifier
+            refid: int ref order identifier
+        """
+        results = []
+
+        self.lock()
+
+        for k, order in self._orders.items():
+            market = self._markets.get(order.symbol)
+            if market:
+                results.append({
+                    'mid': market.market_id,
+                    'sym': market.symbol,
+                    'id': order.order_id,
+                    'refid': order.ref_order_id,
+                    'ct': order.created_time,
+                    'tt': order.transact_time,
+                    'd': order.direction_to_str(),
+                    'ot': order.order_type_to_str(),
+                    'l': order.leverage,
+                    'q': market.format_quantity(order.quantity),
+                    'op': market.format_price(order.price) if order.price else "",
+                    'sp': market.format_price(order.stop_price) if order.stop_price else "",
+                    'sl': market.format_price(order.stop_loss) if order.stop_loss else "",
+                    'tp': market.format_price(order.take_profit) if order.take_profit else "",
+                    'tr': "No",
+                    'xq': market.format_quantity(order.executed),
+                    'ro': order.reduce_only,
+                    'he': order.hedging,
+                    'po': order.post_only,
+                    'co': order.close_only,
+                    'mt': order.margin_trade,
+                    'tif': order.time_in_force_to_str(),
+                    'pt': order.price_type_to_str(),
+                    'key': order.key
+                })
+
+        self.unlock()
+
+        return results
+
+    def get_active_positions(self):
+        """
+        Generate and return an array of all active positions :
+            symbol: str market identifier
+            id: int position identifier
+            et: float entry UTC timestamp
+            xt: float exit UTC timestamp
+            d: str 'long' or 'short'
+            l: str leverage
+            tp: str formatted take-profit price
+            sl: str formatted stop-loss price
+            tr: str trailing stop distance or None
+            rate: float profit/loss rate
+            q: float size qty
+            aep: average entry price
+            axp: average exit price
+            pl: position unrealized profit loss rate
+            pnl: position unrealized profit loss
+            mpl: position unrealized profit loss rate at market
+            mpnl: position unrealized profit loss at market
+            pnlcur: trade profit loss currency
+            key: user key
+        """
+        results = []
+
+        self.lock()
+
+        for k, position in self._positions.items():
+            market = self._markets.get(position.symbol)
+            if market:
+                results.append({
+                    'mid': market.market_id,
+                    'sym': market.symbol,
+                    'id': position.position_id,
+                    'et': position.created_time,
+                    'xt': position.closed_time,
+                    'd': position.direction_to_str(),
+                    'l': position.leverage,
+                    'aep': market.format_price(position.entry_price) if position.entry_price else "",
+                    'axp': market.format_price(position.exit_price) if position.exit_price else "",
+                    'q': market.format_quantity(position.quantity),
+                    'tp': market.format_price(position.take_profit) if position.take_profit else "",
+                    'sl': market.format_price(position.stop_loss) if position.stop_loss else "",
+                    'tr': "Yes" if position.trailing_stop else "No",  # market.format_price(position.trailing_stop_distance) if position.trailing_stop_distance else None,
+                    'pl': position.profit_loss_rate,
+                    'pnl': market.format_price(position.profit_loss),
+                    'mpl': position.profit_loss_market_rate,
+                    'mpnl': market.format_price(position.profit_loss_market),
+                    'pnlcur': position.profit_loss_currency,
+                    'cost': market.format_quantity(position.position_cost(market)),
+                    'margin': market.format_quantity(position.margin_cost(market)),
+                    'key': position.key
+                })
+
+        self.unlock()
+
+        return results
+
+    def positions_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False):
+        """
+        Returns a table of any active positions.
+        """
+        columns = ['Market', '#', charmap.ARROWUPDN, 'x', 'P/L(%)', 'SL', 'TP', 'TR', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'UPNL', 'Cost', 'Margin', 'Key']
+
+        if quantities:
+            columns += ['Qty']
+
+        columns = tuple(columns)
+
+        data = []
+
+        self.lock()
+
+        positions = self.get_active_positions()
+        total_size = (len(columns), len(positions))
+
+        if offset is None:
+            offset = 0
+
+        if limit is None:
+            limit = len(positions)
+
+        limit = offset + limit
+
+        positions.sort(key=lambda x: x['et'])
+        positions = positions[offset:limit]
+
+        for t in positions:
+            direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+
+            aep = float(t['aep']) if t['aep'] else 0.0
+            sl = float(t['sl']) if t['sl'] else 0.0
+            tp = float(t['tp']) if t['tp'] else 0.0
+
+            if t['pl'] < 0:  # loss
+                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
+            elif t['pl'] > 0:  # profit
+                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
+            else:  # equity
+                cr = "0.0"
+
+            if t['d'] == 'long' and aep:
+                slpct = (sl - aep) / aep
+                tppct = (tp - aep) / aep
+            elif t['d'] == 'short' and aep:
+                slpct = (aep - sl) / aep
+                slpct = (aep - tp) / aep
+            else:
+                slpct = 0
+                tpcpt = 0
+
+            row = [
+                t['mid'],
+                t['id'],
+                direction,
+                "%.2f" % t['l'],
+                cr,
+                "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
+                "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
+                t['tr'],
+                datetime.fromtimestamp(t['et']).strftime('%Y-%m-%d %H:%M:%S') if t['et'] > 0 else "",
+                t['aep'],
+                datetime.fromtimestamp(t['xt']).strftime('%Y-%m-%d %H:%M:%S') if t['xt'] > 0 else "",
+                t['axp'],
+                "%s%s" % (t['pnl'], t['pnlcur']),
+                t['cost'],
+                t['margin'],
+                t['key']
+            ]
+
+            # @todo xx / market.base_exchange_rate and pnl_currency
+
+            if quantities:
+                row.append(t['q'])
+
+            data.append(row[col_ofs:])
+
+        self.unlock()
+
+        return columns[col_ofs:], data, total_size
+
+    def active_orders_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False):
+        """
+        Returns a table of any active orders.
+        """
+        columns = ['Market', '#', 'ref #', charmap.ARROWUPDN, 'Type', 'x', 'Limit', 'Stop', 'SL', 'TP', 'TR', 'Created date', 'Transac date',
+            'Reduce', 'Post', 'Hedge', 'Close', 'Margin', 'TIF', 'Price', 'Key']
+
+        if quantities:
+            columns += ['Qty']
+            columns += ['Exec']
+
+        columns = tuple(columns)
+
+        data = []
+
+        self.lock()
+
+        orders = self.get_active_orders()
+        total_size = (len(columns), len(orders))
+
+        if offset is None:
+            offset = 0
+
+        if limit is None:
+            limit = len(orders)
+
+        limit = offset + limit
+
+        orders.sort(key=lambda x: x['ct'])
+        orders = orders[offset:limit]
+
+        for t in orders:
+            direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+
+            op = float(t['op']) if t['op'] else 0.0
+            sl = float(t['sl']) if t['sl'] else 0.0
+            tp = float(t['tp']) if t['tp'] else 0.0
+
+            if t['d'] == 'long' and op:
+                slpct = (sl - op) / op if sl else 0.0
+                tppct = (tp - op) / op if tp else 0.0
+            elif t['d'] == 'short' and op:
+                slpct = (op - sl) / op if sl else 0.0
+                slpct = (op - tp) / op if tp else 0.0
+            else:
+                slpct = 0
+                tpcpt = 0
+
+            row = [
+                t['mid'],
+                t['id'],
+                t['refid'],
+                direction,
+                t['ot'],
+                "%.2f" % t['l'],
+                t['op'],
+                t['sp'],
+                "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
+                "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
+                t['tr'],
+                datetime.fromtimestamp(t['ct']).strftime('%Y-%m-%d %H:%M:%S') if t['ct'] > 0 else "",
+                datetime.fromtimestamp(t['tt']).strftime('%Y-%m-%d %H:%M:%S') if t['tt'] > 0 else "",
+                "Yes" if t['ro'] else "No",
+                "Yes" if t['po'] else "No",
+                "Yes" if t['he'] else "No",
+                "Yes" if t['co'] else "No",
+                "Yes" if t['mt'] else "No",
+                t['tif'],
+                t['pt'],
+                t['key']
+            ]
+
+            if quantities:
+                row.append(t['q'])
+                row.append(t['xq'])
+
+            data.append(row[col_ofs:])
+
+        self.unlock()
+
+        return columns[col_ofs:], data, total_size
+
     #
-    # deprecated (previously used for social copy, but now prefer use the social copy strategy, to be removed once done)
+    # @deprecated (previously used for social copy, but now prefer use the social copy strategy, to be removed once done)
     #
 
     def on_enter_position(self, copied_position, command_trigger):
@@ -1363,7 +1562,7 @@ class Trader(Runnable):
             'symbol': order['symbol'],
             'timestamp': float(order['timestamp']),
             'direction': order['direction'],
-            'signal_id': order.get('signal_id', 'undefined'),
+            'signal-id': order.get('signal-id', 'undefined'),
             'strategy': order.get('strategy', None),
             'options': order.get('options', {}),            
         }
@@ -1382,7 +1581,7 @@ class Trader(Runnable):
         if 'market-id' in data:
             self.lock()
 
-            market = self._markets.get(data['market-id'])
+            market = self.find_market(data['market-id'])
             if market:
                 Terminal.inst().info("Market %s of trader %s is %s." % (
                     data['market-id'], self.name, "active" if market.activity else "paused"),

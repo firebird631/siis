@@ -3,7 +3,10 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Trader order
 
-class Order(object):
+from common.keyed import Keyed
+
+
+class Order(Keyed):
     """
     Order for execution on a trader.
 
@@ -41,7 +44,7 @@ class Order(object):
 
         self._trader = trader
         self._symbol = symbol
-        self._created_time = None
+        self._created_time = 0.0
 
         self._author = None
         self._copied_position_id = None
@@ -50,7 +53,7 @@ class Order(object):
 
         self._quantity = 0.0  # total order quantity to realize
 
-        self._transact_time = None  # last qty execution (traded) timestamp
+        self._transact_time = 0.0   # last qty execution (traded) timestamp
         self._executed = 0.0        # executed quantity if partially (executed = quantity when completed)
 
         self._direction = 0
@@ -287,17 +290,39 @@ class Order(object):
         return self._order_type in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT)
 
     def order_type_to_str(self):
-        if self._order_type == ORDER_MARKET:
+        if self._order_type == Order.ORDER_MARKET:
             return "market"
-        elif self._order_type == ORDER_LIMIT:
+        elif self._order_type == Order.ORDER_LIMIT:
             return "limit"
-        elif self._order_type == ORDER_STOP:
+        elif self._order_type == Order.ORDER_STOP:
             return "stop"
-        elif self._order_type == ORDER_STOP_LIMIT:
+        elif self._order_type == Order.ORDER_STOP_LIMIT:
             return "stop-limit"
-        elif self._order_type == ORDER_TAKE_PROFIT:
+        elif self._order_type == Order.ORDER_TAKE_PROFIT:
             return "take-profit"
-        elif self._order_type == ORDER_TAKE_PROFIT_LIMIT:
+        elif self._order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
             return "take-profit-limit"
+
+        return "unknown"
+
+    def time_in_force_to_str(self):
+        if self._time_in_force == Order.TIME_IN_FORCE_GTC:
+            return "good-till-cancelled"
+        elif self._order_type == Order.TIME_IN_FORCE_GTD:
+            return "good-till-date"
+        elif self._order_type == Order.TIME_IN_FORCE_FOK:
+            return "fill-or-kill"
+        elif self._order_type == Order.TIME_IN_FORCE_IOC:
+            return "immediate-or-cancel"
+
+        return "unknown"
+
+    def price_type_to_str(self):
+        if self._price_type == Order.PRICE_LAST:
+            return "last"
+        elif self._price_type == Order.PRICE_INDEX:
+            return "index"
+        elif self._price_type == Order.PRICE_MARK:
+            return "mark"
 
         return "unknown"

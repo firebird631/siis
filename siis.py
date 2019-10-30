@@ -565,17 +565,8 @@ def application(argv):
                             if not result:
                                 result = True
 
-                                # @todo might be replaced by views                                
-                                if value == 'p':
-                                    trader_service.command(Trader.COMMAND_LIST_POSITIONS, {})
-                                elif value == 'o':
-                                    trader_service.command(Trader.COMMAND_LIST_ORDERS, {})
-                                elif value == 'g':
-                                    trader_service.command(Trader.COMMAND_SHOW_PERFORMANCE, {})
-
                                 # display views
-
-                                elif value == 'C':
+                                if value == 'C':
                                     Terminal.inst().clear_content()
                                 elif value == 'D':
                                     Terminal.inst().switch_view('debug')
@@ -587,6 +578,10 @@ def application(argv):
                                     Terminal.inst().switch_view('stats')
                                 elif value == 'P':
                                     Terminal.inst().switch_view('perf')
+                                elif value == 'X':
+                                    Terminal.inst().switch_view('position')
+                                elif value == 'O':
+                                    Terminal.inst().switch_view('order')
                                 elif value == 'T':
                                     Terminal.inst().switch_view('ticker')
                                 elif value == 'A':

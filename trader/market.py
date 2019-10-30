@@ -153,8 +153,7 @@ class Market(object):
         """Allow trading on this market at trader level."""
         return self._activity
 
-    @activity.setter
-    def activity(self, activity):
+    def set_activity(self, activity):
         self._activity = activity
 
     @property

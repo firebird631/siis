@@ -27,10 +27,9 @@ def display_help(commands_handler, user_context=False):
 
         Terminal.inst().message(" - 'p' list positions (will be replaced by a dedicated view)", view='content')
         Terminal.inst().message(" - 'o' list orders (will be replaced by a dedicated view)", view='content')
-        Terminal.inst().message(" - 'g' print trader performance (will be replaced by a dedicated view or removed)", view='content')
 
         Terminal.inst().message(" - 'A' show account view", view='content')
-        Terminal.inst().message(" - 'Q' show assets view", view='content')        
+        Terminal.inst().message(" - 'Q' show assets view", view='content')
         Terminal.inst().message(" - 'M' show markets view", view='content')
         Terminal.inst().message(" - 'T' show tickers view", view='content')
         Terminal.inst().message(" - 'F' show strategy view", view='content')
@@ -38,8 +37,8 @@ def display_help(commands_handler, user_context=False):
         Terminal.inst().message(" - 'P' show performance view", view='content')
         Terminal.inst().message(" - 'I' show console view", view='content')
         Terminal.inst().message(" - 'N' show notification/signal view", view='content')
-        # Terminal.inst().message(" - 'U' list positions", view='content')
-        # Terminal.inst().message(" - 'O' list orders", view='content')
+        Terminal.inst().message(" - 'X' list positions", view='content')
+        Terminal.inst().message(" - 'O' list orders", view='content')
         Terminal.inst().message(" - 'D' show debug view", view='content')
         Terminal.inst().message(" - 'C' clear current view", view='content')
 
