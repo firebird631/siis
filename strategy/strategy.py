@@ -724,6 +724,8 @@ class Strategy(Runnable):
 
                         # initials candles loaded
                         if initial:
+                            logger.debug("Retrieved %s OHLCs for %s in %s" % (len(signal.data[2]), instrument.market_id, timeframe_to_str(signal.data[1])))
+
                             # append the current OHLC from the watcher on live mode
                             if not self.service.backtesting:
                                 instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).current_ohlc(instrument.market_id, signal.data[1]))

@@ -24,6 +24,8 @@ class TimeframeBasedSub(object):
         self._update_at_close = params.get('update-at-close', False)
         self._signal_at_close = params.get('signal-at-close', False)
 
+        self.bootstrap = params.get('bootstrap', 0)
+
         self.candles_gen = CandleGenerator(self.strategy_trader.base_timeframe, self.tf)
         self._last_closed = False  # last generated candle closed
 
@@ -83,12 +85,24 @@ class TimeframeBasedSub(object):
         # last closed candle processed
         self._last_closed = False
 
-        if self.history > self.depth:
+        if self.bootstrap:
             # history is only for initial computation
-            self.history = self.depth
+            self.bootstrap = 0
 
             # don't kept the initials candles
             self.strategy_trader.instrument.reduce_candles(self.tf, self.depth)
+
+    def get_candles(self):
+        """
+        Get the candles list to process.
+        """
+        # candles = self.strategy_trader.instrument.last_candles(self.tf, self.depth)
+        if self.bootstrap > 0:
+            candles = self.strategy_trader.instrument.candles_from(self.tf, self.next_timestamp - self.bootstrap*self.tf)
+        else:
+            candles = self.strategy_trader.instrument.candles_from(self.tf, self.next_timestamp - self.depth*self.tf)
+
+        return candles
 
     #
     # properties

@@ -71,12 +71,12 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
             generated = sub.candles_gen.generate_from_ticks(ticks)
             if generated:
-                self.instrument.add_candle(generated, sub.history)
+                self.instrument.add_candle(generated, sub.depth)  # sub.history)
 
                 # last OHLC close
                 sub._last_closed = True
 
-            self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.history)  # with the non consolidated
+            self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # sub.history) # with the non consolidated
 
         # no longer need them
         self.instrument.clear_ticks()
@@ -96,9 +96,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
             generated = sub.candles_gen.generate_from_candles(candles)
             if generated:
-                self.instrument.add_candle(generated, sub.history)
+                self.instrument.add_candle(generated, sub.depth)  # sub.history)
 
-            self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.history)  # with the non consolidated
+            self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # sub.history)  # with the non consolidated
 
         self.unlock()
 

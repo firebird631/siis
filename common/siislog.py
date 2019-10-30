@@ -134,7 +134,7 @@ class SiisLog(object):
 
         # stderr to terminal in info level
         self.console = TerminalHandler()  #  logging.StreamHandler()
-        self.console.setLevel(logging.INFO)
+        self.console.setLevel(logging.DEBUG)
 
         # self.term_formatter = logging.Formatter('- %(name)-12s: %(levelname)-8s %(message)s')
         self.term_formatter = ColoredFormatter('%(name)-s%(message)s', style)

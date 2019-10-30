@@ -31,8 +31,7 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
         self.last_signal = None
 
     def process(self, timestamp):
-        # candles = self.strategy_trader.instrument.last_candles(self.tf, self.depth)
-        candles = self.strategy_trader.instrument.candles_from(self.tf, self.next_timestamp - self.depth*self.tf)
+        candles = self.get_candles()
 
         if self.tf <= self.strategy_trader.min_traded_timeframe:
             return

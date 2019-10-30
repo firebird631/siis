@@ -15,6 +15,8 @@ from strategy.strategymargintrade import StrategyMarginTrade
 from strategy.strategypositiontrade import StrategyPositionTrade
 from strategy.strategytrade import StrategyTrade
 
+from instrument.instrument import Instrument
+
 from common.utils import timeframe_to_str
 from notifier.signal import Signal
 from terminal.terminal import Terminal
@@ -35,6 +37,14 @@ class StrategyTrader(object):
         notification receiver (only then keep notify_order calls), streaming will be done on a distinct service.
         disable any others streaming capacities on the strategy-traders excepted for debug purposes.
     """
+
+    MARKET_TYPE_MAP = {
+        'asset': Instrument.TRADE_SPOT,
+        'spot': Instrument.TRADE_SPOT,
+        'margin': Instrument.TRADE_MARGIN,
+        'position': Instrument.TRADE_POSITION,
+        'ind-margin': Instrument.TRADE_IND_MARGIN,
+    }
 
     REPORTING_NONE = 0
     REPORTING_VERBOSE = 1
