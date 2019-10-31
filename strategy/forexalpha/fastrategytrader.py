@@ -33,13 +33,6 @@ logger = logging.getLogger('siis.strategy.forexalpha')
 class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     """
     Forex Alpha strategy trader.
-
-    @todo Mettre a jour en utilisant le nouveau paradygme. Attention ici on bossait avec 2 sub nomme major et minor,
-        et le consensus s'appuie sur cela pour le calcule du score final. On degagera 2 methode, une avec du TD9 en plus et
-        une logique decisionnel plutot qu'une regression lineaire, mais on gardera ce precedent modele aussi pour comparaison.
-
-    @todo Pour le forex on peu pour le stop suiveur fonctionner avec le UPNL qui est en fiat car avec le levier on aura
-        une coherence entre gain/perte % fiat et ce que ca represente sur la position et aussi sur le bag.
     """
 
     def __init__(self, strategy, instrument, params):
@@ -93,19 +86,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if timestamp - self._last_filter_cache[0] < 60*60:  # only once per hour
             return self._last_filter_cache[1], self._last_filter_cache[2]
 
-        trader = self.strategy.trader()
-
-        if not trader:
-            self._last_filter_cache = (timestamp, False, False)
-            return False, False
-
-        market = trader.market(self.instrument.market_id)
-
-        if not market:
-            self._last_filter_cache = (timestamp, False, False)
-            return False, False
-
-        if not market.has_margin:
+        if not self.instrument.has_margin:
             # only allow margin markets
             self._last_filter_cache = (timestamp, False, False)
             return False, False
@@ -366,14 +347,17 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.update_trades(timestamp)
 
         # retained long entry do the order entry signal
-        for entry in retained_entries:
+        for signal in retained_entries:
             # @todo problem want only in live mode, not during backtesting
             height = 0  # self.instrument.height(entry.timeframe, -1)
 
             # @todo or trade at order book, compute the limit price from what the order book offer or could use ATR
-            signal_price = entry.price + height
+            signal_price = signal.price + height
 
-            self.process_entry(timestamp, entry.dir, signal_price, entry.tp, entry.sl, entry.timeframe)
+            if not self.process_entry(timestamp, signal.dir, signal_price, signal.tp, signal.sl, signal.timeframe):
+                # notify a signal only
+                self.notify_signal(signal)
+
 
         # streaming
         self.stream()
@@ -401,27 +385,21 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         return current_same_qty, current_opposite_qty
 
     def process_entry(self, timestamp, direction, price, take_profit, stop_loss, timeframe):
+        if not self.activity:
+            return False
+
         trader = self.strategy.trader()
-        market = trader.market(self.instrument.market_id)
-
         quantity = 0.0
-        price = market.ofr # signal is at ofr price (for now limit entry at current ofr price)
 
-        date_time = datetime.fromtimestamp(timestamp)
-        date_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
+        price = self.instrument.open_exec_price(direction)
+        quantity = self.compute_margin_quantity(trader, price)
 
-        # ajust max quantity according to free asset of quote, and convert in asset base quantity
-        if 0: # not trader.has_margin(self.market.margin_cost(self.instrument.trade_quantity)):
-            Terminal.inst().notice("Not enought free margin %s, has %s but need %s" % (
-                market.quote, market.format_quantity(trader.account.margin_balance), market.format_quantity(self.instrument.trade_quantity)), view='status')
-        else:
-            quantity = market.adjust_quantity(self.instrument.trade_quantity)
+        if quantity <= 0.0:
+            return False
     
         #
         # create an order
         #
-
-        do_order = self.activity
 
         order_hedging = False
         order_quantity = 0.0
@@ -440,99 +418,79 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # limit best price at tiniest ofr price
 
         # adjust price to min / tick size / max
-        order_price = market.adjust_price(market.ofr)
+        order_price = self.instrument.adjust_price(price)
 
         if take_profit > 0:
-            take_profit = market.adjust_price(take_profit)
+            take_profit = self.instrument.adjust_price(take_profit)
 
         if stop_loss > 0:
-            stop_loss = market.adjust_price(stop_loss)
+            stop_loss = self.instrument.adjust_price(stop_loss)
 
         #
         # cancelation of the signal
         #
 
-        if order_quantity <= 0 or order_quantity * price < market.min_notional:
-            # min notional not reached
-            do_order = False
+        if not self.check_min_notional(order_quantity, order_price):
+            return False
 
-        if self.trades:
-            self.lock()
-
-            if len(self.trades) >= self.max_trades:
-                # no more than max simultaneous trades
-                do_order = False
-
-            for trade in self.trades:
-                if trade.timeframe == timeframe:
-                    do_order = False
-
-            # if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].entry_open_time) < self.trade_delay):
-            if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].entry_open_time) < timeframe):
-                # the same order occurs just after, ignore it
-                do_order = False
-
-            self.unlock()
+        if self.has_max_trades(self.max_trades):
+            return False
  
         #
         # execution of the order
         #
 
-        if do_order:
-            trade = StrategyPositionTrade(timeframe)
+        trade = StrategyPositionTrade(timeframe)
 
-            logger.info("Order %s %s qty=%s p=%s sl=%s tp=%s ts=%s" % ("long" if direction > 0 else "short", self.instrument.market_id,
-                market.format_quantity(order_quantity), market.format_price(order_price), market.format_price(stop_loss), market.format_price(take_profit), date_str))
+        # the new trade must be in the trades list if the event comes before, and removed after only it failed
+        self.add_trade(trade)
 
-            # the new trade must be in the trades list if the event comes before, and removed after only it failed
-            self.add_trade(trade)
+        if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
+            # initiate the take-profit limit order
+            if take_profit > 0:
+                trade.modify_take_profit(trader, self.instrument, take_profit)
 
-            if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
-                # initiate the take-profit limit order
-                if take_profit > 0:
-                    trade.modify_take_profit(trader, self.instrument, take_profit)
-                
-                # # initiate the stop-loss order
-                # if stop_loss > 0:
-                #     trade.modify_stop_loss(trader, self.instrument, stop_loss)
-
-                # notify
-                self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, market.format_price(price),
-                        timestamp, trade.timeframe, 'entry', None, market.format_price(trade.sl), market.format_price(trade.tp))
-
-                # want it on the streaming (take care its only the order signal, no the real complete execution)
-                if self._global_streamer:
-                    # @todo remove me after notify manage that
-                    if trade.direction > 0:
-                        self._global_streamer.member('buy-entry').update(price, timestamp)
-                    elif trade.direction < 0:
-                        self._global_streamer.member('sell-entry').update(price, timestamp)
-            else:
-                self.remove_trade(trade)
-
-    def process_exit(self, timestamp, trade, exit_price):
-        if trade is None:
-            return
-
-        do_order = self.activity
-
-        if do_order:
-            # close at market as taker
-            trader = self.strategy.trader()
-            trade.close(trader, self.instrument)
-
-            market = trader.market(self.instrument.market_id)
+            # # initiate the stop-loss order
+            # if stop_loss > 0:
+            #     trade.modify_stop_loss(trader, self.instrument, stop_loss)
 
             # notify
-            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, market.format_price(exit_price),
-                    timestamp, trade.timeframe, 'exit', trade.estimate_profit_loss(self.instrument))
+            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
+                    timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
 
+            # want it on the streaming (take care its only the order signal, no the real complete execution)
             if self._global_streamer:
                 # @todo remove me after notify manage that
-                if trade.direction > 0:
-                    self._global_streamer.member('buy-exit').update(exit_price, timestamp)
-                elif trade.direction < 0:
-                    self._global_streamer.member('sell-exit').update(exit_price, timestamp)
+                self._global_streamer.member('buy-entry' if trade.direction > 0 else 'sell-entry').update(order_price, timestamp)
+
+            return True
+        else:
+            self.remove_trade(trade)
+            return False
+
+    def process_exit(self, timestamp, trade, exit_price):
+        if not self.activity:
+            return False
+
+        if trade is None:
+            return False
+
+        # close at market as taker
+        trader = self.strategy.trader()
+        result = trade.close(trader, self.instrument) > 0
+
+        # notify
+        self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(exit_price),
+                timestamp, trade.timeframe, 'exit', trade.estimate_profit_loss(self.instrument))
+
+        if self._global_streamer:
+            # @todo remove me after notify manage that
+            if trade.direction > 0:
+                self._global_streamer.member('buy-exit').update(exit_price, timestamp)
+            elif trade.direction < 0:
+                self._global_streamer.member('sell-exit').update(exit_price, timestamp)
+
+        return result
 
     #### @deprecated scorify method kept for history reference.
         # is_div = False

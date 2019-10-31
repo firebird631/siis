@@ -282,3 +282,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             return float(param)
         else:
             return 0.0
+
+    def notify_signal(self, signal):
+        if signal:
+            self.strategy.notify_order(-1, signal.direction, self.instrument.market_id, self.instrument.format_price(signal.price),
+                signal.timestamp, signal.timeframe, signal.signal_type_str(), None, self.instrument.format_price(signal.stop_loss),
+                self.instrument.format_price(signal.take_profit), comment=signal.comment)

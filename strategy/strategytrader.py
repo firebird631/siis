@@ -1003,11 +1003,10 @@ class StrategyTrader(object):
 
         return quantity
 
-    def compute_margin_quantity(self, trader):
+    def compute_margin_quantity(self, trader, price):
         quantity = 0.0
 
-        # @todo
-        if 0:#not trader.has_margin(self.instrument.margin_cost(self.instrument.trade_quantity)):
+        if not trader.has_margin(self.instrument.market_id, self.instrument.trade_quantity, price):
             msg = "Not enought free margin %s, has %s but need %s" % (
                 self.instrument.quote, self.instrument.format_quantity(trader.account.margin_balance),
                 self.instrument.format_quantity(self.instrument.trade_quantity))

@@ -359,18 +359,11 @@ class Strategy(Runnable):
                         instrument.trade_quantity = mapped_instrument.get('size', 0.0)
                         instrument.leverage = mapped_instrument.get('leverage', 1.0)
 
-                        # for account in EUR assumes a little hack to at least have an approximation in backtesting
-                        # in case the market-quote/account-currency is not available
-                        CURRENCY_HACK = {
-                            'BTC': 11350.0,
-                            'EUR': 1.0,
-                            'JPY': 129.31,
-                            'USD': 1.0/0.86,
-                            'CAD': 1.0/0.66,
-                            'NZD': 1.0/0.56,
-                        }
-
-                        instrument.base_exchange_rate = CURRENCY_HACK.get(instrument.currency, 1.0)
+                        # if self.service.backtesting:
+                        #     # no have udpate of this value, to implication to have it
+                        #     # instrument.base_exchange_rate = 1.0
+                        #     # instrument.contract_size = 1.0
+                        #     # instrument.value_per_pip = 1.0
 
                         market = self._trader.market(symbol)
                         if market:
@@ -765,8 +758,8 @@ class Strategy(Runnable):
                             if signal.data[4]:
                                 instrument.market_ofr = signal.data[4]
 
-                            if signal.data[5]:
-                                instrument.base_exchange_rate = signal.data[5]
+                            # if signal.data[5]:
+                            #     instrument.base_exchange_rate = signal.data[5]
 
                             if signal.data[8]:
                                 instrument.vol24h_base = signal.data[8]
@@ -910,12 +903,13 @@ class Strategy(Runnable):
 
             # update market at minor candles
             if updated:
-                # update the market instrument data before processing, but we does not have the exact base exchange rate
-                # so currency converted prices on backtesting are approximative even more invalids
+                # update the market instrument data before processing
+                # but we does not have the exact base exchange rate and contract size, its emulated in the paper trader
 
                 # the feeder update the instrument price data, so use them directly
                 trader.on_update_market(instrument.market_id, True, instrument.last_update_time,
-                        instrument.market_bid, instrument.market_ofr, instrument.base_exchange_rate)
+                        instrument.market_bid, instrument.market_ofr,
+                        None)
 
         # update strategy as necessary
         if updated:
@@ -1767,10 +1761,10 @@ class Strategy(Runnable):
                 "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
                 "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
                 t['tf'],
-                datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S') if t['eot'] > 0 else "",
-                datetime.fromtimestamp(t['freot']).strftime('%Y-%m-%d %H:%M:%S') if t['freot'] > 0 else "",
+                datetime.fromtimestamp(t['eot']).strftime('%y-%m-%d %H:%M:%S') if t['eot'] > 0 else "",
+                datetime.fromtimestamp(t['freot']).strftime('%y-%m-%d %H:%M:%S') if t['freot'] > 0 else "",
                 t['aep'],
-                datetime.fromtimestamp(t['lrxot']).strftime('%Y-%m-%d %H:%M:%S') if t['lrxot'] > 0 else "",
+                datetime.fromtimestamp(t['lrxot']).strftime('%y-%m-%d %H:%M:%S') if t['lrxot'] > 0 else "",
                 t['axp'],
                 t['com'],
                 "%s%s" % (t['upnl'], t['pnlcur'])
@@ -1866,10 +1860,10 @@ class Strategy(Runnable):
                 "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
                 "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
                 t['tf'],
-                datetime.fromtimestamp(t['eot']).strftime('%Y-%m-%d %H:%M:%S'),
-                datetime.fromtimestamp(t['freot']).strftime('%Y-%m-%d %H:%M:%S'),
+                datetime.fromtimestamp(t['eot']).strftime('%y-%m-%d %H:%M:%S'),
+                datetime.fromtimestamp(t['freot']).strftime('%y-%m-%d %H:%M:%S'),
                 t['aep'],
-                datetime.fromtimestamp(t['lrxot']).strftime('%Y-%m-%d %H:%M:%S'),
+                datetime.fromtimestamp(t['lrxot']).strftime('%y-%m-%d %H:%M:%S'),
                 t['axp'],
                 t['com'],
                 "%s%s" % (t['rpnl'], t['pnlcur'])
@@ -1965,7 +1959,7 @@ class Strategy(Runnable):
         elif market.has_margin and market.has_position:
             trade = StrategyPositionTrade(timeframe)
 
-            if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
+            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
@@ -1974,7 +1968,7 @@ class Strategy(Runnable):
         elif market.has_margin and market.indivisible_position:
             trade = StrategyIndMarginTrade(timeframe)
 
-            if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
+            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
@@ -1983,7 +1977,7 @@ class Strategy(Runnable):
         elif market.has_margin and not market.indivisible_position and not markets.has_position:
             trade = StrategyMarginTrade(timeframe)
 
-            if not trader.has_margin(market.margin_cost(strategy_trader.instrument.trade_quantity*quantity_rate)):
+            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 

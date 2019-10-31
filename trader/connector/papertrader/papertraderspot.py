@@ -64,7 +64,7 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
         quote_qty = base_qty * open_exec_price  # quote_market.adjust_quantity(base_qty * open_exec_price) if quote_market else trader.adjust_quantity(base_qty * open_exec_price)
 
         # @todo free quantity
-        if quote_qty > quote_asset.quantity:
+        if not trader._unlimited and quote_qty > quote_asset.quantity:
             trader.unlock()
 
             # and then rejected order
@@ -100,9 +100,10 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
         # history
         #
 
-        # and keep for history (backtesting reporting)
-        history = PaperTraderHistoryEntry(order, trader.account.balance, trader.account.margin_balance)
-        trader._history.add(history)
+        if trader._history:
+            # and keep for history (backtesting reporting)
+            history = PaperTraderHistoryEntry(order, trader.account.balance, trader.account.margin_balance)
+            trader._history.add(history)
 
         # unlock before notify signals
         trader.unlock()
@@ -158,7 +159,7 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
         quote_qty = base_qty * close_exec_price  # quote_market.adjust_quantity(base_qty * close_exec_price) if quote_market else trader.adjust_quantity(base_qty * close_exec_price)
 
         # @todo free quantity
-        if base_qty > base_asset.quantity:
+        if not trader._unlimited and base_qty > base_asset.quantity:
             trader.unlock()
 
             # and then rejected order
@@ -203,10 +204,13 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
         # history
         #
 
-        # and keep for history (backtesting reporting)
-        history = PaperTraderHistoryEntry(order, trader.account.balance, trader.account.margin_balance, delta_price/market.one_pip_means,
-            gain_loss_rate, position_gain_loss, position_gain_loss_currency)
-        trader._history.add(history)
+        if trader._history:
+            # and keep for history (backtesting reporting)
+            history = PaperTraderHistoryEntry(order,
+                trader.account.balance, trader.account.margin_balance, delta_price/market.one_pip_means,
+                gain_loss_rate, position_gain_loss, position_gain_loss_currency)
+
+            trader._history.add(history)
 
         # unlock before notify signals
         trader.unlock()

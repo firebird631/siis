@@ -347,7 +347,7 @@ class Position(Keyed):
         if market is None:
             return 0.0
 
-        return self.quantity * (market.lot_size * market.contract_size)
+        return self.quantity * (market.lot_size * market.contract_size) * self._entry_price
 
     def margin_cost(self, market):
         """
@@ -357,7 +357,7 @@ class Position(Keyed):
         if market is None:
             return 0.0
 
-        return self.quantity * (market.lot_size * market.contract_size) * market.margin_factor
+        return self.quantity * (market.lot_size * market.contract_size) * market.margin_factor * self._entry_price
 
     def direction_to_str(self):
         if self._direction > 0:

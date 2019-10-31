@@ -299,7 +299,6 @@ class Instrument(object):
     @member symbol str Common usual name (ex: EURUSD, BTCUSD).
     @member market_id str Unique broker identifier.
     @member alias str A secondary or display name.
-    @member base_exchance_rate float Rate of the quote symbol over its related account currency.
 
     @note ofr is a synonym for ask.
 
@@ -394,7 +393,7 @@ class Instrument(object):
     ORDER_TAKE_PROFIT_LIMIT = 16
     ORDER_ALL = 32-1
 
-    __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_base_exchange_rate', '_tradeable', '_currency', '_trade_quantity', '_leverage', \
+    __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_tradeable', '_currency', '_trade_quantity', '_leverage', \
                 '_market_bid', '_market_ofr', '_last_update_time', '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
                 '_ticks', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging',
 
@@ -404,7 +403,6 @@ class Instrument(object):
         self._symbol = symbol
         self._market_id = market_id
         self._alias = alias
-        self._base_exchange_rate = 1.0
         self._tradeable = True
 
         self._base = ""
@@ -602,20 +600,6 @@ class Instrument(object):
     @vol24h_quote.setter
     def vol24h_quote(self, v):
         self._vol24h_quote = v
-
-    @property
-    def base_exchange_rate(self):
-        """
-        Current base exchange rate from the quote to the account currency.
-        It is used to compute the profit/loss in account currency unit.
-        But in backtesting it is possible that we don't have this information,
-        and this ratio is non static.
-        """
-        return self._base_exchange_rate
-
-    @base_exchange_rate.setter
-    def base_exchange_rate(self, v):
-        self._base_exchange_rate = v
  
     #
     # limits

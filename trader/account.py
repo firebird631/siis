@@ -202,7 +202,10 @@ class Account(object):
         self._asset_balance = balance
         self._free_asset_balance = free
 
-    def add_used_margin(self, margin):
+    def use_margin(self, margin):
+        self._margin_balance -= margin
+
+    def free_margin(self, margin):
         self._margin_balance += margin
 
     def set_used_margin(self, used_margin):

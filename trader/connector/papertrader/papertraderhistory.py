@@ -83,7 +83,6 @@ class PaperTraderHistoryEntry(object):
 class PaperTraderHistory(object):
     """
     History when paper trading, but could be done by an external listener, eventually a webapp.
-    @todo margin_balance issue again !
     @todo generate/call signal for order and position (create, update, delete, reject, cancel) but how to manage them because if strategy listen from watcher ?
     @todo distinct multiple position of single per instrument and hedging mode.
     @todo add signals emit for position opened/update/closed

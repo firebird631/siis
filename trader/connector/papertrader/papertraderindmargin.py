@@ -72,13 +72,10 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
 
         if order.direction == current_position.direction:
             # first, same direction, increase the position
-            # it's what we have really buy
-            realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+            realized_position_cost = market.effective_cost(order.quantity, open_exec_price)
+            margin_cost = market.margin_cost(order.quantity, open_exec_price)
 
-            # check available margin
-            margin_cost = realized_position_cost * margin_factor / base_exchange_rate
-
-            if not trader.has_margin(margin_cost):
+            if not trader._unlimited and trader.account.margin_balance < margin_cost:
                 # and then rejected order
                 trader.unlock()
 
@@ -97,7 +94,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             exec_price = open_exec_price
 
             # increase used margin
-            trader.account.add_used_margin(margin_cost)
+            trader.account.use_margin(margin_cost)
         else:
             # different direction
             if current_position.quantity > order.quantity:
@@ -105,11 +102,11 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 # take the profit/loss from the difference by order.quantity and adjust the entry price and quantity
                 position_gain_loss = effective_price * order.quantity
 
-                # it's what we have really closed
-                realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+                realized_position_cost = market.effective_cost(order.quantity, close_exec_price)
+                margin_cost = market.margin_cost(order.quantity, close_exec_price)
 
                 # and decrease used margin
-                trader.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
+                trader.account.free_margin(margin_cost)
 
                 # entry price might not move...
                 # current_position.entry_price = ((current_position.entry_price * current_position.quantity) - (close_exec_price * order.quantity)) / 2
@@ -125,25 +122,25 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 position_gain_loss = effective_price * current_position.quantity
                 current_position.quantity = 0.0
 
-                # it's what we have really closed
-                realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+                realized_position_cost = market.effective_cost(order.quantity, close_exec_price)
+                margin_cost = market.margin_cost(order.quantity, close_exec_price)
 
                 # directly executed quantity
                 order.executed = order.quantity
                 exec_price = close_exec_price
 
                 # and decrease used margin
-                trader.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
+                trader.account.free_margin(margin_cost)
             else:
                 # third case the position is reversed
                 # 1) get the profit loss
                 position_gain_loss = effective_price * current_position.quantity
 
-                # it's what we have really closed
-                realized_position_cost = order.quantity * (lot_size * contract_size)  # in base currency
+                realized_position_cost = market.effective_cost(current_position.quantity, close_exec_price)
+                margin_cost = market.margin_cost(current_position.quantity, close_exec_price)
 
                 # first decrease of released margin
-                trader.account.add_used_margin(-realized_position_cost * margin_factor / base_exchange_rate)
+                trader.account.free_margin(margin_cost)
 
                 # 2) adjust the position entry
                 current_position.quantity = order.quantity - current_position.quantity
@@ -156,12 +153,13 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 order.executed = order.quantity
                 exec_price = open_exec_price
 
+                margin_cost = market.margin_cost(order.quantity-current_position.quantity, open_exec_price)
+
                 # next increase margin of the new volume
-                trader.account.add_used_margin((order.quantity * lot_size * contract_size * margin_factor) / base_exchange_rate)
+                trader.account.use_margin(margin_cost)
 
         # transaction time is current timestamp
         order.transact_time = trader.timestamp
-
         #order.set_position_id(current_position.position_id)
 
         if position_gain_loss != 0.0 and realized_position_cost > 0.0:
@@ -186,8 +184,6 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             elif position_gain_loss < 0.0:
                 Terminal.inst().low("Close loosing position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
                     position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
-
-            logger.debug("Account balance %.2f / Margin balance %.2f" % (trader.account.balance, trader.account.margin_balance))
         else:
             gain_loss_rate = 0.0
 
@@ -195,11 +191,13 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         # history
         #
 
-        # and keep for history (backtesting reporting)
-        history = PaperTraderHistoryEntry(order, trader.account.balance, trader.account.margin_balance, delta_price/one_pip_means,
-                gain_loss_rate, position_gain_loss, position_gain_loss/base_exchange_rate)
+        if trader._history:
+            # and keep for history (backtesting reporting)
+            history = PaperTraderHistoryEntry(order,
+                    trader.account.balance, trader.account.margin_balance, delta_price/one_pip_means,
+                    gain_loss_rate, position_gain_loss, position_gain_loss/base_exchange_rate)
 
-        trader._history.add(history)
+            trader._history.add(history)
 
         # unlock before notify signals
         trader.unlock()
@@ -306,13 +304,10 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         # unique position per market
         position_id = market.market_id
 
-        # it's what we have really buy
-        realized_position_cost = order.quantity * (market.lot_size * market.contract_size)  # in base currency
+        realized_position_cost = market.effective_cost(order.quantity, open_exec_price)
+        margin_cost = market.margin_cost(order.quantity, open_exec_price)
 
-        # check available margin
-        margin_cost = realized_position_cost * market.margin_factor / market.base_exchange_rate
-
-        if not trader.has_margin(margin_cost):
+        if not trader._unlimited and trader.account.margin_balance < margin_cost:
             # and then rejected order
             trader.unlock()
 
@@ -350,14 +345,15 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         trader._positions[position_id] = position
 
         # increase used margin
-        trader.account.add_used_margin(margin_cost)
+        trader.account.use_margin(margin_cost)
 
         #
         # history
         #
 
-        history = PaperTraderHistoryEntry(order, trader.account.balance, trader.account.margin_balance)
-        trader._history.add(history)
+        if trader._history:
+            history = PaperTraderHistoryEntry(order, trader.account.balance, trader.account.margin_balance)
+            trader._history.add(history)
 
         # unlock before notify signals
         trader.unlock()

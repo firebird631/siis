@@ -550,7 +550,7 @@ class BoostedBlueSkyDayStrategy(Strategy):
 
                 # update the market instrument data before processing, but we does not have the exact base exchange rate so currency converted
                 # prices on backtesting are informals
-                trader.on_update_market(instrument.market_id, True, timestamp, instrument.bid(), instrument.ofr(), instrument.base_exchange_rate)
+                trader.on_update_market(instrument.market_id, True, timestamp, instrument.bid(), instrument.ofr(), None)  # instrument.base_exchange_rate)
 
                 if self._reversal:
                     self.__update_reversal(instrument)

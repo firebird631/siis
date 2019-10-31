@@ -34,9 +34,6 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
     - Enter, exit as possible as maker (limit order)
     - Stop are taker (market order)
-
-    @todo Need to cancel a trade if not executed after a specific timeout. If partially executed, after the timeout only cancel the
-        buy order, keep the trade active of course.    
     """
 
     def __init__(self, strategy, instrument, params):
@@ -480,58 +477,30 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.update_trades(timestamp)
 
         # retained long entry do the order entry signal
-        for entry in retained_entries:
-            self.process_entry(timestamp, entry.dir, entry.price, entry.tp, entry.sl, entry.timeframe, entry.get('partial-take-profit', 0))
+        for signal in retained_entries:
+            if not self.process_entry(timestamp, signal.dir, signal.price, signal.tp, signal.sl, signal.timeframe, signal.get('partial-take-profit', 0)):
+                # notify a signal only
+                self.notify_signal(signal)
 
         # streaming
         self.stream()
 
-    def count_quantities(self, direction):
-        """
-        Return the actual quantity of any of the position on this market on the two directions.
-        @return tuple (on the same direction, on the opposite direction)
-        """
-        trader = self.strategy.trader()
-
-        current_opposite_qty = 0.0
-        current_same_qty = 0.0
-
-        positions = trader.positions(self.instrument.market_id)
-
-        for position in positions:
-            if position.direction != direction:
-                # have in opposite directions ? close them !
-                current_opposite_qty += position.quantity
-            else:
-                # or same direction ?
-                current_same_qty += position.quantity
-
-        return current_same_qty, current_opposite_qty
-
     def process_entry(self, timestamp, direction, price, take_profit, stop_loss, timeframe, partial_tp):
+        if not self.activity:
+            return False
+
         trader = self.strategy.trader()
-
         quantity = 0.0
-        price = self.instrument.market_ofr  # signal is at ofr price (for now limit entry at current ofr price)
 
-        date_time = datetime.fromtimestamp(timestamp)
-        date_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
+        price = self.instrument.open_exec_price(direction)
+        quantity = self.compute_margin_quantity(trader, price)
 
-        # ajust max quantity according to free asset of quote, and convert in asset base quantity
-        # @todo add instrument.margin_cost(qty)
-        if 0: # not trader.has_margin(self.instrument.margin_cost(self.instrument.trade_quantity)):
-            Terminal.inst().notice("Not enought free margin %s, has %s but need %s" % (
-                self.instrument.quote, self.instrument.format_quantity(trader.account.margin_balance),
-                self.instrument.format_quantity(self.instrument.trade_quantity)), view='status')
-        else:
-            quantity = self.instrument.adjust_quantity(self.instrument.trade_quantity)
+        if quantity <= 0.0:
+            return False
     
         #
         # create an order
         #
-
-        # only if active
-        do_order = self.activity
 
         order_hedging = False
         order_quantity = 0.0
@@ -562,68 +531,45 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # cancelation of the signal
         #
 
-        if order_quantity <= 0 or order_quantity * price < self.instrument.min_notional:
-            # min notional not reached
-            do_order = False
+        if not self.check_min_notional(order_quantity, order_price):
+            return False
 
-        if self.trades:
-            self.lock()
-
-            if len(self.trades) >= self.max_trades:
-                # no more than max simultaneous trades
-                do_order = False
-
-            for trade in self.trades:
-                if trade.direction != direction:  # or trade.timeframe == timeframe:
-                    # not on the same timeframe and cannot hedge on crypto market
-                    do_order = False
-
-            # if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].entry_open_time) < self.trade_delay):
-            if self.trades and (self.trades[-1].dir == direction) and ((timestamp - self.trades[-1].entry_open_time) < timeframe):
-                # the same order occurs just after, ignore it
-                do_order = False
-
-            self.unlock()
+        if self.has_max_trades(self.max_trades):
+            return False
  
         #
         # execution of the order
         #
 
-        if do_order:
-            trade = StrategyIndMarginTrade(timeframe)
+        trade = StrategyIndMarginTrade(timeframe)
 
-            # the new trade must be in the trades list if the event comes before, and removed after only it failed
-            self.add_trade(trade)
+        # the new trade must be in the trades list if the event comes before, and removed after only it failed
+        self.add_trade(trade)
 
-            trade.set('partial-take-profit', partial_tp)
+        trade.set('partial-take-profit', partial_tp)
 
-            if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
-                # initiate the take-profit limit order
-                # if take_profit > 0:
-                #    trade.modify_take_profit(trader, self.instrument, take_profit)
+        if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
+            # initiate the take-profit limit order
+            # if take_profit > 0:
+            #    trade.modify_take_profit(trader, self.instrument, take_profit)
 
-                # initiate the stop-loss order
-                # if stop_loss > 0:
-                #     trade.modify_stop_loss(trader, self.instrument, stop_loss)
+            # initiate the stop-loss order
+            # if stop_loss > 0:
+            #     trade.modify_stop_loss(trader, self.instrument, stop_loss)
 
-                # notify
-                self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
-                        timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
+            # notify
+            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
+                    timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
 
-                # want it on the streaming (take care its only the order signal, no the real complete execution)
-                if self._global_streamer:
-                    # @todo remove me after notify manage that
-                    if trade.direction > 0:
-                        self._global_streamer.member('buy-entry').update(price, timestamp)
-                    elif trade.direction < 0:
-                        self._global_streamer.member('sell-entry').update(price, timestamp)
-            else:
-                self.remove_trade(trade)
+            # want it on the streaming (take care its only the order signal, no the real complete execution)
+            if self._global_streamer:
+                # @todo remove me after notify manage that
+                self._global_streamer.member('buy-entry' if trade.direction > 0 else 'sell-entry').update(order_price, timestamp)
 
+            return True
         else:
-            # notify a signal only
-            self.strategy.notify_order(-1, direction, self.instrument.market_id, self.instrument.format_price(price),
-                    timestamp, timeframe, 'entry', None, self.instrument.format_price(stop_loss), self.instrument.format_price(take_profit))
+            self.remove_trade(trade)
+            return False
 
     def process_exit(self, timestamp, trade, exit_price):
         if trade is None:

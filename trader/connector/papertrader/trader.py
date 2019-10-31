@@ -38,24 +38,27 @@ class PaperTrader(Trader):
     Only for simulation paper trader.
     In backtesting market data are set manually using method set_market(...).
 
-    @todo support of slippage will need a list of order, and to process in update time, and need a tick level or order book data.
-    @note ORDER_STOP_LIMIT and ORDER_TAKE_PROFIT_LIMIT orders are not implemented at this time
-    @todo A profil with unlimited asset/margin.
-    @issue Margin computation with BitMex markets (base exchange rate or what else is going wrong during the calculation ?)
+    @todo Simulation of a pseudo-random slippage.
     """
 
     def __init__(self, service, name="papertrader.siis"):
         super().__init__(name, service)
 
-        self._spreads = {}  # spread per market
         self._slippage = 0  # slippage in ticks (not supported for now)
 
         self._watcher = None  # in backtesting refers to a dummy watcher
+        self._history = None
+        self._unlimited = False
 
-        self._history = PaperTraderHistory(self)  # trades history for reporting
+        trader_config = service.trader_config(name)
+        paper_mode = trader_config.get('paper-mode')
+        if paper_mode:
+            if paper_mode.get("reporting", "none") == "verbose":
+                self._history = PaperTraderHistory(self)  # trades history for reporting
+
+            self._unlimited = paper_mode.get("unlimited", True)
+
         self._account = PaperTraderAccount(self)
-
-        self._ordering = []  # pending list of orders operation (create, cancel, modify)
 
     @property
     def paper_mode(self):
@@ -126,13 +129,22 @@ class PaperTrader(Trader):
     def on_watcher_disconnected(self, watcher_name):
         super().on_watcher_disconnected(watcher_name)
 
-    def has_margin(self, margin):
+    def has_margin(self, market_id, quantity, price):
         """
-        Return True for a margin trading if the account have suffisient free margin.
-        @note The benefit of this method is it can be overloaded and offers a generic way for a strategy
-            to check if an order can be created
+        Return True for a margin trading if the account have sufficient free margin.
         """
-        return self.account.margin_balance >= margin
+        if self._unlimited:
+            return True
+
+        margin = None
+
+        self.lock()
+        market = self._markets.get(market_id)
+        margin = market.margin_cost(quantity, price)
+        self.unlock()
+
+        logger.info("%s %s" % (self.account.margin_balance, margin))
+        return margin is not None and self.account.margin_balance >= margin
 
     def has_quantity(self, asset_name, quantity):
         """
@@ -140,6 +152,9 @@ class PaperTrader(Trader):
         @note The benefit of this method is it can be overloaded and offers a generic way for a strategy
             to check if an order can be created
         """
+        if self._unlimited:
+            return True
+
         result = False
 
         self.lock()
@@ -177,7 +192,8 @@ class PaperTrader(Trader):
         time.sleep(0.005)
 
     def log_report(self):
-        self._history.log_report()
+        if self._history:
+            self._history.log_report()
 
     @property
     def timestamp(self):
@@ -211,9 +227,6 @@ class PaperTrader(Trader):
                 else:
                     market = self._markets.get(position.symbol)
                     if market:
-                        # update profit/loss of each position
-                        position.update_profit_loss(market)
-
                         # managed position take-profit and stop-loss
                         if market.has_position and (position.take_profit or position.stop_loss):
                             open_exec_price = market.close_exec_price(position.direction)
@@ -249,78 +262,90 @@ class PaperTrader(Trader):
         # update account balance and margin
         #
 
-        self.lock()
-        self._account.update(None)
-        self.unlock()
-
-        if self._account.account_type & PaperTraderAccount.TYPE_MARGIN:
-            # support margin
-            used_margin = 0
-            profit_loss = 0
-
+        if not self._unlimited:
             self.lock()
-
-            for k, position in self._positions.items():
-                market = self._markets.get(position.symbol)
-                
-                # only for non empty positions
-                if market and position.quantity > 0.0:
-                    # manually compute here because of paper trader
-                    profit_loss += position.profit_loss_market / market.base_exchange_rate
-                    used_margin += position.margin_cost(market) / market.base_exchange_rate
-
+            self._account.update(None)
             self.unlock()
 
-            self.account.set_used_margin(used_margin+profit_loss)
-            self.account.set_unrealized_profit_loss(profit_loss)
+            if self._account.account_type & PaperTraderAccount.TYPE_MARGIN:
+                # support margin
+                used_margin = 0
+                profit_loss = 0
 
-        if self._account.account_type & PaperTraderAccount.TYPE_ASSET:
-            # support spot
-            balance = 0.0
-            free_balance = 0.0
-            profit_loss = 0.0
+                self.lock()
 
+                for k, position in self._positions.items():
+                    market = self._markets.get(position.symbol)
+
+                    # only for non empty positions
+                    if market and position.quantity > 0.0:
+                        # manually compute here because of paper trader
+                        profit_loss += position.profit_loss_market / market.base_exchange_rate
+                        used_margin += position.margin_cost(market) / market.base_exchange_rate
+
+                self.account.set_used_margin(used_margin-profit_loss)
+                self.account.set_unrealized_profit_loss(profit_loss)
+
+                self.unlock()
+
+            if self._account.account_type & PaperTraderAccount.TYPE_ASSET:
+                # support spot
+                balance = 0.0
+                free_balance = 0.0
+                profit_loss = 0.0
+
+                self.lock()
+
+                for k, asset in self._assets.items():
+                    asset_name = asset.symbol
+                    free = asset.free
+                    locked = asset.locked
+
+                    if free or locked:
+                        # asset price in quote
+                        if asset_name == self._account.alt_currency:
+                            # asset second currency
+                            market = self._markets.get(self._account.currency+self._account.alt_currency)
+                            base_price = 1.0 / market.price if market else 1.0
+                        elif asset_name != self._account.currency:
+                            # any asset except asscount currency
+                            market = self._markets.get(asset_name+self._account.currency)
+                            base_price = market.price if market else 1.0
+                        else:
+                            # asset account currency itself
+                            base_price = 1.0
+
+                        if asset.quote == self._account.alt_currency:
+                            # change from alt currency to primary currency
+                            market = self._markets.get(self._account.currency+self._account.alt_currency)
+                            base_exchange_rate = market.price if market else 1.0
+                        elif asset.quote == self._account.currency:
+                            # asset is account currency not change
+                            base_exchange_rate = 1.0
+                        else:
+                            # change from quote to primary currency
+                            market = self._markets.get(asset.quote+self._account.currency)
+                            base_exchange_rate = 1.0 / market.price if market else 1.0
+
+                        balance += free * base_price + locked * base_price  # current total free+locked balance
+                        free_balance += free * base_price                   # current total free balance
+
+                        # current profit/loss at market
+                        profit_loss += asset.profit_loss_market / base_exchange_rate  # current total P/L in primary account currency
+
+                self.account.set_asset_balance(balance, free_balance)
+                self.account.set_unrealized_asset_profit_loss(profit_loss)
+
+                self.unlock()
+        else:
             self.lock()
 
-            for k, asset in self._assets.items():
-                asset_name = asset.symbol
-                free = asset.free
-                locked = asset.locked
+            # not updated uPNL then always reset            
+            if self._account.account_type & PaperTraderAccount.TYPE_MARGIN:
+                self.account.set_unrealized_profit_loss(0.0)
 
-                if free or locked:
-                    # asset price in quote
-                    if asset_name == self._account.alt_currency:
-                        # asset second currency
-                        market = self._markets.get(self._account.currency+self._account.alt_currency)
-                        base_price = 1.0 / market.price if market else 1.0
-                    elif asset_name != self._account.currency:
-                        # any asset except asscount currency
-                        market = self._markets.get(asset_name+self._account.currency)
-                        base_price = market.price if market else 1.0
-                    else:
-                        # asset account currency itself
-                        base_price = 1.0
-
-                    if asset.quote == self._account.alt_currency:
-                        # change from alt currency to primary currency
-                        market = self._markets.get(self._account.currency+self._account.alt_currency)
-                        base_exchange_rate = market.price if market else 1.0
-                    elif asset.quote == self._account.currency:
-                        # asset is account currency not change
-                        base_exchange_rate = 1.0
-                    else:
-                        # change from quote to primary currency
-                        market = self._markets.get(asset.quote+self._account.currency)
-                        base_exchange_rate = 1.0 / market.price if market else 1.0
-
-                    balance += free * base_price + locked * base_price  # current total free+locked balance
-                    free_balance += free * base_price                   # current total free balance
-
-                    # current profit/loss at market
-                    profit_loss += asset.profit_loss_market / base_exchange_rate  # current total P/L in primary account currency
-
-            self.account.set_asset_balance(balance, free_balance)
-            self.account.set_unrealized_asset_profit_loss(profit_loss)
+            if self._account.account_type & PaperTraderAccount.TYPE_ASSET:
+                self.account.set_unrealized_asset_profit_loss(0.0)
 
             self.unlock()
 
@@ -749,6 +774,7 @@ class PaperTrader(Trader):
         if market:
             self.lock()
             self._markets[market.market_id] = market
+
             self.unlock()
 
     #
@@ -789,25 +815,69 @@ class PaperTrader(Trader):
             base_exchange_rate, contract_size=None, value_per_pip=None,
             vol24h_base=None, vol24h_quote=None):
 
-        super().on_update_market(market_id, tradable, last_update_time, bid, ofr, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
+        # super().on_update_market(market_id, tradable, last_update_time, bid, ofr, base_exchange_rate,
+        #                contract_size, value_per_pip, vol24h_base, vol24h_quote)
+
+        market = self._markets.get(market_id)
+        if market is None:
+            # create it but will miss lot of details at this time
+            # uses market_id as symbol but its not ideal
+            market = Market(market_id, market_id)
+            self._markets[market_id] = market
+
+        if bid and ofr and market.price:
+            ratio = ((bid + ofr) * 0.5) / market.price
+        else:
+            ratio = 1.0
+
+        if bid:
+            market.bid = bid
+        if ofr:
+            market.ofr = ofr
+
+        if base_exchange_rate is not None:
+            market.base_exchange_rate = base_exchange_rate
+
+        if last_update_time is not None:
+            market.last_update_time = last_update_time
+
+        if tradable is not None:
+            market.is_open = tradable
+
+        if contract_size is not None:
+            market.contract_size = contract_size
+
+        if value_per_pip is not None:
+            market.value_per_pip = value_per_pip
+
+        if vol24h_base is not None:
+            market.vol24h_base = vol24h_base
+
+        if vol24h_quote is not None:
+            market.vol24h_quote = vol24h_quote
+
+        # push last price to keep a local cache of history
+        market.push_price()
 
         # update positions profit/loss for the related market id
-        market = self.market(market_id)
+        if not self._unlimited:
+            self.lock()
 
-        # market must be valid and currently tradeable
-        if market is None:
-            return
+            if self.service.backtesting:
+                # fake values
+                market.base_exchange_rate = market.base_exchange_rate * ratio
+                market.contract_size = market.contract_size * ratio
 
-        self.lock()
+            if self._assets:
+                # update profit/loss (informational) for each asset
+                for k, asset in self._assets.items():
+                    if asset.symbol == market.base and asset.quote == market.quote:
+                        asset.update_profit_loss(market)
 
-        # update profit/loss (informational) for each asset
-        for k, asset in self._assets.items():
-            if asset.symbol == market.base and asset.quote == market.quote:
-                asset.update_profit_loss(market)
+            if self._positions:
+                # update profit/loss for each positions
+                for k, position in self._positions.items():
+                    if position.symbol == market.market_id:
+                        position.update_profit_loss(market)
 
-        # update profit/loss for each positions
-        for k, position in self._positions.items():
-            if position.symbol == market.market_id:
-                position.update_profit_loss(market)
-
-        self.unlock()
+            self.unlock()

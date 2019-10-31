@@ -257,7 +257,7 @@ class Market(object):
     @property
     def price(self):
         return (self._bid + self._ofr) * 0.5
-    
+
     @property
     def last_update_time(self):
         return self._last_update_time
@@ -723,8 +723,11 @@ class Market(object):
     # helpers
     #
 
-    def margin_cost(self, quantity):
-        realized_position_cost = quantity * (self._lot_size * self._contract_size)  # in base currency
+    def effective_cost(self, quantity, price):
+        return quantity * (self._lot_size * self._contract_size) * price  # in base currency
+
+    def margin_cost(self, quantity, price):
+        realized_position_cost = quantity * (self._lot_size * self._contract_size) * price  # in base currency
         margin_cost = realized_position_cost * self._margin_factor / self._base_exchange_rate
 
         return margin_cost

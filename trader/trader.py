@@ -454,13 +454,18 @@ class Trader(Runnable):
         if watchdog_service:
             watchdog_service.service_pong(pid, timestamp, msg)
 
-    def has_margin(self, margin):
+    def has_margin(self, market_id, quantity, price):
         """
-        Return True for a margin trading if the account have suffisient free margin.
-        @note The benefit of this method is it can be overloaded and offers a generic way for a strategy
-        to check if an order can be created
+        Return True for a margin trading if the account have sufficient free margin.
         """
-        return self.account.margin_balance >= margin
+        margin = None
+
+        self.lock()
+        market = self._markets.get(market_id)
+        margin = market.margin_cost(quantity, price)
+        self.unlock()
+
+        return margin is not None and self.account.margin_balance >= margin
 
     def has_quantity(self, asset_name, quantity):
         """
@@ -886,7 +891,6 @@ class Trader(Runnable):
 
         if bid:
             market.bid = bid
-
         if ofr:
             market.ofr = ofr
 
@@ -1387,9 +1391,9 @@ class Trader(Runnable):
                 "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
                 "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
                 t['tr'],
-                datetime.fromtimestamp(t['et']).strftime('%Y-%m-%d %H:%M:%S') if t['et'] > 0 else "",
+                datetime.fromtimestamp(t['et']).strftime('%y-%m-%d %H:%M:%S') if t['et'] > 0 else "",
                 t['aep'],
-                datetime.fromtimestamp(t['xt']).strftime('%Y-%m-%d %H:%M:%S') if t['xt'] > 0 else "",
+                datetime.fromtimestamp(t['xt']).strftime('%y-%m-%d %H:%M:%S') if t['xt'] > 0 else "",
                 t['axp'],
                 "%s%s" % (t['pnl'], t['pnlcur']),
                 t['cost'],
@@ -1468,8 +1472,8 @@ class Trader(Runnable):
                 "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
                 "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
                 t['tr'],
-                datetime.fromtimestamp(t['ct']).strftime('%Y-%m-%d %H:%M:%S') if t['ct'] > 0 else "",
-                datetime.fromtimestamp(t['tt']).strftime('%Y-%m-%d %H:%M:%S') if t['tt'] > 0 else "",
+                datetime.fromtimestamp(t['ct']).strftime('%y-%m-%d %H:%M:%S') if t['ct'] > 0 else "",
+                datetime.fromtimestamp(t['tt']).strftime('%y-%m-%d %H:%M:%S') if t['tt'] > 0 else "",
                 "Yes" if t['ro'] else "No",
                 "Yes" if t['po'] else "No",
                 "Yes" if t['he'] else "No",

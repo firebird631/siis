@@ -61,22 +61,10 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
         """
         if timestamp - self._last_filter_cache[0] < 60*60:  # only once per hour
             return self._last_filter_cache[1], self._last_filter_cache[2]
-        
-        trader = self.strategy.trader()
-
-        if not trader:
-            self._last_filter_cache = (timestamp, False, False)
-            return False, False
-
-        market = trader.market(self.instrument.market_id)
-
-        if not market:
-            self._last_filter_cache = (timestamp, False, False)
-            return False, False
 
         # if there is no actives trades we can avoid computation on some ininteresting markets
         if self.trades:
-            if market.vol24h_quote is not None and market.vol24h_quote < self.min_vol24h:
+            if self.instrument.vol24h_quote is not None and self.instrument.vol24h_quote < self.min_vol24h:
                 # accepted but 24h volume is very small (rare possibilities of exit)
                 self._last_filter_cache = (timestamp, True, False)
                 return True, False
