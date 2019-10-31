@@ -649,7 +649,6 @@ class PgSql(Database):
                                             mk[1], mk[2], mk[3], mk[6], offset))
                     elif mk[4] and mk[5]:
                         # from to
-                        logger.debug(str(mk))
                         cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3], mk[4], mk[5]))
@@ -673,7 +672,6 @@ class PgSql(Database):
 
                     ohlcs = []
 
-                    logger.debug(len(rows))
                     for row in rows:
                         timestamp = float(row[0]) * 0.001  # to float second timestamp
                         ohlc = Candle(timestamp, mk[3])

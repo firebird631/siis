@@ -75,7 +75,6 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
 
         elif direction < 0:
             for x in reversed(self._up):
@@ -231,6 +230,7 @@ class ATRSRIndicator(Indicator):
 
         # logger.info("%s %s" % (self._tup, self._tdn))
         # logger.info("%s %s" % (self._up, self._down))
+        # logger.info("%s" % (self._both))
 
         self._last_timestamp = timestamp
 
