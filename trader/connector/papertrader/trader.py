@@ -56,7 +56,7 @@ class PaperTrader(Trader):
             if paper_mode.get("reporting", "none") == "verbose":
                 self._history = PaperTraderHistory(self)  # trades history for reporting
 
-            self._unlimited = paper_mode.get("unlimited", True)
+            self._unlimited = paper_mode.get("unlimited", False)
 
         self._account = PaperTraderAccount(self)
 
