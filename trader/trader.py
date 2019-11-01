@@ -861,6 +861,10 @@ class Trader(Runnable):
                 # keep last transact_time
                 order.transact_time = order_data['timestamp']
 
+            if order_data.get('fully-filled'):
+                # fully filled mean deleted too
+                del self._orders[order.order_id]
+
     #
     # asset slots
     #       

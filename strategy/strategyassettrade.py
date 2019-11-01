@@ -538,6 +538,14 @@ class StrategyAssetTrade(StrategyTrade):
 
                 self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
+                #
+                # filled mean also deleted
+                #
+
+                if data.get('fully-filled'):
+                    self.entry_oid = None
+                    self.entry_ref_oid = None
+
             elif (data['id'] == self.limit_oid or data['id'] == self.stop_oid) and ('filled' in data or 'cumulative-filled' in data):
                 # @warning on the exit side, normal case will have a single order, but possibly to have a 
                 # partial limit TP, plus remaining in market
@@ -601,6 +609,19 @@ class StrategyAssetTrade(StrategyTrade):
                     self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
                 self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
+                #
+                # filled mean also deleted
+                #
+
+                if data.get('fully-filled'):
+                    
+                    if data['id'] == self.limit_oid:
+                        self.limit_oid = None
+                        self.limit_ref_oid = None
+                    elif data['id'] == self.stop_oid:
+                        self.stop_oid = None
+                        self.stop_ref_oid = None
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price or qty modified
