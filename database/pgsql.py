@@ -481,7 +481,7 @@ class PgSql(Database):
                     "INSERT INTO user_trade(broker_id, account_id, market_id, appliance_id, trade_id, trade_type, data, operations) VALUES",
                     ','.join(["('%s', '%s', '%s', '%s', %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], ut[5],
                             json.dumps(ut[6]).replace("'", "''"), json.dumps(ut[7]).replace("'", "''")) for ut in uti]),
-                    "ON CONFLICT (broker_id, account_id, market_id, appliance_id, trade_id) DO UPDATE SET data = EXCLUDED.data, operations = EXCLUDED.operations"
+                    "ON CONFLICT (broker_id, account_id, market_id, appliance_id, trade_id) DO UPDATE SET trade_type = EXCLUDED.trade_type, data = EXCLUDED.data, operations = EXCLUDED.operations"
                 ))
 
                 cursor.execute(query)
@@ -612,14 +612,14 @@ class PgSql(Database):
 
                 # retry the next time
                 self.lock()
-                self._pending_user_trade_select = uts + self._pending_user_trade_select
+                self._pending_user_trader_select = uts + self._pending_user_trader_select
                 self.unlock()
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
                 self.lock()
-                self._pending_user_trade_select = uts + self._pending_user_trade_select
+                self._pending_user_trader_select = uts + self._pending_user_trader_select
                 self.unlock()
 
     def process_ohlc(self):       

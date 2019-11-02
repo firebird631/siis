@@ -451,7 +451,7 @@ class MySql(Database):
                     "INSERT INTO user_trade(broker_id, account_id, market_id, appliance_id, trade_id, trade_type, data, operations) VALUES",
                     ','.join(["('%s', '%s', '%s', '%s', %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], ut[5],
                         json.dumps(ut[6]).replace("'", "''"), json.dumps(ut[7]).replace("'", "''")) for ut in uti]),
-                    "ON DUPLICATE KEY UPDATE data = VALUES(data), operations = VALUES(operations)"
+                    "ON DUPLICATE KEY UPDATE trade_type = VALUES(trade_type), data = VALUES(data), operations = VALUES(operations)"
                 ))
 
                 cursor.execute(query)
@@ -561,7 +561,7 @@ class MySql(Database):
 
                 # retry the next time
                 self.lock()
-                self._pending_user_trade_select = uts + self._pending_user_trade_select
+                self._pending_user_trader_select = uts + self._pending_user_trader_select
                 self.unlock()
 
     def process_ohlc(self):       

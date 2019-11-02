@@ -594,17 +594,17 @@ class StrategyTrade(object):
     def trade_state_to_str(self, trade_state):
         if trade_state == StrategyTrade.STATE_NEW:
             return 'new'
-        elif self._trade_type == StrategyTrade.STATE_REJECTED:
+        elif trade_state == StrategyTrade.STATE_REJECTED:
             return 'rejected'
-        elif self._trade_type == StrategyTrade.STATE_DELETED:
+        elif trade_state == StrategyTrade.STATE_DELETED:
             return 'deleted'
-        elif self._trade_type == StrategyTrade.STATE_CANCELED:
+        elif trade_state == StrategyTrade.STATE_CANCELED:
             return 'canceled'
-        elif self._trade_type == StrategyTrade.STATE_OPENED:
+        elif trade_state == StrategyTrade.STATE_OPENED:
             return 'opened'
-        elif self._trade_type == StrategyTrade.STATE_PARTIALLY_FILLED:
+        elif trade_state == StrategyTrade.STATE_PARTIALLY_FILLED:
             return 'partially-filled'
-        elif self._trade_type == StrategyTrade.STATE_FILLED:
+        elif trade_state == StrategyTrade.STATE_FILLED:
             return 'filled'
         else:
             return "undefined"
@@ -613,17 +613,17 @@ class StrategyTrade(object):
     def trade_state_from_str(self, trade_state):
         if trade_state == 'new':
             return StrategyTrade.STATE_NEW
-        elif self._trade_type == 'rejected':
+        elif trade_type == 'rejected':
             return StrategyTrade.STATE_REJECTED
-        elif self._trade_type == 'deleted':
+        elif trade_type == 'deleted':
             return StrategyTrade.STATE_DELETED
-        elif self._trade_type == 'canceled':
+        elif trade_type == 'canceled':
             return StrategyTrade.STATE_CANCELED
-        elif self._trade_type == 'opened':
+        elif trade_type == 'opened':
             return StrategyTrade.STATE_OPENED
-        elif self._trade_type == 'partially-filled':
+        elif trade_type == 'partially-filled':
             return StrategyTrade.STATE_PARTIALLY_FILLED
-        elif self._trade_type == 'filled':
+        elif trade_type == 'filled':
             return StrategyTrade.STATE_FILLED
         else:
             return StrategyTrade.STATE_UNDEFINED
@@ -650,9 +650,9 @@ class StrategyTrade(object):
             'version': self.version(),
             'id': self.id,
             'trade': self._trade_type,  #  self.trade_type_to_str(),
-            'entry-timeout': self._entry_timeout,  #  self.trade_state_to_str(self._entry_timeout),
+            'entry-timeout': self._entry_timeout,  # self.timeframe_to_str(self._entry_timeout),
             'expiry': self._expiry,
-            'entry-state': self._entry_state,  #  self.trade_state_to_str(self._entry_state),
+            'entry-state': self._entry_state,  # self.trade_state_to_str(self._entry_state),
             'exit-state': self._exit_state,  # self.trade_state_to_str(self._exit_state),
             'closing': self._closing,
             'timeframe': self._timeframe,  # self.timeframe_to_str(),
@@ -662,7 +662,7 @@ class StrategyTrade(object):
             'avg-exit-price': self.axp,
             'take-profit-price': self.tp,
             'stop-loss-price': self.sl,
-            'direction': self.dir, # self.direction_to_str(),
+            'direction': self.dir,  # self.direction_to_str(),
             'entry-open-time': self.eot,  # self.dump_timestamp(self.eot),
             'exit-open-time': self.xot,  # self.dump_timestamp(self.xot),
             'order-qty': self.oq,

@@ -305,8 +305,9 @@ class PivotPointIndicator(Indicator):
                         self._resistances[n][i+1] = high[i] + n * (self._pivot[i+1] - low[i])
 
     def compute(self, timestamp, _open, high, low, close):
-        if not len(_open):
-            return
+        if len(_open) < 2:
+            # at least 2 entries (previous + current)
+            return self._pivot, self._supports, self._resistances
 
         self._pivotpoint3(_open, high, low, close)
 

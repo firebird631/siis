@@ -701,8 +701,6 @@ class StrategyAssetTrade(StrategyTrade):
         data['limit-order-type'] = self.limit_order_type
         data['limit-order-qty'] = self.limit_order_qty
 
-        data['exit-trades'] = self.exit_trades
-
         return data
 
     def loads(self, data, strategy_service):
@@ -726,7 +724,5 @@ class StrategyAssetTrade(StrategyTrade):
 
         self.limit_order_type = data.get('limit-order-type', Order.ORDER_MARKET)
         self.limit_order_qty = data.get('limit_order_qty', 0.0)
-
-        self.exit_trades = data.get('exit-trades', [])
 
         return True

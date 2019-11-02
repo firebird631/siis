@@ -75,6 +75,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
+            return stop_loss
 
         elif direction < 0:
             for x in reversed(self._up):
