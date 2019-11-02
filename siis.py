@@ -29,9 +29,6 @@ from monitor.service import MonitorService
 from monitor.desktopnotifier import DesktopNotifier
 from common.watchdog import WatchdogService
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
-
 from terminal.terminal import Terminal
 from terminal.command import CommandsHandler
 

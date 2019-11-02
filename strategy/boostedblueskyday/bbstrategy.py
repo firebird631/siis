@@ -16,9 +16,6 @@ from trader.order import Order
 
 from strategy.strategy import Strategy
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
-
 from instrument.instrument import Instrument, Candle
 from watcher.watcher import Watcher
 

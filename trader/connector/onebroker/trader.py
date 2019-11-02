@@ -10,9 +10,6 @@ import time
 
 from datetime import datetime
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
-
 from trader.trader import Trader
 
 from .account import OneBrokerAccount

@@ -11,7 +11,7 @@ from importlib import import_module
 from config import utils
 from common.service import Service
 
-from notifier.signal import Signal
+from common.signal import Signal
 from config.utils import merge_parameters
 
 import logging
@@ -145,7 +145,7 @@ class WatcherService(Service):
         signal = Signal(Signal.SOURCE_WATCHER, source_name, signal_type, signal_data)
 
         self._mutex.acquire()
-        self._notifier.notify(signal)
+        self._signals_handler.notify(signal)
         self._mutex.release()
 
     def find_author(self, watcher_name, author_id):

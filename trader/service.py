@@ -11,9 +11,7 @@ from importlib import import_module
 
 from config import utils
 from common.service import Service
-
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
+from common.signal import Signal
 
 from terminal.terminal import Terminal
 from trader.position import Position
@@ -183,7 +181,7 @@ class TraderService(Service):
         signal = Signal(Signal.SOURCE_TRADER, source_name, signal_type, signal_data)
 
         self._mutex.acquire()
-        self._notifier.notify(signal)
+        self._signals_handler.notify(signal)
         self._mutex.release()
 
     def command(self, command_type, data):

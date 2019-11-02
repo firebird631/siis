@@ -17,8 +17,8 @@ from datetime import datetime, timedelta
 from trader.position import Position
 from monitor.discord.webhooks import send_to_discord
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
+from common.baseservice import BaseService
+from common.signal import Signal
 
 from terminal.terminal import Terminal
 from database.database import Database
@@ -31,7 +31,7 @@ error_logger = logging.getLogger('siis.error.monitor.desktopnotifier')
 signal_logger = logging.getLogger('siis.signal')
 
 
-class DesktopNotifier(Notifiable):
+class DesktopNotifier(BaseService):
     """
     Desktop + audible notification from some particulars signals.
 

@@ -5,7 +5,7 @@
 
 from datetime import datetime
 
-from notifier.signal import Signal
+from common.signal import Signal
 
 from trader.position import Position
 from trader.order import Order

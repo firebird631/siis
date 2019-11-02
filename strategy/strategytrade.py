@@ -5,7 +5,7 @@
 
 from datetime import datetime
 
-from notifier.signal import Signal
+from common.signal import Signal
 from common.utils import timeframe_to_str, timeframe_from_str
 
 from trader.order import Order

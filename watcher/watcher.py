@@ -12,7 +12,7 @@ from common.runnable import Runnable
 from common.utils import matching_symbols_set, UTC
 from terminal.terminal import Terminal
 
-from notifier.signal import Signal
+from common.signal import Signal
 from database.database import Database
 
 from instrument.instrument import Instrument, Candle
@@ -236,9 +236,6 @@ class Watcher(Runnable):
     #
 
     def receiver(self, signal):
-        """
-        Notifiable listener.
-        """ 
         if signal.source == Signal.SOURCE_WATCHER:
             if signal.source_name != self._name:
                 # only interested by the watcher of the same name

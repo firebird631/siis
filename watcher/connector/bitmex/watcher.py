@@ -13,7 +13,7 @@ from datetime import datetime
 from common.utils import UTC
 
 from watcher.watcher import Watcher
-from notifier.signal import Signal
+from common.signal import Signal
 
 from connector.bitmex.connector import Connector
 

@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 
 from trader.position import Position
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
+from common.baseservice import BaseService
+from common.signal import Signal
 
 from terminal.terminal import Terminal
 
@@ -24,7 +24,7 @@ from common.utils import timeframe_to_str
 from view.view import View
 
 
-class ViewService(Notifiable):
+class ViewService(BaseService):
     """
     View manager service.
     It support the refreh of actives views, receive signal from others services.

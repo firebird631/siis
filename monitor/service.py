@@ -19,8 +19,6 @@ from twisted.internet import reactor
 
 from common.service import Service
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
 from monitor.streamable import Streamable
 from monitor.rpc import Rpc
 

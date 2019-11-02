@@ -13,7 +13,7 @@ import math
 from datetime import datetime
 
 from watcher.watcher import Watcher
-from notifier.signal import Signal
+from common.signal import Signal
 
 from connector.kraken.connector import Connector
 

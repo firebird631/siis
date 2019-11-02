@@ -14,7 +14,7 @@ import traceback
 from datetime import datetime
 
 from watcher.watcher import Watcher
-from notifier.signal import Signal
+from common.signal import Signal
 
 from connector.ig.connector import IGConnector
 from connector.ig.lightstreamer import LSClient, Subscription

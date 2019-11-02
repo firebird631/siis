@@ -12,7 +12,7 @@ import traceback
 import requests
 
 from watcher.watcher import Watcher
-from notifier.signal import Signal
+from common.signal import Signal
 
 from connector.alphavantage.connector import Connector
 from terminal.terminal import Terminal

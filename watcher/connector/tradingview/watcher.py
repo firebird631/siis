@@ -15,7 +15,7 @@ import urllib.parse
 from watcher.watcher import Watcher
 from watcher.author import Author
 from trader.position import Position
-from notifier.signal import Signal
+from common.signal import Signal
 
 from terminal.terminal import Terminal
 from instrument.instrument import BuySellSignal

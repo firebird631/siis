@@ -1,13 +1,9 @@
 # @date 2018-08-08
 # @author Frederic SCHERMA
 # @license Copyright (c) 2018 Dream Overflow
-# notifier
+# Signal handler
 
-from notifier.signal import Signal
-from notifier.notifiable import Notifiable
-
-
-class Notifier(object):
+class SignalHandler(object):
 
 	def __init__(self, service):
 		self._service = service

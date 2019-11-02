@@ -12,7 +12,7 @@ import collections
 
 from datetime import datetime, timedelta
 
-from notifier.signal import Signal
+from common.signal import Signal
 from instrument.instrument import Candle
 
 from common.utils import UTC

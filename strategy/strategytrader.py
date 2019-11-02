@@ -18,7 +18,7 @@ from strategy.strategytrade import StrategyTrade
 from instrument.instrument import Instrument
 
 from common.utils import timeframe_to_str
-from notifier.signal import Signal
+from common.signal import Signal
 from terminal.terminal import Terminal
 
 from database.database import Database

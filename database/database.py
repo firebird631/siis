@@ -12,7 +12,6 @@ import traceback
 import pathlib
 
 from watcher.service import WatcherService
-from notifier.signal import Signal
 
 from instrument.instrument import Candle
 

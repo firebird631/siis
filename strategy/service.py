@@ -12,14 +12,11 @@ from importlib import import_module
 
 from common.service import Service
 from common.workerpool import WorkerPool
-
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
+from common.signal import Signal
 
 from terminal.terminal import Terminal
 from strategy.strategy import Strategy
 
-from notifier.signal import Signal
 from config import utils
 
 import logging
@@ -433,7 +430,7 @@ class StrategyService(Service):
         signal = Signal(Signal.SOURCE_STRATEGY, source_name, signal_type, signal_data)
 
         self._mutex.acquire()
-        self._notifier.notify(signal)
+        self._signals_handler.notify(signal)
         self._mutex.release()
 
     def command(self, command_type, data):

@@ -13,7 +13,7 @@ from terminal.terminal import Terminal
 from instrument.instrument import Tick, Candle, Instrument
 from instrument.candlegenerator import CandleGenerator
 
-from notifier.signal import Signal
+from common.signal import Signal
 from database.database import Database
 
 from trader.market import Market

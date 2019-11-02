@@ -11,8 +11,7 @@ import collections
 
 from datetime import datetime
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
+from common.signal import Signal
 
 from trader.order import Order
 from trader.position import Position
@@ -589,9 +588,6 @@ class Trader(Runnable):
     #
 
     def receiver(self, signal):
-        """
-        Notifiable listener.
-        """ 
         if signal.source == Signal.SOURCE_WATCHER:
             if signal.source_name != self._name:
                 # only interested by the watcher of the same name

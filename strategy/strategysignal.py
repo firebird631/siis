@@ -4,7 +4,7 @@
 # Strategy signal
 
 from datetime import datetime
-from notifier.signal import Signal
+from common.signal import Signal
 
 from trader.order import Order
 from common.utils import timeframe_to_str

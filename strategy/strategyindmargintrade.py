@@ -3,7 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy indivisible trade for margin.
 
-from notifier.signal import Signal
+from common.signal import Signal
 from database.database import Database
 
 from trader.order import Order

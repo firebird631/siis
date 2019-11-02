@@ -18,7 +18,7 @@ from monitor.streamable import Streamable, StreamMemberFloat, StreamMemberBool
 from common.utils import timeframe_to_str, timeframe_from_str
 from config.utils import merge_parameters
 
-from notifier.signal import Signal
+from common.signal import Signal
 from instrument.instrument import Instrument
 
 from watcher.watcher import Watcher
@@ -1104,9 +1104,6 @@ class Strategy(Runnable):
     #
 
     def receiver(self, signal):
-        """
-        Notifiable listener.
-        """ 
         if signal.source == Signal.SOURCE_STRATEGY:
             # filter by instrument for tick data
             # if signal.signal_type == Signal.SIGNAL_TICK_DATA:

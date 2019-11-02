@@ -7,7 +7,7 @@ import json
 import time
 
 from watcher.watcher import Watcher
-from notifier.signal import Signal
+from common.signal import Signal
 
 from terminal.terminal import Terminal
 

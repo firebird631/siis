@@ -14,7 +14,7 @@ import pathlib
 from importlib import import_module
 
 from watcher.service import WatcherService
-from notifier.signal import Signal
+from common.signal import Signal
 
 from instrument.instrument import Instrument, Candle
 

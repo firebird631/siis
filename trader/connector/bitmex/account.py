@@ -8,9 +8,6 @@ import urllib
 import json
 import time
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
-
 from trader.account import Account
 from terminal.terminal import Terminal
 

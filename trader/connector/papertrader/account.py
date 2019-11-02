@@ -3,9 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Account/user model
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
-
 from trader.account import Account
 from terminal.terminal import Terminal
 

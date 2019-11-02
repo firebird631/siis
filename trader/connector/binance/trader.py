@@ -9,9 +9,6 @@ import traceback
 
 from operator import itemgetter, attrgetter
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
-
 from trader.trader import Trader
 
 from .account import BinanceAccount

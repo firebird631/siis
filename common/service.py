@@ -7,16 +7,14 @@ import threading
 
 from importlib import import_module
 
-from notifier.notifier import Notifier
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
+from common.signalhandler import SignalHandler
+from common.baseservice import BaseService
+from common.signal import Signal
 
 from terminal.terminal import Terminal
 
-from notifier.signal import Signal
 
-
-class Service(Notifiable):
+class Service(BaseService):
     """
     Base class for any service.
     """
@@ -24,7 +22,7 @@ class Service(Notifiable):
     def __init__(self, name, options):
         super().__init__(name)
 
-        self._notifier = Notifier(self)
+        self._signals_handler = SignalHandler(self)
         self._mutex = threading.Lock()
 
     def lock(self, blocking=True, timeout=-1):
@@ -45,14 +43,14 @@ class Service(Notifiable):
     def notify(self, signal_type, source_name, signal_data):
         pass
 
-    def add_listener(self, notifiable):
+    def add_listener(self, base_service):
         self.lock()
-        self._notifier.add_listener(notifiable)
+        self._signals_handler.add_listener(base_service)
         self.unlock()
 
-    def remove_listener(self, notifiable):
+    def remove_listener(self, base_service):
         self.lock()
-        self._notifier.remove_listener(notifiable)
+        self._signals_handler.remove_listener(base_service)
         self.unlock()
 
     def command(self, command_type, data):

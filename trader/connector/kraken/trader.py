@@ -11,8 +11,7 @@ import requests
 
 from datetime import datetime
 
-from notifier.notifiable import Notifiable
-from notifier.signal import Signal
+from common.signal import Signal
 
 from trader.trader import Trader
 from trader.market import Market
