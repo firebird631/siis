@@ -220,6 +220,8 @@ class StrategyAssetTrade(StrategyTrade):
 
                 if trader.create_order(order):
                     # REST sync
+                    self.limit_oid = order.order_id
+
                     self.limit_order_type = order.order_type
                     self.limit_order_qty = order.quantity
 
@@ -294,6 +296,8 @@ class StrategyAssetTrade(StrategyTrade):
 
                 if trader.create_order(order):
                     # REST sync
+                    self.stop_oid = order.order_id
+
                     self.stop_order_type = order.order_type
                     self.stop_order_qty = order.quantity
 
@@ -373,6 +377,9 @@ class StrategyAssetTrade(StrategyTrade):
             self.stop_ref_oid = order.ref_order_id
 
             if trader.create_order(order):
+                # REST sync
+                self.stop_oid = order.order_id
+
                 self.stop_order_type = order.order_type
                 self.stop_order_qty = order.quantity
 
@@ -419,18 +426,17 @@ class StrategyAssetTrade(StrategyTrade):
         if self._dirty:
             done = True
 
-            # @bug binance issue... @todo investigate later...
-            # if self.has_oco_order():
-            #     done = False
-            #     # @todo
-            # else:
-            #     if self.has_limit_order() and self.tp > 0.0:
-            #         if self.modify_take_profit(trader, instrument, self.tp) <= 0:
-            #             done = False
+            if self.has_oco_order():
+                done = False
+                # @todo
+            else:
+                if self.has_limit_order() and self.tp > 0.0:
+                    if self.modify_take_profit(trader, instrument, self.tp) <= 0:
+                        done = False
 
-            #     if self.has_stop_order() and self.sl > 0.0:
-            #         if self.modify_stop_loss(trader, instrument, self.sl) <= 0:
-            #             done = False
+                if self.has_stop_order() and self.sl > 0.0:
+                    if self.modify_stop_loss(trader, instrument, self.sl) <= 0:
+                        done = False
 
             if done:
                 # clean dirty flag if all the order have been updated

@@ -501,6 +501,59 @@ class CloseCommand(Command):
         return args, 0
 
 
+class CleanCommand(Command):
+
+    SUMMARY = "to manually force to remove a managed trade and all its related orders without reducing its remaining quantity"
+
+    def __init__(self, strategy_service):
+        super().__init__('clean-trade', 'CT')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if not args:
+            Terminal.inst().action("Missing parameters", view='status')
+            return False
+
+        appliance = None
+        market_id = None
+        trade_id = None
+        action = "clean"
+
+        # ie ":clean _ EURUSD 5"
+        if len(args) != 3:
+            Terminal.inst().action("Missing parameters", view='status')
+            return False
+
+        try:
+            appliance, market_id = args[0], args[1]
+            trade_id = int(args[2])
+
+        except Exception:
+            Terminal.inst().action("Invalid parameters", view='status')
+            return False
+
+        self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, {
+            'appliance': appliance,
+            'market-id': market_id,
+            'trade-id': trade_id,
+            'action': action
+        })
+
+        return True
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 class DynamicStopLossOperationCommand(Command):
     
     SUMMARY = "to manually add a dynamic-stop-loss operation on a trade"
@@ -1078,6 +1131,7 @@ def register_trading_commands(commands_handler, trader_service, strategy_service
     # trade operations
     #
 
+    commands_handler.register(CleanCommand(strategy_service))
     commands_handler.register(TradeInfoCommand(strategy_service))
     commands_handler.register(RemoveOperationCommand(strategy_service))
     commands_handler.register(DynamicStopLossOperationCommand(strategy_service))

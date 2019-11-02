@@ -92,6 +92,15 @@ class TimeframeBasedSub(object):
             # don't kept the initials candles
             self.strategy_trader.instrument.reduce_candles(self.tf, self.depth)
 
+    def cleanup(self, timestamp):
+        """
+        Once data are processed some cleanup could be necessary to be done
+        before running the next process pass.
+
+        For example reseting stats of the closed OHLC.
+        """
+        pass
+
     def get_candles(self):
         """
         Get the candles list to process.

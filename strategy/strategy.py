@@ -57,6 +57,7 @@ class Strategy(Runnable):
     COMMAND_TRADE_EXIT = 12     # exit (or eventually cancel if not again filled) an existing trade
     COMMAND_TRADE_INFO = 13     # get and display manual trade info (such as listing operations)
     COMMAND_TRADE_ASSIGN = 14   # manually assign a quantity to a new trade
+    COMMAND_TRADE_CLEAN = 15    # remove/clean an existing trade without filling the remaining quantity
 
     COMMAND_TRADER_MODIFY = 20
     COMMAND_TRADER_INFO = 21
@@ -1081,6 +1082,8 @@ class Strategy(Runnable):
             self.trade_command("entry", data, self.cmd_trade_entry)
         elif command_type == Strategy.COMMAND_TRADE_EXIT:
             self.trade_command("exit", data, self.cmd_trade_exit)
+        elif command_type == Strategy.COMMAND_TRADE_CLEAN:
+            self.trade_command("clean", data, self.cmd_trade_clean)
         elif command_type == Strategy.COMMAND_TRADE_MODIFY:
             self.trade_command("modify", data, self.cmd_trade_modify)
         elif command_type == Strategy.COMMAND_TRADE_INFO:
@@ -2031,7 +2034,7 @@ class Strategy(Runnable):
 
     def cmd_trade_exit(self, strategy_trader, data):
         """
-        Exit a new trade according data on given strategy_trader.
+        Exit an existing trade according data on given strategy_trader.
 
         @note If trade-id is -1 assume the last trade.
         """
@@ -2091,6 +2094,58 @@ class Strategy(Runnable):
                 # want it on the streaming (take care its only the order signal, no the real complete execution)
                 # @todo its not really a perfect way...
                 # strategy_trader._global_streamer.member('buy/sell-exit').update(price, self.timestamp)
+        else:
+            results['error'] = True
+            results['messages'].append("Invalid trade identifier %i" % trade_id)
+
+        strategy_trader.unlock()
+
+        return results
+
+    def cmd_trade_clean(self, strategy_trader, data):
+        """
+        Clean an existing trade according data on given strategy_trader.
+
+        @note If trade-id is -1 assume the last trade.
+        """
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        # retrieve the trade
+        trade_id = -1
+
+        try:
+            trade_id = int(data.get('trade-id'))
+        except Exception:
+            results['error'] = True
+            results['messages'].append("Invalid trade identifier")
+
+        if results['error']:
+            return results
+
+        trade = None
+
+        trader = self.trader()
+        market = trader.market(strategy_trader.instrument.market_id)
+
+        strategy_trader.lock()
+
+        if trade_id == -1 and strategy_trader.trades:
+            trade = strategy_trader.trades[-1]
+        else:
+            for t in strategy_trader.trades:
+                if t.id == trade_id:
+                    trade = t
+                    break
+
+        if trade:
+            # remove
+            trade.remove(trader, strategy_trader.instrument)
+
+            # add a success result message
+            results['messages'].append("Force remove trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
         else:
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)
