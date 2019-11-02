@@ -1381,10 +1381,10 @@ class Trader(Runnable):
                 tppct = (tp - aep) / aep
             elif t['d'] == 'short' and aep:
                 slpct = (aep - sl) / aep
-                slpct = (aep - tp) / aep
+                tppct = (aep - tp) / aep
             else:
                 slpct = 0
-                tpcpt = 0
+                tppct = 0
 
             row = [
                 t['mid'],
@@ -1459,10 +1459,10 @@ class Trader(Runnable):
                 tppct = (tp - op) / op if tp else 0.0
             elif t['d'] == 'short' and op:
                 slpct = (op - sl) / op if sl else 0.0
-                slpct = (op - tp) / op if tp else 0.0
+                tppct = (op - tp) / op if tp else 0.0
             else:
                 slpct = 0
-                tpcpt = 0
+                tppct = 0
 
             row = [
                 t['mid'],

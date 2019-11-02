@@ -1745,10 +1745,10 @@ class Strategy(Runnable):
                 tppct = (tp - (aep or op)) / (aep or op)
             elif t['d'] == 'short' and (aep or op):
                 slpct = ((aep or op) - sl) / (aep or op)
-                slpct = ((aep or op) - tp) / (aep or op)
+                tppct = ((aep or op) - tp) / (aep or op)
             else:
                 slpct = 0
-                tpcpt = 0
+                tppct = 0
 
             row = [
                 t['mid'],
