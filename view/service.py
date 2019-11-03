@@ -31,7 +31,7 @@ class ViewService(BaseService):
     @todo
     """
 
-    def __init__(self):
+    def __init__(self, options):
         super().__init__("view")
 
         self.strategy_service = None

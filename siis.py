@@ -26,7 +26,8 @@ from strategy.strategy import Strategy
 from trader.service import TraderService
 from strategy.service import StrategyService
 from monitor.service import MonitorService
-from monitor.desktopnotifier import DesktopNotifier
+from notifier.service import NotifierService
+from notifier.desktop.desktopnotifier import DesktopNotifier
 from common.watchdog import WatchdogService
 
 from terminal.terminal import Terminal
@@ -319,7 +320,7 @@ def application(argv):
 
     # desktop notifier (to be splitted in ViewService and in a DesktopNotifier managed by a NotifierService)
     try:    
-        desktop_service = DesktopNotifier()
+        desktop_service = DesktopNotifier(options)
         # desktop_service.start(options)
         watchdog_service.add_service(desktop_service)
     except Exception as e:
@@ -328,10 +329,17 @@ def application(argv):
         sys.exit(-1)
 
     # notifier service
-    # notifier_service = NotifierService()
-    # notifier_service.start() .. discord notifier... @todo
     try:
-        view_service = ViewService()
+        notifier_service = NotifierService(options)
+        notifier_service.start(options)
+    except Exception as e:
+        Terminal.inst().error(str(e))
+        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        sys.exit(-1)
+
+    # view service
+    try:
+        view_service = ViewService(options)
         # view_service.start(options)
         watchdog_service.add_service(view_service)
     except Exception as e:
@@ -667,6 +675,9 @@ def application(argv):
 
                 if view_service:
                     view_service.sync()
+
+                if notifier_service:
+                    notifier_service.sync()
 
                 Terminal.inst().update()
 

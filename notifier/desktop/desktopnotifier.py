@@ -14,8 +14,10 @@ import traceback
 from importlib import import_module
 from datetime import datetime, timedelta
 
+from config import utils
+
 from trader.position import Position
-from monitor.discord.webhooks import send_to_discord
+from notifier.discord.webhooks import send_to_discord
 
 from common.baseservice import BaseService
 from common.signal import Signal
@@ -26,8 +28,8 @@ from database.database import Database
 from common.utils import timeframe_to_str
 
 import logging
-logger = logging.getLogger('siis.monitor.desktopnotifier')
-error_logger = logging.getLogger('siis.error.monitor.desktopnotifier')
+logger = logging.getLogger('siis.notifier.desktopnotifier')
+error_logger = logging.getLogger('siis.error.notifier.desktopnotifier')
 signal_logger = logging.getLogger('siis.signal')
 
 
@@ -38,7 +40,6 @@ class DesktopNotifier(BaseService):
     @todo seperate module and as a service + instance : desktop, views, discord...
     @todo the discord notifier part had to move to a DiscordNotifier module
     @todo manage more signal/alerts from strategy or even from a price evolution watchdog
-    @todo read audio.json conf for audio alert profile
     """
 
     AUDIO_ALERT_SIMPLE = 0
@@ -46,7 +47,16 @@ class DesktopNotifier(BaseService):
     AUDIO_ALERT_WARNING = 2
     AUDIO_ALERT_HAPPY = 3
 
-    def __init__(self):
+    DEFAULT_AUDIO_DEVICE = "pulse"
+
+    DEFAULT_AUDIO = [
+        ('/usr/share/sounds/info.wav', 3),
+        ('/usr/share/sounds/phone.wav', 2),
+        ('/usr/share/sounds/error.wav', 5),
+        ('/usr/share/sounds/logout.wav', 1)
+    ]
+
+    def __init__(self, options):
         super().__init__("desktop")
 
         self.notify2 = None
@@ -75,6 +85,9 @@ class DesktopNotifier(BaseService):
         self._displayed_strategy = 0
         self._display_percents = False
 
+        # read configuration
+        config = utils.load_config(options, 'notifiers/desktop')
+
         # @todo cleanup and move as conf and read it from profile
         self._discord_webhook = {
             # 'binance-altusdt-top.trades': 'https://discordapp.com/api/webhooks/...',
@@ -82,15 +95,22 @@ class DesktopNotifier(BaseService):
             # 'binance-altusdt-top.closed-trades': 'https://discordapp.com/api/webhooks/...',
         }
 
-        # read audio config @todo
+        #
+        # audio configuration
+        #
+
+        # read audio config
+        audio_config = config.get('audio', {})
+
+        self._audio_device = audio_config.get('device', DesktopNotifier.DEFAULT_AUDIO_DEVICE)
+
+        # @todo map audio alerts audio_config.gett('alerts')
         self._alerts = [
             ('/usr/share/sounds/info.wav', 3),
             ('/usr/share/sounds/phone.wav', 2),
             ('/usr/share/sounds/error.wav', 5),
             ('/usr/share/sounds/logout.wav', 1)
         ]
-
-        self._audio_device = 'pulse'
 
         # lib notify
         if self.notify2:

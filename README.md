@@ -268,13 +268,13 @@ List of the files in config directory :
 * regions.json : Supported regions, except you create your own you don't have to override this file
 * fetchers.json : Supported fetchers, except you create your own you don't have to override this file
 * stratetgies.json : Supported strategies, except you create your own you don't have to override this file
-* audio.json : Only for the desktop-mode, configure your own sounds on notification (WIP)
 
 List of the sub-directories of config :
-* watchers/ : One file perf watcher to configure, name of file must refers to a valid watcher name.
-* traders/ : One file perf trader to configure, name of file must refers to a valid trader name.
-* profiles/ : One file perf profile to configure
-* appliances/ : One file perf appliance to configure
+* watchers/ : One file per watcher to configure, name of file must refers to a valid watcher name.
+* traders/ : One file per trader to configure, name of file must refers to a valid trader name.
+* profiles/ : One file per profile to configure
+* appliances/ : One file per appliance to configure
+* notifiers/ : One file per notifier to configure
 
 ### config/databases.json ###
 
