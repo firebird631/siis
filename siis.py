@@ -321,7 +321,6 @@ def application(argv):
     # desktop notifier (to be splitted in ViewService and in a DesktopNotifier managed by a NotifierService)
     try:    
         desktop_service = OrgDesktopNotifier(options)
-        # desktop_service.start(options)
         watchdog_service.add_service(desktop_service)
     except Exception as e:
         Terminal.inst().error(str(e))
@@ -411,7 +410,6 @@ def application(argv):
 
     # want to display desktop notification, update view and notify on discord
     strategy_service.add_listener(notifier_service)
-    strategy_service.add_listener(desktop_service)  # @todo remove it once notifier ok
     strategy_service.add_listener(view_service)
 
     # for display stats (@todo move to views)

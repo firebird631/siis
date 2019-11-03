@@ -65,11 +65,18 @@ class NotifierService(Service):
 
                 self._notifiers[k] = Clazz
 
-        for k in self._profile_config.get('notifiers', []):
-            notifier_conf = self._notifiers_config.get(k)
-
+        for k, conf in self._profile_config.get('notifiers', {}).items():
             if self._notifiers_insts.get(k) is not None:
                 logger.error("Notifier %s already started" % k)
+                continue
+
+            if not conf or not conf.get('name'):
+                logger.error("Invalid configuration for notifier %s" % k)
+                continue
+
+            notifier_conf = self._notifiers_config.get(conf['name'])
+            if not notifier_conf:
+                logger.error("Invalid configuration for notifier %s" % k)
                 continue
 
             if notifier_conf.get("status") is not None and notifier_conf.get("status") in ("enabled", "load"):
@@ -104,7 +111,7 @@ class NotifierService(Service):
     def sync(self):
         pass
 
-    def command(self, notifier, command, value):
+    def command(self, notifier, command_type, data):
         """
         Send a manual command to a specific notifier.
         """
@@ -113,7 +120,7 @@ class NotifierService(Service):
         notifier_inst = self._notifiers_insts.get(notifier)
         if notifier_inst:
             try:
-                notifier_inst.command(command, value)
+                notifier_inst.command(command_type, data)
             except Exception as e:
                 error_logger.error(str(e))
 

@@ -44,37 +44,14 @@ class OrgDesktopNotifier(BaseService):
     @todo manage more signal/alerts from strategy or even from a price evolution watchdog
     """
 
-    AUDIO_ALERT_SIMPLE = 0
-    AUDIO_ALERT_INTENSIVE = 1
-    AUDIO_ALERT_WARNING = 2
-    AUDIO_ALERT_HAPPY = 3
-
-    DEFAULT_AUDIO_DEVICE = "pulse"
-
-    DEFAULT_AUDIO = [
-        ('/usr/share/sounds/info.wav', 3),
-        ('/usr/share/sounds/phone.wav', 2),
-        ('/usr/share/sounds/error.wav', 5),
-        ('/usr/share/sounds/logout.wav', 1)
-    ]
-
     def __init__(self, options):
         super().__init__("desktop")
-
-        self.notify2 = None
-
-        try:
-            self.notify2 = import_module('notify2', package='')
-        except ModuleNotFoundError as e:
-            logger.error(repr(e))
 
         self.strategy_service = None
         self.trader_service = None
         self.watcher_service = None
 
         self.last_notify = 0
-        self.audible = False
-        self.popups = False
         self.discord = False
 
         self._mutex = threading.RLock()  # reentrant locker
@@ -87,37 +64,12 @@ class OrgDesktopNotifier(BaseService):
         self._displayed_strategy = 0
         self._display_percents = False
 
-        # read configuration
-        config = utils.load_config(options, 'notifiers/desktop')
-
         # @todo cleanup and move as conf and read it from profile
         self._discord_webhook = {
             # 'binance-altusdt-top.trades': 'https://discordapp.com/api/webhooks/...',
             # 'binance-altusdt-top.agg-trades': 'https://discordapp.com/api/webhooks/...',
             # 'binance-altusdt-top.closed-trades': 'https://discordapp.com/api/webhooks/...',
         }
-
-        #
-        # audio configuration
-        #
-
-        # read audio config
-        audio_config = config.get('audio', {})
-
-        self._audio_device = audio_config.get('device', DesktopNotifier.DEFAULT_AUDIO_DEVICE)
-
-        # @todo map audio alerts audio_config.gett('alerts')
-        self._alerts = [
-            ('/usr/share/sounds/info.wav', 3),
-            ('/usr/share/sounds/phone.wav', 2),
-            ('/usr/share/sounds/error.wav', 5),
-            ('/usr/share/sounds/logout.wav', 1)
-        ]
-
-        # lib notify
-        self.notify2 = None
-        if self.notify2:
-            self.notify2.init('SiiS')
 
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)
@@ -162,183 +114,13 @@ class OrgDesktopNotifier(BaseService):
     def backtesting(self):
         return self.strategy_service and self.strategy_service.backtesting
 
-    def receiver(self, signal):
-        return # goes to new desktop notifier
-        if signal.signal_type in (Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT, Signal.SIGNAL_STRATEGY_ENTRY_EXIT):
-            self._signals.append(signal)
-
-    def update(self):
-        count = 0
-
-        while self._signals:
-            signal = self._signals.popleft()
-
-            label = ""
-            message = ""
-            icon = "contact-new"
-            now = time.time()
-            audio_alert = None
-
-            if signal.signal_type == Signal.SIGNAL_SOCIAL_ENTER:
-                # here we only assume that because of what 1broker return to us but should be timestamp in the model
-                entry_date = signal.data.entry_date + timedelta(hours=2)
-                position_timestamp = time.mktime(entry_date.timetuple())
-                audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
-
-                if now - position_timestamp > 120 * 60:
-                    continue
-
-                label = "Entry position on %s" % (signal.data.symbol,)
-                message = "Trader %s enter %s on %s at %s (x%s)" % (
-                    signal.data.author.name if signal.data.author is not None else "???",
-                    "long" if signal.data.direction == Position.LONG else "short",
-                    signal.data.symbol,
-                    signal.data.entry_price,
-                    signal.data.leverage)
-
-            elif signal.signal_type == Signal.SIGNAL_SOCIAL_EXIT:
-                # here we only assume that because of what 1broker return to us but should be timestamp in the model
-                exit_date = signal.data.exit_date + timedelta(hours=2)
-                position_timestamp = time.mktime(exit_date.timetuple())
-                audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
-
-                if now - position_timestamp > 120 * 60:
-                    continue
-
-                label = "Exit position on %s" % (signal.data.symbol,)
-                message = "Trader %s exit %s on %s at %s" % (
-                    signal.data.author.name,
-                    "long" if signal.data.direction == Position.LONG else "short",
-                    signal.data.symbol,
-                    signal.data.exit_price)
-
-            # # @todo a threshold... or a timelimit
-            # elif signal.signal_type == Signal.SIGNAL_TRADE_ALERT:
-            #     icon = "go-down"
-            #     label = "Position loss on %s" % (signal.data.symbol,)
-            #     audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
-
-            #     message = "Position %s %s of %s on %s start at %s %s is in regretable loss %s (%s%%) :$" % (
-            #         signal.data.position_id,
-            #         "long" if signal.data.direction == Position.LONG else "short",
-            #         signal.data.author.name if signal.data.author is not None else "???",
-            #         signal.data.trader.name,
-            #         signal.data.entry_price,
-            #         signal.data.symbol,
-            #         signal.data.profit_loss,
-            #         signal.data.profit_loss_rate * 100.0)
-
-            # elif signal.signal_type == Signal.SIGNAL_TRADE_ENJOY:
-            #     icon = "go-up"
-            #     label = "Position profit on %s" % (signal.data.symbol,)
-            #     audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
-
-            #     message = "Position %s %s of %s on %s start at %s %s is in enjoyable profit %s (%s%%) :)" % (
-            #         signal.data.position_id,
-            #         "long" if signal.data.direction == Position.LONG else "short",
-            #         signal.data.author.name if signal.data.author is not None else "???",
-            #         signal.data.trader.name,
-            #         signal.data.entry_price,
-            #         signal.data.symbol,
-            #         signal.data.profit_loss,
-            #         signal.data.profit_loss_rate * 100.0)
-
-            elif signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
-                # @todo in addition of entry/exit, modification and a reason of the exit/modification
-                icon = "contact-new"
-                direction = "long" if signal.data['direction'] == Position.LONG else "short"
-                audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
-
-                if signal.data['action'] == 'stop':
-                    audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
-
-                ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-
-                label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
-
-                message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
-                    signal.data['symbol'],
-                    signal.data['price'],
-                    signal.data['trader-name'],
-                    signal.data['action'],
-                    direction,
-                    ldatetime,
-                    signal.data['trade-id'],
-                    timeframe_to_str(signal.data['timeframe']))
-
-                if signal.data['stop-loss']:
-                    message += " SL@%s" % (signal.data['stop-loss'],)
-
-                if signal.data['take-profit']:
-                    message += " TP@%s" % (signal.data['take-profit'],)
-
-                if signal.data['profit-loss'] is not None:
-                    message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
-
-                if signal.data['comment'] is not None:
-                    message += " (%s)" % signal.data['comment']
-
-                if self.discord:
-                    if signal.data['identifier'] in self._discord_webhook:
-                        send_to_discord(self._discord_webhook[signal.data['identifier']], 'SiiS', '```' + message + '```')
-                    elif self._discord_webhook.get('signals'):
-                        send_to_discord(self._discord_webhook['signals'], 'SiiS', '```' + message + '```')
-
-                # log them to the signal view
-                Terminal.inst().notice(message, view="signal")
-
-                # and in signal logger
-                signal_logger.info(message)
-
-            # process sound
-            if not self.backtesting and self.audible and audio_alert is not None:
-                self.play_audio_alert(audio_alert)
-
-            if not self.backtesting and self.popups and message:
-                if self.notify2:
-                    n = self.notify2.Notification(label, message, icon)
-                    n.show()
-
-            elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
-                pass
-
-            elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
-                pass
-
-            count += 1
-            if count > 10:
-                # no more than per loop
-                break
-
-        # time.sleep(0.001)  # synced to main thread
-
-    def play_audio_alert(self, audio_alert):
-        # @todo using new conf
-        if not self.backtesting and self.audible and audio_alert is not None and 0 <= audio_alert <= len(self._alerts):
-            try:
-                for i in range(0, self._alerts[audio_alert][1]):
-                    subprocess.Popen(['aplay', '-D', self._audio_device, self._alerts[audio_alert][0]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            except:
-                pass
-
-    def play_wave(self, freq, duration, mode="sine"):
-        if not self.backtesting and self.audible and freq and duration and mode:
-            try:
-                os.system('play --no-show-progress --null --channels 1 synth %s %s %f' % (duration, mode, freq))
-            except:
-                pass
-
     def terminate(self):
-        if self.notify2:
-            self.notify2.uninit()
+        pass
 
     def sync(self):
         # synced update
-        self.update()
-
         if self.strategy_service:
             # discord 15m reports
-
             if self.discord and time.time() - self._last_stats >= 15*60:  # every 15m
                 pass
             #     if self.send_discord():
@@ -620,7 +402,7 @@ class DesktopNotifier(Notifier):
         self._audible = False
         self._popups = False
 
-        self._backtesting = False #options.get('backtesting', False)
+        self._backtesting = options.get('backtesting', False)
 
         # @todo map audio alerts audio_config.gett('alerts')
         notifier_config = service.notifier_config(name)

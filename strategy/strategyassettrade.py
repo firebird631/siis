@@ -11,6 +11,7 @@ from .strategytrade import StrategyTrade
 
 import logging
 logger = logging.getLogger('siis.strategy.assettrade')
+error_logger = logging.getLogger('siis.error.strategy.assettrade')
 
 
 class StrategyAssetTrade(StrategyTrade):
@@ -430,13 +431,16 @@ class StrategyAssetTrade(StrategyTrade):
                 done = False
                 # @todo
             else:
-                if self.has_limit_order() and self.tp > 0.0:
-                    if self.modify_take_profit(trader, instrument, self.tp) <= 0:
-                        done = False
+                try:
+                    if self.has_limit_order() and self.tp > 0.0:
+                        if self.modify_take_profit(trader, instrument, self.tp) <= 0:
+                            done = False
 
-                if self.has_stop_order() and self.sl > 0.0:
-                    if self.modify_stop_loss(trader, instrument, self.sl) <= 0:
-                        done = False
+                    if self.has_stop_order() and self.sl > 0.0:
+                        if self.modify_stop_loss(trader, instrument, self.sl) <= 0:
+                            done = False
+                except Exception as e:
+                    error_logger.error(str(e))
 
             if done:
                 # clean dirty flag if all the order have been updated
@@ -617,11 +621,10 @@ class StrategyAssetTrade(StrategyTrade):
                 self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
                 #
-                # filled mean also deleted
+                # filled mean also order completed and then no longer exists
                 #
 
-                if data.get('fully-filled'):
-                    
+                if data.get('fully-filled'):                   
                     if data['id'] == self.limit_oid:
                         self.limit_oid = None
                         self.limit_ref_oid = None
