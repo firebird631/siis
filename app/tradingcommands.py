@@ -520,7 +520,7 @@ class CleanCommand(Command):
         trade_id = None
         action = "clean"
 
-        # ie ":clean _ EURUSD 5"
+        # ie ":clean _ XRPUSDT 5"
         if len(args) != 3:
             Terminal.inst().action("Missing parameters", view='status')
             return False

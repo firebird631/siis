@@ -299,10 +299,9 @@ class BinanceTrader(Trader):
                 order.created_time = result['transactTime'] * 0.001
                 order.transact_time = result['transactTime'] * 0.001
 
-                # commented because done in the order traded slot
                 # if result['executedQty']:
                 #     # partially or fully executed quantity
-                #     order.executed = float(result['executedQty'])
+                #     order.set_executed(float(result['executedQty']), result.get['status'] == "FILLED", float(result['price']))
 
                 # store the order until fully completed or canceled
                 self.lock()

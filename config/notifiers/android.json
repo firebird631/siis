@@ -1,4 +1,5 @@
 {
-	"name": "<name-your-key>",
-	"auth-key": "<insert-here-your-authentication-key>"
+	"name": "android",
+	"classpath": "notifier.android.AndroidNotifier",
+	"auth-key": "<copy-this-file-and-insert-here-your-authentication-key>"
 }

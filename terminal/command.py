@@ -236,12 +236,14 @@ class CommandsHandler(object):
             self._current = []
 
             if cmd in self._commands:
-                return self._commands[cmd].execute(args[1:])
+                result = self._commands[cmd].execute(args[1:])
+                return result
 
             elif cmd in self._alias:
                 command_name = self._alias[cmd]
                 if command_name in self._commands:
-                    return self._commands[command_name].execute(args[1:])
+                    result = self._commands[command_name].execute(args[1:])
+                    return result
 
         return False
 
@@ -250,7 +252,7 @@ class CommandsHandler(object):
         Iterate the possibles values of a list for the command.
         """
         if not values:
-            return args, 0
+            return "", 0
 
         if cmd:
             filtered = []
@@ -274,10 +276,7 @@ class CommandsHandler(object):
             elif direction > 0:
                 tab_pos = 0
 
-        if cmd:
-            cmd = values[0]
-        else:
-            cmd = values[tab_pos]
+        cmd = values[tab_pos]
 
         return cmd, tab_pos
 
@@ -311,7 +310,9 @@ class CommandsHandler(object):
 
                 return [cmd], tp
         else:
-            cmds = list(self._commands.keys()) + list(self._alias.keys()).sort()
+            cmds = list(self._commands.keys()) + list(self._alias.keys())
+            cmds.sort()
+
             cmd, tp = self.iterate_cmd(cmds, self._word, self._tab_pos+direction, direction)
 
             return [cmd], tp
@@ -392,8 +393,8 @@ class CommandsHandler(object):
             # same word
             self._word += char
 
-        if len(args) <= 1 and self._word and self._word[0] != ':':
-            self._word = ""
+        # if len(args) <= 1 and self._word and self._word[0] != ':':
+        #     self._word = ""
 
         # each time a char is typed current completion is reset
         self._tab_pos = -1
@@ -415,6 +416,8 @@ class CommandsHandler(object):
             self._history_pos = 0
             self._word = ""
             self._tab_pos = -1
+
+            return []
 
         elif key_code == 'KEY_STAB' and command_mode:
             args, self._tab_pos = self.process_cli_completion([*args[:-1], self._word.lstrip(':')], self._tab_pos, 1)

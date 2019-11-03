@@ -55,6 +55,8 @@ class Order(Keyed):
 
         self._transact_time = 0.0   # last qty execution (traded) timestamp
         self._executed = 0.0        # executed quantity if partially (executed = quantity when completed)
+        self._fully_filled = False  # true if executed qty represent the orderer qty (eventually minus fees)
+        self._avg_price = 0.0       # average executed price
 
         self._direction = 0
         self._order_type = Order.ORDER_MARKET
@@ -87,7 +89,11 @@ class Order(Keyed):
     @property
     def executed(self):
         return self._executed
-    
+
+    @property
+    def fully_filled(self):
+        return self._fully_filled
+
     @property
     def order_id(self):
         return self._order_id
@@ -275,6 +281,11 @@ class Order(Keyed):
     @time_in_force.setter
     def time_in_force(self, time_in_force):
         self._time_in_force = time_in_force
+
+    def set_executed(self, quantity, fully_filled, avg_price):
+        self._executed = quantity
+        self._fully_filled = fully_filled
+        self._avg_price = avg_price
 
     #
     # Helpers

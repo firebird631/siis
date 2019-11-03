@@ -1959,7 +1959,7 @@ class Strategy(Runnable):
         elif market.has_margin and market.has_position:
             trade = StrategyPositionTrade(timeframe)
 
-            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate):
+            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
@@ -1968,7 +1968,7 @@ class Strategy(Runnable):
         elif market.has_margin and market.indivisible_position:
             trade = StrategyIndMarginTrade(timeframe)
 
-            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate):
+            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
@@ -1977,7 +1977,7 @@ class Strategy(Runnable):
         elif market.has_margin and not market.indivisible_position and not markets.has_position:
             trade = StrategyMarginTrade(timeframe)
 
-            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate):
+            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 

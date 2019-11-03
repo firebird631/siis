@@ -477,9 +477,6 @@ def application(argv):
                         value_changed = True
                         command_timeout = 0
 
-                        # use command mode
-                        Terminal.inst().set_mode(Terminal.MODE_DEFAULT)
-
                     # split the commande line
                     args = [arg for arg in (value[1:].split(' ') if value and value.startswith(':') else []) if arg]
                     if value and value[-1] == ' ':
@@ -495,6 +492,10 @@ def application(argv):
                         command_timeout = 0
 
                     desktop_service.on_key_pressed(key)
+
+                    if key == 'KEY_ESCAPE':
+                        # was in command me, now in default mode
+                        Terminal.inst().set_mode(Terminal.MODE_DEFAULT)
 
                 # @todo move the rest to command_handler
                 if c:

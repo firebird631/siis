@@ -132,6 +132,11 @@ class StrategyTrader(object):
             t_data = trade.dumps()
             ops_data = [operation.dumps() for operation in trade.operations]
 
+            # debug only @todo remove after fixed
+            logger.info("log trade")
+            logger.info(t_data)
+            logger.info(ops_data)
+
             # store per trade
             Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,
                     self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))

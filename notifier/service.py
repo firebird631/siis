@@ -26,27 +26,45 @@ class NotifierService(Service):
         super().__init__("notifier", options)
 
         self._notifiers = {}
+        self._notifiers_insts = {}
+
+        self._profile = options.get('profile', 'default')
+        self._profile_config = utils.load_config(options, "profiles/%s" % self._profile)
 
     def start(self, options):
-        pass
+        for k in self._profile_config.get('notifiers', []):
+            notifier_conf = utils.load_config(options, "notifiers/%s" % k)
+
+            if self._notifiers_insts.get(k) is not None:
+                logger.error("Notifier %s already started" % k)
+                continue
+
+            if notifier_conf.get("status") is not None and notifier_conf.get("status") == "enabled":
+                # retrieve the classname and instanciate it
+                notifier_conf = notifier.get('notifier')
+
+                if not notifier_model or not notifier_model.get('name'):
+                    logger.error("Invalid notifier configuration for %s !" % k)
+
+                Clazz = self._notifiers.get(strategy['name'])
+                if not Clazz:
+                    logger.error("Unknown strategy name %s for appliance %s !" % (strategy['name'], k))
+
+                inst = Clazz(self, parameters)
+                inst.set_identifier(k)
+
+                if inst.start():
+                    self._notifiers_insts[k] = inst
 
     def terminate(self):
-        self.lock()
-        for k, notifier in self._notifiers.items():
-            notifier.terminate()
+        for k, notifier in self._notifiers_insts.items():
+            # stop workers
+            if notifier.running:
+                notifier.stop()
 
-        self._notifiers = {}
+        for k, notifier in self._notifiers_insts.items():
+            # join them
+            if notifier.thread.is_alive():
+                notifier.thread.join()
 
-        self.unlock()
-
-    def add_notifier(self, notifier):
-        if not notifier:
-            return
-
-        self.lock()
-
-        if notifier.identifier in self._notifiers:
-            raise Exception("Notifier %s already registred" % notifier.identifier)
-
-        self._notifiers[notifier.identifier] = notifier
-        self.unlock()
+        self._notifiers_insts = {}

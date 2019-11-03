@@ -1,4 +1,6 @@
 {
+	"name": "desktop",
+	"classpath": "notifier.desktop.DesktopNotifier",
 	"audio": {
 		"device": "pulse",
 		"alerts": {
