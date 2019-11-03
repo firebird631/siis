@@ -3,7 +3,11 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Notifier module.
 
+import threading
+import collections
+
 from common.runnable import Runnable
+from terminal.terminal import Terminal
 
 import logging
 logger = logging.getLogger('siis.notifier')
@@ -11,9 +15,10 @@ logger = logging.getLogger('siis.notifier')
 
 class Notifier(Runnable):
     """
-    Notifier service.
-    @todo
+    Notifier base class.
     """
+
+    COMMAND_INFO = 1
 
     def __init__(self, name, identifier, service):
         super().__init__("nt-%s" % name)
@@ -21,8 +26,12 @@ class Notifier(Runnable):
         self._name = name
         self._identifier = identifier
         self._notifier_service = service
+        self._condition = threading.Condition()
 
-        self._activity = True  # trading activity
+        self._signals = collections.deque()  # filtered received signals accepted to process
+
+        # listen to its service
+        self.service.add_listener(self)
 
     @property
     def name(self):
@@ -33,12 +42,26 @@ class Notifier(Runnable):
         """Unique notifier identifier"""
         return self._identifier
 
+    def set_identifier(self, identifier):
+        """Unique notifier identifier"""
+        self._identifier = identifier
+
     @property
     def service(self):
         return self._notifier_service
 
     def start(self, options):
-        pass
+        return super().start()
+
+    def stop(self):
+        # want to leave now
+        if self._running:
+            self._running = False
+
+        # unlock
+        self._condition.acquire()
+        self._condition.notify()
+        self._condition.release()
 
     def terminate(self):
         pass
@@ -52,8 +75,42 @@ class Notifier(Runnable):
     def post_run(self):
         Terminal.inst().info("Joining notifier %s - %s..." % (self._name, self._identifier), view='content')
 
+    def pre_update(self):
+        self.wait_signal()
+
     def post_update(self):
         pass
 
+    def wait_signal(self):
+        self._condition.acquire()
+        while self._running and not self._signals:
+            self._condition.wait()
+        self._condition.release()
+
+    def push_signal(self, signal):
+        if not signal:
+            return
+
+        self._condition.acquire()
+        self._signals.append(signal)
+        self._condition.notify()
+        self._condition.release()
+
     def update(self):
+        return True
+
+    def command(self, command_type, data):
+        pass
+
+    def receiver(self, signal):
+        if not self._playpause:
+            return
+
+    def ping(self, timeout):
+        pass
+
+    def watchdog(self, watchdog_service, timeout):
+        pass
+
+    def pong(self, timestamp, pid, watchdog_service, msg):
         pass

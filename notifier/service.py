@@ -8,18 +8,21 @@ import time, datetime
 import threading
 import base64, hashlib
 
+from importlib import import_module
+
+from common.signal import Signal
 from common.service import Service
 
 from config import utils
 
 import logging
 logger = logging.getLogger('siis.notifier.service')
+error_logger = logging.getLogger('siis.error.notifier.service')
 
 
 class NotifierService(Service):
     """
     Notifier service.
-    @todo
     """
 
     def __init__(self, options):
@@ -31,29 +34,58 @@ class NotifierService(Service):
         self._profile = options.get('profile', 'default')
         self._profile_config = utils.load_config(options, "profiles/%s" % self._profile)
 
+        if 'notifiers' not in self._profile_config:
+            self._profile_config['notifiers'] = {}
+
+        if "desktop" not in self._profile_config['notifiers']:
+            # always default add a desktop notifier, but could be disable opt-in in the profile
+            self._profile_config['notifiers']["desktop"] = {
+                'status': "enabled",
+                'name': "desktop"
+            }
+
+        # notifiers config
+        self._notifiers_config = self._init_notifier_config(options)
+
     def start(self, options):
+        # notifiers
+        for k, notifier in self._notifiers_config.items():
+            if k == "default":
+                continue
+
+            if notifier.get("status") is not None and notifier.get("status") == "load":
+                # retrieve the classname and instanciate it
+                parts = notifier.get('classpath').split('.')
+
+                module = import_module('.'.join(parts[:-1]))
+                Clazz = getattr(module, parts[-1])
+
+                if not Clazz:
+                    raise Exception("Cannot load notifier %s" % k)
+
+                self._notifiers[k] = Clazz
+
         for k in self._profile_config.get('notifiers', []):
-            notifier_conf = utils.load_config(options, "notifiers/%s" % k)
+            notifier_conf = self._notifiers_config.get(k)
 
             if self._notifiers_insts.get(k) is not None:
                 logger.error("Notifier %s already started" % k)
                 continue
 
-            if notifier_conf.get("status") is not None and notifier_conf.get("status") == "enabled":
+            if notifier_conf.get("status") is not None and notifier_conf.get("status") in ("enabled", "load"):
                 # retrieve the classname and instanciate it
-                notifier_conf = notifier.get('notifier')
-
-                if not notifier_model or not notifier_model.get('name'):
+                if not notifier_conf.get('name'):
                     logger.error("Invalid notifier configuration for %s !" % k)
 
-                Clazz = self._notifiers.get(strategy['name'])
+                Clazz = self._notifiers.get(notifier_conf['name'])
                 if not Clazz:
-                    logger.error("Unknown strategy name %s for appliance %s !" % (strategy['name'], k))
+                    logger.error("Unknown notifier name %s for %s !" % (notifier_conf['name'], k))
+                    continue
 
-                inst = Clazz(self, parameters)
+                inst = Clazz(k, notifier_conf, self, options)
                 inst.set_identifier(k)
 
-                if inst.start():
+                if inst.start(options):
                     self._notifiers_insts[k] = inst
 
     def terminate(self):
@@ -68,3 +100,61 @@ class NotifierService(Service):
                 notifier.thread.join()
 
         self._notifiers_insts = {}
+
+    def sync(self):
+        pass
+
+    def command(self, notifier, command, value):
+        """
+        Send a manual command to a specific notifier.
+        """
+        self.lock()
+
+        notifier_inst = self._notifiers_insts.get(notifier)
+        if notifier_inst:
+            try:
+                notifier_inst.command(command, value)
+            except Exception as e:
+                error_logger.error(str(e))
+
+        self.unlock()
+
+    def _init_notifier_config(self, options):
+        """
+        Get the profile configuration for a specific notifier name.
+        """
+        notifiers_profile = self._profile_config.get('notifiers', {})
+
+        notifier_config = {}
+
+        for k, profile_notifer_config in notifiers_profile.items():
+            user_notifier_config = utils.load_config(options, 'notifiers/' + k)
+            if user_notifier_config:
+                # keep overrided
+                notifier_config[k] = user_notifier_config
+
+        return notifier_config
+
+    def notifier_config(self, name):
+        """
+        Get the configurations for a notifier as dict.
+        """
+        return self._notifiers_config.get(name, {})
+
+    def receiver(self, signal):
+        if signal.source == Signal.SOURCE_STRATEGY:
+            if signal.signal_type in (Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT, Signal.SIGNAL_STRATEGY_ENTRY_EXIT):
+                # propagate the signal to the notifiers
+                self._mutex.acquire()
+                self._signals_handler.notify(signal)
+                self._mutex.release()
+
+    def notify(self, signal_type, source_name, signal_data):
+        if signal_data is None:
+            return
+
+        signal = Signal(Signal.SOURCE_NOTIFIER, source_name, signal_type, signal_data)
+
+        self._mutex.acquire()
+        self._signals_handler.notify(signal)
+        self._mutex.release()

@@ -118,3 +118,11 @@ class ViewService(BaseService):
             del self._views[view_id]
 
         self.unlock()
+
+    def toggle_percents(self):
+        self.lock()
+
+        for k, view in self._views.items():
+            view.toggle_percents()
+
+        self.unlock()

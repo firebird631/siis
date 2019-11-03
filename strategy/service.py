@@ -206,6 +206,7 @@ class StrategyService(Service):
                 Clazz = self._strategies.get(strategy['name'])
                 if not Clazz:
                     logger.error("Unknown strategy name %s for appliance %s !" % (strategy['name'], k))
+                    continue
 
                 appl_inst = Clazz(self, self.watcher_service, self.trader_service, appl, parameters)
                 appl_inst.set_identifier(k)

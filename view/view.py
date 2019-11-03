@@ -21,6 +21,7 @@ class View(object):
         self._mutex = threading.RLock()  # reentrant locker
         self._item = 0  # in case of multiple item like more than a single appliance or trader
         self._refresh = 0
+        self._percent = False  # display percent for tables
 
     def create(self):
         Terminal.inst().create_content_view(self._id)
@@ -81,4 +82,8 @@ class View(object):
 
     def next_item(self):
         self._item += 1
+        self._refresh = 0  # force refresh
+
+    def toggle_percent(self):
+        self._percent = not self._percent
         self._refresh = 0  # force refresh

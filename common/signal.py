@@ -59,6 +59,8 @@ class Signal(object):
 	SOURCE_TRADER = 2
 	SOURCE_STRATEGY = 3
 	SOURCE_MONITOR = 4
+	SOURCE_NOTIFIER = 5
+	SOURCE_VIEW = 6
 
 	def __init__(self, source, source_name, signal_type, data):
 		self._source = source

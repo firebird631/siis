@@ -1,5 +1,6 @@
 {
+	"status": "load",
 	"name": "android",
-	"classpath": "notifier.android.AndroidNotifier",
+	"classpath": "notifier.android.androidnotifier.AndroidNotifier",
 	"auth-key": "<copy-this-file-and-insert-here-your-authentication-key>"
 }

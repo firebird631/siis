@@ -27,7 +27,7 @@ from trader.service import TraderService
 from strategy.service import StrategyService
 from monitor.service import MonitorService
 from notifier.service import NotifierService
-from notifier.desktop.desktopnotifier import DesktopNotifier
+from notifier.desktop.desktopnotifier import OrgDesktopNotifier
 from common.watchdog import WatchdogService
 
 from terminal.terminal import Terminal
@@ -78,7 +78,7 @@ def terminate(watchdog_service, watcher_service, trader_service, strategy_servic
     if view_service:
         view_service.terminate()
     if notifier_service:
-        pass  # notifier_service.terminate()
+        notifier_service.terminate()
 
     Database.terminate()
 
@@ -320,7 +320,7 @@ def application(argv):
 
     # desktop notifier (to be splitted in ViewService and in a DesktopNotifier managed by a NotifierService)
     try:    
-        desktop_service = DesktopNotifier(options)
+        desktop_service = OrgDesktopNotifier(options)
         # desktop_service.start(options)
         watchdog_service.add_service(desktop_service)
     except Exception as e:
@@ -334,7 +334,7 @@ def application(argv):
         notifier_service.start(options)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
         sys.exit(-1)
 
     # view service
@@ -344,7 +344,7 @@ def application(argv):
         watchdog_service.add_service(view_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
         sys.exit(-1)
 
     # database manager
@@ -353,7 +353,7 @@ def application(argv):
         Database.inst().setup(options)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
         sys.exit(-1)
 
     # watcher service
@@ -400,6 +400,9 @@ def application(argv):
         terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
         sys.exit(-1)
 
+    # wan't to be notifier of system errors
+    watchdog_service.add_listener(notifier_service)
+
     # strategy service listen to watcher service
     watcher_service.add_listener(strategy_service)
 
@@ -407,9 +410,8 @@ def application(argv):
     trader_service.add_listener(strategy_service)
 
     # want to display desktop notification, update view and notify on discord
-    # strategy_service.add_listener(notifier_service)
-    # @todo add notifier service and replace desktop service as desktop notifier into this service same for discord...
-    strategy_service.add_listener(desktop_service)
+    strategy_service.add_listener(notifier_service)
+    strategy_service.add_listener(desktop_service)  # @todo remove it once notifier ok
     strategy_service.add_listener(view_service)
 
     # for display stats (@todo move to views)
@@ -422,7 +424,7 @@ def application(argv):
 
     # cli commands registration
     register_general_commands(commands_handler)
-    register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service)
+    register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service, notifier_service)
     register_region_commands(commands_handler, strategy_service)
 
     setup_views(siis_logger, view_service, watcher_service, trader_service, strategy_service)
@@ -491,7 +493,8 @@ def application(argv):
                         value_changed = True
                         command_timeout = 0
 
-                    desktop_service.on_key_pressed(key)
+                    desktop_service.on_key_pressed(key)  # @deprecated remove it
+                    view_service.on_key_pressed(key)
 
                     if key == 'KEY_ESCAPE':
                         # was in command me, now in default mode
@@ -571,7 +574,7 @@ def application(argv):
                             if not result:
                                 result = True
 
-                                # display views
+                                # display views @todo must be managed by view_service
                                 if value == 'C':
                                     Terminal.inst().clear_content()
                                 elif value == 'D':
@@ -607,17 +610,30 @@ def application(argv):
                                     # a simple mark on the terminal
                                     Terminal.inst().notice("Trading time %s" % (datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='status')
 
-                                elif value == 'a' and desktop_service:
-                                    desktop_service.audible = not desktop_service.audible
-                                    Terminal.inst().action("Audible notification are now %s" % ("actives" if desktop_service.audible else "disabled",), view='status')
-                                elif value == 'n' and desktop_service:
-                                    desktop_service.popups = not desktop_service.popups
-                                    Terminal.inst().action("Desktop notification are now %s" % ("actives" if desktop_service.popups else "disabled",), view='status')
-                                elif value == 'e' and desktop_service:
-                                    desktop_service.discord = not desktop_service.discord
-                                    Terminal.inst().action("Discord notification are now %s" % ("actives" if desktop_service.discord else "disabled",), view='status')
-                                elif value == '%' and desktop_service:
-                                    desktop_service.toggle_percents()
+                                elif value == 'a':
+                                    if notifier_service:  # @deprecated remove it
+                                        notifier_service.command("desktop", "toggle-audible", None)
+                                    if desktop_service:
+                                        desktop_service.audible = not desktop_service.audible
+                                        Terminal.inst().action("Audible notification are now %s" % ("actives" if desktop_service.audible else "disabled",), view='status')
+                                elif value == 'n':
+                                    if notifier_service:  # @deprecated remove it
+                                        notifier_service.command("desktop", "toggle-popups", None)
+                                    if desktop_service:
+                                        desktop_service.popups = not desktop_service.popups
+                                        Terminal.inst().action("Desktop notification are now %s" % ("actives" if desktop_service.popups else "disabled",), view='status')
+                                elif value == 'e':
+                                    # if notifier_service:
+                                    #     # @todo move into command play/pause notifier name
+                                    #     #notifier_service.command(notifier_name, "toggle-activity", None)
+                                    if desktop_service:
+                                        desktop_service.discord = not desktop_service.discord
+                                        Terminal.inst().action("Discord notification are now %s" % ("actives" if desktop_service.discord else "disabled",), view='status')
+                                elif value == '%':
+                                    if view_service:
+                                        view_service.toggle_percents()
+                                    if desktop_service:  # @deprecated remove later
+                                        desktop_service.toggle_percents()
 
                                 else:
                                     result = False

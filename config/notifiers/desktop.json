@@ -1,6 +1,7 @@
 {
+	"status": "load",
 	"name": "desktop",
-	"classpath": "notifier.desktop.DesktopNotifier",
+	"classpath": "notifier.desktop.desktopnotifier.DesktopNotifier",
 	"audio": {
 		"device": "pulse",
 		"alerts": {
