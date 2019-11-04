@@ -12,7 +12,7 @@ class NotifierServiceException(Exception):
         return 'NotifierServiceException : %s' % (self.message)
 
 
-class NotifierException(NotifierException):
+class NotifierException(NotifierServiceException):
 
     def __init__(self, name, identifier, message):
         super().__init__(message)

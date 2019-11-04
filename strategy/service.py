@@ -16,6 +16,7 @@ from common.signal import Signal
 
 from terminal.terminal import Terminal
 from strategy.strategy import Strategy
+from strategy.strategyexception import StrategyServiceException
 
 from config import utils
 
@@ -128,7 +129,7 @@ class StrategyService(Service):
                 Clazz = getattr(module, parts[-1])
 
                 if not Clazz:
-                    raise Exception("Cannot load indicator %s" % k) 
+                    raise StrategyServiceException("Cannot load indicator %s" % k) 
 
                 self._indicators[k] = Clazz
 
@@ -142,7 +143,7 @@ class StrategyService(Service):
                 Clazz = getattr(module, parts[-1])
 
                 if not Clazz:
-                    raise Exception("Cannot load tradeop %s" % k) 
+                    raise StrategyServiceException("Cannot load tradeop %s" % k) 
 
                 self._tradeops[k] = Clazz
 
@@ -156,7 +157,7 @@ class StrategyService(Service):
                 Clazz = getattr(module, parts[-1])
 
                 if not Clazz:
-                    raise Exception("Cannot load region %s" % k) 
+                    raise StrategyServiceException("Cannot load region %s" % k) 
 
                 self._regions[k] = Clazz
 
@@ -173,8 +174,7 @@ class StrategyService(Service):
                 Clazz = getattr(module, parts[-1])
 
                 if not Clazz:
-                    # @todo subclass of...
-                    raise Exception("Cannot load strategy %s" % k)
+                    raise StrategyServiceException("Cannot load strategy %s" % k)
 
                 self._strategies[k] = Clazz
 
@@ -190,7 +190,7 @@ class StrategyService(Service):
                 continue
 
             if self._appliances.get(k) is not None:
-                logger.error("Strategy appliance %s already started" % k)
+                error_logger.error("Strategy appliance %s already started. Ignored !" % k)
                 continue
 
             if appl.get("status") is not None and appl.get("status") == "enabled":
@@ -201,11 +201,11 @@ class StrategyService(Service):
                 parameters = strategy.get('parameters', {})
 
                 if not strategy or not strategy.get('name'):
-                    logger.error("Invalid strategy configuration for appliance %s !" % k)
+                    error_logger.error("Invalid strategy configuration for appliance %s. Ignored !" % k)
 
                 Clazz = self._strategies.get(strategy['name'])
                 if not Clazz:
-                    logger.error("Unknown strategy name %s for appliance %s !" % (strategy['name'], k))
+                    error_logger.error("Unknown strategy name %s for appliance %s. Ignored !" % (strategy['name'], k))
                     continue
 
                 appl_inst = Clazz(self, self.watcher_service, self.trader_service, appl, parameters)
@@ -213,6 +213,9 @@ class StrategyService(Service):
 
                 if appl_inst.start():
                     self._appliances[k] = appl_inst
+                else:
+                    error_logger.error("Unable to start strategy name %s for appliance %s. Ignored !" % (strategy['name'], k))
+                    continue
 
         # start the worker pool
         if self._backtesting:

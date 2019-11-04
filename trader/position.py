@@ -309,7 +309,7 @@ class Position(Keyed):
         delta_price = self.price_diff(market)
         position_cost = self.position_cost(market)
 
-        raw_profit_loss = self.quantity * (delta_price / market.one_pip_means) * market.value_per_pip
+        raw_profit_loss = self.quantity * (delta_price / (market.one_pip_means or 1.0)) * market.value_per_pip
 
         # use maker fee and commission
         self._profit_loss = raw_profit_loss - (position_cost * market.maker_fee) - (position_cost * market.maker_commission)

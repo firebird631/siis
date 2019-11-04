@@ -13,6 +13,7 @@ from common.service import Service
 
 from common.signal import Signal
 from config.utils import merge_parameters
+from watcher.watcherexception import WatcherServiceException
 
 import logging
 logger = logging.getLogger('siis.service.watcher')

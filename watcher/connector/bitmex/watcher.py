@@ -155,8 +155,11 @@ class BitMexWatcher(Watcher):
         #
 
         if time.time() - self._last_market_update >= BitMexWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
-            self.update_markets_info()
-            self._last_market_update = time.time()
+            try:
+                self.update_markets_info()
+                self._last_market_update = time.time()
+            except Exception as e:
+                error_logger.error("update_update_markets_info %s" % str(e))
 
         return True
 

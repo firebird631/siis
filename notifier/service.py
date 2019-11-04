@@ -14,6 +14,7 @@ from common.signal import Signal
 from common.service import Service
 
 from config import utils
+from notifier.notifierexception import NotifierServiceException
 
 import logging
 logger = logging.getLogger('siis.notifier.service')
@@ -61,7 +62,7 @@ class NotifierService(Service):
                 Clazz = getattr(module, parts[-1])
 
                 if not Clazz:
-                    raise Exception("Cannot load notifier %s" % k)
+                    raise NotifierServiceException("Cannot load notifier %s" % k)
 
                 self._notifiers[k] = Clazz
 
@@ -71,22 +72,22 @@ class NotifierService(Service):
                 continue
 
             if not conf or not conf.get('name'):
-                logger.error("Invalid configuration for notifier %s" % k)
+                logger.error("Invalid configuration for notifier %s. Ignored !" % k)
                 continue
 
             notifier_conf = self._notifiers_config.get(conf['name'])
             if not notifier_conf:
-                logger.error("Invalid configuration for notifier %s" % k)
+                logger.error("Invalid configuration for notifier %s. Ignored !" % k)
                 continue
 
             if notifier_conf.get("status") is not None and notifier_conf.get("status") in ("enabled", "load"):
                 # retrieve the classname and instanciate it
                 if not notifier_conf.get('name'):
-                    logger.error("Invalid notifier configuration for %s !" % k)
+                    logger.error("Invalid notifier configuration for %s. Ignored !" % k)
 
                 Clazz = self._notifiers.get(notifier_conf['name'])
                 if not Clazz:
-                    logger.error("Unknown notifier name %s for %s !" % (notifier_conf['name'], k))
+                    logger.error("Unknown notifier name %s for %s. Ignored !" % (notifier_conf['name'], k))
                     continue
 
                 inst = Clazz(k, notifier_conf, self, options)
@@ -94,6 +95,9 @@ class NotifierService(Service):
 
                 if inst.start(options):
                     self._notifiers_insts[k] = inst
+                else:
+                    logger.error("Unable to start notifier %s for %s. Ignored !" % (notifier_conf['name'], k))
+                    continue
 
     def terminate(self):
         for k, notifier in self._notifiers_insts.items():

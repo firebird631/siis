@@ -160,9 +160,11 @@ class BinanceWatcher(Watcher):
     def disconnect(self):
         super().disconnect()
 
-        try:
-            self.lock()
+        logger.debug("%s disconnecting..." % (self.name))
 
+        self.lock()
+
+        try:
             if self._connector:
                 self._connector.disconnect()
                 self._connector = None
@@ -174,6 +176,8 @@ class BinanceWatcher(Watcher):
                 self._user_data_handler = None
 
             self._ready = False
+
+            logger.debug("%s disconnected" % (self.name))
 
         except Exception as e:
             logger.debug(repr(e))
@@ -215,44 +219,49 @@ class BinanceWatcher(Watcher):
     #
 
     def subscribe(self, market_id, timeframe):
+        result = False
         self.lock()
 
-        if market_id in self.__matching_symbols:
-            multiplex = []
+        try:
+            if market_id in self.__matching_symbols:
+                multiplex = []
 
-            # live data
-            symbol = market_id.lower()
+                # live data
+                symbol = market_id.lower()
 
-            # depth - order book
-            # multiplex.append(symbol + '@depth')
+                # depth - order book
+                # multiplex.append(symbol + '@depth')
 
-            # aggreged trade
-            multiplex.append(symbol + '@aggTrade')
+                # aggreged trade
+                multiplex.append(symbol + '@aggTrade')
 
-            # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
-            # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
+                # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
+                # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
 
-            # fetch from 1M to 1W
-            if self._initial_fetch:
-                logger.info("%s prefetch for %s" % (self.name, market_id))
+                # fetch from 1M to 1W
+                if self._initial_fetch:
+                    logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                self.fetch_and_generate(market_id, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
-                self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
-                self.fetch_and_generate(market_id, Instrument.TF_15M, 2*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
-                self.fetch_and_generate(market_id, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
-                self.fetch_and_generate(market_id, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)               
+                    self.fetch_and_generate(market_id, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
+                    self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
+                    self.fetch_and_generate(market_id, Instrument.TF_15M, 2*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
+                    self.fetch_and_generate(market_id, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
+                    self.fetch_and_generate(market_id, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)               
 
-            # one more watched instrument
-            self.insert_watched_instrument(market_id, [0])
+                # one more watched instrument
+                self.insert_watched_instrument(market_id, [0])
 
-            # trade+depth
-            self._multiplex_handlers[market_id] = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
+                # trade+depth
+                self._multiplex_handlers[market_id] = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
 
+                result = True
+
+        except Exception as e:
+            error_logger.eror(repr(e))
+        finally:
             self.unlock()
-            return True
-        else:
-            self.unlock()
-            return False
+
+        return result
 
     def unsubscribe(self, market_id, timeframe):
         self.lock()

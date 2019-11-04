@@ -22,6 +22,7 @@ from terminal.terminal import Terminal
 from common.utils import timeframe_to_str
 
 from view.view import View
+from view.viewexception import ViewServiceException
 
 
 class ViewService(BaseService):
@@ -95,7 +96,7 @@ class ViewService(BaseService):
 
         if view in self._views:
             self.unlock()
-            raise Exception("View %s already registred" % view.id)
+            raise ViewServiceException("View %s already registred" % view.id)
 
         try:
             view.create()

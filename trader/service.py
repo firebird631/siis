@@ -16,6 +16,7 @@ from common.signal import Signal
 from terminal.terminal import Terminal
 from trader.position import Position
 from trader.connector.papertrader.trader import PaperTrader
+from trader.traderexception import TraderServiceException
 
 
 class TraderService(Service):

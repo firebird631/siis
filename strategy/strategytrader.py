@@ -515,7 +515,10 @@ class StrategyTrader(object):
                         self._stats['roe'].append(record)
 
                     if self._reporting == StrategyTrader.REPORTING_VERBOSE:
-                        self.report(trade, False)
+                        try:
+                            self.report(trade, False)
+                        except Exception as e:
+                            error_logger.error(str(e))
 
         # recreate the list of trades
         if mutated:

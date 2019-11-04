@@ -24,6 +24,8 @@ from database.database import Database
 from connector.binance.exceptions import *
 from connector.binance.client import Client
 
+from trader.traderexception import TraderException
+
 import logging
 logger = logging.getLogger('siis.trader.binance')
 error_logger = logging.getLogger('siis.error.binance')
@@ -115,16 +117,20 @@ class BinanceTrader(Trader):
 
         self.lock()
 
-        # fill the list of quotes symbols
-        symbols = self._watcher.connector.client.get_exchange_info()
-        for symbol in symbols['symbols']:
-            if symbol['quoteAsset'] not in self._quotes:
-                self._quotes.append(symbol['quoteAsset'])
+        try:
+            # fill the list of quotes symbols
+            symbols = self._watcher.connector.client.get_exchange_info()
+            for symbol in symbols['symbols']:
+                if symbol['quoteAsset'] not in self._quotes:
+                    self._quotes.append(symbol['quoteAsset'])
 
-        # and add any asset of the balance
-        for balance in balances:
-            asset_name = balance['asset']
-            self.__get_or_add_asset(asset_name)
+            # and add any asset of the balance
+            for balance in balances:
+                asset_name = balance['asset']
+                self.__get_or_add_asset(asset_name)
+
+        except Exception as e:
+            error_logger.error(repr(e))
 
         self.unlock()
 
@@ -176,7 +182,8 @@ class BinanceTrader(Trader):
             self.lock()
             self._account.update(self._watcher.connector)
         except Exception as e:
-            logger.error(traceback.format_exc())
+            error_logger.error(str(e))
+            error_logger.error(traceback.format_exc())
         finally:
             self.unlock()
 
@@ -430,9 +437,6 @@ class BinanceTrader(Trader):
         return False
 
     def positions(self, market_id):
-        """
-        @todo Soon support of margin trading.
-        """
         positions = []
 
         self.lock()
@@ -444,6 +448,7 @@ class BinanceTrader(Trader):
             positions = []
 
         self.unlock()
+
         return positions
 
     def market(self, market_id, force=False):
@@ -482,17 +487,21 @@ class BinanceTrader(Trader):
 
         self.lock()
 
-        # doesn't erase them because need the last list of markets
-        for asset in assets:
-            # set data from fetched one
-            local_asset = self._assets.get(asset.symbol)
-            if local_asset:
-                # update stored asset
-                local_asset.update_price(asset.last_update_time, asset.last_trade_id, asset.price, asset.quote)
-                local_asset.set_quantity(asset.quantity, 0)  # no idea of locked/free set all locked
-            else:
-                # store it
-                self._assets[asset.symbol] = asset
+        try:
+            # doesn't erase them because need the last list of markets
+            for asset in assets:
+                # set data from fetched one
+                local_asset = self._assets.get(asset.symbol)
+                if local_asset:
+                    # update stored asset
+                    local_asset.update_price(asset.last_update_time, asset.last_trade_id, asset.price, asset.quote)
+                    local_asset.set_quantity(asset.quantity, 0)  # no idea of locked/free set all locked
+                else:
+                    # store it
+                    self._assets[asset.symbol] = asset
+
+        except Exception as e:
+            error_logger.error(repr(e))
 
         try:
             # and fetch them to be synced + opened orders + actives positions
@@ -500,7 +509,7 @@ class BinanceTrader(Trader):
             self.__fetch_orders()
             self.__fetch_positions()
         except Exception as e:
-            logger.error(repr(e))
+            error_logger.error(repr(e))
 
         self.unlock()
 
@@ -526,8 +535,8 @@ class BinanceTrader(Trader):
             dust_log = self._watcher.connector.get_dust_log()
             exchange_info = self._watcher.connector.client.get_exchange_info()
         except Exception as e:
-            logger.error("__fetch_assets: %s" % repr(e))
-            raise
+            error_logger.error("__fetch_assets: %s" % repr(e))
+            raise TraderException(self.name, "__fetch_assets: %s" % repr(e))
 
         #
         # symbols details by asset and market
@@ -887,7 +896,7 @@ class BinanceTrader(Trader):
             open_orders = self._watcher.connector.open_orders()
         except Exception as e:
             logger.error("__fetch_orders: %s" % repr(e))
-            raise       
+            raise
 
         orders = {}
 

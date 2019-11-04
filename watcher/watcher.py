@@ -18,6 +18,10 @@ from database.database import Database
 from instrument.instrument import Instrument, Candle
 from instrument.candlegenerator import CandleGenerator
 
+import logging
+logger = logging.getLogger('siis.watcher')
+error_logger = logging.getLogger('siis.error.watcher')
+
 
 class Watcher(Runnable):
     """
@@ -464,7 +468,7 @@ class Watcher(Runnable):
         For initial fetching of the current OHLC.
         """
         if timeframe > 0 and timeframe not in self.GENERATED_TF:
-            logger.error("Timeframe %i is not allowed !" % (timeframe,))
+            error_logger.error("Timeframe %i is not allowed !" % (timeframe,))
             return
 
         generators = []

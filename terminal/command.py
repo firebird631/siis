@@ -5,8 +5,11 @@
 
 import json
 
+from app.appexception import CommandHandlerException, CommandException, CommandAutocompleteException, CommandParseException, CommandExecException
+
 import logging
 logger = logging.getLogger('siis.command')
+error_logger = logging.getLogger('siis.error.command')
 
 
 class Command(object):
@@ -176,22 +179,22 @@ class CommandsHandler(object):
         Register a new command with unique id, optionnal alias and optionnal accelerator.
         """
         if not command.name:
-            raise InvalidValue("Missing command name")
+            raise CommandHandlerException("Missing command name")
 
         if command.name in self._commands:
-            raise InvalidValue("Command %s already registred" % (command.name,))
+            raise CommandException(command.name, "Already registred")
 
         if command.name in self._alias:
-            raise InvalidValue("Command %s must not refers to a registred alias" % (command.name,))
+            raise CommandException(command.name, "Must not refers to a registered alias")
 
         if command.alias and command.alias in self._alias:
-            raise InvalidValue("Command alias %s for %s already registred" % (command.alias, command.name))
+            raise CommandException(command.name, "Alias %s already registred" % (command.alias,))
 
         if command.accelerator and command.accelerator in self._accelerators:
-            raise InvalidValue("Command accelerator %s already registred" % (command.accelerator,))
+            raise CommandException(command.name, "Accelerator %s already registred" % (command.accelerator,))
 
         if command.alias and command.alias in self._commands:
-            raise InvalidValue("Command alias %s for %s must not refers to another command" % (command.alias, command.name))
+            raise CommandException(command.name, "Alias %s must not refers to another command" % (command.alias,))
 
         self._commands[command.name] = command
         if command.alias:
@@ -208,7 +211,13 @@ class CommandsHandler(object):
         if command_name:
             command = self._commands.get(command_name)
             if command:
-                return command.execute(command.default_args())
+                try:
+                    command.execute(command.default_args())
+                except Exception as e:
+                    logger.error(str(e))
+                    return False
+
+                return True
 
         return False
 
@@ -236,14 +245,24 @@ class CommandsHandler(object):
             self._current = []
 
             if cmd in self._commands:
-                result = self._commands[cmd].execute(args[1:])
-                return result
+                try:
+                    self._commands[cmd].execute(args[1:])
+                except Exception as e:
+                    logger.error(str(e))
+                    return False
+
+                return True
 
             elif cmd in self._alias:
                 command_name = self._alias[cmd]
                 if command_name in self._commands:
-                    result = self._commands[command_name].execute(args[1:])
-                    return result
+                    try:
+                        result = self._commands[command_name].execute(args[1:])
+                    except Exception as e:
+                        logger.error(str(e))
+                        return False
+
+                    return True
 
         return False
 
@@ -284,38 +303,42 @@ class CommandsHandler(object):
         """
         Process work completion from advanced command line.
         """
-        if len(args):
-            cmd = args[0]
+        try:
+            if len(args):
+                cmd = args[0]
 
-            if cmd.startswith('_'):
-                return args, tab_pos
+                if cmd.startswith('_'):
+                    return args, tab_pos
 
-            self._history_pos = 0
+                self._history_pos = 0
 
-            if len(args) > 1:
-                if cmd in self._commands:
-                    largs, tp = self._commands[cmd].completion(args[1:], tab_pos+direction, direction)
-                    return [cmd, *largs], tp
-
-                elif cmd in self._alias:
-                    command_name = self._alias[cmd]
-                    if command_name in self._commands:
-                        largs, tp = self._commands[command_name].completion(args[1:], tab_pos+direction, direction)
+                if len(args) > 1:
+                    if cmd in self._commands:
+                        largs, tp = self._commands[cmd].completion(args[1:], tab_pos+direction, direction)
                         return [cmd, *largs], tp
+
+                    elif cmd in self._alias:
+                        command_name = self._alias[cmd]
+                        if command_name in self._commands:
+                            largs, tp = self._commands[command_name].completion(args[1:], tab_pos+direction, direction)
+                            return [cmd, *largs], tp
+                else:
+                    cmds = list(self._commands.keys()) + list(self._alias.keys())
+                    cmds.sort()
+
+                    cmd, tp = self.iterate_cmd(cmds, cmd, self._tab_pos+direction, direction)
+
+                    return [cmd], tp
             else:
                 cmds = list(self._commands.keys()) + list(self._alias.keys())
                 cmds.sort()
 
-                cmd, tp = self.iterate_cmd(cmds, cmd, self._tab_pos+direction, direction)
+                cmd, tp = self.iterate_cmd(cmds, self._word, self._tab_pos+direction, direction)
 
                 return [cmd], tp
-        else:
-            cmds = list(self._commands.keys()) + list(self._alias.keys())
-            cmds.sort()
 
-            cmd, tp = self.iterate_cmd(cmds, self._word, self._tab_pos+direction, direction)
-
-            return [cmd], tp
+        except Exception as e:
+            error_logger.error(str(e))
 
         return args, tab_pos
 
