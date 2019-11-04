@@ -25,13 +25,12 @@ from common.baseservice import BaseService
 from common.signal import Signal
 
 from terminal.terminal import Terminal
-from database.database import Database
 
 from common.utils import timeframe_to_str
 
 import logging
-logger = logging.getLogger('siis.notifier.desktopnotifier')
-error_logger = logging.getLogger('siis.error.notifier.desktopnotifier')
+logger = logging.getLogger('siis.notifier.desktop')
+error_logger = logging.getLogger('siis.error.notifier.desktop')
 signal_logger = logging.getLogger('siis.signal')
 
 

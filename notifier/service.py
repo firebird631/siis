@@ -64,7 +64,7 @@ class NotifierService(Service):
                 if not Clazz:
                     raise NotifierServiceException("Cannot load notifier %s" % k)
 
-                self._notifiers[k] = Clazz
+                self._notifiers[notifier.get("name")] = Clazz
 
         for k, conf in self._profile_config.get('notifiers', {}).items():
             if self._notifiers_insts.get(k) is not None:
@@ -75,7 +75,7 @@ class NotifierService(Service):
                 logger.error("Invalid configuration for notifier %s. Ignored !" % k)
                 continue
 
-            notifier_conf = self._notifiers_config.get(conf['name'])
+            notifier_conf = self._notifiers_config.get(k)
             if not notifier_conf:
                 logger.error("Invalid configuration for notifier %s. Ignored !" % k)
                 continue
@@ -139,7 +139,10 @@ class NotifierService(Service):
         notifier_config = {}
 
         for k, profile_notifer_config in notifiers_profile.items():
-            user_notifier_config = utils.load_config(options, 'notifiers/' + k)
+            if not profile_notifer_config.get('name'):
+                error_logger.error("Invalid configuration for notifier %s. Ignored !" % k)
+
+            user_notifier_config = utils.load_config(options, 'notifiers/' + profile_notifer_config.get('name'))
             if user_notifier_config:
                 # keep overrided
                 notifier_config[k] = user_notifier_config
