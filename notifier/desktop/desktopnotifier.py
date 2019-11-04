@@ -37,11 +37,8 @@ signal_logger = logging.getLogger('siis.signal')
 
 class OrgDesktopNotifier(BaseService):
     """
-    Desktop + audible notification from some particulars signals.
-
-    @todo seperate module and as a service + instance : desktop, views, discord...
-    @todo the discord notifier part had to move to a DiscordNotifier module
-    @todo manage more signal/alerts from strategy or even from a price evolution watchdog
+    @todo Explode and move to decicated View mananged by ViewService
+    @todo Add the discord notifier and move from here
     """
 
     def __init__(self, options):
@@ -379,7 +376,8 @@ class OrgDesktopNotifier(BaseService):
 
 class DesktopNotifier(Notifier):
     """
-    Notifier base class.
+    Desktop notifier for desktop popup and audio alerts.
+    @todo Terminal.inst().notice(message, view="signal") should goes to the SignalView
     """
 
     AUDIO_ALERT_SIMPLE = 0
@@ -549,7 +547,7 @@ class DesktopNotifier(Notifier):
                 if signal.data['comment'] is not None:
                     message += " (%s)" % signal.data['comment']
 
-                # log them to the signal view
+                # log them to the signal view (@todo might goes to the View)
                 Terminal.inst().notice(message, view="signal")
 
                 # and in signal logger
@@ -578,8 +576,12 @@ class DesktopNotifier(Notifier):
         return True
 
     def command(self, command_type, data):
-        # @todo enable/disable/toggle audible/popups
-        pass
+        if command_type == "toggle-popup":
+            self._popups = not self._popups
+            Terminal.inst().action("Desktop notification are now %s" % ("actives" if self._popups else "disabled",), view='status')
+        elif command_type == "toggle-audible":
+            self._audible = not self._audible
+            Terminal.inst().action("Desktop audio alertes are now %s" % ("actives" if self._audible else "disabled",), view='status')
 
     def receiver(self, signal):
         if not self._playpause or self._backtesting or not signal:

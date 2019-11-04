@@ -482,7 +482,7 @@ class StrategyTrader(object):
                         'lreot': trade.last_realized_entry_time,
                         'lrxot': trade.last_realized_exit_time,
                         'd': trade.direction_to_str(),
-                        'l': self.instrument.format_quantity(trade.order_price),
+                        'l': self.instrument.format_price(trade.order_price),
                         'q': self.instrument.format_quantity(trade.order_quantity),
                         'e': self.instrument.format_quantity(trade.exec_entry_qty),
                         'x': self.instrument.format_quantity(trade.exec_exit_qty),

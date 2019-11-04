@@ -377,8 +377,8 @@ class BinanceTrader(Trader):
 
         # no longer managed (or wait the signal)
         self.lock()
-        if order.order_id in self._orders:
-            del self._orders[order.order_id]
+        if order_id in self._orders:
+            del self._orders[order_id]
         self.unlock()
 
         return True

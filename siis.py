@@ -609,24 +609,11 @@ def application(argv):
                                     Terminal.inst().notice("Trading time %s" % (datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='status')
 
                                 elif value == 'a':
-                                    if notifier_service:  # @deprecated remove it
+                                    if notifier_service:
                                         notifier_service.command("desktop", "toggle-audible", None)
-                                    if desktop_service:
-                                        desktop_service.audible = not desktop_service.audible
-                                        Terminal.inst().action("Audible notification are now %s" % ("actives" if desktop_service.audible else "disabled",), view='status')
                                 elif value == 'n':
-                                    if notifier_service:  # @deprecated remove it
-                                        notifier_service.command("desktop", "toggle-popups", None)
-                                    if desktop_service:
-                                        desktop_service.popups = not desktop_service.popups
-                                        Terminal.inst().action("Desktop notification are now %s" % ("actives" if desktop_service.popups else "disabled",), view='status')
-                                elif value == 'e':
-                                    # if notifier_service:
-                                    #     # @todo move into command play/pause notifier name
-                                    #     #notifier_service.command(notifier_name, "toggle-activity", None)
-                                    if desktop_service:
-                                        desktop_service.discord = not desktop_service.discord
-                                        Terminal.inst().action("Discord notification are now %s" % ("actives" if desktop_service.discord else "disabled",), view='status')
+                                    if notifier_service:
+                                        notifier_service.command("desktop", "toggle-popup", None)
                                 elif value == '%':
                                     if view_service:
                                         view_service.toggle_percents()

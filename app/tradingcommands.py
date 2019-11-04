@@ -89,7 +89,7 @@ class PlayCommand(Command):
             elif args[0] == "traders":
                 return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
             elif args[0] == "notifiers":
-                return self.iterate(1, self._notifier_service.notifiers_names(), args, tab_pos, direction)
+                return self.iterate(1, self._notifier_service.notifiers_indentifiers(), args, tab_pos, direction)
 
         elif len(args) <= 3:
             if args[0] == 'apps':
@@ -181,7 +181,7 @@ class PauseCommand(Command):
             elif args[0] == "traders":
                 return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
             elif args[0] == "notifiers":
-                return self.iterate(1, self._notifier_service.notifiers_names(), args, tab_pos, direction)
+                return self.iterate(1, self._notifier_service.notifiers_indentifiers(), args, tab_pos, direction)
 
         elif len(args) <= 3:
             if args[0] == 'apps':
@@ -255,7 +255,7 @@ class InfoCommand(Command):
             elif args[0] == "traders":
                 return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
             elif args[0] == "notifiers":
-                return self.iterate(1, self._notifier_service.notifiers_names(), args, tab_pos, direction)
+                return self.iterate(1, self._notifier_service.notifiers_indentifiers(), args, tab_pos, direction)
 
         elif len(args) <= 3:
             if args[0] == 'apps':

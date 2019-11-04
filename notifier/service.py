@@ -165,3 +165,9 @@ class NotifierService(Service):
         self._mutex.acquire()
         self._signals_handler.notify(signal)
         self._mutex.release()
+
+    def notifier(self, name):
+        return self._notifiers_insts.get(name)
+
+    def notifiers_identifiers(self):
+        return [notifier.identifier for k, notifier in self._notifiers_insts.items()]
