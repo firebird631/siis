@@ -511,5 +511,63 @@ class StrategyPositionTrade(StrategyTrade):
         return True
 
     def check(self, trader, instrument):
-        # @todo check position exists
-        return False
+        #
+        # order and position existancy
+        #
+
+        # entry state
+        if self._entry_state in (self.STATE_NEW, self.STATE_REJECTED):
+            # never opened, no long exists
+            return False
+
+        position = None
+        create_order = None
+
+        if self.position_id:
+            position = trader.get_position(self.position_id)
+
+            if not position:
+                self.position_id = None
+
+        if self.create_oid or self.create_ref_oid:
+            if self.create_oid:
+                create_order = trader.get_order(self.create_oid)
+            elif self.create_ref_oid:
+                create_order = trader.find_order(self.create_ref_oid)
+
+            if not create_order:
+                # need to lookup history to know if positions exists/existed
+                # order_history = trader.order_history(self.create_oid, self.create_ref_oid)
+                # if order_history:
+                #     # @todo compute history, and current state, and retrieve position if still exists
+                #     pass
+
+                self.create_oid = None
+                self.create_ref_oid = None
+
+        #
+        # state consistency
+        #
+
+        if self._entry_state in (self.STATE_OPENED, self.STATE_PARTIALLY_FILLED):
+            if not create_order or not position:
+                # the way to know if filled or canceled is to look order history @todo
+                self._entry_state = self.STATE_FILLED
+
+        # exit state
+        if self._exit_state == self.STATE_NEW:
+            if not position:
+                self._exit_state = self.STATE_FILLED
+
+        elif self._exit_state in (self.STATE_OPENED, self.STATE_PARTIALLY_FILLED):
+            if not position:
+                self._exit_state = self.STATE_FILLED
+
+        elif self._exit_state == self.STATE_FILLED: 
+            # was already filled... might not occurs but check for it
+            return position or create_order
+
+        # qty/avg price/timestamp update if possible
+        # @todo
+
+        return position or create_order

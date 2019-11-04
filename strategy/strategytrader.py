@@ -116,6 +116,31 @@ class StrategyTrader(object):
         """
         pass
 
+    def terminate(self):
+        """
+        Delete any non realized trades (new or open) or remaining closed but not closing.
+        """
+        trader = self.strategy.trader()
+        mutated = False
+        trades_list = []
+
+        self.lock()
+
+        for trade in self.trades:
+            if trade.can_delete() or not trade.is_active() or trade.is_closed():
+                mutated = True
+
+                # cleanup if necessary before deleting the trade related refs
+                trade.remove(trader)
+            else:
+                trades_list.append(trade)
+
+        # updated trade list, the ones we would save
+        if mutated:
+            self.trades = trades_list
+
+        self.unlock()
+
     #
     # persistance
     #
@@ -123,19 +148,18 @@ class StrategyTrader(object):
     def save(self):
         """
         Trader and trades persistance (might occurs only for live mode on real accounts).
+        @note Must be called only after terminate.
         """
-        self.lock()
-
         trader = self.strategy.trader()
+
+        self.lock()
 
         for trade in self.trades:
             t_data = trade.dumps()
             ops_data = [operation.dumps() for operation in trade.operations]
 
             # debug only @todo remove after fixed
-            logger.info("log trade")
-            logger.info(t_data)
-            logger.info(ops_data)
+            logger.info("log trade %s / %s" (str(t_data), str(ops_data)))
 
             # store per trade
             Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,

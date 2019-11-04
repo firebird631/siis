@@ -410,9 +410,21 @@ class Strategy(Runnable):
         else:
             self.setup_live()
 
+    def terminate(self):
+        """
+        For each strategy-trader terminate to be done only in live mode.
+        """
+        self.lock()
+
+        if not self.service.backtesting and not self.trader().paper_mode:
+            for k, strategy_trader in self._strategy_traders.items():
+                strategy_trader.terminate()
+
+        self.unlock()
+
     def save(self):
         """
-        For each strategy-trader finalize only in live mode.
+        For each strategy-trader finalize to be done only in live mode.
         """
         self.lock()
 

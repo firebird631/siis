@@ -251,6 +251,7 @@ class StrategyService(Service):
             # and save state to database
             if not self.backtesting and (appl.trader() and not appl.trader().paper_mode):
                 try:
+                    appl.terminate()
                     appl.save()
                 except Exception as e:
                     error_logger.error(repr(e))
