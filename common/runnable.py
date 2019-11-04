@@ -7,6 +7,7 @@ import traceback
 import threading
 import time
 
+from app.appexception import AppException
 from terminal.terminal import Terminal
 
 import logging
@@ -114,7 +115,8 @@ class Runnable(object):
 
         if self._ping:
             # process the pong message
-            msg = "Last loop %.3fms / worst loop %.3fms / avg loop %.3fms" % (
+            msg = "%s - Bench : last loop %.3fms / worst loop %.3fms / avg loop %.3fms" % (
+                self._ping[2],
                 self._last_time[-1]*1000, self._worst_time*1000, self._avg_time*1000)
 
             self.pong(begin, self._ping[0], self._ping[1], self._ping[2])
@@ -132,7 +134,6 @@ class Runnable(object):
 
             return
 
-        # don't waste with try/catch, do it only at last level
         # restart the loop if exception thrown
         if self._bench:
             while self._running:

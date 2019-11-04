@@ -381,6 +381,8 @@ class BinanceTrader(Trader):
             del self._orders[order_id]
         self.unlock()
 
+        logger.debug("Trader %s canceled order %s for %s with success !" % (self.name, order_id, symbol))
+
         return True
 
     @Trader.mutexed

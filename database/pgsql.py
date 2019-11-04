@@ -544,6 +544,40 @@ class PgSql(Database):
                 self.unlock()
 
         #
+        # delete user_trade
+        #
+
+        self.lock()
+        utd = self._pending_user_trade_delete
+        self._pending_user_trade_delete = []
+        self.unlock()
+
+        if utd:
+            try:
+                cursor = self._db.cursor()
+
+                # and cleanup
+                for ut in utd:
+                    cursor.execute("""DELETE FROM user_trade WHERE
+                        broker_id = '%s' AND account_id = '%s' AND appliance_id = '%s'""" % (ut[0], ut[1], ut[2]))
+
+                self._db.commit()
+            except self.psycopg2.OperationalError as e:
+                self.try_reconnect(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trade_delete = utd + self._pending_user_trade_delete
+                self.unlock()
+            except Exception as e:
+                self.on_error(e)
+
+                # retry the next time
+                self.lock()
+                self._pending_user_trade_delete = utd + self._pending_user_trade_delete
+                self.unlock()
+
+        #
         # insert user_trader
         #
 

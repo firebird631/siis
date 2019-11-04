@@ -509,3 +509,7 @@ class StrategyPositionTrade(StrategyTrade):
         self.position_limit = data.get('position-limit')
 
         return True
+
+    def check(self, trader, instrument):
+        # @todo check position exists
+        return False

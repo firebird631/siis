@@ -19,9 +19,8 @@ class StrategyAssetTrade(StrategyTrade):
     Specialization for asset buy/sell trading.
     Only an initial buy order, and a single, either a stop or a take-profit order.
 
-    @todo fill the exit_trades and update the x and axp each time
-    @todo for modify_sl/tp could use OCO order if avaible from market
-    @todo support of OCO order
+    @todo fill the exit_trades list and update the x and axp each time
+    @todo support of OCO order (modify_sl/tp) if available from market or a specialized model
     """
 
     __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', 'entry_oid', 'stop_oid', 'limit_oid', 'oco_oid', \
@@ -733,5 +732,64 @@ class StrategyAssetTrade(StrategyTrade):
 
         self.limit_order_type = data.get('limit-order-type', Order.ORDER_MARKET)
         self.limit_order_qty = data.get('limit_order_qty', 0.0)
+
+        return True
+
+    def check(self, trader, instrument):
+        # @todo check refered orders exists and depending of try to found the current state
+        # @todo it could be complicated to 
+        if self.entry_oid or self.entry_ref_oid:
+            if self.entry_oid:
+                order = trader.get_order(self.entry_oid)
+            else:
+                order = trader.find_order(self.entry_ref_oid)
+
+            if order:
+                # order still exists
+                pass
+
+            # retrieve related trades
+            trades = []  # trader.trade_history(self.entry_oid)  # find order related trades history
+            # get_my_trades 
+            for trade in trades:
+                pass
+                # if trade[''] check symbol, order-id or ref-oid
+                # then compute qty, timestamp, price (and direction)
+                # @todo and the same for stop/limit
+
+            # check for free asset quantity
+            # if not trader.has_quantity(asset_name, self.x - self.e):
+            #     return False  # or exception ?
+
+        if self.oco_oid or self.oco_ref_oid:
+            # have an OCO order
+            if self.oco_oid:
+                order = trader.get_order(self.oco_oid)
+            else:
+                order = trader.find_order(self.oco_ref_oid)
+
+            if order:
+                # order still exists
+                pass
+        else:
+            if self.stop_oid or self.stop_ref_oid:
+                if self.stop_oid:
+                    order = trader.get_order(self.stop_oid)
+                else:
+                    order = trader.find_order(self.stop_ref_oid)
+
+                if order:
+                    # order still exists
+                    pass
+
+            if self.limit_oid or self.limit_ref_oid:
+                if self.limit_oid:
+                    order = trader.get_order(self.limit_oid)
+                else:
+                    order = trader.find_order(self.limit_ref_oid)
+
+                if order:
+                    # order still exists
+                    pass
 
         return True

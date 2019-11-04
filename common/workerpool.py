@@ -70,7 +70,11 @@ class Worker(threading.Thread):
         count_down, job = self._pool.next_job()
 
         if job:
-            job[0](*job[1])
+            try:
+                job[0](*job[1])
+            except Exception as e:
+                error_logger.error(str(e))
+                traceback_logger.error(traceback.format_exc())
 
         if count_down:
             count_down.done()

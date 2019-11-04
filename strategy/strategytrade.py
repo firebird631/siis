@@ -734,6 +734,13 @@ class StrategyTrade(object):
 
         return True
 
+    def check(self, trader, instrument):
+        """
+        Check refered orders and positions exists and quantities too.
+        @return True if success.
+        """
+        return False
+
     #
     # stats
     #

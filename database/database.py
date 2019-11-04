@@ -134,6 +134,7 @@ class Database(object):
 
         self._pending_user_trade_insert = []
         self._pending_user_trade_select = []
+        self._pending_user_trade_delete = []
 
         self._pending_user_trader_insert = []
         self._pending_user_trader_select = []
@@ -475,6 +476,14 @@ class Database(object):
         """
         self.lock()
         self._pending_user_trade_select.append((service, appliance, broker_id, account_id, appliance_id))
+        self.unlock()
+
+    def clear_user_trades(self, broker_id, account_id, appliance_id):
+        """
+        Delete all user trades data and options for a specific appliance_id / broker_id / account_id
+        """
+        self.lock()
+        self._pending_user_trade_delete.append((broker_id, account_id, appliance_id))
         self.unlock()
 
     def store_user_trader(self, data):

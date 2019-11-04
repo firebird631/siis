@@ -88,6 +88,8 @@ class BinanceWatcher(Watcher):
         super().connect()
 
         try:
+            logger.debug("%s connection attempt..." % (self.name))
+
             self.lock()
             self._ready = False
             self._connecting = True
@@ -138,11 +140,13 @@ class BinanceWatcher(Watcher):
                     try:
                         self._connector.ws.start()
                     except RuntimeError:
-                        pass
+                        logger.debug("%s WS already started..." % (self.name))
 
                     # once market are init
                     self._ready = True
                     self._connecting = False
+
+                    logger.debug("%s connection successed" % (self.name))
 
         except Exception as e:
             logger.debug(repr(e))
@@ -287,8 +291,11 @@ class BinanceWatcher(Watcher):
         #
 
         if time.time() - self._last_market_update >= BinanceWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
-            self.update_markets_info()
-            self._last_market_update = time.time()
+            try:
+                self.update_markets_info()
+                self._last_market_update = time.time()
+            except Exception as e:
+                error_logger.error("update_update_markets_info %s" % str(e))
 
         return True
 
@@ -443,34 +450,37 @@ class BinanceWatcher(Watcher):
 
     def __on_tickers_data(self, data):
         # market data instrument by symbol
-        for ticker in data:
-            symbol = ticker['s']
-            last_trade_id = ticker['L']
+        try:
+            for ticker in data:
+                symbol = ticker['s']
+                last_trade_id = ticker['L']
 
-            if last_trade_id != self._last_trade_id.get(symbol, 0):
-                self._last_trade_id[symbol] = last_trade_id
+                if last_trade_id != self._last_trade_id.get(symbol, 0):
+                    self._last_trade_id[symbol] = last_trade_id
 
-                last_update_time = ticker['C'] * 0.001
+                    last_update_time = ticker['C'] * 0.001
 
-                bid = float(ticker['b'])
-                ofr = float(ticker['a'])
+                    bid = float(ticker['b'])
+                    ofr = float(ticker['a'])
 
-                vol24_base = float(ticker['v']) if ticker['v'] else 0.0
-                vol24_quote = float(ticker['q']) if ticker['q'] else 0.0
+                    vol24_base = float(ticker['v']) if ticker['v'] else 0.0
+                    vol24_quote = float(ticker['q']) if ticker['q'] else 0.0
 
-                # @todo compute base_exchange_rate
-                # if quote_asset != self.BASE_QUOTE:
-                #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
-                #         market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
-                #     elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
-                #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
-                #     else:
-                #         market.base_exchange_rate = 1.0
-                # else:
-                #     market.base_exchange_rate = 1.0
+                    # @todo compute base_exchange_rate
+                    # if quote_asset != self.BASE_QUOTE:
+                    #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
+                    #         market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
+                    #     elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
+                    #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
+                    #     else:
+                    #         market.base_exchange_rate = 1.0
+                    # else:
+                    #     market.base_exchange_rate = 1.0
 
-                market_data = (symbol, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
-                self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+                    market_data = (symbol, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
+                    self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+        except Exception as e:
+            error_logger.error("__on_tickers_data %s" % str(e))
 
     def __on_depth_data(self, data):
         # @todo using binance.DepthCache
@@ -540,41 +550,44 @@ class BinanceWatcher(Watcher):
         #     self.__on_tickers_data(data['data'])
 
     def __on_trade_data(self, data):
-        event_type = data.get('e', "")
+        try:
+            event_type = data.get('e', "")
 
-        if event_type == "aggTrade":
-            symbol = data['s']
-            trade_time = data['T'] * 0.001
+            if event_type == "aggTrade":
+                symbol = data['s']
+                trade_time = data['T'] * 0.001
 
-            # trade_id = data['t']
-            # buyer_maker = data['m']
+                # trade_id = data['t']
+                # buyer_maker = data['m']
 
-            price = float(data['p'])
-            vol = float(data['q'])
+                price = float(data['p'])
+                vol = float(data['q'])
 
-            bid = price
-            ofr = price
+                bid = price
+                ofr = price
 
-            tick = (trade_time, bid, ofr, vol)
+                tick = (trade_time, bid, ofr, vol)
 
-            # store for generation of OHLCs
-            self.lock()
-            self._last_tick[symbol] = tick
-            self.unlock()
-
-            self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
-
-            if not self._read_only and self._store_trade:
-                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q']))
-
-            for tf in Watcher.STORED_TIMEFRAMES:
-                # generate candle per timeframe
+                # store for generation of OHLCs
                 self.lock()
-                candle = self.update_ohlc(symbol, tf, trade_time, bid, ofr, vol)
+                self._last_tick[symbol] = tick
                 self.unlock()
 
-                if candle is not None:
-                    self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
+                self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
+
+                if not self._read_only and self._store_trade:
+                    Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q']))
+
+                for tf in Watcher.STORED_TIMEFRAMES:
+                    # generate candle per timeframe
+                    self.lock()
+                    candle = self.update_ohlc(symbol, tf, trade_time, bid, ofr, vol)
+                    self.unlock()
+
+                    if candle is not None:
+                        self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
+        except Exception as e:
+            error_logger.error("__on_trade_data %s" % str(e))
 
     def __on_kline_data(self, data):
         event_type = data.get('e', '')
@@ -620,196 +633,199 @@ class BinanceWatcher(Watcher):
         @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#web-socket-payloads
         @todo Soon support of margin trading.
         """
-        event_type = data.get('e', '')
+        try:
+            event_type = data.get('e', '')
 
-        if event_type == 'executionReport':
-            exec_logger.info("binance.com executionReport %s", str(data))
+            if event_type == 'executionReport':
+                exec_logger.info("binance.com executionReport %s", str(data))
 
-            event_timestamp = float(data['E']) * 0.001
-            symbol = data['s']
-            cid = data['c']
+                event_timestamp = float(data['E']) * 0.001
+                symbol = data['s']
+                cid = data['c']
 
-            reason = ""
-            side = ''
-            quantity = 0
-            partially = 0
-
-            if data['x'] == 'REJECTED':  # and data['X'] == '?':
-                client_order_id = str(data['c'])
                 reason = ""
+                side = ''
+                quantity = 0
+                partially = 0
 
-                if data['r'] == 'INSUFFICIENT_BALANCE':
-                    reason = 'insufficient balance'
+                if data['x'] == 'REJECTED':  # and data['X'] == '?':
+                    client_order_id = str(data['c'])
+                    reason = ""
 
-                self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
+                    if data['r'] == 'INSUFFICIENT_BALANCE':
+                        reason = 'insufficient balance'
 
-            elif (data['x'] == 'TRADE') and (data['X'] == 'FILLED' or data['X'] == 'PARTIALLY_FILLED'):
-                order_id = str(data['i'])
-                client_order_id = str(data['c'])
+                    self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
 
-                timestamp = float(data['T']) * 0.001  # transaction time
+                elif (data['x'] == 'TRADE') and (data['X'] == 'FILLED' or data['X'] == 'PARTIALLY_FILLED'):
+                    order_id = str(data['i'])
+                    client_order_id = str(data['c'])
 
-                price = None
-                stop_price = None
+                    timestamp = float(data['T']) * 0.001  # transaction time
 
-                if data['o'] == 'LIMIT':
-                    order_type = Order.ORDER_LIMIT
-                    price = float(data['p'])
+                    price = None
+                    stop_price = None
 
-                elif data['o'] == 'MARKET':
-                    order_type = Order.ORDER_MARKET
+                    if data['o'] == 'LIMIT':
+                        order_type = Order.ORDER_LIMIT
+                        price = float(data['p'])
 
-                elif data['o'] == 'STOP_LOSS':
-                    order_type = Order.ORDER_STOP
-                    stop_price = float(data['P'])
+                    elif data['o'] == 'MARKET':
+                        order_type = Order.ORDER_MARKET
 
-                elif data['o'] == 'STOP_LOSS_LIMIT':
-                    order_type = Order.ORDER_STOP_LIMIT
-                    price = float(data['p'])
-                    stop_price = float(data['P'])
+                    elif data['o'] == 'STOP_LOSS':
+                        order_type = Order.ORDER_STOP
+                        stop_price = float(data['P'])
 
-                elif data['o'] == 'TAKE_PROFIT':
-                    order_type = Order.ORDER_TAKE_PROFIT
-                    stop_price = float(data['P'])
+                    elif data['o'] == 'STOP_LOSS_LIMIT':
+                        order_type = Order.ORDER_STOP_LIMIT
+                        price = float(data['p'])
+                        stop_price = float(data['P'])
 
-                elif data['o'] == 'TAKE_PROFIT_LIMIT':
-                    order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                    price = float(data['p'])
-                    stop_price = float(data['P'])
+                    elif data['o'] == 'TAKE_PROFIT':
+                        order_type = Order.ORDER_TAKE_PROFIT
+                        stop_price = float(data['P'])
 
-                elif data['o'] == 'LIMIT_MAKER':
-                    order_type = Order.ORDER_LIMIT
-                    price = float(data['p'])
+                    elif data['o'] == 'TAKE_PROFIT_LIMIT':
+                        order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                        price = float(data['p'])
+                        stop_price = float(data['P'])
 
-                else:
-                    order_type = Order.ORDER_LIMIT
+                    elif data['o'] == 'LIMIT_MAKER':
+                        order_type = Order.ORDER_LIMIT
+                        price = float(data['p'])
 
-                if data['f'] == 'GTC':
-                    time_in_force = Order.TIME_IN_FORCE_GTC
-                elif data['f'] == 'IOC':
-                    time_in_force = Order.TIME_IN_FORCE_IOC
-                elif data['f'] == 'FOK':
-                    time_in_force = Order.TIME_IN_FORCE_FOK
-                else:
-                    time_in_force = Order.TIME_IN_FORCE_GTC
+                    else:
+                        order_type = Order.ORDER_LIMIT
 
-                order = {
-                    'id': order_id,
-                    'symbol': symbol,
-                    'type': order_type,
-                    'trade-id': str(data['t']),
-                    'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
-                    'timestamp': timestamp,
-                    'quantity': float(data['q']),
-                    'price': price,
-                    'stop-price': stop_price,
-                    'exec-price': float(data['L']),
-                    'filled': float(data['l']),
-                    'cumulative-filled': float(data['z']),
-                    'quote-transacted': float(data['Y']),  # similar as float(data['Z']) for cumulative
-                    'stop-loss': None,
-                    'take-profit': None,
-                    'time-in-force': time_in_force,
-                    'commission-amount': float(data['n']),
-                    'commission-asset': data['N'],
-                    'maker': data['m'],   # trade execution over or counter the market : true if maker, false if taker
-                    'fully-filled': data['X'] == 'FILLED'  # fully filled status else its partially
-                }
+                    if data['f'] == 'GTC':
+                        time_in_force = Order.TIME_IN_FORCE_GTC
+                    elif data['f'] == 'IOC':
+                        time_in_force = Order.TIME_IN_FORCE_IOC
+                    elif data['f'] == 'FOK':
+                        time_in_force = Order.TIME_IN_FORCE_FOK
+                    else:
+                        time_in_force = Order.TIME_IN_FORCE_GTC
 
-                self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
+                    order = {
+                        'id': order_id,
+                        'symbol': symbol,
+                        'type': order_type,
+                        'trade-id': str(data['t']),
+                        'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
+                        'timestamp': timestamp,
+                        'quantity': float(data['q']),
+                        'price': price,
+                        'stop-price': stop_price,
+                        'exec-price': float(data['L']),
+                        'filled': float(data['l']),
+                        'cumulative-filled': float(data['z']),
+                        'quote-transacted': float(data['Y']),  # similar as float(data['Z']) for cumulative
+                        'stop-loss': None,
+                        'take-profit': None,
+                        'time-in-force': time_in_force,
+                        'commission-amount': float(data['n']),
+                        'commission-asset': data['N'],
+                        'maker': data['m'],   # trade execution over or counter the market : true if maker, false if taker
+                        'fully-filled': data['X'] == 'FILLED'  # fully filled status else its partially
+                    }
 
-            elif data['x'] == 'NEW' and data['X'] == 'NEW':
-                order_id = str(data['i'])
-                timestamp = float(data['O']) * 0.001  # order creation time
-                client_order_id = str(data['c'])
+                    self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
 
-                iceberg_qty = float(data['F'])
+                elif data['x'] == 'NEW' and data['X'] == 'NEW':
+                    order_id = str(data['i'])
+                    timestamp = float(data['O']) * 0.001  # order creation time
+                    client_order_id = str(data['c'])
 
-                price = None
-                stop_price = None
+                    iceberg_qty = float(data['F'])
 
-                if data['o'] == 'LIMIT':
-                    order_type = Order.ORDER_LIMIT
-                    price = float(data['p'])
+                    price = None
+                    stop_price = None
 
-                elif data['o'] == 'MARKET':
-                    order_type = Order.ORDER_MARKET
+                    if data['o'] == 'LIMIT':
+                        order_type = Order.ORDER_LIMIT
+                        price = float(data['p'])
 
-                elif data['o'] == 'STOP_LOSS':
-                    order_type = Order.ORDER_STOP
-                    stop_price = float(data['P'])
+                    elif data['o'] == 'MARKET':
+                        order_type = Order.ORDER_MARKET
 
-                elif data['o'] == 'STOP_LOSS_LIMIT':
-                    order_type = Order.ORDER_STOP_LIMIT
-                    price = float(data['p'])
-                    stop_price = float(data['P'])
+                    elif data['o'] == 'STOP_LOSS':
+                        order_type = Order.ORDER_STOP
+                        stop_price = float(data['P'])
 
-                elif data['o'] == 'TAKE_PROFIT':
-                    order_type = Order.ORDER_TAKE_PROFIT
-                    stop_price = float(data['P'])
+                    elif data['o'] == 'STOP_LOSS_LIMIT':
+                        order_type = Order.ORDER_STOP_LIMIT
+                        price = float(data['p'])
+                        stop_price = float(data['P'])
 
-                elif data['o'] == 'TAKE_PROFIT_LIMIT':
-                    order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                    price = float(data['p'])
-                    stop_price = float(data['P'])
+                    elif data['o'] == 'TAKE_PROFIT':
+                        order_type = Order.ORDER_TAKE_PROFIT
+                        stop_price = float(data['P'])
 
-                elif data['o'] == 'LIMIT_MAKER':
-                    order_type = Order.ORDER_LIMIT
-                    price = float(data['p'])
+                    elif data['o'] == 'TAKE_PROFIT_LIMIT':
+                        order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                        price = float(data['p'])
+                        stop_price = float(data['P'])
 
-                else:
-                    order_type = Order.ORDER_LIMIT
+                    elif data['o'] == 'LIMIT_MAKER':
+                        order_type = Order.ORDER_LIMIT
+                        price = float(data['p'])
 
-                if data['f'] == 'GTC':
-                    time_in_force = Order.TIME_IN_FORCE_GTC
-                elif data['f'] == 'IOC':
-                    time_in_force = Order.TIME_IN_FORCE_IOC
-                elif data['f'] == 'FOK':
-                    time_in_force = Order.TIME_IN_FORCE_FOK
-                else:
-                    time_in_force = Order.TIME_IN_FORCE_GTC
+                    else:
+                        order_type = Order.ORDER_LIMIT
 
-                order = {
-                    'id': order_id,
-                    'symbol': symbol,
-                    'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
-                    'type': order_type,
-                    'timestamp': event_timestamp,
-                    'quantity': float(data['q']),
-                    'price': price,
-                    'stop-price': stop_price,
-                    'time-in-force': time_in_force,
-                    'stop-loss': None,
-                    'take-profit': None
-                }
+                    if data['f'] == 'GTC':
+                        time_in_force = Order.TIME_IN_FORCE_GTC
+                    elif data['f'] == 'IOC':
+                        time_in_force = Order.TIME_IN_FORCE_IOC
+                    elif data['f'] == 'FOK':
+                        time_in_force = Order.TIME_IN_FORCE_FOK
+                    else:
+                        time_in_force = Order.TIME_IN_FORCE_GTC
 
-                self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
+                    order = {
+                        'id': order_id,
+                        'symbol': symbol,
+                        'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
+                        'type': order_type,
+                        'timestamp': event_timestamp,
+                        'quantity': float(data['q']),
+                        'price': price,
+                        'stop-price': stop_price,
+                        'time-in-force': time_in_force,
+                        'stop-loss': None,
+                        'take-profit': None
+                    }
 
-            elif data['x'] == 'CANCELED' and data['X'] == 'CANCELED':
-                order_id = str(data['i'])
-                org_client_order_id = data['C']
+                    self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
 
-                self.service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (symbol, order_id, org_client_order_id))
+                elif data['x'] == 'CANCELED' and data['X'] == 'CANCELED':
+                    order_id = str(data['i'])
+                    org_client_order_id = data['C']
 
-            elif data['x'] == 'EXPIRED' and data['X'] == 'EXPIRED':
-                order_id = str(data['i'])
+                    self.service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (symbol, order_id, org_client_order_id))
 
-                self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
+                elif data['x'] == 'EXPIRED' and data['X'] == 'EXPIRED':
+                    order_id = str(data['i'])
 
-            elif data['x'] == 'REPLACED' or data['X'] == 'REPLACED':
-                pass  # nothing to do (currently unused)
+                    self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
 
-        elif event_type == 'outboundAccountInfo':
-            event_timestamp = float(data['E']) * 0.001
+                elif data['x'] == 'REPLACED' or data['X'] == 'REPLACED':
+                    pass  # nothing to do (currently unused)
 
-            # balances
-            for balance in data['B']:
-                asset_name = balance['a']
-                free = balance['f']
-                locked = balance['l']
+            elif event_type == 'outboundAccountInfo':
+                event_timestamp = float(data['E']) * 0.001
 
-                # asset updated
-                self.service.notify(Signal.SIGNAL_ASSET_UPDATED, self.name, (asset_name, float(locked), float(free)))
+                # balances
+                for balance in data['B']:
+                    asset_name = balance['a']
+                    free = balance['f']
+                    locked = balance['l']
+
+                    # asset updated
+                    self.service.notify(Signal.SIGNAL_ASSET_UPDATED, self.name, (asset_name, float(locked), float(free)))
+        except Exception as e:
+            error_logger.error("__on_user_data %s" % str(e))
 
     #
     # miscs

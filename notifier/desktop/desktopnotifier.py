@@ -38,7 +38,7 @@ signal_logger = logging.getLogger('siis.signal')
 class OrgDesktopNotifier(BaseService):
     """
     @todo Explode and move to decicated View mananged by ViewService
-    @todo Add the discord notifier and move from here
+    @todo Add the discord notifier and move parts
     """
 
     def __init__(self, options):
@@ -397,13 +397,15 @@ class DesktopNotifier(Notifier):
     def __init__(self, name, identifier, service, options):
         super().__init__("desktop", identifier, service)
 
-        self._audible = False
-        self._popups = False
-
         self._backtesting = options.get('backtesting', False)
 
-        # @todo map audio alerts audio_config.gett('alerts')
         notifier_config = service.notifier_config(name)
+
+        # default audio alert and popups stats configurable
+        self._audible = notifier_config.get('play-alerts', False)
+        self._popups = notifier_config.get('display-popups', False)
+
+        # @todo map audio alerts audio_config.gett('alerts')
         audio_config = notifier_config.get('audio', {})
 
         self._audio_device = audio_config.get('device', DesktopNotifier.DEFAULT_AUDIO_DEVICE)
@@ -422,9 +424,6 @@ class DesktopNotifier(Notifier):
         # lib notify
         if self.notify2:
             self.notify2.init('SiiS')
-
-        self._audible = True
-        self._popups = True
 
         return super().start(options)
 

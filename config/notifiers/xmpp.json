@@ -1,0 +1,7 @@
+{
+	"status": "load",
+	"name": "xmpp",
+	"classpath": "notifier.xmpp.xmppnotifier.XmppNotifier",
+	"account-id": "<account-id>",
+	"auth-key": "<copy-this-file-and-insert-here-your-authentication-key>"
+}

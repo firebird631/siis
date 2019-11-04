@@ -545,6 +545,29 @@ class Trader(Runnable):
         """
         return []
 
+    def get_order(self, order_id):
+        order = None
+
+        self.lock()
+        order = self.orders.get(order_id)
+        if order:
+            order = copy.copy(order)
+        self.unlock()
+
+        return order
+
+    def find_order(self, ref_order_id):
+        result = None
+
+        self.lock()
+        for oid, order in self._orders.items():
+            if order.ref_order_id == ref_order_id:
+                result = copy.copy(order)
+                break
+        self.unlock()
+
+        return result
+
     def market(self, market_id, force=False):
         """
         Market data for a market id.

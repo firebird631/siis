@@ -627,3 +627,7 @@ class StrategyIndMarginTrade(StrategyTrade):
         self.limit_order_qty = data.get('limit-order-qty', 0.0)
 
         return True
+
+    def check(self, trader, instrument):
+        # @todo
+        return False
