@@ -24,7 +24,7 @@ class Account(object):
     TYPE_SPREADBET = 4
 
     def __init__(self, parent):
-        self._mutex = threading.Lock()
+        self._mutex = threading.RLock()
         self._parent = parent
 
         # account data
@@ -257,10 +257,8 @@ class Account(object):
     def mutexed(cls, fn):
         """Annotation for methods that require mutex locker."""
         def wrapped(self, *args, **kwargs):
-            self.lock()
-            result = fn(self, *args, **kwargs)
-            self.unlock()
-            return result
+            with self._mutex:
+                return fn(self, *args, **kwargs)
     
         return wrapped
 

@@ -53,16 +53,13 @@ class DummyWatcher(Watcher):
             # only on live mode, because in backtesting watchers are dummies
             if signal.source == Signal.SOURCE_WATCHER:
                 if signal.signal_type == Signal.SIGNAL_MARKET_LIST_DATA:
-                    self.lock()
+                    with self._mutex:
+                        # only the symbol
+                        self._available_instruments = set([x[0] for x in signal.data])
+                        self._watched_instruments = set([x[0] for x in signal.data])
 
-                    # only the symbol
-                    self._available_instruments = set([x[0] for x in signal.data])
-                    self._watched_instruments = set([x[0] for x in signal.data])
-
-                    self._connected = True
-                    self._ready = True
-
-                    self.unlock()                   
+                        self._connected = True
+                        self._ready = True
 
                     # now connected and signal
                     self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())

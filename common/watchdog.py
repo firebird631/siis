@@ -37,16 +37,14 @@ class WatchdogService(Service):
         self._npid = 1
 
     def add_service(self, service):
-        self.lock()
-        if service:
-            self._services.append(service)
-        self.unlock()
+        with self._mutex:
+            if service:
+                self._services.append(service)
 
     def remove_service(self, service):
-        self.lock()
-        if service and service in self._services:
-            self._service.remove(service)
-        self.unlock()
+        with self._mutex:
+            if service and service in self._services:
+                self._service.remove(service)
 
     def run_watchdog(self):
         for service in self._services:
@@ -54,22 +52,19 @@ class WatchdogService(Service):
 
         now = time.time()
 
-        self.lock()
+        with self._mutex:
+            if self._pending:
+                rm_it = []
 
-        if self._pending:
-            rm_it = []
+                for k, d in self._pending.items():
+                    if now - d[0] > WatchdogService.PING_TIMEOUT:
+                        error_logger.fatal("Pid %s not joinable : %s for %s seconds !" % (k, d[1] or "undefined", WatchdogService.PING_TIMEOUT))
+                        rm_it.append(k)
 
-            for k, d in self._pending.items():
-                if now - d[0] > WatchdogService.PING_TIMEOUT:
-                    error_logger.fatal("Pid %s not joinable : %s for %s seconds !" % (k, d[1] or "undefined", WatchdogService.PING_TIMEOUT))
-                    rm_it.append(k)
-
-            if rm_it:
-                for it in rm_it:
-                    # don't want continous signal
-                    del self._pending[it]
-
-        self.unlock()
+                if rm_it:
+                    for it in rm_it:
+                        # don't want continous signal
+                        del self._pending[it]
 
         # autorestart
         self._timer = threading.Timer(WatchdogService.TIMER_DELAY, self.run_watchdog)
@@ -89,10 +84,9 @@ class WatchdogService(Service):
             self._timer = None
 
     def service_pong(self, pid, timestamp, msg):
-        self.lock()
-        if pid in self._pending:
-            del self._pending[pid]
-        self.unlock()
+        with self._mutex:
+            if pid in self._pending:
+                del self._pending[pid]
 
     def service_timeout(self, service, msg):
         error_logger.fatal("Service %s not joinable : %s !" % (service, msg))
@@ -100,11 +94,10 @@ class WatchdogService(Service):
     def gen_pid(self, ident):
         r = 0
 
-        self.lock()
-        r = self._npid
-        self._npid += 1
-        self._pending[r] = (time.time(), ident)
-        self.unlock()
+        with self._mutex:
+            r = self._npid
+            self._npid += 1
+            self._pending[r] = (time.time(), ident)
 
         return r
 

@@ -215,133 +215,130 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             retained_entries.append(entry)
 
         if self.trades:
-            self.lock()
+            with self._mutex:
+                for trade in self.trades:
+                    tf_match = False
+                    retained_exit = None
 
-            for trade in self.trades:
-                tf_match = False
-                retained_exit = None
+                    # important, do not update user controlled trades if it have some operations
+                    if trade.is_user_trade() and trade.has_operations():
+                        continue
 
-                # important, do not update user controlled trades if it have some operations
-                if trade.is_user_trade() and trade.has_operations():
-                    continue
+                    #
+                    # process eventually exits signals
+                    #
 
-                #
-                # process eventually exits signals
-                #
-
-                for signal in exits:
-                    # EX.C1 receive an exit signal for a timeframe defined in an active trade
-                    # @todo probably not the best solution because could have some TD9 but at 
-                    # lower timeframe could be not be the best
-                    if signal.timeframe == trade.timeframe:
-                        retained_exit = signal
-                        tf_match = True
-                        break
-
-                if not retained_exit:
-                    for signal in entries:
-                        if signal.timeframe == trade.timeframe and trade.direction != signal.direction:
-                            # opposite entry mean exit signal
-                            retained_exit = signal.as_exit()
+                    for signal in exits:
+                        # EX.C1 receive an exit signal for a timeframe defined in an active trade
+                        # @todo probably not the best solution because could have some TD9 but at 
+                        # lower timeframe could be not be the best
+                        if signal.timeframe == trade.timeframe:
+                            retained_exit = signal
+                            tf_match = True
                             break
 
-                #
-                # dynamic stop loss
-                #
+                    if not retained_exit:
+                        for signal in entries:
+                            if signal.timeframe == trade.timeframe and trade.direction != signal.direction:
+                                # opposite entry mean exit signal
+                                retained_exit = signal.as_exit()
+                                break
 
-                stop_loss = trade.sl
+                    #
+                    # dynamic stop loss
+                    #
 
-                # @todo update as bcastrategytrader
+                    stop_loss = trade.sl
 
-                # ATR stop-loss (long/short)
-                atr_stop = self.timeframes[trade.timeframe].atr.stop_loss(trade.direction)
-                if trade.direction > 0:
-                    if atr_stop > stop_loss:
-                        stop_loss = atr_stop
-                elif trade.direction < 0:
-                    if atr_stop < stop_loss:
-                        stop_loss = atr_stop
+                    # @todo update as bcastrategytrader
 
-                # @todo could be done more precisely at certain time, not at any price change
+                    # ATR stop-loss (long/short)
+                    atr_stop = self.timeframes[trade.timeframe].atr.stop_loss(trade.direction)
+                    if trade.direction > 0:
+                        if atr_stop > stop_loss:
+                            stop_loss = atr_stop
+                    elif trade.direction < 0:
+                        if atr_stop < stop_loss:
+                            stop_loss = atr_stop
 
-                # if trade.direction > 0 and trade.get_stats()['best-price'] > 0:
-                #     if last_price <= (trade.get_stats()['best-price'] * 0.4 + trade.entry_price * 0.6) and last_price > stop_loss:
-                #         stop_loss = last_price
-                # elif trade.direction < 0 and trade.get_stats()['best-price'] > 0:
-                #     if last_price >= (trade.get_stats()['best-price'] * 0.4 + trade.entry_price * 0.6) and last_price < stop_loss:
-                #         stop_loss = last_price
+                    # @todo could be done more precisely at certain time, not at any price change
 
-                # bb_ma = self.timeframes[trade.timeframe].bollingerbands.last_ma
-                # if trade.direction > 0:
-                #     if bb_ma > stop_loss and last_price > bb_ma:
-                #         stop_loss = bb_ma
-                # elif trade.direction < 0:
-                #     if bb_ma < stop_loss and last_price < bb_ma:
-                #         stop_loss = bb_ma
+                    # if trade.direction > 0 and trade.get_stats()['best-price'] > 0:
+                    #     if last_price <= (trade.get_stats()['best-price'] * 0.4 + trade.entry_price * 0.6) and last_price > stop_loss:
+                    #         stop_loss = last_price
+                    # elif trade.direction < 0 and trade.get_stats()['best-price'] > 0:
+                    #     if last_price >= (trade.get_stats()['best-price'] * 0.4 + trade.entry_price * 0.6) and last_price < stop_loss:
+                    #         stop_loss = last_price
 
-                # if trade.direction > 0:
-                #     pivotpoint = self.timeframes[trade.timeframe].pivotpoint.last_supports[0]
-                #     if pivotpoint > stop_loss:
-                #         stop_loss = pivotpoint
-                # elif trade.direction < 0:
-                #     pivotpoint = self.timeframes[trade.timeframe].pivotpoint.last_resistances[0]
-                #     if pivotpoint < stop_loss:
-                #         trade.sl = pivotpoint
+                    # bb_ma = self.timeframes[trade.timeframe].bollingerbands.last_ma
+                    # if trade.direction > 0:
+                    #     if bb_ma > stop_loss and last_price > bb_ma:
+                    #         stop_loss = bb_ma
+                    # elif trade.direction < 0:
+                    #     if bb_ma < stop_loss and last_price < bb_ma:
+                    #         stop_loss = bb_ma
 
-                # stop_loss = trade.sl
-                # level = (atr_stop * 0.2 + pivotpoint * 0.8) # (atr_stop + bb_ma) * 0.5
-                # if trade.direction > 0:
-                #     if level > stop_loss:
-                #         stop_loss = level
-                # elif trade.direction < 0:
-                #     if level < stop_loss:
-                #         stop_loss = level
+                    # if trade.direction > 0:
+                    #     pivotpoint = self.timeframes[trade.timeframe].pivotpoint.last_supports[0]
+                    #     if pivotpoint > stop_loss:
+                    #         stop_loss = pivotpoint
+                    # elif trade.direction < 0:
+                    #     pivotpoint = self.timeframes[trade.timeframe].pivotpoint.last_resistances[0]
+                    #     if pivotpoint < stop_loss:
+                    #         trade.sl = pivotpoint
 
-                if stop_loss != trade.sl:
-                    trade.sl = stop_loss
+                    # stop_loss = trade.sl
+                    # level = (atr_stop * 0.2 + pivotpoint * 0.8) # (atr_stop + bb_ma) * 0.5
+                    # if trade.direction > 0:
+                    #     if level > stop_loss:
+                    #         stop_loss = level
+                    # elif trade.direction < 0:
+                    #     if level < stop_loss:
+                    #         stop_loss = level
 
-                # @todo could use trade.modify_stop_loss
+                    if stop_loss != trade.sl:
+                        trade.sl = stop_loss
 
-                # can cancel a non filled trade if exit signal occurs before timeout (timeframe)
-                # if (trade.is_opened() and tf_match) or trade.is_entry_timeout(timestamp, trade.timeframe):
-                # if trade.is_entry_timeout(timestamp, trade.timeframe):
-                #     trader = self.strategy.trader()
-                #     trade.cancel_open(trader)
-                #     # logger.info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,))
-                #     continue
+                    # @todo could use trade.modify_stop_loss
 
-                # ROE (long/short) @todo or optimize ATR, we need volatility index
-                # if trade.direction > 0:
-                #     if (last_price - trade.entry_price) / trade.entry_price >= 0.0075:
-                #         sl = trade.entry_price + (trade.entry_price * 0.001 * 2)
-                #         if trade.sl < sl:
-                #             trade.sl = sl
-                # elif trade.direction < 0:
-                #     if (trade.entry_price - last_price) / trade.entry_price >= 0.0075:
-                #         sl = trade.entry_price - (trade.entry_price * 0.001 * 2)
-                #         if trade.sl > sl:
-                #             trade.sl = sl
+                    # can cancel a non filled trade if exit signal occurs before timeout (timeframe)
+                    # if (trade.is_opened() and tf_match) or trade.is_entry_timeout(timestamp, trade.timeframe):
+                    # if trade.is_entry_timeout(timestamp, trade.timeframe):
+                    #     trader = self.strategy.trader()
+                    #     trade.cancel_open(trader)
+                    #     # logger.info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,))
+                    #     continue
 
-                #
-                # dynamic take-profit update
-                #
+                    # ROE (long/short) @todo or optimize ATR, we need volatility index
+                    # if trade.direction > 0:
+                    #     if (last_price - trade.entry_price) / trade.entry_price >= 0.0075:
+                    #         sl = trade.entry_price + (trade.entry_price * 0.001 * 2)
+                    #         if trade.sl < sl:
+                    #             trade.sl = sl
+                    # elif trade.direction < 0:
+                    #     if (trade.entry_price - last_price) / trade.entry_price >= 0.0075:
+                    #         sl = trade.entry_price - (trade.entry_price * 0.001 * 2)
+                    #         if trade.sl > sl:
+                    #             trade.sl = sl
 
-                # @todo if the trend is weaker, lower the target distance, or if the trend stronger could increase to a largest one
+                    #
+                    # dynamic take-profit update
+                    #
 
-                if trade.is_opened() and not trade.is_valid(timestamp, trade.timeframe):
-                    # @todo re-adjust entry
-                    logger.info("Update order %s trade %s TODO" % (trade.id, self.instrument.market_id,))
-                    continue
+                    # @todo if the trend is weaker, lower the target distance, or if the trend stronger could increase to a largest one
 
-                # only for active and currently not closing trades
-                if not trade.is_active() or trade.is_closing() or trade.is_closed():
-                    continue
+                    if trade.is_opened() and not trade.is_valid(timestamp, trade.timeframe):
+                        # @todo re-adjust entry
+                        logger.info("Update order %s trade %s TODO" % (trade.id, self.instrument.market_id,))
+                        continue
 
-                if retained_exit:
-                    # exit the trade
-                    self.process_exit(timestamp, trade, retained_exit.price)
+                    # only for active and currently not closing trades
+                    if not trade.is_active() or trade.is_closing() or trade.is_closed():
+                        continue
 
-            self.unlock()
+                    if retained_exit:
+                        # exit the trade
+                        self.process_exit(timestamp, trade, retained_exit.price)
 
         # update actives trades
         self.update_trades(timestamp)

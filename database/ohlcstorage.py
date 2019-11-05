@@ -50,6 +50,7 @@ class OhlcStorage(object):
         self._market_id = market_id
 
         self._ohlcs = []
+        self._mutex = threading.RLock()
 
         self._queries = []
         self._last_write = 0
@@ -82,17 +83,15 @@ class OhlcStorage(object):
             # never store ohlcs lesser than 1m
             return
 
-        self._mutex.acquire()
-        if isinstance(data, list):
-            self._ohlcs.extend(data)
-        else:
-            self._ohlcs.append(data)
-        self._mutex.release()
+        with self._mutex:
+            if isinstance(data, list):
+                self._ohlcs.extend(data)
+            else:
+                self._ohlcs.append(data)
 
     def flush(self):
-        self._mutex.acquire()
-        ohlcs = self._ohlcs = []
-        self._mutex.release()
+        with self._mutex:
+            ohlcs = self._ohlcs = []
 
         try:
             cursor = self._db.cursor()
@@ -108,9 +107,8 @@ class OhlcStorage(object):
             logger.error(repr(e))
 
             # retry next time
-            self._mutex.acquire()
-            self._ohlcs = ohlcs + self._ohlcs
-            self._mutex.release()
+            with self._mutex:
+                self._ohlcs = ohlcs + self._ohlcs
 
     def clean(self):
         now = time.time()
@@ -127,9 +125,8 @@ class OhlcStorage(object):
             logger.error(repr(e))
 
     def async_query(self, service, timeframe, from_date, to_date, limit):
-        self._mutex.acquire()
-        self._queries.append((service, timeframe, from_date, to_date, limit))
-        self._mutex.release()
+        with self._mutex:
+            self._queries.append((service, timeframe, from_date, to_date, limit))
 
     def query(self, timeframe, from_date, to_date, limit_or_last_n, auto_close=True):
         """
@@ -209,10 +206,9 @@ class OhlcStorage(object):
                             timeframe, to_ts))
 
     def process_async_queries(self):
-        self._mutex.acquire()
-        queries = self._queries
-        self._queries.clear()
-        self._mutex.release()
+        with self._mutex:
+            queries = self._queries
+            self._queries.clear()
 
         failed = []
 
@@ -228,9 +224,8 @@ class OhlcStorage(object):
 
         # retry the next time
         if failed:
-            self.lock()
-            self._queries = failed + self._queries
-            self.unlock()
+            with self._mutex:
+                self._queries = failed + self._queries
 
     def process(self):
         """

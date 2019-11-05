@@ -62,45 +62,39 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         """
         Generate the news candles from ticks.
         """
-        self.lock()
+        with self._mutex:
+            # at tick we update any timeframes because we want the non consolidated candle
+            for tf, sub in self.timeframes.items():
+                # update at tick
+                ticks = self.instrument.ticks_after(sub.candles_gen.last_timestamp)
 
-        # at tick we update any timeframes because we want the non consolidated candle
-        for tf, sub in self.timeframes.items():
-            # update at tick
-            ticks = self.instrument.ticks_after(sub.candles_gen.last_timestamp)
+                generated = sub.candles_gen.generate_from_ticks(ticks)
+                if generated:
+                    self.instrument.add_candle(generated, sub.depth)  # sub.history)
 
-            generated = sub.candles_gen.generate_from_ticks(ticks)
-            if generated:
-                self.instrument.add_candle(generated, sub.depth)  # sub.history)
+                    # last OHLC close
+                    sub._last_closed = True
 
-                # last OHLC close
-                sub._last_closed = True
+                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # sub.history) # with the non consolidated
 
-            self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # sub.history) # with the non consolidated
-
-        # no longer need them
-        self.instrument.clear_ticks()
-
-        self.unlock()
+            # no longer need them
+            self.instrument.clear_ticks()
 
     def gen_candles_from_candles(self, timestamp):
         """
         Generate the news candles from the same base of candle.
         """
-        self.lock()
+        with self._mutex:
+            # at tick we update any timeframes because we want the non consolidated candle
+            for tf, sub in self.timeframes.items():
+                # update at candle timeframe
+                candles = self.instrument.candles_after(sub.sub_tf, sub.candles_gen.last_timestamp)
 
-        # at tick we update any timeframes because we want the non consolidated candle
-        for tf, sub in self.timeframes.items():
-            # update at candle timeframe
-            candles = self.instrument.candles_after(sub.sub_tf, sub.candles_gen.last_timestamp)
+                generated = sub.candles_gen.generate_from_candles(candles)
+                if generated:
+                    self.instrument.add_candle(generated, sub.depth)  # sub.history)
 
-            generated = sub.candles_gen.generate_from_candles(candles)
-            if generated:
-                self.instrument.add_candle(generated, sub.depth)  # sub.history)
-
-            self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # sub.history)  # with the non consolidated
-
-        self.unlock()
+                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # sub.history)  # with the non consolidated
 
     def compute(self, timeframe, timestamp):
         """
@@ -153,18 +147,15 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
     def stream(self):
         # global data
-        self.lock()
+        with self._mutex:
+            if self._global_streamer:
+                self._global_streamer.push()
 
-        if self._global_streamer:
-            self._global_streamer.push()
-
-        # and per timeframe
-        for tf, timeframe_streamer in self._timeframe_streamers.items():
-            data = self.timeframes.get(tf)
-            if data:
-                self.stream_timeframe_data(timeframe_streamer, data)
-
-        self.unlock()
+            # and per timeframe
+            for tf, timeframe_streamer in self._timeframe_streamers.items():
+                data = self.timeframes.get(tf)
+                if data:
+                    self.stream_timeframe_data(timeframe_streamer, data)
 
     def stream_call(self):
         # timeframes list
@@ -189,32 +180,28 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     def subscribe_info(self):
         result = False
 
-        self.lock()
+        with self._mutex:
+            if not self._global_streamer:
+                self.setup_streaming()
 
-        if not self._global_streamer:
-            self.setup_streaming()
+            if self._global_streamer:
+                self._global_streamer.use()
+                result = True
 
-        if self._global_streamer:
-            self._global_streamer.use()
-            result = True
-
-        self.unlock()
         return result
 
     def unsubscribe_info(self):
         result = False
 
-        self.lock()
+        with self._mutex:
+            if self._global_streamer:
+                self._global_streamer.unuse()
+                
+                if self._global_streamer.is_free():
+                    self._global_streamer = None
 
-        if self._global_streamer:
-            self._global_streamer.unuse()
-            
-            if self._global_streamer.is_free():
-                self._global_streamer = None
+                result = True
 
-            result = True
-
-        self.unlock()
         return result
 
     def subscribe(self, timeframe):
@@ -223,27 +210,25 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         """
         result = False
 
-        self.lock()
+        with self._mutex:
+            if timeframe is not None and isinstance(timeframe, (float, int)):
+                timeframe = self.timeframes.get(timeframe)
 
-        if timeframe is not None and isinstance(timeframe, (float, int)):
-            timeframe = self.timeframes.get(timeframe)
+            if timeframe is None and self.timeframes:
+                tf = sorted(list(self.timeframes.keys()))[0]
+                timeframe = self.timeframes.get(tf)
 
-        if timeframe is None and self.timeframes:
-            tf = sorted(list(self.timeframes.keys()))[0]
-            timeframe = self.timeframes.get(tf)
-
-        if timeframe in self._timeframe_streamers:
-            self._timeframe_streamers[timeframe].use()
-            result = True
-        else:
-            streamer = self.create_chart_streamer(timeframe)
-
-            if streamer:
-                streamer.use()
-                self._timeframe_streamers[timeframe.tf] = streamer
+            if timeframe in self._timeframe_streamers:
+                self._timeframe_streamers[timeframe].use()
                 result = True
+            else:
+                streamer = self.create_chart_streamer(timeframe)
 
-        self.unlock()
+                if streamer:
+                    streamer.use()
+                    self._timeframe_streamers[timeframe.tf] = streamer
+                    result = True
+
         return False
 
     def unsubscribe(self, timeframe):
@@ -252,21 +237,18 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         """
         result = False
 
-        self.lock()
+        with self._mutex:
+            if timeframe is not None and isinstance(timeframe, (float, int)):
+                timeframe = self.timeframes.get(timeframe)
 
-        if timeframe is not None and isinstance(timeframe, (float, int)):
-            timeframe = self.timeframes.get(timeframe)
+            if timeframe in self._timeframe_streamers:
+                self._timeframe_streamers[timeframe].unuse()
+                if self._timeframe_streamers[timeframe].is_free():
+                    # delete if 0 subscribers
+                    del self._timeframe_streamers[timeframe]
+        
+                result = True
 
-        if timeframe in self._timeframe_streamers:
-            self._timeframe_streamers[timeframe].unuse()
-            if self._timeframe_streamers[timeframe].is_free():
-                # delete if 0 subscribers
-                del self._timeframe_streamers[timeframe]
-    
-            self.unlock()
-            result = True
-
-        self.unlock()
         return result
 
     #

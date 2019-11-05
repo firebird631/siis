@@ -70,15 +70,12 @@ class BinanceTrader(Trader):
         super().connect()
 
         # retrieve the binance.com watcher and take its connector
-        self.lock()
+        with self._mutex:
+            self._watcher = self.service.watcher_service.watcher(self._name)
+            self._ready = False
 
-        self._watcher = self.service.watcher_service.watcher(self._name)
-        self._ready = False
-
-        if self._watcher:
-            self.service.watcher_service.add_listener(self)
-
-        self.unlock()
+            if self._watcher:
+                self.service.watcher_service.add_listener(self)
 
         if self._watcher and self._watcher.connected:
             self.on_watcher_connected(self._watcher.name)
@@ -86,14 +83,11 @@ class BinanceTrader(Trader):
     def disconnect(self):
         super().disconnect()
 
-        self.lock()
-
-        if self._watcher:
-            self.service.watcher_service.remove_listener(self)
-            self._watcher = None
-            self._ready = False
-
-        self.unlock()
+        with self._mutex:
+            if self._watcher:
+                self.service.watcher_service.remove_listener(self)
+                self._watcher = None
+                self._ready = False
 
     def on_watcher_connected(self, watcher_name):
         super().on_watcher_connected(watcher_name)
@@ -115,24 +109,21 @@ class BinanceTrader(Trader):
         except Exception as e:
             pass
 
-        self.lock()
+        with self._mutex:
+            try:
+                # fill the list of quotes symbols
+                symbols = self._watcher.connector.client.get_exchange_info()
+                for symbol in symbols['symbols']:
+                    if symbol['quoteAsset'] not in self._quotes:
+                        self._quotes.append(symbol['quoteAsset'])
 
-        try:
-            # fill the list of quotes symbols
-            symbols = self._watcher.connector.client.get_exchange_info()
-            for symbol in symbols['symbols']:
-                if symbol['quoteAsset'] not in self._quotes:
-                    self._quotes.append(symbol['quoteAsset'])
+                # and add any asset of the balance
+                for balance in balances:
+                    asset_name = balance['asset']
+                    self.__get_or_add_asset(asset_name)
 
-            # and add any asset of the balance
-            for balance in balances:
-                asset_name = balance['asset']
-                self.__get_or_add_asset(asset_name)
-
-        except Exception as e:
-            error_logger.error(repr(e))
-
-        self.unlock()
+            except Exception as e:
+                error_logger.error(repr(e))
 
         self.account.update(self._watcher.connector)
 
@@ -178,14 +169,8 @@ class BinanceTrader(Trader):
         # account data update (normal case don't call REST)
         #
 
-        try:
-            self.lock()
+        with self._mutex:
             self._account.update(self._watcher.connector)
-        except Exception as e:
-            error_logger.error(str(e))
-            error_logger.error(traceback.format_exc())
-        finally:
-            self.unlock()
 
         return True
 
@@ -218,9 +203,8 @@ class BinanceTrader(Trader):
             # @todo others
             order_type = Client.ORDER_TYPE_MARKET
 
-        self.lock()
-        market = self._markets[order.symbol]
-        self.unlock()
+        with self._mutex:
+            market = self._markets[order.symbol]
 
         symbol = order.symbol
         side = Client.SIDE_BUY if order.direction == Position.LONG else Client.SIDE_SELL
@@ -311,9 +295,11 @@ class BinanceTrader(Trader):
                 #     order.set_executed(float(result['executedQty']), result.get['status'] == "FILLED", float(result['price']))
 
                 # store the order until fully completed or canceled
-                self.lock()
-                self._orders[order.order_id] = order
-                self.unlock()
+                with self._mutex:
+                    self._orders[order.order_id] = order
+
+                # @todo remove me
+                logger.info("(rm me) Trade %s completed and locally stored" % order.order_id)
 
                 return True
 
@@ -329,9 +315,8 @@ class BinanceTrader(Trader):
         if not self._activity:
             return False
 
-        self.lock()
-        order = self._orders.get(order_id)
-        self.unlock()
+        with self._mutex:
+            order = self._orders.get(order_id)
 
         if order is None:
             error_logger.error("%s does not found order %s !" % (self.name, order_id))
@@ -383,12 +368,12 @@ class BinanceTrader(Trader):
             order_logger.info(result)
 
         # no longer managed (or wait the signal)
-        self.lock()
-        if order_id in self._orders:
-            del self._orders[order_id]
-        self.unlock()
+        with self._mutex:
+            if order_id in self._orders:
+                del self._orders[order_id]
 
-        logger.debug("Trader %s canceled order %s for %s with success !" % (self.name, order_id, symbol))
+        # @todo remove me
+        logger.info("(rm me) Trade %s canceled and locally removed" % order_id)
 
         return True
 
@@ -439,15 +424,12 @@ class BinanceTrader(Trader):
     def positions(self, market_id):
         positions = []
 
-        self.lock()
-
-        position = self._positions.get(market_id)
-        if position:
-            positions = [copy.copy(position)]
-        else:
-            positions = []
-
-        self.unlock()
+        with self._mutex:
+            position = self._positions.get(market_id)
+            if position:
+                positions = [copy.copy(position)]
+            else:
+                positions = []
 
         return positions
 
@@ -457,9 +439,8 @@ class BinanceTrader(Trader):
 
         @param force Force to update the cache
         """
-        self.lock()
-        market = self._markets.get(market_id)
-        self.unlock()
+        with self._mutex:
+            market = self._markets.get(market_id)
 
         if (market is None or force) and self._watcher is not None and self._watcher.connected:
             try:
@@ -469,9 +450,8 @@ class BinanceTrader(Trader):
                 return None
 
             if market:
-                self.lock()
-                self._markets[market_id] = market
-                self.unlock()
+                with self._mutex:
+                    self._markets[market_id] = market
 
         return market
 
@@ -485,38 +465,32 @@ class BinanceTrader(Trader):
 
         logger.info("Trader binance.com retrieving asset and orders...")
 
-        self.lock()
+        with self._mutex:
+            try:
+                # doesn't erase them because need the last list of markets
+                for asset in assets:
+                    # set data from fetched one
+                    local_asset = self._assets.get(asset.symbol)
+                    if local_asset:
+                        # update stored asset
+                        local_asset.update_price(asset.last_update_time, asset.last_trade_id, asset.price, asset.quote)
+                        local_asset.set_quantity(asset.quantity, 0)  # no idea of locked/free set all locked
+                    else:
+                        # store it
+                        self._assets[asset.symbol] = asset
 
-        try:
-            # doesn't erase them because need the last list of markets
-            for asset in assets:
-                # set data from fetched one
-                local_asset = self._assets.get(asset.symbol)
-                if local_asset:
-                    # update stored asset
-                    local_asset.update_price(asset.last_update_time, asset.last_trade_id, asset.price, asset.quote)
-                    local_asset.set_quantity(asset.quantity, 0)  # no idea of locked/free set all locked
-                else:
-                    # store it
-                    self._assets[asset.symbol] = asset
+                # and fetch them to be synced + opened orders + actives positions
+                self.__fetch_assets()
+                self.__fetch_orders()
+                self.__fetch_positions()
 
-        except Exception as e:
-            error_logger.error(repr(e))
+                # can deal with
+                self._ready = True
 
-        try:
-            # and fetch them to be synced + opened orders + actives positions
-            self.__fetch_assets()
-            self.__fetch_orders()
-            self.__fetch_positions()
-        except Exception as e:
-            error_logger.error(repr(e))
+                logger.info("Trader binance.com got asset and orders.")
 
-        self.unlock()
-
-        # can deal with
-        self._ready = True
-
-        logger.info("Trader binance.com got asset and orders.")
+            except Exception as e:
+                error_logger.error(repr(e))
 
     #
     # protected
@@ -993,19 +967,16 @@ class BinanceTrader(Trader):
         if market is None:
             return
 
-        self.lock()
+        with self._mutex:
+            # update profit/loss (informational) for each asset
+            for k, asset in self._assets.items():
+                if asset.symbol == market.base and asset.quote == market.quote:
+                    asset.update_profit_loss(market)
 
-        # update profit/loss (informational) for each asset
-        for k, asset in self._assets.items():
-            if asset.symbol == market.base and asset.quote == market.quote:
-                asset.update_profit_loss(market)
-
-        # update profit/loss for each positions
-        for k, position in self._positions.items():
-            if position.symbol == market.market_id:
-                position.update_profit_loss(market)
-
-        self.unlock()
+            # update profit/loss for each positions
+            for k, position in self._positions.items():
+                if position.symbol == market.market_id:
+                    position.update_profit_loss(market)
 
     #
     # assets
@@ -1128,6 +1099,7 @@ class BinanceTrader(Trader):
         @note Consume 1 API credit to get the asset quote price at the time of the trade.
         """
         market = self._markets.get(data['symbol'])
+
         if market is None:
             # not interested by this market
             return
@@ -1138,6 +1110,7 @@ class BinanceTrader(Trader):
         quote_market = None
 
         order = self._orders.get(data['id'])
+
         if order is None:
             # not found (might not occurs)
             order = Order(self, data['symbol'])
@@ -1155,72 +1128,71 @@ class BinanceTrader(Trader):
             order.price = data.get('price')
             order.stop_price = data.get('stop-price')
 
-            self._orders[data['id']] = order
+            self._orders[order.order_id] = order
 
         order.executed += data['filled']
 
-        if data['trade-id']:
-            # same asset used for commission
-            buy_or_sell = data['direction'] == Order.LONG
+        # @todo commented for now
+        # if data['trade-id']:
+        #     # same asset used for commission
+        #     buy_or_sell = data['direction'] == Order.LONG
 
-            # base details in the trade order
-            base_trade_qty = data['filled']
-            base_exec_price = data['exec-price']
+        #     # base details in the trade order
+        #     base_trade_qty = data['filled']
+        #     base_exec_price = data['exec-price']
 
-            # price of the quote asset expressed in prefered quote at time of the trade (need a REST call)
-            quote_trade_qty = data['quote-transacted']  # or base_trade_qty * base_exec_price
-            quote_exec_price = 1.0
+        #     # price of the quote asset expressed in prefered quote at time of the trade (need a REST call)
+        #     quote_trade_qty = data['quote-transacted']  # or base_trade_qty * base_exec_price
+        #     quote_exec_price = 1.0
 
-            if quote_asset.quote and quote_asset.symbol != quote_asset.quote:
-                # quote price to be fetched
-                if self._watcher.has_instrument(quote_asset.symbol+quote_asset.quote):
-                    # direct, and get the related market
-                    quote_market = self._markets.get(quote_asset.symbol+quote_asset.quote)                    
-                    quote_exec_price = self.history_price(quote_asset.symbol+quote_asset.quote, data['timestamp'])
+        #     if quote_asset.quote and quote_asset.symbol != quote_asset.quote:
+        #         # quote price to be fetched
+        #         if self._watcher.has_instrument(quote_asset.symbol+quote_asset.quote):
+        #             # direct, and get the related market
+        #             quote_market = self._markets.get(quote_asset.symbol+quote_asset.quote)                    
+        #             quote_exec_price = self.history_price(quote_asset.symbol+quote_asset.quote, data['timestamp'])
 
-                elif self._watcher.has_instrument(quote_asset.quote+quote_asset.symbol):
-                    # indirect, but cannot have the market
-                    quote_exec_price = 1.0 / self.history_price(quote_asset.quote+quote_asset.symbol, data['timestamp'])
+        #         elif self._watcher.has_instrument(quote_asset.quote+quote_asset.symbol):
+        #             # indirect, but cannot have the market
+        #             quote_exec_price = 1.0 / self.history_price(quote_asset.quote+quote_asset.symbol, data['timestamp'])
 
-            # base asset
-            self.__update_asset(order.order_type, base_asset, market, data['trade-id'], base_exec_price, base_trade_qty, buy_or_sell, data['timestamp'])
+        #     # base asset
+        #     self.__update_asset(order.order_type, base_asset, market, data['trade-id'], base_exec_price, base_trade_qty, buy_or_sell, data['timestamp'])
 
-            # quote asset
-            self.__update_asset(order.order_type, quote_asset, quote_market, None, quote_exec_price, quote_trade_qty, not buy_or_sell, data['timestamp'])
+        #     # quote asset
+        #     self.__update_asset(order.order_type, quote_asset, quote_market, None, quote_exec_price, quote_trade_qty, not buy_or_sell, data['timestamp'])
 
-            # commission asset
-            if data['commission-asset'] == base_asset.symbol:
-                self.__update_asset(Order.ORDER_MARKET, base_asset, market, None, base_exec_price, data['commission-amount'], False, data['timestamp'])
-            else:
-                commission_asset = self.__get_or_add_asset(data['commission-asset'])
-                commission_asset_market = None
-                quote_exec_price = 1.0
+        #     # commission asset
+        #     if data['commission-asset'] == base_asset.symbol:
+        #         self.__update_asset(Order.ORDER_MARKET, base_asset, market, None, base_exec_price, data['commission-amount'], False, data['timestamp'])
+        #     else:
+        #         commission_asset = self.__get_or_add_asset(data['commission-asset'])
+        #         commission_asset_market = None
+        #         quote_exec_price = 1.0
 
-                if commission_asset.quote and commission_asset.symbol != commission_asset.quote:
-                    # commission asset price to be fetched
-                    if self._watcher.has_instrument(commission_asset.symbol+commission_asset.quote):
-                        # direct, and get the related market
-                        commission_asset_market = self.market(commission_asset.symbol+commission_asset.quote)
-                        quote_exec_price = commission_asset_market.price
+        #         if commission_asset.quote and commission_asset.symbol != commission_asset.quote:
+        #             # commission asset price to be fetched
+        #             if self._watcher.has_instrument(commission_asset.symbol+commission_asset.quote):
+        #                 # direct, and get the related market
+        #                 commission_asset_market = self.market(commission_asset.symbol+commission_asset.quote)
+        #                 quote_exec_price = commission_asset_market.price
 
-                    elif self._watcher.has_instrument(commission_asset.quote+commission_asset.symbol):
-                        # indirect, but cannot have the market
-                        quote_exec_price = 1.0 / self.history_price(commission_asset.quote+commission_asset.symbol, data['timestamp'])
+        #             elif self._watcher.has_instrument(commission_asset.quote+commission_asset.symbol):
+        #                 # indirect, but cannot have the market
+        #                 quote_exec_price = 1.0 / self.history_price(commission_asset.quote+commission_asset.symbol, data['timestamp'])
 
-                self.__update_asset(Order.ORDER_MARKET, commission_asset, commission_asset_market, None,
-                    quote_exec_price, data['commission-amount'], False, data['timestamp'])
+        #         self.__update_asset(Order.ORDER_MARKET, commission_asset, commission_asset_market, None,
+        #             quote_exec_price, data['commission-amount'], False, data['timestamp'])
 
     def on_order_deleted(self, market_id,  order_id, ref_order_id):
-        self.lock()
-        if order_id in self._orders:
-            del self._orders[order_id]
-        self.unlock()
+        with self._mutex:
+            if order_id in self._orders:
+                del self._orders[order_id]
 
     def on_order_canceled(self, market_id, order_id, ref_order_id):
-        self.lock()
-        if order_id in self._orders:
-            del self._orders[order_id]
-        self.unlock()
+        with self._mutex:
+            if order_id in self._orders:
+                del self._orders[order_id]
 
     #
     # positions slots
@@ -1236,8 +1208,7 @@ class BinanceTrader(Trader):
         """
         Returns a list of triplet with (symbol, locked qty, free qty) for any of the non empty balance of assets.
         """
-        self.lock()
-        balances = [(k, asset.locked, asset.free) for k, asset in self._assets.items()]
-        self.unlock()
+        with self._mutex:
+            balances = [(k, asset.locked, asset.free) for k, asset in self._assets.items()]
 
         return balances

@@ -272,10 +272,12 @@ class TraderService(Service):
         return list(self._traders.values())
 
     def gen_key(self):
-        self.lock()
-        nkey = self._next_trader_key
-        self._next_trader_key += 1
-        self.unlock()
+        nkey = -1
+
+        with self._mutex:
+            nkey = self._next_trader_key
+            self._next_trader_key += 1
+
         return str(nkey)
 
     @property

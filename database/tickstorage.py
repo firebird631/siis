@@ -36,7 +36,7 @@ class TickStorage(object):
 
     def __init__(self, markets_path, broker_id, market_id, text=True, binary=True):
         self._markets_path = markets_path
-        self._mutex = threading.Lock()
+        self._mutex = threading.RLock()
 
         self._broker_id = broker_id
         self._market_id = market_id

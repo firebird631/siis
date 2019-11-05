@@ -87,72 +87,68 @@ class BinanceWatcher(Watcher):
     def connect(self):
         super().connect()
 
-        try:
-            logger.debug("%s connection attempt..." % (self.name))
+        with self._mutex:
+            try:
+                self._ready = False
+                self._connecting = True
 
-            self.lock()
-            self._ready = False
-            self._connecting = True
+                identity = self.service.identity(self._name)
 
-            identity = self.service.identity(self._name)
+                if identity:
+                    if not self._connector:
+                        self._connector = Connector(
+                            self.service,
+                            identity.get('account-id'),
+                            identity.get('api-key'),
+                            identity.get('api-secret'),
+                            identity.get('host'))
 
-            if identity:
-                if not self._connector:
-                    self._connector = Connector(
-                        self.service,
-                        identity.get('account-id'),
-                        identity.get('api-key'),
-                        identity.get('api-secret'),
-                        identity.get('host'))
+                    if not self._connector.connected or not self._connector.ws_connected:
+                        self._connector.connect()
 
-                if not self._connector.connected or not self._connector.ws_connected:
-                    self._connector.connect()
+                    if self._connector and self._connector.connected:
+                        #
+                        # instruments
+                        #
 
-                if self._connector and self._connector.connected:
-                    #
-                    # instruments
-                    #
+                        # get all products symbols
+                        self._available_instruments = set()
 
-                    # get all products symbols
-                    self._available_instruments = set()
+                        instruments = self._connector.client.get_products().get('data', [])
+                        configured_symbols = self.configured_symbols()
+                        matching_symbols = self.matching_symbols_set(configured_symbols, [instrument['symbol'] for instrument in instruments])
 
-                    instruments = self._connector.client.get_products().get('data', [])
-                    configured_symbols = self.configured_symbols()
-                    matching_symbols = self.matching_symbols_set(configured_symbols, [instrument['symbol'] for instrument in instruments])
+                        # cache them
+                        self.__configured_symbols = configured_symbols
+                        self.__matching_symbols = matching_symbols
 
-                    # cache them
-                    self.__configured_symbols = configured_symbols
-                    self.__matching_symbols = matching_symbols
+                        # prefetch all markets data with a single request to avoid one per market
+                        self.__prefetch_markets()
 
-                    # prefetch all markets data with a single request to avoid one per market
-                    self.__prefetch_markets()
+                        for instrument in instruments:
+                            self._available_instruments.add(instrument['symbol'])
 
-                    for instrument in instruments:
-                        self._available_instruments.add(instrument['symbol'])
+                        # all tickers
+                        self._tickers_handler = self._connector.ws.start_ticker_socket(self.__on_tickers_data)
 
-                    # all tickers
-                    self._tickers_handler = self._connector.ws.start_ticker_socket(self.__on_tickers_data)
+                        # userdata
+                        self._user_data_handler = self._connector.ws.start_user_socket(self.__on_user_data)
 
-                    # userdata
-                    self._user_data_handler = self._connector.ws.start_user_socket(self.__on_user_data)
+                        # and start ws manager if necessarry
+                        try:
+                            self._connector.ws.start()
+                        except RuntimeError:
+                            logger.debug("%s WS already started..." % (self.name))
 
-                    # and start ws manager if necessarry
-                    try:
-                        self._connector.ws.start()
-                    except RuntimeError:
-                        logger.debug("%s WS already started..." % (self.name))
+                        # once market are init
+                        self._ready = True
+                        self._connecting = False
 
-                    # once market are init
-                    self._ready = True
-                    self._connecting = False
+                        logger.debug("%s connection successed" % (self.name))
 
-                    logger.debug("%s connection successed" % (self.name))
-
-        except Exception as e:
-            logger.debug(repr(e))
-            error_logger.error(traceback.format_exc())
-        finally:
-            self.unlock()
+            except Exception as e:
+                logger.debug(repr(e))
+                error_logger.error(traceback.format_exc())
 
         if self._connector and self._connector.connected and self._ready:
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
@@ -162,28 +158,25 @@ class BinanceWatcher(Watcher):
 
         logger.debug("%s disconnecting..." % (self.name))
 
-        self.lock()
+        with self._mutex:
+            try:
+                if self._connector:
+                    self._connector.disconnect()
+                    self._connector = None
 
-        try:
-            if self._connector:
-                self._connector.disconnect()
-                self._connector = None
+                    # reset WS handlers
+                    self._multiplex_handler = None
+                    self._multiplex_handlers = {}
+                    self._tickers_handler = None
+                    self._user_data_handler = None
 
-                # reset WS handlers
-                self._multiplex_handler = None
-                self._multiplex_handlers = {}
-                self._tickers_handler = None
-                self._user_data_handler = None
+                self._ready = False
 
-            self._ready = False
+                logger.debug("%s disconnected" % (self.name))
 
-            logger.debug("%s disconnected" % (self.name))
-
-        except Exception as e:
-            logger.debug(repr(e))
-            error_logger.error(traceback.format_exc())
-        finally:
-            self.unlock()
+            except Exception as e:
+                logger.debug(repr(e))
+                error_logger.error(traceback.format_exc())
 
     @property
     def connector(self):
@@ -199,20 +192,20 @@ class BinanceWatcher(Watcher):
 
     def pre_update(self):
         if not self._connecting and not self._ready:
-            self.lock()
-            if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
-                # retry in 2 second
-                self._ready = False
-                self._connector = None
+            reconnect = False
 
-                self.unlock()
+            with self._mutex:
+                if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
+                    # cleanup
+                    self._ready = False
+                    self._connector = None
 
+                    reconnect = True
+
+            if reconnect:
                 time.sleep(2)
                 self.connect()
-
                 return
-            else:
-                self.unlock()
 
     #
     # instruments
@@ -220,61 +213,55 @@ class BinanceWatcher(Watcher):
 
     def subscribe(self, market_id, timeframe):
         result = False
-        self.lock()
+        with self._mutex:
+            try:
+                if market_id in self.__matching_symbols:
+                    multiplex = []
 
-        try:
-            if market_id in self.__matching_symbols:
-                multiplex = []
+                    # live data
+                    symbol = market_id.lower()
 
-                # live data
-                symbol = market_id.lower()
+                    # depth - order book
+                    # multiplex.append(symbol + '@depth')
 
-                # depth - order book
-                # multiplex.append(symbol + '@depth')
+                    # aggreged trade
+                    multiplex.append(symbol + '@aggTrade')
 
-                # aggreged trade
-                multiplex.append(symbol + '@aggTrade')
+                    # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
+                    # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
 
-                # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
-                # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
+                    # fetch from 1M to 1W
+                    if self._initial_fetch:
+                        logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                # fetch from 1M to 1W
-                if self._initial_fetch:
-                    logger.info("%s prefetch for %s" % (self.name, market_id))
+                        self.fetch_and_generate(market_id, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
+                        self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
+                        self.fetch_and_generate(market_id, Instrument.TF_15M, 2*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
+                        self.fetch_and_generate(market_id, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
+                        self.fetch_and_generate(market_id, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)               
 
-                    self.fetch_and_generate(market_id, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
-                    self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
-                    self.fetch_and_generate(market_id, Instrument.TF_15M, 2*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
-                    self.fetch_and_generate(market_id, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
-                    self.fetch_and_generate(market_id, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)               
+                    # one more watched instrument
+                    self.insert_watched_instrument(market_id, [0])
 
-                # one more watched instrument
-                self.insert_watched_instrument(market_id, [0])
+                    # trade+depth
+                    self._multiplex_handlers[market_id] = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
 
-                # trade+depth
-                self._multiplex_handlers[market_id] = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
+                    result = True
 
-                result = True
-
-        except Exception as e:
-            error_logger.eror(repr(e))
-        finally:
-            self.unlock()
+            except Exception as e:
+                error_logger.eror(repr(e))
 
         return result
 
     def unsubscribe(self, market_id, timeframe):
-        self.lock()
+        with self._mutex:
+            if market_id in self._multiplex_handlers:
+                self._multiplex_handlers[market_id].close()
+                del self._multiplex_handlers[market_id]
 
-        if market_id in self._multiplex_handlers:
-            self._multiplex_handlers[market_id].close()
-            del self._multiplex_handlers[market_id]
+                return True
 
-            self.unlock()
-            return True
-        else:
-            self.unlock()
-            return False
+        return False
 
     #
     # processing
@@ -291,9 +278,8 @@ class BinanceWatcher(Watcher):
         # ohlc close/open
         #
 
-        self.lock()
-        self.update_from_tick()
-        self.unlock()
+        with self._mutex:
+            self.update_from_tick()
 
         #
         # market info update (each 4h)
@@ -301,6 +287,7 @@ class BinanceWatcher(Watcher):
 
         if time.time() - self._last_market_update >= BinanceWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
             try:
+                logger.info("%s update market info" % self.name)
                 self.update_markets_info()
                 self._last_market_update = time.time()
             except Exception as e:
@@ -459,37 +446,34 @@ class BinanceWatcher(Watcher):
 
     def __on_tickers_data(self, data):
         # market data instrument by symbol
-        try:
-            for ticker in data:
-                symbol = ticker['s']
-                last_trade_id = ticker['L']
+        for ticker in data:
+            symbol = ticker['s']
+            last_trade_id = ticker['L']
 
-                if last_trade_id != self._last_trade_id.get(symbol, 0):
-                    self._last_trade_id[symbol] = last_trade_id
+            if last_trade_id != self._last_trade_id.get(symbol, 0):
+                self._last_trade_id[symbol] = last_trade_id
 
-                    last_update_time = ticker['C'] * 0.001
+                last_update_time = ticker['C'] * 0.001
 
-                    bid = float(ticker['b'])
-                    ofr = float(ticker['a'])
+                bid = float(ticker['b'])
+                ofr = float(ticker['a'])
 
-                    vol24_base = float(ticker['v']) if ticker['v'] else 0.0
-                    vol24_quote = float(ticker['q']) if ticker['q'] else 0.0
+                vol24_base = float(ticker['v']) if ticker['v'] else 0.0
+                vol24_quote = float(ticker['q']) if ticker['q'] else 0.0
 
-                    # @todo compute base_exchange_rate
-                    # if quote_asset != self.BASE_QUOTE:
-                    #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
-                    #         market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
-                    #     elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
-                    #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
-                    #     else:
-                    #         market.base_exchange_rate = 1.0
-                    # else:
-                    #     market.base_exchange_rate = 1.0
+                # @todo compute base_exchange_rate
+                # if quote_asset != self.BASE_QUOTE:
+                #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
+                #         market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
+                #     elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
+                #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
+                #     else:
+                #         market.base_exchange_rate = 1.0
+                # else:
+                #     market.base_exchange_rate = 1.0
 
-                    market_data = (symbol, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
-                    self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
-        except Exception as e:
-            error_logger.error("__on_tickers_data %s" % str(e))
+                market_data = (symbol, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
+                self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_depth_data(self, data):
         # @todo using binance.DepthCache
@@ -559,44 +543,39 @@ class BinanceWatcher(Watcher):
         #     self.__on_tickers_data(data['data'])
 
     def __on_trade_data(self, data):
-        try:
-            event_type = data.get('e', "")
+        event_type = data.get('e', "")
 
-            if event_type == "aggTrade":
-                symbol = data['s']
-                trade_time = data['T'] * 0.001
+        if event_type == "aggTrade":
+            symbol = data['s']
+            trade_time = data['T'] * 0.001
 
-                # trade_id = data['t']
-                # buyer_maker = data['m']
+            # trade_id = data['t']
+            # buyer_maker = data['m']
 
-                price = float(data['p'])
-                vol = float(data['q'])
+            price = float(data['p'])
+            vol = float(data['q'])
 
-                bid = price
-                ofr = price
+            bid = price
+            ofr = price
 
-                tick = (trade_time, bid, ofr, vol)
+            tick = (trade_time, bid, ofr, vol)
 
-                # store for generation of OHLCs
-                self.lock()
+            # store for generation of OHLCs
+            with self._mutex:
                 self._last_tick[symbol] = tick
-                self.unlock()
 
-                self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
+            self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
-                if not self._read_only and self._store_trade:
-                    Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q']))
+            if not self._read_only and self._store_trade:
+                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q']))
 
-                for tf in Watcher.STORED_TIMEFRAMES:
-                    # generate candle per timeframe
-                    self.lock()
+            for tf in Watcher.STORED_TIMEFRAMES:
+                # generate candle per timeframe
+                with self._mutex:
                     candle = self.update_ohlc(symbol, tf, trade_time, bid, ofr, vol)
-                    self.unlock()
 
-                    if candle is not None:
-                        self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
-        except Exception as e:
-            error_logger.error("__on_trade_data %s" % str(e))
+                if candle is not None:
+                    self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
 
     def __on_kline_data(self, data):
         event_type = data.get('e', '')
@@ -642,199 +621,196 @@ class BinanceWatcher(Watcher):
         @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#web-socket-payloads
         @todo Soon support of margin trading.
         """
-        try:
-            event_type = data.get('e', '')
+        event_type = data.get('e', '')
 
-            if event_type == 'executionReport':
-                exec_logger.info("binance.com executionReport %s", str(data))
+        if event_type == 'executionReport':
+            exec_logger.info("binance.com executionReport %s", str(data))
 
-                event_timestamp = float(data['E']) * 0.001
-                symbol = data['s']
-                cid = data['c']
+            event_timestamp = float(data['E']) * 0.001
+            symbol = data['s']
+            cid = data['c']
 
+            reason = ""
+            side = ''
+            quantity = 0
+            partially = 0
+
+            if data['x'] == 'REJECTED':  # and data['X'] == '?':
+                client_order_id = str(data['c'])
                 reason = ""
-                side = ''
-                quantity = 0
-                partially = 0
 
-                if data['x'] == 'REJECTED':  # and data['X'] == '?':
-                    client_order_id = str(data['c'])
-                    reason = ""
+                if data['r'] == 'INSUFFICIENT_BALANCE':
+                    reason = 'insufficient balance'
 
-                    if data['r'] == 'INSUFFICIENT_BALANCE':
-                        reason = 'insufficient balance'
+                self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
 
-                    self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
+            elif (data['x'] == 'TRADE') and (data['X'] == 'FILLED' or data['X'] == 'PARTIALLY_FILLED'):
+                order_id = str(data['i'])
+                client_order_id = str(data['c'])
 
-                elif (data['x'] == 'TRADE') and (data['X'] == 'FILLED' or data['X'] == 'PARTIALLY_FILLED'):
-                    order_id = str(data['i'])
-                    client_order_id = str(data['c'])
+                timestamp = float(data['T']) * 0.001  # transaction time
 
-                    timestamp = float(data['T']) * 0.001  # transaction time
+                price = None
+                stop_price = None
 
-                    price = None
-                    stop_price = None
+                if data['o'] == 'LIMIT':
+                    order_type = Order.ORDER_LIMIT
+                    price = float(data['p'])
 
-                    if data['o'] == 'LIMIT':
-                        order_type = Order.ORDER_LIMIT
-                        price = float(data['p'])
+                elif data['o'] == 'MARKET':
+                    order_type = Order.ORDER_MARKET
 
-                    elif data['o'] == 'MARKET':
-                        order_type = Order.ORDER_MARKET
+                elif data['o'] == 'STOP_LOSS':
+                    order_type = Order.ORDER_STOP
+                    stop_price = float(data['P'])
 
-                    elif data['o'] == 'STOP_LOSS':
-                        order_type = Order.ORDER_STOP
-                        stop_price = float(data['P'])
+                elif data['o'] == 'STOP_LOSS_LIMIT':
+                    order_type = Order.ORDER_STOP_LIMIT
+                    price = float(data['p'])
+                    stop_price = float(data['P'])
 
-                    elif data['o'] == 'STOP_LOSS_LIMIT':
-                        order_type = Order.ORDER_STOP_LIMIT
-                        price = float(data['p'])
-                        stop_price = float(data['P'])
+                elif data['o'] == 'TAKE_PROFIT':
+                    order_type = Order.ORDER_TAKE_PROFIT
+                    stop_price = float(data['P'])
 
-                    elif data['o'] == 'TAKE_PROFIT':
-                        order_type = Order.ORDER_TAKE_PROFIT
-                        stop_price = float(data['P'])
+                elif data['o'] == 'TAKE_PROFIT_LIMIT':
+                    order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    price = float(data['p'])
+                    stop_price = float(data['P'])
 
-                    elif data['o'] == 'TAKE_PROFIT_LIMIT':
-                        order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                        price = float(data['p'])
-                        stop_price = float(data['P'])
+                elif data['o'] == 'LIMIT_MAKER':
+                    order_type = Order.ORDER_LIMIT
+                    price = float(data['p'])
 
-                    elif data['o'] == 'LIMIT_MAKER':
-                        order_type = Order.ORDER_LIMIT
-                        price = float(data['p'])
+                else:
+                    order_type = Order.ORDER_LIMIT
 
-                    else:
-                        order_type = Order.ORDER_LIMIT
+                if data['f'] == 'GTC':
+                    time_in_force = Order.TIME_IN_FORCE_GTC
+                elif data['f'] == 'IOC':
+                    time_in_force = Order.TIME_IN_FORCE_IOC
+                elif data['f'] == 'FOK':
+                    time_in_force = Order.TIME_IN_FORCE_FOK
+                else:
+                    time_in_force = Order.TIME_IN_FORCE_GTC
 
-                    if data['f'] == 'GTC':
-                        time_in_force = Order.TIME_IN_FORCE_GTC
-                    elif data['f'] == 'IOC':
-                        time_in_force = Order.TIME_IN_FORCE_IOC
-                    elif data['f'] == 'FOK':
-                        time_in_force = Order.TIME_IN_FORCE_FOK
-                    else:
-                        time_in_force = Order.TIME_IN_FORCE_GTC
+                order = {
+                    'id': order_id,
+                    'symbol': symbol,
+                    'type': order_type,
+                    'trade-id': str(data['t']),
+                    'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
+                    'timestamp': timestamp,
+                    'quantity': float(data['q']),
+                    'price': price,
+                    'stop-price': stop_price,
+                    'exec-price': float(data['L']),
+                    'filled': float(data['l']),
+                    'cumulative-filled': float(data['z']),
+                    'quote-transacted': float(data['Y']),  # similar as float(data['Z']) for cumulative
+                    'stop-loss': None,
+                    'take-profit': None,
+                    'time-in-force': time_in_force,
+                    'commission-amount': float(data['n']),
+                    'commission-asset': data['N'],
+                    'maker': data['m'],   # trade execution over or counter the market : true if maker, false if taker
+                    'fully-filled': data['X'] == 'FILLED'  # fully filled status else its partially
+                }
 
-                    order = {
-                        'id': order_id,
-                        'symbol': symbol,
-                        'type': order_type,
-                        'trade-id': str(data['t']),
-                        'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
-                        'timestamp': timestamp,
-                        'quantity': float(data['q']),
-                        'price': price,
-                        'stop-price': stop_price,
-                        'exec-price': float(data['L']),
-                        'filled': float(data['l']),
-                        'cumulative-filled': float(data['z']),
-                        'quote-transacted': float(data['Y']),  # similar as float(data['Z']) for cumulative
-                        'stop-loss': None,
-                        'take-profit': None,
-                        'time-in-force': time_in_force,
-                        'commission-amount': float(data['n']),
-                        'commission-asset': data['N'],
-                        'maker': data['m'],   # trade execution over or counter the market : true if maker, false if taker
-                        'fully-filled': data['X'] == 'FILLED'  # fully filled status else its partially
-                    }
+                self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
 
-                    self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
+            elif data['x'] == 'NEW' and data['X'] == 'NEW':
+                order_id = str(data['i'])
+                timestamp = float(data['O']) * 0.001  # order creation time
+                client_order_id = str(data['c'])
 
-                elif data['x'] == 'NEW' and data['X'] == 'NEW':
-                    order_id = str(data['i'])
-                    timestamp = float(data['O']) * 0.001  # order creation time
-                    client_order_id = str(data['c'])
+                iceberg_qty = float(data['F'])
 
-                    iceberg_qty = float(data['F'])
+                price = None
+                stop_price = None
 
-                    price = None
-                    stop_price = None
+                if data['o'] == 'LIMIT':
+                    order_type = Order.ORDER_LIMIT
+                    price = float(data['p'])
 
-                    if data['o'] == 'LIMIT':
-                        order_type = Order.ORDER_LIMIT
-                        price = float(data['p'])
+                elif data['o'] == 'MARKET':
+                    order_type = Order.ORDER_MARKET
 
-                    elif data['o'] == 'MARKET':
-                        order_type = Order.ORDER_MARKET
+                elif data['o'] == 'STOP_LOSS':
+                    order_type = Order.ORDER_STOP
+                    stop_price = float(data['P'])
 
-                    elif data['o'] == 'STOP_LOSS':
-                        order_type = Order.ORDER_STOP
-                        stop_price = float(data['P'])
+                elif data['o'] == 'STOP_LOSS_LIMIT':
+                    order_type = Order.ORDER_STOP_LIMIT
+                    price = float(data['p'])
+                    stop_price = float(data['P'])
 
-                    elif data['o'] == 'STOP_LOSS_LIMIT':
-                        order_type = Order.ORDER_STOP_LIMIT
-                        price = float(data['p'])
-                        stop_price = float(data['P'])
+                elif data['o'] == 'TAKE_PROFIT':
+                    order_type = Order.ORDER_TAKE_PROFIT
+                    stop_price = float(data['P'])
 
-                    elif data['o'] == 'TAKE_PROFIT':
-                        order_type = Order.ORDER_TAKE_PROFIT
-                        stop_price = float(data['P'])
+                elif data['o'] == 'TAKE_PROFIT_LIMIT':
+                    order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    price = float(data['p'])
+                    stop_price = float(data['P'])
 
-                    elif data['o'] == 'TAKE_PROFIT_LIMIT':
-                        order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                        price = float(data['p'])
-                        stop_price = float(data['P'])
+                elif data['o'] == 'LIMIT_MAKER':
+                    order_type = Order.ORDER_LIMIT
+                    price = float(data['p'])
 
-                    elif data['o'] == 'LIMIT_MAKER':
-                        order_type = Order.ORDER_LIMIT
-                        price = float(data['p'])
+                else:
+                    order_type = Order.ORDER_LIMIT
 
-                    else:
-                        order_type = Order.ORDER_LIMIT
+                if data['f'] == 'GTC':
+                    time_in_force = Order.TIME_IN_FORCE_GTC
+                elif data['f'] == 'IOC':
+                    time_in_force = Order.TIME_IN_FORCE_IOC
+                elif data['f'] == 'FOK':
+                    time_in_force = Order.TIME_IN_FORCE_FOK
+                else:
+                    time_in_force = Order.TIME_IN_FORCE_GTC
 
-                    if data['f'] == 'GTC':
-                        time_in_force = Order.TIME_IN_FORCE_GTC
-                    elif data['f'] == 'IOC':
-                        time_in_force = Order.TIME_IN_FORCE_IOC
-                    elif data['f'] == 'FOK':
-                        time_in_force = Order.TIME_IN_FORCE_FOK
-                    else:
-                        time_in_force = Order.TIME_IN_FORCE_GTC
+                order = {
+                    'id': order_id,
+                    'symbol': symbol,
+                    'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
+                    'type': order_type,
+                    'timestamp': event_timestamp,
+                    'quantity': float(data['q']),
+                    'price': price,
+                    'stop-price': stop_price,
+                    'time-in-force': time_in_force,
+                    'stop-loss': None,
+                    'take-profit': None
+                }
 
-                    order = {
-                        'id': order_id,
-                        'symbol': symbol,
-                        'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
-                        'type': order_type,
-                        'timestamp': event_timestamp,
-                        'quantity': float(data['q']),
-                        'price': price,
-                        'stop-price': stop_price,
-                        'time-in-force': time_in_force,
-                        'stop-loss': None,
-                        'take-profit': None
-                    }
+                self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
 
-                    self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
+            elif data['x'] == 'CANCELED' and data['X'] == 'CANCELED':
+                order_id = str(data['i'])
+                org_client_order_id = data['C']
 
-                elif data['x'] == 'CANCELED' and data['X'] == 'CANCELED':
-                    order_id = str(data['i'])
-                    org_client_order_id = data['C']
+                self.service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (symbol, order_id, org_client_order_id))
 
-                    self.service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (symbol, order_id, org_client_order_id))
+            elif data['x'] == 'EXPIRED' and data['X'] == 'EXPIRED':
+                order_id = str(data['i'])
 
-                elif data['x'] == 'EXPIRED' and data['X'] == 'EXPIRED':
-                    order_id = str(data['i'])
+                self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
 
-                    self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
+            elif data['x'] == 'REPLACED' or data['X'] == 'REPLACED':
+                pass  # nothing to do (currently unused)
 
-                elif data['x'] == 'REPLACED' or data['X'] == 'REPLACED':
-                    pass  # nothing to do (currently unused)
+        elif event_type == 'outboundAccountInfo':
+            event_timestamp = float(data['E']) * 0.001
 
-            elif event_type == 'outboundAccountInfo':
-                event_timestamp = float(data['E']) * 0.001
+            # balances
+            for balance in data['B']:
+                asset_name = balance['a']
+                free = balance['f']
+                locked = balance['l']
 
-                # balances
-                for balance in data['B']:
-                    asset_name = balance['a']
-                    free = balance['f']
-                    locked = balance['l']
-
-                    # asset updated
-                    self.service.notify(Signal.SIGNAL_ASSET_UPDATED, self.name, (asset_name, float(locked), float(free)))
-        except Exception as e:
-            error_logger.error("__on_user_data %s" % str(e))
+                # asset updated
+                self.service.notify(Signal.SIGNAL_ASSET_UPDATED, self.name, (asset_name, float(locked), float(free)))
 
     #
     # miscs

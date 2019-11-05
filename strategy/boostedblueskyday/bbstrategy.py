@@ -461,16 +461,15 @@ class BoostedBlueSkyDayStrategy(Strategy):
         if not self.running:            
             return False
 
-        self.lock()
-        ready = True
+        with self._mutex:
+            ready = True
 
-        for market_id, instrument in self._instruments.items():
-            strategy_trader = self._strategy_traders.get(instrument)
-            if not strategy_trader.ready():
-                ready = False
-                break
+            for market_id, instrument in self._instruments.items():
+                strategy_trader = self._strategy_traders.get(instrument)
+                if not strategy_trader.ready():
+                    ready = False
+                    break
 
-        self.unlock()
         return ready
 
     def setup_backtest(self, from_date, to_date):

@@ -36,7 +36,7 @@ class MyThread(threading.Thread):
 		# self._server = http.server.ThreadingHTTPServer((host, port), MyHttpHandler)
 		self._server = http.server.HTTPServer((host, port), MyHttpHandler)
 		self._server.runner = self
-		self._qlock = threading.Lock()
+		self._qlock = threading.RLock()
 		self._queries = []
 
 	def run(self):

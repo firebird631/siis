@@ -119,16 +119,13 @@ class NotifierService(Service):
         """
         Send a manual command to a specific notifier.
         """
-        self.lock()
-
-        notifier_inst = self._notifiers_insts.get(notifier)
-        if notifier_inst:
-            try:
-                notifier_inst.command(command_type, data)
-            except Exception as e:
-                error_logger.error(str(e))
-
-        self.unlock()
+        with self._mutex:
+            notifier_inst = self._notifiers_insts.get(notifier)
+            if notifier_inst:
+                try:
+                    notifier_inst.command(command_type, data)
+                except Exception as e:
+                    error_logger.error(str(e))
 
     def _init_notifier_config(self, options):
         """

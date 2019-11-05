@@ -35,6 +35,7 @@ from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.strategy')
+error_logger = logging.getLogger('siis.error.strategy')
 
 
 class Strategy(Runnable):
@@ -289,12 +290,9 @@ class Strategy(Runnable):
             time.sleep(0.0000001)  # 0.005 * max(1, self._cpu_load))
 
         # stream call
-        self.lock()
-    
-        self.stream()
-        self.stream_call()
-
-        self.unlock()
+        with self._mutex:
+            self.stream()
+            self.stream_call()
 
     def ping(self, timeout):
         self._ping = (0, None, True)
@@ -414,25 +412,19 @@ class Strategy(Runnable):
         """
         For each strategy-trader terminate to be done only in live mode.
         """
-        self.lock()
-
-        if not self.service.backtesting and not self.trader().paper_mode:
-            for k, strategy_trader in self._strategy_traders.items():
-                strategy_trader.terminate()
-
-        self.unlock()
+        with self._mutex:
+            if not self.service.backtesting and not self.trader().paper_mode:
+                for k, strategy_trader in self._strategy_traders.items():
+                    strategy_trader.terminate()
 
     def save(self):
         """
         For each strategy-trader finalize to be done only in live mode.
         """
-        self.lock()
-
-        if not self.service.backtesting and not self.trader().paper_mode:
-            for k, strategy_trader in self._strategy_traders.items():
-                strategy_trader.save()
-
-        self.unlock()
+        with self._mutex:
+            if not self.service.backtesting and not self.trader().paper_mode:
+                for k, strategy_trader in self._strategy_traders.items():
+                    strategy_trader.save()
 
     def indicator(self, name):
         """
@@ -446,18 +438,16 @@ class Strategy(Runnable):
         a specific instrument if market_id is defined.
         """
         if market_id:
-            self.lock()
-            instrument = self.find_instrument(market_id)
-            if instrument:
-                strategy_trader = self._strategy_traders.get(instrument)
-                if strategy_trader:
-                    strategy_trader.set_activity(status)
-            self.unlock()
+            with self._mutex:
+                instrument = self.find_instrument(market_id)
+                if instrument:
+                    strategy_trader = self._strategy_traders.get(instrument)
+                    if strategy_trader:
+                        strategy_trader.set_activity(status)
         else:
-            self.lock()
-            for k, strategy_trader in self._strategy_traders.items():
-                strategy_trader.set_activity(status)
-            self.unlock()
+            with self._mutex:
+                for k, strategy_trader in self._strategy_traders.items():
+                    strategy_trader.set_activity(status)
 
     def trader(self):
         """
@@ -491,22 +481,19 @@ class Strategy(Runnable):
         """
         Returns the complete list containing market-ids, theirs alias and theirs related symbol name.
         """
-        self.lock()
+        with self._mutex:
+            names = []
 
-        names = []
+            for k, instrument in self._instruments.items():
+                names.append(instrument.market_id)
 
-        for k, instrument in self._instruments.items():
-            names.append(instrument.market_id)
+                if instrument.symbol and instrument.symbol != instrument.market_id and instrument.symbol != instrument.alias:
+                    names.append(instrument.symbol)
 
-            if instrument.symbol and instrument.symbol != instrument.market_id and instrument.symbol != instrument.alias:
-                names.append(instrument.symbol)
+                if instrument.alias and instrument.alias != instrument.market_id and instrument.alias != instrument.symbol:
+                    names.append(instrument.alias)
 
-            if instrument.alias and instrument.alias != instrument.market_id and instrument.alias != instrument.symbol:
-                names.append(instrument.alias)
-
-        self.unlock()
-
-        names.sort()
+            names.sort()
 
         return names
 
@@ -566,15 +553,11 @@ class Strategy(Runnable):
         if feeder is None:
             return
 
-        self.lock()
+        with self._mutex:
+            if feeder.market_id in self._feeders:
+                raise ValueError("Already defined feeder %s for strategy %s !" % (self.name, feeder.market_id))
 
-        if feeder.market_id in self._feeders:
-            self.unlock()
-            raise ValueError("Already defined feeder %s for strategy %s !" % (self.name, feeder.market_id))
-
-        self._feeders[feeder.market_id] = feeder
-
-        self.unlock()
+            self._feeders[feeder.market_id] = feeder
 
     def base_timeframe(self):
         """
@@ -707,13 +690,11 @@ class Strategy(Runnable):
                     if signal.data[1]:
                         strategy_trader = self._strategy_traders.get(instrument)
                         if strategy_trader:
-                            strategy_trader.lock()
-                            instrument.add_tick(signal.data[1])
-                            strategy_trader.unlock()
+                            with strategy_trader._mutex:
+                                instrument.add_tick(signal.data[1])
 
-                        self.lock()
-                        self._do_update[instrument] = 0
-                        self.unlock()
+                        with self._mutex:
+                            self._do_update[instrument] = 0
 
                 elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA_BULK:
                     # incoming bulk of history candles
@@ -728,9 +709,8 @@ class Strategy(Runnable):
                         strategy_trader = self._strategy_traders.get(instrument)
                         if strategy_trader:
                             # in live mode directly add candles to instrument
-                            strategy_trader.lock()
-                            instrument.add_candle(signal.data[2])
-                            strategy_trader.unlock()
+                            with strategy_trader._mutex:
+                                instrument.add_candle(signal.data[2])
 
                         # initials candles loaded
                         if initial:
@@ -743,14 +723,11 @@ class Strategy(Runnable):
                             if strategy_trader:
                                 strategy_trader.on_received_initial_candles(signal.data[1])
 
-                        self.lock()
-
-                        if instrument not in self._do_update:
-                            self._do_update[instrument] = signal.data[1]
-                        else:
-                            self._do_update[instrument] = min(signal.data[1], self._do_update[instrument])
-
-                        self.unlock()
+                        with self._mutex:
+                            if instrument not in self._do_update:
+                                self._do_update[instrument] = signal.data[1]
+                            else:
+                                self._do_update[instrument] = min(signal.data[1], self._do_update[instrument])
 
                 elif signal.signal_type == Signal.SIGNAL_MARKET_DATA:
                     # update market data
@@ -761,29 +738,26 @@ class Strategy(Runnable):
                     strategy_trader = self._strategy_traders.get(instrument)
                     if strategy_trader:
                         # update instrument data
-                        strategy_trader.lock()
+                        with strategy_trader._mutex:
+                            instrument.tradeable = signal.data[1]
 
-                        instrument.tradeable = signal.data[1]
+                            if signal.data[1]:
+                                # only if valid field
+                                if signal.data[2]:
+                                    instrument.last_update_time = signal.data[2]
 
-                        if signal.data[1]:
-                            # only if valid field
-                            if signal.data[2]:
-                                instrument.last_update_time = signal.data[2]
+                                if signal.data[3]:
+                                    instrument.market_bid = signal.data[3]
+                                if signal.data[4]:
+                                    instrument.market_ofr = signal.data[4]
 
-                            if signal.data[3]:
-                                instrument.market_bid = signal.data[3]
-                            if signal.data[4]:
-                                instrument.market_ofr = signal.data[4]
+                                # if signal.data[5]:
+                                #     instrument.base_exchange_rate = signal.data[5]
 
-                            # if signal.data[5]:
-                            #     instrument.base_exchange_rate = signal.data[5]
-
-                            if signal.data[8]:
-                                instrument.vol24h_base = signal.data[8]
-                            if signal.data[9]:
-                                instrument.vol24h_quote = signal.data[9]
-
-                        strategy_trader.unlock()
+                                if signal.data[8]:
+                                    instrument.vol24h_base = signal.data[8]
+                                if signal.data[9]:
+                                    instrument.vol24h_quote = signal.data[9]
 
                 elif signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                     # update market info data
@@ -796,25 +770,23 @@ class Strategy(Runnable):
                     if market:
                         strategy_trader = self._strategy_traders.get(instrument)
                         if strategy_trader:
-                            strategy_trader.lock()
+                            with strategy_trader._mutex:
+                                # put interesting market data into the instrument @todo using message data
+                                instrument.trade = market.trade
+                                instrument.orders = market.orders
+                                instrument.hedging = market.hedging
+                                instrument.tradeable = market.is_open
+                                instrument.set_base(market.base)
+                                instrument.set_quote(market.quote)
 
-                        # put interesting market data into the instrument @todo using message data
-                        instrument.trade = market.trade
-                        instrument.orders = market.orders
-                        instrument.hedging = market.hedging
-                        instrument.tradeable = market.is_open
-                        instrument.set_base(market.base)
-                        instrument.set_quote(market.quote)
+                                instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
+                                instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
+                                instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
 
-                        instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
-                        instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
-                        instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
-
-                        instrument.set_fees(market.maker_fee, market.taker_fee)
-                        instrument.set_commissions(market.maker_commission, market.taker_commission)
+                                instrument.set_fees(market.maker_fee, market.taker_fee)
+                                instrument.set_commissions(market.maker_commission, market.taker_commission)
 
                         if strategy_trader:
-                            strategy_trader.unlock()
                             strategy_trader.on_market_info()
 
                 elif signal.signal_type == Signal.SIGNAL_LIQUIDATION_DATA:
@@ -856,10 +828,9 @@ class Strategy(Runnable):
         # only for normal processing
         if not self.service.backtesting:
             if self._do_update:
-                self.lock()
-                do_update = self._do_update
-                self._do_update = {}
-                self.unlock()
+                with self._mutex:
+                    do_update = self._do_update
+                    self._do_update = {}
 
                 if len(self._instruments) >= 1:
                     # @todo might not need sync in live mode, so add any jobs directly
@@ -879,10 +850,9 @@ class Strategy(Runnable):
                             self.update_strategy(tf, instrument)
         else:
             # process one more backtest step
-            self.lock()
-            next_bt_upd = self._next_backtest_update
-            self._next_backtest_update = None
-            self.unlock()
+            with self._mutex:
+                next_bt_upd = self._next_backtest_update
+                self._next_backtest_update = None
 
             if next_bt_upd:
                 self.backtest_update(next_bt_upd[0], next_bt_upd[1])
@@ -903,9 +873,8 @@ class Strategy(Runnable):
         pass
 
     def query_backtest_update(self, timestamp, total_ts):
-        self.lock()
-        self._next_backtest_update = (timestamp, total_ts)
-        self.unlock()
+        with self._mutex:
+            self._next_backtest_update = (timestamp, total_ts)
 
     def backtest_update_instrument(self, trader, instrument, timestamp):
         # retrieve the feeder by market_id or symbol
@@ -973,23 +942,22 @@ class Strategy(Runnable):
         Override only if necessary. This default implementation should suffise.
         """
         if self._preset and not self._prefetched:
-            self.lock()
-            prefetched = True
+            with self._mutex:
+                prefetched = True
 
-            # need all ready, feeders
-            for market_id, feeder in self._feeders.items():
-                if not feeder.ready():
-                    prefetched = False
-                    break
+                # need all ready, feeders
+                for market_id, feeder in self._feeders.items():
+                    if not feeder.ready():
+                        prefetched = False
+                        break
 
-            # and instruments wanted data
-            for k, instrument in self._instruments.items():
-                if not instrument.ready():
-                    prefetched = False
-                    break
+                # and instruments wanted data
+                for k, instrument in self._instruments.items():
+                    if not instrument.ready():
+                        prefetched = False
+                        break
 
-            self._prefetched = prefetched
-            self.unlock()
+                self._prefetched = prefetched
 
         return self._running and self._preset and self._prefetched
 
@@ -1001,15 +969,14 @@ class Strategy(Runnable):
         if not self.running:
             return False
 
-        self.lock()
-        finished = True
+        with self._mutex:
+            finished = True
 
-        for market_id, feeder in self._feeders.items():
-            if not feeder.finished():
-                finished = False
-                break
+            for market_id, feeder in self._feeders.items():
+                if not feeder.finished():
+                    finished = False
+                    break
 
-        self.unlock()
         return finished
 
     def progress(self):
@@ -1218,13 +1185,11 @@ class Strategy(Runnable):
                 if instrument.ready():
                     strategy_trader = self._strategy_traders.get(instrument)
                     if strategy_trader:
-                        strategy_trader.lock()
-                        instrument.add_tick(signal.data[1])
-                        strategy_trader.unlock()
+                        with strategy_trader._mutex:
+                            instrument.add_tick(signal.data[1])
 
-                        self.lock()
-                        self._do_update[instrument] = 0
-                        self.unlock()
+                        with self._mutex:
+                            self._do_update[instrument] = 0
 
                 # directly managed
                 return
@@ -1245,18 +1210,14 @@ class Strategy(Runnable):
                 if instrument.ready():
                     strategy_trader = self._strategy_traders.get(instrument)
                     if strategy_trader:
-                        strategy_trader.lock()
-                        instrument.add_candle(signal.data[1])
-                        strategy_trader.unlock()
-
-                        self.lock()
-
-                        if instrument not in self._do_update:
-                            self._do_update[instrument] = signal.data[1].timeframe
-                        else:
-                            self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
-
-                        self.unlock()
+                        with strategy_trader._mutex:
+                            instrument.add_candle(signal.data[1])
+                        
+                        with self._mutex:
+                            if instrument not in self._do_update:
+                                self._do_update[instrument] = signal.data[1].timeframe
+                            else:
+                                self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
 
                 # directly managed
                 return
@@ -1351,45 +1312,42 @@ class Strategy(Runnable):
         trader = self.trader()
 
         for k, strategy_trader in self._strategy_traders.items():
-            strategy_trader.lock()
+            with strategy_trader._mutex:
+                market = trader.market(strategy_trader.instrument.market_id) if trader else None
+                if market:
+                    for trade in strategy_trader.trades:
+                        profit_loss = trade.estimate_profit_loss(strategy_trader.instrument)
 
-            market = trader.market(strategy_trader.instrument.market_id) if trader else None
-            if market:
-                for trade in strategy_trader.trades:
-                    profit_loss = trade.estimate_profit_loss(strategy_trader.instrument)
-
-                    results.append({
-                        'mid': market.market_id,
-                        'sym': market.symbol,
-                        'id': trade.id,
-                        'eot': trade.entry_open_time,
-                        'xot': trade.exit_open_time,
-                        'freot': trade.first_realized_entry_time,
-                        'frxot': trade.first_realized_exit_time,
-                        'lreot': trade.last_realized_entry_time,
-                        'lrxot': trade.last_realized_exit_time,
-                        'd': trade.direction_to_str(),
-                        'l': market.format_price(trade.order_price),
-                        'aep': market.format_price(trade.entry_price),
-                        'axp': market.format_price(trade.exit_price),
-                        'q': market.format_quantity(trade.order_quantity),
-                        'e': market.format_quantity(trade.exec_entry_qty),
-                        'x': market.format_quantity(trade.exec_exit_qty),
-                        'tp': market.format_price(trade.take_profit),
-                        'sl': market.format_price(trade.stop_loss),
-                        'pl': profit_loss,
-                        'tf': timeframe_to_str(trade.timeframe),
-                        's': trade.state_to_str(),
-                        'b': market.format_price(trade.best_price()),
-                        'w': market.format_price(trade.worst_price()),
-                        'bt': trade.best_price_timestamp(),
-                        'wt': trade.worst_price_timestamp(),
-                        'com': trade.comment,
-                        'upnl': market.format_price(trade.unrealized_profit_loss),
-                        'pnlcur': trade.profit_loss_currency
-                    })
-
-            strategy_trader.unlock()
+                        results.append({
+                            'mid': market.market_id,
+                            'sym': market.symbol,
+                            'id': trade.id,
+                            'eot': trade.entry_open_time,
+                            'xot': trade.exit_open_time,
+                            'freot': trade.first_realized_entry_time,
+                            'frxot': trade.first_realized_exit_time,
+                            'lreot': trade.last_realized_entry_time,
+                            'lrxot': trade.last_realized_exit_time,
+                            'd': trade.direction_to_str(),
+                            'l': market.format_price(trade.order_price),
+                            'aep': market.format_price(trade.entry_price),
+                            'axp': market.format_price(trade.exit_price),
+                            'q': market.format_quantity(trade.order_quantity),
+                            'e': market.format_quantity(trade.exec_entry_qty),
+                            'x': market.format_quantity(trade.exec_exit_qty),
+                            'tp': market.format_price(trade.take_profit),
+                            'sl': market.format_price(trade.stop_loss),
+                            'pl': profit_loss,
+                            'tf': timeframe_to_str(trade.timeframe),
+                            's': trade.state_to_str(),
+                            'b': market.format_price(trade.best_price()),
+                            'w': market.format_price(trade.worst_price()),
+                            'bt': trade.best_price_timestamp(),
+                            'wt': trade.worst_price_timestamp(),
+                            'com': trade.comment,
+                            'upnl': market.format_price(trade.unrealized_profit_loss),
+                            'pnlcur': trade.profit_loss_currency
+                        })
 
         return results
 
@@ -1413,27 +1371,24 @@ class Strategy(Runnable):
             pl = 0.0
             perf = 0.0
 
-            strategy_trader.lock()
+            with strategy_trader._mutex:
+                perf = strategy_trader._stats['perf']
+                best = strategy_trader._stats['best']
+                worst = strategy_trader._stats['worst']
 
-            perf = strategy_trader._stats['perf']
-            best = strategy_trader._stats['best']
-            worst = strategy_trader._stats['worst']
+                success = len(strategy_trader._stats['success'])
+                failed = len(strategy_trader._stats['failed'])
+                roe = len(strategy_trader._stats['roe'])
 
-            success = len(strategy_trader._stats['success'])
-            failed = len(strategy_trader._stats['failed'])
-            roe = len(strategy_trader._stats['roe'])
+                mid = strategy_trader.instrument.market_id
+                sym = strategy_trader.instrument.symbol
 
-            mid = strategy_trader.instrument.market_id
-            sym = strategy_trader.instrument.symbol
+                num = len(strategy_trader.trades)
 
-            num = len(strategy_trader.trades)
-
-            market = trader.market(strategy_trader.instrument.market_id) if trader else None
-            if market:
-                for trade in strategy_trader.trades:
-                    pl += trade.estimate_profit_loss(strategy_trader.instrument)
-
-            strategy_trader.unlock()
+                market = trader.market(strategy_trader.instrument.market_id) if trader else None
+                if market:
+                    for trade in strategy_trader.trades:
+                        pl += trade.estimate_profit_loss(strategy_trader.instrument)
 
             if pl != 0.0 or num > 0 or success > 0 or failed > 0 or roe > 0:
                 results.append({
@@ -1487,48 +1442,45 @@ class Strategy(Runnable):
             trades = []
             perf = 0.0
 
-            strategy_trader.lock()
+            with strategy_trader._mutex:
+                perf = strategy_trader._stats['perf']
+                best = strategy_trader._stats['best']
+                worst = strategy_trader._stats['worst']
 
-            perf = strategy_trader._stats['perf']
-            best = strategy_trader._stats['best']
-            worst = strategy_trader._stats['worst']
+                success = len(strategy_trader._stats['success'])
+                failed = len(strategy_trader._stats['failed'])
+                roe = len(strategy_trader._stats['roe'])
 
-            success = len(strategy_trader._stats['success'])
-            failed = len(strategy_trader._stats['failed'])
-            roe = len(strategy_trader._stats['roe'])
+                market = trader.market(strategy_trader.instrument.market_id) if trader else None
+                if market:
+                    for trade in strategy_trader.trades:
+                        trade_pl = trade.estimate_profit_loss(strategy_trader.instrument)
 
-            market = trader.market(strategy_trader.instrument.market_id) if trader else None
-            if market:
-                for trade in strategy_trader.trades:
-                    trade_pl = trade.estimate_profit_loss(strategy_trader.instrument)
+                        trades.append({
+                            'id': trade.id,
+                            'eot': trade.entry_open_time,
+                            'd': trade.direction_to_str(),
+                            'l': market.format_price(trade.order_price),
+                            'aep': market.format_price(trade.entry_price),
+                            'axp': market.format_price(trade.exit_price),
+                            'q': market.format_quantity(trade.order_quantity),
+                            'e': market.format_quantity(trade.exec_entry_qty),
+                            'x': market.format_quantity(trade.exec_exit_qty),
+                            'tp': market.format_price(trade.take_profit),
+                            'sl': market.format_price(trade.stop_loss),
+                            'pl': trade_pl,
+                            'tf': timeframe_to_str(trade.timeframe),
+                            's': trade.state_to_str(),
+                            'b': market.format_price(trade.best_price()),
+                            'w': market.format_price(trade.worst_price()),
+                            'bt': trade.best_price_timestamp(),
+                            'wt': trade.worst_price_timestamp(),
+                            'com': trade.comment,
+                            'upnl': market.format_profit_loss_price(trade.unrealized_profit_loss),
+                            'pnlcur': trade.profit_loss_currency
+                        })
 
-                    trades.append({
-                        'id': trade.id,
-                        'eot': trade.entry_open_time,
-                        'd': trade.direction_to_str(),
-                        'l': market.format_price(trade.order_price),
-                        'aep': market.format_price(trade.entry_price),
-                        'axp': market.format_price(trade.exit_price),
-                        'q': market.format_quantity(trade.order_quantity),
-                        'e': market.format_quantity(trade.exec_entry_qty),
-                        'x': market.format_quantity(trade.exec_exit_qty),
-                        'tp': market.format_price(trade.take_profit),
-                        'sl': market.format_price(trade.stop_loss),
-                        'pl': trade_pl,
-                        'tf': timeframe_to_str(trade.timeframe),
-                        's': trade.state_to_str(),
-                        'b': market.format_price(trade.best_price()),
-                        'w': market.format_price(trade.worst_price()),
-                        'bt': trade.best_price_timestamp(),
-                        'wt': trade.worst_price_timestamp(),
-                        'com': trade.comment,
-                        'upnl': market.format_profit_loss_price(trade.unrealized_profit_loss),
-                        'pnlcur': trade.profit_loss_currency
-                    })
-
-                    profit_loss += trade_pl
-
-            strategy_trader.unlock()
+                        profit_loss += trade_pl
 
             results.append({
                 'mid': strategy_trader.instrument.market_id,
@@ -1551,61 +1503,55 @@ class Strategy(Runnable):
         """
         results = []
 
-        self.lock()
+        with self._mutex:
+            trader = self.trader()
 
-        trader = self.trader()
+            for k, strategy_trader in self._strategy_traders.items():
+                with strategy_trader._mutex:
+                    market = trader.market(strategy_trader.instrument.market_id) if trader else None
+                    if market:
+                        def append_trade(market, trades, trade):
+                            trades.append({
+                                'mid': strategy_trader.instrument.market_id,
+                                'sym': strategy_trader.instrument.symbol,
+                                'id': trade['id'],
+                                'eot': trade['eot'],
+                                'xot': trade['xot'],
+                                'l': trade['l'],
+                                'lreot': trade['lreot'],
+                                'lrxot': trade['lrxot'],
+                                'freot': trade['freot'],
+                                'frxot': trade['frxot'],
+                                'd': trade['d'],
+                                'aep': trade['aep'],
+                                'axp': trade['axp'],
+                                'q': trade['q'],
+                                'e': trade['e'],
+                                'x': trade['e'],
+                                'tp': trade['tp'],
+                                'sl': trade['sl'],
+                                'pl': trade['pl'],
+                                'tf': trade['tf'],
+                                's': trade['s'],
+                                'c': trade['c'],
+                                'b': trade['b'],
+                                'bt': trade['bt'],
+                                'w': trade['w'],
+                                'wt': trade['wt'],
+                                'com': trade['com'],
+                                'fees': trade['fees'],
+                                'rpnl': trade['rpnl'],
+                                'pnlcur': trade['pnlcur']
+                            })
 
-        for k, strategy_trader in self._strategy_traders.items():
-            strategy_trader.lock()
+                        for trade in strategy_trader._stats['success']:
+                            append_trade(market, results, trade)
 
-            market = trader.market(strategy_trader.instrument.market_id) if trader else None
-            if market:
-                def append_trade(market, trades, trade):
-                    trades.append({
-                        'mid': strategy_trader.instrument.market_id,
-                        'sym': strategy_trader.instrument.symbol,
-                        'id': trade['id'],
-                        'eot': trade['eot'],
-                        'xot': trade['xot'],
-                        'l': trade['l'],
-                        'lreot': trade['lreot'],
-                        'lrxot': trade['lrxot'],
-                        'freot': trade['freot'],
-                        'frxot': trade['frxot'],
-                        'd': trade['d'],
-                        'aep': trade['aep'],
-                        'axp': trade['axp'],
-                        'q': trade['q'],
-                        'e': trade['e'],
-                        'x': trade['e'],
-                        'tp': trade['tp'],
-                        'sl': trade['sl'],
-                        'pl': trade['pl'],
-                        'tf': trade['tf'],
-                        's': trade['s'],
-                        'c': trade['c'],
-                        'b': trade['b'],
-                        'bt': trade['bt'],
-                        'w': trade['w'],
-                        'wt': trade['wt'],
-                        'com': trade['com'],
-                        'fees': trade['fees'],
-                        'rpnl': trade['rpnl'],
-                        'pnlcur': trade['pnlcur']
-                    })
+                        for trade in strategy_trader._stats['failed']:
+                            append_trade(market, results, trade)
 
-                for trade in strategy_trader._stats['success']:
-                    append_trade(market, results, trade)
-
-                for trade in strategy_trader._stats['failed']:
-                    append_trade(market, results, trade)
-
-                for trade in strategy_trader._stats['roe']:
-                    append_trade(market, results, trade)
-
-            strategy_trader.unlock()
-
-        self.unlock()
+                        for trade in strategy_trader._stats['roe']:
+                            append_trade(market, results, trade)
 
         return results
 
@@ -1620,80 +1566,77 @@ class Strategy(Runnable):
         columns = ('Market', 'P/L(%)', 'Total(%)', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE')
         data = []
 
-        self.lock()
+        with self._mutex:
+            agg_trades = self.get_agg_trades()
+            total_size = (len(columns), len(agg_trades) + (1 if summ else 0))
 
-        agg_trades = self.get_agg_trades()
-        total_size = (len(columns), len(agg_trades) + (1 if summ else 0))
+            if offset is None:
+                offset = 0
 
-        if offset is None:
-            offset = 0
+            if limit is None:
+                limit = len(agg_trades) + (1 if summ else 0)
 
-        if limit is None:
-            limit = len(agg_trades) + (1 if summ else 0)
+            limit = offset + limit
 
-        limit = offset + limit
+            agg_trades.sort(key=lambda x: x['mid'])
 
-        agg_trades.sort(key=lambda x: x['mid'])
+            pl_sum = 0.0
+            perf_sum = 0.0
+            best_sum = 0.0
+            worst_sum = 0.0
+            success_sum = 0
+            failed_sum = 0
+            roe_sum = 0
 
-        pl_sum = 0.0
-        perf_sum = 0.0
-        best_sum = 0.0
-        worst_sum = 0.0
-        success_sum = 0
-        failed_sum = 0
-        roe_sum = 0
+            # total summ before offset:limit
+            if summ:
+                for t in agg_trades:
+                    pl_sum += t['pl']
+                    perf_sum += t['perf']
+                    best_sum = max(best_sum, t['best'])
+                    worst_sum = min(worst_sum, t['worst'])
+                    success_sum += t['success']
+                    failed_sum += t['failed']
+                    roe_sum += t['roe']
 
-        # total summ before offset:limit
-        if summ:
+            agg_trades = agg_trades[offset:limit]
+
             for t in agg_trades:
-                pl_sum += t['pl']
-                perf_sum += t['perf']
-                best_sum = max(best_sum, t['best'])
-                worst_sum = min(worst_sum, t['worst'])
-                success_sum += t['success']
-                failed_sum += t['failed']
-                roe_sum += t['roe']
+                cr = Color.colorize_updn("%.2f" % (t['pl']*100.0), 0.0, t['pl'], style=style)
+                cp = Color.colorize_updn("%.2f" % (t['perf']*100.0), 0.0, t['perf'], style=style)
 
-        agg_trades = agg_trades[offset:limit]
+                row = (
+                    t['mid'],
+                    cr,
+                    cp,
+                    "%.2f" % (t['best']*100.0),
+                    "%.2f" % (t['worst']*100.0),
+                    t['success'],
+                    t['failed'],
+                    t['roe']
+                )
 
-        for t in agg_trades:
-            cr = Color.colorize_updn("%.2f" % (t['pl']*100.0), 0.0, t['pl'], style=style)
-            cp = Color.colorize_updn("%.2f" % (t['perf']*100.0), 0.0, t['perf'], style=style)
+                data.append(row[col_ofs:])
 
-            row = (
-                t['mid'],
-                cr,
-                cp,
-                "%.2f" % (t['best']*100.0),
-                "%.2f" % (t['worst']*100.0),
-                t['success'],
-                t['failed'],
-                t['roe']
-            )
+            #
+            # sum
+            #
 
-            data.append(row[col_ofs:])
+            if summ:
+                cpl_sum = Color.colorize_updn("%.2f" % (pl_sum*100.0), 0.0, pl_sum, style=style)
+                cperf_sum = Color.colorize_updn("%.2f" % (perf_sum*100.0), 0.0, perf_sum, style=style)
 
-        #
-        # sum
-        #
+                row = (
+                    'Total',
+                    cpl_sum,
+                    cperf_sum,
+                    "%.2f" % (best_sum*100.0),
+                    "%.2f" % (worst_sum*100.0),
+                    success_sum,
+                    failed_sum,
+                    roe_sum)
 
-        if summ:
-            cpl_sum = Color.colorize_updn("%.2f" % (pl_sum*100.0), 0.0, pl_sum, style=style)
-            cperf_sum = Color.colorize_updn("%.2f" % (perf_sum*100.0), 0.0, perf_sum, style=style)
-
-            row = (
-                'Total',
-                cpl_sum,
-                cperf_sum,
-                "%.2f" % (best_sum*100.0),
-                "%.2f" % (worst_sum*100.0),
-                success_sum,
-                failed_sum,
-                roe_sum)
-
-            data.append(row[col_ofs:])
-
-        self.unlock()
+                data.append(row[col_ofs:])
 
         return columns[col_ofs:], data, total_size
 
@@ -1710,91 +1653,88 @@ class Strategy(Runnable):
 
         data = []
 
-        self.lock()
+        with self._mutex:
+            trades = self.get_all_active_trades()
+            total_size = (len(columns), len(trades))
 
-        trades = self.get_all_active_trades()
-        total_size = (len(columns), len(trades))
+            if offset is None:
+                offset = 0
 
-        if offset is None:
-            offset = 0
+            if limit is None:
+                limit = len(trades)
 
-        if limit is None:
-            limit = len(trades)
+            limit = offset + limit
 
-        limit = offset + limit
+            trades.sort(key=lambda x: x['eot'])
+            trades = trades[offset:limit]
 
-        trades.sort(key=lambda x: x['eot'])
-        trades = trades[offset:limit]
+            for t in trades:
+                direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
-        for t in trades:
-            direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+                aep = float(t['aep'])
+                best = float(t['b'])
+                worst = float(t['w'])
+                op = float(t['l'])
+                sl = float(t['sl'])
+                tp = float(t['tp'])
 
-            aep = float(t['aep'])
-            best = float(t['b'])
-            worst = float(t['w'])
-            op = float(t['l'])
-            sl = float(t['sl'])
-            tp = float(t['tp'])
+                if t['pl'] < 0 and ((t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep)):
+                    # has been profitable but loss
+                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
+                elif t['pl'] < 0:  # loss
+                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
+                elif t['pl'] > 0:  # profit
+                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
+                else:  # equity
+                    cr = "0.0"
 
-            if t['pl'] < 0 and ((t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep)):
-                # has been profitable but loss
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
-            elif t['pl'] < 0:  # loss
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
-            elif t['pl'] > 0:  # profit
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
-            else:  # equity
-                cr = "0.0"
+                if t['d'] == 'long' and aep > 0 and best > 0 and worst > 0:
+                    bpct = (best - aep) / aep
+                    wpct = (worst - aep) / aep
+                elif t['d'] == 'short' and aep > 0 and best > 0 and worst > 0:
+                    bpct = (aep - best) / aep
+                    wpct = (aep - worst) / aep
+                else:
+                    bpct = 0
+                    wpct = 0
 
-            if t['d'] == 'long' and aep > 0 and best > 0 and worst > 0:
-                bpct = (best - aep) / aep
-                wpct = (worst - aep) / aep
-            elif t['d'] == 'short' and aep > 0 and best > 0 and worst > 0:
-                bpct = (aep - best) / aep
-                wpct = (aep - worst) / aep
-            else:
-                bpct = 0
-                wpct = 0
+                if t['d'] == 'long' and (aep or op):
+                    slpct = (sl - (aep or op)) / (aep or op)
+                    tppct = (tp - (aep or op)) / (aep or op)
+                elif t['d'] == 'short' and (aep or op):
+                    slpct = ((aep or op) - sl) / (aep or op)
+                    tppct = ((aep or op) - tp) / (aep or op)
+                else:
+                    slpct = 0
+                    tppct = 0
 
-            if t['d'] == 'long' and (aep or op):
-                slpct = (sl - (aep or op)) / (aep or op)
-                tppct = (tp - (aep or op)) / (aep or op)
-            elif t['d'] == 'short' and (aep or op):
-                slpct = ((aep or op) - sl) / (aep or op)
-                tppct = ((aep or op) - tp) / (aep or op)
-            else:
-                slpct = 0
-                tppct = 0
+                row = [
+                    t['mid'],
+                    t['id'],
+                    direction,
+                    cr,
+                    t['l'],
+                    "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
+                    "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
+                    "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
+                    "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
+                    t['tf'],
+                    datetime.fromtimestamp(t['eot']).strftime('%y-%m-%d %H:%M:%S') if t['eot'] > 0 else "",
+                    datetime.fromtimestamp(t['freot']).strftime('%y-%m-%d %H:%M:%S') if t['freot'] > 0 else "",
+                    t['aep'],
+                    datetime.fromtimestamp(t['lrxot']).strftime('%y-%m-%d %H:%M:%S') if t['lrxot'] > 0 else "",
+                    t['axp'],
+                    t['com'],
+                    "%s%s" % (t['upnl'], t['pnlcur'])
+                ]
 
-            row = [
-                t['mid'],
-                t['id'],
-                direction,
-                cr,
-                t['l'],
-                "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
-                "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
-                "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
-                "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
-                t['tf'],
-                datetime.fromtimestamp(t['eot']).strftime('%y-%m-%d %H:%M:%S') if t['eot'] > 0 else "",
-                datetime.fromtimestamp(t['freot']).strftime('%y-%m-%d %H:%M:%S') if t['freot'] > 0 else "",
-                t['aep'],
-                datetime.fromtimestamp(t['lrxot']).strftime('%y-%m-%d %H:%M:%S') if t['lrxot'] > 0 else "",
-                t['axp'],
-                t['com'],
-                "%s%s" % (t['upnl'], t['pnlcur'])
-            ]
+                if quantities:
+                    row.append(t['q'])
+                    row.append(t['e'])
+                    row.append(t['x'])
+                    row.append(t['s'].capitalize())
 
-            if quantities:
-                row.append(t['q'])
-                row.append(t['e'])
-                row.append(t['x'])
-                row.append(t['s'].capitalize())
-
-            data.append(row[col_ofs:])
-
-        self.unlock()
+                data.append(row[col_ofs:])
 
         return columns[col_ofs:], data, total_size
 
@@ -1811,89 +1751,86 @@ class Strategy(Runnable):
 
         data = []
         
-        self.lock()
+        with self._mutex:
+            closed_trades = self.get_closed_trades()
+            total_size = (len(columns), len(closed_trades))
 
-        closed_trades = self.get_closed_trades()
-        total_size = (len(columns), len(closed_trades))
+            if offset is None:
+                offset = 0
 
-        if offset is None:
-            offset = 0
+            if limit is None:
+                limit = len(closed_trades)
 
-        if limit is None:
-            limit = len(closed_trades)
+            limit = offset + limit
 
-        limit = offset + limit
+            closed_trades.sort(key=lambda x: -x['lrxot'])
+            closed_trades = closed_trades[offset:limit]
 
-        closed_trades.sort(key=lambda x: -x['lrxot'])
-        closed_trades = closed_trades[offset:limit]
+            for t in closed_trades:
+                direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
-        for t in closed_trades:
-            direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+                # @todo direction
+                if t['pl'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
+                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
+                elif t['pl'] < 0:  # loss
+                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
+                elif t['pl'] > 0:  # profit
+                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
+                else:
+                    cr = "0.0"
 
-            # @todo direction
-            if t['pl'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
-            elif t['pl'] < 0:  # loss
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
-            elif t['pl'] > 0:  # profit
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
-            else:
-                cr = "0.0"
+                aep = float(t['aep'])
+                sl = float(t['sl'])
+                tp = float(t['tp'])
 
-            aep = float(t['aep'])
-            sl = float(t['sl'])
-            tp = float(t['tp'])
+                # color TP in green if hitted, similarely in red for SL
+                # @todo not really true, could store the exit reason in trade stats
+                if t['d'] == "long":
+                    _tp = Color.colorize_cond(t['tp'], tp > 0 and float(t['axp']) >= tp, style=style, true=Color.GREEN)
+                    _sl = Color.colorize_cond(t['sl'], sl > 0 and float(t['axp']) <= sl, style=style, true=Color.RED)
+                    slpct = (sl - aep) / aep
+                    tppct = (tp - aep) / aep
+                else:
+                    _tp = Color.colorize_cond(t['tp'], tp > 0 and float(t['axp']) <= tp, style=style, true=Color.GREEN)
+                    _sl = Color.colorize_cond(t['sl'], sl > 0 and float(t['axp']) >= sl, style=style, true=Color.RED)
+                    slpct = (aep - sl) / aep
+                    tppct = (aep - tp) / aep
 
-            # color TP in green if hitted, similarely in red for SL
-            # @todo not really true, could store the exit reason in trade stats
-            if t['d'] == "long":
-                _tp = Color.colorize_cond(t['tp'], tp > 0 and float(t['axp']) >= tp, style=style, true=Color.GREEN)
-                _sl = Color.colorize_cond(t['sl'], sl > 0 and float(t['axp']) <= sl, style=style, true=Color.RED)
-                slpct = (sl - aep) / aep
-                tppct = (tp - aep) / aep
-            else:
-                _tp = Color.colorize_cond(t['tp'], tp > 0 and float(t['axp']) <= tp, style=style, true=Color.GREEN)
-                _sl = Color.colorize_cond(t['sl'], sl > 0 and float(t['axp']) >= sl, style=style, true=Color.RED)
-                slpct = (aep - sl) / aep
-                tppct = (aep - tp) / aep
+                if t['d'] == 'long':
+                    bpct = (float(t['b']) - aep) / aep
+                    wpct = (float(t['w']) - aep) / aep
+                elif t['d'] == 'short':
+                    bpct = (aep - float(t['b'])) / aep
+                    wpct = (aep - float(t['w'])) / aep
 
-            if t['d'] == 'long':
-                bpct = (float(t['b']) - aep) / aep
-                wpct = (float(t['w']) - aep) / aep
-            elif t['d'] == 'short':
-                bpct = (aep - float(t['b'])) / aep
-                wpct = (aep - float(t['w'])) / aep
+                row = [
+                    t['mid'],
+                    t['id'],
+                    direction,
+                    cr,
+                    "%.2f%%" % (t['fees'] * 100),
+                    t['l'],
+                    "%s (%.2f)" % (_sl, slpct * 100) if percents else _sl,
+                    "%s (%.2f)" % (_tp, tppct * 100) if percents else _tp,
+                    "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
+                    "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
+                    t['tf'],
+                    datetime.fromtimestamp(t['eot']).strftime('%y-%m-%d %H:%M:%S'),
+                    datetime.fromtimestamp(t['freot']).strftime('%y-%m-%d %H:%M:%S'),
+                    t['aep'],
+                    datetime.fromtimestamp(t['lrxot']).strftime('%y-%m-%d %H:%M:%S'),
+                    t['axp'],
+                    t['com'],
+                    "%s%s" % (t['rpnl'], t['pnlcur'])
+                ]
 
-            row = [
-                t['mid'],
-                t['id'],
-                direction,
-                cr,
-                "%.2f%%" % (t['fees'] * 100),
-                t['l'],
-                "%s (%.2f)" % (_sl, slpct * 100) if percents else _sl,
-                "%s (%.2f)" % (_tp, tppct * 100) if percents else _tp,
-                "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
-                "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
-                t['tf'],
-                datetime.fromtimestamp(t['eot']).strftime('%y-%m-%d %H:%M:%S'),
-                datetime.fromtimestamp(t['freot']).strftime('%y-%m-%d %H:%M:%S'),
-                t['aep'],
-                datetime.fromtimestamp(t['lrxot']).strftime('%y-%m-%d %H:%M:%S'),
-                t['axp'],
-                t['com'],
-                "%s%s" % (t['rpnl'], t['pnlcur'])
-            ]
+                if quantities:
+                    row.append(t['q'])
+                    row.append(t['e'])
+                    row.append(t['x'])
+                    row.append(t['s'].capitalize())
 
-            if quantities:
-                row.append(t['q'])
-                row.append(t['e'])
-                row.append(t['x'])
-                row.append(t['s'].capitalize())
-
-            data.append(row[col_ofs:])
-
-        self.unlock()
+                data.append(row[col_ofs:])
 
         return columns[col_ofs:], data, total_size
 
@@ -2073,45 +2010,42 @@ class Strategy(Runnable):
         trader = self.trader()
         market = trader.market(strategy_trader.instrument.market_id)
 
-        strategy_trader.lock()
-
-        if trade_id == -1 and strategy_trader.trades:
-            trade = strategy_trader.trades[-1]
-        else:
-            for t in strategy_trader.trades:
-                if t.id == trade_id:
-                    trade = t
-                    break
-
-        if trade:
-            price = market.close_exec_price(trade.direction)
-
-            if not trade.is_active():
-                # cancel open
-                trade.cancel_open(trader)
-
-                # add a success result message
-                results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
+        with strategy_trader._mutex:
+            if trade_id == -1 and strategy_trader.trades:
+                trade = strategy_trader.trades[-1]
             else:
-                # close or cancel
-                trade.close(trader, strategy_trader.instrument)
+                for t in strategy_trader.trades:
+                    if t.id == trade_id:
+                        trade = t
+                        break
 
-                # add a success result message
-                results['messages'].append("Close trade %i on %s:%s at market price %s" % (
-                    trade.id, self.identifier, market.market_id, market.format_price(price)))
+            if trade:
+                price = market.close_exec_price(trade.direction)
 
-                # notify @todo would we notify on that case ?
-                # self.notify_order(trade.id, trade.dir, strategy_trader.instrument.market_id, market.format_price(price),
-                #         self.service.timestamp, trade.timeframe, 'exit', None, None, None)
+                if not trade.is_active():
+                    # cancel open
+                    trade.cancel_open(trader)
 
-                # want it on the streaming (take care its only the order signal, no the real complete execution)
-                # @todo its not really a perfect way...
-                # strategy_trader._global_streamer.member('buy/sell-exit').update(price, self.timestamp)
-        else:
-            results['error'] = True
-            results['messages'].append("Invalid trade identifier %i" % trade_id)
+                    # add a success result message
+                    results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
+                else:
+                    # close or cancel
+                    trade.close(trader, strategy_trader.instrument)
 
-        strategy_trader.unlock()
+                    # add a success result message
+                    results['messages'].append("Close trade %i on %s:%s at market price %s" % (
+                        trade.id, self.identifier, market.market_id, market.format_price(price)))
+
+                    # notify @todo would we notify on that case ?
+                    # self.notify_order(trade.id, trade.dir, strategy_trader.instrument.market_id, market.format_price(price),
+                    #         self.service.timestamp, trade.timeframe, 'exit', None, None, None)
+
+                    # want it on the streaming (take care its only the order signal, no the real complete execution)
+                    # @todo its not really a perfect way...
+                    # strategy_trader._global_streamer.member('buy/sell-exit').update(price, self.timestamp)
+            else:
+                results['error'] = True
+                results['messages'].append("Invalid trade identifier %i" % trade_id)
 
         return results
 
@@ -2143,27 +2077,24 @@ class Strategy(Runnable):
         trader = self.trader()
         market = trader.market(strategy_trader.instrument.market_id)
 
-        strategy_trader.lock()
+        with strategy_trader._mutex:
+            if trade_id == -1 and strategy_trader.trades:
+                trade = strategy_trader.trades[-1]
+            else:
+                for t in strategy_trader.trades:
+                    if t.id == trade_id:
+                        trade = t
+                        break
 
-        if trade_id == -1 and strategy_trader.trades:
-            trade = strategy_trader.trades[-1]
-        else:
-            for t in strategy_trader.trades:
-                if t.id == trade_id:
-                    trade = t
-                    break
+            if trade:
+                # remove
+                trade.remove(trader, strategy_trader.instrument)
 
-        if trade:
-            # remove
-            trade.remove(trader, strategy_trader.instrument)
-
-            # add a success result message
-            results['messages'].append("Force remove trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
-        else:
-            results['error'] = True
-            results['messages'].append("Invalid trade identifier %i" % trade_id)
-
-        strategy_trader.unlock()
+                # add a success result message
+                results['messages'].append("Force remove trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
+            else:
+                results['error'] = True
+                results['messages'].append("Invalid trade identifier %i" % trade_id)
 
         return results
 
@@ -2194,85 +2125,82 @@ class Strategy(Runnable):
 
         trade = None
 
-        strategy_trader.lock()
-
-        if trade_id == -1 and strategy_trader.trades:
-            trade = strategy_trader.trades[-1]
-        else:
-            for t in strategy_trader.trades:
-                if t.id == trade_id:
-                    trade = t
-                    break
-
-        if trade:
-            # modify SL
-            if action == 'stop-loss' and 'stop-loss' in data and type(data['stop-loss']) is float:
-                if data['stop-loss'] > 0.0:
-                    if trade.has_stop_order() or data.get('force', False):
-                        trade.modify_stop_loss(self.trader(), strategy_trader.instrument, data['stop-loss'])
-                    else:
-                        trade.sl = data['stop-loss']
-                else:
-                    results['error'] = True
-                    results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)
-
-            # modify TP
-            elif action == 'take-profit' and 'take-profit' in data and type(data['take-profit']) is float:
-                if data['take-profit'] > 0.0:
-                    if trade.has_limit_order() or data.get('force', False):
-                        trade.modify_take_profit(self.trader(), strategy_trader.instrument, data['take-profit'])
-                    else:
-                        trade.tp = data['take-profit']
-                else:
-                    results['error'] = True
-                    results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)
-
-            # add operation
-            elif action == 'add-op':
-                op_name = data.get('operation', "")
-
-                if op_name in self.service.tradeops:
-                    try:
-                        # instanciate the operation
-                        operation = self.service.tradeops[op_name]()
-
-                        # and define the parameters
-                        operation.init(data)
-
-                        if operation.check(trade):
-                            # append the operation to the trade
-                            trade.add_operation(operation)
-                        else:
-                            results['error'] = True
-                            results['messages'].append("Operation checking error %s on trade %i" % (op_name, trade.id))
-
-                    except Exception as e:
-                        results['error'] = True
-                        results['messages'].append(repr(e))
-                else:
-                    results['error'] = True
-                    results['messages'].append("Unsupported operation %s on trade %i" % (op_name, trade.id))
-
-            # remove operation
-            elif action == 'del-op':
-                trade_operation_id = -1
-
-                if 'operation-id' in data and type(data.get('operation-id')) is int:
-                    trade_operation_id = data['operation-id']
-
-                if not trade.remove_operation(trade_operation_id):
-                    results['error'] = True
-                    results['messages'].append("Unknown operation-id on trade %i" % trade.id)
+        with strategy_trader._mutex:
+            if trade_id == -1 and strategy_trader.trades:
+                trade = strategy_trader.trades[-1]
             else:
-                # unsupported action
+                for t in strategy_trader.trades:
+                    if t.id == trade_id:
+                        trade = t
+                        break
+
+            if trade:
+                # modify SL
+                if action == 'stop-loss' and 'stop-loss' in data and type(data['stop-loss']) is float:
+                    if data['stop-loss'] > 0.0:
+                        if trade.has_stop_order() or data.get('force', False):
+                            trade.modify_stop_loss(self.trader(), strategy_trader.instrument, data['stop-loss'])
+                        else:
+                            trade.sl = data['stop-loss']
+                    else:
+                        results['error'] = True
+                        results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)
+
+                # modify TP
+                elif action == 'take-profit' and 'take-profit' in data and type(data['take-profit']) is float:
+                    if data['take-profit'] > 0.0:
+                        if trade.has_limit_order() or data.get('force', False):
+                            trade.modify_take_profit(self.trader(), strategy_trader.instrument, data['take-profit'])
+                        else:
+                            trade.tp = data['take-profit']
+                    else:
+                        results['error'] = True
+                        results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)
+
+                # add operation
+                elif action == 'add-op':
+                    op_name = data.get('operation', "")
+
+                    if op_name in self.service.tradeops:
+                        try:
+                            # instanciate the operation
+                            operation = self.service.tradeops[op_name]()
+
+                            # and define the parameters
+                            operation.init(data)
+
+                            if operation.check(trade):
+                                # append the operation to the trade
+                                trade.add_operation(operation)
+                            else:
+                                results['error'] = True
+                                results['messages'].append("Operation checking error %s on trade %i" % (op_name, trade.id))
+
+                        except Exception as e:
+                            results['error'] = True
+                            results['messages'].append(repr(e))
+                    else:
+                        results['error'] = True
+                        results['messages'].append("Unsupported operation %s on trade %i" % (op_name, trade.id))
+
+                # remove operation
+                elif action == 'del-op':
+                    trade_operation_id = -1
+
+                    if 'operation-id' in data and type(data.get('operation-id')) is int:
+                        trade_operation_id = data['operation-id']
+
+                    if not trade.remove_operation(trade_operation_id):
+                        results['error'] = True
+                        results['messages'].append("Unknown operation-id on trade %i" % trade.id)
+                else:
+                    # unsupported action
+                    results['error'] = True
+                    results['messages'].append("Unsupported action on trade %i" % trade.id)
+
+            else:
                 results['error'] = True
-                results['messages'].append("Unsupported action on trade %i" % trade.id)
-
-        else:
-            results['error'] = True
-            results['messages'].append("Invalid trade identifier %i" % trade_id)
-
-        strategy_trader.unlock()
+                results['messages'].append("Invalid trade identifier %i" % trade_id)
 
         return results
 
@@ -2379,27 +2307,24 @@ class Strategy(Runnable):
 
         trade = None
 
-        strategy_trader.lock()
+        with strategy_trader._mutex:
+            if trade_id == -1 and strategy_trader.trades:
+                trade = strategy_trader.trades[-1]
+            else:
+                for t in strategy_trader.trades:
+                    if t.id == trade_id:
+                        trade = t
+                        break
 
-        if trade_id == -1 and strategy_trader.trades:
-            trade = strategy_trader.trades[-1]
-        else:
-            for t in strategy_trader.trades:
-                if t.id == trade_id:
-                    trade = t
-                    break
+            if trade:
+                results['messages'].append("Trade %i, list %i operations:" % (trade.id, len(trade.operations)))
 
-        if trade:
-            results['messages'].append("Trade %i, list %i operations:" % (trade.id, len(trade.operations)))
-
-            # @todo or as table using operation.parameters() dict
-            for operation in trade.operations:
-                results['messages'].append(" - #%i: %s" % (operation.id, operation.str_info()))
-        else:
-            results['error'] = True
-            results['messages'].append("Invalid trade identifier %i" % trade_id)
-
-        strategy_trader.unlock()
+                # @todo or as table using operation.parameters() dict
+                for operation in trade.operations:
+                    results['messages'].append(" - #%i: %s" % (operation.id, operation.str_info()))
+            else:
+                results['error'] = True
+                results['messages'].append("Invalid trade identifier %i" % trade_id)
 
         return results
 
@@ -2416,100 +2341,97 @@ class Strategy(Runnable):
         expiry = 0
         timeframe = 0
 
-        strategy_trader.lock()
-
-        try:
-            region_id = int(data.get('region-id', -1))
-            action = data.get('action')
-        except Exception:
-            results['error'] = True
-            results['messages'].append("Invalid trade identifier")
-
-        if action == "add-region":
-            region_name = data.get('region', "")
-
-            try:
-                stage = int(data.get('stage', 0))
-                direction = int(data.get('direction', 0))
-                created = float(data.get('created', 0.0))
-                expiry = float(data.get('expiry', 0.0))
-
-                if 'timeframe' in data and type(data['timeframe']) is str:
-                    timeframe = timeframe_from_str(data['timeframe'])
-
-            except ValueError:
-                results['error'] = True
-                results['messages'].append("Invalid parameters")
-
-            if not results['error']:
-                if region_name in self.service.regions:
-                    try:
-                        # instanciate the region
-                        region = self.service.regions[region_name](created, stage, direction, timeframe)
-
-                        if expiry:
-                            region.set_expiry(expiry)
-
-                        # and defined the parameters
-                        region.init(data)
-
-                        if region.check():
-                            # append the region to the strategy trader
-                            strategy_trader.add_region(region)
-                        else:
-                            results['error'] = True
-                            results['messages'].append("Region checking error %s" % (region_name,))
-
-                    except Exception as e:
-                        results['error'] = True
-                        results['messages'].append(repr(e))
-                else:
-                    results['error'] = True
-                    results['messages'].append("Unsupported region %s" % (region_name,))
-
-        elif action == "del-region":
+        with strategy_trader._mutex:
             try:
                 region_id = int(data.get('region-id', -1))
+                action = data.get('action')
             except Exception:
                 results['error'] = True
-                results['messages'].append("Invalid region identifier")
+                results['messages'].append("Invalid trade identifier")
 
-            if region_id >= 0:
-                if not strategy_trader.remove_region(region_id):
+            if action == "add-region":
+                region_name = data.get('region', "")
+
+                try:
+                    stage = int(data.get('stage', 0))
+                    direction = int(data.get('direction', 0))
+                    created = float(data.get('created', 0.0))
+                    expiry = float(data.get('expiry', 0.0))
+
+                    if 'timeframe' in data and type(data['timeframe']) is str:
+                        timeframe = timeframe_from_str(data['timeframe'])
+
+                except ValueError:
+                    results['error'] = True
+                    results['messages'].append("Invalid parameters")
+
+                if not results['error']:
+                    if region_name in self.service.regions:
+                        try:
+                            # instanciate the region
+                            region = self.service.regions[region_name](created, stage, direction, timeframe)
+
+                            if expiry:
+                                region.set_expiry(expiry)
+
+                            # and defined the parameters
+                            region.init(data)
+
+                            if region.check():
+                                # append the region to the strategy trader
+                                strategy_trader.add_region(region)
+                            else:
+                                results['error'] = True
+                                results['messages'].append("Region checking error %s" % (region_name,))
+
+                        except Exception as e:
+                            results['error'] = True
+                            results['messages'].append(repr(e))
+                    else:
+                        results['error'] = True
+                        results['messages'].append("Unsupported region %s" % (region_name,))
+
+            elif action == "del-region":
+                try:
+                    region_id = int(data.get('region-id', -1))
+                except Exception:
+                    results['error'] = True
                     results['messages'].append("Invalid region identifier")
 
-        elif action == "enable":
-            if not strategy_trader.activity:
-                strategy_trader.set_activity(True)
-                results['messages'].append("Enabled strategy trader for market %s" % strategy_trader.instrument.market_id)
+                if region_id >= 0:
+                    if not strategy_trader.remove_region(region_id):
+                        results['messages'].append("Invalid region identifier")
+
+            elif action == "enable":
+                if not strategy_trader.activity:
+                    strategy_trader.set_activity(True)
+                    results['messages'].append("Enabled strategy trader for market %s" % strategy_trader.instrument.market_id)
+                else:
+                    results['messages'].append("Already enabled strategy trader for market %s" % strategy_trader.instrument.market_id)
+
+            elif action == "disable":
+                if strategy_trader.activity:
+                    strategy_trader.set_activity(False)
+                    results['messages'].append("Disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
+                else:
+                    results['messages'].append("Already disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
+
+            elif action == "set-quantity":
+                quantity = 0.0
+
+                try:
+                    quantity = float(data.get('quantity', -1))
+                except Exception:
+                    results['error'] = True
+                    results['messages'].append("Invalid quantity")
+
+                if quantity > 0.0:
+                    strategy_trader.instrument.trade_quantity = quantity
+                    results['messages'].append("Modified trade quantity for %s to %s" % (strategy_trader.instrument.market_id, quantity))
+
             else:
-                results['messages'].append("Already enabled strategy trader for market %s" % strategy_trader.instrument.market_id)
-
-        elif action == "disable":
-            if strategy_trader.activity:
-                strategy_trader.set_activity(False)
-                results['messages'].append("Disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
-            else:
-                results['messages'].append("Already disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
-
-        elif action == "set-quantity":
-            quantity = 0.0
-
-            try:
-                quantity = float(data.get('quantity', -1))
-            except Exception:
                 results['error'] = True
-                results['messages'].append("Invalid quantity")
-
-            if quantity > 0.0:
-                strategy_trader.instrument.trade_quantity = quantity
-                results['messages'].append("Modified trade quantity for %s to %s" % (strategy_trader.instrument.market_id, quantity))
-
-        else:
-            results['error'] = True
-            results['messages'].append("Invalid action")
-
-        strategy_trader.unlock()
+                results['messages'].append("Invalid action")
 
         return results
 
@@ -2537,87 +2459,78 @@ class Strategy(Runnable):
 
         trade = None
 
-        strategy_trader.lock()
+        with strategy_trader._mutex:
+            if detail == "region":
+                if region_id >= 0:
+                    region = None
 
-        if detail == "region":
-            if region_id >= 0:
-                region = None
+                    for r in strategy_trader.regions:
+                        if r.id == region_id:
+                            region = r
+                            break
 
-                for r in strategy_trader.regions:
-                    if r.id == region_id:
-                        region = r
-                        break
+                    if region:
+                        results['messages'].append("Stragegy trader %s region details:" % strategy_trader.instrument.market_id)
+                        results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
+                    else:
+                        results['error'] = True
+                        results['messages'].append("Invalid region identifier %i" % region_id)
 
-                if region:
-                    results['messages'].append("Stragegy trader %s region details:" % strategy_trader.instrument.market_id)
-                    results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
                 else:
-                    results['error'] = True
-                    results['messages'].append("Invalid region identifier %i" % region_id)
+                    results['messages'].append("Stragegy trader %s, list %i regions:" % (strategy_trader.instrument.market_id, len(strategy_trader.regions)))
 
-            else:
-                results['messages'].append("Stragegy trader %s, list %i regions:" % (strategy_trader.instrument.market_id, len(strategy_trader.regions)))
+                    for region in strategy_trader.regions:
+                        results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
+
+            elif detail == "status":
+                # status
+                results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
+
+            elif not detail or detail == "details":
+                # no specific detail
+                results['messages'].append("Stragegy trader %s details:" % strategy_trader.instrument.market_id)
+
+                # status
+                results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
+
+                # quantity
+                results['messages'].append("Trade quantity : %s" % strategy_trader.instrument.trade_quantity)
+
+                # regions
+                results['messages'].append("List %i regions:" % len(strategy_trader.regions))
 
                 for region in strategy_trader.regions:
                     results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
-
-        elif detail == "status":
-            # status
-            results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
-
-        elif not detail or detail == "details":
-            # no specific detail
-            results['messages'].append("Stragegy trader %s details:" % strategy_trader.instrument.market_id)
-
-            # status
-            results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
-
-            # quantity
-            results['messages'].append("Trade quantity : %s" % strategy_trader.instrument.trade_quantity)
-
-            # regions
-            results['messages'].append("List %i regions:" % len(strategy_trader.regions))
-
-            for region in strategy_trader.regions:
-                results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
-        else:
-            results['error'] = True
-            results['messages'].append("Invalid detail type name %s" % detail)
-
-        strategy_trader.unlock()
+            else:
+                results['error'] = True
+                results['messages'].append("Invalid detail type name %s" % detail)
 
         return results
 
     def cmd_trader_info(self, data):
         # info on the appliance
         if 'market-id' in data:
-            self.lock()
-
-            instrument = self._instruments.get(data['market-id'])
-            if instrument in self._strategy_traders:
-                strategy_trader = self._strategy_traders[instrument]
-                if strategy_trader:
-                    Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s. Trade quantity is %s" % (
-                        data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused",
-                            strategy_trader.instrument.trade_quantity),
-                        view='content')
-
-            self.unlock()
+            with self._mutex:
+                instrument = self._instruments.get(data['market-id'])
+                if instrument in self._strategy_traders:
+                    strategy_trader = self._strategy_traders[instrument]
+                    if strategy_trader:
+                        Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s. Trade quantity is %s" % (
+                            data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused",
+                                strategy_trader.instrument.trade_quantity),
+                                view='content')
         else:
             Terminal.inst().info("Appliances %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')
 
             enabled = []
             disabled = []
 
-            self.lock()
-
-            for k, strategy_trader in self._strategy_traders.items():
-                if strategy_trader.activity:
-                    enabled.append(k.market_id)
-                else:
-                    disabled.append(k.market_id)
-
-            self.unlock()
+            with self._mutex:
+                for k, strategy_trader in self._strategy_traders.items():
+                    if strategy_trader.activity:
+                        enabled.append(k.market_id)
+                    else:
+                        disabled.append(k.market_id)
 
             if enabled:
                 enabled = [e if i%10 else e+'\n' for i, e in enumerate(enabled)]

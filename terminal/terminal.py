@@ -14,6 +14,9 @@ import curses
 from curses.textpad import Textbox, rectangle
 from tabulate import tabulate
 
+import logging
+error_logger = logging.getLogger('siis.error.terminal')
+
 
 class Color(object):
 
@@ -99,7 +102,7 @@ class View(object):
         self._mode = mode
         self._active = active
 
-        self._mutex = threading.Lock()
+        self._mutex = threading.RLock()
         self._content = []
 
         self._right_align = right_align
@@ -149,12 +152,6 @@ class View(object):
                 pass  # self._win.bkgd()
 
             # self.clear()
-
-    def lock(self, blocking=True, timeout=-1):
-        self._mutex.acquire(blocking, timeout)
-
-    def unlock(self):
-        self._mutex.release()
 
     @property
     def mode(self):
@@ -274,92 +271,93 @@ class View(object):
             sys.stdout.write(View.UTERM_COLORS[0])
 
     def draw(self, color, content, endl):
-        self.lock()
+        with self._mutex:
+            try:
+                self._dirty = True
 
-        self._dirty = True
+                if self._win:
+                    if self._mode == View.MODE_STREAM:
+                        self.erase()
 
-        if self._win:
-            if self._mode == View.MODE_STREAM:
-                self.erase()
+                        rows = content.split('\n')
+                        n = 0
 
-                rows = content.split('\n')
-                n = 0
+                        for row in rows:
+                            self._content.append(color+row+Terminal.DEFAULT)
 
-                for row in rows:
-                    self._content.append(color+row+Terminal.DEFAULT)
+                        if len(self._content) > Terminal.MAX_NUM_ENTRIES:
+                            m = len(self._content) - Terminal.MAX_NUM_ENTRIES
+                            self._content = self._content[-Terminal.MAX_NUM_ENTRIES:]
 
-                if len(self._content) > Terminal.MAX_NUM_ENTRIES:
-                    m = len(self._content) - Terminal.MAX_NUM_ENTRIES
-                    self._content = self._content[-Terminal.MAX_NUM_ENTRIES:]
+                            self._n -= m
+                            self._first_row -= m
 
-                    self._n -= m
-                    self._first_row -= m
+                        self._first_row = 0  # auto scroll
+                        start = max(0, len(self._content)-self.height+self._first_row)
 
-                self._first_row = 0  # auto scroll
-                start = max(0, len(self._content)-self.height+self._first_row)
+                        for row in self._content[start:]:
+                            if self._active:
+                                if self._right_align:
+                                    # @todo not perfect because count non color escapes
+                                    rm = row.count('\\')
+                                    x = max(0, self.width - len(row) - rm - 1)
+                                else:
+                                    x = 0
 
-                for row in self._content[start:]:
-                    if self._active:
-                        if self._right_align:
-                            # @todo not perfect because count non color escapes
-                            rm = row.count('\\')
-                            x = max(0, self.width - len(row) - rm - 1)
-                        else:
-                            x = 0
+                                try:
+                                    self._win.move(n, x)
+                                    self.__cprint(n, x, row, self._first_col)
+                                except:
+                                    pass
 
-                        try:
-                            self._win.move(n, x)
-                            self.__cprint(n, x, row, self._first_col)
-                        except:
-                            pass
+                                self._n += 1
+                                n += 1
 
-                        self._n += 1
-                        n += 1
+                    elif self._mode == View.MODE_BLOCK:
+                        self.clear()
 
-            elif self._mode == View.MODE_BLOCK:
-                self.clear()
+                        rows = content.split('\n')
+                        self._content = []  # reset content
+                        self._n = 0
 
-                rows = content.split('\n')
-                self._content = []  # reset content
-                self._n = 0
+                        n = 0
 
-                n = 0
+                        for row in rows:
+                            self._content.append(color+row+Terminal.DEFAULT)
 
-                for row in rows:
-                    self._content.append(color+row+Terminal.DEFAULT)
+                            if self._active:
+                                if n >= self._first_row and n < self.height:
+                                    if self._right_align:
+                                        # not perfect because count non color escapes
+                                        rm = row.count('\\')
+                                        x = max(0, self.width - len(row) - rm - 1)
+                                    else:
+                                        x = 0
 
-                    if self._active:
-                        if n >= self._first_row and n < self.height:
-                            if self._right_align:
-                                # not perfect because count non color escapes
-                                rm = row.count('\\')
-                                x = max(0, self.width - len(row) - rm - 1)
-                            else:
-                                x = 0
+                                    try:
+                                        self._win.move(self._n, x)
+                                        self.__cprint(self._n, x, row, self._first_col)
+                                    except:
+                                        pass
 
-                            try:
-                                self._win.move(self._n, x)
-                                self.__cprint(self._n, x, row, self._first_col)
-                            except:
-                                pass
+                                    self._n += 1
 
-                            self._n += 1
+                                n += 1
 
-                        n += 1
+                else:
+                    rows = content.split('\n')
 
-        else:
-            rows = content.split('\n')
+                    for row in rows:
+                        self._content.append(color+row+Terminal.DEFAULT)
 
-            for row in rows:
-                self._content.append(color+row+Terminal.DEFAULT)
+                    if len(self._content) > Terminal.MAX_NUM_ENTRIES:
+                        m = len(self._content) - Terminal.MAX_NUM_ENTRIES
+                        self._content = self._content[-Terminal.MAX_NUM_ENTRIES:]
 
-            if len(self._content) > Terminal.MAX_NUM_ENTRIES:
-                m = len(self._content) - Terminal.MAX_NUM_ENTRIES
-                self._content = self._content[-Terminal.MAX_NUM_ENTRIES:]
+                        self._first_row -= m
 
-                self._first_row -= m
-
-        self.unlock()
+            except Exception as e:
+                error_logger.error(str(e))
 
     def reshape(self, h, w):
         """
@@ -405,83 +403,85 @@ class View(object):
                 self._win.scrollok(0)
 
     def redraw(self):
-        self.lock()
+        with self._mutex:
+            try:
+                if self._win:
+                    self.erase()
 
-        if self._win:
-            self.erase()
+                    if self._mode == View.MODE_STREAM:
+                        if self._active:
+                            # max n rows
+                            n = 0
 
-            if self._mode == View.MODE_STREAM:
-                if self._active:
-                    # max n rows
-                    n = 0
+                            start = max(0, len(self._content)-self.height+self._first_row)
 
-                    start = max(0, len(self._content)-self.height+self._first_row)
+                            for row in self._content[start:]:
+                                if self._right_align:
+                                    rm = row.count('\\')
+                                    x = max(0, self.width - len(row) - rm - 1)
+                                else:
+                                    x = 0
 
-                    for row in self._content[start:]:
-                        if self._right_align:
-                            rm = row.count('\\')
-                            x = max(0, self.width - len(row) - rm - 1)
-                        else:
-                            x = 0
+                                try:
+                                    self._win.move(n, x)
+                                    self.__cprint(n, x, row, self._first_col)
+                                    n += 1
+                                except:
+                                    pass
 
-                        try:
-                            self._win.move(n, x)
-                            self.__cprint(n, x, row, self._first_col)
-                            n += 1
-                        except:
-                            pass
+                    elif self._mode == View.MODE_BLOCK:
+                        if self._active:
+                            self._n = 0
 
-            elif self._mode == View.MODE_BLOCK:
-                if self._active:
-                    self._n = 0
+                            for row in self._content[self._first_row : self._first_row+self.height]:
+                                if self._right_align:
+                                    rm = row.count('\\')
+                                    x = max(0, self.width - len(row) - rm - 1)
+                                else:
+                                    x = 0
 
-                    for row in self._content[self._first_row : self._first_row+self.height]:
-                        if self._right_align:
-                            rm = row.count('\\')
-                            x = max(0, self.width - len(row) - rm - 1)
-                        else:
-                            x = 0
+                                try:
+                                    self._win.move(self._n, x)
+                                    self.__cprint(self._n, x, row, self._first_col)
+                                    self._n += 1
+                                except:
+                                    pass
+                else:
+                    self.clear()
 
-                        try:
-                            self._win.move(self._n, x)
-                            self.__cprint(self._n, x, row, self._first_col)
-                            self._n += 1
-                        except:
-                            pass
-        else:
-            self.clear()
+                    if self._mode == View.MODE_STREAM:
+                        if self._active:
+                            for row in self._content:
+                                self.__uprint(0, 0, row)
 
-            if self._mode == View.MODE_STREAM:
-                if self._active:
-                    for row in self._content:
-                        self.__uprint(0, 0, row)
+                    elif self._mode == View.MODE_BLOCK:
+                        if self._active:
+                            for row in self._content:
+                                self.__uprint(0, 0, row)
 
-            elif self._mode == View.MODE_BLOCK:
-                if self._active:
-                    for row in self._content:
-                        self.__uprint(0, 0, row)
-
-        self.unlock()
+            except Exception as e:
+                error_logger.error(str(e))
 
     def refresh(self):
-        self.lock()
+        with self._mutex:
+            try:
+                if self._win:
+                    if self._active and self._dirty:
+                        self._win.refresh()
+                        self._dirty = False
+                else:
+                    if self._active and self._dirty:
+                        for row in self._content[self._n:]:
+                            self.__uprint(0, 0, row)
+                            sys.stdout.write('\n')
 
-        if self._win:
-            if self._active and self._dirty:
-                self._win.refresh()
-                self._dirty = False
-        else:
-            if self._active and self._dirty:
-                for row in self._content[self._n:]:
-                    self.__uprint(0, 0, row)
-                    sys.stdout.write('\n')
+                        sys.stdout.flush()
+                        self._n = len(self._content)
 
-                sys.stdout.flush()
-                self._n = len(self._content)
+                        self._dirty = False
 
-                self._dirty = False
-
-        self.unlock()
+            except Exception as e:
+                error_logger.error(str(e))
 
     #
     # hard scrolling
@@ -492,43 +492,44 @@ class View(object):
         Vertical hard scrolling.
         Scroll n row of text.
         """
-        self.lock()
+        with self._mutex:
+            try:
+                if self._mode == View.MODE_STREAM:
+                    if n < 0:
+                        self._first_row += n
 
-        if self._mode == View.MODE_STREAM:
-            if n < 0:
-                self._first_row += n
+                        if self._first_row < -len(self._content)+self.height:
+                            self._first_row = -len(self._content)+self.height
 
-                if self._first_row < -len(self._content)+self.height:
-                    self._first_row = -len(self._content)+self.height
+                        self._dirty = True
 
-                self._dirty = True
+                    elif n > 0:
+                        self._first_row += n
 
-            elif n > 0:
-                self._first_row += n
+                        if self._first_row > 0:
+                            self._first_row = 0
 
-                if self._first_row > 0:
-                    self._first_row = 0
+                        self._dirty = True
 
-                self._dirty = True
+                elif self._mode == View.MODE_BLOCK:
+                    if n < 0:
+                        self._first_row += n
 
-        elif self._mode == View.MODE_BLOCK:
-            if n < 0:
-                self._first_row += n
+                        if self._first_row < 0:
+                            self._first_row = 0
 
-                if self._first_row < 0:
-                    self._first_row = 0
+                        self._dirty = True
 
-                self._dirty = True
+                    elif n > 0:
+                        self._first_row += n
 
-            elif n > 0:
-                self._first_row += n
+                        if self._first_row >= len(self._content):
+                            self._first_row = len(self._content)-1
 
-                if self._first_row >= len(self._content):
-                    self._first_row = len(self._content)-1
+                        self._dirty = True
 
-                self._dirty = True
-
-        self.unlock()
+            except Exception as e:
+                error_logger.error(str(e))
 
     def hor_scroll(self, n):
         """
@@ -705,7 +706,7 @@ class Terminal(object):
         global terminal  # singleton
         terminal = self
 
-        self._mutex = threading.Lock()
+        self._mutex = threading.RLock()
 
         self._views = {
             'default': View('default', View.MODE_STREAM, False),
@@ -993,12 +994,6 @@ class Terminal(object):
             self._active_content = view
 
         self._mutex.release()
-
-    def blank(self, view='default'):
-        _view = self._views.get(view)
-        if _view:
-            _view.lock()
-            _view.unlock()
 
     def _append(self, color, content, endl, view):
         _view = self._views.get(view)

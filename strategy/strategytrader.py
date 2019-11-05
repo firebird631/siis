@@ -124,22 +124,19 @@ class StrategyTrader(object):
         mutated = False
         trades_list = []
 
-        self.lock()
+        with self._mutex:
+            for trade in self.trades:
+                if trade.can_delete() or not trade.is_active() or trade.is_closed():
+                    mutated = True
 
-        for trade in self.trades:
-            if trade.can_delete() or not trade.is_active() or trade.is_closed():
-                mutated = True
+                    # cleanup if necessary before deleting the trade related refs
+                    trade.remove(trader)
+                else:
+                    trades_list.append(trade)
 
-                # cleanup if necessary before deleting the trade related refs
-                trade.remove(trader)
-            else:
-                trades_list.append(trade)
-
-        # updated trade list, the ones we would save
-        if mutated:
-            self.trades = trades_list
-
-        self.unlock()
+            # updated trade list, the ones we would save
+            if mutated:
+                self.trades = trades_list
 
     #
     # persistance
@@ -152,27 +149,24 @@ class StrategyTrader(object):
         """
         trader = self.strategy.trader()
 
-        self.lock()
+        with self._mutex:
+            for trade in self.trades:
+                t_data = trade.dumps()
+                ops_data = [operation.dumps() for operation in trade.operations]
 
-        for trade in self.trades:
-            t_data = trade.dumps()
-            ops_data = [operation.dumps() for operation in trade.operations]
+                # debug only @todo remove after fixed
+                logger.info("log trade %s / %s" % (str(t_data), str(ops_data)))
 
-            # debug only @todo remove after fixed
-            logger.info("log trade %s / %s" (str(t_data), str(ops_data)))
+                # store per trade
+                Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,
+                        self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
 
-            # store per trade
-            Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,
-                    self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
+            # dumps of regions
+            trader_data = {}
+            regions_data = [region.dumps() for region in self.regions]
 
-        # dumps of regions
-        trader_data = {}
-        regions_data = [region.dumps() for region in self.regions]
-
-        Database.inst().store_user_trader((trader.name, trader.account.name, self.instrument.market_id,
-                self.strategy.identifier, self.activity, trader_data, regions_data))
-
-        self.unlock()
+            Database.inst().store_user_trader((trader.name, trader.account.name, self.instrument.market_id,
+                    self.strategy.identifier, self.activity, trader_data, regions_data))
 
     def loads(self, data, regions):
         """
@@ -255,43 +249,37 @@ class StrategyTrader(object):
         """
         Update quantity/filled on a trade, deleted or canceled.
         """
-        self.lock()
+        with self._mutex:
+            try:
+                for trade in self.trades:
+                    # update each trade relating the order (might be a unique)
+                    order_id = data[1]['id'] if type(data[1]) is dict else data[1]
+                    ref_order_id = data[2] if (len(data) > 2 and type(data[2]) is str) else None
 
-        try:
-            for trade in self.trades:
-                # update each trade relating the order (might be a unique)
-                order_id = data[1]['id'] if type(data[1]) is dict else data[1]
-                ref_order_id = data[2] if (len(data) > 2 and type(data[2]) is str) else None
+                    if trade.is_target_order(order_id, ref_order_id):
+                        trade.order_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
 
-                if trade.is_target_order(order_id, ref_order_id):
-                    trade.order_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
-
-        except Exception as e:
-            error_logger.error(traceback.format_exc())
-            error_logger.error(repr(e))
-
-        self.unlock()
+            except Exception as e:
+                error_logger.error(traceback.format_exc())
+                error_logger.error(repr(e))
 
     def position_signal(self, signal_type, data):
         """
         Update quantity/filled on a trade, delete or cancel.
         """
-        self.lock()
+        with self._mutex:
+            try:
+                for trade in self.trades:
+                    # update each trade relating the position (could be many)
+                    position_id = data[1]['id'] if type(data[1]) is dict else data[1]
+                    ref_order_id = data[2] if (len(data) > 2 and type(data[2]) is str) else None
 
-        try:
-            for trade in self.trades:
-                # update each trade relating the position (could be many)
-                position_id = data[1]['id'] if type(data[1]) is dict else data[1]
-                ref_order_id = data[2] if (len(data) > 2 and type(data[2]) is str) else None
+                    if trade.is_target_position(position_id, ref_order_id):
+                        trade.position_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
 
-                if trade.is_target_position(position_id, ref_order_id):
-                    trade.position_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
-
-        except Exception as e:
-            error_logger.error(traceback.format_exc())
-            error_logger.error(repr(e))
-
-        self.unlock()
+            except Exception as e:
+                error_logger.error(traceback.format_exc())
+                error_logger.error(repr(e))
 
     #
     # trade
@@ -304,13 +292,11 @@ class StrategyTrader(object):
         if not trade:
             return False
 
-        self.lock()
+        with self._mutex:
+            trade.id = self._next_trade_id
+            self._next_trade_id += 1
 
-        trade.id = self._next_trade_id
-        self._next_trade_id += 1
-
-        self.trades.append(trade)
-        self.unlock()
+            self.trades.append(trade)
 
     def remove_trade(self, trade):
         """
@@ -319,9 +305,8 @@ class StrategyTrader(object):
         if not trade:
             return False
 
-        self.lock()
-        self.trades.remove(trade)
-        self.unlock()
+        with self._mutex:
+            self.trades.remove(trade)
 
     def update_trades(self, timestamp):
         """
@@ -336,132 +321,129 @@ class StrategyTrader(object):
         # for each trade check if the TP or SL is reached and trigger if necessary
         #
 
-        self.lock()
+        with self._mutex:
+            for trade in self.trades:
 
-        for trade in self.trades:
+                #
+                # managed operation
+                #
 
-            #
-            # managed operation
-            #
+                if trade.has_operations():
+                    mutated = False
 
-            if trade.has_operations():
-                mutated = False
+                    for operation in trade.operations:
+                        mutated |= operation.test_and_operate(trade, self.instrument, trader)
 
-                for operation in trade.operations:
-                    mutated |= operation.test_and_operate(trade, self.instrument, trader)
+                    if mutated:
+                        trade.cleanup_operations()
 
-                if mutated:
-                    trade.cleanup_operations()
+                #
+                # active trade
+                #
 
-            #
-            # active trade
-            #
+                if trade.is_active():
+                    # for statistics usage
+                    trade.update_stats(self.instrument.close_exec_price(trade.direction), timestamp)
 
-            if trade.is_active():
-                # for statistics usage
-                trade.update_stats(self.instrument.close_exec_price(trade.direction), timestamp)
+                #
+                # asset trade
+                #
 
-            #
-            # asset trade
-            #
+                if trade.trade_type == StrategyTrade.TRADE_BUY_SELL:
+                    if trade.is_closed():
+                        continue
 
-            if trade.trade_type == StrategyTrade.TRADE_BUY_SELL:
-                if trade.is_closed():
-                    continue
+                    # process only on active trades
+                    if not trade.is_active():
+                        # @todo timeout if not filled before condition...
+                        continue
 
-                # process only on active trades
-                if not trade.is_active():
-                    # @todo timeout if not filled before condition...
-                    continue
+                    if trade.is_closing():
+                        continue
 
-                if trade.is_closing():
-                    continue
+                    if not self.instrument.tradeable:
+                        continue
 
-                if not self.instrument.tradeable:
-                    continue
+                    if trade.is_dirty:
+                        # entry quantity changed need to update the exits orders
+                        trade.update_dirty(trader, self.instrument)
 
-                if trade.is_dirty:
-                    # entry quantity changed need to update the exits orders
-                    trade.update_dirty(trader, self.instrument)
+                    # potential order exec close price (always close a long)
+                    close_exec_price = self.instrument.close_exec_price(Order.LONG)
 
-                # potential order exec close price (always close a long)
-                close_exec_price = self.instrument.close_exec_price(Order.LONG)
+                    if (trade.tp > 0) and (close_exec_price >= trade.tp) and not trade.has_limit_order():
+                        # take profit trigger stop, close at market (taker fee)
+                        if trade.close(trader, self.instrument) > 0:
+                            # notify
+                            self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
+                                    self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
+                                    'take-profit', trade.estimate_profit_loss(self.instrument))
 
-                if (trade.tp > 0) and (close_exec_price >= trade.tp) and not trade.has_limit_order():
-                    # take profit trigger stop, close at market (taker fee)
-                    if trade.close(trader, self.instrument) > 0:
-                        # notify
-                        self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
-                                self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
-                                'take-profit', trade.estimate_profit_loss(self.instrument))
+                            # streaming (but must be done with notify)
+                            if self._global_streamer:
+                                self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
 
-                        # streaming (but must be done with notify)
-                        if self._global_streamer:
-                            self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
+                    elif (trade.sl > 0) and (close_exec_price <= trade.sl) and not trade.has_stop_order():
+                        # stop loss trigger stop, close at market (taker fee)
+                        if trade.close(trader, self.instrument) > 0:
+                            # notify
+                            self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
+                                    self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
+                                    'stop-loss', trade.estimate_profit_loss(self.instrument))
 
-                elif (trade.sl > 0) and (close_exec_price <= trade.sl) and not trade.has_stop_order():
-                    # stop loss trigger stop, close at market (taker fee)
-                    if trade.close(trader, self.instrument) > 0:
-                        # notify
-                        self.strategy.notify_order(trade.id, Order.SHORT, self.instrument.market_id,
-                                self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
-                                'stop-loss', trade.estimate_profit_loss(self.instrument))
+                            # streaming (but must be done with notify)
+                            if self._global_streamer:
+                                self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
 
-                        # streaming (but must be done with notify)
-                        if self._global_streamer:
-                            self._global_streamer.member('buy-exit').update(close_exec_price, timestamp)
+                #
+                # margin trade
+                #
 
-            #
-            # margin trade
-            #
+                elif trade.trade_type in (StrategyTrade.TRADE_MARGIN, StrategyTrade.TRADE_POSITION, StrategyTrade.TRADE_IND_MARGIN):
+                    # process only on active trades
+                    if not trade.is_active():
+                        # @todo timeout if not filled before condition...
+                        continue
 
-            elif trade.trade_type in (StrategyTrade.TRADE_MARGIN, StrategyTrade.TRADE_POSITION, StrategyTrade.TRADE_IND_MARGIN):
-                # process only on active trades
-                if not trade.is_active():
-                    # @todo timeout if not filled before condition...
-                    continue
+                    if trade.is_closed():
+                        continue
 
-                if trade.is_closed():
-                    continue
+                    if trade.is_closing():
+                        continue
 
-                if trade.is_closing():
-                    continue
+                    if not self.instrument.tradeable:
+                        continue
 
-                if not self.instrument.tradeable:
-                    continue
+                    if trade.is_dirty:
+                        # entry quantity changed need to update the exits orders
+                        trade.update_dirty(trader, self.instrument)
 
-                if trade.is_dirty:
-                    # entry quantity changed need to update the exits orders
-                    trade.update_dirty(trader, self.instrument)
+                    # potential order exec close price
+                    close_exec_price = self.instrument.close_exec_price(trade.direction)
 
-                # potential order exec close price
-                close_exec_price = self.instrument.close_exec_price(trade.direction)
+                    if (trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (trade.direction < 0 and close_exec_price <= trade.tp)) and not trade.has_limit_order():
+                        # close in profit at market (taker fee)
+                        if trade.close(trader, self.instrument) > 0:
+                            # and notify
+                            self.strategy.notify_order(trade.id, trade.close_direction(), self.instrument.market_id,
+                                    self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
+                                    'take-profit', trade.estimate_profit_loss(self.instrument))
 
-                if (trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (trade.direction < 0 and close_exec_price <= trade.tp)) and not trade.has_limit_order():
-                    # close in profit at market (taker fee)
-                    if trade.close(trader, self.instrument) > 0:
-                        # and notify
-                        self.strategy.notify_order(trade.id, trade.close_direction(), self.instrument.market_id,
-                                self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
-                                'take-profit', trade.estimate_profit_loss(self.instrument))
+                            # and for streaming
+                            if self._global_streamer:
+                                self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
 
-                        # and for streaming
-                        if self._global_streamer:
-                            self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
+                    elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_stop_order():
+                        # close a long or a short position at stop-loss level at market (taker fee)
+                        if trade.close(trader, self.instrument) > 0:
+                            # and notify
+                            self.strategy.notify_order(trade.id, trade.close_direction(), self.instrument.market_id,
+                                    self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
+                                    'stop-loss', trade.estimate_profit_loss(self.instrument))
 
-                elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_stop_order():
-                    # close a long or a short position at stop-loss level at market (taker fee)
-                    if trade.close(trader, self.instrument) > 0:
-                        # and notify
-                        self.strategy.notify_order(trade.id, trade.close_direction(), self.instrument.market_id,
-                                self.instrument.format_price(close_exec_price), timestamp, trade.timeframe,
-                                'stop-loss', trade.estimate_profit_loss(self.instrument))
-
-                        # and for streaming
-                        if self._global_streamer:
-                            self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
-
-        self.unlock()
+                            # and for streaming
+                            if self._global_streamer:
+                                self._global_streamer.member('sell-exit' if trade.direction < 0 else 'buy-exit').update(close_exec_price, timestamp)
 
         #
         # remove terminated, rejected, canceled and empty trades
@@ -469,93 +451,90 @@ class StrategyTrader(object):
 
         mutated = False
 
-        self.lock()
-
-        for trade in self.trades:
-            if trade.can_delete():
-                mutated = True
-
-                # cleanup if necessary before deleting the trade related refs
-                trade.remove(trader)
-
-                # record the trade for analysis and study
-                if not trade.is_canceled():
-                    # last update of stats before logging
-                    trade.update_stats(self.instrument.close_exec_price(trade.direction), timestamp)
-
-                    # realized profit/loss
-                    profit_loss = trade.profit_loss - trade.entry_fees_rate() - trade.exit_fees_rate()
-
-                    # perf sommed here it means that its not done during partial closing
-                    if profit_loss != 0.0:
-                        self._stats['perf'] += profit_loss
-                        self._stats['best'] = max(self._stats['best'], profit_loss)
-                        self._stats['worst'] = min(self._stats['worst'], profit_loss)
-
-                    if profit_loss <= 0.0:
-                        self._stats['cont-loss'] += 1
-                        self._stats['cont-win'] = 1
-
-                    elif profit_loss > 0.0:
-                        self._stats['cont-loss'] = 0
-                        self._stats['cont-win'] += 1
-
-                    record = {
-                        'id': trade.id,
-                        'eot': trade.entry_open_time,
-                        'xot': trade.exit_open_time,
-                        'freot': trade.first_realized_entry_time,
-                        'frxot': trade.first_realized_exit_time,
-                        'lreot': trade.last_realized_entry_time,
-                        'lrxot': trade.last_realized_exit_time,
-                        'd': trade.direction_to_str(),
-                        'l': self.instrument.format_price(trade.order_price),
-                        'q': self.instrument.format_quantity(trade.order_quantity),
-                        'e': self.instrument.format_quantity(trade.exec_entry_qty),
-                        'x': self.instrument.format_quantity(trade.exec_exit_qty),
-                        'tp': self.instrument.format_price(trade.take_profit),
-                        'sl': self.instrument.format_price(trade.stop_loss),
-                        'tf': timeframe_to_str(trade.timeframe),
-                        'aep': self.instrument.format_price(trade.entry_price),
-                        'axp': self.instrument.format_price(trade.exit_price),
-                        's': trade.state_to_str(),
-                        'b': self.instrument.format_price(trade.best_price()),
-                        'w': self.instrument.format_price(trade.worst_price()),
-                        'bt': trade.best_price_timestamp(),
-                        'wt': trade.worst_price_timestamp(),
-                        'pl': profit_loss,
-                        'fees': trade.entry_fees_rate() + trade.exit_fees_rate(),
-                        'c': trade.get_conditions(),
-                        'com': trade.comment,
-                        'rpnl': self.instrument.format_price(trade.unrealized_profit_loss),  # once close its realized
-                        'pnlcur': trade.profit_loss_currency
-                    }
-
-                    if profit_loss < 0:
-                        self._stats['failed'].append(record)
-                    elif profit_loss > 0:
-                        self._stats['success'].append(record)
-                    else:
-                        self._stats['roe'].append(record)
-
-                    if self._reporting == StrategyTrader.REPORTING_VERBOSE:
-                        try:
-                            self.report(trade, False)
-                        except Exception as e:
-                            error_logger.error(str(e))
-
-        # recreate the list of trades
-        if mutated:
-            trades_list = []
-
+        with self._mutex:
             for trade in self.trades:
-                if not trade.can_delete():
-                    # keep only active and pending trades
-                    trades_list.append(trade)
+                if trade.can_delete():
+                    mutated = True
 
-            self.trades = trades_list
+                    # cleanup if necessary before deleting the trade related refs
+                    trade.remove(trader)
 
-        self.unlock()
+                    # record the trade for analysis and study
+                    if not trade.is_canceled():
+                        # last update of stats before logging
+                        trade.update_stats(self.instrument.close_exec_price(trade.direction), timestamp)
+
+                        # realized profit/loss
+                        profit_loss = trade.profit_loss - trade.entry_fees_rate() - trade.exit_fees_rate()
+
+                        # perf sommed here it means that its not done during partial closing
+                        if profit_loss != 0.0:
+                            self._stats['perf'] += profit_loss
+                            self._stats['best'] = max(self._stats['best'], profit_loss)
+                            self._stats['worst'] = min(self._stats['worst'], profit_loss)
+
+                        if profit_loss <= 0.0:
+                            self._stats['cont-loss'] += 1
+                            self._stats['cont-win'] = 1
+
+                        elif profit_loss > 0.0:
+                            self._stats['cont-loss'] = 0
+                            self._stats['cont-win'] += 1
+
+                        record = {
+                            'id': trade.id,
+                            'eot': trade.entry_open_time,
+                            'xot': trade.exit_open_time,
+                            'freot': trade.first_realized_entry_time,
+                            'frxot': trade.first_realized_exit_time,
+                            'lreot': trade.last_realized_entry_time,
+                            'lrxot': trade.last_realized_exit_time,
+                            'd': trade.direction_to_str(),
+                            'l': self.instrument.format_price(trade.order_price),
+                            'q': self.instrument.format_quantity(trade.order_quantity),
+                            'e': self.instrument.format_quantity(trade.exec_entry_qty),
+                            'x': self.instrument.format_quantity(trade.exec_exit_qty),
+                            'tp': self.instrument.format_price(trade.take_profit),
+                            'sl': self.instrument.format_price(trade.stop_loss),
+                            'tf': timeframe_to_str(trade.timeframe),
+                            'aep': self.instrument.format_price(trade.entry_price),
+                            'axp': self.instrument.format_price(trade.exit_price),
+                            's': trade.state_to_str(),
+                            'b': self.instrument.format_price(trade.best_price()),
+                            'w': self.instrument.format_price(trade.worst_price()),
+                            'bt': trade.best_price_timestamp(),
+                            'wt': trade.worst_price_timestamp(),
+                            'pl': profit_loss,
+                            'fees': trade.entry_fees_rate() + trade.exit_fees_rate(),
+                            'c': trade.get_conditions(),
+                            'com': trade.comment,
+                            'rpnl': self.instrument.format_price(trade.unrealized_profit_loss),  # once close its realized
+                            'pnlcur': trade.profit_loss_currency
+                        }
+
+                        if profit_loss < 0:
+                            self._stats['failed'].append(record)
+                        elif profit_loss > 0:
+                            self._stats['success'].append(record)
+                        else:
+                            self._stats['roe'].append(record)
+
+                        if self._reporting == StrategyTrader.REPORTING_VERBOSE:
+                            try:
+                                self.report(trade, False)
+                            except Exception as e:
+                                error_logger.error(str(e))
+
+            # recreate the list of trades
+            if mutated:
+                trades_list = []
+
+                for trade in self.trades:
+                    if not trade.can_delete():
+                        # keep only active and pending trades
+                        trades_list.append(trade)
+
+                self.trades = trades_list
 
     def on_received_liquidation(self, liquidation):
         """
@@ -574,23 +553,17 @@ class StrategyTrader(object):
     #
 
     def add_region(self, region):
-        self.lock()
-        region.set_id(self._next_region_id)
-        self._next_region_id += 1
-        self.regions.append(region)
-        self.unlock()
+        with self._mutex:
+            region.set_id(self._next_region_id)
+            self._next_region_id += 1
+            self.regions.append(region)
 
     def remove_region(self, region_id):
-        self.lock()
-
-        for region in self.regions:
-            if region.id == region_id:
-                self.regions.remove(region)
-                
-                self.unlock()
-                return True
-
-        self.unlock()
+        with self._mutex:
+            for region in self.regions:
+                if region.id == region_id:
+                    self.regions.remove(region)
+                    return True
 
         return False
 
@@ -892,23 +865,22 @@ class StrategyTrader(object):
         Use or create a specific streamer.
         """
         result = False
-        self.lock()
+        
+        with self._mutex:
+            if timeframe is not None and isinstance(timeframe, (float, int)):
+                timeframe = self.timeframes.get(timeframe)
 
-        if timeframe is not None and isinstance(timeframe, (float, int)):
-            timeframe = self.timeframes.get(timeframe)
-
-        if timeframe in self._timeframe_streamers:
-            self._timeframe_streamers[timeframe].use()
-            result = True
-        else:
-            streamer = self.create_chart_streamer(timeframe)
-
-            if streamer:
-                streamer.use()
-                self._timeframe_streamers[timeframe] = streamer
+            if timeframe in self._timeframe_streamers:
+                self._timeframe_streamers[timeframe].use()
                 result = True
+            else:
+                streamer = self.create_chart_streamer(timeframe)
 
-        self.unlock()
+                if streamer:
+                    streamer.use()
+                    self._timeframe_streamers[timeframe] = streamer
+                    result = True
+
         return False
 
     def unsubscribe(self, timeframe):
@@ -916,20 +888,19 @@ class StrategyTrader(object):
         Delete a specific streamer when no more subscribers.
         """
         result = False
-        self.lock()
+        
+        with self._mutex:
+            if timeframe is not None and isinstance(timeframe, (float, int)):
+                timeframe = self.timeframes.get(timeframe)
 
-        if timeframe is not None and isinstance(timeframe, (float, int)):
-            timeframe = self.timeframes.get(timeframe)
+            if timeframe in self._timeframe_streamers:
+                self._timeframe_streamers[timeframe].unuse()
+                if self._timeframe_streamers[timeframe].is_free():
+                    # delete if 0 subscribers
+                    del self._timeframe_streamers[timeframe]
+        
+                result = True
 
-        if timeframe in self._timeframe_streamers:
-            self._timeframe_streamers[timeframe].unuse()
-            if self._timeframe_streamers[timeframe].is_free():
-                # delete if 0 subscribers
-                del self._timeframe_streamers[timeframe]
-    
-            result = True
-
-        self.unlock()
         return False
 
     def stream_call(self):
@@ -1073,13 +1044,10 @@ class StrategyTrader(object):
         result = False
 
         if self.trades:
-            self.lock()
-
-            if len(self.trades) >= max_trades:
-                # no more than max simultaneous trades
-                result = True
-
-            self.unlock()
+            with self._mutex:
+                if len(self.trades) >= max_trades:
+                    # no more than max simultaneous trades
+                    result = True
 
         if result:
             msg = "Max trade reached for %s with %s" % (self.instrument.symbol, max_trades)

@@ -226,7 +226,7 @@ class Chart(object):
 
 		self._last_redraw = 0
 
-		self._mutex = threading.Lock()
+		self._mutex = threading.RLock()
 		self._created = False
 
 	def lock(self, blocking=True, timeout=-1):
@@ -570,7 +570,7 @@ class Charting(threading.Thread):
 
 		Charting.__instance = self
 
-		self._mutex = threading.Lock()
+		self._mutex = threading.RLock()
 
 		self._show = False
 		self._hide = False

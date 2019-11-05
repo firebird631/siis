@@ -23,7 +23,7 @@ class Service(BaseService):
         super().__init__(name)
 
         self._signals_handler = SignalHandler(self)
-        self._mutex = threading.Lock()
+        self._mutex = threading.RLock()
 
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)
@@ -44,14 +44,12 @@ class Service(BaseService):
         pass
 
     def add_listener(self, base_service):
-        self.lock()
-        self._signals_handler.add_listener(base_service)
-        self.unlock()
+        with self._mutex:
+            self._signals_handler.add_listener(base_service)
 
     def remove_listener(self, base_service):
-        self.lock()
-        self._signals_handler.remove_listener(base_service)
-        self.unlock()
+        with self._mutex:
+            self._signals_handler.remove_listener(base_service)
 
     def command(self, command_type, data):
         pass

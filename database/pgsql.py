@@ -183,11 +183,10 @@ class PgSql(Database):
         # insert market info
         #
 
-        self.lock()
-        mki = self._pending_market_info_insert
-        self._pending_market_info_insert = []
-        self.unlock()
-
+        with self._mutex:
+            mki = self._pending_market_info_insert
+            self._pending_market_info_insert = []
+    
         if mki:
             try:
                 cursor = self._db.cursor()
@@ -238,26 +237,23 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_market_info_insert = mki + self._pending_market_info_insert
-                self.unlock()
+                with self._mutex:
+                    self._pending_market_info_insert = mki + self._pending_market_info_insert
 
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_market_info_insert = mki + self._pending_market_info_insert
-                self.unlock()
+                with self._mutex:
+                    self._pending_market_info_insert = mki + self._pending_market_info_insert
 
         #
         # select market info
         #
 
-        self.lock()
-        mis = self._pending_market_info_select
-        self._pending_market_info_select = []
-        self.unlock()
+        with self._mutex:
+            mis = self._pending_market_info_select
+            self._pending_market_info_select = []
 
         if mis:
             try:
@@ -329,26 +325,23 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_market_info_select = mis + self._pending_market_info_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_market_info_select = mis + self._pending_market_info_select
 
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_market_info_select = mis + self._pending_market_info_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_market_info_select = mis + self._pending_market_info_select
 
         #
         # select market list
         #
 
-        self.lock()
-        mls = self._pending_market_list_select
-        self._pending_market_list_select = []
-        self.unlock()
+        with self._mutex:
+            mls = self._pending_market_list_select
+            self._pending_market_list_select = []
 
         if mls:
             try:
@@ -370,25 +363,22 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_market_list_select = mls + self._pending_market_list_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_market_list_select = mls + self._pending_market_list_select
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_market_list_select = mls + self._pending_market_list_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_market_list_select = mls + self._pending_market_list_select
 
     def process_userdata(self):
         #
         # inset asset
         #
-        self.lock()
-        uai = self._pending_asset_insert
-        self._pending_asset_insert = []
-        self.unlock()
+        with self._mutex:
+            uai = self._pending_asset_insert
+            self._pending_asset_insert = []
 
         if uai:
             try:
@@ -406,25 +396,22 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_asset_insert = uai + self._pending_asset_insert
-                self.unlock()
+                with self._mutex:
+                    self._pending_asset_insert = uai + self._pending_asset_insert
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_asset_insert = uai + self._pending_asset_insert
-                self.unlock()
+                with self._mutex:
+                    self._pending_asset_insert = uai + self._pending_asset_insert
 
         #
         # select asset
         #
 
-        self.lock()
-        uas = self._pending_asset_select
-        self._pending_asset_select = []
-        self.unlock()
+        with self._mutex:
+            uas = self._pending_asset_select
+            self._pending_asset_select = []
 
         if uas:
             try:
@@ -453,25 +440,22 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_asset_select = uas + self._pending_asset_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_asset_select = uas + self._pending_asset_select
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_asset_select = uas + self._pending_asset_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_asset_select = uas + self._pending_asset_select
 
         #
         # insert user_trade
         #
 
-        self.lock()
-        uti = self._pending_user_trade_insert
-        self._pending_user_trade_insert = []
-        self.unlock()
+        with self._mutex:
+            uti = self._pending_user_trade_insert
+            self._pending_user_trade_insert = []
 
         if uti:
             try:
@@ -491,25 +475,22 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_user_trade_insert = uti + self._pending_user_trade_insert
-                self.unlock()
+                with self._mutex:
+                    self._pending_user_trade_insert = uti + self._pending_user_trade_insert
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_user_trade_insert = uti + self._pending_user_trade_insert
-                self.unlock()
+                with self._mutex:
+                    self._pending_user_trade_insert = uti + self._pending_user_trade_insert
 
         #
         # select user_trade
         #
 
-        self.lock()
-        uts = self._pending_user_trade_select
-        self._pending_user_trade_select = []
-        self.unlock()
+        with self._mutex:
+            uts = self._pending_user_trade_select
+            self._pending_user_trade_select = []
 
         if uts:
             try:
@@ -532,25 +513,22 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_user_trade_select = uts + self._pending_user_trade_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_user_trade_select = uts + self._pending_user_trade_select
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_user_trade_select = uts + self._pending_user_trade_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_user_trade_select = uts + self._pending_user_trade_select
 
         #
         # delete user_trade
         #
 
-        self.lock()
-        utd = self._pending_user_trade_delete
-        self._pending_user_trade_delete = []
-        self.unlock()
+        with self._mutex:
+            utd = self._pending_user_trade_delete
+            self._pending_user_trade_delete = []
 
         if utd:
             try:
@@ -566,25 +544,22 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_user_trade_delete = utd + self._pending_user_trade_delete
-                self.unlock()
+                with self._mutex:
+                    self._pending_user_trade_delete = utd + self._pending_user_trade_delete
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_user_trade_delete = utd + self._pending_user_trade_delete
-                self.unlock()
+                with self._mutex:
+                    self._pending_user_trade_delete = utd + self._pending_user_trade_delete
 
         #
         # insert user_trader
         #
 
-        self.lock()
-        uti = self._pending_user_trader_insert
-        self._pending_user_trader_insert = []
-        self.unlock()
+        with self._mutex:
+            uti = self._pending_user_trader_insert
+            self._pending_user_trader_insert = []
 
         if uti:
             try:
@@ -604,25 +579,22 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_user_trader_insert = uti + self._pending_user_trader_insert
-                self.unlock()
+                with self._mutex:
+                    self._pending_user_trader_insert = uti + self._pending_user_trader_insert
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_user_trader_insert = uti + self._pending_user_trader_insert
-                self.unlock()
+                with self._mutex:
+                    self._pending_user_trader_insert = uti + self._pending_user_trader_insert
 
         #
         # select user_trader
         #
 
-        self.lock()
-        uts = self._pending_user_trader_select
-        self._pending_user_trader_select = []
-        self.unlock()
+        with self._mutex:
+            uts = self._pending_user_trader_select
+            self._pending_user_trader_select = []
 
         if uts:
             try:
@@ -645,26 +617,23 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_user_trader_select = uts + self._pending_user_trader_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_user_trader_select = uts + self._pending_user_trader_select
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_user_trader_select = uts + self._pending_user_trader_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_user_trader_select = uts + self._pending_user_trader_select
 
     def process_ohlc(self):       
         #
         # select market ohlcs
         #
 
-        self.lock()
-        mks = self._pending_ohlc_select
-        self._pending_ohlc_select = []
-        self.unlock()
+        with self._mutex:
+            mks = self._pending_ohlc_select
+            self._pending_ohlc_select = []
 
         if mks:
             try:
@@ -731,26 +700,23 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_ohlc_select = mks + self._pending_ohlc_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_ohlc_select = mks + self._pending_ohlc_select
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_ohlc_select = mks + self._pending_ohlc_select
-                self.unlock()
+                with self._mutex:
+                    self._pending_ohlc_select = mks + self._pending_ohlc_select
 
         #
         # insert market ohlcs
         #
 
         if time.time() - self._last_ohlc_flush >= 60 or len(self._pending_ohlc_insert) > 500:
-            self.lock()
-            mkd = self._pending_ohlc_insert
-            self._pending_ohlc_insert = []
-            self.unlock()
+            with self._mutex:
+                mkd = self._pending_ohlc_insert
+                self._pending_ohlc_insert = []
 
             if mkd:
                 try:
@@ -781,16 +747,14 @@ class PgSql(Database):
                     self.try_reconnect(e)
 
                     # retry the next time
-                    self.lock()
-                    self._pending_ohlc_insert = mkd + self._pending_ohlc_insert
-                    self.unlock()
+                    with self._mutex:
+                        self._pending_ohlc_insert = mkd + self._pending_ohlc_insert
                 except Exception as e:
                     self.on_error(e)
 
                     # retry the next time
-                    self.lock()
-                    self._pending_ohlc_insert = mkd + self._pending_ohlc_insert
-                    self.unlock()
+                    with self._mutex:
+                        self._pending_ohlc_insert = mkd + self._pending_ohlc_insert
 
                 self._last_ohlc_flush = time.time()
 
@@ -798,10 +762,9 @@ class PgSql(Database):
         # insert market liquidation
         #
 
-        self.lock()
-        mkd = self._pending_liquidation_insert
-        self._pending_liquidation_insert = []
-        self.unlock()
+        with self._mutex:
+            mkd = self._pending_liquidation_insert
+            self._pending_liquidation_insert = []
 
         if mkd:
             try:
@@ -824,16 +787,14 @@ class PgSql(Database):
                 self.try_reconnect(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_liquidation_insert = mkd + self._pending_liquidation_insert
-                self.unlock()
+                with self._mutex:
+                    self._pending_liquidation_insert = mkd + self._pending_liquidation_insert
             except Exception as e:
                 self.on_error(e)
 
                 # retry the next time
-                self.lock()
-                self._pending_liquidation_insert = mkd + self._pending_liquidation_insert
-                self.unlock()
+                with self._mutex:
+                    self._pending_liquidation_insert = mkd + self._pending_liquidation_insert
 
         #
         # clean older ohlcs

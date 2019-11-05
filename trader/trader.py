@@ -120,16 +120,14 @@ class Trader(Runnable):
         a specific instrument if market_id is defined.
         """
         if market_id:
-            self.lock()
-            market = self._markets.get(market_id)
-            if market:
-                maket.set_activity(status)
-            self.unlock()
+            with self._mutex:
+                market = self._markets.get(market_id)
+                if market:
+                    maket.set_activity(status)
         else:
-            self.lock()
-            for k, market in self._markets.items():
-                market.set_activity(status)
-            self.unlock()
+            with self._mutex:
+                for k, market in self._markets.items():
+                    market.set_activity(status)
 
     def configured_symbols(self):
         """
@@ -196,19 +194,16 @@ class Trader(Runnable):
         """
         Returns the complete list containing market-ids, theirs alias and theirs related symbol name.
         """
-        self.lock()
-
         names = []
 
-        for k, market in self._markets.items():
-            names.append(market.market_id)
+        with self._mutex:
+            for k, market in self._markets.items():
+                names.append(market.market_id)
 
-            if market.symbol and market.symbol != market.market_id:
-                names.append(market.symbol)
+                if market.symbol and market.symbol != market.market_id:
+                    names.append(market.symbol)
 
-        self.unlock()
-
-        names.sort()
+            names.sort()
 
         return names
 
@@ -327,16 +322,13 @@ class Trader(Runnable):
             i = 0
             now = time.time()
 
-            self.lock()
+            with self._mutex:
+                for command in self._commands:
+                    # remove commands older than 180 seconds
+                    if now - command['timestamp'] > Trader.PURGE_COMMANDS_DELAY:
+                        del self._commands[i]
 
-            for command in self._commands:
-                # remove commands older than 180 seconds
-                if now - command['timestamp'] > Trader.PURGE_COMMANDS_DELAY:
-                    del self._commands[i]
-
-                i += 1
-
-            self.unlock()
+                    i += 1
 
         return True
 
@@ -407,37 +399,24 @@ class Trader(Runnable):
 
         elif command_type == Trader.COMMAND_CLOSE_MARKET:
             # manually close a specified position at market now
-            self.lock()
+            with self._mutex:
+                for k, position in self._positions.items():
+                    if position.key == data['key']:
+                        # query close position
+                        self.close_position(position.position_id)
 
-            for k, position in self._positions.items():
-                if position.key == data['key']:
-                    # query close position
-
-                    self.unlock()
-                    self.close_position(position.position_id)
-                    self.lock()
-
-                    Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
-
-                    break
-
-            self.unlock()
+                        Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
+                        break
 
         elif command_type == Trader.COMMAND_CLOSE_ALL_MARKET:
             # manually close any position related to this account/trader at market now
-            self.lock()
-
-            for k, position in self._positions.items():
-                # query close position
-                self.unlock()
-                self.close_position(position.position_id)
-                self.lock()
-
-                Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
-
-                break
-
-            self.unlock()            
+            with self._mutex:
+                for k, position in self._positions.items():
+                    # query close position
+                    self.close_position(position.position_id)
+        
+                    Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
+                    break
 
     def ping(self, timeout):
         self._ping = (0, None, True)
@@ -459,10 +438,9 @@ class Trader(Runnable):
         """
         margin = None
 
-        self.lock()
-        market = self._markets.get(market_id)
-        margin = market.margin_cost(quantity, price)
-        self.unlock()
+        with self._mutex:
+            market = self._markets.get(market_id)
+            margin = market.margin_cost(quantity, price)
 
         return margin is not None and self.account.margin_balance >= margin
 
@@ -474,11 +452,10 @@ class Trader(Runnable):
         """
         result = False
 
-        self.lock()
-        asset = self._assets.get(asset_name)
-        result = asset and asset.free >= quantity
-        self.unlock()
-
+        with self._mutex:
+            asset = self._assets.get(asset_name)
+            result = asset and asset.free >= quantity
+    
         return result
 
     def set_ref_order_id(self, order):
@@ -548,23 +525,21 @@ class Trader(Runnable):
     def get_order(self, order_id):
         order = None
 
-        self.lock()
-        order = self.orders.get(order_id)
-        if order:
-            order = copy.copy(order)
-        self.unlock()
+        with self._mutex:
+            order = self.orders.get(order_id)
+            if order:
+                order = copy.copy(order)
 
         return order
 
     def find_order(self, ref_order_id):
         result = None
 
-        self.lock()
-        for oid, order in self._orders.items():
-            if order.ref_order_id == ref_order_id:
-                result = copy.copy(order)
-                break
-        self.unlock()
+        with self._mutex:
+            for oid, order in self._orders.items():
+                if order.ref_order_id == ref_order_id:
+                    result = copy.copy(order)
+                    break
 
         return result
 
@@ -599,10 +574,9 @@ class Trader(Runnable):
         """
         position = None
 
-        self.lock()
-        if self._positions.get(position_id):
-            position = copy.copy(self._positions.get(position_id))
-        self.unlock()
+        with self._mutex:
+            if self._positions.get(position_id):
+                position = copy.copy(self._positions.get(position_id))
 
         return position
 
@@ -953,11 +927,10 @@ class Trader(Runnable):
         """
         price = None
 
-        self.lock()
-        market = self.market(market_id)
-        if market:
-            price = market.price
-        self.unlock()
+        with self._mutex:
+            market = self.market(market_id)
+            if market:
+                price = market.price
 
         return price
 
@@ -1007,44 +980,41 @@ class Trader(Runnable):
         columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract', 'Min Size', 'Min Notional')
         data = []
 
-        self.lock()
+        with self._mutex:
+            markets = list(self._markets.values())
+            total_size = (len(columns), len(markets))
 
-        markets = list(self._markets.values())
-        total_size = (len(columns), len(markets))
+            if offset is None:
+                offset = 0
 
-        if offset is None:
-            offset = 0
+            if limit is None:
+                limit = len(markets)
 
-        if limit is None:
-            limit = len(markets)
+            limit = offset + limit
 
-        limit = offset + limit
+            markets.sort(key=lambda x: x.market_id)
+            markets = markets[offset:limit]
 
-        markets.sort(key=lambda x: x.market_id)
-        markets = markets[offset:limit]
+            for market in markets:
+                status = Color.colorize_cond("Open" if market.is_open else "Close", market.is_open, style=style, true=Color.GREEN, false=Color.RED)
 
-        for market in markets:
-            status = Color.colorize_cond("Open" if market.is_open else "Close", market.is_open, style=style, true=Color.GREEN, false=Color.RED)
+                row = (
+                    market.market_id,
+                    market.symbol,
+                    market.base,
+                    market.quote,
+                    str("%.8f" % market.base_exchange_rate).rstrip('0').rstrip('.'),
+                    market.market_type_str().capitalize(),
+                    market.unit_type_str().capitalize(),
+                    status,
+                    str("%.8f" % market.one_pip_means).rstrip('0').rstrip('.'),
+                    str("%.8f" % market.value_per_pip).rstrip('0').rstrip('.'),
+                    str("%.8f" % market.lot_size).rstrip('0').rstrip('.'),
+                    str("%.12f" % market.contract_size).rstrip('0').rstrip('.'),
+                    market.min_size,
+                    market.min_notional)
 
-            row = (
-                market.market_id,
-                market.symbol,
-                market.base,
-                market.quote,
-                str("%.8f" % market.base_exchange_rate).rstrip('0').rstrip('.'),
-                market.market_type_str().capitalize(),
-                market.unit_type_str().capitalize(),
-                status,
-                str("%.8f" % market.one_pip_means).rstrip('0').rstrip('.'),
-                str("%.8f" % market.value_per_pip).rstrip('0').rstrip('.'),
-                str("%.8f" % market.lot_size).rstrip('0').rstrip('.'),
-                str("%.12f" % market.contract_size).rstrip('0').rstrip('.'),
-                market.min_size,
-                market.min_notional)
-
-            data.append(row[col_ofs:])
-
-        self.unlock()
+                data.append(row[col_ofs:])
 
         return columns[col_ofs:], data, total_size
 
@@ -1055,62 +1025,59 @@ class Trader(Runnable):
         columns = ('Market', 'Symbol', 'Bid', 'Ofr', 'Spread', 'Vol24h base', 'Vol24h quote', 'Time')
         data = []
 
-        self.lock()
+        with self._mutex:
+            markets = list(self._markets.values())
+            total_size = (len(columns), len(markets))
 
-        markets = list(self._markets.values())
-        total_size = (len(columns), len(markets))
+            if offset is None:
+                offset = 0
 
-        if offset is None:
-            offset = 0
+            if limit is None:
+                limit = len(markets)
 
-        if limit is None:
-            limit = len(markets)
+            limit = offset + limit
 
-        limit = offset + limit
+            markets.sort(key=lambda x: x.market_id)
+            markets = markets[offset:limit]
 
-        markets.sort(key=lambda x: x.market_id)
-        markets = markets[offset:limit]
+            for market in markets:
+                recent = market.recent(self.timestamp - 0.5 if not prev_timestamp else prev_timestamp)
+                if recent:
+                    bid = Color.colorize_updn(market.format_price(market.bid), recent[1], market.bid, style=style)
+                    ofr = Color.colorize_updn(market.format_price(market.ofr), recent[2], market.ofr, style=style)
+                    spread = Color.colorize_updn(market.format_spread(market.spread), market.spread, recent[2] - recent[1], style=style)
+                else:
+                    bid = market.format_price(market.bid)
+                    ofr = market.format_price(market.ofr)
+                    spread = market.format_price(market.spread)
 
-        for market in markets:
-            recent = market.recent(self.timestamp - 0.5 if not prev_timestamp else prev_timestamp)
-            if recent:
-                bid = Color.colorize_updn(market.format_price(market.bid), recent[1], market.bid, style=style)
-                ofr = Color.colorize_updn(market.format_price(market.ofr), recent[2], market.ofr, style=style)
-                spread = Color.colorize_updn(market.format_spread(market.spread), market.spread, recent[2] - recent[1], style=style)
-            else:
-                bid = market.format_price(market.bid)
-                ofr = market.format_price(market.ofr)
-                spread = market.format_price(market.spread)
+                if market.vol24h_quote:
+                    # @todo could be configured
+                    low = 0
+                    if market.quote in ('USD', 'EUR', 'ZEUR', 'ZUSD', 'USDT', 'PAX', 'USDC', 'USDS', 'BUSD', 'TUSD'):
+                        low = 1000000
+                    elif market.quote in ('BTC'):
+                        low = 100
+                    elif market.quote in ('ETH'):
+                        low = 5000
+                    elif market.quote in ('BNB'):
+                        low = 50000
 
-            if market.vol24h_quote:
-                # @todo could be configured
-                low = 0
-                if market.quote in ('USD', 'EUR', 'ZEUR', 'ZUSD', 'USDT', 'PAX', 'USDC', 'USDS', 'BUSD', 'TUSD'):
-                    low = 1000000
-                elif market.quote in ('BTC'):
-                    low = 100
-                elif market.quote in ('ETH'):
-                    low = 5000
-                elif market.quote in ('BNB'):
-                    low = 50000
+                    vol24h_quote = Color.colorize_cond("%.2f" % market.vol24h_quote, market.vol24h_quote < low, style=style, true=Color.YELLOW, false=Color.WHITE)
+                else:
+                    vol24h_quote = charmap.HOURGLASS
 
-                vol24h_quote = Color.colorize_cond("%.2f" % market.vol24h_quote, market.vol24h_quote < low, style=style, true=Color.YELLOW, false=Color.WHITE)
-            else:
-                vol24h_quote = charmap.HOURGLASS
+                row = (
+                     market.market_id,
+                     market.symbol,
+                     bid,
+                     ofr,
+                     spread,
+                     market.format_quantity(market.vol24h_base) if market.vol24h_base else charmap.HOURGLASS,
+                     vol24h_quote,
+                     datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S") if market.last_update_time else charmap.HOURGLASS)
 
-            row = (
-                 market.market_id,
-                 market.symbol,
-                 bid,
-                 ofr,
-                 spread,
-                 market.format_quantity(market.vol24h_base) if market.vol24h_base else charmap.HOURGLASS,
-                 vol24h_quote,
-                 datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S") if market.last_update_time else charmap.HOURGLASS)
-
-            data.append(row[col_ofs:])
-
-        self.unlock()
+                data.append(row[col_ofs:])
 
         return columns[col_ofs:], data, total_size
 
@@ -1122,87 +1089,84 @@ class Trader(Runnable):
                 'P/L %s' % self.account.currency, 'P/L %s' % self.account.alt_currency)
         data = []
 
-        self.lock()
+        with self._mutex:
+            assets = [asset for asset in self._assets.values() if asset.quantity > 0.0]
+            total_size = (len(columns), len(assets))
 
-        assets = [asset for asset in self._assets.values() if asset.quantity > 0.0]
-        total_size = (len(columns), len(assets))
+            if offset is None:
+                offset = 0
 
-        if offset is None:
-            offset = 0
+            if limit is None:
+                limit = len(assets)
 
-        if limit is None:
-            limit = len(assets)
+            limit = offset + limit
 
-        limit = offset + limit
+            assets.sort(key=lambda x: x.symbol)
+            assets = assets[offset:limit]
 
-        assets.sort(key=lambda x: x.symbol)
-        assets = assets[offset:limit]
+            for asset in assets:
+                # use the most appropriate market
+                market = self.market(asset.symbol+asset.quote)
 
-        for asset in assets:
-            # use the most appropriate market
-            market = self.market(asset.symbol+asset.quote)
+                change = ""
+                change_percent = ""
+                profit_loss = ""
+                profit_loss_alt = ""
 
-            change = ""
-            change_percent = ""
-            profit_loss = ""
-            profit_loss_alt = ""
+                if market:
+                    locked = market.format_quantity(asset.locked)
+                    free = market.format_quantity(asset.free)
+                    quantity = market.format_quantity(asset.quantity)
 
-            if market:
-                locked = market.format_quantity(asset.locked)
-                free = market.format_quantity(asset.free)
-                quantity = market.format_quantity(asset.quantity)
+                    base_exchange_rate = 1.0
 
-                base_exchange_rate = 1.0
+                    change = market.format_price(market.bid - asset.price) + market.quote_display or market.quote
+                    change_percent = (market.bid - asset.price) / asset.price * 100.0 if asset.price else 0.0
 
-                change = market.format_price(market.bid - asset.price) + market.quote_display or market.quote
-                change_percent = (market.bid - asset.price) / asset.price * 100.0 if asset.price else 0.0
+                    if change_percent > 0.0:
+                        change_percent = Color.colorize("%.2f" % change_percent, Color.GREEN, style)
+                    elif change_percent < 0.0:
+                        change_percent = Color.colorize("%.2f" % change_percent, Color.RED, style)
+                    else:
+                        change_percent = "%.2f" % change_percent
 
-                if change_percent > 0.0:
-                    change_percent = Color.colorize("%.2f" % change_percent, Color.GREEN, style)
-                elif change_percent < 0.0:
-                    change_percent = Color.colorize("%.2f" % change_percent, Color.RED, style)
+                    quote_market = self.market(market.quote+self.account.currency)
+                    if quote_market:
+                        base_exchange_rate = 1.0 / quote_market.price
+
+                    profit_loss = market.format_price(asset.profit_loss) if market.quote == self.account.currency else ""
+                    profit_loss_alt = market.format_price(asset.profit_loss / base_exchange_rate) if market.quote == self.account.alt_currency else ""
+
+                    if asset.profit_loss > 0.0:
+                        if profit_loss:
+                            profit_loss = Color.colorize(profit_loss, Color.GREEN, style)
+
+                        if profit_loss_alt:
+                            profit_loss_alt = Color.colorize(profit_loss_alt, Color.GREEN, style)
+                    elif asset.profit_loss < 0.0:
+                        if profit_loss:
+                            profit_loss = Color.colorize(profit_loss, Color.RED, style)
+
+                        if profit_loss_alt:
+                            profit_loss_alt = Color.colorize(profit_loss_alt, Color.RED, style)
                 else:
-                    change_percent = "%.2f" % change_percent
+                    locked = "%.8f" % asset.locked
+                    free = "%.8f" % asset.free
+                    quantity = "%.8f" % asset.quantity
 
-                quote_market = self.market(market.quote+self.account.currency)
-                if quote_market:
-                    base_exchange_rate = 1.0 / quote_market.price
+                row = (
+                    asset.symbol,
+                    locked,
+                    free,
+                    quantity,
+                    asset.format_price(asset.price) if asset.price else charmap.HOURGLASS,
+                    change or charmap.ROADBLOCK,
+                    change_percent or charmap.ROADBLOCK,
+                    profit_loss or charmap.ROADBLOCK,
+                    profit_loss_alt or charmap.ROADBLOCK,
+                )
 
-                profit_loss = market.format_price(asset.profit_loss) if market.quote == self.account.currency else ""
-                profit_loss_alt = market.format_price(asset.profit_loss / base_exchange_rate) if market.quote == self.account.alt_currency else ""
-
-                if asset.profit_loss > 0.0:
-                    if profit_loss:
-                        profit_loss = Color.colorize(profit_loss, Color.GREEN, style)
-
-                    if profit_loss_alt:
-                        profit_loss_alt = Color.colorize(profit_loss_alt, Color.GREEN, style)
-                elif asset.profit_loss < 0.0:
-                    if profit_loss:
-                        profit_loss = Color.colorize(profit_loss, Color.RED, style)
-
-                    if profit_loss_alt:
-                        profit_loss_alt = Color.colorize(profit_loss_alt, Color.RED, style)
-            else:
-                locked = "%.8f" % asset.locked
-                free = "%.8f" % asset.free
-                quantity = "%.8f" % asset.quantity
-
-            row = (
-                asset.symbol,
-                locked,
-                free,
-                quantity,
-                asset.format_price(asset.price) if asset.price else charmap.HOURGLASS,
-                change or charmap.ROADBLOCK,
-                change_percent or charmap.ROADBLOCK,
-                profit_loss or charmap.ROADBLOCK,
-                profit_loss_alt or charmap.ROADBLOCK,
-            )
-
-            data.append(row[col_ofs:])
-
-        self.unlock()
+                data.append(row[col_ofs:])
 
         return columns[col_ofs:], data, total_size
 
@@ -1214,38 +1178,35 @@ class Trader(Runnable):
                    'Risk limit', 'Unrealized P/L', 'U. P/L alt', 'Asset U. P/L', 'Asset U. P/L alt')
         data = []
 
-        self.lock()
+        with self._mutex:
+            if offset is None:
+                offset = 0
 
-        if offset is None:
-            offset = 0
+            if limit is None:
+                limit = 1
 
-        if limit is None:
-            limit = 1
+            limit = offset + limit
 
-        limit = offset + limit
+            row = (
+                self.name,
+                self._account.name,
+                self._account.username,
+                self._account.email,
+                self.account.format_price(self._account.asset_balance) + self.account.currency_display or self.account.currency,
+                self.account.format_price(self._account.free_asset_balance) + self.account.currency_display or self.account.currency,
+                self.account.format_price(self._account.balance) + self.account.currency_display or self.account.currency,
+                self.account.format_price(self._account.margin_balance) + self.account.currency_display or self.account.currency,
+                self.account.format_price(self._account.net_worth) + self.account.currency_display or self.account.currency,
+                self.account.format_alt_price(self._account.net_worth * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency,
+                self.account.format_price(self._account.risk_limit) + self.account.currency_display or self.account.currency,
+                self.account.format_price(self._account.profit_loss) + self.account.currency_display or self.account.currency,
+                self.account.format_alt_price(self._account.profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency,
+                self.account.format_price(self._account.asset_profit_loss) + self.account.currency_display or self.account.currency,
+                self.account.format_alt_price(self._account.asset_profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency,
+            )
 
-        row = (
-            self.name,
-            self._account.name,
-            self._account.username,
-            self._account.email,
-            self.account.format_price(self._account.asset_balance) + self.account.currency_display or self.account.currency,
-            self.account.format_price(self._account.free_asset_balance) + self.account.currency_display or self.account.currency,
-            self.account.format_price(self._account.balance) + self.account.currency_display or self.account.currency,
-            self.account.format_price(self._account.margin_balance) + self.account.currency_display or self.account.currency,
-            self.account.format_price(self._account.net_worth) + self.account.currency_display or self.account.currency,
-            self.account.format_alt_price(self._account.net_worth * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency,
-            self.account.format_price(self._account.risk_limit) + self.account.currency_display or self.account.currency,
-            self.account.format_price(self._account.profit_loss) + self.account.currency_display or self.account.currency,
-            self.account.format_alt_price(self._account.profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency,
-            self.account.format_price(self._account.asset_profit_loss) + self.account.currency_display or self.account.currency,
-            self.account.format_alt_price(self._account.asset_profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency,
-        )
-
-        if offset < 1 and limit > 0:
-            data.append(row[col_ofs:])
-
-        self.unlock()
+            if offset < 1 and limit > 0:
+                data.append(row[col_ofs:])
 
         return columns[col_ofs:], data, (len(columns), 1)
 
@@ -1258,39 +1219,36 @@ class Trader(Runnable):
         """
         results = []
 
-        self.lock()
-
-        for k, order in self._orders.items():
-            market = self._markets.get(order.symbol)
-            if market:
-                results.append({
-                    'mid': market.market_id,
-                    'sym': market.symbol,
-                    'id': order.order_id,
-                    'refid': order.ref_order_id,
-                    'ct': order.created_time,
-                    'tt': order.transact_time,
-                    'd': order.direction_to_str(),
-                    'ot': order.order_type_to_str(),
-                    'l': order.leverage,
-                    'q': market.format_quantity(order.quantity),
-                    'op': market.format_price(order.price) if order.price else "",
-                    'sp': market.format_price(order.stop_price) if order.stop_price else "",
-                    'sl': market.format_price(order.stop_loss) if order.stop_loss else "",
-                    'tp': market.format_price(order.take_profit) if order.take_profit else "",
-                    'tr': "No",
-                    'xq': market.format_quantity(order.executed),
-                    'ro': order.reduce_only,
-                    'he': order.hedging,
-                    'po': order.post_only,
-                    'co': order.close_only,
-                    'mt': order.margin_trade,
-                    'tif': order.time_in_force_to_str(),
-                    'pt': order.price_type_to_str(),
-                    'key': order.key
-                })
-
-        self.unlock()
+        with self._mutex:
+            for k, order in self._orders.items():
+                market = self._markets.get(order.symbol)
+                if market:
+                    results.append({
+                        'mid': market.market_id,
+                        'sym': market.symbol,
+                        'id': order.order_id,
+                        'refid': order.ref_order_id,
+                        'ct': order.created_time,
+                        'tt': order.transact_time,
+                        'd': order.direction_to_str(),
+                        'ot': order.order_type_to_str(),
+                        'l': order.leverage,
+                        'q': market.format_quantity(order.quantity),
+                        'op': market.format_price(order.price) if order.price else "",
+                        'sp': market.format_price(order.stop_price) if order.stop_price else "",
+                        'sl': market.format_price(order.stop_loss) if order.stop_loss else "",
+                        'tp': market.format_price(order.take_profit) if order.take_profit else "",
+                        'tr': "No",
+                        'xq': market.format_quantity(order.executed),
+                        'ro': order.reduce_only,
+                        'he': order.hedging,
+                        'po': order.post_only,
+                        'co': order.close_only,
+                        'mt': order.margin_trade,
+                        'tif': order.time_in_force_to_str(),
+                        'pt': order.price_type_to_str(),
+                        'key': order.key
+                    })
 
         return results
 
@@ -1319,36 +1277,33 @@ class Trader(Runnable):
         """
         results = []
 
-        self.lock()
-
-        for k, position in self._positions.items():
-            market = self._markets.get(position.symbol)
-            if market:
-                results.append({
-                    'mid': market.market_id,
-                    'sym': market.symbol,
-                    'id': position.position_id,
-                    'et': position.created_time,
-                    'xt': position.closed_time,
-                    'd': position.direction_to_str(),
-                    'l': position.leverage,
-                    'aep': market.format_price(position.entry_price) if position.entry_price else "",
-                    'axp': market.format_price(position.exit_price) if position.exit_price else "",
-                    'q': market.format_quantity(position.quantity),
-                    'tp': market.format_price(position.take_profit) if position.take_profit else "",
-                    'sl': market.format_price(position.stop_loss) if position.stop_loss else "",
-                    'tr': "Yes" if position.trailing_stop else "No",  # market.format_price(position.trailing_stop_distance) if position.trailing_stop_distance else None,
-                    'pl': position.profit_loss_rate,
-                    'pnl': market.format_price(position.profit_loss),
-                    'mpl': position.profit_loss_market_rate,
-                    'mpnl': market.format_price(position.profit_loss_market),
-                    'pnlcur': position.profit_loss_currency,
-                    'cost': market.format_quantity(position.position_cost(market)),
-                    'margin': market.format_quantity(position.margin_cost(market)),
-                    'key': position.key
-                })
-
-        self.unlock()
+        with self._mutex:
+            for k, position in self._positions.items():
+                market = self._markets.get(position.symbol)
+                if market:
+                    results.append({
+                        'mid': market.market_id,
+                        'sym': market.symbol,
+                        'id': position.position_id,
+                        'et': position.created_time,
+                        'xt': position.closed_time,
+                        'd': position.direction_to_str(),
+                        'l': position.leverage,
+                        'aep': market.format_price(position.entry_price) if position.entry_price else "",
+                        'axp': market.format_price(position.exit_price) if position.exit_price else "",
+                        'q': market.format_quantity(position.quantity),
+                        'tp': market.format_price(position.take_profit) if position.take_profit else "",
+                        'sl': market.format_price(position.stop_loss) if position.stop_loss else "",
+                        'tr': "Yes" if position.trailing_stop else "No",  # market.format_price(position.trailing_stop_distance) if position.trailing_stop_distance else None,
+                        'pl': position.profit_loss_rate,
+                        'pnl': market.format_price(position.profit_loss),
+                        'mpl': position.profit_loss_market_rate,
+                        'mpnl': market.format_price(position.profit_loss_market),
+                        'pnlcur': position.profit_loss_currency,
+                        'cost': market.format_quantity(position.position_cost(market)),
+                        'margin': market.format_quantity(position.margin_cost(market)),
+                        'key': position.key
+                    })
 
         return results
 
@@ -1365,73 +1320,70 @@ class Trader(Runnable):
 
         data = []
 
-        self.lock()
+        with self._mutex:
+            positions = self.get_active_positions()
+            total_size = (len(columns), len(positions))
 
-        positions = self.get_active_positions()
-        total_size = (len(columns), len(positions))
+            if offset is None:
+                offset = 0
 
-        if offset is None:
-            offset = 0
+            if limit is None:
+                limit = len(positions)
 
-        if limit is None:
-            limit = len(positions)
+            limit = offset + limit
 
-        limit = offset + limit
+            positions.sort(key=lambda x: x['et'])
+            positions = positions[offset:limit]
 
-        positions.sort(key=lambda x: x['et'])
-        positions = positions[offset:limit]
+            for t in positions:
+                direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
-        for t in positions:
-            direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+                aep = float(t['aep']) if t['aep'] else 0.0
+                sl = float(t['sl']) if t['sl'] else 0.0
+                tp = float(t['tp']) if t['tp'] else 0.0
 
-            aep = float(t['aep']) if t['aep'] else 0.0
-            sl = float(t['sl']) if t['sl'] else 0.0
-            tp = float(t['tp']) if t['tp'] else 0.0
+                if t['pl'] < 0:  # loss
+                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
+                elif t['pl'] > 0:  # profit
+                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
+                else:  # equity
+                    cr = "0.0"
 
-            if t['pl'] < 0:  # loss
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
-            elif t['pl'] > 0:  # profit
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
-            else:  # equity
-                cr = "0.0"
+                if t['d'] == 'long' and aep:
+                    slpct = (sl - aep) / aep
+                    tppct = (tp - aep) / aep
+                elif t['d'] == 'short' and aep:
+                    slpct = (aep - sl) / aep
+                    tppct = (aep - tp) / aep
+                else:
+                    slpct = 0
+                    tppct = 0
 
-            if t['d'] == 'long' and aep:
-                slpct = (sl - aep) / aep
-                tppct = (tp - aep) / aep
-            elif t['d'] == 'short' and aep:
-                slpct = (aep - sl) / aep
-                tppct = (aep - tp) / aep
-            else:
-                slpct = 0
-                tppct = 0
+                row = [
+                    t['mid'],
+                    t['id'],
+                    direction,
+                    "%.2f" % t['l'],
+                    cr,
+                    "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
+                    "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
+                    t['tr'],
+                    datetime.fromtimestamp(t['et']).strftime('%y-%m-%d %H:%M:%S') if t['et'] > 0 else "",
+                    t['aep'],
+                    datetime.fromtimestamp(t['xt']).strftime('%y-%m-%d %H:%M:%S') if t['xt'] > 0 else "",
+                    t['axp'],
+                    "%s%s" % (t['pnl'], t['pnlcur']),
+                    t['cost'],
+                    t['margin'],
+                    t['key']
+                ]
 
-            row = [
-                t['mid'],
-                t['id'],
-                direction,
-                "%.2f" % t['l'],
-                cr,
-                "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
-                "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
-                t['tr'],
-                datetime.fromtimestamp(t['et']).strftime('%y-%m-%d %H:%M:%S') if t['et'] > 0 else "",
-                t['aep'],
-                datetime.fromtimestamp(t['xt']).strftime('%y-%m-%d %H:%M:%S') if t['xt'] > 0 else "",
-                t['axp'],
-                "%s%s" % (t['pnl'], t['pnlcur']),
-                t['cost'],
-                t['margin'],
-                t['key']
-            ]
+                # @todo xx / market.base_exchange_rate and pnl_currency
 
-            # @todo xx / market.base_exchange_rate and pnl_currency
+                if quantities:
+                    row.append(t['q'])
 
-            if quantities:
-                row.append(t['q'])
-
-            data.append(row[col_ofs:])
-
-        self.unlock()
+                data.append(row[col_ofs:])
 
         return columns[col_ofs:], data, total_size
 
@@ -1450,70 +1402,67 @@ class Trader(Runnable):
 
         data = []
 
-        self.lock()
+        with self._mutex:
+            orders = self.get_active_orders()
+            total_size = (len(columns), len(orders))
 
-        orders = self.get_active_orders()
-        total_size = (len(columns), len(orders))
+            if offset is None:
+                offset = 0
 
-        if offset is None:
-            offset = 0
+            if limit is None:
+                limit = len(orders)
 
-        if limit is None:
-            limit = len(orders)
+            limit = offset + limit
 
-        limit = offset + limit
+            orders.sort(key=lambda x: x['ct'])
+            orders = orders[offset:limit]
 
-        orders.sort(key=lambda x: x['ct'])
-        orders = orders[offset:limit]
+            for t in orders:
+                direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
-        for t in orders:
-            direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+                op = float(t['op']) if t['op'] else 0.0
+                sl = float(t['sl']) if t['sl'] else 0.0
+                tp = float(t['tp']) if t['tp'] else 0.0
 
-            op = float(t['op']) if t['op'] else 0.0
-            sl = float(t['sl']) if t['sl'] else 0.0
-            tp = float(t['tp']) if t['tp'] else 0.0
+                if t['d'] == 'long' and op:
+                    slpct = (sl - op) / op if sl else 0.0
+                    tppct = (tp - op) / op if tp else 0.0
+                elif t['d'] == 'short' and op:
+                    slpct = (op - sl) / op if sl else 0.0
+                    tppct = (op - tp) / op if tp else 0.0
+                else:
+                    slpct = 0
+                    tppct = 0
 
-            if t['d'] == 'long' and op:
-                slpct = (sl - op) / op if sl else 0.0
-                tppct = (tp - op) / op if tp else 0.0
-            elif t['d'] == 'short' and op:
-                slpct = (op - sl) / op if sl else 0.0
-                tppct = (op - tp) / op if tp else 0.0
-            else:
-                slpct = 0
-                tppct = 0
+                row = [
+                    t['mid'],
+                    t['id'],
+                    t['refid'],
+                    direction,
+                    t['ot'],
+                    "%.2f" % t['l'],
+                    t['op'],
+                    t['sp'],
+                    "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
+                    "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
+                    t['tr'],
+                    datetime.fromtimestamp(t['ct']).strftime('%y-%m-%d %H:%M:%S') if t['ct'] > 0 else "",
+                    datetime.fromtimestamp(t['tt']).strftime('%y-%m-%d %H:%M:%S') if t['tt'] > 0 else "",
+                    "Yes" if t['ro'] else "No",
+                    "Yes" if t['po'] else "No",
+                    "Yes" if t['he'] else "No",
+                    "Yes" if t['co'] else "No",
+                    "Yes" if t['mt'] else "No",
+                    t['tif'],
+                    t['pt'],
+                    t['key']
+                ]
 
-            row = [
-                t['mid'],
-                t['id'],
-                t['refid'],
-                direction,
-                t['ot'],
-                "%.2f" % t['l'],
-                t['op'],
-                t['sp'],
-                "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
-                "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
-                t['tr'],
-                datetime.fromtimestamp(t['ct']).strftime('%y-%m-%d %H:%M:%S') if t['ct'] > 0 else "",
-                datetime.fromtimestamp(t['tt']).strftime('%y-%m-%d %H:%M:%S') if t['tt'] > 0 else "",
-                "Yes" if t['ro'] else "No",
-                "Yes" if t['po'] else "No",
-                "Yes" if t['he'] else "No",
-                "Yes" if t['co'] else "No",
-                "Yes" if t['mt'] else "No",
-                t['tif'],
-                t['pt'],
-                t['key']
-            ]
+                if quantities:
+                    row.append(t['q'])
+                    row.append(t['xq'])
 
-            if quantities:
-                row.append(t['q'])
-                row.append(t['xq'])
-
-            data.append(row[col_ofs:])
-
-        self.unlock()
+                data.append(row[col_ofs:])
 
         return columns[col_ofs:], data, total_size
 
@@ -1537,10 +1486,9 @@ class Trader(Runnable):
             'timestamp': time.time()
         }
 
-        self.lock()
-        self._commands.append(command)
-        self._purge_commands()
-        self.unlock()
+        with self._mutex:
+            self._commands.append(command)
+            self._purge_commands()
 
     def on_exit_position(self, copied_position, command_trigger):
         """
@@ -1549,9 +1497,8 @@ class Trader(Runnable):
         @todo social position id and mapping might be maintened by the social strategy appliance
         """
         # map shared position_id to self position_id
-        self.lock()
-        self._position = self._positions.get(copied_position.position_id)
-        self.unlock()
+        with self._mutex:
+            self._position = self._positions.get(copied_position.position_id)
 
         # if the position is currently copied order to close it (manually by message or auto)
         if self_position is None:
@@ -1568,10 +1515,9 @@ class Trader(Runnable):
             'timestamp': time.time()
         }
 
-        self.lock()
-        self._commands.append(command)
-        self._purge_commands()
-        self.unlock()
+        with self._mutex:
+            self._commands.append(command)
+            self._purge_commands()
 
     def on_set_order(self, order, command_trigger):
         """
@@ -1594,10 +1540,9 @@ class Trader(Runnable):
             'options': order.get('options', {}),            
         }
 
-        self.lock()
-        self._commands.append(command)
-        self._purge_commands()
-        self.unlock()
+        with self._mutex:
+            self._commands.append(command)
+            self._purge_commands()
 
     #
     # commands
@@ -1606,30 +1551,24 @@ class Trader(Runnable):
     def cmd_trader_info(self, data):
         # info on the trader
         if 'market-id' in data:
-            self.lock()
-
-            market = self.find_market(data['market-id'])
-            if market:
-                Terminal.inst().info("Market %s of trader %s is %s." % (
-                    data['market-id'], self.name, "active" if market.activity else "paused"),
-                    view='content')
-
-            self.unlock()
+            with self._mutex:
+                market = self.find_market(data['market-id'])
+                if market:
+                    Terminal.inst().info("Market %s of trader %s is %s." % (
+                        data['market-id'], self.name, "active" if market.activity else "paused"),
+                        view='content')
         else:
             Terminal.inst().info("Trader %s :" % (self.name), view='content')
 
             enabled = []
             disabled = []
 
-            self.lock()
-
-            for k, market in self._markets.items():
-                if market.activity:
-                    enabled.append(k)
-                else:
-                    disabled.append(k)
-
-            self.unlock()
+            with self._mutex:
+                for k, market in self._markets.items():
+                    if market.activity:
+                        enabled.append(k)
+                    else:
+                        disabled.append(k)
 
             if enabled:
                 enabled = [e if i%10 else e+'\n' for i, e in enumerate(enabled)]

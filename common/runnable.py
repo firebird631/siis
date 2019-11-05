@@ -222,9 +222,7 @@ class Runnable(object):
         Annotation for methods that require mutex locker.
         """
         def wrapped(self, *args, **kwargs):
-            self.lock()
-            result = fn(self, *args, **kwargs)
-            self.unlock()
-            return result
+            with self._mutex:
+                return fn(self, *args, **kwargs)
     
         return wrapped

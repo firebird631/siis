@@ -37,7 +37,6 @@ signal_logger = logging.getLogger('siis.signal')
 class OrgDesktopNotifier(BaseService):
     """
     @todo Explode and move to decicated View mananged by ViewService
-    @todo Add the discord notifier and move parts
     """
 
     def __init__(self, options):
@@ -47,31 +46,10 @@ class OrgDesktopNotifier(BaseService):
         self.trader_service = None
         self.watcher_service = None
 
-        self.last_notify = 0
-        self.discord = False
-
-        self._mutex = threading.RLock()  # reentrant locker
-        self._signals = collections.deque()  # filtered received signals
-
-        self._last_stats = 0
-
         self._last_strategy_view = 0
         self._last_strategy_update = 0
         self._displayed_strategy = 0
         self._display_percents = False
-
-        # @todo cleanup and move as conf and read it from profile
-        self._discord_webhook = {
-            # 'binance-altusdt-top.trades': 'https://discordapp.com/api/webhooks/...',
-            # 'binance-altusdt-top.agg-trades': 'https://discordapp.com/api/webhooks/...',
-            # 'binance-altusdt-top.closed-trades': 'https://discordapp.com/api/webhooks/...',
-        }
-
-    def lock(self, blocking=True, timeout=-1):
-        self._mutex.acquire(blocking, timeout)
-
-    def unlock(self):
-        self._mutex.release()
 
     @property
     def name(self):
@@ -106,22 +84,12 @@ class OrgDesktopNotifier(BaseService):
         self._displayed_strategy += 1
         self._last_strategy_view = 0  # force refresh
 
-    @property
-    def backtesting(self):
-        return self.strategy_service and self.strategy_service.backtesting
-
     def terminate(self):
         pass
 
     def sync(self):
         # synced update
         if self.strategy_service:
-            # discord 15m reports
-            if self.discord and time.time() - self._last_stats >= 15*60:  # every 15m
-                pass
-            #     if self.send_discord():
-            #         self._last_stats = time.time()
-
             # strategy stats
             if time.time() - self._last_strategy_view >= 0.5:  # every 0.5 second, refresh
                 try:
@@ -129,66 +97,6 @@ class OrgDesktopNotifier(BaseService):
                     self._last_strategy_view = time.time()
                 except Exception as e:
                     error_logger.error(str(e))
-
-    #
-    # discord notification @deprecated must be in a specific discordnotifier
-    #
-
-    def format_table(self, data):
-        arr = tabulate(data, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-        # remove colors
-        arr = arr.replace(Color.ORANGE, '').replace(Color.RED, '').replace(Color.GREEN, '').replace(Color.WHITE, '').replace(Color.PURPLE, '')
-
-        return arr
-
-    def send_discord(self):
-        for strategy in self.strategy_service.get_appliances():
-            dst = None
-
-            if strategy.identifier + '.trades' in self._discord_webhook:
-                trades_dst = self._discord_webhook[strategy.identifier + '.trades']
-
-            if strategy.identifier + '.agg-trades' in self._discord_webhook:
-                agg_trades_dst = self._discord_webhook[strategy.identifier + '.agg-trades']
-
-            if strategy.identifier + '.closed-trades' in self._discord_webhook:
-                closed_trades_dst = self._discord_webhook[strategy.identifier + '.closed-trades']
-
-            if trades_dst:
-                columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True, percents=True)
-                if table:
-                    arr = self.format_table(table)
-                    self.split_and_send(trades_dst, arr)
-            
-            if agg_trades_dst:
-                columns, table, total_size = appl.agg_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
-                if table:
-                    arr = self.format_table(table)
-                    self.split_and_send(agg_trades_dst, arr)
-
-            if closed_trades_dst:
-                columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True, percents=True)
-                if table:
-                    arr = self.format_table(table)
-                    self.split_and_send(closed_trades_dst, arr)
-
-        return True
-
-    def split_and_send(self, dst, msg):
-        MAX_MSG_SIZE = 2000 - 6 - 25
-
-        rows = msg.split('\n')
-        i = 0
-
-        while i < len(rows):
-            buf = ""
-
-            while (i < len(rows)) and (len(buf) + len(rows[i]) + 1 < MAX_MSG_SIZE):
-                buf += rows[i] + '\n'
-                i += 1
-
-            if buf:
-                send_to_discord(dst, 'SiiS', '```' + buf + '```')
 
     #
     # view @deprecated must uses the new views handler
@@ -225,7 +133,7 @@ class OrgDesktopNotifier(BaseService):
             if Terminal.inst().is_active('strategy'):
                 num = 0
 
-                try:                
+                try:
                     columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(),
                         quantities=True, percents=self._display_percents)
 

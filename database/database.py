@@ -116,7 +116,7 @@ class Database(object):
     def __init__(self):
         Database.__instance = self
 
-        self._mutex = threading.Lock()
+        self._mutex = threading.RLock()
         self._running = False
         self._thread = threading.Thread(name="db", target=self.run)
 
@@ -214,15 +214,13 @@ class Database(object):
             self.disconnect()
 
         # flush remaining ticks
-        self.lock()
-        for k, tick_storage in self._tick_storages.items():
-            tick_storage.flush(force=True)
-            tick_storage.close()
+        with self._mutex:
+            for k, tick_storage in self._tick_storages.items():
+                tick_storage.flush(force=True)
+                tick_storage.close()
 
-        self._tick_storages = {}
-        self._pending_tick_insert = []
-
-        self.unlock()
+            self._tick_storages = {}
+            self._pending_tick_insert = []
 
     def setup_market_sql(self):
         pass
@@ -247,20 +245,17 @@ class Database(object):
             str ask (>= 0)
             str volume (>= 0)
         """
-        self.lock()
+        with self._mutex:
+            # store market per keyed array
+            key = data[0]+'/'+data[1]
+            tickstorage = self._tick_storages.get(key)
 
-        # store market per keyed array
-        key = data[0]+'/'+data[1]
-        tickstorage = self._tick_storages.get(key)
+            if not tickstorage:
+                tickstorage = TickStorage(self._markets_path, data[0], data[1])
+                self._tick_storages[key] = tickstorage
 
-        if not tickstorage:
-            tickstorage = TickStorage(self._markets_path, data[0], data[1])
-            self._tick_storages[key] = tickstorage
-
-        # pending list of TickStorage controller having data to process to avoid to check everyone
-        self._pending_tick_insert.append(tickstorage)
-
-        self.unlock()
+            # pending list of TickStorage controller having data to process to avoid to check everyone
+            self._pending_tick_insert.append(tickstorage)
 
         tickstorage.store(data)
 
@@ -268,10 +263,9 @@ class Database(object):
         """
         Return current pending tick list size, for storage.
         """
-        self.lock()
-        n = len(self._pending_tick_insert)
-        self.unlock()
-        return n
+        with self._mutex:
+            n = len(self._pending_tick_insert)
+            return n
 
     def store_market_ohlc(self, data):
         """
@@ -286,12 +280,11 @@ class Database(object):
 
         @note Replace if exists.
         """
-        self.lock()
-        if isinstance(data, list):
-            self._pending_ohlc_insert.extend(data)
-        else:
-            self._pending_ohlc_insert.append(data)
-        self.unlock()
+        with self._mutex:
+            if isinstance(data, list):
+                self._pending_ohlc_insert.extend(data)
+            else:
+                self._pending_ohlc_insert.append(data)
 
     def store_market_liquidation(self, data):
         """
@@ -303,12 +296,11 @@ class Database(object):
             str price > 0
             str quantity > 0
         """
-        self.lock()
-        if isinstance(data, list):
-            self._pending_liquidation_insert.extend(data)
-        else:
-            self._pending_liquidation_insert.append(data)
-        self.unlock()
+        with self._mutex:
+            if isinstance(data, list):
+                self._pending_liquidation_insert.extend(data)
+            else:
+                self._pending_liquidation_insert.append(data)
 
     def store_market_info(self, data):
         """
@@ -348,12 +340,11 @@ class Database(object):
             str maker_commission
             str taker_commission
         """
-        self.lock()
-        if isinstance(data, list):
-            self._pending_market_info_insert.extend(data)
-        else:
-            self._pending_market_info_insert.append(data)
-        self.unlock()
+        with self._mutex:
+            if isinstance(data, list):
+                self._pending_market_info_insert.extend(data)
+            else:
+                self._pending_market_info_insert.append(data)
 
     #
     # asyncs loads
@@ -366,13 +357,11 @@ class Database(object):
         @param from_datetime Timestamp in ms
         @param to_datetime Timestamp in ms
         """
-        self.lock()
-        
-        from_ts = int(from_datetime.timestamp() * 1000) if from_datetime else None
-        to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
+        with self._mutex:
+            from_ts = int(from_datetime.timestamp() * 1000) if from_datetime else None
+            to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
 
-        self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, from_ts, to_ts, None))
-        self.unlock()
+            self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, from_ts, to_ts, None))
 
     def load_market_ohlc_last_n(self, service, broker_id, market_id, timeframe, last_n):
         """
@@ -380,27 +369,24 @@ class Database(object):
         @param service to be notified once done
         @param last_n last max n ohlcs to load
         """
-        self.lock()
-        self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, None, None, last_n))
-        self.unlock()
+        with self._mutex:
+            self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, None, None, last_n))
 
     def load_market_info(self, service, broker_id, market_id):
         """
         Load a specific market info given its market id.
         @param service to be notified once done
         """
-        self.lock()
-        self._pending_market_info_select.append((service, broker_id, market_id))
-        self.unlock()
+        with self._mutex:
+            self._pending_market_info_select.append((service, broker_id, market_id))
 
     def load_market_list(self, service, broker_id):
         """
         Load the complete list of market available for a specific broker id.
         @param service to be notified once done
         """
-        self.lock()
-        self._pending_market_list_select.append((service, broker_id))
-        self.unlock()
+        with self._mutex:
+            self._pending_market_list_select.append((service, broker_id))
 
     #
     # Tick and ohlc streamer
@@ -434,21 +420,19 @@ class Database(object):
             str price (average unit price cost)
             str quote_symbol (not empty) symbol of the quote used for the average price
         """
-        self.lock()
-        if isinstance(data, list):
-            self._pending_asset_insert.extend(data)
-        else:
-            self._pending_asset_insert.append(data)
-        self.unlock()
+        with self._mutex:
+            if isinstance(data, list):
+                self._pending_asset_insert.extend(data)
+            else:
+                self._pending_asset_insert.append(data)
 
     def load_assets(self, service, trader, broker_id, account_id):
         """
         Load all asset for a specific broker_id
         @param service to be notified once done
         """
-        self.lock()
-        self._pending_asset_select.append((service, trader, broker_id, account_id))
-        self.unlock()
+        with self._mutex:
+            self._pending_asset_select.append((service, trader, broker_id, account_id))
 
     def store_user_trade(self, data):
         """
@@ -462,29 +446,26 @@ class Database(object):
             dict data (to be json encoded)
             dict operations (to be json encoded)
         """
-        self.lock()
-        if isinstance(data, list):
-            self._pending_user_trade_insert.extend(data)
-        else:
-            self._pending_user_trade_insert.append(data)
-        self.unlock()
+        with self._mutex:
+            if isinstance(data, list):
+                self._pending_user_trade_insert.extend(data)
+            else:
+                self._pending_user_trade_insert.append(data)
 
     def load_user_trades(self, service, appliance, broker_id, account_id, appliance_id):
         """
         Load all user trades data and options for a specific appliance_id / broker_id / account_id
         @param service to be notified once done
         """
-        self.lock()
-        self._pending_user_trade_select.append((service, appliance, broker_id, account_id, appliance_id))
-        self.unlock()
+        with self._mutex:
+            self._pending_user_trade_select.append((service, appliance, broker_id, account_id, appliance_id))
 
     def clear_user_trades(self, broker_id, account_id, appliance_id):
         """
         Delete all user trades data and options for a specific appliance_id / broker_id / account_id
         """
-        self.lock()
-        self._pending_user_trade_delete.append((broker_id, account_id, appliance_id))
-        self.unlock()
+        with self._mutex:
+            self._pending_user_trade_delete.append((broker_id, account_id, appliance_id))
 
     def store_user_trader(self, data):
         """
@@ -497,21 +478,19 @@ class Database(object):
             dict data (to be json encoded)
             dict regions (to be json encoded)
         """
-        self.lock()
-        if isinstance(data, list):
-            self._pending_user_trader_insert.extend(data)
-        else:
-            self._pending_user_trader_insert.append(data)
-        self.unlock()
+        with self._mutex:
+            if isinstance(data, list):
+                self._pending_user_trader_insert.extend(data)
+            else:
+                self._pending_user_trader_insert.append(data)
 
     def load_user_traders(self, service, appliance, broker_id, account_id, appliance_id):
         """
         Load all user traders data and options for a specific appliance_id / broker_id / account_id
         @param service to be notified once done
         """
-        self.lock()
-        self._pending_user_trader_select.append((service, appliance, broker_id, account_id, appliance_id))
-        self.unlock()
+        with self._mutex:
+            self._pending_user_trader_select.append((service, appliance, broker_id, account_id, appliance_id))
 
     #
     # Processing
@@ -538,10 +517,9 @@ class Database(object):
         pass
 
     def process_tick(self):
-        self.lock()
-        pti = copy.copy(self._pending_tick_insert)
-        self._pending_tick_insert.clear()
-        self.unlock()
+        with self._mutex:
+            pti = copy.copy(self._pending_tick_insert)
+            self._pending_tick_insert.clear()
 
         for tick_storage in pti:
             if tick_storage.has_data():
