@@ -586,12 +586,8 @@ class Market(object):
         precision = self._price_limits[3] or self._quote_precision
 
         if not precision:
-            if use_quote:
-                # quote use value per pip
-                precision = decimal_place(self.value_per_pip)
-            else:
-                # base use one pip mean alias tick size
-                precision = decimal_place(self.one_pip_means)
+            # quote use value per pip
+            precision = decimal_place(self.value_per_pip)
 
             if not precision:
                 precision = 8
