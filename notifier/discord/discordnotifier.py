@@ -55,7 +55,7 @@ class DiscordNotifier(Notifier):
         self._active_trades = notifier_config.get('active-trades', False)
         self._historical_trades = notifier_config.get('historical-trades', False)
 
-        self._signals = notifier_config.get('signals', ("entry", "exit"))  # "take-profit", "stop-loss", "quantity"
+        self._signals_opts = notifier_config.get('signals', ("entry", "exit"))  # "take-profit", "stop-loss", "quantity"
 
         self._strategy_service = None
 
@@ -88,7 +88,7 @@ class DiscordNotifier(Notifier):
             message = ""
 
             if signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
-                if not signal.data['action'] in self._signals:
+                if not signal.data['action'] in self._signals_opts:
                     continue
 
                 direction = "long" if signal.data['direction'] == Position.LONG else "short"
@@ -105,16 +105,16 @@ class DiscordNotifier(Notifier):
                     signal.data['trade-id'],
                     timeframe_to_str(signal.data['timeframe']))
 
-                if signal.data['stop-loss'] and 'stop-loss' in self._signals:
+                if signal.data['stop-loss'] and 'stop-loss' in self._signals_opts:
                     message += " SL@%s" % (signal.data['stop-loss'],)
 
-                if signal.data['take-profit'] and 'take-profit' in self._signals:
+                if signal.data['take-profit'] and 'take-profit' in self._signals_opts:
                     message += " TP@%s" % (signal.data['take-profit'],)
 
                 if signal.data['profit-loss'] is not None:
                     message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
 
-                if signal.data['quantity'] is not None and 'quantity' in self._signals:
+                if signal.data['quantity'] is not None and 'quantity' in self._signals_opts:
                     message += " Q:%s" % signal.data['quantity']
 
                 if signal.data['comment'] is not None:
