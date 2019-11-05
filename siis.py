@@ -415,6 +415,8 @@ def application(argv):
     # for display stats (@todo move to views)
     desktop_service.strategy_service = strategy_service
     desktop_service.trader_service = trader_service
+    notifier_service.set_strategy_service(strategy_service)
+    notifier_service.set_trader_service(trader_service)
 
     # register terminal commands
     commands_handler = CommandsHandler()

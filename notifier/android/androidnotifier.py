@@ -43,11 +43,19 @@ class AndroidNotifier(Notifier):
         self._who = notifier_config.get('who', 'SiiS')
         self._auth_key = notifier_config.get('auth-key')
         self._channels = notifier_config.get('channels', {
-            "signals": "/topics/default"
+            "signals": "/topics/default",  # @todo
+            "watchdog": "/topics/default"  # @todo
         })
 
         if 'signals' not in self._channels:
-            self._channels['signals'] = "/topics/default"
+            self._channels['signals'] = "/topics/default"  # @todo
+
+        if 'watchdog' not in self._channels:
+            self._channels['watchdog'] = "/topics/default"  # @todo
+
+        self._signals = notifier_config.get('signals', ("entry", "exit" "take-profit", "stop-loss", "quantity"))
+        self._watchdog = notifier_config.get('watchdog', ("timeout", "unreachable"))
+        self._account = notifier_config.get('account', ("balance", "assets-balance"))
 
     def start(self, options):
         if self._auth_key and self._channels.get('signals') and not self._backtesting:
@@ -70,8 +78,14 @@ class AndroidNotifier(Notifier):
             label = ""
             message = ""
             sound = "default"
+            channel = ""
 
             if signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
+                if not signal.data['action'] in self._signals:
+                    continue
+
+                channel = self._channels.get('signals')
+
                 direction = "long" if signal.data['direction'] == Position.LONG else "short"
                 ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
                 label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
@@ -86,32 +100,50 @@ class AndroidNotifier(Notifier):
                     signal.data['trade-id'],
                     timeframe_to_str(signal.data['timeframe']))
 
-                if signal.data['stop-loss']:
+                if signal.data['stop-loss'] and 'stop-loss' in self._signals:
                     message += " SL@%s" % (signal.data['stop-loss'],)
 
-                if signal.data['take-profit']:
+                if signal.data['take-profit'] and 'take-profit' in self._signals:
                     message += " TP@%s" % (signal.data['take-profit'],)
 
                 if signal.data['profit-loss'] is not None:
                     message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
 
+                if signal.data['quantity'] is not None and 'quantity' in self._signals:
+                    message += " Q:%s" % signal.data['quantity']
+
                 if signal.data['comment'] is not None:
                     message += " (%s)" % signal.data['comment']
 
             elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
-                pass
+                continue
 
             elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
-                pass
+                continue
 
             elif signal.signal_type == Signal.SIGNAL_WATCHDOG_TIMEOUT:
-                pass
+                if not 'timeout' in self._watchdog:
+                    continue
+
+                channel = self._channels.get('watchdog')
+
+                ldatetime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+                label = "Watchdog timeout pid %i service" % (signal.data[0], signal.data[1])
+
+                message = "Watchdog timeout pid %i service %s after %.0f' at %s" % (
+                    signal.data[0], signal.data[1], signal.data[2], ldatetime)
 
             elif signal.signal_type == Signal.SIGNAL_WATCHDOG_UNREACHABLE:
-                pass
+                if not 'unreachable' in self._watchdog:
+                    continue
+
+                channel = self._channels.get('watchdog')
+
+                ldatetime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+                label = "Watchdog unreachable service %s'" % signal.data[0]
+                message = "Watchdog unreachable service %s at %s - %s" % (signal.data[0], ldatetime, signal.data[1])
 
             if message:
-                channel = self._channels.get('signals')
                 if channel and self._auth_key:
                     try:
                         send_to_android(self._auth_key, channel, self._who, message, sound)
@@ -137,7 +169,8 @@ class AndroidNotifier(Notifier):
                 self.push_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHDOG:
-            self.push_signal(signal)
+            if signal.signal_type in (Signal.SIGNAL_WATCHDOG_TIMEOUT, Signal.SIGNAL_WATCHDOG_UNREACHABLE):
+                self.push_signal(signal)
 
     #
     # helpers

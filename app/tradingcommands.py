@@ -5,6 +5,7 @@
 
 from terminal.command import Command
 from strategy.strategy import Strategy
+from notifier.notifier import Notifier
 from trader.trader import Trader
 
 from terminal.terminal import Terminal
@@ -70,9 +71,9 @@ class PlayCommand(Command):
                 Terminal.inst().action("Activated all notifiers", view='status')
                 return True
             elif len(args) == 2:
-                notifer = self._notifier_service.notifier(args[1])
-                if notifer:
-                    notifer.set_activity(True)
+                notifier = self._notifier_service.notifier(args[1])
+                if notifier:
+                    notifier.set_activity(True)
                     Terminal.inst().action("Activated notifier %s" % args[1], view='status')
                 return True
 
@@ -89,7 +90,7 @@ class PlayCommand(Command):
             elif args[0] == "traders":
                 return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
             elif args[0] == "notifiers":
-                return self.iterate(1, self._notifier_service.notifiers_indentifiers(), args, tab_pos, direction)
+                return self.iterate(1, self._notifier_service.notifiers_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 3:
             if args[0] == 'apps':
@@ -162,9 +163,9 @@ class PauseCommand(Command):
                 Terminal.inst().action("Paused all notifiers", view='status')
                 return True
             elif len(args) == 2:
-                notifer = self._notifier_service.notifier(args[1])
-                if notifer:
-                    notifer.set_activity(False)
+                notifier = self._notifier_service.notifier(args[1])
+                if notifier:
+                    notifier.set_activity(False)
                     Terminal.inst().action("Paused notifier %s" % args[1], view='status')
                 return True
 
@@ -181,7 +182,7 @@ class PauseCommand(Command):
             elif args[0] == "traders":
                 return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
             elif args[0] == "notifiers":
-                return self.iterate(1, self._notifier_service.notifiers_indentifiers(), args, tab_pos, direction)
+                return self.iterate(1, self._notifier_service.notifiers_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 3:
             if args[0] == 'apps':
@@ -255,7 +256,7 @@ class InfoCommand(Command):
             elif args[0] == "traders":
                 return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
             elif args[0] == "notifiers":
-                return self.iterate(1, self._notifier_service.notifiers_indentifiers(), args, tab_pos, direction)
+                return self.iterate(1, self._notifier_service.notifiers_identifiers(), args, tab_pos, direction)
 
         elif len(args) <= 3:
             if args[0] == 'apps':

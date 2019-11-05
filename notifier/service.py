@@ -48,6 +48,24 @@ class NotifierService(Service):
         # notifiers config
         self._notifiers_config = self._init_notifier_config(options)
 
+        # use to post formatted or raw tables of active and historical trades
+        self._strategy_service = None
+        self._trader_service = None
+
+    def set_strategy_service(self, strategy_service):
+        self._strategy_service = strategy_service
+
+    def set_trader_service(self, trader_service):
+        self._trader_service = trader_service
+
+    @property
+    def strategy_service(self):
+        return self._strategy_service
+
+    @property
+    def trader_service(self):
+        return self._trader_service
+
     def start(self, options):
         # notifiers
         for k, notifier in self._notifiers_config.items():

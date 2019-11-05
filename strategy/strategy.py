@@ -157,7 +157,7 @@ class Strategy(Runnable):
     #
 
     def notify_order(self, trade_id, direction, symbol, price, timestamp, timeframe,
-            action='order', profit_loss=None, stop_loss=None, take_profit=None, comment=None):
+            action='order', profit_loss=None, stop_loss=None, take_profit=None, comment=None, quantity=None):
         """
         Notify an order execution to the user. It must be called by the strategy-trader.
         @param trade_id If -1 then it notify a simple signal unrelated to a trade.
@@ -175,7 +175,8 @@ class Strategy(Runnable):
             'profit-loss': profit_loss,
             'stop-loss': stop_loss,
             'take-profit': take_profit,
-            'comment': comment
+            'comment': comment,
+            'quantity': quantity
         }
 
         self.service.notify(Signal.SIGNAL_STRATEGY_ENTRY_EXIT, self._name, signal_data)

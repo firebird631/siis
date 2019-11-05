@@ -17,7 +17,9 @@ def send_to_android(auth_key, channel, title, message, sound="default"):
         "notification": {
             'title': title,
             'body': message,
-            'sound': sound
+            'sound': sound,
+            # 'icon' : 'app logo',
+            # 'badge' : 'icon in task android bar / iOS monochrome)',
         }
     }
     headers = {

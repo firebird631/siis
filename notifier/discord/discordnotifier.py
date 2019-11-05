@@ -3,9 +3,10 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Discord notification handler
 
-import time
 import logging
+import time
 import traceback
+import re
 
 from importlib import import_module
 from datetime import datetime, timedelta
@@ -35,25 +36,38 @@ class DiscordNotifier(Notifier):
     def __init__(self, name, identifier, service, options):
         super().__init__("discord", identifier, service)
 
+        self._url_re = re.compile(
+                r'^(?:http|ftp)s?://' # http:// or https://
+                r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
+                r'localhost|' #localhost...
+                r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+                r'(?::\d+)?' # optional port
+                r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+
         self._backtesting = options.get('backtesting', False)
 
         notifier_config = service.notifier_config(name)
 
-        self._display_percents = False
-
         self._who = notifier_config.get('who', 'SiiS')
         self._webhooks = notifier_config.get('webhooks', {})
 
-        # @todo could validate url format
+        self._display_percents = False
+        self._active_trades = notifier_config.get('active-trades', False)
+        self._historical_trades = notifier_config.get('historical-trades', False)
 
-        self._send_active_trades = notifier_config.get('active-trades', False)
-        self._send_historical_trades = notifier_config.get('historical-trades', False)
+        self._signals = notifier_config.get('signals', ("entry", "exit"))  # "take-profit", "stop-loss", "quantity"
 
         self._strategy_service = None
 
     def start(self, options):
         if self._webhooks.get('signals') and not self._backtesting:
             # only of signals webhook is defined
+
+            # could validate url format
+            for k, url in self._webhooks.items():
+                if re.match(self._url_re, url) is None:
+                    raise NotifierException(self.name, self.identifier, "Malformed webhook url %s" % url)
+
             return super().start(options)
         else:
             return False
@@ -74,6 +88,9 @@ class DiscordNotifier(Notifier):
             message = ""
 
             if signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
+                if not signal.data['action'] in self._signals:
+                    continue
+
                 direction = "long" if signal.data['direction'] == Position.LONG else "short"
                 ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
                 label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
@@ -88,23 +105,26 @@ class DiscordNotifier(Notifier):
                     signal.data['trade-id'],
                     timeframe_to_str(signal.data['timeframe']))
 
-                if signal.data['stop-loss']:
+                if signal.data['stop-loss'] and 'stop-loss' in self._signals:
                     message += " SL@%s" % (signal.data['stop-loss'],)
 
-                if signal.data['take-profit']:
+                if signal.data['take-profit'] and 'take-profit' in self._signals:
                     message += " TP@%s" % (signal.data['take-profit'],)
 
                 if signal.data['profit-loss'] is not None:
                     message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
 
+                if signal.data['quantity'] is not None and 'quantity' in self._signals:
+                    message += " Q:%s" % signal.data['quantity']
+
                 if signal.data['comment'] is not None:
                     message += " (%s)" % signal.data['comment']
 
             elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
-                pass
+                continue
 
             elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
-                pass
+                continue
 
             if message:
                 dst = self._webhooks.get('signals')
