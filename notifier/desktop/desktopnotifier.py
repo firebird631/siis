@@ -474,6 +474,12 @@ class DesktopNotifier(Notifier):
             elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
                 pass
 
+            elif signal.signal_type == Signal.SIGNAL_WATCHDOG_TIMEOUT:
+                pass
+
+            elif signal.signal_type == Signal.SIGNAL_WATCHDOG_UNREACHABLE:
+                pass
+
             count += 1
             if count > 10:
                 # no more than per loop
@@ -496,6 +502,9 @@ class DesktopNotifier(Notifier):
         if signal.source == Signal.SOURCE_STRATEGY:
             if signal.signal_type in (Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT, Signal.SIGNAL_STRATEGY_ENTRY_EXIT):
                 self.push_signal(signal)
+
+        elif signal.source == Signal.SOURCE_WATCHDOG:
+            self.push_signal(signal)
 
     #
     # helpers

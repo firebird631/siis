@@ -54,6 +54,9 @@ class Signal(object):
 	SIGNAL_STRATEGY_TRADE_LIST = 700    # data is a an array of tuple with (market_id, integer trade_id, integer trade_type, dict data, dict operations)
 	SIGNAL_STRATEGY_TRADER_LIST = 701   # data is a an array of tuple with (market_id, boolean activity, dict data, dict regions)
 
+	SIGNAL_WATCHDOG_TIMEOUT = 800       # data is a tuple with (pid, service_name, timeout)
+	SIGNAL_WATCHDOG_UNREACHABLE = 801   # data is a tuple with (service_name, message)
+
 	SOURCE_UNDEFINED = 0
 	SOURCE_WATCHER = 1
 	SOURCE_TRADER = 2
@@ -61,6 +64,7 @@ class Signal(object):
 	SOURCE_MONITOR = 4
 	SOURCE_NOTIFIER = 5
 	SOURCE_VIEW = 6
+	SOURCE_WATCHDOG = 7
 
 	def __init__(self, source, source_name, signal_type, data):
 		self._source = source

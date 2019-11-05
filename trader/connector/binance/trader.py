@@ -1132,57 +1132,60 @@ class BinanceTrader(Trader):
 
         order.executed += data['filled']
 
-        # @todo commented for now
-        # if data['trade-id']:
-        #     # same asset used for commission
-        #     buy_or_sell = data['direction'] == Order.LONG
+        #
+        # compute avg price and new qty
+        #
 
-        #     # base details in the trade order
-        #     base_trade_qty = data['filled']
-        #     base_exec_price = data['exec-price']
+        if data['trade-id']:
+            # same asset used for commission
+            buy_or_sell = data['direction'] == Order.LONG
 
-        #     # price of the quote asset expressed in prefered quote at time of the trade (need a REST call)
-        #     quote_trade_qty = data['quote-transacted']  # or base_trade_qty * base_exec_price
-        #     quote_exec_price = 1.0
+            # base details in the trade order
+            base_trade_qty = data['filled']
+            base_exec_price = data['exec-price']
 
-        #     if quote_asset.quote and quote_asset.symbol != quote_asset.quote:
-        #         # quote price to be fetched
-        #         if self._watcher.has_instrument(quote_asset.symbol+quote_asset.quote):
-        #             # direct, and get the related market
-        #             quote_market = self._markets.get(quote_asset.symbol+quote_asset.quote)                    
-        #             quote_exec_price = self.history_price(quote_asset.symbol+quote_asset.quote, data['timestamp'])
+            # price of the quote asset expressed in prefered quote at time of the trade (need a REST call)
+            quote_trade_qty = data['quote-transacted']  # or base_trade_qty * base_exec_price
+            quote_exec_price = 1.0
 
-        #         elif self._watcher.has_instrument(quote_asset.quote+quote_asset.symbol):
-        #             # indirect, but cannot have the market
-        #             quote_exec_price = 1.0 / self.history_price(quote_asset.quote+quote_asset.symbol, data['timestamp'])
+            if quote_asset.quote and quote_asset.symbol != quote_asset.quote:
+                # quote price to be fetched
+                if self._watcher.has_instrument(quote_asset.symbol+quote_asset.quote):
+                    # direct, and get the related market
+                    quote_market = self._markets.get(quote_asset.symbol+quote_asset.quote)                    
+                    quote_exec_price = self.history_price(quote_asset.symbol+quote_asset.quote, data['timestamp'])
 
-        #     # base asset
-        #     self.__update_asset(order.order_type, base_asset, market, data['trade-id'], base_exec_price, base_trade_qty, buy_or_sell, data['timestamp'])
+                elif self._watcher.has_instrument(quote_asset.quote+quote_asset.symbol):
+                    # indirect, but cannot have the market
+                    quote_exec_price = 1.0 / self.history_price(quote_asset.quote+quote_asset.symbol, data['timestamp'])
 
-        #     # quote asset
-        #     self.__update_asset(order.order_type, quote_asset, quote_market, None, quote_exec_price, quote_trade_qty, not buy_or_sell, data['timestamp'])
+            # base asset
+            self.__update_asset(order.order_type, base_asset, market, data['trade-id'], base_exec_price, base_trade_qty, buy_or_sell, data['timestamp'])
 
-        #     # commission asset
-        #     if data['commission-asset'] == base_asset.symbol:
-        #         self.__update_asset(Order.ORDER_MARKET, base_asset, market, None, base_exec_price, data['commission-amount'], False, data['timestamp'])
-        #     else:
-        #         commission_asset = self.__get_or_add_asset(data['commission-asset'])
-        #         commission_asset_market = None
-        #         quote_exec_price = 1.0
+            # quote asset
+            self.__update_asset(order.order_type, quote_asset, quote_market, None, quote_exec_price, quote_trade_qty, not buy_or_sell, data['timestamp'])
 
-        #         if commission_asset.quote and commission_asset.symbol != commission_asset.quote:
-        #             # commission asset price to be fetched
-        #             if self._watcher.has_instrument(commission_asset.symbol+commission_asset.quote):
-        #                 # direct, and get the related market
-        #                 commission_asset_market = self.market(commission_asset.symbol+commission_asset.quote)
-        #                 quote_exec_price = commission_asset_market.price
+            # commission asset
+            if data['commission-asset'] == base_asset.symbol:
+                self.__update_asset(Order.ORDER_MARKET, base_asset, market, None, base_exec_price, data['commission-amount'], False, data['timestamp'])
+            else:
+                commission_asset = self.__get_or_add_asset(data['commission-asset'])
+                commission_asset_market = None
+                quote_exec_price = 1.0
 
-        #             elif self._watcher.has_instrument(commission_asset.quote+commission_asset.symbol):
-        #                 # indirect, but cannot have the market
-        #                 quote_exec_price = 1.0 / self.history_price(commission_asset.quote+commission_asset.symbol, data['timestamp'])
+                if commission_asset.quote and commission_asset.symbol != commission_asset.quote:
+                    # commission asset price to be fetched
+                    if self._watcher.has_instrument(commission_asset.symbol+commission_asset.quote):
+                        # direct, and get the related market
+                        commission_asset_market = self.market(commission_asset.symbol+commission_asset.quote)
+                        quote_exec_price = commission_asset_market.price
 
-        #         self.__update_asset(Order.ORDER_MARKET, commission_asset, commission_asset_market, None,
-        #             quote_exec_price, data['commission-amount'], False, data['timestamp'])
+                    elif self._watcher.has_instrument(commission_asset.quote+commission_asset.symbol):
+                        # indirect, but cannot have the market
+                        quote_exec_price = 1.0 / self.history_price(commission_asset.quote+commission_asset.symbol, data['timestamp'])
+
+                self.__update_asset(Order.ORDER_MARKET, commission_asset, commission_asset_market, None,
+                    quote_exec_price, data['commission-amount'], False, data['timestamp'])
 
     def on_order_deleted(self, market_id,  order_id, ref_order_id):
         with self._mutex:
