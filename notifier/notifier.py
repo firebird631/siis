@@ -89,7 +89,8 @@ class Notifier(Runnable):
 
         while self._signals:
             signal = self._signals.popleft()
-            self.process_signal(signal)
+            if signal:
+                self.process_signal(signal)
 
             count += 1
             if count > 10:
@@ -115,9 +116,6 @@ class Notifier(Runnable):
         self._signals.append(signal)
         self._condition.notify()
         self._condition.release()
-
-    def update(self):
-        return True
 
     def command(self, command_type, data):
         pass

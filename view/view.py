@@ -23,6 +23,10 @@ class View(object):
         self._refresh = 0
         self._percent = False  # display percent for tables
 
+    @property
+    def id(self):
+        return self._id
+
     def create(self):
         Terminal.inst().create_content_view(self._id)
 
@@ -43,10 +47,7 @@ class View(object):
             return False
 
         return time.time() - self._refresh >= View.REFRESH_RATE
-
-    def on_update(self, signal):
-        pass
-
+    
     def refresh(self):
         pass
 
@@ -71,17 +72,25 @@ class View(object):
         if key == 'KEY_SPREVIOUS':
             self.prev_item()
         elif key == 'KEY_SNEXT':
-            self.prev_item()
+            self.next_item()
+
+    def count_items(self):
+        return 0
 
     def prev_item(self):
         self._item -= 1
         if self._item < 0:
-            self._item = 0
+            self._item = self.count_items() - 1
+            if self._item < 0:
+                self._item = 0
 
         self._refresh = 0  # force refresh
 
     def next_item(self):
         self._item += 1
+        if self._item >= self.count_items():
+            self._item = 0
+
         self._refresh = 0  # force refresh
 
     def toggle_percent(self):

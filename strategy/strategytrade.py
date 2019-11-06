@@ -548,17 +548,17 @@ class StrategyTrade(object):
         elif self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED:
             # entry order filling until complete
             return 'filling'
-        elif self._entry_state == StrategyTrade.STATE_FILLED:
-            # entry order completed
-            return 'filled'
         elif self._exit_state == StrategyTrade.STATE_PARTIALLY_FILLED:
             # exit order filling until complete
-            return 'closing'           
+            return 'closing'
         elif self._entry_state == StrategyTrade.STATE_FILLED and self._exit_state == StrategyTrade.STATE_FILLED:
             # entry and exit are completed
             return 'closed'
         elif self._entry_state == StrategyTrade.STATE_CANCELED and self.e <= 0: 
             return 'canceled'
+        elif self._entry_state == StrategyTrade.STATE_FILLED:
+            # entry order completed
+            return 'filled'
         else:
             # any others case meaning pending state
             return 'waiting'
@@ -698,8 +698,8 @@ class StrategyTrade(object):
         self.dir = data.get('direction', 0)  # self.direction_from_str(data.get('direction', ''))
         self.oq = data.get('order-qty', 0.0)
 
-        self.tp = data.get('take-profit-price', None)
-        self.sl = data.get('stop-loss-price', None)
+        self.tp = data.get('take-profit-price', 0.0)
+        self.sl = data.get('stop-loss-price', 0.0)
 
         self.aep = data.get('avg-entry-price', 0.0)
         self.axp = data.get('avg-exit-price', 0.0)

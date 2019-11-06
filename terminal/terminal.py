@@ -894,15 +894,14 @@ class Terminal(object):
         else:
             height, width = 0, 0
 
-        # @todo view must be in percent for reshape
         w1 = int(width*0.9)
         w2 = width-w1
 
         free_h = 4
         h1 = height - 2 - 2 - free_h
 
-        view = View(name, View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
         head_view = View(name+'-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
+        view = View(name, View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
         self._views[name] = view
         self._views[name+'-head'] = head_view

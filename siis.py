@@ -27,7 +27,6 @@ from trader.service import TraderService
 from strategy.service import StrategyService
 from monitor.service import MonitorService
 from notifier.service import NotifierService
-from notifier.desktop.desktopnotifier import OrgDesktopNotifier
 from common.watchdog import WatchdogService
 
 from terminal.terminal import Terminal
@@ -39,6 +38,7 @@ from common.runnable import Runnable
 from common.siislog import SiisLog
 
 from view.service import ViewService
+from view.defaultviews import setup_default_views
 
 from app.help import display_cli_help, display_welcome
 from app.setup import install
@@ -52,19 +52,7 @@ def signal_handler(sig, frame):
         Terminal.inst().action('Tip command :q<ENTER> to exit !', view='status')
 
 
-def setup_views(siis_logger, view_service, watcher_service, trader_service, strategy_service):
-    pass
-    # @todo
-    # 'strategy'
-    # 'stat'
-    # 'perf'
-    # 'trader'
-    # 'account'
-    # 'market'
-    # 'ticker'
-
-
-def terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service):
+def terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service):
     if watcher_service:
         watcher_service.terminate()
     if trader_service:
@@ -73,8 +61,6 @@ def terminate(watchdog_service, watcher_service, trader_service, strategy_servic
         strategy_service.terminate()
     if monitor_service:
         monitor_service.terminate()
-    if desktop_service:
-        desktop_service.terminate()
     if view_service:
         view_service.terminate()
     if notifier_service:
@@ -309,7 +295,6 @@ def application(argv):
     # application services
     view_service = None
     notifier_service = None
-    desktop_service = None
     watcher_service = None
     trader_service = None
     strategy_service = None
@@ -318,32 +303,22 @@ def application(argv):
     Terminal.inst().info("Starting monitor service...")
     monitor_service = MonitorService(options)
 
-    # desktop notifier (to be splitted in ViewService and in a DesktopNotifier managed by a NotifierService)
-    try:    
-        desktop_service = OrgDesktopNotifier(options)
-        watchdog_service.add_service(desktop_service)
-    except Exception as e:
-        Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
-        sys.exit(-1)
-
     # notifier service
     try:
         notifier_service = NotifierService(options)
         notifier_service.start(options)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
         sys.exit(-1)
 
     # view service
     try:
         view_service = ViewService(options)
-        # view_service.start(options)
         watchdog_service.add_service(view_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
         sys.exit(-1)
 
     # database manager
@@ -352,7 +327,7 @@ def application(argv):
         Database.inst().setup(options)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
         sys.exit(-1)
 
     # watcher service
@@ -363,7 +338,7 @@ def application(argv):
         watchdog_service.add_service(watcher_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
         sys.exit(-1)
 
     # trader service
@@ -374,15 +349,13 @@ def application(argv):
         watchdog_service.add_service(trader_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
         sys.exit(-1)
 
     # want to display desktop notification and update views
-    watcher_service.add_listener(desktop_service)
     watcher_service.add_listener(view_service)
 
     # want to display desktop notification and update views
-    trader_service.add_listener(desktop_service)
     trader_service.add_listener(view_service)
 
     # trader service listen to watcher service and update views
@@ -396,7 +369,7 @@ def application(argv):
         watchdog_service.add_service(strategy_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
         sys.exit(-1)
 
     # wan't to be notifier of system errors
@@ -412,9 +385,7 @@ def application(argv):
     strategy_service.add_listener(notifier_service)
     strategy_service.add_listener(view_service)
 
-    # for display stats (@todo move to views)
-    desktop_service.strategy_service = strategy_service
-    desktop_service.trader_service = trader_service
+    # want signal and important notifications
     notifier_service.set_strategy_service(strategy_service)
     notifier_service.set_trader_service(trader_service)
 
@@ -427,7 +398,14 @@ def application(argv):
     register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service, notifier_service)
     register_region_commands(commands_handler, strategy_service)
 
-    setup_views(siis_logger, view_service, watcher_service, trader_service, strategy_service)
+    if view_service:
+        # setup the default views
+        try:
+            setup_default_views(view_service, watcher_service, trader_service, strategy_service)
+        except Exception as e:
+            Terminal.inst().error(str(e))
+            terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+            sys.exit(-1)
 
     # setup and start the monitor service
     monitor_service.setup(watcher_service, trader_service, strategy_service)
@@ -436,7 +414,7 @@ def application(argv):
         watchdog_service.add_service(monitor_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, desktop_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
         sys.exit(-1)
 
     Terminal.inst().message("Running main loop...")
@@ -493,7 +471,6 @@ def application(argv):
                         value_changed = True
                         command_timeout = 0
 
-                    desktop_service.on_key_pressed(key)  # @deprecated remove it
                     view_service.on_key_pressed(key)
 
                     if key == 'KEY_ESCAPE':
@@ -618,10 +595,7 @@ def application(argv):
                                         notifier_service.command("desktop", "toggle-popup", None)
                                 elif value == '%':
                                     if view_service:
-                                        view_service.toggle_percents()
-                                    if desktop_service:  # @deprecated remove later
-                                        desktop_service.toggle_percents()
-
+                                        view_service.toggle_percent()
                                 else:
                                     result = False
 
@@ -674,9 +648,6 @@ def application(argv):
                 if monitor_service:
                     monitor_service.sync()
 
-                if desktop_service:
-                    desktop_service.sync()
-
                 if view_service:
                     view_service.sync()
 
@@ -706,7 +677,6 @@ def application(argv):
     strategy_service.terminate() if strategy_service else None
     trader_service.terminate() if trader_service else None
     watcher_service.terminate() if watcher_service else None
-    desktop_service.terminate() if desktop_service else None
     view_service.terminate() if view_service else None
     notifier_service.terminate() if notifier_service else None
 

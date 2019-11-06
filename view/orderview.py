@@ -1,19 +1,19 @@
 # @date 2019-06-28
 # @author Frederic SCHERMA
 # @license Copyright (c) 2019 Dream Overflow
-# Account view.
+# Order view.
 
 from terminal.terminal import Terminal
 from view.tableview import TableView
 
 
-class AccountView(TableView):
+class OrderView(TableView):
     """
-    Account view.
+    Order view.
     """
 
     def __init__(self, trader_service):
-        super().__init__("account")
+        super().__init__("order")
 
         self._trader_service = trader_service
 
@@ -33,13 +33,13 @@ class AccountView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.account_table(*self.table_format())
+                columns, table, total_size = trader.active_orders_table(*self.table_format(), quantities=True)
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
                 print(e)
                 pass
 
-            self.set_title("Account details (%i) for trader %s - %s" % (num, trader.name, trader.account.name))
+            self.set_title("Order list (%i) trader %s on account %s" % (num, trader.name, trader.account.name))
         else:
-            self.set_title("Account details - No configured trader")
+            self.set_title("Order list - No configured trader")

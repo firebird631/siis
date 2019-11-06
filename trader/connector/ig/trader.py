@@ -63,14 +63,11 @@ class IGTrader(Trader):
         super().connect()
 
         # retrieve the ig.com watcher and take its connector
-        self.lock()
+        with self._mutex:
+            self._watcher = self.service.watcher_service.watcher(self._name)
 
-        self._watcher = self.service.watcher_service.watcher(self._name)
-
-        if self._watcher:
-            self.service.watcher_service.add_listener(self)
-
-        self.unlock()
+            if self._watcher:
+                self.service.watcher_service.add_listener(self)
 
         if self._watcher and self._watcher.connected:
             self.on_watcher_connected(self._watcher.name)
@@ -78,13 +75,10 @@ class IGTrader(Trader):
     def disconnect(self):
         super().disconnect()
 
-        self.lock()
-
-        if self._watcher:
-            self.service.watcher_service.remove_listener(self)
-            self._watcher = None
-
-        self.unlock()
+        with self._mutex:
+            if self._watcher:
+                self.service.watcher_service.remove_listener(self)
+                self._watcher = None
 
     def on_watcher_connected(self, watcher_name):
         super().on_watcher_connected(watcher_name)
@@ -99,14 +93,10 @@ class IGTrader(Trader):
         for symbol in matching_symbols:
             self.market(symbol, True)
 
-        # markets, orders and positions
-        self.lock()
-
-        # initials orders and positions
-        self.__fetch_orders()
-        self.__fetch_positions()
-
-        self.unlock()
+        with self._mutex:
+            # initials orders and positions
+            self.__fetch_orders()
+            self.__fetch_positions()
 
         self.account.update(self._watcher.connector)
 
@@ -149,43 +139,37 @@ class IGTrader(Trader):
             # account data update (each minute)
             #
 
-            try:
-                self.lock()
-                self._account.update(self._watcher.connector)
-            except Exception as e:
-                logger.error(traceback.format_exc())
-            finally:
-                self.unlock()
+            with self._mutex:
+                try:
+                    self._account.update(self._watcher.connector)
+                except Exception as e:
+                    logger.error(traceback.format_exc())
 
             #
             # positions
             #
 
-            try:
-                self.lock()
-                # only once per 10 seconds to avoid API excess
-                if time.time() - self._last_position_update >= 10.0:
-                    self.__fetch_positions()
-                    self._last_position_update = time.time()
-            except Exception as e:
-                logger.error(traceback.format_exc())
-            finally:
-                self.unlock()
+            with self._mutex:
+                try:
+                    # only once per 10 seconds to avoid API excess
+                    if time.time() - self._last_position_update >= 10.0:
+                        self.__fetch_positions()
+                        self._last_position_update = time.time()
+                except Exception as e:
+                    logger.error(traceback.format_exc())
 
             #
             # orders
             #
 
-            try:
-                self.lock()
-                # only once per 10 seconds to avoid API excess
-                if time.time() - self._last_order_update >= 10.0:
-                    self.__fetch_orders()
-                    self._last_order_update = time.time()
-            except Exception as e:
-                logger.error(traceback.format_exc())
-            finally:
-                self.unlock()
+            with self._mutex:
+                try:
+                    # only once per 10 seconds to avoid API excess
+                    if time.time() - self._last_order_update >= 10.0:
+                        self.__fetch_orders()
+                        self._last_order_update = time.time()
+                except Exception as e:
+                    logger.error(traceback.format_exc())
 
         return True
 
@@ -527,13 +511,10 @@ class IGTrader(Trader):
         """
         positions = []
 
-        self.lock()
-
-        for k, position in self._positions.items():
-            if position.symbol == market_id:
-                positions.append(copy.copy(position))
-
-        self.unlock()
+        with self._mutex:
+            for k, position in self._positions.items():
+                if position.symbol == market_id:
+                    positions.append(copy.copy(position))
 
         return positions
 

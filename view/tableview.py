@@ -1,9 +1,11 @@
 # @date 2019-06-28
 # @author Frederic SCHERMA
 # @license Copyright (c) 2019 Dream Overflow
-# TAble view base class.
+# Table view base class.
 
-from terminal.terminal import Terminal
+from tabulate import tabulate
+
+from terminal.terminal import Terminal, Color
 from view.view import View
 
 
@@ -33,7 +35,7 @@ class TableView(View):
         if self._row[0] >= self._table[1]:
             self._row[0] = self._table[1] - 1
 
-        self._refresh = True
+        self._refresh = 0
 
     def scroll_col(self, n):
         """
@@ -47,7 +49,7 @@ class TableView(View):
         if self._col > self._table[0]:
             self._col = self._table[0]
 
-        self._refresh = True
+        self._refresh = 0
 
     def table_format(self):
         return Terminal.inst().style(), self._row[0], self.height()-4, self._col
@@ -60,27 +62,35 @@ class TableView(View):
                 self.scroll_row(-(self.height()-4))   
             elif key == 'KEY_NPAGE':
                 self.scroll_row(self.height()-4)
-            elif (c == 'KEY_SR' or c == 'j'):
+            elif (key == 'KEY_SR' or key == 'j'):
                 self.scroll_row(-1)
-            elif (c == 'KEY_SF' or c == 'k'):
+            elif (key == 'KEY_SF' or key == 'k'):
                 self.scroll_row(1)
-            elif (c == 'KEY_SLEFT' or c == 'h'):
+            elif (key == 'KEY_SLEFT' or key == 'h'):
                 self.scroll_col(-1)
-            elif (c == 'KEY_SRIGHT' or c == 'l'):
+            elif (key == 'KEY_SRIGHT' or key == 'l'):
                 self.scroll_col(1)
+            elif key == 'KEY_SPREVIOUS':
+                self.prev_item()
+            elif key == 'KEY_SNEXT':
+                self.next_item()
 
-    def table(self, columns, data):
+    def table(self, columns, table, total_size=None):
         """
         Draw a table in this view.
         """
-        if not columns or data is None:
+        if not columns or table is None:
             return
 
-        self._table = (len(columns), len(data))
+        self._table = total_size if total_size else (len(columns), len(table))
 
-        table = tabulate(data, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
+        table_data = tabulate(table, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
+
+        # replace color espace code before drawing
+        for k, v in Color.UTERM_COLORS_MAP.items():
+            table_data = table_data.replace(k, v)
 
         # draw the table
         vt = Terminal.inst().view(self._id)
         if vt:
-            vt.draw('', table, True)
+            vt.draw('', table_data, True)

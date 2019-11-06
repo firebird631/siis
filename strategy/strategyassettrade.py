@@ -623,7 +623,7 @@ class StrategyAssetTrade(StrategyTrade):
                 # filled mean also order completed and then no longer exists
                 #
 
-                if data.get('fully-filled'):                   
+                if data.get('fully-filled'):
                     if data['id'] == self.limit_oid:
                         self.limit_oid = None
                         self.limit_ref_oid = None

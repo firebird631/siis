@@ -519,7 +519,7 @@ class CloseCommand(Command):
             Terminal.inst().action("Invalid parameters", view='status')
             return False
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, {
+        self._strategy_service.command(Strategy.COMMAND_TRADE_CLEAN, {
             'appliance': appliance,
             'market-id': market_id,
             'trade-id': trade_id,

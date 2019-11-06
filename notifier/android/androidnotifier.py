@@ -38,7 +38,7 @@ class AndroidNotifier(Notifier):
 
         notifier_config = service.notifier_config(name)
 
-        self._display_percents = False
+        self._display_percent = False
 
         self._who = notifier_config.get('who', 'SiiS')
         self._auth_key = notifier_config.get('auth-key')

@@ -90,6 +90,34 @@ class ATRSRIndicator(Indicator):
 
         return 0.0
 
+    def search_sorted_up(self, direction, last_price, depth=1, epsilon=0.0):
+        n = 0
+        stop_loss = last_price
+
+        if direction > 0:
+            for x in sorted(self._up):
+                if x > stop_loss + epsilon:
+                    stop_loss = x
+                    n += 1
+
+                if n == depth:
+                    break
+
+            return stop_loss
+
+        elif direction < 0:
+            for x in sorted(self._up, reverse=True):
+                if x < stop_loss - epsilon:
+                    stop_loss = x
+                    n += 1
+
+                if n == depth:
+                    break
+
+            return stop_loss
+
+        return 0.0
+
     def search_down(self, direction, last_price, depth=1, epsilon=0.0):
         n = 0
         stop_loss = last_price
@@ -118,6 +146,34 @@ class ATRSRIndicator(Indicator):
 
         return 0.0
 
+    def search_sorted_down(self, direction, last_price, depth=1, epsilon=0.0):
+        n = 0
+        stop_loss = last_price
+
+        if direction > 0:
+            for x in sorted(self._down):
+                if x > stop_loss + epsilon:
+                    stop_loss = x
+                    n += 1
+
+                if n == depth:
+                    break
+
+            return stop_loss
+
+        elif direction < 0:
+            for x in sorted(self._down, reverse=True):
+                if x < stop_loss - epsilon:
+                    stop_loss = x
+                    n += 1
+
+                if n == depth:
+                    break
+
+            return stop_loss
+
+        return 0.0
+
     def search_both(self, direction, last_price, depth=1, epsilon=0.0):
         n = 0
         stop_loss = last_price
@@ -135,6 +191,34 @@ class ATRSRIndicator(Indicator):
 
         elif direction < 0:
             for x in reversed(self._both):
+                if x < stop_loss - epsilon:
+                    stop_loss = x
+                    n += 1
+
+                if n == depth:
+                    break
+
+            return stop_loss
+
+        return 0.0
+
+    def search_sorted_both(self, direction, last_price, depth=1, epsilon=0.0):
+        n = 0
+        stop_loss = last_price
+
+        if direction > 0:
+            for x in sorted(self._both):
+                if x > stop_loss + epsilon:
+                    stop_loss = x
+                    n += 1
+
+                if n == depth:
+                    break
+
+            return stop_loss
+
+        elif direction < 0:
+            for x in sorted(self._both, reverse=True):
                 if x < stop_loss - epsilon:
                     stop_loss = x
                     n += 1

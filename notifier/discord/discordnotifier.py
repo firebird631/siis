@@ -51,7 +51,7 @@ class DiscordNotifier(Notifier):
         self._who = notifier_config.get('who', 'SiiS')
         self._webhooks = notifier_config.get('webhooks', {})
 
-        self._display_percents = False
+        self._display_percent = False
         self._active_trades = notifier_config.get('active-trades', False)
         self._historical_trades = notifier_config.get('historical-trades', False)
 

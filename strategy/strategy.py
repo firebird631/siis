@@ -58,7 +58,7 @@ class Strategy(Runnable):
     COMMAND_TRADE_EXIT = 12     # exit (or eventually cancel if not again filled) an existing trade
     COMMAND_TRADE_INFO = 13     # get and display manual trade info (such as listing operations)
     COMMAND_TRADE_ASSIGN = 14   # manually assign a quantity to a new trade
-    COMMAND_TRADE_CLEAN = 15    # remove/clean an existing trade without filling the remaining quantity
+    COMMAND_TRADE_CLEAN = 15    # remove/clean an existing trade without filling the remaining quantity or in case of management issue
 
     COMMAND_TRADER_MODIFY = 20
     COMMAND_TRADER_INFO = 21

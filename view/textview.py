@@ -37,7 +37,7 @@ class TextView(View):
         if self._row[0] >= len(self._content) - h:
             self._row[0] = len(self._content) - h - 1
 
-        self._refresh = True
+        self._refresh = 0
 
     def on_key_pressed(self, key):
         super().on_key_pressed(key)
