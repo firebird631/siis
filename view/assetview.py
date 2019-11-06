@@ -6,14 +6,17 @@
 from terminal.terminal import Terminal
 from view.tableview import TableView
 
+import logging
+error_logger = logging.getLogger('siis.view.asset')
+
 
 class AssetView(TableView):
     """
     Asset view.
     """
 
-    def __init__(self, trader_service):
-        super().__init__("asset")
+    def __init__(self, service, trader_service):
+        super().__init__("asset", service)
 
         self._trader_service = trader_service
 
@@ -37,8 +40,7 @@ class AssetView(TableView):
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
-                print(e)
-                pass
+                error_logger.error(str(e))
 
             self.set_title("Asset list (%i) trader %s on account %s" % (num, trader.name, trader.account.name))
         else:

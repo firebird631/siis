@@ -75,7 +75,7 @@ class AndroidNotifier(Notifier):
         sound = "default"
         channel = ""
 
-        if signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
+        if signal.signal_type in (Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
             if not signal.data['action'] in self._signals_opts:
                 return
 
@@ -153,7 +153,9 @@ class AndroidNotifier(Notifier):
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if signal.signal_type in (Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT, Signal.SIGNAL_STRATEGY_ENTRY_EXIT):
+            if signal.signal_type in (Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT,
+                    Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
+
                 self.push_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHDOG:

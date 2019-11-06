@@ -112,6 +112,7 @@ class StrategyTrade(object):
             'profit-loss-currency': "",
             'entry-fees': 0.0,
             'exit-fees': 0.0,
+            'exit-reason': "",
             'conditions': {}
         }
 
@@ -242,6 +243,14 @@ class StrategyTrade(object):
     @property
     def profit_loss_currency(self):
         return self._stats['profit-loss-currency']
+
+    @property
+    def exit_reason(self):
+        return self._stats['exit-reason']
+
+    @exit_reason.setter
+    def exit_reason(self, reason):
+        self._stats['exit-reason'] = reason
 
     @expiry.setter
     def expiry(self, expiry):

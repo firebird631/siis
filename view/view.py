@@ -16,16 +16,30 @@ class View(object):
 
     REFRESH_RATE = 0.5
 
-    def __init__(self, _id):
+    DATETIME_FORMATS = (
+        '%Y-%m-%d %H:%M:%S',
+        '%y-%m-%d %H:%M:%S',
+        '%m-%d %H:%M:%S',
+        '%d %H:%M:%S',
+        '%H:%M:%S')
+
+    def __init__(self, _id, service):
         self._id = _id
+        self._service = service
         self._mutex = threading.RLock()  # reentrant locker
         self._item = 0  # in case of multiple item like more than a single appliance or trader
         self._refresh = 0
         self._percent = False  # display percent for tables
+        self._group = False    # group by (depending of the view)
+        self._datetime_format = View.DATETIME_FORMATS[0]
 
     @property
     def id(self):
         return self._id
+
+    @property
+    def service(self):
+        return self._service
 
     def create(self):
         Terminal.inst().create_content_view(self._id)
@@ -46,7 +60,10 @@ class View(object):
         if self._refresh < 0:
             return False
 
-        return time.time() - self._refresh >= View.REFRESH_RATE
+        return time.time() - self._refresh >= self.REFRESH_RATE
+
+    def style(self):
+        return Terminal.inst().style()
     
     def refresh(self):
         pass
@@ -95,4 +112,19 @@ class View(object):
 
     def toggle_percent(self):
         self._percent = not self._percent
+        self._refresh = 0  # force refresh
+
+    def toggle_group(self):
+        self._group = not self._group
+        self._refresh = 0  # force refresh
+
+    def toggle_datetime_format(self):
+        idx = View.DATETIME_FORMATS.index(self._datetime_format)
+        idx += 1
+
+        if idx >= len(View.DATETIME_FORMATS):
+            self._datetime_format = View.DATETIME_FORMATS[0]
+        else:
+            self._datetime_format = View.DATETIME_FORMATS[idx]
+
         self._refresh = 0  # force refresh

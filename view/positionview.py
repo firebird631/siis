@@ -6,14 +6,17 @@
 from terminal.terminal import Terminal
 from view.tableview import TableView
 
+import logging
+error_logger = logging.getLogger('siis.view.position')
+
 
 class PositionView(TableView):
     """
     Position view.
     """
 
-    def __init__(self, trader_service):
-        super().__init__("position")
+    def __init__(self, service, trader_service):
+        super().__init__("position", service)
 
         self._trader_service = trader_service
 
@@ -33,12 +36,13 @@ class PositionView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.positions_stats_table(*self.table_format(), quantities=True)
+                columns, table, total_size = trader.positions_stats_table(*self.table_format(),
+                        quantities=True, datetime_format=self._datetime_format)
+
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
-                print(e)
-                pass
+                error_logger.error(str(e))
 
             self.set_title("Position list (%i) trader %s on account %s" % (num, trader.name, trader.account.name))
         else:

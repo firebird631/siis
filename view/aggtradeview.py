@@ -6,14 +6,17 @@
 from terminal.terminal import Terminal
 from view.tableview import TableView
 
+import logging
+error_logger = logging.getLogger('siis.view.aggtrade')
+
 
 class AggTradeView(TableView):
     """
     Perf trade view.
     """
 
-    def __init__(self, strategy_service):
-        super().__init__("perf")
+    def __init__(self, service, strategy_service):
+        super().__init__("perf", service)
 
         self._strategy_service = strategy_service
 
@@ -28,11 +31,11 @@ class AggTradeView(TableView):
 
             try:
                 columns, table, total_size = appliance.agg_trades_stats_table(*self.table_format(), summ=True)
+
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
-                print(e)
-                pass
+                error_logger.error(str(e))
 
             self.set_title("Perf per market trades (%i) for strategy %s - %s" % (num, appliance.name, appliance.identifier))
         else:

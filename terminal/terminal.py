@@ -5,7 +5,7 @@
 
 import os
 import sys
-import colorama
+# import colorama
 import time
 import threading
 import platform
@@ -20,23 +20,60 @@ error_logger = logging.getLogger('siis.error.terminal')
 
 class Color(object):
 
-    WHITE = '\033[0m'      # '\\0'
+    WHITE = '\033[0;0m'    # '\\0'
     RED = '\033[31m'       # '\\1'
-    GREEN = '\033[32m'     # '\\5'
-    ORANGE = '\033[33m'    # '\\6'
-    BLUE = '\033[34m'      # '\\4'
-    PURPLE = '\033[35m'    # '\\2'
+    ORANGE = '\033[33m'    # '\\2'
     YELLOW = '\033[33;1m'  # '\\3'
+    BLUE = '\033[34;1m'    # '\\4'
+    GREEN = '\033[32m'     # '\\5'
+    PURPLE = '\033[35m'    # '\\6'
+    CYAN = '\033[36m'      # '\\7'
+    HIGHLIGHT = '\033[0;1m'   # '\\8'
+    LIGHTRED = '\033[31m;1m'  # '\\9'
 
     UTERM_COLORS_MAP = {
-        '\033[0m': '\\0',     # white (normal)
-        '\033[31m': '\\1',    # red
-        '\033[32m': '\\5',    # green
-        '\033[33m': '\\6',    # orange
-        '\033[34m': '\\4',    # blue
-        '\033[35m': '\\2',    # purple
-        '\033[33;1m': '\\3',  # yellow
+        WHITE: '\\0',     # white (normal)
+        RED: '\\1',       # red
+        ORANGE: '\\2',    # orange
+        YELLOW: '\\3',    # yellow
+        BLUE: '\\4',      # blue
+        GREEN: '\\5',     # green
+        PURPLE: '\\6',    # purple
+        CYAN: '\\7',      # cyan
+        HIGHLIGHT: '\\8', # hightlight
+        LIGHTRED: '\\9',  # light-red
     }
+
+    FROM_INT = (
+        WHITE,
+        RED,
+        GREEN,
+        ORANGE,
+        BLUE,
+        PURPLE,
+        YELLOW,
+        CYAN,
+        HIGHLIGHT,
+        LIGHTRED
+    )
+
+    # colorama.Style.RESET_ALL,  # Terminal.DEFAULT
+    # colorama.Fore.RED,  # Terminal.ERROR
+    # colorama.Fore.YELLOW + colorama.Style.BRIGHT,  # Terminal.WARNING
+    # colorama.Fore.YELLOW,  # Terminal.ACTION
+    # colorama.Fore.CYAN,  # Terminal.NOTICE
+    # colorama.Fore.GREEN,  # Terminal.HIGH
+    # colorama.Fore.MAGENTA,  # Terminal.LOW
+    # colorama.Fore.WHITE,  # Terminal.NEUTRAL
+    # colorama.Fore.WHITE + colorama.Style.BRIGHT,  # Terminal.HIGHLIGHT
+
+    @staticmethod
+    def count():
+        return len(Color.FROM_INT)
+
+    @staticmethod
+    def color(value):
+        return Color.FROM_INT[value] if -1 < value < len(Color.FROM_INT) else Color.WHITE
 
     @staticmethod
     def colorize(value, color, style=None):
@@ -85,17 +122,17 @@ class View(object):
     MODE_STREAM = 0
     MODE_BLOCK = 1
 
-    UTERM_COLORS = [
-        colorama.Style.RESET_ALL,  # Terminal.DEFAULT
-        colorama.Fore.RED,  # Terminal.ERROR
-        colorama.Fore.YELLOW + colorama.Style.BRIGHT,  # Terminal.WARNING
-        colorama.Fore.YELLOW,  # Terminal.ACTION
-        colorama.Fore.CYAN,  # Terminal.NOTICE
-        colorama.Fore.GREEN,  # Terminal.HIGH
-        colorama.Fore.MAGENTA,  # Terminal.LOW
-        colorama.Fore.WHITE,  # Terminal.NEUTRAL
-        colorama.Fore.WHITE + colorama.Style.BRIGHT,  # Terminal.HIGHLIGHT
-    ]
+    # UTERM_COLORS = [
+    #     colorama.Style.RESET_ALL,  # Terminal.DEFAULT
+    #     colorama.Fore.RED,  # Terminal.ERROR
+    #     colorama.Fore.YELLOW + colorama.Style.BRIGHT,  # Terminal.WARNING
+    #     colorama.Fore.YELLOW,  # Terminal.ACTION
+    #     colorama.Fore.CYAN,  # Terminal.NOTICE
+    #     colorama.Fore.GREEN,  # Terminal.HIGH
+    #     colorama.Fore.MAGENTA,  # Terminal.LOW
+    #     colorama.Fore.WHITE,  # Terminal.NEUTRAL
+    #     colorama.Fore.WHITE + colorama.Style.BRIGHT,  # Terminal.HIGHLIGHT
+    # ]
 
     def __init__(self, name, mode=MODE_STREAM, stdscr=None, pos=(0, 0), size=(80, 25), active=True, right_align=False, border=False, bg=None, window=False):
         self._name = name
@@ -256,7 +293,7 @@ class View(object):
                     next_is_color = False
 
                     if ord('0') <= ord(c) <= ord('9'):
-                        color = View.UTERM_COLORS[int(c)]
+                        color = Color.color(int(c))  #  View.UTERM_COLORS[int(c)]
                     else:
                         buf += '\\'
                 elif xp < 200: # self.width:
@@ -268,7 +305,7 @@ class View(object):
         for elt in elts:
             sys.stdout.write(elt[1])
             sys.stdout.write(elt[0])
-            sys.stdout.write(View.UTERM_COLORS[0])
+            sys.stdout.write(Color.color(0))  # View.UTERM_COLORS[0])
 
     def draw(self, color, content, endl):
         with self._mutex:
@@ -695,7 +732,7 @@ class Terminal(object):
     @classmethod
     def terminate(cls):
         global terminal
-        colorama.deinit()
+        # colorama.deinit()
 
         if terminal:
             terminal.restore_term()
@@ -744,11 +781,10 @@ class Terminal(object):
 
             self._fd = fd
 
-            colorama.init()
+            # colorama.init()
 
         elif not self._stdscr and use_ncurses:
             os.environ.setdefault('ESCDELAY', '25')
-
             self._stdscr = curses.initscr()
             self._stdscr.keypad(True)
             self._stdscr.nodelay(True)
@@ -762,16 +798,17 @@ class Terminal(object):
             if curses.has_colors():
                 curses.start_color()
                 curses.use_default_colors()
-                # curses.init_pair(0, curses.COLOR_WHITE, curses.COLOR_BLACK)
-                curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
-                curses.init_pair(2, curses.COLOR_YELLOW, curses.COLOR_WHITE)
-                curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)
-                curses.init_pair(4, curses.COLOR_CYAN, curses.COLOR_BLACK)
-                curses.init_pair(5, curses.COLOR_GREEN, curses.COLOR_BLACK)
-                curses.init_pair(6, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+                curses.init_color(curses.COLOR_BLUE, 384, 384, 800)
+                curses.init_pair(0, curses.COLOR_WHITE, -1)
+                curses.init_pair(1, curses.COLOR_RED, -1)
+                curses.init_pair(2, curses.COLOR_YELLOW, -1)
+                curses.init_pair(3, curses.COLOR_BLUE, -1)
+                curses.init_pair(4, curses.COLOR_CYAN, -1)
+                curses.init_pair(5, curses.COLOR_GREEN, -1)
+                curses.init_pair(6, curses.COLOR_MAGENTA, -1)
                 curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLACK)
-                # curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_BLACK)  # @todo and need bright
-                curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_WHITE)  # then use that for now
+                curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_WHITE)
+                curses.init_pair(9, curses.COLOR_YELLOW, curses.COLOR_BLUE)
 
             height, width = self._stdscr.getmaxyx()
 
@@ -801,6 +838,9 @@ class Terminal(object):
             'debug-head': View('debug-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'debug': View('debug', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
+            'signal-head': View('signal-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
+            'signal': View('signal', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
+
             'stats-head': View('stats-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'stats': View('stats', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
@@ -821,9 +861,6 @@ class Terminal(object):
 
             'asset-head': View('asset-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'asset': View('asset', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
-            'signal-head': View('signal-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'signal': View('signal', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
             'position-head': View('position-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
             'position': View('position', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),

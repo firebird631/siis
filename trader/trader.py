@@ -1307,7 +1307,7 @@ class Trader(Runnable):
 
         return results
 
-    def positions_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False):
+    def positions_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, datetime_format='%y-%m-%d %H:%M:%S'):
         """
         Returns a table of any active positions.
         """
@@ -1368,9 +1368,9 @@ class Trader(Runnable):
                     "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
                     "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
                     t['tr'],
-                    datetime.fromtimestamp(t['et']).strftime('%y-%m-%d %H:%M:%S') if t['et'] > 0 else "",
+                    datetime.fromtimestamp(t['et']).strftime(datetime_format) if t['et'] > 0 else "",
                     t['aep'],
-                    datetime.fromtimestamp(t['xt']).strftime('%y-%m-%d %H:%M:%S') if t['xt'] > 0 else "",
+                    datetime.fromtimestamp(t['xt']).strftime(datetime_format) if t['xt'] > 0 else "",
                     t['axp'],
                     "%s%s" % (t['pnl'], t['pnlcur']),
                     t['cost'],
@@ -1387,7 +1387,7 @@ class Trader(Runnable):
 
         return columns[col_ofs:], data, total_size
 
-    def active_orders_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False):
+    def active_orders_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, datetime_format='%y-%m-%d %H:%M:%S'):
         """
         Returns a table of any active orders.
         """
@@ -1446,8 +1446,8 @@ class Trader(Runnable):
                     "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
                     "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
                     t['tr'],
-                    datetime.fromtimestamp(t['ct']).strftime('%y-%m-%d %H:%M:%S') if t['ct'] > 0 else "",
-                    datetime.fromtimestamp(t['tt']).strftime('%y-%m-%d %H:%M:%S') if t['tt'] > 0 else "",
+                    datetime.fromtimestamp(t['ct']).strftime(datetime_format) if t['ct'] > 0 else "",
+                    datetime.fromtimestamp(t['tt']).strftime(datetime_format) if t['tt'] > 0 else "",
                     "Yes" if t['ro'] else "No",
                     "Yes" if t['po'] else "No",
                     "Yes" if t['he'] else "No",

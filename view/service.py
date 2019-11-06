@@ -20,6 +20,7 @@ from common.signal import Signal
 from terminal.terminal import Terminal
 
 from common.utils import timeframe_to_str
+from common.signalhandler import SignalHandler
 
 from view.view import View
 from view.viewexception import ViewServiceException
@@ -41,6 +42,7 @@ class ViewService(BaseService):
 
         self._mutex = threading.RLock()  # reentrant locker
         self._signals = collections.deque()  # filtered received signals
+        self._signals_handler = SignalHandler(self)
 
         self._views = {}
 
@@ -78,8 +80,31 @@ class ViewService(BaseService):
                 if view:
                     view.on_key_pressed(key)
 
+    def add_listener(self, base_service):
+        with self._mutex:
+            self._signals_handler.add_listener(base_service)
+
+    def remove_listener(self, base_service):
+        with self._mutex:
+            self._signals_handler.remove_listener(base_service)
+
     def receiver(self, signal):
-        pass
+        if signal.source == Signal.SOURCE_STRATEGY:
+            if signal.signal_type in (Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
+                # propagate the signal to the views
+                self._mutex.acquire()
+                self._signals_handler.notify(signal)
+                self._mutex.release()
+
+    def notify(self, signal_type, source_name, signal_data):
+        if signal_data is None:
+            return
+
+        signal = Signal(Signal.SOURCE_VIEW, source_name, signal_type, signal_data)
+
+        self._mutex.acquire()
+        self._signals_handler.notify(signal)
+        self._mutex.release()
 
     def sync(self):
         vt = Terminal.inst().active_content()
@@ -113,3 +138,13 @@ class ViewService(BaseService):
         with self._mutex:
             for k, view in self._views.items():
                 view.toggle_percent()
+
+    def toggle_group(self):
+        with self._mutex:
+            for k, view in self._views.items():
+                view.toggle_group()
+
+    def toggle_datetime_format(self):
+        with self._mutex:
+            for k, view in self._views.items():
+                view.toggle_datetime_format()

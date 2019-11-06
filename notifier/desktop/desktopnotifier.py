@@ -37,7 +37,6 @@ signal_logger = logging.getLogger('siis.signal')
 class DesktopNotifier(Notifier):
     """
     Desktop notifier for desktop popup and audio alerts.
-    @todo Terminal.inst().notice(message, view="signal") should goes to the SignalView
     """
 
     AUDIO_ALERT_SIMPLE = 0
@@ -166,7 +165,7 @@ class DesktopNotifier(Notifier):
         #         signal.data.profit_loss,
         #         signal.data.profit_loss_rate * 100.0)
 
-        elif signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
+        elif signal.signal_type in (Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
             # @todo in addition of entry/exit, modification and a reason of the exit/modification
             icon = "contact-new"
             direction = "long" if signal.data['direction'] == Position.LONG else "short"
@@ -202,7 +201,7 @@ class DesktopNotifier(Notifier):
                 message += " (%s)" % signal.data['comment']
 
             # log them to the signal view (@todo might goes to the View)
-            Terminal.inst().notice(message, view="signal")
+            # Terminal.inst().notice(message, view="signal")
 
             # and in signal logger (@todo to be moved to a SignalView)
             signal_logger.info(message)
@@ -241,7 +240,8 @@ class DesktopNotifier(Notifier):
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if signal.signal_type in (Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT, Signal.SIGNAL_STRATEGY_ENTRY_EXIT):
+            if signal.signal_type in (Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT,
+                    Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
                 self.push_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHDOG:

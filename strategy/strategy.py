@@ -156,16 +156,16 @@ class Strategy(Runnable):
     # monitoring notification (@todo to be cleanup)
     #
 
-    def notify_order(self, trade_id, direction, symbol, price, timestamp, timeframe,
+    def notify_signal(self, direction, symbol, price, timestamp, timeframe,
             action='order', profit_loss=None, stop_loss=None, take_profit=None, comment=None, quantity=None):
         """
-        Notify an order execution to the user. It must be called by the strategy-trader.
-        @param trade_id If -1 then it notify a simple signal unrelated to a trade.
+        Notify a strategy signal (entry/take-profit) to the user. It must be called by the strategy-trader.
         """
         signal_data = {
-            'trade-id': trade_id,
+            'trade-id': -1,
             'trader-name': self._name,
             'identifier': self.identifier,
+            'origin': "signal",
             'action': action,
             'timestamp': timestamp,
             'timeframe': timeframe,
@@ -179,7 +179,57 @@ class Strategy(Runnable):
             'quantity': quantity
         }
 
-        self.service.notify(Signal.SIGNAL_STRATEGY_ENTRY_EXIT, self._name, signal_data)
+        self.service.notify(Signal.SIGNAL_STRATEGY_SIGNAL, self._name, signal_data)
+
+    def notify_entry(self, trade_id, direction, symbol, price, timestamp, timeframe,
+            action='order', profit_loss=None, stop_loss=None, take_profit=None, comment=None, quantity=None):
+        """
+        Notify a strategy trade entry to the user. It must be called by the strategy-trader.
+        """
+        signal_data = {
+            'trade-id': trade_id,
+            'trader-name': self._name,
+            'identifier': self.identifier,
+            'origin': "entry",
+            'action': action,
+            'timestamp': timestamp,
+            'timeframe': timeframe,
+            'direction': direction,
+            'symbol': symbol,
+            'price': price,
+            'profit-loss': profit_loss,
+            'stop-loss': stop_loss,
+            'take-profit': take_profit,
+            'comment': comment,
+            'quantity': quantity
+        }
+
+        self.service.notify(Signal.SIGNAL_STRATEGY_ENTRY, self._name, signal_data)
+
+    def notify_exit(self, trade_id, direction, symbol, price, timestamp, timeframe,
+            action='order', profit_loss=None, stop_loss=None, take_profit=None, comment=None, quantity=None):
+        """
+        Notify a strategy trade exit to the user. It must be called by the strategy-trader.
+        """
+        signal_data = {
+            'trade-id': trade_id,
+            'trader-name': self._name,
+            'identifier': self.identifier,
+            'origin': "exit",
+            'action': action,
+            'timestamp': timestamp,
+            'timeframe': timeframe,
+            'direction': direction,
+            'symbol': symbol,
+            'price': price,
+            'profit-loss': profit_loss,
+            'stop-loss': stop_loss,
+            'take-profit': take_profit,
+            'comment': comment,
+            'quantity': quantity
+        }
+
+        self.service.notify(Signal.SIGNAL_STRATEGY_EXIT, self._name, signal_data)
 
     def setup_streaming(self):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY, "status", self.identifier)
@@ -1635,7 +1685,7 @@ class Strategy(Runnable):
 
         return columns[col_ofs:], data, total_size
 
-    def trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False):
+    def trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, datetime_format='%y-%m-%d %H:%M:%S'):
         """
         Returns a table of any active trades.
         """
@@ -1714,10 +1764,10 @@ class Strategy(Runnable):
                     "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
                     "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
                     t['tf'],
-                    datetime.fromtimestamp(t['eot']).strftime('%y-%m-%d %H:%M:%S') if t['eot'] > 0 else "",
-                    datetime.fromtimestamp(t['freot']).strftime('%y-%m-%d %H:%M:%S') if t['freot'] > 0 else "",
+                    datetime.fromtimestamp(t['eot']).strftime(datetime_format) if t['eot'] > 0 else "",
+                    datetime.fromtimestamp(t['freot']).strftime(datetime_format) if t['freot'] > 0 else "",
                     t['aep'],
-                    datetime.fromtimestamp(t['lrxot']).strftime('%y-%m-%d %H:%M:%S') if t['lrxot'] > 0 else "",
+                    datetime.fromtimestamp(t['lrxot']).strftime(datetime_format) if t['lrxot'] > 0 else "",
                     t['axp'],
                     t['com'],
                     "%s%s" % (t['upnl'], t['pnlcur'])
@@ -1733,7 +1783,7 @@ class Strategy(Runnable):
 
         return columns[col_ofs:], data, total_size
 
-    def closed_trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False):
+    def closed_trades_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, datetime_format='%y-%m-%d %H:%M:%S'):
         """
         Returns a table of any closed trades.
         """
@@ -1810,10 +1860,10 @@ class Strategy(Runnable):
                     "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
                     "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
                     t['tf'],
-                    datetime.fromtimestamp(t['eot']).strftime('%y-%m-%d %H:%M:%S'),
-                    datetime.fromtimestamp(t['freot']).strftime('%y-%m-%d %H:%M:%S'),
+                    datetime.fromtimestamp(t['eot']).strftime(datetime_format),
+                    datetime.fromtimestamp(t['freot']).strftime(datetime_format),
                     t['aep'],
-                    datetime.fromtimestamp(t['lrxot']).strftime('%y-%m-%d %H:%M:%S'),
+                    datetime.fromtimestamp(t['lrxot']).strftime(datetime_format),
                     t['axp'],
                     t['com'],
                     "%s%s" % (t['rpnl'], t['pnlcur'])
@@ -1962,7 +2012,7 @@ class Strategy(Runnable):
                 results['messages'].append("Created trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
 
                 # notify @todo would we notify on that case ?
-                # self.notify_order(trade.id, trade.dir, strategy_trader.instrument.market_id, market.format_price(price),
+                # self.notify_entry(trade.id, trade.dir, strategy_trader.instrument.market_id, market.format_price(price),
                 #         self.service.timestamp, trade.timeframe, 'entry', None,
                 #          market.format_price(trade.sl), market.format_price(trade.tp))
 
@@ -2032,7 +2082,7 @@ class Strategy(Runnable):
                         trade.id, self.identifier, market.market_id, market.format_price(price)))
 
                     # notify @todo would we notify on that case ?
-                    # self.notify_order(trade.id, trade.dir, strategy_trader.instrument.market_id, market.format_price(price),
+                    # self.notify_entry(trade.id, trade.dir, strategy_trader.instrument.market_id, market.format_price(price),
                     #         self.service.timestamp, trade.timeframe, 'exit', None, None, None)
 
                     # want it on the streaming (take care its only the order signal, no the real complete execution)

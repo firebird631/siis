@@ -101,12 +101,12 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
         market = trader.market(self.instrument.market_id)
 
         for entry in entries:
-            self.strategy.notify_order(-1, entry.direction, self.instrument.market_id,
+            self.strategy.notify_signal(entry.direction, self.instrument.market_id,
                             market.format_price(entry.price), timestamp, entry.timeframe, 'entry',
                             None, market.format_price(entry.sl), market.format_price(entry.tp))
 
         for exit in exits:
-            self.strategy.notify_order(-1, exit.direction, self.instrument.market_id,
+            self.strategy.notify_signal(exit.direction, self.instrument.market_id,
                             market.format_price(exit.price), timestamp, exit.timeframe, 'exit')
 
         # update user managed actives trades

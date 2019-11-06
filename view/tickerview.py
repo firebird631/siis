@@ -6,14 +6,17 @@
 from terminal.terminal import Terminal
 from view.tableview import TableView
 
+import logging
+error_logger = logging.getLogger('siis.view.ticker')
+
 
 class TickerView(TableView):
     """
     Ticker view.
     """
 
-    def __init__(self, trader_service):
-        super().__init__("ticker")
+    def __init__(self, service, trader_service):
+        super().__init__("ticker", service)
 
         self._trader_service = trader_service
         self._last_update = 0.0
@@ -39,8 +42,7 @@ class TickerView(TableView):
                 num = total_size[1]
                 self._last_update = trader.timestamp
             except Exception as e:
-                print(e)
-                pass
+                error_logger.error(str(e))
 
             self.set_title("Tickers list (%i) trader %s on account %s" % (num, trader.name, trader.account.name))
         else:

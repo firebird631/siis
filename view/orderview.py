@@ -6,14 +6,17 @@
 from terminal.terminal import Terminal
 from view.tableview import TableView
 
+import logging
+error_logger = logging.getLogger('siis.view.order')
+
 
 class OrderView(TableView):
     """
     Order view.
     """
 
-    def __init__(self, trader_service):
-        super().__init__("order")
+    def __init__(self, service, trader_service):
+        super().__init__("order", service)
 
         self._trader_service = trader_service
 
@@ -37,8 +40,7 @@ class OrderView(TableView):
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
-                print(e)
-                pass
+                error_logger.error(str(e))
 
             self.set_title("Order list (%i) trader %s on account %s" % (num, trader.name, trader.account.name))
         else:

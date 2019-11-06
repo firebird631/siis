@@ -484,7 +484,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage):
                 # notify
-                self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
+                self.strategy.notify_entry(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
                         timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
 
                 # want it on the streaming
@@ -496,7 +496,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         else:
             # notify a signal only
-            self.strategy.notify_order(-1, Order.LONG, self.instrument.market_id, self.instrument.format_price(price),
+            self.strategy.notify_signal(Order.LONG, self.instrument.market_id, self.instrument.format_price(price),
                     timestamp, timeframe, 'entry', None, self.instrument.format_price(stop_loss), self.instrument.format_price(take_profit))
 
     def process_exit(self, timestamp, trade, exit_price):
@@ -509,11 +509,4 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # close at market as taker
             trader = self.strategy.trader()
             trade.close(trader, self.instrument)
-
-            # notify
-            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(exit_price),
-                    timestamp, trade.timeframe, 'exit', trade.estimate_profit_loss(self.instrument))
-
-            if self._global_streamer:
-                # @todo remove me after notify manage that
-                self._global_streamer.member('buy-exit').update(exit_price, timestamp)
+            trade.exit_reason = "exit-market"

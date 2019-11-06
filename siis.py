@@ -596,6 +596,12 @@ def application(argv):
                                 elif value == '%':
                                     if view_service:
                                         view_service.toggle_percent()
+                                elif value == ',':
+                                    if view_service:
+                                        view_service.toggle_group()
+                                elif value == '!':
+                                    if view_service:
+                                        view_service.toggle_datetime_format()
                                 else:
                                     result = False
 

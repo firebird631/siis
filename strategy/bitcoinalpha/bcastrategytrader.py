@@ -555,7 +555,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             #     trade.modify_stop_loss(trader, self.instrument, stop_loss)
 
             # notify
-            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
+            self.strategy.notify_entry(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
                     timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
 
             # want it on the streaming (take care its only the order signal, no the real complete execution)
@@ -578,14 +578,4 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # close at market as taker
             trader = self.strategy.trader()
             trade.close(trader, self.instrument)
-
-            # notify
-            self.strategy.notify_order(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(exit_price),
-                    timestamp, trade.timeframe, 'exit', trade.estimate_profit_loss(self.instrument))
-
-            if self._global_streamer:
-                # @todo remove me after notify manage that
-                if trade.direction > 0:
-                    self._global_streamer.member('buy-exit').update(exit_price, timestamp)
-                elif trade.direction < 0:
-                    self._global_streamer.member('sell-exit').update(exit_price, timestamp)
+            trade.exit_reason = "exit-market"

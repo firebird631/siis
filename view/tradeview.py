@@ -6,14 +6,17 @@
 from terminal.terminal import Terminal
 from view.tableview import TableView
 
+import logging
+error_logger = logging.getLogger('siis.view.trade')
+
 
 class TradeView(TableView):
     """
     Active trade view.
     """
 
-    def __init__(self, strategy_service):
-        super().__init__("strategy")
+    def __init__(self, service, strategy_service):
+        super().__init__("strategy", service)
 
         self._strategy_service = strategy_service
 
@@ -27,12 +30,13 @@ class TradeView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = appliance.trades_stats_table(*self.table_format(), quantities=True, percents=self._percent)
+                columns, table, total_size = appliance.trades_stats_table(*self.table_format(), quantities=True,
+                        percents=self._percent, datetime_format=self._datetime_format)
+
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
-                print(e)
-                pass
+                error_logger.error(str(e))
 
             self.set_title("Active trades (%i) for strategy %s - %s" % (num, appliance.name, appliance.identifier))
         else:

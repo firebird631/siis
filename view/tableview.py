@@ -14,8 +14,8 @@ class TableView(View):
     Table view base class.
     """
 
-    def __init__(self, _id):
-        super().__init__(_id)
+    def __init__(self, _id, service):
+        super().__init__(_id, service)
 
         self._row = [0, 0]  # offset, limit
         self._col = 0       # offset

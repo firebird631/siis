@@ -6,16 +6,37 @@
 from terminal.terminal import Terminal
 from view.tableview import TableView
 
+from common.signal import Signal
+
+import logging
+error_logger = logging.getLogger('siis.view.tradehistory')
+
 
 class TradeHistoryView(TableView):
     """
     Historical trade view.
+    # @todo Could use local table and add row from signal data but need more complete signal data
     """
 
-    def __init__(self, strategy_service):
-        super().__init__("stats")
+    REFRESH_RATE = 60.0
+
+    def __init__(self, service, strategy_service):
+        super().__init__("stats", service)
 
         self._strategy_service = strategy_service
+
+        # listen to its service
+        self.service.add_listener(self)
+
+    def receiver(self, signal):
+        if not signal:
+            return
+
+        if signal.source == Signal.SOURCE_STRATEGY:
+            if signal.signal_type == Signal.SIGNAL_STRATEGY_EXIT:
+                with self._mutex:
+                    if "entry" not in signal.data.get('action'):
+                        self._refresh = 0.0
 
     def refresh(self):
         if not self._strategy_service:
@@ -28,13 +49,12 @@ class TradeHistoryView(TableView):
 
             try:
                 columns, table, total_size = appliance.closed_trades_stats_table(*self.table_format(),
-                        quantities=True, percents=self._percent)
+                        quantities=True, percents=self._percent, datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
-                print(e)
-                pass
+                error_logger.error(str(e))
 
             self.set_title("Trade history (%i) for strategy %s - %s" % (num, appliance.name, appliance.identifier))
         else:
