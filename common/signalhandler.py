@@ -3,6 +3,10 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Signal handler
 
+import logging
+error_logger = logging.getLogger('siis.signalhandler')
+
+
 class SignalHandler(object):
 
 	def __init__(self, service):
@@ -17,4 +21,7 @@ class SignalHandler(object):
 
 	def notify(self, signal):
 		for listener in self._listeners:
-			listener.receiver(signal)
+			try:
+				listener.receiver(signal)
+			except Exception as e:
+				error_logger.error(str(e))

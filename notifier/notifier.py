@@ -78,6 +78,26 @@ class Notifier(Runnable):
     def pre_update(self):
         self.wait_signal()
 
+    def process_signal(self, signal):
+        """
+        To be overrided
+        """
+        pass
+
+    def update(self):
+        count = 0
+
+        while self._signals:
+            signal = self._signals.popleft()
+            self.process_signal(signal)
+
+            count += 1
+            if count > 10:
+                # yield
+                time.sleep(0)
+
+        return True
+
     def post_update(self):
         pass
 

@@ -69,93 +69,81 @@ class AndroidNotifier(Notifier):
     def notify(self):
         pass
 
-    def update(self):
-        count = 0
+    def process_signal(self, signal):
+        label = ""
+        message = ""
+        sound = "default"
+        channel = ""
 
-        while self._signals:
-            signal = self._signals.popleft()
+        if signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
+            if not signal.data['action'] in self._signals_opts:
+                return
 
-            label = ""
-            message = ""
-            sound = "default"
-            channel = ""
+            channel = self._channels.get('signals')
 
-            if signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
-                if not signal.data['action'] in self._signals_opts:
-                    continue
+            direction = "long" if signal.data['direction'] == Position.LONG else "short"
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
 
-                channel = self._channels.get('signals')
+            message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
+                signal.data['symbol'],
+                signal.data['price'],
+                signal.data['trader-name'],
+                signal.data['action'],
+                direction,
+                ldatetime,
+                signal.data['trade-id'],
+                timeframe_to_str(signal.data['timeframe']))
 
-                direction = "long" if signal.data['direction'] == Position.LONG else "short"
-                ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-                label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
+            if signal.data['stop-loss'] and 'stop-loss' in self._signals_opts:
+                message += " SL@%s" % (signal.data['stop-loss'],)
 
-                message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
-                    signal.data['symbol'],
-                    signal.data['price'],
-                    signal.data['trader-name'],
-                    signal.data['action'],
-                    direction,
-                    ldatetime,
-                    signal.data['trade-id'],
-                    timeframe_to_str(signal.data['timeframe']))
+            if signal.data['take-profit'] and 'take-profit' in self._signals_opts:
+                message += " TP@%s" % (signal.data['take-profit'],)
 
-                if signal.data['stop-loss'] and 'stop-loss' in self._signals_opts:
-                    message += " SL@%s" % (signal.data['stop-loss'],)
+            if signal.data['profit-loss'] is not None:
+                message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
 
-                if signal.data['take-profit'] and 'take-profit' in self._signals_opts:
-                    message += " TP@%s" % (signal.data['take-profit'],)
+            if signal.data['quantity'] is not None and 'quantity' in self._signals_opts:
+                message += " Q:%s" % signal.data['quantity']
 
-                if signal.data['profit-loss'] is not None:
-                    message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
+            if signal.data['comment'] is not None:
+                message += " (%s)" % signal.data['comment']
 
-                if signal.data['quantity'] is not None and 'quantity' in self._signals_opts:
-                    message += " Q:%s" % signal.data['quantity']
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
+            return
 
-                if signal.data['comment'] is not None:
-                    message += " (%s)" % signal.data['comment']
+        elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
+            return
 
-            elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
-                continue
+        elif signal.signal_type == Signal.SIGNAL_WATCHDOG_TIMEOUT:
+            if not 'timeout' in self._watchdog:
+                return
 
-            elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
-                continue
+            channel = self._channels.get('watchdog')
 
-            elif signal.signal_type == Signal.SIGNAL_WATCHDOG_TIMEOUT:
-                if not 'timeout' in self._watchdog:
-                    continue
+            ldatetime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+            label = "Watchdog timeout pid %i service" % (signal.data[0], signal.data[1])
 
-                channel = self._channels.get('watchdog')
+            message = "Watchdog timeout pid %i service %s after %.0f' at %s" % (
+                signal.data[0], signal.data[1], signal.data[2], ldatetime)
 
-                ldatetime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-                label = "Watchdog timeout pid %i service" % (signal.data[0], signal.data[1])
+        elif signal.signal_type == Signal.SIGNAL_WATCHDOG_UNREACHABLE:
+            if not 'unreachable' in self._watchdog:
+                return
 
-                message = "Watchdog timeout pid %i service %s after %.0f' at %s" % (
-                    signal.data[0], signal.data[1], signal.data[2], ldatetime)
+            channel = self._channels.get('watchdog')
 
-            elif signal.signal_type == Signal.SIGNAL_WATCHDOG_UNREACHABLE:
-                if not 'unreachable' in self._watchdog:
-                    continue
+            ldatetime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+            label = "Watchdog unreachable service %s'" % signal.data[0]
+            message = "Watchdog unreachable service %s at %s - %s" % (signal.data[0], ldatetime, signal.data[1])
 
-                channel = self._channels.get('watchdog')
-
-                ldatetime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-                label = "Watchdog unreachable service %s'" % signal.data[0]
-                message = "Watchdog unreachable service %s at %s - %s" % (signal.data[0], ldatetime, signal.data[1])
-
-            if message:
-                if channel and self._auth_key:
-                    try:
-                        send_to_android(self._auth_key, channel, self._who, message, sound)
-                    except:
-                        pass
-
-            count += 1
-            if count > 10:
-                # no more than per loop
-                break
-
-        return True
+        if message:
+            if channel and self._auth_key:
+                try:
+                    send_to_android(self._auth_key, channel, self._who, message, sound)
+                except:
+                    pass
 
     def command(self, command_type, data):
         pass

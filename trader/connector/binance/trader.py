@@ -294,9 +294,9 @@ class BinanceTrader(Trader):
                 #     # partially or fully executed quantity
                 #     order.set_executed(float(result['executedQty']), result.get['status'] == "FILLED", float(result['price']))
 
-                # store the order until fully completed or canceled
-                with self._mutex:
-                    self._orders[order.order_id] = order
+                # # store the order until fully completed or canceled
+                # with self._mutex:
+                #     self._orders[order.order_id] = order
 
                 # @todo remove me
                 logger.info("(rm me) Trade %s completed and locally stored" % order.order_id)
@@ -367,10 +367,10 @@ class BinanceTrader(Trader):
 
             order_logger.info(result)
 
-        # no longer managed (or wait the signal)
-        with self._mutex:
-            if order_id in self._orders:
-                del self._orders[order_id]
+        # # no longer managed (or wait the signal)
+        # with self._mutex:
+        #     if order_id in self._orders:
+        #         del self._orders[order_id]
 
         # @todo remove me
         logger.info("(rm me) Trade %s canceled and locally removed" % order_id)

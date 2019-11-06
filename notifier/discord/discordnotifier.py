@@ -78,68 +78,56 @@ class DiscordNotifier(Notifier):
     def notify(self):
         pass
 
-    def update(self):
-        count = 0
+    def process_signal(self, signal):
+        label = ""
+        message = ""
 
-        while self._signals:
-            signal = self._signals.popleft()
+        if signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
+            if not signal.data['action'] in self._signals_opts:
+                return
 
-            label = ""
-            message = ""
+            direction = "long" if signal.data['direction'] == Position.LONG else "short"
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
 
-            if signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
-                if not signal.data['action'] in self._signals_opts:
-                    continue
+            message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
+                signal.data['symbol'],
+                signal.data['price'],
+                signal.data['trader-name'],
+                signal.data['action'],
+                direction,
+                ldatetime,
+                signal.data['trade-id'],
+                timeframe_to_str(signal.data['timeframe']))
 
-                direction = "long" if signal.data['direction'] == Position.LONG else "short"
-                ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-                label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
+            if signal.data['stop-loss'] and 'stop-loss' in self._signals_opts:
+                message += " SL@%s" % (signal.data['stop-loss'],)
 
-                message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
-                    signal.data['symbol'],
-                    signal.data['price'],
-                    signal.data['trader-name'],
-                    signal.data['action'],
-                    direction,
-                    ldatetime,
-                    signal.data['trade-id'],
-                    timeframe_to_str(signal.data['timeframe']))
+            if signal.data['take-profit'] and 'take-profit' in self._signals_opts:
+                message += " TP@%s" % (signal.data['take-profit'],)
 
-                if signal.data['stop-loss'] and 'stop-loss' in self._signals_opts:
-                    message += " SL@%s" % (signal.data['stop-loss'],)
+            if signal.data['profit-loss'] is not None:
+                message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
 
-                if signal.data['take-profit'] and 'take-profit' in self._signals_opts:
-                    message += " TP@%s" % (signal.data['take-profit'],)
+            if signal.data['quantity'] is not None and 'quantity' in self._signals_opts:
+                message += " Q:%s" % signal.data['quantity']
 
-                if signal.data['profit-loss'] is not None:
-                    message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
+            if signal.data['comment'] is not None:
+                message += " (%s)" % signal.data['comment']
 
-                if signal.data['quantity'] is not None and 'quantity' in self._signals_opts:
-                    message += " Q:%s" % signal.data['quantity']
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
+            return
 
-                if signal.data['comment'] is not None:
-                    message += " (%s)" % signal.data['comment']
+        elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
+            return
 
-            elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
-                continue
-
-            elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
-                continue
-
-            if message:
-                dst = self._webhooks.get('signals')
-                if dst:
-                    try:
-                        send_to_discord(dst, self._who, '```' + message + '```')
-                    except:
-                        pass
-
-            count += 1
-            if count > 10:
-                # no more than per loop
-                break
-
-        return True
+        if message:
+            dst = self._webhooks.get('signals')
+            if dst:
+                try:
+                    send_to_discord(dst, self._who, '```' + message + '```')
+                except:
+                    pass
 
     def command(self, command_type, data):
         pass

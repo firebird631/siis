@@ -579,7 +579,7 @@ class Strategy(Runnable):
             if signal.source == Signal.SOURCE_STRATEGY:
                 if signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                     # incoming market info if backtesting
-                    instrument = self.instrument(signal.data[0])
+                    instrument = self._instruments[signal.data[0]]
                     if instrument is None:
                         continue
 
@@ -647,40 +647,40 @@ class Strategy(Runnable):
                                 strategy_trader.loads(data[2], data[3])
 
             elif signal.source == Signal.SOURCE_WATCHER:
-                # if signal.signal_type == Signal.SIGNAL_TICK_DATA:
-                #     # interest in tick data
+                if signal.signal_type == Signal.SIGNAL_TICK_DATA:
+                    # interest in tick data
 
-                #     # symbol mapping
-                #     instrument = self.instrument(signal.data[0])
-                #     if instrument is None:
-                #         continue
+                    # symbol mapping
+                    instrument = self._instruments[signal.data[0]]
+                    if instrument is None:
+                        continue
 
-                #     # add the new candle to the instrument in live mode
-                #     if instrument.ready():
-                #         instrument.add_tick(signal.data[1])
+                    # add the new candle to the instrument in live mode
+                    if instrument.ready():
+                        instrument.add_tick(signal.data[1])
 
-                #     self._do_update[instrument] = 0
+                    self._do_update[instrument] = 0
 
-                # elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA:
-                #     # interest in candle data
+                elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA:
+                    # interest in candle data
 
-                #     # symbol mapping
-                #     instrument = self.instrument(signal.data[0])
-                #     if instrument is None:
-                #         continue
+                    # symbol mapping
+                    instrument = self._instruments[signal.data[0]]
+                    if instrument is None:
+                        continue
 
-                #     # add the new candle to the instrument in live mode
-                #     if instrument.ready():
-                #         instrument.add_candle(signal.data[1])
+                    # add the new candle to the instrument in live mode
+                    if instrument.ready():
+                        instrument.add_candle(signal.data[1])
 
-                #     if instrument not in self._do_update:
-                #         self._do_update[instrument] = signal.data[1].timeframe
-                #     else:
-                #         self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
+                    if instrument not in self._do_update:
+                        self._do_update[instrument] = signal.data[1].timeframe
+                    else:
+                        self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
 
                 if signal.signal_type == Signal.SIGNAL_TICK_DATA_BULK:
                     # incoming bulk of history ticks
-                    instrument = self.instrument(signal.data[0])
+                    instrument = self._instruments[signal.data[0]]
                     if instrument is None:
                         continue
 
@@ -699,7 +699,7 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA_BULK:
                     # incoming bulk of history candles
-                    instrument = self.instrument(signal.data[0])
+                    instrument = self._instruments[signal.data[0]]
                     if instrument is None:
                         continue
 
@@ -732,7 +732,7 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_MARKET_DATA:
                     # update market data
-                    instrument = self.instrument(signal.data[0])
+                    instrument = self._instruments[signal.data[0]]
                     if instrument is None:
                         continue
 
@@ -762,7 +762,7 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                     # update market info data
-                    instrument = self.instrument(signal.data[0])
+                    instrument = self._instruments[signal.data[0]]
                     if instrument is None:
                         continue
 
@@ -794,7 +794,7 @@ class Strategy(Runnable):
                     # interest in liquidation data
 
                     # symbol mapping
-                    instrument = self.instrument(signal.data[0])
+                    instrument = self._instruments[signal.data[0]]
                     if instrument is None:
                         continue
 
@@ -1100,18 +1100,16 @@ class Strategy(Runnable):
             #         return
 
             #     # directly add the new tick to the instrument in backtesting mode
-            #     instrument = self.instrument(signal.data[0])
+            #     instrument = self._instruments[signal.data[0]]
 
             #     if instrument.ready():
             #         strategy_trader = self._strategy_traders.get(instrument)
             #         if strategy_trader:
-            #             strategy_trader.lock()
-            #             instrument.add_tick(signal.data[1])
-            #             strategy_trader.unlock()
+            #             with strategy_trader._mutex:
+            #                 instrument.add_tick(signal.data[1])
 
-            #     self.lock()
-            #     self._do_update[instrument] = 0
-            #     self.unlock()
+            #     with self._mutex:
+            #         self._do_update[instrument] = 0
 
             #     # directly managed
             #     return
@@ -1126,24 +1124,20 @@ class Strategy(Runnable):
             #         return
 
             #     # directly add the new candle to the instrument in backtesting mode
-            #     instrument = self.instrument(signal.data[0])
+            #     instrument = self._instruments[signal.data[0]]
 
             #     # add the new candle to the instrument in live mode
             #     if instrument.ready():
             #         strategy_trader = self._strategy_traders.get(instrument)
             #         if strategy_trader:
-            #             strategy_trader.lock()
-            #             instrument.add_candle(signal.data[1])
-            #             strategy_trader.unlock()
+            #             with strategy_trader._mutex:
+            #                 instrument.add_candle(signal.data[1])
 
-            #     self.lock()
-
-            #     if instrument not in self._do_update:
-            #         self._do_update[instrument] = signal.data[1].timeframe
-            #     else:
-            #         self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
-
-            #     self.unlock()
+            #     with self._mutex:
+            #         if instrument not in self._do_update:
+            #             self._do_update[instrument] = signal.data[1].timeframe
+            #         else:
+            #             self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
 
             #     # directly managed
             #     return
@@ -1180,20 +1174,20 @@ class Strategy(Runnable):
                     # non interested by this instrument/symbol
                     return
 
-                # directly add the new tick to the instrument in live mode
-                instrument = self.instrument(signal.data[0])
+                # # directly add the new tick to the instrument in live mode
+                # instrument = self._instruments[signal.data[0]]
 
-                if instrument.ready():
-                    strategy_trader = self._strategy_traders.get(instrument)
-                    if strategy_trader:
-                        with strategy_trader._mutex:
-                            instrument.add_tick(signal.data[1])
+                # if instrument.ready():
+                #     strategy_trader = self._strategy_traders.get(instrument)
+                #     if strategy_trader:
+                #         with strategy_trader._mutex:
+                #             instrument.add_tick(signal.data[1])
 
-                        with self._mutex:
-                            self._do_update[instrument] = 0
+                #         with self._mutex:
+                #             self._do_update[instrument] = 0
 
-                # directly managed
-                return
+                # # directly managed
+                # return
 
             elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA:
                 if signal.data[1].timeframe != self.base_timeframe():
@@ -1204,24 +1198,24 @@ class Strategy(Runnable):
                     # non interested by this instrument/symbol
                     return
 
-                # directly add the new candle to the instrument in live mode
-                instrument = self.instrument(signal.data[0])
+                # # directly add the new candle to the instrument in live mode
+                # instrument = self._instruments[signal.data[0]]
 
-                # add the new candle to the instrument in live mode
-                if instrument.ready():
-                    strategy_trader = self._strategy_traders.get(instrument)
-                    if strategy_trader:
-                        with strategy_trader._mutex:
-                            instrument.add_candle(signal.data[1])
-                        
-                        with self._mutex:
-                            if instrument not in self._do_update:
-                                self._do_update[instrument] = signal.data[1].timeframe
-                            else:
-                                self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
+                # # add the new candle to the instrument in live mode
+                # if instrument.ready():
+                #     strategy_trader = self._strategy_traders.get(instrument)
+                #     if strategy_trader:
+                #         with strategy_trader._mutex:
+                #             instrument.add_candle(signal.data[1])
 
-                # directly managed
-                return
+                #         with self._mutex:
+                #             if instrument not in self._do_update:
+                #                 self._do_update[instrument] = signal.data[1].timeframe
+                #             else:
+                #                 self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
+
+                # # directly managed
+                # return
 
             # filter by instrument for buy/sell signal
             elif signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:

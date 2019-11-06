@@ -342,150 +342,138 @@ class DesktopNotifier(Notifier):
     def notify(self):
         pass
 
-    def update(self):
-        count = 0
+    def process_signal(self, signal):
+        label = ""
+        message = ""
+        icon = "contact-new"
+        now = time.time()
+        audio_alert = None
 
-        while self._signals:
-            signal = self._signals.popleft()
+        if signal.signal_type == Signal.SIGNAL_SOCIAL_ENTER:
+            # here we only assume that because of what 1broker return to us but should be timestamp in the model
+            entry_date = signal.data.entry_date + timedelta(hours=2)
+            position_timestamp = time.mktime(entry_date.timetuple())
+            audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
 
-            label = ""
-            message = ""
+            if now - position_timestamp > 120 * 60:
+                return
+
+            label = "Entry position on %s" % (signal.data.symbol,)
+            message = "Trader %s enter %s on %s at %s (x%s)" % (
+                signal.data.author.name if signal.data.author is not None else "???",
+                "long" if signal.data.direction == Position.LONG else "short",
+                signal.data.symbol,
+                signal.data.entry_price,
+                signal.data.leverage)
+
+        elif signal.signal_type == Signal.SIGNAL_SOCIAL_EXIT:
+            # here we only assume that because of what 1broker return to us but should be timestamp in the model
+            exit_date = signal.data.exit_date + timedelta(hours=2)
+            position_timestamp = time.mktime(exit_date.timetuple())
+            audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
+
+            if now - position_timestamp > 120 * 60:
+                return
+
+            label = "Exit position on %s" % (signal.data.symbol,)
+            message = "Trader %s exit %s on %s at %s" % (
+                signal.data.author.name,
+                "long" if signal.data.direction == Position.LONG else "short",
+                signal.data.symbol,
+                signal.data.exit_price)
+
+        # # @todo a threshold... or a timelimit
+        # elif signal.signal_type == Signal.SIGNAL_TRADE_ALERT:
+        #     icon = "go-down"
+        #     label = "Position loss on %s" % (signal.data.symbol,)
+        #     audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
+
+        #     message = "Position %s %s of %s on %s start at %s %s is in regretable loss %s (%s%%) :$" % (
+        #         signal.data.position_id,
+        #         "long" if signal.data.direction == Position.LONG else "short",
+        #         signal.data.author.name if signal.data.author is not None else "???",
+        #         signal.data.trader.name,
+        #         signal.data.entry_price,
+        #         signal.data.symbol,
+        #         signal.data.profit_loss,
+        #         signal.data.profit_loss_rate * 100.0)
+
+        # elif signal.signal_type == Signal.SIGNAL_TRADE_ENJOY:
+        #     icon = "go-up"
+        #     label = "Position profit on %s" % (signal.data.symbol,)
+        #     audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
+
+        #     message = "Position %s %s of %s on %s start at %s %s is in enjoyable profit %s (%s%%) :)" % (
+        #         signal.data.position_id,
+        #         "long" if signal.data.direction == Position.LONG else "short",
+        #         signal.data.author.name if signal.data.author is not None else "???",
+        #         signal.data.trader.name,
+        #         signal.data.entry_price,
+        #         signal.data.symbol,
+        #         signal.data.profit_loss,
+        #         signal.data.profit_loss_rate * 100.0)
+
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
+            # @todo in addition of entry/exit, modification and a reason of the exit/modification
             icon = "contact-new"
-            now = time.time()
-            audio_alert = None
+            direction = "long" if signal.data['direction'] == Position.LONG else "short"
+            audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
 
-            if signal.signal_type == Signal.SIGNAL_SOCIAL_ENTER:
-                # here we only assume that because of what 1broker return to us but should be timestamp in the model
-                entry_date = signal.data.entry_date + timedelta(hours=2)
-                position_timestamp = time.mktime(entry_date.timetuple())
-                audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
+            if signal.data['action'] == 'stop':
+                audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
 
-                if now - position_timestamp > 120 * 60:
-                    continue
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
-                label = "Entry position on %s" % (signal.data.symbol,)
-                message = "Trader %s enter %s on %s at %s (x%s)" % (
-                    signal.data.author.name if signal.data.author is not None else "???",
-                    "long" if signal.data.direction == Position.LONG else "short",
-                    signal.data.symbol,
-                    signal.data.entry_price,
-                    signal.data.leverage)
+            label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
 
-            elif signal.signal_type == Signal.SIGNAL_SOCIAL_EXIT:
-                # here we only assume that because of what 1broker return to us but should be timestamp in the model
-                exit_date = signal.data.exit_date + timedelta(hours=2)
-                position_timestamp = time.mktime(exit_date.timetuple())
-                audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
+            message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
+                signal.data['symbol'],
+                signal.data['price'],
+                signal.data['trader-name'],
+                signal.data['action'],
+                direction,
+                ldatetime,
+                signal.data['trade-id'],
+                timeframe_to_str(signal.data['timeframe']))
 
-                if now - position_timestamp > 120 * 60:
-                    continue
+            if signal.data['stop-loss']:
+                message += " SL@%s" % (signal.data['stop-loss'],)
 
-                label = "Exit position on %s" % (signal.data.symbol,)
-                message = "Trader %s exit %s on %s at %s" % (
-                    signal.data.author.name,
-                    "long" if signal.data.direction == Position.LONG else "short",
-                    signal.data.symbol,
-                    signal.data.exit_price)
+            if signal.data['take-profit']:
+                message += " TP@%s" % (signal.data['take-profit'],)
 
-            # # @todo a threshold... or a timelimit
-            # elif signal.signal_type == Signal.SIGNAL_TRADE_ALERT:
-            #     icon = "go-down"
-            #     label = "Position loss on %s" % (signal.data.symbol,)
-            #     audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
+            if signal.data['profit-loss'] is not None:
+                message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
 
-            #     message = "Position %s %s of %s on %s start at %s %s is in regretable loss %s (%s%%) :$" % (
-            #         signal.data.position_id,
-            #         "long" if signal.data.direction == Position.LONG else "short",
-            #         signal.data.author.name if signal.data.author is not None else "???",
-            #         signal.data.trader.name,
-            #         signal.data.entry_price,
-            #         signal.data.symbol,
-            #         signal.data.profit_loss,
-            #         signal.data.profit_loss_rate * 100.0)
+            if signal.data['comment'] is not None:
+                message += " (%s)" % signal.data['comment']
 
-            # elif signal.signal_type == Signal.SIGNAL_TRADE_ENJOY:
-            #     icon = "go-up"
-            #     label = "Position profit on %s" % (signal.data.symbol,)
-            #     audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
+            # log them to the signal view (@todo might goes to the View)
+            Terminal.inst().notice(message, view="signal")
 
-            #     message = "Position %s %s of %s on %s start at %s %s is in enjoyable profit %s (%s%%) :)" % (
-            #         signal.data.position_id,
-            #         "long" if signal.data.direction == Position.LONG else "short",
-            #         signal.data.author.name if signal.data.author is not None else "???",
-            #         signal.data.trader.name,
-            #         signal.data.entry_price,
-            #         signal.data.symbol,
-            #         signal.data.profit_loss,
-            #         signal.data.profit_loss_rate * 100.0)
+            # and in signal logger (@todo to be moved to a SignalView)
+            signal_logger.info(message)
 
-            elif signal.signal_type == Signal.SIGNAL_STRATEGY_ENTRY_EXIT:
-                # @todo in addition of entry/exit, modification and a reason of the exit/modification
-                icon = "contact-new"
-                direction = "long" if signal.data['direction'] == Position.LONG else "short"
-                audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
+        # process sound
+        if not self._backtesting and self._audible and audio_alert is not None:
+            self.play_audio_alert(audio_alert)
 
-                if signal.data['action'] == 'stop':
-                    audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
+        if not self._backtesting and self._popups and message:
+            if self.notify2:
+                n = self.notify2.Notification(label, message, icon)
+                n.show()
 
-                ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
+            return
 
-                label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
+        elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
+            return
 
-                message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
-                    signal.data['symbol'],
-                    signal.data['price'],
-                    signal.data['trader-name'],
-                    signal.data['action'],
-                    direction,
-                    ldatetime,
-                    signal.data['trade-id'],
-                    timeframe_to_str(signal.data['timeframe']))
+        elif signal.signal_type == Signal.SIGNAL_WATCHDOG_TIMEOUT:
+            return
 
-                if signal.data['stop-loss']:
-                    message += " SL@%s" % (signal.data['stop-loss'],)
-
-                if signal.data['take-profit']:
-                    message += " TP@%s" % (signal.data['take-profit'],)
-
-                if signal.data['profit-loss'] is not None:
-                    message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
-
-                if signal.data['comment'] is not None:
-                    message += " (%s)" % signal.data['comment']
-
-                # log them to the signal view (@todo might goes to the View)
-                Terminal.inst().notice(message, view="signal")
-
-                # and in signal logger
-                signal_logger.info(message)
-
-            # process sound
-            if not self._backtesting and self._audible and audio_alert is not None:
-                self.play_audio_alert(audio_alert)
-
-            if not self._backtesting and self._popups and message:
-                if self.notify2:
-                    n = self.notify2.Notification(label, message, icon)
-                    n.show()
-
-            elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
-                pass
-
-            elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
-                pass
-
-            elif signal.signal_type == Signal.SIGNAL_WATCHDOG_TIMEOUT:
-                pass
-
-            elif signal.signal_type == Signal.SIGNAL_WATCHDOG_UNREACHABLE:
-                pass
-
-            count += 1
-            if count > 10:
-                # no more than per loop
-                break
-
-        return True
+        elif signal.signal_type == Signal.SIGNAL_WATCHDOG_UNREACHABLE:
+            return
 
     def command(self, command_type, data):
         if command_type == "toggle-popup":
