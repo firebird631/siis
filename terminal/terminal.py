@@ -373,7 +373,7 @@ class View(object):
 
                                     try:
                                         self._win.move(self._n, x)
-                                        self.__cprint(self._n, x, row, self._first_col)
+                                        self.__cprint(self._n, x, color+row, self._first_col)
                                     except:
                                         pass
 
@@ -815,7 +815,6 @@ class Terminal(object):
         # to restore at terminate
         self._old_default = self._views
 
-        # @todo view must be in percent for reshape
         w1 = int(width*0.9)
         w2 = width-w1
 
@@ -832,49 +831,19 @@ class Terminal(object):
             'help': View('help', View.MODE_BLOCK, self._stdscr, pos=(width//2, 0), size=(width//2, 1), active=True, right_align=True),
 
             # body
-            'content-head': View('content-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=True),
+            'content-head': View('content-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 1), active=True),
             'content': View('content', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=True, border=True),
 
-            'debug-head': View('debug-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
+            'debug-head': View('debug-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 1), active=False),
             'debug': View('debug', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
-            'signal-head': View('signal-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'signal': View('signal', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
-            'stats-head': View('stats-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'stats': View('stats', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
-            'perf-head': View('perf-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'perf': View('perf', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
-            'strategy-head': View('strategy-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'strategy': View('strategy', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
-            'account-head': View('account-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'account': View('account', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
-            'market-head': View('market-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'market': View('market', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
-            'ticker-head': View('ticker-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'ticker': View('ticker', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
-            'asset-head': View('asset-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'asset': View('asset', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
-            'position-head': View('position-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'position': View('position', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
-            'order-head': View('order-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-            'order': View('order', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
-
             # right panel
-            'panel-head': View('panel-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 2), active=True),
+            'panel-head': View('panel-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 1), active=True),
             'panel': View('panel', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w2, h1), active=True, border=True),
 
             # bottom 
             'default': View('default', View.MODE_STREAM, self._stdscr, pos=(0, height-6), size=(width, free_h), active=True),
-            
+
             'command': View('command', View.MODE_BLOCK, self._stdscr, pos=(0, height-2), size=(width, 1), active=True, window=True),
             'status': View('status', View.MODE_BLOCK, self._stdscr, pos=(0, height-1), size=(width//2, 1), active=True),
             'notice': View('notice', View.MODE_BLOCK, self._stdscr, pos=(width//2+1, height-1), size=(width//2, 1), active=True, right_align=True),
@@ -884,12 +853,12 @@ class Terminal(object):
         self._views['content']._content = old_content_content
         self._views['debug']._content = old_debug_content
 
-        Terminal.inst().info("Console", view='content-head')  # console/content
-        Terminal.inst().info("Debug", view='debug-head')
-        Terminal.inst().info("Signal", view='signal-head')
-
         self.set_view('default')
         self._active_content = 'content'
+
+        Terminal.inst().info("Console", view='content-head')
+        Terminal.inst().info("Debug", view='debug-head')
+        Terminal.inst().info("Signal", view='signal-head')
 
     def restore_term(self):
         if self._fd:
@@ -937,8 +906,8 @@ class Terminal(object):
         free_h = 4
         h1 = height - 2 - 2 - free_h
 
-        head_view = View(name+'-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 2), active=False),
-        view = View(name, View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
+        head_view = View(name+'-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 1), active=False)
+        view = View(name, View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True)
 
         self._views[name] = view
         self._views[name+'-head'] = head_view

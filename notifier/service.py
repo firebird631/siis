@@ -133,17 +133,21 @@ class NotifierService(Service):
     def sync(self):
         pass
 
-    def command(self, notifier, command_type, data):
+    def command(self, command_type, data):
         """
         Send a manual command to a specific notifier.
         """
         with self._mutex:
-            notifier_inst = self._notifiers_insts.get(notifier)
-            if notifier_inst:
-                try:
+            if data and 'notifier' in data:
+                notifier_inst = self._notifiers_insts.get(data['notifier'])
+                if notifier_inst:
+                    try:
+                        notifier_inst.command(command_type, data)
+                    except Exception as e:
+                        error_logger.error(str(e))
+            else:
+                for k, notifier_inst in self._notifiers_insts.items():
                     notifier_inst.command(command_type, data)
-                except Exception as e:
-                    error_logger.error(str(e))
 
     def _init_notifier_config(self, options):
         """

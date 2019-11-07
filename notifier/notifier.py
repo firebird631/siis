@@ -19,6 +19,7 @@ class Notifier(Runnable):
     """
 
     COMMAND_INFO = 1
+    COMMAND_TOGGLE = 2
 
     def __init__(self, name, identifier, service):
         super().__init__("nt-%s" % name)
@@ -49,6 +50,9 @@ class Notifier(Runnable):
     @property
     def service(self):
         return self._notifier_service
+
+    def set_activity(self, activity):
+        self._playpause = activity
 
     def start(self, options):
         return super().start()
@@ -118,7 +122,8 @@ class Notifier(Runnable):
         self._condition.release()
 
     def command(self, command_type, data):
-        pass
+        if command_type == self.COMMAND_INFO:
+            Terminal.inst().info("%s notifier is %s" % (self.identifier, "active" if self._playpause else "disabled",), view='content')
 
     def receiver(self, signal):
         if not self._playpause:

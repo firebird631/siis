@@ -60,6 +60,9 @@ class Runnable(object):
         if self._running:
             self._playpause = False
 
+    def toggle_playpause(self):
+        self._playpause = not self._playpause
+
     def stop(self):
         if self._running:
             self._running = False

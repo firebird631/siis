@@ -23,6 +23,7 @@ from watcher.service import WatcherService
 
 from trader.trader import Trader
 from strategy.strategy import Strategy
+from notifier.notifier import Notifier
 from trader.service import TraderService
 from strategy.service import StrategyService
 from monitor.service import MonitorService
@@ -398,15 +399,6 @@ def application(argv):
     register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service, notifier_service)
     register_region_commands(commands_handler, strategy_service)
 
-    if view_service:
-        # setup the default views
-        try:
-            setup_default_views(view_service, watcher_service, trader_service, strategy_service)
-        except Exception as e:
-            Terminal.inst().error(str(e))
-            terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
-            sys.exit(-1)
-
     # setup and start the monitor service
     monitor_service.setup(watcher_service, trader_service, strategy_service)
     try:
@@ -421,6 +413,15 @@ def application(argv):
 
     Terminal.inst().upgrade()
     Terminal.inst().message("Steady...", view='notice')
+
+    if view_service:
+        # setup the default views
+        try:
+            setup_default_views(view_service, watcher_service, trader_service, strategy_service)
+        except Exception as e:
+            Terminal.inst().error(str(e))
+            terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+            sys.exit(-1)
 
     display_welcome()
 
@@ -589,10 +590,10 @@ def application(argv):
 
                                 elif value == 'a':
                                     if notifier_service:
-                                        notifier_service.command("desktop", "toggle-audible", None)
+                                        notifier_service.command(Notifier.COMMAND_TOGGLE, {'notifier': "desktop", 'value': "audible"})
                                 elif value == 'n':
                                     if notifier_service:
-                                        notifier_service.command("desktop", "toggle-popup", None)
+                                        notifier_service.command(Notifier.COMMAND_TOGGLE, {'notifier': "desktop", 'value': "toggle-popup"})
                                 elif value == '%':
                                     if view_service:
                                         view_service.toggle_percent()
@@ -623,7 +624,7 @@ def application(argv):
             # display advanced command only
             if value_changed:
                 if value and value.startswith(':'):        
-                    Terminal.inst().action("Command: %s" % value[1:], view='command')
+                    Terminal.inst().message("Command: %s" % value[1:], view='command')
                 else:
                     Terminal.inst().message("", view='command')
 
