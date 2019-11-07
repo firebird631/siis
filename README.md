@@ -25,7 +25,6 @@ Features
     * Kraken Futures (planned)
     * IG
     * Jex (Binance futures) (planned)
-    * 1broker (obsolete)
     * Help for others are welcome :-)
 * Some others source of prices/volumes data fetchers
     * HistData (only to import manually downloaded files)
@@ -67,7 +66,6 @@ Features
 * Basic Discord WebHook notifier (have to be redone)
 * 3 initials strategies (1 for bitcoin/ethereum, 1 for forex, 1 for majors altcoins)
 * WebHook of TradingView strategies with an example of a such strategy (uses of TamperMonkey with a JS script, watch the strategy trade last)
-* Social copy capacities (deprecated for now, was done initially on 1broker, some works have to be redone)
 * Manual per trade directives
     * Add many dynamic stop-loss (trigger level + stop price), useful to schedule how to follow the price
     * Many exits conditions to be implemented
@@ -316,8 +314,6 @@ Parameters :
 * symbols Contains a list of the market identifiers allowed for trading and than strategies will be able to auto-trades
     * (could be overrided per appliance profile)
     * If a market identifier is not defined on the WATCHERS side it could not be found
-* leverage its a deprecated values list used only for 1broker
-    * (could be overrided per appliance profile)
 * paper-mode To define the paper trader initially balances
     * (could be overrided per appliance profile)
     * type asset or margin to specify the account type

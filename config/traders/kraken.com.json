@@ -1,6 +1,4 @@
 {
     "status": "load",
-    "classpath": "trader.connector.kraken.trader.KrakenTrader",
-    "symbols": [],
-    "_symbols": ["XXBTZUSD", "XXBTZEUR", "XETHZUSD", "XETHZEUR", "XXRPZUSD", "XXRPZEUR"]
+    "classpath": "trader.connector.kraken.trader.KrakenTrader"
 }

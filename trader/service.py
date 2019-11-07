@@ -27,12 +27,6 @@ class TraderService(Service):
     @todo Could limit to a single trader.
     """
 
-    POLICY_COPY_EVERYWHERE = 0       # copy to from any watcher to any trader (as possible symbols)
-    POLICY_COPY_SAME_AS_ORIGIN = 1   # copy only from a watcher type to the same trader type
-
-    MAX_COPY_ENTRY_DELAY = 5*60      # filters social trades only lesser than N seconds (5 min)
-    MAX_ORDER_COPY_SLIPPAGE = 60     # filters strategy signals only lesser than N seconds (@todo take care must be lasser than Trader.PURGE_COMMANDS_DELAY)
-
     def __init__(self, watcher_service, monitor_service, options):
         super().__init__("trader", options)
 
@@ -46,7 +40,6 @@ class TraderService(Service):
         self._next_key = 1
         self._next_order_uid = 1
 
-        self._policy = TraderService.POLICY_COPY_EVERYWHERE
         self._watcher_service = watcher_service
         self._monitor_service = monitor_service
 
@@ -84,13 +77,6 @@ class TraderService(Service):
     @property
     def report_path(self):
         return self._report_path
-
-    def set_activity(self, status):
-        """
-        Enable/disable execution of orders for all traders.
-        """
-        for k, trader in self._traders.items():
-            trader.set_activity(status)
 
     def start(self, options):
         # no traders in watcher only
@@ -171,8 +157,6 @@ class TraderService(Service):
             if trader.thread.is_alive():
                 trader.thread.join()
 
-            trader.log_report()
-
         self._traders = {}
 
     def notify(self, signal_type, source_name, signal_data):
@@ -190,77 +174,7 @@ class TraderService(Service):
             trader.command(command_type, data)
 
     def receiver(self, signal):
-        now = time.time()
-        command_trigger = {'key': self.gen_key()}
-
-        if signal.signal_type == Signal.SIGNAL_SOCIAL_ENTER:
-            # @deprecated @todo its from social trading...
-            direction = "long" if signal.data.direction == Position.LONG else "short"
-
-            # here we only assume that because of what 1broker return to us but should be timestamp in the model
-            position_timestamp = time.mktime(signal.data.entry_date.timetuple())
-            entry_date = signal.data.entry_date + timedelta(hours=2)
-
-            if now - position_timestamp > TraderService.MAX_COPY_ENTRY_DELAY:
-                return
-
-            Terminal.inst().high("Trading entry signal on %s :" % (entry_date,))
-            Terminal.inst().info("User %s enter %s on %s at %s x%s" % (signal.data.author.name, direction, signal.data.symbol, signal.data.entry_price, signal.data.leverage))
-            Terminal.inst().info("Stop loss: %s / Take profit: %s" % (signal.data.stop_loss, signal.data.take_profit))
-            Terminal.inst().action("Trigger key %s to copy this signal..." % (key_id))
-
-            for k, trader in self._traders.items():
-                if self._policy == TraderService.POLICY_COPY_EVERYWHERE:
-                    trader.on_enter_position(signal.data, command_trigger)
-                elif trader.name == signal.data.watcher.name:
-                    trader.on_enter_position(signal.data, command_trigger)
-
-        elif signal.signal_type == Signal.SIGNAL_SOCIAL_EXIT:
-            # @deprecated @todo its from social trading...
-            direction = "long" if signal.data.direction == Position.LONG else "short"
-
-            # here we only assume that because of what 1broker return to us but should be timestamp in the model
-            position_timestamp = time.mktime(signal.data.exit_date.timetuple())
-            exit_date = signal.data.exit_date + timedelta(hours=2)
-
-            if now - position_timestamp > TraderService.MAX_COPY_ENTRY_DELAY:
-                return
-
-            Terminal.inst().low("Trading exit signal on %s :" % (exit_date,))
-            Terminal.inst().info("User %s exit %s on %s at %s" %  (signal.data.author.name, direction, signal.data.symbol, signal.data.exit_price))
-
-            # @todo profit/loss in account currency (here not good its in unit of...)
-            entry_price = float(signal.data.entry_price) if signal.data.entry_price else 0
-
-            margin = entry_price + entry_price * signal.data.profit_loss_rate
-            Terminal.inst().info("Profit/Loss %f (%.2f%%)" % (margin, signal.data.profit_loss_rate*100.0))
-            Terminal.inst().action("Trigger key %s to copy this signal..." % (key_id))
-
-            for k, trader in self._traders.items():
-                if self._policy == TraderService.POLICY_COPY_EVERYWHERE:
-                    trader.on_exit_position(signal.data, command_trigger)
-                elif trader.name == signal.data.watcher.name:
-                    trader.on_exit_position(signal.data, command_trigger)
-
-        elif signal.signal_type == Signal.SIGNAL_SOCIAL_ORDER:
-            # @deprecated @todo its from social trading...
-            # MAX_ORDER_COPY_SLIPPAGE sec max slippage
-            if now - float(signal.data['timestamp']) > TraderService.MAX_ORDER_COPY_SLIPPAGE:
-                return          
-
-        #   order_date = datetime.fromtimestamp(float(signal.data['timestamp']))
-        #   direction = 'long' if signal.data['direction'] == Position.LONG else 'short' if signal.data['direction'] == Position.SHORT else ''
-
-        #   if signal.data['direction'] == Position.LONG or signal.data['direction'] == Position.SHORT:
-        #       Terminal.inst().low("Social trading order signal on %s :" % (order_date,))
-        #       Terminal.inst().info("Strategy %s order %s on %s at %s" %  (signal.data['strategy'], direction, signal.data['symbol'], signal.data['price']))
-        #       Terminal.inst().action("Trigger key %s to copy this signal..." % (key_id))
-
-        #       for k, trader in self._traders.items():
-        #           if self._policy == TraderService.POLICY_COPY_EVERYWHERE:
-        #               trader.on_set_order(signal.data, command_trigger)
-        #           elif trader.name == signal.data.watcher.name:
-        #               trader.on_set_order(signal.data, command_trigger)
+        pass
 
     def trader(self, name):
         return self._traders.get(name)

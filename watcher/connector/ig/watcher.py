@@ -158,8 +158,8 @@ class IGWatcher(Watcher):
                 self._connecting = False
 
             except Exception as e:
-                logger.debug(repr(e))
-                error_logger.error(traceback.format_exc())
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
                 self._connector = None
                 self._lightstreamer = None
@@ -201,8 +201,8 @@ class IGWatcher(Watcher):
                 self._ready = False
 
             except Exception as e:
-                logger.error(repr(e))
-                error_logger.error(traceback.format_exc())
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
     def pre_update(self):
         if not self._connecting and not self._ready:
@@ -241,10 +241,13 @@ class IGWatcher(Watcher):
 
         if time.time() - self._last_market_update >= IGWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
             try:
+                # session must at least be obtained each 6h, we call each 4h at least but if we have a server invalidation
                 self.update_markets_info()
                 self._last_market_update = time.time()
             except Exception as e:
-                # session must at least be obtained each 6h, we call each 4h at least but if we have a server invalidation
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
                 # @todo and is the WS still valid ?
                 self._connector.update_session()
 
@@ -436,8 +439,8 @@ class IGWatcher(Watcher):
                 account_data = (float(values['FUNDS']), float(values['AVAILABLE_TO_DEAL']), float(values['PNL']), None, None)
                 self.service.notify(Signal.SIGNAL_ACCOUNT_DATA, self.name, account_data)
         except Exception as e:
-            logger.debug(repr(e))
-            error_logger.error(traceback.format_exc())
+            error.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
 
     @staticmethod
     def on_market_update(self, item_update):
@@ -526,8 +529,8 @@ class IGWatcher(Watcher):
                     Database.inst().store_market_trade((self.name, market_id, int(utm), bid, ofr, ltv or 0))
 
         except Exception as e:
-            logger.debug(repr(e))
-            error_logger.error(traceback.format_exc())
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
 
     # @staticmethod
     # def on_ohlc_update(self, item_update):
@@ -600,8 +603,8 @@ class IGWatcher(Watcher):
     #             self._cached_ohlc[name[1]][tf] = (utm, bid_open, bid_high, bid_low, bid_close, ofr_open, ofr_high, ofr_low, ofr_close, ltv)
 
     #     except Exception as e:
-    #         logger.debug(repr(e))
-    #         error_logger.error(traceback.format_exc())
+    #         error_logger.error(repr(e))
+    #         traceback_logger.error(traceback.format_exc())
 
     @staticmethod
     def on_trade_update(self, item_update):
@@ -970,8 +973,8 @@ class IGWatcher(Watcher):
                             self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (epic, position_data, ref_order_id))
 
         except Exception as e:
-            logger.debug(repr(e))
-            exec_logger.error(traceback.format_exc())
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
 
     #
     # REST data

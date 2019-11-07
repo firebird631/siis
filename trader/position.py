@@ -19,14 +19,12 @@ class Position(Keyed):
 
     @todo A currency string formatter, using the currency_symbol if defined and with the correct decimal
     and position of the symbol (ex: $1000.01 or 1175.37€ or 11.3751B)
-
-    @deprecated author and copied_position_id must be managed at social strategy level.
     """
 
     __slots_ = '_trader', '_position_id', '_state', '_symbol', '_shared', '_symbol', '_quantity', \
-                '_profit_loss', '_profit_loss_rate', '_profit_loss_currency', \
+               '_profit_loss', '_profit_loss_rate', '_profit_loss_currency', \
                '_profit_loss_market', '_profit_loss_market_rate', '_created_time', '_market_close', '_leverage', '_entry_price', '_exit_price' \
-               '_stop_loss', '_take_profit', '_trailing_stop', '_direction', '_author', '_copied_position_id'
+               '_stop_loss', '_take_profit', '_trailing_stop', '_direction'
 
     LONG = 1    # long direction
     SHORT = -1  # short direction
@@ -67,10 +65,6 @@ class Position(Keyed):
         self._trailing_stop = False
         self._direction = Position.LONG
 
-        # for social position
-        self._author = None
-        self._copied_position_id = None
-
     def entry(self, direction, symbol, quantity, take_profit=None, stop_loss=None, leverage=None, trailing_stop=False):
         self._state = Position.STATE_OPENED
         self._direction = direction
@@ -92,9 +86,6 @@ class Position(Keyed):
     def set_position_id(self, position_id):
         self._position_id = position_id
 
-    def set_copied_position_id(self, position_id):
-        self._copied_position_id = position_id
-
     def is_opened(self):
         return self._state == Position.STATE_OPENED
 
@@ -111,10 +102,6 @@ class Position(Keyed):
     @property
     def position_id(self):
         return self._position_id
-
-    @property
-    def copied_position_id(self):
-        return self._copied_position_id
     
     @property
     def trader(self):
@@ -192,17 +179,9 @@ class Position(Keyed):
     def quantity(self):
         return self._quantity
 
-    @property
-    def author(self):
-        return self._author
-
     @trader.setter
     def trader(self, trader):
         self._trader = trader
-
-    @author.setter
-    def author(self, author):
-        self._author = author
     
     @symbol.setter
     def symbol(self, symbol):

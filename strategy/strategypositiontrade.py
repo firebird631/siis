@@ -71,7 +71,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         self._stats['entry-order-type'] = order.order_type
 
-        if trader.create_order(order):
+        if trader.create_order(order, instrument):
             # keep the related create position identifier if available
             self.create_oid = order.order_id
             self.position_id = order.position_id
@@ -85,13 +85,13 @@ class StrategyPositionTrade(StrategyTrade):
             self._entry_state = StrategyTrade.STATE_REJECTED
             return False
 
-    def remove(self, trader):
+    def remove(self, trader, instrument):
         """
         Remove the order, but doesn't close the position.
         """
         if self.create_oid:
             # cancel the remaining buy order
-            if trader.cancel_order(self.create_oid):
+            if trader.cancel_order(self.create_oid, instrument):
                 self.create_ref_oid = None
 
                 if self.e <= 0:
@@ -101,10 +101,10 @@ class StrategyPositionTrade(StrategyTrade):
                     # cancel a partially filled trade means it is then fully filled
                     self._entry_state = StrategyTrade.STATE_FILLED
 
-    def cancel_open(self, trader):
+    def cancel_open(self, trader, instrument):
         if self.create_oid:
             # cancel the buy order
-            if trader.cancel_order(self.create_oid):
+            if trader.cancel_order(self.create_oid, instrument):
                 self.create_ref_oid = None
                 self.create_oid = None
 
@@ -122,7 +122,7 @@ class StrategyPositionTrade(StrategyTrade):
     def modify_take_profit(self, trader, instrument, limit_price):
         if self.position_id:
             # if not accepted as modification do it as limit order
-            if trader.modify_position(self.position_id, take_profit_price=limit_price):
+            if trader.modify_position(self.position_id, instrument, take_profit_price=limit_price):
                 self.tp = limit_price
                 self.position_limit = limit_price
                 return self.ACCEPTED
@@ -134,7 +134,7 @@ class StrategyPositionTrade(StrategyTrade):
     def modify_stop_loss(self, trader, instrument, stop_price):
         if self.position_id:
             # if not accepted as modification do it as stop order
-            if trader.modify_position(self.position_id, stop_loss_price=stop_price):
+            if trader.modify_position(self.position_id, instrument, stop_loss_price=stop_price):
                 self.sl = stop_price
                 self.position_stop = stop_price
                 return self.ACCEPTED
@@ -153,7 +153,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         if self.create_oid:
             # cancel the remaining buy order
-            if trader.cancel_order(self.create_oid):
+            if trader.cancel_order(self.create_oid, instrument):
                 self.create_ref_oid = None
                 self.create_oid = None
 
@@ -161,7 +161,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         if self.position_id:
             # most of the margin broker case we have a position id
-            if trader.close_position(self.position_id):
+            if trader.close_position(self.position_id, instrument, self.dir, self.position_quantity, True, None):
                 self._closing = True
                 return self.ACCEPTED
             else:

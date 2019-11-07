@@ -52,10 +52,6 @@ class BinanceTrader(Trader):
         self._account = BinanceAccount(self)
 
         self._quotes = []
-
-        self._last_position_update = 0
-        self._last_order_update = 0
-
         self._ready = False
 
     @property
@@ -93,15 +89,7 @@ class BinanceTrader(Trader):
         super().on_watcher_connected(watcher_name)
 
         # markets, orders and positions
-        logger.info("- Trader binance.com retrieving symbols and markets...")
-
-        configured_symbols = self.configured_symbols()
-        matching_symbols = self.matching_symbols_set(configured_symbols, self._watcher.watched_instruments())
-        # logger.info("%s %s" % (configured_symbols, matching_symbols))
-
-        # only configured symbols found in watched symbols
-        for symbol in matching_symbols:
-            self.market(symbol, True)
+        logger.info("- Trader binance.com retrieving data...")
 
         # insert the assets (fetch after)
         try:
@@ -122,10 +110,10 @@ class BinanceTrader(Trader):
                     asset_name = balance['asset']
                     self.__get_or_add_asset(asset_name)
 
+                self.account.update(self._watcher.connector)
+
             except Exception as e:
                 error_logger.error(repr(e))
-
-        self.account.update(self._watcher.connector)
 
         # fetch the asset from the DB and after signal fetch from binance
         Database.inst().load_assets(self.service, self, self.name, self.account.name)
@@ -180,18 +168,19 @@ class BinanceTrader(Trader):
         # don't wast the CPU 5 ms loop
         time.sleep(0.005)
 
-    def create_order(self, order):
+    #
+    # ordering
+    #
+
+    def create_order(self, order, market_or_instrument):
         """
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
         """
-        if not order:
+        if not order or not market_or_instrument:
             return False
 
-        if not self.has_market(order.symbol):
-            error_logger.error("Trader %s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
-            return False
-
-        if not self._activity:
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
             return False
 
         # order type
@@ -203,28 +192,27 @@ class BinanceTrader(Trader):
             # @todo others
             order_type = Client.ORDER_TYPE_MARKET
 
-        with self._mutex:
-            market = self._markets[order.symbol]
-
         symbol = order.symbol
         side = Client.SIDE_BUY if order.direction == Position.LONG else Client.SIDE_SELL
-        time_in_force = Client.TIME_IN_FORCE_GTC  # @todo as option for the order strategy
 
-        if order.quantity < market.min_size:
+        # @todo as option for the order strategy
+        time_in_force = Client.TIME_IN_FORCE_GTC
+
+        if order.quantity < market_or_instrument.min_size:
             # reject if lesser than min size
             error_logger.error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in order %s !" % (
-                self.name, order.quantity, market.min_size, symbol, order.order_id))
+                self.name, order.quantity, market_or_instrument.min_size, symbol, order.order_id))
             return False
 
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
-        # quantity = market.format_quantity(market.adjust_quantity(order.quantity))
+        # quantity = market_or_instrument.format_quantity(market_or_instrument.adjust_quantity(order.quantity))
         quantity = market.adjust_quantity(order.quantity)
-        notional = quantity * (order.price or market.ofr)
+        notional = quantity * (order.price or market_or_instrument.market_ofr)
 
-        if notional < market.min_notional:
+        if notional < market_or_instrument.min_notional:
             # reject if lesser than min notinal
             error_logger.error("Trader %s refuse order because the min notional is not reached (%.f<%.f) %s in order %s !" % (
-                self.name, notional, market.min_notional, symbol, order.order_id))
+                self.name, notional, market_or_instrument.min_notional, symbol, order.order_id))
             return False
 
         data = {
@@ -238,19 +226,19 @@ class BinanceTrader(Trader):
 
         # limit order need timeInForce
         if order.order_type == Order.ORDER_LIMIT:
-            data['price'] = market.format_price(order.price)
+            data['price'] = market_or_instrument.format_price(order.price)
             data['timeInForce'] = time_in_force
         elif order.order_type == Order.ORDER_STOP:
-            data['stopPrice'] = market.format_price(order.stop_price)
+            data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
         elif order.order_type == Order.ORDER_STOP_LIMIT:
-            data['price'] = market.format_price(order.price)
-            data['stopPrice'] = market.format_price(order.stop_price)
+            data['price'] = market_or_instrument.format_price(order.price)
+            data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
             data['timeInForce'] = time_in_force
         elif order.order_type == Order.ORDER_TAKE_PROFIT:
-            data['stopPrice'] = market.format_price(order.stop_price)
+            data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
         elif order.order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
-            data['price'] = market.format_price(order.price)
-            data['stopPrice'] = market.format_price(order.stop_price)
+            data['price'] = market_or_instrument.format_price(order.price)
+            data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
             data['timeInForce'] = time_in_force
 
         data['newClientOrderId'] = order.ref_order_id
@@ -294,13 +282,6 @@ class BinanceTrader(Trader):
                 #     # partially or fully executed quantity
                 #     order.set_executed(float(result['executedQty']), result.get['status'] == "FILLED", float(result['price']))
 
-                # # store the order until fully completed or canceled
-                # with self._mutex:
-                #     self._orders[order.order_id] = order
-
-                # @todo remove me
-                logger.info("(rm me) Trade %s completed and locally stored" % order.order_id)
-
                 return True
 
         error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), quantity, symbol))
@@ -308,22 +289,15 @@ class BinanceTrader(Trader):
 
         return False
 
-    def cancel_order(self, order_id):
+    def cancel_order(self, order_id, market_or_instrument):
         """
         Cancel a pending or partially filled order.
         """
-        if not self._activity:
+        if not order or not market_or_instrument:
             return False
 
-        with self._mutex:
-            order = self._orders.get(order_id)
-
-        if order is None:
-            error_logger.error("%s does not found order %s !" % (self.name, order_id))
-            return False
-
-        if not self.has_market(order.symbol):
-            error_logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
             return False
 
         # order type
@@ -367,57 +341,35 @@ class BinanceTrader(Trader):
 
             order_logger.info(result)
 
-        # # no longer managed (or wait the signal)
-        # with self._mutex:
-        #     if order_id in self._orders:
-        #         del self._orders[order_id]
-
-        # @todo remove me
-        logger.info("(rm me) Trade %s canceled and locally removed" % order_id)
-
         return True
 
-    @Trader.mutexed
-    def close_position(self, position_id, market=True, limit_price=None):
+    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         """
         @todo Soon support of margin trading.
         """
-        if not self._activity:
+        if not position_id or not market_or_instrument:
             return False
 
-        position = self._positions.get(position_id)
-
-        if position is None or not position.is_opened():
-            error_logger.error("%s does not found opened position %s for closing !" % (self.name, position_id))
-            return False
-
-        if not self.has_market(position.symbol):
-            error_logger.error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id))
-            return False
-
-        symbol = position.symbol
-
-        # market detail fetched once next use cached
-        market_info = self.market(market_id)
-        if market_info is None:
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to close position because of missing connector" % (self.name,))
             return False
 
         # @todo
 
         return False
 
-    @Trader.mutexed
-    def modify_position(self, position_id, stop_loss_price=None, take_profit_price=None):
+    def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
         """
         @todo Soon support of margin trading.
         """
-        if not self._activity:
+        if not position_id or not market_or_instrument:
+            return False
+        
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to close position because of missing connector" % (self.name,))
             return False
 
-        position = self._positions.get(position_id)
-        if position is None or not position.is_opened():
-            error_logger.error("%s does not found opened position %s for modification !" % (self.name, position_id))
-            return False
+        # @todo
 
         return False
 
@@ -436,7 +388,6 @@ class BinanceTrader(Trader):
     def market(self, market_id, force=False):
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
-
         @param force Force to update the cache
         """
         with self._mutex:
@@ -963,7 +914,7 @@ class BinanceTrader(Trader):
         # update positions profit/loss for the related market id
         market = self.market(market_id)
 
-        # market must be valid and currently tradeable
+        # market must be valid
         if market is None:
             return
 

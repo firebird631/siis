@@ -395,7 +395,7 @@ class Instrument(object):
 
     __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_tradeable', '_currency', '_trade_quantity', '_leverage', \
                 '_market_bid', '_market_ofr', '_last_update_time', '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
-                '_ticks', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging',
+                '_ticks', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry'
 
     def __init__(self, name, symbol, market_id, alias=None):
         self._watchers = {}
@@ -404,6 +404,7 @@ class Instrument(object):
         self._market_id = market_id
         self._alias = alias
         self._tradeable = True
+        self._expiry = "-"
 
         self._base = ""
         self._quote = ""
@@ -536,6 +537,14 @@ class Instrument(object):
     @currency.setter
     def currency(self, currency):
         self._currency = currency
+
+    @property
+    def expiry(self):
+        return self._expiry
+    
+    @expiry.setter
+    def expiry(self, expiry):
+        self._expiry = expiry
 
     #
     # options

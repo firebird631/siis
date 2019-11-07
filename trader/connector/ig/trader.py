@@ -27,14 +27,12 @@ import logging
 logger = logging.getLogger('siis.trader.ig')
 error_logger = logging.getLogger('siis.error.ig')
 order_logger = logging.getLogger('siis.order.ig')
+traceback_logger = logging.getLogger('siis.traceback.ig')
 
 
 class IGTrader(Trader):
     """
     IG market trader.
-
-    @todo Improve wait between two similar order (avoid duplicate order need to wait 1sec)
-    @todo Check that we have all our signals from WS and don't need forced sync during update
     """
 
     REST_OR_WS = False  # True if REST API sync else do with the state returned by WS events
@@ -48,8 +46,6 @@ class IGTrader(Trader):
         self._last_position_update = 0
         self._last_order_update = 0
         self._last_market_update = 0
-
-        self._previous_order = {}
 
     @property
     def authenticated(self):
@@ -83,22 +79,14 @@ class IGTrader(Trader):
     def on_watcher_connected(self, watcher_name):
         super().on_watcher_connected(watcher_name)
 
-        # markets, orders and positions
-        logger.info("- Trader ig.com retrieving symbols and markets...")
-
-        configured_symbols = self.configured_symbols()
-        matching_symbols = self.matching_symbols_set(configured_symbols, self._watcher.watched_instruments())
-      
-        # fetch markets
-        for symbol in matching_symbols:
-            self.market(symbol, True)
+        logger.info("- Trader ig.com retrieving data...")
 
         with self._mutex:
             # initials orders and positions
             self.__fetch_orders()
             self.__fetch_positions()
 
-        self.account.update(self._watcher.connector)
+            self.account.update(self._watcher.connector)
 
         logger.info("Trader ig.com got data. Running.")
 
@@ -143,7 +131,8 @@ class IGTrader(Trader):
                 try:
                     self._account.update(self._watcher.connector)
                 except Exception as e:
-                    logger.error(traceback.format_exc())
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
 
             #
             # positions
@@ -156,7 +145,8 @@ class IGTrader(Trader):
                         self.__fetch_positions()
                         self._last_position_update = time.time()
                 except Exception as e:
-                    logger.error(traceback.format_exc())
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
 
             #
             # orders
@@ -169,7 +159,8 @@ class IGTrader(Trader):
                         self.__fetch_orders()
                         self._last_order_update = time.time()
                 except Exception as e:
-                    logger.error(traceback.format_exc())
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
 
         return True
 
@@ -178,6 +169,10 @@ class IGTrader(Trader):
 
         # don't wast the CPU 5 ms loop
         time.sleep(0.005)
+
+    #
+    # ordering
+    #
 
     def set_ref_order_id(self, order):
         """
@@ -194,20 +189,15 @@ class IGTrader(Trader):
 
         return None
 
-    @Trader.mutexed
-    def create_order(self, order):
+    def create_order(self, order, market_or_instrument):
         """
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
-        @todo Could used close_open_position if reduce only is defined.
         """
-        if not order:
+        if not order or not market_or_instrument:
             return False
 
-        if not self.has_market(order.symbol):
-            logger.error("Trader %s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
-            return False
-
-        if not self._activity:
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
             return False
 
         level = None
@@ -237,24 +227,11 @@ class IGTrader(Trader):
 
         direction = 'BUY' if order.direction == Position.LONG else 'SELL'
 
-        # EPIC market detail fetched once next use cached
-        market_info = self.market(epic)
-        if market_info is None:
-
-            return False
-
         quote_id = None
         deal_reference = order.ref_order_id
 
-        if IGTrader.REST_OR_WS:
-            try:
-                # retrieve current epic position quantity only if not using WS API
-                self.__fetch_positions()
-            except:
-                pass
-
-        currency_code = market_info.quote
-        expiry = market_info.expiry
+        currency_code = market_or_instrument.quote
+        expiry = market_or_instrument.expiry
 
         # take-profit
         limit_distance = None
@@ -298,11 +275,6 @@ class IGTrader(Trader):
 
         logger.info("Trader %s order %s %s @%s %s" % (self.name, order.direction_to_str(), epic, limit_level, size))
 
-        # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
-        if epic in self._previous_order and (self._previous_order[epic] == (expiry, size, direction)):
-            logger.debug("%s wait 1sec before passing a duplicate order..." % (self.name,))
-            time.sleep(1.0)
-
         try:
             results = self._watcher.connector.ig.create_open_position(currency_code, direction, epic, expiry,
                                                     force_open, guaranteed_stop, level,
@@ -312,9 +284,6 @@ class IGTrader(Trader):
             order_logger.info(results)
 
             if results.get('dealStatus', '') == 'ACCEPTED':
-                # logger.debug("create_order :" + repr(results))
-                self._previous_order[epic] = (expiry, size, direction)
-
                 # dealId is the IG given unique id, dealReference is the query dealId that have given its
                 # order creation dealRef can be specified to have in return its ref (as signature for us)
                 order.set_order_id(results['dealReference'])
@@ -326,29 +295,11 @@ class IGTrader(Trader):
 
                 if not order.created_time:
                     order.created_time = self.timestamp
-
                 if not order.transact_time:
                     order.created_time = self.timestamp
 
                 # executed price (no change in limit, but useful when market order)
                 order.entry_price = results.get('level')
-
-                # store it, but we will receive a creation signal too
-                self._orders[order.order_id] = order
-
-                # store the position directly because create_open_position fetch the position after acceptance or wait the WS signal
-                # position = Position(self)
-                # position.set_key(self.service.gen_key())
-
-                # position.entry(direction, epic, size)
-                # position.set_position_id(results['dealId'])
-                # position.entry_price = results.get('level')
-                # position.stop_loss = results.get('stopLevel') 
-                # position.take_profit = results.get('limitLevel')
-
-                # @todo 'trailingStep' 'trailingStopDistance' 'controlledRisk'
-
-                # self._positions[position.position_id] = position
             else:
                 error_logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, results.get('reason')))
                 return False
@@ -359,31 +310,25 @@ class IGTrader(Trader):
 
         return True
 
-    @Trader.mutexed
-    def cancel_order(self, order_id):
-        if not self._activity:
+    def cancel_order(self, order_id, market_or_instrument):
+        if not order or not market_or_instrument:
             return False
 
-        order = self._orders.get(order_id)
-
-        if order is None:
-            error_logger.error("%s does not found order %s !" % (self.name, order_id))
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to cancel order because of missing connector" % (self.name,))
             return False
-
-        deal_id = order.order_id
 
         try:
-            results = self._watcher.connector.ig.delete_working_order(deal_id)
+            results = self._watcher.connector.ig.delete_working_order(order_id)
         except IGException as e:
-            error_logger.error("%s except on order %s cancelation - cause : %s !" % (self.name, deal_id, repr(e)))
+            error_logger.error("%s except on order %s cancelation - cause : %s !" % (self.name, order_id, repr(e)))
             return False
 
         order_logger.info(results)
 
         return True
 
-    @Trader.mutexed
-    def close_position(self, position_id, market=True, limit_price=None):
+    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         """
         Close an existing position by its position identifier.
         @param position_id str Unique position identifier (dealId)
@@ -391,30 +336,18 @@ class IGTrader(Trader):
         @param limit_price float If market is False then use this limit price
         @note epic and expiry must be none if there is a defined dealId.
         """
-        if not self._activity:
+        if not position_id or not market_or_instrument:
             return False
 
-        position = self._positions.get(position_id)
-
-        if position is None or not position.is_opened():
-            error_logger.error("%s does not found opened position %s !" % (self.name, position_id))
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to close position because of missing connector" % (self.name,))
             return False
 
-        if not self.has_market(position.symbol):
-            error_logger.error("%s does not support market %s on close position %s !" % (self.name, position.symbol, position.position_id))
-            return False
-
-        # EPIC market detail fetched once next use cached
-        market_info = self.market(position.symbol)
-        if market_info is None:
-            error_logger.error("%s does not found market info when trying to close position %s !" % (self.name, position_id))
-            return False
-
-        epic = position.symbol
-        expiry = market_info.expiry
-        deal_id = position.position_id
+        epic = market_or_instrument.symbol
+        expiry = market_or_instrument.expiry
+        deal_id = position_id
         quote_id = None
-        size = position.quantity
+        size = quantity
 
         if deal_id:
             # dealId then no epic neither expiry
@@ -428,49 +361,30 @@ class IGTrader(Trader):
             order_type = 'LIMIT'
             level = limit_price
 
-        direction = 'SELL' if position.direction == Position.LONG else 'BUY'
-
-        if epic and expiry:
-            # avoid DUPLICATE_ORDER_ERROR when sending two similar orders
-            logger.info(self._previous_order)
-            if epic in self._previous_order and (self._previous_order[epic] == (expiry, size, direction)):
-                logger.warning("%s wait 1sec before passing a duplicate order..." % (self.name,))
-                time.sleep(1.0)
+        direction = 'SELL' if direction == Position.LONG else 'BUY'
 
         try:
             results = self._watcher.connector.ig.close_open_position(deal_id, direction, epic, expiry, level, order_type, quote_id, size)
             order_logger.info(results)
      
             if results.get('dealStatus', '') == 'ACCEPTED':
-                if epic and expiry:
-                    self._previous_order[epic] = (expiry, size, direction)
-
-                # set position closing until we get confirmation on a next update
-                position.closing(limit_price)
-
-                # del the position (done by streaming signal once fully-closed)
-                # del self._positions[position.position_id]
+                pass
             else:
-                position.closing(limit_price)
-                error_logger.error("%s rejected close position %s of %s %s !" % (self.name, direction, size, position.symbol))
-
+                error_logger.error("%s rejected close position %s - %s !" % (self.name, position_id, market_or_instrument.market_id))
                 return False
 
         except IGException as e:
-            error_logger.error("%s except close position %s of %s %s !" % (self.name, direction, size, position.symbol))
+            error_logger.error("%s except close position %s - %s !" % (self.name, position_id, market_or_instrument.market_id))
             return False
 
         return True
 
-    @Trader.mutexed
-    def modify_position(self, position_id, stop_loss_price=None, take_profit_price=None):
-        if not self._activity:
+    def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
+        if not position_id or not market_or_instrument:
             return False
 
-        position = self._positions.get(position_id)
-
-        if position is None or not position.is_opened():
-            error_logger.error("%s does not found opened position %s !" % (self.name, position_id))
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to modify position because of missing connector" % (self.name,))
             return False
 
         limit_level = None
@@ -478,31 +392,29 @@ class IGTrader(Trader):
 
         if take_profit_price:
             limit_level = take_profit_price
-
         if stop_loss_price:
             stop_level = stop_loss_price
 
-        deal_id = position.position_id
-
         try:
-            results = self._watcher.connector.ig.update_open_position(limit_level, stop_level, deal_id)
+            results = self._watcher.connector.ig.update_open_position(limit_level, stop_level, position_id)
             order_logger.info(results)
 
             if results.get('dealStatus', '') == 'ACCEPTED':
-                position.take_profit = take_profit_price
-                position.stop_loss = stop_loss_price
-
                 return True
             else:
-                error_logger.error("%s rejected modifiy position %s - %s - %s !" % (self.name, position.position_id, position.symbol))
+                error_logger.error("%s rejected modify position %s - %s !" % (self.name, position_id, market_or_instrument.market_id))
 
             return True
 
         except IGException as e:
-            error_logger.error("%s except close position %s of %s %s !" % (self.name, direction, size, position.symbol))
+            error_logger.error("%s except close position %s - %s !" % (self.name, position_id, market_or_instrument.market_id))
             return False
 
         return False
+
+    #
+    # global accessors
+    #
 
     def positions(self, market_id):
         """
@@ -523,14 +435,19 @@ class IGTrader(Trader):
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
         @param force Force to update the cache
         """
-        market = self._markets.get(market_id)
-        if (market is None or force) and self._watcher is not None and self._watcher.connected:
-            try:
-                market = self._watcher.fetch_market(market_id)
-                self._markets[market_id] = market
-            except Exception as e:
-                logger.error("fetch_market: %s" % repr(e))
-                return None
+        with self._mutex:
+            market = self._markets.get(market_id)
+    
+            if (market is None or force) and self._watcher is not None and self._watcher.connected:
+                try:
+                    market = self._watcher.fetch_market(market_id)
+                except Exception as e:
+                    logger.error("fetch_market: %s" % repr(e))
+                    return None
+
+                if market:
+                    with self._mutex:
+                        self._markets[market_id] = market
 
         return market
 
@@ -659,7 +576,6 @@ class IGTrader(Trader):
         # @todo add/update/remove orders
         # and this can be done by signals
 
-    @Trader.mutexed
     def on_update_market(self, market_id, tradable, last_update_time, bid, ofr,
             base_exchange_rate, contract_size=None, value_per_pip=None,
             vol24h_base=None, vol24h_quote=None):
@@ -669,8 +585,11 @@ class IGTrader(Trader):
         # update positions profit/loss for the related market id
         market = self.market(market_id)
 
-        # market must be valid and currently tradeable
-        if market:
+        # market must be valid
+        if market is None:
+            return
+
+        with self._mutex:
             for k, position in self._positions.items():
                 if position.symbol == market.market_id:
                     position.update_profit_loss(market)

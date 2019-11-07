@@ -397,7 +397,6 @@ class IGService:
     def close_open_position(self, deal_id, direction, epic, expiry, level, order_type, quote_id, size, session=None):
         """
         Closes one or more OTC positions
-        @todo issue when using deal_id
         """
         params = {
             'dealId': deal_id,

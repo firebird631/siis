@@ -17,12 +17,11 @@ from instrument.instrument import Instrument
 
 class PlayCommand(Command):
 
-    SUMMARY = "[traders,apps,notifiers] <[appliance-id,trader-id,notifier-id]> <appliance-market-id> to enable trader(s), appliance(s) or notifiers(s)."
+    SUMMARY = "[apps,notifiers] <[appliance-id,notifier-id]> <appliance-market-id> to enable appliance(s) or notifiers(s)."
 
-    def __init__(self, trader_service, strategy_service, notifier_service):
+    def __init__(self, strategy_service, notifier_service):
         super().__init__('play', None)
 
-        self._trader_service = trader_service
         self._strategy_service = strategy_service
         self._notifier_service = notifier_service
 
@@ -31,24 +30,7 @@ class PlayCommand(Command):
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
-        if args[0] == 'traders':
-            if len(args) == 1:
-                self._trader_service.set_activity(True)
-                Terminal.inst().action("Activated any markets for all traders", view='status')
-                return True
-            elif len(args) == 2:
-                trader = self._trader_service.trader(args[1])
-                if trader:
-                    trader.set_activity(True)
-                    Terminal.inst().action("Activated any markets for trader %s" % args[1], view='status')
-                    return True
-            elif len(args) == 3:
-                trader = self._trader_service.trader(args[1])
-                if trader:
-                    trader.set_activity(True, args[2])
-                    Terminal.inst().action("Activated market %s for trader %s" % (args[2], args[1]), view='status')
-                return True
-        elif args[0] == 'apps':
+        if args[0] == 'apps':
             if len(args) == 1:
                 self._strategy_service.set_activity(True)
                 Terminal.inst().action("Activated any instruments for all appliances", view='status')
@@ -81,14 +63,11 @@ class PlayCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, ['apps', 'traders', 'notifiers'], args, tab_pos, direction)
+            return self.iterate(0, ['apps', 'notifiers'], args, tab_pos, direction)
 
         elif len(args) <= 2:
-            # appliance/trader
             if args[0] == "apps":
                 return self.iterate(1, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
-            elif args[0] == "traders":
-                return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
             elif args[0] == "notifiers":
                 return self.iterate(1, self._notifier_service.notifiers_identifiers(), args, tab_pos, direction)
 
@@ -98,23 +77,17 @@ class PlayCommand(Command):
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     return self.iterate(2, appliance.symbols_ids(), args, tab_pos, direction)
-            elif args[0] == 'traders':
-                # market
-                trader = self._trader_service.trader(args[1])
-                if trader:
-                    return self.iterate(2, trader.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
 
 class PauseCommand(Command):
 
-    SUMMARY = "[traders,apps,notifiers] <[appliance-id,trader-id,notifier-id]> <appliance-market-id> to disable trader(s), appliance(s) or notifiers(s)."
+    SUMMARY = "[apps,notifiers] <[appliance-id,notifier-id]> <appliance-market-id> to disable appliance(s) or notifiers(s)."
 
-    def __init__(self, trader_service, strategy_service, notifier_service):
+    def __init__(self, strategy_service, notifier_service):
         super().__init__('pause', None)
 
-        self._trader_service = trader_service
         self._strategy_service = strategy_service
         self._notifier_service = notifier_service
 
@@ -123,24 +96,7 @@ class PauseCommand(Command):
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
-        if args[0] == 'traders':
-            if len(args) == 1:
-                self._trader_service.set_activity(False)
-                Terminal.inst().action("Paused any markets for all traders", view='status')
-                return True
-            elif len(args) == 2:
-                trader = self._trader_service.trader(args[1])
-                if trader:
-                    trader.set_activity(False)
-                    Terminal.inst().action("Paused any markets for trader %s" % args[1], view='status')
-                    return True
-            elif len(args) == 3:
-                trader = self._trader_service.trader(args[1])
-                if trader:
-                    trader.set_activity(False, args[2])
-                    Terminal.inst().action("Paused market %s for trader %s" % (args[2], args[1]), view='status')
-                return True
-        elif args[0] == 'apps':
+        if args[0] == 'apps':
             if len(args) == 1:
                 self._strategy_service.set_activity(False)
                 Terminal.inst().action("Paused any instruments for all appliances", view='status')
@@ -173,14 +129,11 @@ class PauseCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, ['apps', 'traders', 'notifiers'], args, tab_pos, direction)
+            return self.iterate(0, ['apps', 'notifiers'], args, tab_pos, direction)
 
         elif len(args) <= 2:
-            # appliance/trader
             if args[0] == "apps":
                 return self.iterate(1, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
-            elif args[0] == "traders":
-                return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
             elif args[0] == "notifiers":
                 return self.iterate(1, self._notifier_service.notifiers_identifiers(), args, tab_pos, direction)
 
@@ -190,11 +143,6 @@ class PauseCommand(Command):
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     return self.iterate(2, appliance.symbols_ids(), args, tab_pos, direction)
-            elif args[0] == 'traders':
-                # market
-                trader = self._trader_service.trader(args[1])
-                if trader:
-                    return self.iterate(2, trader.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -1148,8 +1096,8 @@ def register_trading_commands(commands_handler, trader_service, strategy_service
     # global
     #
 
-    commands_handler.register(PlayCommand(trader_service, strategy_service, notifier_service))
-    commands_handler.register(PauseCommand(trader_service, strategy_service, notifier_service))
+    commands_handler.register(PlayCommand(strategy_service, notifier_service))
+    commands_handler.register(PauseCommand(strategy_service, notifier_service))
     commands_handler.register(InfoCommand(trader_service, strategy_service, notifier_service))
     commands_handler.register(ChartCommand(strategy_service, monitor_service))
     commands_handler.register(UserSaveCommand(strategy_service))

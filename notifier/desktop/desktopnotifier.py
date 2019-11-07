@@ -101,71 +101,7 @@ class DesktopNotifier(Notifier):
         now = time.time()
         audio_alert = None
 
-        if signal.signal_type == Signal.SIGNAL_SOCIAL_ENTER:
-            # here we only assume that because of what 1broker return to us but should be timestamp in the model
-            entry_date = signal.data.entry_date + timedelta(hours=2)
-            position_timestamp = time.mktime(entry_date.timetuple())
-            audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
-
-            if now - position_timestamp > 120 * 60:
-                return
-
-            label = "Entry position on %s" % (signal.data.symbol,)
-            message = "Trader %s enter %s on %s at %s (x%s)" % (
-                signal.data.author.name if signal.data.author is not None else "???",
-                "long" if signal.data.direction == Position.LONG else "short",
-                signal.data.symbol,
-                signal.data.entry_price,
-                signal.data.leverage)
-
-        elif signal.signal_type == Signal.SIGNAL_SOCIAL_EXIT:
-            # here we only assume that because of what 1broker return to us but should be timestamp in the model
-            exit_date = signal.data.exit_date + timedelta(hours=2)
-            position_timestamp = time.mktime(exit_date.timetuple())
-            audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
-
-            if now - position_timestamp > 120 * 60:
-                return
-
-            label = "Exit position on %s" % (signal.data.symbol,)
-            message = "Trader %s exit %s on %s at %s" % (
-                signal.data.author.name,
-                "long" if signal.data.direction == Position.LONG else "short",
-                signal.data.symbol,
-                signal.data.exit_price)
-
-        # # @todo a threshold... or a timelimit
-        # elif signal.signal_type == Signal.SIGNAL_TRADE_ALERT:
-        #     icon = "go-down"
-        #     label = "Position loss on %s" % (signal.data.symbol,)
-        #     audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
-
-        #     message = "Position %s %s of %s on %s start at %s %s is in regretable loss %s (%s%%) :$" % (
-        #         signal.data.position_id,
-        #         "long" if signal.data.direction == Position.LONG else "short",
-        #         signal.data.author.name if signal.data.author is not None else "???",
-        #         signal.data.trader.name,
-        #         signal.data.entry_price,
-        #         signal.data.symbol,
-        #         signal.data.profit_loss,
-        #         signal.data.profit_loss_rate * 100.0)
-
-        # elif signal.signal_type == Signal.SIGNAL_TRADE_ENJOY:
-        #     icon = "go-up"
-        #     label = "Position profit on %s" % (signal.data.symbol,)
-        #     audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
-
-        #     message = "Position %s %s of %s on %s start at %s %s is in enjoyable profit %s (%s%%) :)" % (
-        #         signal.data.position_id,
-        #         "long" if signal.data.direction == Position.LONG else "short",
-        #         signal.data.author.name if signal.data.author is not None else "???",
-        #         signal.data.trader.name,
-        #         signal.data.entry_price,
-        #         signal.data.symbol,
-        #         signal.data.profit_loss,
-        #         signal.data.profit_loss_rate * 100.0)
-
-        elif signal.signal_type in (Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
+        if signal.signal_type in (Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
             # @todo in addition of entry/exit, modification and a reason of the exit/modification
             icon = "contact-new"
             direction = "long" if signal.data['direction'] == Position.LONG else "short"
@@ -242,8 +178,7 @@ class DesktopNotifier(Notifier):
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if signal.signal_type in (Signal.SIGNAL_SOCIAL_ENTER, Signal.SIGNAL_SOCIAL_EXIT,
-                    Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
+            if signal.signal_type in (Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
                 self.push_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHDOG:

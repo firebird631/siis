@@ -305,7 +305,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     # if (trade.is_opened() and tf_match) or trade.is_entry_timeout(timestamp, trade.timeframe):
                     # if trade.is_entry_timeout(timestamp, trade.timeframe):
                     #     trader = self.strategy.trader()
-                    #     trade.cancel_open(trader)
+                    #     trade.cancel_open(trader, self.instrument)
                     #     # logger.info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,))
                     #     continue
 

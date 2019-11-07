@@ -9,8 +9,6 @@ from common.keyed import Keyed
 class Order(Keyed):
     """
     Order for execution on a trader.
-
-    @deprecated copied_position_id must be managed at social strategy level.
     """
 
     LONG = 1    # long direction
@@ -45,9 +43,6 @@ class Order(Keyed):
         self._trader = trader
         self._symbol = symbol
         self._created_time = 0.0
-
-        self._author = None
-        self._copied_position_id = None
 
         self._position_id = None
 
@@ -105,14 +100,6 @@ class Order(Keyed):
     @property
     def position_id(self):
         return self._position_id
-
-    @property
-    def copied_position_id(self):
-        return self._copied_position_id
-    
-    @property
-    def author(self):
-        return self._author
 
     @property
     def symbol(self):
@@ -196,9 +183,6 @@ class Order(Keyed):
     def set_ref_order_id(self, ref_order_id):
         self._ref_order_id = ref_order_id
 
-    def set_copied_position_id(self, position_id):
-        self._copied_position_id = position_id
-
     def set_position_id(self, position_id):
         self._position_id = position_id
 
@@ -209,10 +193,6 @@ class Order(Keyed):
     @executed.setter
     def executed(self, executed):
         self._executed = executed
-
-    @author.setter
-    def author(self, author):
-        self._author = author
     
     @take_profit.setter
     def take_profit(self, take_profit):

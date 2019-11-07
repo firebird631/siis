@@ -11,8 +11,6 @@ from trader.position import Position
 from trader.order import Order
 from trader.asset import Asset
 
-from .papertraderhistory import PaperTraderHistory, PaperTraderHistoryEntry
-
 import logging
 logger = logging.getLogger('siis.trader.papertrader.asset')
 
@@ -95,15 +93,6 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
         order.transact_time = trader.timestamp
 
         result = True
-
-        #
-        # history
-        #
-
-        if trader._history:
-            # and keep for history (backtesting reporting)
-            history = PaperTraderHistoryEntry(order, trader.account.balance, trader.account.margin_balance)
-            trader._history.add(history)
 
         # unlock before notify signals
         trader.unlock()
@@ -199,18 +188,6 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
         order.transact_time = trader.timestamp
 
         result = True
-
-        #
-        # history
-        #
-
-        if trader._history:
-            # and keep for history (backtesting reporting)
-            history = PaperTraderHistoryEntry(order,
-                trader.account.balance, trader.account.margin_balance, delta_price/market.one_pip_means,
-                gain_loss_rate, position_gain_loss, position_gain_loss_currency)
-
-            trader._history.add(history)
 
         # unlock before notify signals
         trader.unlock()

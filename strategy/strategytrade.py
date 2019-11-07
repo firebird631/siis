@@ -23,6 +23,8 @@ class StrategyTrade(object):
 
     It can only have on entry order. The exit works on the entried quantity. When the entry order is not fully filled,
     the exit order are later adjusted.
+
+    @todo Take care to do not try to serialize objects from extra dict.
     """
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
@@ -309,7 +311,7 @@ class StrategyTrade(object):
         """
         return False
 
-    def remove(self, trader):
+    def remove(self, trader, instrument):
         """
         Remove the trade and related remaining orders.
         """
@@ -407,13 +409,13 @@ class StrategyTrade(object):
                 (validity > 0.0) and (timestamp > 0.0) and ((timestamp - self.entry_open_time) <= validity))
             )
 
-    def cancel_open(self, trader):
+    def cancel_open(self, trader, instrument):
         """
         Cancel the entiere or remaining open order.
         """
         return False
 
-    def cancel_close(self, trader):
+    def cancel_close(self, trader, instrument):
         """
         Cancel the entiere or remaining close order.
         """

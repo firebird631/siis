@@ -21,15 +21,15 @@ from trader.asset import Asset
 from trader.order import Order
 from trader.position import Position
 
-from .papertraderhistory import PaperTraderHistory, PaperTraderHistoryEntry
-
 from .papertraderindmargin import exec_indmargin_order
 from .papertradermargin import exec_margin_order
 from .papertraderposition import close_position
 from .papertraderspot import exec_buysell_order
 
 import logging
-logger = logging.getLogger('siis.trader.papertrader')
+logger = logging.getLogger('siis.trader.paper')
+error_logger = logging.getLogger('siis.error.paper')
+traceback_logger = logging.getLogger('siis.traceback.trade.paper')
 
 
 class PaperTrader(Trader):
@@ -46,15 +46,11 @@ class PaperTrader(Trader):
         self._slippage = 0  # slippage in ticks (not supported for now)
 
         self._watcher = None  # in backtesting refers to a dummy watcher
-        self._history = None
         self._unlimited = False
 
         trader_config = service.trader_config(name)
         paper_mode = trader_config.get('paper-mode')
         if paper_mode:
-            if paper_mode.get("reporting", "none") == "verbose":
-                self._history = PaperTraderHistory(self)  # trades history for reporting
-
             self._unlimited = paper_mode.get("unlimited", False)
 
         self._account = PaperTraderAccount(self)
@@ -84,14 +80,11 @@ class PaperTrader(Trader):
             return
 
         # retrieve the pair watcher and take its connector
-        self.lock()
+        with self._mutex:
+            self._watcher = self.service.watcher_service.watcher(self._name)
 
-        self._watcher = self.service.watcher_service.watcher(self._name)
-
-        if self._watcher:
-            self.service.watcher_service.add_listener(self)
-
-        self.unlock()
+            if self._watcher:
+                self.service.watcher_service.add_listener(self)
 
         if self._watcher and self._watcher.connected:
             self.on_watcher_connected(self._watcher.name)   
@@ -99,31 +92,20 @@ class PaperTrader(Trader):
     def disconnect(self):
         super().disconnect()
 
-        self.lock()
-
-        if self._watcher:
-            self.service.watcher_service.remove_listener(self)
-            self._watcher = None
-
-        self.unlock()
+        with self._mutex:
+            if self._watcher:
+                self.service.watcher_service.remove_listener(self)
+                self._watcher = None
 
     def on_watcher_connected(self, watcher_name):
         super().on_watcher_connected(watcher_name)
 
-        logger.info("Paper trader %s retrieving symbols and markets..." % self._name)
-
-        # fetch tradable markets
-        configured_symbols = self.configured_symbols()
-        matching_symbols = self.matching_symbols_set(configured_symbols, self._watcher.watched_instruments())
-
-        # only configured symbols found in watched symbols
-        for symbol in matching_symbols:
-            self.market(symbol, True)
+        logger.info("Paper trader %s retrieving data..." % self._name)
 
         # insert the assets
         # @todo
 
-        logger.info("Paper trader %s data symbols and markets retrieved." % self._name)
+        logger.info("Paper trader %s data retrieved." % self._name)
 
     def on_watcher_disconnected(self, watcher_name):
         super().on_watcher_disconnected(watcher_name)
@@ -137,12 +119,10 @@ class PaperTrader(Trader):
 
         margin = None
 
-        self.lock()
-        market = self._markets.get(market_id)
-        margin = market.margin_cost(quantity, price)
-        self.unlock()
+        with self._mutex:
+            market = self._markets.get(market_id)
+            margin = market.margin_cost(quantity, price)
 
-        logger.info("%s %s" % (self.account.margin_balance, margin))
         return margin is not None and self.account.margin_balance >= margin
 
     def has_quantity(self, asset_name, quantity):
@@ -156,10 +136,9 @@ class PaperTrader(Trader):
 
         result = False
 
-        self.lock()
-        asset = self._assets.get(asset_name)
-        result = asset and asset.free >= quantity
-        self.unlock()
+        with self._mutex:
+            asset = self._assets.get(asset_name)
+            result = asset and asset.free >= quantity
 
         return result
 
@@ -168,7 +147,8 @@ class PaperTrader(Trader):
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
         @param force Force to update the cache
         """
-        market = self._markets.get(market_id)
+        with self._mutex:
+            market = self._markets.get(market_id)
 
         if (market is None or force) and self._watcher is not None and self._watcher.connected:
             try:
@@ -178,7 +158,8 @@ class PaperTrader(Trader):
                 return None
 
             if market:
-                self._markets[market_id] = market
+                with self._mutex:
+                    self._markets[market_id] = market
 
         return market
 
@@ -189,10 +170,6 @@ class PaperTrader(Trader):
         if not self.service.backtesting:
             time.sleep(0.0001)
         time.sleep(0.005)
-
-    def log_report(self):
-        if self._history:
-            self._history.log_report()
 
     @property
     def timestamp(self):
@@ -217,75 +194,68 @@ class PaperTrader(Trader):
         if self._positions:
             rm_list = []
 
-            self.lock()
+            with self._mutex:
+                for k, position in self._positions.items():
+                    # remove empty and closed positions
+                    if position.quantity <= 0.0:
+                        rm_list.append(k)
+                    else:
+                        market = self._markets.get(position.symbol)
+                        if market:
+                            # managed position take-profit and stop-loss
+                            if market.has_position and (position.take_profit or position.stop_loss):
+                                open_exec_price = market.close_exec_price(position.direction)
+                                close_exec_price = market.close_exec_price(position.direction)
 
-            for k, position in self._positions.items():
-                # remove empty and closed positions
-                if position.quantity <= 0.0:
-                    rm_list.append(k)
-                else:
-                    market = self._markets.get(position.symbol)
-                    if market:
-                        # managed position take-profit and stop-loss
-                        if market.has_position and (position.take_profit or position.stop_loss):
-                            open_exec_price = market.close_exec_price(position.direction)
-                            close_exec_price = market.close_exec_price(position.direction)
+                                order_type = None
 
-                            order_type = None
+                                if position.direction > 0:
+                                    if position.take_profit and close_exec_price >= position.take_profit:
+                                        order_type = Order.ORDER_LIMIT
 
-                            if position.direction > 0:
-                                if position.take_profit and close_exec_price >= position.take_profit:
-                                    order_type = Order.ORDER_LIMIT
+                                    elif position.stop_loss and close_exec_price <= position.stop_loss:
+                                        order_type = Order.ORDER_MARKET
 
-                                elif position.stop_loss and close_exec_price <= position.stop_loss:
-                                    order_type = Order.ORDER_MARKET
+                                elif position.direction < 0:
+                                    if position.take_profit and close_exec_price <= position.take_profit:
+                                        order_type = Order.ORDER_LIMIT
 
-                            elif position.direction < 0:
-                                if position.take_profit and close_exec_price <= position.take_profit:
-                                    order_type = Order.ORDER_LIMIT
+                                    elif position.stop_loss and close_exec_price >= position.stop_loss:
+                                        order_type = Order.ORDER_MARKET
 
-                                elif position.stop_loss and close_exec_price >= position.stop_loss:
-                                    order_type = Order.ORDER_MARKET
+                                if order_type is not None:
+                                    if close_position(self, market, position, close_exec_price, order_type):
+                                        rm_list.append(k)
 
-                            if order_type is not None:
-                                if close_position(self, market, position, close_exec_price, order_type):
-                                    rm_list.append(k)
-
-            for rm in rm_list:
-                # remove empty positions
-                del self._positions[rm]
-
-            self.unlock()
+                for rm in rm_list:
+                    # remove empty positions
+                    del self._positions[rm]
 
         #
         # update account balance and margin
         #
 
         if not self._unlimited:
-            self.lock()
-            self._account.update(None)
-            self.unlock()
+            with self._mutex:
+                self._account.update(None)
 
             if self._account.account_type & PaperTraderAccount.TYPE_MARGIN:
                 # support margin
                 used_margin = 0
                 profit_loss = 0
 
-                self.lock()
+                with self._mutex:
+                    for k, position in self._positions.items():
+                        market = self._markets.get(position.symbol)
 
-                for k, position in self._positions.items():
-                    market = self._markets.get(position.symbol)
+                        # only for non empty positions
+                        if market and position.quantity > 0.0:
+                            # manually compute here because of paper trader
+                            profit_loss += position.profit_loss_market / market.base_exchange_rate
+                            used_margin += position.margin_cost(market) / market.base_exchange_rate
 
-                    # only for non empty positions
-                    if market and position.quantity > 0.0:
-                        # manually compute here because of paper trader
-                        profit_loss += position.profit_loss_market / market.base_exchange_rate
-                        used_margin += position.margin_cost(market) / market.base_exchange_rate
-
-                self.account.set_used_margin(used_margin-profit_loss)
-                self.account.set_unrealized_profit_loss(profit_loss)
-
-                self.unlock()
+                    self.account.set_used_margin(used_margin-profit_loss)
+                    self.account.set_unrealized_profit_loss(profit_loss)
 
             if self._account.account_type & PaperTraderAccount.TYPE_ASSET:
                 # support spot
@@ -293,60 +263,55 @@ class PaperTrader(Trader):
                 free_balance = 0.0
                 profit_loss = 0.0
 
-                self.lock()
+                with self._mutex:
+                    for k, asset in self._assets.items():
+                        asset_name = asset.symbol
+                        free = asset.free
+                        locked = asset.locked
 
-                for k, asset in self._assets.items():
-                    asset_name = asset.symbol
-                    free = asset.free
-                    locked = asset.locked
+                        if free or locked:
+                            # asset price in quote
+                            if asset_name == self._account.alt_currency:
+                                # asset second currency
+                                market = self._markets.get(self._account.currency+self._account.alt_currency)
+                                base_price = 1.0 / market.price if market else 1.0
+                            elif asset_name != self._account.currency:
+                                # any asset except asscount currency
+                                market = self._markets.get(asset_name+self._account.currency)
+                                base_price = market.price if market else 1.0
+                            else:
+                                # asset account currency itself
+                                base_price = 1.0
 
-                    if free or locked:
-                        # asset price in quote
-                        if asset_name == self._account.alt_currency:
-                            # asset second currency
-                            market = self._markets.get(self._account.currency+self._account.alt_currency)
-                            base_price = 1.0 / market.price if market else 1.0
-                        elif asset_name != self._account.currency:
-                            # any asset except asscount currency
-                            market = self._markets.get(asset_name+self._account.currency)
-                            base_price = market.price if market else 1.0
-                        else:
-                            # asset account currency itself
-                            base_price = 1.0
+                            if asset.quote == self._account.alt_currency:
+                                # change from alt currency to primary currency
+                                market = self._markets.get(self._account.currency+self._account.alt_currency)
+                                base_exchange_rate = market.price if market else 1.0
+                            elif asset.quote == self._account.currency:
+                                # asset is account currency not change
+                                base_exchange_rate = 1.0
+                            else:
+                                # change from quote to primary currency
+                                market = self._markets.get(asset.quote+self._account.currency)
+                                base_exchange_rate = 1.0 / market.price if market else 1.0
 
-                        if asset.quote == self._account.alt_currency:
-                            # change from alt currency to primary currency
-                            market = self._markets.get(self._account.currency+self._account.alt_currency)
-                            base_exchange_rate = market.price if market else 1.0
-                        elif asset.quote == self._account.currency:
-                            # asset is account currency not change
-                            base_exchange_rate = 1.0
-                        else:
-                            # change from quote to primary currency
-                            market = self._markets.get(asset.quote+self._account.currency)
-                            base_exchange_rate = 1.0 / market.price if market else 1.0
+                            balance += free * base_price + locked * base_price  # current total free+locked balance
+                            free_balance += free * base_price                   # current total free balance
 
-                        balance += free * base_price + locked * base_price  # current total free+locked balance
-                        free_balance += free * base_price                   # current total free balance
+                            # current profit/loss at market
+                            profit_loss += asset.profit_loss_market / base_exchange_rate  # current total P/L in primary account currency
 
-                        # current profit/loss at market
-                        profit_loss += asset.profit_loss_market / base_exchange_rate  # current total P/L in primary account currency
+                    self.account.set_asset_balance(balance, free_balance)
+                    self.account.set_unrealized_asset_profit_loss(profit_loss)
 
-                self.account.set_asset_balance(balance, free_balance)
-                self.account.set_unrealized_asset_profit_loss(profit_loss)
-
-                self.unlock()
         else:
-            self.lock()
+            with self._mutex:
+                # not updated uPNL then always reset            
+                if self._account.account_type & PaperTraderAccount.TYPE_MARGIN:
+                    self.account.set_unrealized_profit_loss(0.0)
 
-            # not updated uPNL then always reset            
-            if self._account.account_type & PaperTraderAccount.TYPE_MARGIN:
-                self.account.set_unrealized_profit_loss(0.0)
-
-            if self._account.account_type & PaperTraderAccount.TYPE_ASSET:
-                self.account.set_unrealized_asset_profit_loss(0.0)
-
-            self.unlock()
+                if self._account.account_type & PaperTraderAccount.TYPE_ASSET:
+                    self.account.set_unrealized_asset_profit_loss(0.0)
 
         #
         # limit/trigger orders executions
@@ -354,9 +319,8 @@ class PaperTrader(Trader):
         if self._orders:
             rm_list = []
 
-            self.lock()
-            orders = list(self._orders.values())
-            self.unlock()
+            with self._mutex:
+                orders = list(self._orders.values())
 
             for order in orders:
                 market = self._markets.get(order.symbol)
@@ -493,41 +457,40 @@ class PaperTrader(Trader):
                     # fully executed
                     rm_list.append(order.order_id)
 
-            self.lock()
+            with self._mutex:
+                for rm in rm_list:
+                    # remove fully executed orders
+                    if rm in self._orders:
+                        del self._orders[rm]
 
-            for rm in rm_list:
-                # remove fully executed orders
-                if rm in self._orders:
-                    del self._orders[rm]
-
-            self.unlock()
+    def post_run(self):
+        super().post_run()
 
     def create_asset(self, asset_name, quantity, price, quote, precision=8):
         asset = Asset(self, asset_name, precision)
         asset.set_quantity(0, quantity)
         asset.update_price(datetime.now(), 0, price, quote)
 
-        self.lock()
-        self._assets[asset_name] = asset
-        self.unlock()
+        with self._mutex:
+            self._assets[asset_name] = asset
 
-    def create_order(self, order):
-        if order is None:
+    #
+    # ordering
+    #
+
+    def create_order(self, order, market_or_instrument):
+        if not order or not market_or_instrument:
             return False
 
-        if not self._activity:
+        trader_market = self._markets.get(market_or_instrument.market_id)
+        if not trader_market:
+            error_logger.error("Trader %s refuse order because the market %s is not found" % (self.name, market_or_instrument.market_id))
             return False
 
-        if not self.has_market(order.symbol):
-            logger.error("Trader %s does not support market %s in ref order %s !" % (self.name, order.symbol, order.ref_order_id))
-            return False
-
-        market = self.market(order.symbol)
-
-        if (market.min_size > 0.0) and (order.quantity < market.min_size):
+        if (trader_market.min_size > 0.0) and (order.quantity < trader_market.min_size):
             # reject if lesser than min size
             logger.error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in ref order %s" % (
-                self.name, order.quantity, market.min_size, order.symbol, order.ref_order_id))
+                self.name, order.quantity, trader_market.min_size, order.symbol, order.ref_order_id))
             return False
 
         #
@@ -542,8 +505,8 @@ class PaperTrader(Trader):
             ofr_price = order.price
 
         elif order.order_type in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT):
-            bid_price = market.bid
-            ofr_price = market.ofr
+            bid_price = trader_market.bid
+            ofr_price = trader_market.ofr
 
         # open long are executed on bid and short on ofr, close the inverse
         if order.direction == Position.LONG:
@@ -564,10 +527,10 @@ class PaperTrader(Trader):
         quantity = order.quantity
         notional = quantity * open_exec_price
 
-        if notional < market.min_notional:
+        if notional < trader_market.min_notional:
             # reject if lesser than min notinal
             logger.error("%s refuse order because the min notional is not reached (%.f<%.f) %s in ref order %s" % (
-                self.name, notional, market.min_notional, order.symbol, order.ref_order_id))
+                self.name, notional, trader_market.min_notional, order.symbol, order.ref_order_id))
             return False
 
         # unique order id
@@ -579,18 +542,17 @@ class PaperTrader(Trader):
             # immediate execution of the order at market
             # @todo add to orders for emulate the slippage
 
-            if order.margin_trade and market.has_margin:
-                if market.indivisible_position:
-                    return exec_indmargin_order(self, order, market, open_exec_price, close_exec_price)
+            if order.margin_trade and trader_market.has_margin:
+                if trader_market.indivisible_position:
+                    return exec_indmargin_order(self, order, trader_market, open_exec_price, close_exec_price)
                 else:
                     return exec_margin_order(self, order, market, open_exec_price, close_exec_price)
-            elif not order.margin_trade and market.has_spot:
-                return exec_buysell_order(self, order, market, open_exec_price, close_exec_price)
+            elif not order.margin_trade and trader_market.has_spot:
+                return exec_buysell_order(self, order, trader_market, open_exec_price, close_exec_price)
         else:
             # create accepted, add to orders
-            self.lock()
-            self._orders[order_id] = order
-            self.unlock()
+            with self._mutex:
+                self._orders[order_id] = order
 
             #
             # order signal
@@ -617,134 +579,125 @@ class PaperTrader(Trader):
 
         return False
 
-    def post_run(self):
-        super().post_run()
-
-    def cancel_order(self, order_id):
-        if not self._activity:
+    def cancel_order(self, order_id, market_or_instrument):
+        if not order_id or not market_or_instrument:
             return False
 
         result = False
 
-        order_symbol = ""
-
-        self.lock()
-
-        order = self._orders.get(order_id)
-        if order:
-            order_symbol = order.symbol
-            del self._orders[order_id]
-            order = None
-            result = True
-
-        self.unlock()
+        with self._mutex:
+            if order_id in self._orders:
+                del self._orders[order_id]
+                result = True
 
         if result:
             # signal of canceled order
-            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (order_symbol, order_id, ""))
+            self.service.watcher_service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (market_or_instrument.market_id, order_id, ""))
 
         return result
 
-    def close_position(self, position_id, limit_price=None):
-        if not self._activity:
+    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
+        if not position_id or not market_or_instrument:
+            return False
+
+        trader_market = self._markets.get(market_or_instrument.market_id)
+        if not trader_market:
+            error_logger.error("Trader %s refuse to close position because the market %s is not found" % (self.name, market_or_instrument.market_id))
             return False
 
         result = False
 
-        self.lock()
-        position = self._positions.get(position_id)
+        with self._mutex:
+            # retrieve the position
+            position = self._positions.get(position_id)
 
-        if position and position.is_opened():
-            # market stop order
-            order = Order(self, position.symbol)
-            order.set_position_id(position_id)
+            if position and position.is_opened():
+                # market stop order
+                order = Order(self, position.symbol)
+                order.set_position_id(position_id)
 
-            order.direction = position.close_direction()
+                order.direction = position.close_direction()
 
-            if limit_price:
-                order.order_type = Order.ORDER_LIMIT
-                order.price = limit_price
-            else:
-                order.order_type = Order.ORDER_MARKET
-
-            order.quantity = position.quantity  # fully close
-            order.leverage = position.leverage  # same as open
-
-            order.close_only = True
-            order.reduce_only = True
-
-            self.unlock()
-
-            #
-            # price according to order type
-            #
-
-            market = self.market(order.symbol)
-
-            bid_price = 0
-            ofr_price = 0
-
-            if order.order_type == Order.ORDER_LIMIT:
-                bid_price = order.price
-                ofr_price = order.price
-
-            elif order.order_type == Order.ORDER_MARKET:
-                bid_price = market.bid
-                ofr_price = market.ofr
-
-            # open long are executed on bid and short on ofr, close the inverse
-            if order.direction == Position.LONG:
-                open_exec_price = ofr_price   # bid_price
-                close_exec_price = bid_price  # ofr_price
-            elif order.direction == Position.SHORT:
-                open_exec_price = bid_price   # ofr_price
-                close_exec_price = ofr_price  # bid_price
-            else:
-                logger.error("Unsupported direction")
-                return False
-
-            if not open_exec_price or not close_exec_price:
-                logger.error("No order execution price")
-                return False
-
-            if self._slippage > 0.0:
-                # @todo deferred to update
-                return False
-            else:
-                # immediate execution of the order
-                if market.has_position:
-                    # close isolated position
-                    result = close_position(self, market, position, close_exec_price, Order.ORDER_MARKET)
+                if limit_price:
+                    order.order_type = Order.ORDER_LIMIT
+                    order.price = limit_price
                 else:
-                    # close position (could be using FIFO method)
-                    result = exec_margin_order(self, order, market, open_exec_price, close_exec_price)
-        else:
-            self.unlock()
-            result = False
+                    order.order_type = Order.ORDER_MARKET
+
+                order.quantity = position.quantity  # fully close
+                order.leverage = position.leverage  # same as open
+
+                order.close_only = True
+                order.reduce_only = True
+
+                #
+                # price according to order type
+                #
+
+                bid_price = 0
+                ofr_price = 0
+
+                if order.order_type == Order.ORDER_LIMIT:
+                    bid_price = order.price
+                    ofr_price = order.price
+
+                elif order.order_type == Order.ORDER_MARKET:
+                    bid_price = trader_market.bid
+                    ofr_price = trader_market.ofr
+
+                # open long are executed on bid and short on ofr, close the inverse
+                if order.direction == Position.LONG:
+                    open_exec_price = ofr_price   # bid_price
+                    close_exec_price = bid_price  # ofr_price
+                elif order.direction == Position.SHORT:
+                    open_exec_price = bid_price   # ofr_price
+                    close_exec_price = ofr_price  # bid_price
+                else:
+                    logger.error("Unsupported direction")
+                    return False
+
+                if not open_exec_price or not close_exec_price:
+                    logger.error("No order execution price")
+                    return False
+
+                if self._slippage > 0.0:
+                    # @todo deferred to update
+                    return False
+                else:
+                    # immediate execution of the order
+                    if trader_market.has_position:
+                        # close isolated position
+                        result = close_position(self, trader_market, position, close_exec_price, Order.ORDER_MARKET)
+                    else:
+                        # close position (could be using FIFO method)
+                        result = exec_margin_order(self, order, trader_market, open_exec_price, close_exec_price)
+            else:
+                result = False
 
         return result
 
-    def modify_position(self, position_id, stop_loss_price=None, take_profit_price=None):
-        if not self._activity:
+    def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
+        if not position_id or not market_or_instrument:
             return False
 
         result = False
-        self.lock()
 
-        position = self._positions.get(position_id)
-        if position:
-            market = self.market(position.symbol)
-            if market and market.has_position:
-                if stop_loss_price:
-                    position.stop_loss = stop_loss_price
-                if take_profit_price:
-                    position.take_profit = take_profit_price
+        with self._mutex:
+            position = self._positions.get(position_id)
+            if position:
+                if market_or_instrument.has_position:
+                    if stop_loss_price:
+                        position.stop_loss = stop_loss_price
+                    if take_profit_price:
+                        position.take_profit = take_profit_price
 
                 result = True
 
-        self.unlock()
-
         return result
+
+    #
+    # global accessors
+    #
 
     def positions(self, market_id):
         """
@@ -752,13 +705,10 @@ class PaperTrader(Trader):
         """
         positions = []
 
-        self.lock()
-
-        for k, position in self._positions.items():
-            if position.symbol == market_id:
-                positions.append(copy.copy(position))
-
-        self.unlock()
+        with self._mutex:
+            for k, position in self._positions.items():
+                if position.symbol == market_id:
+                    positions.append(copy.copy(position))
 
         return positions
 
@@ -771,10 +721,8 @@ class PaperTrader(Trader):
         Initial information must then be manually defined throught this methos.
         """
         if market:
-            self.lock()
-            self._markets[market.market_id] = market
-
-            self.unlock()
+            with self._mutex:
+                self._markets[market.market_id] = market
 
     #
     # slots
@@ -810,19 +758,15 @@ class PaperTrader(Trader):
     def on_order_traded(self, market_id, order_data, ref_order_id):
         pass        
 
+    @Trader.mutexed
     def on_update_market(self, market_id, tradable, last_update_time, bid, ofr,
             base_exchange_rate, contract_size=None, value_per_pip=None,
             vol24h_base=None, vol24h_quote=None):
 
-        # super().on_update_market(market_id, tradable, last_update_time, bid, ofr, base_exchange_rate,
-        #                contract_size, value_per_pip, vol24h_base, vol24h_quote)
-
         market = self._markets.get(market_id)
         if market is None:
-            # create it but will miss lot of details at this time
-            # uses market_id as symbol but its not ideal
-            market = Market(market_id, market_id)
-            self._markets[market_id] = market
+            # not interested by this market
+            return
 
         if bid and ofr and market.price:
             ratio = ((bid + ofr) * 0.5) / market.price
@@ -860,8 +804,6 @@ class PaperTrader(Trader):
 
         # update positions profit/loss for the related market id
         if not self._unlimited:
-            self.lock()
-
             if self.service.backtesting:
                 # fake values
                 market.base_exchange_rate = market.base_exchange_rate * ratio
@@ -878,5 +820,3 @@ class PaperTrader(Trader):
                 for k, position in self._positions.items():
                     if position.symbol == market.market_id:
                         position.update_profit_loss(market)
-
-            self.unlock()

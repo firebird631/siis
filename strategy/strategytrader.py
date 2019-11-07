@@ -36,6 +36,9 @@ class StrategyTrader(object):
     @todo _global_streamer must be improved. streaming functionnalities must be only connected to the
         notification receiver (only then keep notify_order calls), streaming will be done on a distinct service.
         disable any others streaming capacities on the strategy-traders excepted for debug purposes.
+
+    @todo Use a local proxy trader in place of global.
+    @todo Copy any usefull Market data to Instrument to don't have to use global trader.
     """
 
     MARKET_TYPE_MAP = {
@@ -130,7 +133,7 @@ class StrategyTrader(object):
                     mutated = True
 
                     # cleanup if necessary before deleting the trade related refs
-                    trade.remove(trader)
+                    trade.remove(trader, self.instrument)
                 else:
                     trades_list.append(trade)
 
@@ -306,7 +309,7 @@ class StrategyTrader(object):
             return False
 
         with self._mutex:
-            self.trades.remove(trade)
+            self.trades.remove(trade, self.instrument)
 
     def update_trades(self, timestamp):
         """
@@ -429,7 +432,7 @@ class StrategyTrader(object):
                     mutated = True
 
                     # cleanup if necessary before deleting the trade related refs
-                    trade.remove(trader)
+                    trade.remove(trader, self.instrument)
 
                     # record the trade for analysis and study
                     if not trade.is_canceled():
@@ -533,13 +536,45 @@ class StrategyTrader(object):
 
     def on_received_liquidation(self, liquidation):
         """
-        Receive a trade liquidation (not user trade, global)
+        Receive a trade liquidation (not user trade, global).
         """
         pass
 
     def on_market_info(self):
         """
-        When receive initial or update of market/instrument data
+        When receive initial or update of market/instrument data.
+        """
+        pass
+
+    #
+    # broker signals
+    #
+
+    def on_watcher_connected(self):
+        """
+        Watcher/broker connected.
+        """
+        pass
+
+    def on_watcher_disconnected(self):
+        """
+        Watcher/broker lost connection.
+        """
+        pass
+
+    #
+    # balance signals
+    #
+
+    def on_account_balance(self, balance):
+        """
+        Receive a balance margin (free, available, percent...) update.
+        """
+        pass
+
+    def on_asset_balance(self, balance):
+        """
+        Receive a balance update for a specific asset (free, locked, total) update.
         """
         pass
 
@@ -810,7 +845,7 @@ class StrategyTrader(object):
         """
         if trade.is_entry_timeout(timestamp, timeout):
             trader = self.strategy.trader()
-            trade.cancel_open(trader)
+            trade.cancel_open(trader, self.instrument)
             trade.exit_reason = 'timeout-cancel'
 
             return True

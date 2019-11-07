@@ -14,8 +14,6 @@ from trader.position import Position
 from trader.order import Order
 from terminal.terminal import Terminal
 
-from .papertraderhistory import PaperTraderHistory, PaperTraderHistoryEntry
-
 import logging
 logger = logging.getLogger('siis.trader.papertrader.position')
 
@@ -72,14 +70,6 @@ def open_position(trader, order, market, open_exec_price):
 
     # increase used margin
     trader.account.use_margin(margin_cost)
-
-    #
-    # history
-    #
-
-    if trader._history:
-        history = PaperTraderHistoryEntry(order, trader.account.balance, trader.account.margin_balance)
-        trader._history.add(history)
 
     # unlock before notify signals
     trader.unlock()
@@ -258,18 +248,6 @@ def close_position(trader, market, position, close_exec_price, order_type=Order.
                 position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
     else:
         gain_loss_rate = 0.0
-
-    #
-    # history
-    #
-
-    if trader._history:
-        # and keep for history (backtesting reporting)
-        history = PaperTraderHistoryEntry(order,
-                trader.account.balance, trader.account.margin_balance, delta_price/one_pip_means,
-                gain_loss_rate, position_gain_loss, position_gain_loss/base_exchange_rate)
-
-        trader._history.add(history)
 
     # unlock before notify signals
     trader.unlock()

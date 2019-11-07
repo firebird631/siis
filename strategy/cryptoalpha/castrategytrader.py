@@ -229,7 +229,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     # can cancel a non filled trade if exit signal occurs before timeout (timeframe)
                     # if trade.is_entry_timeout(timestamp, trade.timeframe):
                     #     trader = self.strategy.trader()
-                    #     trade.cancel_open(trader)
+                    #     trade.cancel_open(trader, self.instrument)
                     #     Terminal.inst().info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,), view='default')
                     #     continue
 

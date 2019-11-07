@@ -93,6 +93,7 @@ def application(argv):
 
     siis_log = SiisLog(options, Terminal().inst().style())
     siis_logger = logging.getLogger('siis')
+    traceback_logger = logging.getLogger('siis.traceback')
 
     # parse process command line
     if len(argv) > 1:
@@ -514,14 +515,6 @@ def application(argv):
                                         Terminal.inst().action("Send close to market command for position %s" % (target,), view='status')
                                         trader_service.command(Trader.COMMAND_CLOSE_MARKET, {'key': target})
 
-                                elif value.startswith(':d '):
-                                    # @deprecated manually duplicate a position entry or exit must be associated to social strategy
-                                    # @todo move as command
-                                    target = value[3:]
-
-                                    Terminal.inst().action("Send replicate to market command for position %s" % (target,), view='status')
-                                    trader_service.command(Trader.COMMAND_TRIGGER, {'key': target})
-
                             # clear command value
                             value_changed = True
                             value = None
@@ -613,13 +606,13 @@ def application(argv):
 
                         except Exception as e:
                             siis_logger.error(repr(e))
-                            siis_logger.error(traceback.format_exc())
+                            traceback_logger.error(traceback.format_exc())
 
             except IOError:
                 pass
             except Exception as e:
                 siis_logger.error(repr(e))
-                siis_logger.error(traceback.format_exc())
+                traceback_logger.error(traceback.format_exc())
 
             # display advanced command only
             if value_changed:
@@ -665,7 +658,7 @@ def application(argv):
 
             except BaseException as e:
                 siis_logger.error(repr(e))
-                siis_logger.error(traceback.format_exc())
+                traceback_logger.error(traceback.format_exc())
 
             # don't waste CPU time on main thread
             time.sleep(LOOP_SLEEP)

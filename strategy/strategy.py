@@ -82,7 +82,7 @@ class Strategy(Runnable):
         self._watchers_conf = {}   # name of the followed watchers
         self._trader_conf = None   # name of the followed trader
 
-        self._trader = None        # attached trader
+        self._trader = None        # trader proxy
 
         self._signals = collections.deque()  # filtered received signals
 
@@ -417,11 +417,13 @@ class Strategy(Runnable):
 
                         market = self._trader.market(symbol)
                         if market:
-                            # put initial market data into the instrument, only works in live
+                            # synchronize initial market data into the instrument, only works in live
                             instrument.trade = market.trade
                             instrument.orders = market.orders
                             instrument.hedging = market.hedging
                             instrument.tradeable = market.is_open
+                            instrument.expiry = market.expiry
+
                             instrument.set_base(market.base)
                             instrument.set_quote(market.quote)
 
@@ -648,6 +650,8 @@ class Strategy(Runnable):
                             instrument.orders = market.orders
                             instrument.hedging = market.hedging
                             instrument.tradeable = market.is_open
+                            instrument.expiry = market.expiry
+
                             instrument.set_base(market.base)
                             instrument.set_quote(market.quote)
 
@@ -827,6 +831,8 @@ class Strategy(Runnable):
                                 instrument.orders = market.orders
                                 instrument.hedging = market.hedging
                                 instrument.tradeable = market.is_open
+                                instrument.expiry = market.expiry
+
                                 instrument.set_base(market.base)
                                 instrument.set_quote(market.quote)
 
@@ -1358,41 +1364,39 @@ class Strategy(Runnable):
 
         for k, strategy_trader in self._strategy_traders.items():
             with strategy_trader._mutex:
-                market = trader.market(strategy_trader.instrument.market_id) if trader else None
-                if market:
-                    for trade in strategy_trader.trades:
-                        profit_loss = trade.estimate_profit_loss(strategy_trader.instrument)
+                for trade in strategy_trader.trades:
+                    profit_loss = trade.estimate_profit_loss(strategy_trader.instrument)
 
-                        results.append({
-                            'mid': market.market_id,
-                            'sym': market.symbol,
-                            'id': trade.id,
-                            'eot': trade.entry_open_time,
-                            'xot': trade.exit_open_time,
-                            'freot': trade.first_realized_entry_time,
-                            'frxot': trade.first_realized_exit_time,
-                            'lreot': trade.last_realized_entry_time,
-                            'lrxot': trade.last_realized_exit_time,
-                            'd': trade.direction_to_str(),
-                            'l': market.format_price(trade.order_price),
-                            'aep': market.format_price(trade.entry_price),
-                            'axp': market.format_price(trade.exit_price),
-                            'q': market.format_quantity(trade.order_quantity),
-                            'e': market.format_quantity(trade.exec_entry_qty),
-                            'x': market.format_quantity(trade.exec_exit_qty),
-                            'tp': market.format_price(trade.take_profit),
-                            'sl': market.format_price(trade.stop_loss),
-                            'pl': profit_loss,
-                            'tf': timeframe_to_str(trade.timeframe),
-                            's': trade.state_to_str(),
-                            'b': market.format_price(trade.best_price()),
-                            'w': market.format_price(trade.worst_price()),
-                            'bt': trade.best_price_timestamp(),
-                            'wt': trade.worst_price_timestamp(),
-                            'com': trade.comment,
-                            'upnl': market.format_price(trade.unrealized_profit_loss),
-                            'pnlcur': trade.profit_loss_currency
-                        })
+                    results.append({
+                        'mid': strategy_trader.instrument.market_id,
+                        'sym': strategy_trader.instrument.symbol,
+                        'id': trade.id,
+                        'eot': trade.entry_open_time,
+                        'xot': trade.exit_open_time,
+                        'freot': trade.first_realized_entry_time,
+                        'frxot': trade.first_realized_exit_time,
+                        'lreot': trade.last_realized_entry_time,
+                        'lrxot': trade.last_realized_exit_time,
+                        'd': trade.direction_to_str(),
+                        'l': strategy_trader.instrument.format_price(trade.order_price),
+                        'aep': strategy_trader.instrument.format_price(trade.entry_price),
+                        'axp': strategy_trader.instrument.format_price(trade.exit_price),
+                        'q': strategy_trader.instrument.format_quantity(trade.order_quantity),
+                        'e': strategy_trader.instrument.format_quantity(trade.exec_entry_qty),
+                        'x': strategy_trader.instrument.format_quantity(trade.exec_exit_qty),
+                        'tp': strategy_trader.instrument.format_price(trade.take_profit),
+                        'sl': strategy_trader.instrument.format_price(trade.stop_loss),
+                        'pl': profit_loss,
+                        'tf': timeframe_to_str(trade.timeframe),
+                        's': trade.state_to_str(),
+                        'b': strategy_trader.instrument.format_price(trade.best_price()),
+                        'w': strategy_trader.instrument.format_price(trade.worst_price()),
+                        'bt': trade.best_price_timestamp(),
+                        'wt': trade.worst_price_timestamp(),
+                        'com': trade.comment,
+                        'upnl': strategy_trader.instrument.format_price(trade.unrealized_profit_loss),
+                        'pnlcur': trade.profit_loss_currency
+                    })
 
         return results
 
@@ -1430,10 +1434,8 @@ class Strategy(Runnable):
 
                 num = len(strategy_trader.trades)
 
-                market = trader.market(strategy_trader.instrument.market_id) if trader else None
-                if market:
-                    for trade in strategy_trader.trades:
-                        pl += trade.estimate_profit_loss(strategy_trader.instrument)
+                for trade in strategy_trader.trades:
+                    pl += trade.estimate_profit_loss(strategy_trader.instrument)
 
             if pl != 0.0 or num > 0 or success > 0 or failed > 0 or roe > 0:
                 results.append({
@@ -1497,35 +1499,34 @@ class Strategy(Runnable):
                 roe = len(strategy_trader._stats['roe'])
 
                 market = trader.market(strategy_trader.instrument.market_id) if trader else None
-                if market:
-                    for trade in strategy_trader.trades:
-                        trade_pl = trade.estimate_profit_loss(strategy_trader.instrument)
+                for trade in strategy_trader.trades:
+                    trade_pl = trade.estimate_profit_loss(strategy_trader.instrument)
 
-                        trades.append({
-                            'id': trade.id,
-                            'eot': trade.entry_open_time,
-                            'd': trade.direction_to_str(),
-                            'l': market.format_price(trade.order_price),
-                            'aep': market.format_price(trade.entry_price),
-                            'axp': market.format_price(trade.exit_price),
-                            'q': market.format_quantity(trade.order_quantity),
-                            'e': market.format_quantity(trade.exec_entry_qty),
-                            'x': market.format_quantity(trade.exec_exit_qty),
-                            'tp': market.format_price(trade.take_profit),
-                            'sl': market.format_price(trade.stop_loss),
-                            'pl': trade_pl,
-                            'tf': timeframe_to_str(trade.timeframe),
-                            's': trade.state_to_str(),
-                            'b': market.format_price(trade.best_price()),
-                            'w': market.format_price(trade.worst_price()),
-                            'bt': trade.best_price_timestamp(),
-                            'wt': trade.worst_price_timestamp(),
-                            'com': trade.comment,
-                            'upnl': market.format_profit_loss_price(trade.unrealized_profit_loss),
-                            'pnlcur': trade.profit_loss_currency
-                        })
+                    trades.append({
+                        'id': trade.id,
+                        'eot': trade.entry_open_time,
+                        'd': trade.direction_to_str(),
+                        'l': strategy_trader.instrument.format_price(trade.order_price),
+                        'aep': strategy_trader.instrument.format_price(trade.entry_price),
+                        'axp': strategy_trader.instrument.format_price(trade.exit_price),
+                        'q': strategy_trader.instrument.format_quantity(trade.order_quantity),
+                        'e': strategy_trader.instrument.format_quantity(trade.exec_entry_qty),
+                        'x': strategy_trader.instrument.format_quantity(trade.exec_exit_qty),
+                        'tp': strategy_trader.instrument.format_price(trade.take_profit),
+                        'sl': strategy_trader.instrument.format_price(trade.stop_loss),
+                        'pl': trade_pl,
+                        'tf': timeframe_to_str(trade.timeframe),
+                        's': trade.state_to_str(),
+                        'b': strategy_trader.instrument.format_price(trade.best_price()),
+                        'w': strategy_trader.instrument.format_price(trade.worst_price()),
+                        'bt': trade.best_price_timestamp(),
+                        'wt': trade.worst_price_timestamp(),
+                        'com': trade.comment,
+                        'upnl': market.format_profit_loss_price(trade.unrealized_profit_loss) if market else "",
+                        'pnlcur': trade.profit_loss_currency
+                    })
 
-                        profit_loss += trade_pl
+                    profit_loss += trade_pl
 
             results.append({
                 'mid': strategy_trader.instrument.market_id,
@@ -1549,16 +1550,13 @@ class Strategy(Runnable):
         results = []
 
         with self._mutex:
-            trader = self.trader()
-
-            for k, strategy_trader in self._strategy_traders.items():
-                with strategy_trader._mutex:
-                    market = trader.market(strategy_trader.instrument.market_id) if trader else None
-                    if market:
-                        def append_trade(market, trades, trade):
+            try:
+                for k, strategy_trader in self._strategy_traders.items():
+                    with strategy_trader._mutex:
+                        def append_trade(market_id, symbol, trades, trade):
                             trades.append({
-                                'mid': strategy_trader.instrument.market_id,
-                                'sym': strategy_trader.instrument.symbol,
+                                'mid': market_id,
+                                'sym': symbol,
                                 'id': trade['id'],
                                 'eot': trade['eot'],
                                 'xot': trade['xot'],
@@ -1590,13 +1588,16 @@ class Strategy(Runnable):
                             })
 
                         for trade in strategy_trader._stats['success']:
-                            append_trade(market, results, trade)
+                            append_trade(strategy_trader.instrument.market_id, strategy_trader.instrument.symbol, results, trade)
 
                         for trade in strategy_trader._stats['failed']:
-                            append_trade(market, results, trade)
+                            append_trade(strategy_trader.instrument.market_id, strategy_trader.instrument.symbol, results, trade)
 
                         for trade in strategy_trader._stats['roe']:
-                            append_trade(market, results, trade)
+                            append_trade(strategy_trader.instrument.market_id, strategy_trader.instrument.symbol, results, trade)
+
+            except Exception as e:
+                error_logger.error(repr(e))
 
         return results
 
@@ -1933,66 +1934,67 @@ class Strategy(Runnable):
         order_quantity = 0.0
 
         trader = self.trader()
-        market = trader.market(strategy_trader.instrument.market_id)
 
         # need a valid price to compute the quantity
-        price = limit_price or market.open_exec_price(direction)
+        price = limit_price or strategy_trader.instrument.open_exec_price(direction)
         trade = None
 
-        if market.has_spot and not margin_trade:
+        if strategy_trader.instrument.has_spot and not margin_trade:
             # market support spot and margin option is not defined
             trade = StrategyAssetTrade(timeframe)
 
             # ajust max quantity according to free asset of quote, and convert in asset base quantity
-            if trader.has_asset(market.quote):
+            if trader.has_asset(strategy_trader.instrument.quote):
                 qty = strategy_trader.instrument.trade_quantity*quantity_rate
 
-                if trader.has_quantity(market.quote, qty):
-                    order_quantity = market.adjust_quantity(qty / price)  # and adjusted to 0/max/step
+                if trader.has_quantity(strategy_trader.instrument.quote, qty):
+                    order_quantity = strategy_trader.instrument.adjust_quantity(qty / price)  # and adjusted to 0/max/step
                 else:
                     results['error'] = True
                     results['messages'].append("Not enought free quote asset %s, has %s but need %s" % (
-                            market.quote, market.format_quantity(trader.asset(market.quote).free), market.format_quantity(qty)))
+                            strategy_trader.instrument.quote,
+                            strategy_trader.instrument.format_quantity(trader.asset(strategy_trader.instrument.quote).free),
+                            strategy_trader.instrument.format_quantity(qty)))
 
-        elif market.has_margin and market.has_position:
+        elif strategy_trader.instrument.has_margin and strategy_trader.instrument.has_position:
             trade = StrategyPositionTrade(timeframe)
 
-            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
+            if not trader.has_margin(strategy_trader.instrument.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
-            order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
-        elif market.has_margin and market.indivisible_position:
+        elif strategy_trader.instrument.has_margin and strategy_trader.instrument.indivisible_position:
             trade = StrategyIndMarginTrade(timeframe)
 
-            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
+            if not trader.has_margin(strategy_trader.instrument.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
-            order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
-        elif market.has_margin and not market.indivisible_position and not markets.has_position:
+        elif strategy_trader.instrument.has_margin and not strategy_trader.instrument.indivisible_position and not markets.has_position:
             trade = StrategyMarginTrade(timeframe)
 
-            if not trader.has_margin(market.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
+            if not trader.has_margin(strategy_trader.instrument.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
-            order_quantity = market.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
         else:
             results['error'] = True
             results['messages'].append("Unsupported market type")
 
-        if order_quantity <= 0 or order_quantity * price < market.min_notional:
+        if order_quantity <= 0 or order_quantity * price < strategy_trader.instrument.min_notional:
             results['error'] = True
-            results['messages'].append("Min notional not reached (%s)" % market.min_notional)
+            results['messages'].append("Min notional not reached (%s)" % strategy_trader.instrument.min_notional)
 
         if results['error']:
             return results
 
-        order_price = float(market.adjust_price(price))
+        order_price = float(strategy_trader.instrument.adjust_price(price))
 
         if trade:
             # user managed trade
@@ -2009,21 +2011,13 @@ class Strategy(Runnable):
                           take_profit, stop_loss, leverage=leverage, hedging=hedging):
 
                 # add a success result message
-                results['messages'].append("Created trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
-
-                # notify @todo would we notify on that case ?
-                # self.notify_entry(trade.id, trade.dir, strategy_trader.instrument.market_id, market.format_price(price),
-                #         self.service.timestamp, trade.timeframe, 'entry', None,
-                #          market.format_price(trade.sl), market.format_price(trade.tp))
-
-                # want it on the streaming (take care its only the order signal, no the real complete execution)
-                # @todo strategy_trader._global_streamer.member('buy/sell-entry').update(price, self.timestamp)
+                results['messages'].append("Created trade %i on %s:%s" % (trade.id, self.identifier, strategy_trader.instrument.market_id))
             else:
                 strategy_trader.remove_trade(trade)
 
                 # add an error result message
                 results['error'] = True
-                results['messages'].append("Rejected trade on %s:%s" % (self.identifier, market.market_id))
+                results['messages'].append("Rejected trade on %s:%s" % (self.identifier, strategy_trader.instrument.market_id))
 
         return results
 
@@ -2053,7 +2047,6 @@ class Strategy(Runnable):
         trade = None
 
         trader = self.trader()
-        market = trader.market(strategy_trader.instrument.market_id)
 
         with strategy_trader._mutex:
             if trade_id == -1 and strategy_trader.trades:
@@ -2065,29 +2058,21 @@ class Strategy(Runnable):
                         break
 
             if trade:
-                price = market.close_exec_price(trade.direction)
+                price = strategy_trader.instrument.close_exec_price(trade.direction)
 
                 if not trade.is_active():
                     # cancel open
-                    trade.cancel_open(trader)
+                    trade.cancel_open(trader, strategy_trader.instrument)
 
                     # add a success result message
-                    results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
+                    results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, self.identifier, strategy_trader.instrument.market_id))
                 else:
                     # close or cancel
                     trade.close(trader, strategy_trader.instrument)
 
                     # add a success result message
                     results['messages'].append("Close trade %i on %s:%s at market price %s" % (
-                        trade.id, self.identifier, market.market_id, market.format_price(price)))
-
-                    # notify @todo would we notify on that case ?
-                    # self.notify_entry(trade.id, trade.dir, strategy_trader.instrument.market_id, market.format_price(price),
-                    #         self.service.timestamp, trade.timeframe, 'exit', None, None, None)
-
-                    # want it on the streaming (take care its only the order signal, no the real complete execution)
-                    # @todo its not really a perfect way...
-                    # strategy_trader._global_streamer.member('buy/sell-exit').update(price, self.timestamp)
+                        trade.id, self.identifier, strategy_trader.instrument.market_id, strategy_trader.instrument.format_price(price)))
             else:
                 results['error'] = True
                 results['messages'].append("Invalid trade identifier %i" % trade_id)
@@ -2118,9 +2103,7 @@ class Strategy(Runnable):
             return results
 
         trade = None
-
         trader = self.trader()
-        market = trader.market(strategy_trader.instrument.market_id)
 
         with strategy_trader._mutex:
             if trade_id == -1 and strategy_trader.trades:
@@ -2136,7 +2119,7 @@ class Strategy(Runnable):
                 trade.remove(trader, strategy_trader.instrument)
 
                 # add a success result message
-                results['messages'].append("Force remove trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
+                results['messages'].append("Force remove trade %i on %s:%s" % (trade.id, self.identifier, strategy_trader.instrument.market_id))
             else:
                 results['error'] = True
                 results['messages'].append("Invalid trade identifier %i" % trade_id)
@@ -2287,14 +2270,13 @@ class Strategy(Runnable):
             results['error'] = True
 
         trader = self.trader()
-        market = trader.market(strategy_trader.instrument.market_id)
 
-        if not trader.has_quantity(market.base, quantity):
+        if not trader.has_quantity(strategy_trader.instrument.base, quantity):
             results['messages'].append("No enought free asset quantity.")
             results['error'] = True
 
         # @todo trade type
-        if not market.has_spot:
+        if not strategy_trader.instrument.has_spot:
             results['messages'].append("Only allowed on a spot market.")
             results['error'] = True
 
@@ -2324,7 +2306,7 @@ class Strategy(Runnable):
 
         strategy_trader.add_trade(trade)
 
-        results['messages'].append("Assigned trade %i on %s:%s" % (trade.id, self.identifier, market.market_id))
+        results['messages'].append("Assigned trade %i on %s:%s" % (trade.id, self.identifier, strategy_trader.instrument.market_id))
 
         return results
 

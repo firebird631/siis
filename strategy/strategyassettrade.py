@@ -74,7 +74,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         self._stats['entry-order-type'] = order.order_type
 
-        if trader.create_order(order):
+        if trader.create_order(order, instrument):
             if not self.eot and order.created_time:
                 # only at the first open
                 self.eot = order.created_time
@@ -84,10 +84,10 @@ class StrategyAssetTrade(StrategyTrade):
             self._entry_state = StrategyTrade.STATE_REJECTED
             return False
 
-    def remove(self, trader):
+    def remove(self, trader, instrument):
         if self.entry_oid:
             # cancel the remaining buy order
-            if trader.cancel_order(self.entry_oid):
+            if trader.cancel_order(self.entry_oid, instrument):
                 # returns true, no need to wait signal confirmation
                 self.entry_ref_oid = None
                 self.entry_oid = None
@@ -101,7 +101,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         if self.oco_oid:
             # cancel the oco sell order
-            if trader.cancel_order(self.oco_oid):
+            if trader.cancel_order(self.oco_oid, instrument):
                 # returns true, no need to wait signal confirmation
                 self.oco_ref_oid = None
                 self.oco_oid = None
@@ -118,7 +118,7 @@ class StrategyAssetTrade(StrategyTrade):
         else:
             if self.stop_oid:
                 # cancel the stop sell order
-                if trader.cancel_order(self.stop_oid):
+                if trader.cancel_order(self.stop_oid, instrument):
                     # returns true, no need to wait signal confirmation
                     self.stop_ref_oid = None
                     self.stop_oid = None
@@ -133,7 +133,7 @@ class StrategyAssetTrade(StrategyTrade):
 
             if self.limit_oid:
                 # cancel the sell limit order
-                if trader.cancel_order(self.limit_oid):
+                if trader.cancel_order(self.limit_oid, instrument):
                     # returns true, no need to wait signal confirmation
                     self.limit_ref_oid = None
                     self.limit_oid = None
@@ -146,10 +146,10 @@ class StrategyAssetTrade(StrategyTrade):
                     else:
                         self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-    def cancel_open(self, trader):
+    def cancel_open(self, trader, instrument):
         if self.entry_oid:
             # cancel the buy order
-            if trader.cancel_order(self.entry_oid):
+            if trader.cancel_order(self.entry_oid, instrument):
                 # returns true, no need to wait signal confirmation
                 self.entry_oid = None
                 self.entry_ref_oid = None
@@ -180,7 +180,7 @@ class StrategyAssetTrade(StrategyTrade):
         else:
             if self.limit_oid:
                 # cancel the sell limit order and create a new one
-                if trader.cancel_order(self.limit_oid):
+                if trader.cancel_order(self.limit_oid, instrument):
                     # REST sync
                     self.limit_ref_oid = None
                     self.limit_oid = None
@@ -191,7 +191,7 @@ class StrategyAssetTrade(StrategyTrade):
 
             if self.stop_oid:
                 # cancel the sell stop order (only one or the other)
-                if trader.cancel_order(self.stop_oid):
+                if trader.cancel_order(self.stop_oid, instrument):
                     # REST sync
                     # returns true, no need to wait signal confirmation
                     self.stop_ref_oid = None
@@ -218,7 +218,7 @@ class StrategyAssetTrade(StrategyTrade):
                 trader.set_ref_order_id(order)
                 self.limit_ref_oid = order.ref_order_id
 
-                if trader.create_order(order):
+                if trader.create_order(order, instrument):
                     # REST sync
                     self.limit_oid = order.order_id
 
@@ -255,7 +255,7 @@ class StrategyAssetTrade(StrategyTrade):
         else:
             if self.stop_oid:
                 # cancel the sell stop order and create a new one
-                if trader.cancel_order(self.stop_oid):
+                if trader.cancel_order(self.stop_oid, instrument):
                     # REST sync
                     # returns true, no need to wait signal confirmation
                     self.stop_ref_oid = None
@@ -267,7 +267,7 @@ class StrategyAssetTrade(StrategyTrade):
 
             if self.limit_oid:
                 # cancel the sell limit order (only one or the other)
-                if trader.cancel_order(self.limit_oid):
+                if trader.cancel_order(self.limit_oid, instrument):
                     # REST sync
                     # returns true, no need to wait signal confirmation
                     self.limit_ref_oid = None
@@ -294,7 +294,7 @@ class StrategyAssetTrade(StrategyTrade):
                 trader.set_ref_order_id(order)
                 self.stop_ref_oid = order.ref_order_id
 
-                if trader.create_order(order):
+                if trader.create_order(order, instrument):
                     # REST sync
                     self.stop_oid = order.order_id
 
@@ -335,7 +335,7 @@ class StrategyAssetTrade(StrategyTrade):
 
             if self.entry_oid:
                 # cancel the remaining buy order
-                if trader.cancel_order(self.entry_oid):
+                if trader.cancel_order(self.entry_oid, instrument):
                     self.entry_ref_oid = None
                     self.entry_oid = None
                 else:
@@ -343,7 +343,7 @@ class StrategyAssetTrade(StrategyTrade):
 
             if self.limit_oid:
                 # cancel the sell limit order
-                if trader.cancel_order(self.limit_oid):
+                if trader.cancel_order(self.limit_oid, instrument):
                     self.limit_ref_oid = None
                     self.limit_oid = None
                     self.limit_order_type = Order.ORDER_MARKET
@@ -353,7 +353,7 @@ class StrategyAssetTrade(StrategyTrade):
 
             if self.stop_oid:
                 # cancel the sell stop order and create a new one
-                if trader.cancel_order(self.stop_oid):
+                if trader.cancel_order(self.stop_oid, instrument):
                     self.stop_ref_oid = None
                     self.stop_oid = None
                     self.stop_order_type = Order.ORDER_MARKET
@@ -376,7 +376,7 @@ class StrategyAssetTrade(StrategyTrade):
             trader.set_ref_order_id(order)
             self.stop_ref_oid = order.ref_order_id
 
-            if trader.create_order(order):
+            if trader.create_order(order, instrument):
                 # REST sync
                 self.stop_oid = order.order_id
 

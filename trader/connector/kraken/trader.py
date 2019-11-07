@@ -3,6 +3,7 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Trader/autotrader connector for kraken.com
 
+import traceback
 import time
 import base64
 import uuid
@@ -27,6 +28,7 @@ import logging
 logger = logging.getLogger('siis.trader.kraken')
 error_logger = logging.getLogger('siis.error.kraken')
 order_logger = logging.getLogger('siis.order.kraken')
+traceback_logger = logging.getLogger('siis.traceback.kraken')
 
 
 class KrakenTrader(Trader):
@@ -49,14 +51,11 @@ class KrakenTrader(Trader):
         super().connect()
 
         # retrieve the ig.com watcher and take its connector
-        self.lock()
+        with self._mutex:
+            self._watcher = self.service.watcher_service.watcher(self._name)
 
-        self._watcher = self.service.watcher_service.watcher(self._name)
-
-        if self._watcher:
-            self.service.watcher_service.add_listener(self)
-        
-        self.unlock()
+            if self._watcher:
+                self.service.watcher_service.add_listener(self)
 
         if self._watcher and self._watcher.connected:
             self.on_watcher_connected(self._watcher.name)
@@ -64,36 +63,23 @@ class KrakenTrader(Trader):
     def disconnect(self):
         super().disconnect()
 
-        self.lock()
-    
-        if self._watcher:
-            self.service.watcher_service.remove_listener(self)
-            self._watcher = None
-
-        self.unlock()
+        with self._mutex:
+            if self._watcher:
+                self.service.watcher_service.remove_listener(self)
+                self._watcher = None
 
     def on_watcher_connected(self, watcher_name):
         super().on_watcher_connected(watcher_name)
 
         # markets, orders and positions
-        logger.info("- Trader kraken.com retrieving symbols and markets...")
+        logger.info("- Trader kraken.com retrieving data...")
 
-        configured_symbols = self.configured_symbols()
-        matching_symbols = self.matching_symbols_set(configured_symbols, self._watcher.watched_instruments())
+        with self._mutex:
+            self.__fetch_orders()
+            self.__fetch_positions()
 
-        # markets, orders and positions
-        self.lock()
-
-        for symbol in matching_symbols:
-            self.market(symbol, True)
-
-        self.__fetch_orders()
-        self.__fetch_positions()
-
-        self.unlock()
-
-        # initial account update
-        self._account.update(self._watcher.connector)
+            # initial account update
+            self._account.update(self._watcher.connector)
 
         logger.info("Trader kraken.com got data. Running.")
 
@@ -156,40 +142,32 @@ class KrakenTrader(Trader):
 
         if KrakenTrader.REST_OR_WS:
             # account data update
-            try:
-                self.lock()
-                self.__fetch_account()
-            except Exception as e:
-                import traceback
-                logger.error(traceback.format_exc())
-            finally:
-                self.unlock()
+            with self._mutex:
+                try:
+                    self.__fetch_account()
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
 
             # positions
-            try:
-                self.lock()
-                self.__fetch_positions()
-
-                now = time.time()
-                self._last_update = now
-            except Exception as e:
-                import traceback
-                logger.error(traceback.format_exc())
-            finally:
-                self.unlock()
+            with self._mutex:
+                try:
+                    self.__fetch_positions()
+                    now = time.time()
+                    self._last_update = now
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
 
             # orders
-            try:
-                self.lock()
-                self.__fetch_orders()
-
-                now = time.time()
-                self._last_update = now
-            except Exception as e:
-                import traceback
-                logger.error(traceback.format_exc())
-            finally:
-                self.unlock()
+            with self._mutex:
+                try:
+                    self.__fetch_orders()
+                    now = time.time()
+                    self._last_update = now
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
 
         return True
 
@@ -199,53 +177,28 @@ class KrakenTrader(Trader):
         # don't wast the CPU 5 ms loop
         time.sleep(0.005)
 
-    @Trader.mutexed
-    def create_order(self, order):
-        if not order:
-            return False
+    #
+    # ordering
+    #
 
-        if not self.has_market(order.symbol):
-            error_logger.error("%s does not support market %s in order %s !" % (self.name, order.symbol, order.order_id))
-            return
-
-        if not self._activity:
+    def create_order(self, order, market_or_instrument):
+        if not position_id or not market_or_instrument:
             return False
 
         # @todo
 
         return True
 
-    @Trader.mutexed
-    def cancel_order(self, order_id):
-        # DELETE endpoint=order
-        order = self._orders.get(order_id)
-
-        if not self._activity:
+    def cancel_order(self, order_id, market_or_instrument):
+        if not position_id or not market_or_instrument:
             return False
-
-        if order is None:
-            error_logger.error("%s does not found order %s !" % (self.name, order_id))
-            return False
-
-        symbol = order.symbol or ""
 
         # @todo
 
         return True
 
-    @Trader.mutexed
-    def close_position(self, position_id, market=True, limit_price=None):
-        if not self._activity:
-            return False
-
-        position = self._positions.get(position_id)
-
-        if position is None or not position.is_opened():
-            return False
-
-        if not self.has_market(position.symbol):
-            logger.error("%s does not support market %s on close position %s !" % (
-                self.name, position.symbol, position.position_id))
+    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
+        if not position_id or not market_or_instrument:
             return False
 
         ref_order_id = "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
@@ -253,48 +206,28 @@ class KrakenTrader(Trader):
         # keep for might be useless in this case
         order.set_ref_order_id(ref_order_id)
 
-        order = Order(self, position.symbol)
-        order.set_position_id(position.position_id)
-        order.quantity = position.quantity
-        order.direction = -position.direction  # neg direction
+        order = Order(self, market_or_instrument.market_id)
+        order.set_position_id(position_id)
+        order.quantity = quantity
+        order.direction = -direction  # neg direction
 
         # @todo
 
         return True
 
-    @Trader.mutexed
-    def modify_position(self, position_id, stop_loss_price=None, take_profit_price=None):
+    def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
         """Not supported"""
         return False
 
     def positions(self, market_id):
-        self.lock()
+        with self._mutex:
+            position = self._positions.get(market_id)
+            if position:
+                positions = [copy.copy(position)]
+            else:
+                positions = []
 
-        position = self._positions.get(market_id)
-        if position:
-            positions = [copy.copy(position)]
-        else:
-            positions = []
-
-        self.unlock()
-        return positions
-
-    #
-    # slots
-    #
-
-    @Trader.mutexed
-    def on_order_updated(self, market_id, order_data, ref_order_id):
-        market = self._markets.get(order_data['symbol'])
-        if market is None:
-            # not interested by this market
-            return
-
-        try:
-            # @todo temporary substitution
-            self.__update_orders()
-        except Exception as e:
-            logger.error(repr(e))
+            return positions
 
     #
     # protected

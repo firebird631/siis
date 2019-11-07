@@ -7,13 +7,6 @@ class Signal(object):
 
 	SIGNAL_UNDEFINED = 0
 
-	SIGNAL_SOCIAL_ENTER = 10           # broker copy position entry signal
-	SIGNAL_SOCIAL_EXIT = 11            # broker copy position exit signal
-	SIGNAL_SOCIAL_UPDATED = 12         # broker copy position exit signal
-
-	SIGNAL_AUTHOR_ADDED = 13
-	SIGNAL_AUTHOR_REMOVED = 14
-
 	SIGNAL_STRATEGY_SIGNAL = 50         # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'profit-loss', 'timestamp', ...}
 	SIGNAL_STRATEGY_ENTRY = 50          # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'profit-loss', 'timestamp', ...}
 	SIGNAL_STRATEGY_EXIT = 50           # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'profit-loss', 'timestamp', ...}

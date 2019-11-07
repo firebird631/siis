@@ -19,24 +19,20 @@ from trader.market import Market
 
 from monitor.streamable import Streamable, StreamMemberSerie, StreamMemberFloatSerie
 from common.runnable import Runnable
-from common.utils import matching_symbols_set
 
 from terminal.terminal import Terminal, Color
 from terminal import charmap
 
-from tabulate import tabulate
-
 import logging
 logger = logging.getLogger('siis.trader')
+error_logger = logging.getLogger('siis.error.trader')
 
 
 class Trader(Runnable):
     """
     Trader base class to specialize per broker.
 
-    @todo orders tabulated
-    @todo positions tabulated
-    @deprecated Older social copy methods that must be move to social strategy (to be continued, very low priority).
+    @todo Not as central ressource, only for intial or informational, strategy must have theirs local proxy methods/data.
     """
 
     MAX_SIGNALS = 1000                        # max signals queue size before ignore some market data updates
@@ -50,8 +46,6 @@ class Trader(Runnable):
     # order commands
     COMMAND_CLOSE_MARKET = 110                # close a managed or unmanaged position at market now
     COMMAND_CLOSE_ALL_MARKET = 111            # close any positions of this account at market now
-
-    COMMAND_TRIGGER = 150                     # trigger a posted command using its identifier @todo might be moved to social strategy
 
     def __init__(self, name, service):
         super().__init__("td-%s" % name)
@@ -107,48 +101,6 @@ class Trader(Runnable):
         """True for not real trader"""
         return False
 
-    @property
-    def activity(self):
-        """
-        Return True if the order must be executed on the broker.
-        """
-        return self._activity
-    
-    def set_activity(self, status, market_id=None):
-        """
-        Enable/disable execution of orders (create_order, cancel_order, modify_position...) for any markets of the trader or 
-        a specific instrument if market_id is defined.
-        """
-        if market_id:
-            with self._mutex:
-                market = self._markets.get(market_id)
-                if market:
-                    maket.set_activity(status)
-        else:
-            with self._mutex:
-                for k, market in self._markets.items():
-                    market.set_activity(status)
-
-    def configured_symbols(self):
-        """
-        Configured instruments symbols from config of the trader.
-        """
-        trader_config = self.service.trader_config(self._name)
-        if trader_config:
-            return trader_config.get('symbols', [])
-        else:
-            return []
-
-    def matching_symbols_set(self, configured_symbols, available_symbols):
-        """
-        Special '*' symbol mean every symbol.
-        Starting with '!' mean except this symbol.
-        Starting with '*' mean every wildchar before the suffix.
-
-        @param available_symbols List containing any supported markets symbol of the broker. Used when a wildchar is defined.
-        """
-        return matching_symbols_set(configured_symbols, available_symbols)
-
     def set_timestamp(self, timestamp):
         """
         Used on backtesting by the strategy.
@@ -175,20 +127,6 @@ class Trader(Runnable):
     @property
     def authenticated(self):
         return False
-
-    @classmethod    
-    def authentication_required(cls, fn):
-        """
-        Annotation for methods that require auth.
-        """
-        def wrapped(self, *args, **kwargs):
-            if not self.authenticated:
-                msg = "%s trader : You must be authenticated to use this method" % self._name
-                raise Exception(msg)  # errors.AuthenticationError(msg) @todo exceptions classes
-            else:
-                return fn(self, *args, **kwargs)
-    
-        return wrapped
 
     def symbols_ids(self):
         """
@@ -225,8 +163,9 @@ class Trader(Runnable):
 
         return None
 
-    def log_report(self):
-        pass
+    def has_market(self, market_id):
+        with self._mutex:
+            return market_id in self._markets
 
     #
     # processing
@@ -341,59 +280,11 @@ class Trader(Runnable):
             size = len(self._commands) - Trader.MAX_COMMANDS_QUEUE
             self._commands = self._commands[size:]
 
-    def has_market(self, market_id):
-        return market_id in self._markets
-
     def command(self, command_type, data):
         """
         Some parts are mutexed some others are not.
         """
-        if command_type == Trader.COMMAND_TRIGGER:
-            # this kind of command when its social might be part of the social strategy
-            # @todo then must be moved to social strategy using trade etc and not directly on Trader
-            for command in self._commands:
-                if command['command_trigger']['key'] == data['key']:
-                    if command.get('close_position', False):
-                        # copy a position exit
-                        copied_position = command['copied_position']
-
-                        Terminal.inst().info("Close position %s" % (copied_position.position_id, ), view='info')
-
-                        self.close_position(command['position'].position_id)
-                    else:
-                        # copy a position entry
-                        copied_position = command['copied_position']
-                        if copied_position is not None:
-                            # social trading position copy
-                            Terminal.inst().info("Replicate position %s" % (copied_position.position_id, ), view='info')
-
-                            # @todo auto set a take_profit and stop_loss to account R:R if no TP and if SL is None or >=x%
-                            order = Order(self, copied_position.symbol)
-                            order.direction = copied_position.direction
-                            order.take_profit = copied_position.take_profit
-                            order.stop_loss = copied_position.stop_loss
-
-                            # @todo adjust to make leverage...
-                            order.leverage = copied_position.leverage
-                            order.set_copied_position_id(copied_position.position_id)
-
-                            self.create_order(order)
-                        else:
-                            # manual or strategy copy
-                            Terminal.inst().info("Replicate strategy %s order %s" % (command['strategy'], command['signal-id']), view='info')
-
-                            # @todo auto set a take_profit and stop_loss to account R:R if no TP and if SL is None or >=x%
-                            order = Order(self, command['symbol'])
-                            order.direction = command['direction']
-                            # order.take_profit = @todo a max TP
-                            # order.stop_loss = @todo a max default SL according to account properties
-
-                            # @todo adjust to make leverage...
-                            order.leverage = command.get('leverage', 1)
-
-                            self.create_order(order)
-
-        elif command_type == Trader.COMMAND_INFO:
+        if command_type == Trader.COMMAND_INFO:
             # info on the trade
             self.cmd_trader_info(data)
 
@@ -403,7 +294,9 @@ class Trader(Runnable):
                 for k, position in self._positions.items():
                     if position.key == data['key']:
                         # query close position
-                        self.close_position(position.position_id)
+                        market = self.market(position.symbol)
+                        if market:
+                            self.close_position(position.position_id, market)
 
                         Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
                         break
@@ -413,8 +306,11 @@ class Trader(Runnable):
             with self._mutex:
                 for k, position in self._positions.items():
                     # query close position
-                    self.close_position(position.position_id)
-        
+                    market = self.market(position.symbol)
+
+                    if market:
+                        self.close_position(position.position_id, market)
+
                     Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
                     break
 
@@ -432,17 +328,22 @@ class Trader(Runnable):
         if watchdog_service:
             watchdog_service.service_pong(pid, timestamp, msg)
 
+    #
+    # global information
+    #
+
     def has_margin(self, market_id, quantity, price):
         """
         Return True for a margin trading if the account have sufficient free margin.
         """
-        margin = None
-
         with self._mutex:
             market = self._markets.get(market_id)
             margin = market.margin_cost(quantity, price)
 
-        return margin is not None and self.account.margin_balance >= margin
+            if margin:
+                return self.account.margin_balance >= margin
+
+        return False
 
     def has_quantity(self, asset_name, quantity):
         """
@@ -450,13 +351,17 @@ class Trader(Runnable):
         @note The benefit of this method is it can be overloaded and offers a generic way for a strategy
         to check if an order can be created
         """
-        result = False
-
         with self._mutex:
             asset = self._assets.get(asset_name)
-            result = asset and asset.free >= quantity
-    
-        return result
+
+            if asset:
+                asset.free >= quantity
+
+        return False
+
+    #
+    # ordering
+    #
 
     def set_ref_order_id(self, order):
         """
@@ -472,49 +377,45 @@ class Trader(Runnable):
 
         return None
 
-    def create_order(self, order):
+    def create_order(self, order, market_or_instrument):
         """
         Create an order. The symbol of the order must be on of the trader instruments.
+        @note This call depend of the state of the connector.
         """
         return False
 
-    def cancel_order(self, order_id):
+    def cancel_order(self, order_id, market_or_instrument):
         """
         Cancel an existing order. The symbol of the order must be on of the trader instruments.
+        @note This call depend of the state of the connector.
         """
         return False
 
-    def close_position(self, position_or_id, market=True, limit_price=None):
+    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         """
         Close an existing position.
-        Market is default, take care of the fee.
-        Limit price can be defined but then it will create a limit order in the opposite direction in some broker
-        and modify the position in some other (depends of the mode hedging...).
-        """
-        if type(position_or_id) is str:
-            position = self._positions.get(position_or_id)
-        else:
-            position = position_or_id
+        
+        @param position_id Unique position identifier on broker.
+        @param market_or_instrument Markt of Instrument related object.
+        @param direction Direction of the position to close.
+        @param quantity Quantiy of the position to close or reduce.
+        @param market If true close at market
+        @param limit_price If Not market close at this limit price
 
-        if position is None or not position.is_opened():
-            return False
-
-        # market stop order
-        order = Order(self, position.symbol)
-        order.direction = position.close_direction()
-        order.order_type = Order.ORDER_MARKET
-        order.quantity = position.quantity  # fully close
-        order.leverage = position.leverage  # same as open
-
-        # simply create an order in the opposite direction
-        return self.create_order(order)
-
-    def modify_position(self, position_id, stop_loss_price=None, take_profit_price=None):
-        """
-        Modifiy the stop loss or take profit of a position.
-        Its a bit complicated, it depends of the mode of the broker, and if hedging or not.
+        @note This call depend of the state of the connector.
         """
         return False
+
+    def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
+        """
+        Modifiy the stop loss or take profit of a position.
+        @note This call depend of the state of the connector.
+        """
+        return False
+
+    #
+    # global accessors
+    #
 
     def orders(self, market_id):
         """
@@ -548,7 +449,8 @@ class Trader(Runnable):
         Market data for a market id.
         @param force True to force request and cache update.
         """
-        return self._markets.get(market_id)
+        with self._mutex:
+            return self._markets.get(market_id)
 
     def asset(self, symbol):
         """
@@ -619,6 +521,10 @@ class Trader(Runnable):
             # signal of interest
             self._signals.append(signal)
 
+    #
+    # connection slots
+    #
+
     def on_watcher_connected(self, watcher_name):
         msg = "Trader %s joined %s watcher connection." % (self.name, watcher_name)
         logger.info(msg)
@@ -654,6 +560,11 @@ class Trader(Runnable):
 
     @Runnable.mutexed
     def on_position_opened(self, market_id, position_data, ref_order_id):
+        market = self._markets.get(market_id)
+        if market is None:
+            # not interested by this market
+            return
+
         # insert it, erase the previous if necessary
         position = Position(self)
         position.set_position_id(position_data['id'])
@@ -675,8 +586,6 @@ class Trader(Runnable):
         elif position_data.get('exec-price') is not None:
             position.entry_price = position_data['exec-price']
 
-        # logger.debug("position opened %s size=%s" %(position.symbol, position.quantity))
-
         self._positions[position.position_id] = position
 
         market = self.market(position.symbol)
@@ -693,6 +602,11 @@ class Trader(Runnable):
 
     @Runnable.mutexed
     def on_position_updated(self, market_id, position_data, ref_order_id):
+        market = self._markets.get(market_id)
+        if market is None:
+            # not interested by this market
+            return
+
         position = self._positions.get(position_data['id'])
 
         if position:
@@ -783,7 +697,7 @@ class Trader(Runnable):
 
     @Runnable.mutexed
     def on_order_opened(self, market_id, order_data, ref_order_id):
-        market = self._markets.get(order_data['symbol'])
+        market = self._markets.get(market_id)
         if market is None:
             # not interested by this market
             return
@@ -815,6 +729,11 @@ class Trader(Runnable):
 
     @Runnable.mutexed
     def on_order_updated(self, market_id, order_data, ref_order_id):
+        market = self._markets.get(market_id)
+        if market is None:
+            # not interested by this market
+            return
+
         order = self._orders.get(order_data['id'])
         if order:
             # update price, stop-price, stop-loss, take-profit, quantity if necessarry
@@ -881,10 +800,8 @@ class Trader(Runnable):
         """
         market = self._markets.get(market_id)
         if market is None:
-            # create it but will miss lot of details at this time
-            # uses market_id as symbol but its not ideal
-            market = Market(market_id, market_id)
-            self._markets[market_id] = market
+            # not interested by this market
+            return
 
         if bid:
             market.bid = bid
@@ -1321,69 +1238,72 @@ class Trader(Runnable):
         data = []
 
         with self._mutex:
-            positions = self.get_active_positions()
-            total_size = (len(columns), len(positions))
+            try:
+                positions = self.get_active_positions()
+                total_size = (len(columns), len(positions))
 
-            if offset is None:
-                offset = 0
+                if offset is None:
+                    offset = 0
 
-            if limit is None:
-                limit = len(positions)
+                if limit is None:
+                    limit = len(positions)
 
-            limit = offset + limit
+                limit = offset + limit
 
-            positions.sort(key=lambda x: x['et'])
-            positions = positions[offset:limit]
+                positions.sort(key=lambda x: x['et'])
+                positions = positions[offset:limit]
 
-            for t in positions:
-                direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+                for t in positions:
+                    direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
-                aep = float(t['aep']) if t['aep'] else 0.0
-                sl = float(t['sl']) if t['sl'] else 0.0
-                tp = float(t['tp']) if t['tp'] else 0.0
+                    aep = float(t['aep']) if t['aep'] else 0.0
+                    sl = float(t['sl']) if t['sl'] else 0.0
+                    tp = float(t['tp']) if t['tp'] else 0.0
 
-                if t['pl'] < 0:  # loss
-                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
-                elif t['pl'] > 0:  # profit
-                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
-                else:  # equity
-                    cr = "0.0"
+                    if t['pl'] < 0:  # loss
+                        cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
+                    elif t['pl'] > 0:  # profit
+                        cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
+                    else:  # equity
+                        cr = "0.0"
 
-                if t['d'] == 'long' and aep:
-                    slpct = (sl - aep) / aep
-                    tppct = (tp - aep) / aep
-                elif t['d'] == 'short' and aep:
-                    slpct = (aep - sl) / aep
-                    tppct = (aep - tp) / aep
-                else:
-                    slpct = 0
-                    tppct = 0
+                    if t['d'] == 'long' and aep:
+                        slpct = (sl - aep) / aep
+                        tppct = (tp - aep) / aep
+                    elif t['d'] == 'short' and aep:
+                        slpct = (aep - sl) / aep
+                        tppct = (aep - tp) / aep
+                    else:
+                        slpct = 0
+                        tppct = 0
 
-                row = [
-                    t['mid'],
-                    t['id'],
-                    direction,
-                    "%.2f" % t['l'],
-                    cr,
-                    "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
-                    "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
-                    t['tr'],
-                    datetime.fromtimestamp(t['et']).strftime(datetime_format) if t['et'] > 0 else "",
-                    t['aep'],
-                    datetime.fromtimestamp(t['xt']).strftime(datetime_format) if t['xt'] > 0 else "",
-                    t['axp'],
-                    "%s%s" % (t['pnl'], t['pnlcur']),
-                    t['cost'],
-                    t['margin'],
-                    t['key']
-                ]
+                    row = [
+                        t['mid'],
+                        t['id'],
+                        direction,
+                        "%.2f" % t['l'],
+                        cr,
+                        "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
+                        "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
+                        t['tr'],
+                        datetime.fromtimestamp(t['et']).strftime(datetime_format) if t['et'] > 0 else "",
+                        t['aep'],
+                        datetime.fromtimestamp(t['xt']).strftime(datetime_format) if t['xt'] > 0 else "",
+                        t['axp'],
+                        "%s%s" % (t['pnl'], t['pnlcur']),
+                        t['cost'],
+                        t['margin'],
+                        t['key']
+                    ]
 
-                # @todo xx / market.base_exchange_rate and pnl_currency
+                    # @todo xx / market.base_exchange_rate and pnl_currency
 
-                if quantities:
-                    row.append(t['q'])
+                    if quantities:
+                        row.append(t['q'])
 
-                data.append(row[col_ofs:])
+                    data.append(row[col_ofs:])
+            except Exception as e:
+                error_logger.error(repr(e))
 
         return columns[col_ofs:], data, total_size
 
@@ -1403,177 +1323,76 @@ class Trader(Runnable):
         data = []
 
         with self._mutex:
-            orders = self.get_active_orders()
-            total_size = (len(columns), len(orders))
+            try:
+                orders = self.get_active_orders()
+                total_size = (len(columns), len(orders))
 
-            if offset is None:
-                offset = 0
+                if offset is None:
+                    offset = 0
 
-            if limit is None:
-                limit = len(orders)
+                if limit is None:
+                    limit = len(orders)
 
-            limit = offset + limit
+                limit = offset + limit
 
-            orders.sort(key=lambda x: x['ct'])
-            orders = orders[offset:limit]
+                orders.sort(key=lambda x: x['ct'])
+                orders = orders[offset:limit]
 
-            for t in orders:
-                direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+                for t in orders:
+                    direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
-                op = float(t['op']) if t['op'] else 0.0
-                sl = float(t['sl']) if t['sl'] else 0.0
-                tp = float(t['tp']) if t['tp'] else 0.0
+                    op = float(t['op']) if t['op'] else 0.0
+                    sl = float(t['sl']) if t['sl'] else 0.0
+                    tp = float(t['tp']) if t['tp'] else 0.0
 
-                if t['d'] == 'long' and op:
-                    slpct = (sl - op) / op if sl else 0.0
-                    tppct = (tp - op) / op if tp else 0.0
-                elif t['d'] == 'short' and op:
-                    slpct = (op - sl) / op if sl else 0.0
-                    tppct = (op - tp) / op if tp else 0.0
-                else:
-                    slpct = 0
-                    tppct = 0
+                    if t['d'] == 'long' and op:
+                        slpct = (sl - op) / op if sl else 0.0
+                        tppct = (tp - op) / op if tp else 0.0
+                    elif t['d'] == 'short' and op:
+                        slpct = (op - sl) / op if sl else 0.0
+                        tppct = (op - tp) / op if tp else 0.0
+                    else:
+                        slpct = 0
+                        tppct = 0
 
-                row = [
-                    t['mid'],
-                    t['id'],
-                    t['refid'],
-                    direction,
-                    t['ot'],
-                    "%.2f" % t['l'],
-                    t['op'],
-                    t['sp'],
-                    "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
-                    "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
-                    t['tr'],
-                    datetime.fromtimestamp(t['ct']).strftime(datetime_format) if t['ct'] > 0 else "",
-                    datetime.fromtimestamp(t['tt']).strftime(datetime_format) if t['tt'] > 0 else "",
-                    "Yes" if t['ro'] else "No",
-                    "Yes" if t['po'] else "No",
-                    "Yes" if t['he'] else "No",
-                    "Yes" if t['co'] else "No",
-                    "Yes" if t['mt'] else "No",
-                    t['tif'],
-                    t['pt'],
-                    t['key']
-                ]
+                    row = [
+                        t['mid'],
+                        t['id'],
+                        t['refid'],
+                        direction,
+                        t['ot'],
+                        "%.2f" % t['l'],
+                        t['op'],
+                        t['sp'],
+                        "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
+                        "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
+                        t['tr'],
+                        datetime.fromtimestamp(t['ct']).strftime(datetime_format) if t['ct'] > 0 else "",
+                        datetime.fromtimestamp(t['tt']).strftime(datetime_format) if t['tt'] > 0 else "",
+                        "Yes" if t['ro'] else "No",
+                        "Yes" if t['po'] else "No",
+                        "Yes" if t['he'] else "No",
+                        "Yes" if t['co'] else "No",
+                        "Yes" if t['mt'] else "No",
+                        t['tif'],
+                        t['pt'],
+                        t['key']
+                    ]
 
-                if quantities:
-                    row.append(t['q'])
-                    row.append(t['xq'])
+                    if quantities:
+                        row.append(t['q'])
+                        row.append(t['xq'])
 
-                data.append(row[col_ofs:])
+                    data.append(row[col_ofs:])
+            except Exception as e:
+                error_logger.error(repr(e))
 
         return columns[col_ofs:], data, total_size
-
-    #
-    # @deprecated (previously used for social copy, but now prefer use the social copy strategy, to be removed once done)
-    #
-
-    def on_enter_position(self, copied_position, command_trigger):
-        """
-        Create a position from a command trigger.
-        Thread safe method.
-        @todo should be strategy part, on_set_order is in a sort of dublicate
-        """
-        if not self.has_market(copied_position.symbol):
-            return
-
-        command = {
-            'copied_position': copied_position,
-            'order_type': Order.ORDER_MARKET,
-            'command_trigger': command_trigger,
-            'timestamp': time.time()
-        }
-
-        with self._mutex:
-            self._commands.append(command)
-            self._purge_commands()
-
-    def on_exit_position(self, copied_position, command_trigger):
-        """
-        Exit a position from a command trigger.
-        Thread safe method.
-        @todo social position id and mapping might be maintened by the social strategy appliance
-        """
-        # map shared position_id to self position_id
-        with self._mutex:
-            self._position = self._positions.get(copied_position.position_id)
-
-        # if the position is currently copied order to close it (manually by message or auto)
-        if self_position is None:
-            # Terminal.inst().error("Unable to find the copy of position %s for close " % (copied_position.position_id, ), view='status')
-            return
-
-        command = {
-            'copied_position': copied_position,
-            'position': self._position,
-            'order_type': Order.ORDER_MARKET,
-            'close_position': True,
-            'reduce_only': True,
-            'command_trigger': command_trigger,
-            'timestamp': time.time()
-        }
-
-        with self._mutex:
-            self._commands.append(command)
-            self._purge_commands()
-
-    def on_set_order(self, order, command_trigger):
-        """
-        Create a new order from a command trigger.
-        Thread safe method.
-        @todo social position id and mapping might be maintened by the social strategy appliance
-        """
-        if not self.has_market(order['symbol']):
-            return
-
-        command = {
-            'copied_position': None,
-            'order_type': Order.ORDER_MARKET,
-            'command_trigger': command_trigger,
-            'symbol': order['symbol'],
-            'timestamp': float(order['timestamp']),
-            'direction': order['direction'],
-            'signal-id': order.get('signal-id', 'undefined'),
-            'strategy': order.get('strategy', None),
-            'options': order.get('options', {}),            
-        }
-
-        with self._mutex:
-            self._commands.append(command)
-            self._purge_commands()
 
     #
     # commands
     #
 
     def cmd_trader_info(self, data):
-        # info on the trader
-        if 'market-id' in data:
-            with self._mutex:
-                market = self.find_market(data['market-id'])
-                if market:
-                    Terminal.inst().info("Market %s of trader %s is %s." % (
-                        data['market-id'], self.name, "active" if market.activity else "paused"),
-                        view='content')
-        else:
-            Terminal.inst().info("Trader %s :" % (self.name), view='content')
-
-            enabled = []
-            disabled = []
-
-            with self._mutex:
-                for k, market in self._markets.items():
-                    if market.activity:
-                        enabled.append(k)
-                    else:
-                        disabled.append(k)
-
-            if enabled:
-                enabled = [e if i%10 else e+'\n' for i, e in enumerate(enabled)]
-                Terminal.inst().info("Enabled instruments (%i): %s" % (len(enabled), " ".join(enabled)), view='content')
-
-            if disabled:
-                disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
-                Terminal.inst().info("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')
+        # info on the global trader instance
+        pass

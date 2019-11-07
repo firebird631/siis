@@ -93,5 +93,4 @@ class SiisPrice(Watcher):
 	def post_update(self):
 		super().post_update()
 
-		# ok for social but not if websocket
 		time.sleep(0.5)
