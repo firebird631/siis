@@ -350,7 +350,7 @@ class IGTrader(Trader):
 
                 # self._positions[position.position_id] = position
             else:
-                error_logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, ""))
+                error_logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, results.get('reason')))
                 return False
 
         except IGException as e:

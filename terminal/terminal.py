@@ -798,7 +798,12 @@ class Terminal(object):
             if curses.has_colors():
                 curses.start_color()
                 curses.use_default_colors()
-                curses.init_color(curses.COLOR_BLUE, 384, 384, 800)
+
+                try:
+                    curses.init_color(curses.COLOR_BLUE, 384, 384, 800)
+                except Exception as e:
+                    error_logger.error(str(e))
+
                 curses.init_pair(0, curses.COLOR_WHITE, -1)
                 curses.init_pair(1, curses.COLOR_RED, -1)
                 curses.init_pair(2, curses.COLOR_YELLOW, -1)
