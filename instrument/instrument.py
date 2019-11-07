@@ -1310,6 +1310,9 @@ class Instrument(object):
         """
         Format the price according to the precision.
         """
+        if price is None:
+            price = 0.0
+
         precision = self._price_limits[3] or 8
         tick_size = self._price_limits[2] or 0.00000001
 
@@ -1320,6 +1323,9 @@ class Instrument(object):
         """
         Format the price according to the precision.
         """
+        if price is None:
+            price = 0.0
+
         precision = self._price_limits[3] or 8
         tick_size = self._price_limits[2] or 0.00000001
 
@@ -1340,6 +1346,9 @@ class Instrument(object):
         @param quantity float Quantity to adjust
         @param min_is_zero boolean Default True. If quantity is lesser than min returns 0 else return min size.
         """
+        if quantity is None:
+            quantity = 0.0
+
         if self.min_size > 0.0 and quantity < self.min_size:
             if min_is_zero:
                 return 0.0
@@ -1359,6 +1368,9 @@ class Instrument(object):
         """
         Return a quantity as str according to the precision of the step size.
         """
+        if quantity is None:
+            quantity = 0.0
+
         precision = self._size_limits[3] or 8
         qty = "{:0.0{}f}".format(truncate(quantity, precision), precision)
 

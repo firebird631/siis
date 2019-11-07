@@ -530,6 +530,9 @@ class Market(object):
         Format the price according to the precision.
         @param use_quote True use quote display or quote, False base, None no symbol only price.
         """
+        if price is None:
+            price = 0.0
+
         precision = self._price_limits[3] or self._quote_precision
         if not precision:
             precision = decimal_place(self.value_per_pip) or 8
@@ -543,6 +546,9 @@ class Market(object):
         """
         Format the base price according to its precision.
         """
+        if price is None:
+            price = 0.0
+
         precision = self._base_precision
         if not precision:
             precision = decimal_place(self.one_pip_means) or 8
@@ -562,6 +568,9 @@ class Market(object):
         """
         Format the price according to its precision.
         """
+        if price is None:
+            price = 0.0
+
         precision = self._price_limits[3] or self._quote_precision
         if not precision:
             precision = decimal_place(self.value_per_pip) or 8
@@ -583,6 +592,9 @@ class Market(object):
         Format the spread according to the precision.
         @param shifted Shift the spread value by power of 10 based on the tick size.
         """
+        if spread is None:
+            spread = 0.0
+
         precision = self._price_limits[3] or self._quote_precision
 
         if not precision:
@@ -617,6 +629,9 @@ class Market(object):
         @param quantity float Quantity to adjust
         @param min_is_zero boolean Default True. If quantity is lesser than min returns 0 else return min size.
         """
+        if quantity is None:
+            quantity = 0.0
+
         if self.min_size > 0.0 and quantity < self.min_size:
             if min_is_zero:
                 return 0.0
@@ -641,6 +656,9 @@ class Market(object):
         """
         Return a quantity as str according to the precision of the step size.
         """
+        if quantity is None:
+            quantity = 0.0
+
         precision = self._size_limits[3] or self._quote_precision
         qty = "{:0.0{}f}".format(truncate(quantity, precision), precision)
 

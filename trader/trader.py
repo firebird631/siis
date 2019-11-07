@@ -3,6 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Trader base class
 
+import traceback
 import time
 import copy
 import base64
@@ -26,6 +27,7 @@ from terminal import charmap
 import logging
 logger = logging.getLogger('siis.trader')
 error_logger = logging.getLogger('siis.error.trader')
+traceback_logger = logging.getLogger('siis.traceback.trader')
 
 
 class Trader(Runnable):
@@ -296,7 +298,7 @@ class Trader(Runnable):
                         # query close position
                         market = self.market(position.symbol)
                         if market:
-                            self.close_position(position.position_id, market)
+                            self.close_position(position.position_id, market, position.direction, position.quantity, True, None)
 
                         Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
                         break
@@ -309,7 +311,7 @@ class Trader(Runnable):
                     market = self.market(position.symbol)
 
                     if market:
-                        self.close_position(position.position_id, market)
+                        self.close_position(position.position_id, market, position.direction, position.quantity, True, None)
 
                     Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
                     break
@@ -895,6 +897,7 @@ class Trader(Runnable):
         Returns a table of any followed markets.
         """
         columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract', 'Min Size', 'Min Notional')
+        total_size = (len(columns), 0)
         data = []
 
         with self._mutex:
@@ -940,6 +943,7 @@ class Trader(Runnable):
         Returns a table of any followed markets tickers.
         """
         columns = ('Market', 'Symbol', 'Bid', 'Ofr', 'Spread', 'Vol24h base', 'Vol24h quote', 'Time')
+        total_size = (len(columns), 0)
         data = []
 
         with self._mutex:
@@ -1004,6 +1008,7 @@ class Trader(Runnable):
         """
         columns = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'Change %',
                 'P/L %s' % self.account.currency, 'P/L %s' % self.account.alt_currency)
+        total_size = (len(columns), 0)
         data = []
 
         with self._mutex:
@@ -1137,35 +1142,39 @@ class Trader(Runnable):
         results = []
 
         with self._mutex:
-            for k, order in self._orders.items():
-                market = self._markets.get(order.symbol)
-                if market:
-                    results.append({
-                        'mid': market.market_id,
-                        'sym': market.symbol,
-                        'id': order.order_id,
-                        'refid': order.ref_order_id,
-                        'ct': order.created_time,
-                        'tt': order.transact_time,
-                        'd': order.direction_to_str(),
-                        'ot': order.order_type_to_str(),
-                        'l': order.leverage,
-                        'q': market.format_quantity(order.quantity),
-                        'op': market.format_price(order.price) if order.price else "",
-                        'sp': market.format_price(order.stop_price) if order.stop_price else "",
-                        'sl': market.format_price(order.stop_loss) if order.stop_loss else "",
-                        'tp': market.format_price(order.take_profit) if order.take_profit else "",
-                        'tr': "No",
-                        'xq': market.format_quantity(order.executed),
-                        'ro': order.reduce_only,
-                        'he': order.hedging,
-                        'po': order.post_only,
-                        'co': order.close_only,
-                        'mt': order.margin_trade,
-                        'tif': order.time_in_force_to_str(),
-                        'pt': order.price_type_to_str(),
-                        'key': order.key
-                    })
+            try:
+                for k, order in self._orders.items():
+                    market = self._markets.get(order.symbol)
+                    if market:
+                        results.append({
+                            'mid': market.market_id,
+                            'sym': market.symbol,
+                            'id': order.order_id,
+                            'refid': order.ref_order_id,
+                            'ct': order.created_time,
+                            'tt': order.transact_time,
+                            'd': order.direction_to_str(),
+                            'ot': order.order_type_to_str(),
+                            'l': order.leverage,
+                            'q': market.format_quantity(order.quantity),
+                            'op': market.format_price(order.price) if order.price else "",
+                            'sp': market.format_price(order.stop_price) if order.stop_price else "",
+                            'sl': market.format_price(order.stop_loss) if order.stop_loss else "",
+                            'tp': market.format_price(order.take_profit) if order.take_profit else "",
+                            'tr': "No",
+                            'xq': market.format_quantity(order.executed),
+                            'ro': order.reduce_only,
+                            'he': order.hedging,
+                            'po': order.post_only,
+                            'co': order.close_only,
+                            'mt': order.margin_trade,
+                            'tif': order.time_in_force_to_str(),
+                            'pt': order.price_type_to_str(),
+                            'key': order.key
+                        })
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
         return results
 
@@ -1195,32 +1204,36 @@ class Trader(Runnable):
         results = []
 
         with self._mutex:
-            for k, position in self._positions.items():
-                market = self._markets.get(position.symbol)
-                if market:
-                    results.append({
-                        'mid': market.market_id,
-                        'sym': market.symbol,
-                        'id': position.position_id,
-                        'et': position.created_time,
-                        'xt': position.closed_time,
-                        'd': position.direction_to_str(),
-                        'l': position.leverage,
-                        'aep': market.format_price(position.entry_price) if position.entry_price else "",
-                        'axp': market.format_price(position.exit_price) if position.exit_price else "",
-                        'q': market.format_quantity(position.quantity),
-                        'tp': market.format_price(position.take_profit) if position.take_profit else "",
-                        'sl': market.format_price(position.stop_loss) if position.stop_loss else "",
-                        'tr': "Yes" if position.trailing_stop else "No",  # market.format_price(position.trailing_stop_distance) if position.trailing_stop_distance else None,
-                        'pl': position.profit_loss_rate,
-                        'pnl': market.format_price(position.profit_loss),
-                        'mpl': position.profit_loss_market_rate,
-                        'mpnl': market.format_price(position.profit_loss_market),
-                        'pnlcur': position.profit_loss_currency,
-                        'cost': market.format_quantity(position.position_cost(market)),
-                        'margin': market.format_quantity(position.margin_cost(market)),
-                        'key': position.key
-                    })
+            try:
+                for k, position in self._positions.items():
+                    market = self._markets.get(position.symbol)
+                    if market:
+                        results.append({
+                            'mid': market.market_id,
+                            'sym': market.symbol,
+                            'id': position.position_id,
+                            'et': position.created_time,
+                            'xt': position.closed_time,
+                            'd': position.direction_to_str(),
+                            'l': position.leverage,
+                            'aep': market.format_price(position.entry_price) if position.entry_price else "",
+                            'axp': market.format_price(position.exit_price) if position.exit_price else "",
+                            'q': market.format_quantity(position.quantity),
+                            'tp': market.format_price(position.take_profit) if position.take_profit else "",
+                            'sl': market.format_price(position.stop_loss) if position.stop_loss else "",
+                            'tr': "Yes" if position.trailing_stop else "No",  # market.format_price(position.trailing_stop_distance) if position.trailing_stop_distance else None,
+                            'pl': position.profit_loss_rate,
+                            'pnl': market.format_price(position.profit_loss),
+                            'mpl': position.profit_loss_market_rate,
+                            'mpnl': market.format_price(position.profit_loss_market),
+                            'pnlcur': position.profit_loss_currency,
+                            'cost': market.format_quantity(position.position_cost(market)),
+                            'margin': market.format_quantity(position.margin_cost(market)),
+                            'key': position.key
+                        })
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
         return results
 
@@ -1234,7 +1247,7 @@ class Trader(Runnable):
             columns += ['Qty']
 
         columns = tuple(columns)
-
+        total_size = (len(columns), 0)
         data = []
 
         with self._mutex:
@@ -1302,8 +1315,10 @@ class Trader(Runnable):
                         row.append(t['q'])
 
                     data.append(row[col_ofs:])
+
             except Exception as e:
                 error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
         return columns[col_ofs:], data, total_size
 
@@ -1319,7 +1334,7 @@ class Trader(Runnable):
             columns += ['Exec']
 
         columns = tuple(columns)
-
+        total_size = (len(columns), 0)
         data = []
 
         with self._mutex:
@@ -1384,8 +1399,10 @@ class Trader(Runnable):
                         row.append(t['xq'])
 
                     data.append(row[col_ofs:])
+
             except Exception as e:
                 error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
         return columns[col_ofs:], data, total_size
 

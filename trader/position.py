@@ -65,7 +65,7 @@ class Position(Keyed):
         self._trailing_stop = False
         self._direction = Position.LONG
 
-    def entry(self, direction, symbol, quantity, take_profit=None, stop_loss=None, leverage=None, trailing_stop=False):
+    def entry(self, direction, symbol, quantity, take_profit=None, stop_loss=None, leverage=1.0, trailing_stop=False):
         self._state = Position.STATE_OPENED
         self._direction = direction
         self._symbol = symbol

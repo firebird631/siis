@@ -520,7 +520,7 @@ class IGTrader(Trader):
                 position.set_key(self.service.gen_key())
                 position.leverage = 1.0 / market.margin_factor
 
-                position.entry(direction, epic, quantity)
+                position.entry(direction, epic, quantity, leverage=position.leverage)
 
                 # position are merged by epic but might be independents
                 self._positions[deal_id] = position

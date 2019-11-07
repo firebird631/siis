@@ -1522,7 +1522,7 @@ class Strategy(Runnable):
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
                         'com': trade.comment,
-                        'upnl': market.format_profit_loss_price(trade.unrealized_profit_loss) if market else "",
+                        'upnl': "%.f" % trade.unrealized_profit_loss,
                         'pnlcur': trade.profit_loss_currency
                     })
 
@@ -1610,6 +1610,7 @@ class Strategy(Runnable):
         Returns a table of any aggreged active and closes trades.
         """
         columns = ('Market', 'P/L(%)', 'Total(%)', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE')
+        total_size = (len(columns), 0)
         data = []
 
         with self._mutex:
@@ -1696,7 +1697,7 @@ class Strategy(Runnable):
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
 
         columns = tuple(columns)
-
+        total_size = (len(columns), 0)
         data = []
 
         with self._mutex:
@@ -1794,7 +1795,7 @@ class Strategy(Runnable):
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
 
         columns = tuple(columns)
-
+        total_size = (len(columns), 0)
         data = []
         
         with self._mutex:
