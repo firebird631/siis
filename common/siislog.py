@@ -80,8 +80,8 @@ class TerminalHandler(logging.StreamHandler):
         logging.StreamHandler.__init__(self)
 
     def filter(self, record):
-        if record.pathname.startswith('siis.exec.') or record.pathname.startswith('siis.signal.') or
-                record.pathname.startswith('siis.order.') or record.pathname.startswith('siis.traceback.'):
+        if (record.pathname.startswith('siis.exec.') or record.pathname.startswith('siis.signal.') or
+                record.pathname.startswith('siis.order.') or record.pathname.startswith('siis.traceback.')):
             # this only goes to loggers, not to stdout
             return False
 
