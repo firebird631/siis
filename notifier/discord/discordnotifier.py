@@ -106,7 +106,7 @@ class DiscordNotifier(Notifier):
                 signal.data['direction'],
                 ldatetime,
                 signal.data['id'],
-                timeframe_to_str(signal.data['timeframe']))
+                signal.data['timeframe'])
 
             if signal.data.get('stop-loss-price') and 'stop-loss' in self._signals_opts:
                 message += " SL@%s" % (signal.data['stop-loss-price'],)
@@ -114,8 +114,8 @@ class DiscordNotifier(Notifier):
             if signal.data.get('take-profit-price') and 'take-profit' in self._signals_opts:
                 message += " TP@%s" % (signal.data['take-profit-price'],)
 
-            if signal.data.get('profit-loss') is not None:
-                message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
+            if signal.data.get('profit-loss-pct') is not None:
+                message += " (%.2f%%)" % (signal.data['profit-loss-pct'],)
 
             if signal.data.get('order-qty') is not None and 'order-qty' in self._signals_opts:
                 message += " Q:%s" % signal.data['order-qty']

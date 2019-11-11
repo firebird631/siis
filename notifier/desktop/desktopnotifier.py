@@ -32,7 +32,7 @@ from common.utils import timeframe_to_str
 import logging
 logger = logging.getLogger('siis.notifier.desktop')
 error_logger = logging.getLogger('siis.error.notifier.desktop')
-signal_logger = logging.getLogger('siis.signal')
+signal_logger = logging.getLogger('siis.signal.desktop')
 
 
 class DesktopNotifier(Notifier):
@@ -178,7 +178,7 @@ class DesktopNotifier(Notifier):
                 message += " (%s)" % signal.data['comment']
 
             # and in signal logger (@todo to be moved)
-            signal_logger.info(message)
+            # signal_logger.info(message)
 
         # process sound
         if not self._backtesting and self._audible and alert is not None:

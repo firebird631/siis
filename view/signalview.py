@@ -29,7 +29,7 @@ class SignalView(TableView):
     REFRESH_RATE = 60  # only on signal or 1 minute refresh
 
     MAX_SIGNALS = 200
-    COLUMNS = ('#', 'Market', 'Way', charmap.ARROWUPDN, 'TF', 'EP', 'SL', 'TP', 'Date', 'Comment', 'Reason', 'P/L')
+    COLUMNS = ('#', 'Market', charmap.ARROWLR, charmap.ARROWUPDN, 'TF', 'EP', 'SL', 'TP', 'Date', 'Comment', 'Reason', 'P/L')
 
     def __init__(self, service, strategy_service):
         super().__init__("signal", service)
@@ -110,22 +110,29 @@ class SignalView(TableView):
             lid = Color.colorize(str(signal['id']), Color.color(id_color), style)
             lsymbol = Color.colorize(signal['symbol'], Color.color(symbol_color), style)
 
-            way = '>' if signal['way'] == "entry" else '<'
-            exit_reason = signal['stats'].get('exit-reason', "") if 'stats' in signal else ""
+            way = Color.colorize_cond(charmap.ARROWR if signal['way'] == "entry" else charmap.ARROWL,
+                    signal['way'] == "entry", style, true=Color.BLUE, false=Color.ORANGE)
+
+            if signal['way'] == "entry":
+                reason = signal['stats'].get('entry-order-type', "") if 'stats' in signal else ""
+            elif signal['way'] == "exit":
+                reason = signal['stats'].get('exit-reason', "") if 'stats' in signal else ""
+            else:
+                reason = ""
 
             row = (
                 lid,
                 lsymbol,
                 way,
                 direction,
-                timeframe_to_str(signal['timeframe']),
-                signal['order-price'],
-                signal['stop-loss-price'],
-                signal['take-profit-price'],
+                signal.get('timeframe', ""),
+                signal.get('order-price', ""),
+                signal.get('stop-loss-price', ""),
+                signal.get('take-profit-price', ""),
                 ldatetime,
-                signal['comment'],
-                exit_reason,
-                " (%.2f%%)" % ((signal['profit-loss'] * 100),) if signal.get('profit-loss') is not None else ""
+                signal.get('comment', ""),
+                reason,
+                " (%.2f%%)" % (signal['profit-loss-pct'],) if signal.get('profit-loss-pct') is not None else ""
             )
 
             data.append(row[col_ofs:])
