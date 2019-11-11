@@ -204,7 +204,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return result
 
-    def subscribe(self, timeframe):
+    def subscribe_stream(self, timeframe):
         """
         Use or create a specific streamer.
         """
@@ -231,7 +231,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return False
 
-    def unsubscribe(self, timeframe):
+    def unsubscribe_stream(self, timeframe):
         """
         Delete a specific streamer when no more subscribers.
         """
@@ -264,9 +264,3 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             return float(param)
         else:
             return 0.0
-
-    def notify_signal(self, signal):
-        if signal:
-            self.strategy.notify_signal(signal.direction, self.instrument.market_id, self.instrument.format_price(signal.price),
-                signal.timestamp, signal.timeframe, signal.signal_type_str(), None, self.instrument.format_price(signal.stop_loss),
-                self.instrument.format_price(signal.take_profit), comment=signal.comment)

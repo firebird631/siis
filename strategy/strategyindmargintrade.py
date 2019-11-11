@@ -30,7 +30,7 @@ class StrategyIndMarginTrade(StrategyTrade):
     """
 
     __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', 'position_id', \
-        'leverage', 'stop_order_qty', 'limit_order_qty'
+        'leverage', 'stop_order_qty', 'limit_order_qty', 
 
     def __init__(self, timeframe):
         super().__init__(StrategyTrade.TRADE_IND_MARGIN, timeframe)
@@ -126,6 +126,7 @@ class StrategyIndMarginTrade(StrategyTrade):
             if trader.cancel_order(self.limit_oid, instrument):
                 self.limit_ref_oid = None
                 self.limit_oid = None
+                
                 self.limit_order_qty = 0.0
 
                 if self.e <= 0 and self.x <= 0:
@@ -160,6 +161,7 @@ class StrategyIndMarginTrade(StrategyTrade):
             if trader.cancel_order(self.limit_oid, instrument):
                 self.limit_ref_oid = None
                 self.limit_oid = None
+                
                 self.limit_order_qty = 0.0
             else:
                 return self.ERROR
@@ -178,14 +180,15 @@ class StrategyIndMarginTrade(StrategyTrade):
             trader.set_ref_order_id(order)
             self.limit_ref_oid = order.ref_order_id
 
-            self._stats['limit-order-type'] = order.order_type
+            self._stats['take-profit-order-type'] = order.order_type
 
             if trader.create_order(order, instrument):
                 self.limit_oid = order.order_id
+
                 self.limit_order_qty = order.quantity
-                
-                self.last_limit_ot[0] = order.created_time
-                self.last_limit_ot[1] += 1
+
+                self.last_tp_ot[0] = order.created_time
+                self.last_tp_ot[1] += 1
 
                 self.tp = limit_price
 
@@ -535,7 +538,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 maker = False
 
-                if data['id'] == self.limit_oid and self._stats.get('limit-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
+                if data['id'] == self.limit_oid and self._stats.get('take-profit-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
                     # @todo only if execution price is equal or better then order price (depends of direction)
                     maker = True
 

@@ -241,20 +241,11 @@ class TraderService(Service):
         """
         traders_profile = self._profile_config.get('traders', {})
 
-        # @todo could rebuild the list of symbols according to what is found in appliances
         traders_config = {}
 
         for k, profile_trader_config in traders_profile.items():
             user_trader_config = utils.load_config(options, 'traders/' + k)
             if user_trader_config:
-                if 'symbols' not in user_trader_config:
-                    # at least an empty list of symbols
-                    user_trader_config['symbols'] = []
-
-                if 'symbols' in profile_trader_config:
-                    # profile overrides any symbols
-                    user_trader_config['symbols'] = profile_trader_config['symbols']
-
                 if 'paper-mode' in profile_trader_config:
                     # paper-mode from profile overrides
                     user_trader_config['paper-mode'] = profile_trader_config['paper-mode']

@@ -90,7 +90,7 @@ class ViewService(BaseService):
 
     def receiver(self, signal):
         if signal.source == Signal.SOURCE_STRATEGY:
-            if signal.signal_type in (Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
+            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
                 # propagate the signal to the views
                 self._mutex.acquire()
                 self._signals_handler.notify(signal)

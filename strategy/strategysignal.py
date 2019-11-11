@@ -7,7 +7,7 @@ from datetime import datetime
 from common.signal import Signal
 
 from trader.order import Order
-from common.utils import timeframe_to_str
+from common.utils import timeframe_to_str, direction_to_str
 
 import logging
 logger = logging.getLogger('siis.strategy.signal')
@@ -36,6 +36,8 @@ class StrategySignal(object):
 
     __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'entry_timeout', 'expiry',  '_extra', '_comment'
 
+    VERSION = "1.0.0"
+
     SIGNAL_NONE = 0   # signal type undefined (must be entry or exit else its informal)
     SIGNAL_ENTRY = 1  # entry signal (this does not mean long. @see dir)
     SIGNAL_EXIT = -1  # exit signal (this does not mean short. @see dir)
@@ -55,6 +57,10 @@ class StrategySignal(object):
 
         self._comment = ""  # optional comment
         self._extra = {}
+
+    @classmethod
+    def version(cls):
+        return cls.VERSION
 
     @property
     def direction(self):
@@ -88,7 +94,7 @@ class StrategySignal(object):
     # helpers
     #
 
-    def base_time(self) -> float:
+    def base_time(self):
         """
         Related candle base time of the timestamp of the signal.
         """
@@ -112,7 +118,7 @@ class StrategySignal(object):
 
         return None
 
-    def signal_type_str(self) -> str:
+    def signal_type_str(self):
         if self.signal == StrategySignal.SIGNAL_ENTRY:
             return "entry"
         elif self.signal == StrategySignal.SIGNAL_EXIT:
@@ -120,7 +126,7 @@ class StrategySignal(object):
 
         return "none"
 
-    def direction_str(self) -> str:
+    def direction_str(self):
         if self.dir > 0:
             return "long"
         elif self.dir < 0:
@@ -140,7 +146,7 @@ class StrategySignal(object):
         # self._extra = copy.copy(_from._extra)
         # self._comment = _from.comment
 
-    def compare(self, _to) -> bool:
+    def compare(self, _to):
         """
         Return true of the the signal have the same type in the same direction, no more.
         """
@@ -199,3 +205,66 @@ class StrategySignal(object):
     def get(self, key, default=None):
         """Return a value for a previously defined key or default value if not exists"""
         return self._extra.get(key, default)
+
+    def timeframe_to_str(self):
+        return timeframe_to_str(self.timeframe)
+
+    #
+    # helpers
+    #
+
+    def direction_to_str(self):
+        return direction_to_str(self.dir)
+
+    def direction_from_str(self, direction):
+        return direction_from_str(direction)
+
+    #
+    # dumps for notify/history
+    #
+
+    def dumps_notify(self, timestamp, strategy_trader):
+        """
+        Dumps to dict for notify/history, same format as for StrategyTrade.
+        """
+        if self.signal == StrategySignal.SIGNAL_EXIT:
+            return {
+                'version': self.version(),
+                'trade': "signal",
+                'id': -1,
+                'app-name': strategy_trader.strategy.name,
+                'app-id': strategy_trader.strategy.identifier,
+                'timestamp': timestamp,
+                'symbol': strategy_trader.instrument.market_id,
+                'way': "entry",
+                'entry-timeout': timeframe_to_str(self.entry_timeout),
+                'expiry': self.expiry,
+                'timeframe': timeframe_to_str(self.timeframe),
+                'is-user-trade': False,
+                'comment': self._comment,
+                'direction': self.direction_to_str(),
+                'order-price': strategy_trader.instrument.format_price(self.p),
+                'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
+                'take-profit-price': strategy_trader.instrument.format_price(self.tp),
+                'entry-open-time': self.dump_timestamp(self.ts),
+            }
+        elif self.signal == StrategySignal.SIGNAL_EXIT:
+            return {
+                'version': self.version(),
+                'trade': "signal",
+                'id': -1,
+                'app-name': strategy_trader.strategy.name,
+                'app-id': strategy_trader.strategy.identifier,
+                'timestamp': timestamp,
+                'symbol': strategy_trader.instrument.market_id,
+                'way': "exit",
+                'entry-timeout': timeframe_to_str(self.entry_timeout),
+                'expiry': self.expiry,
+                'timeframe': timeframe_to_str(self.timeframe),
+                'is-user-trade': False,
+                'comment': self._comment,
+                'direction': self.direction_to_str(),
+                'take-profit-price': strategy_trader.instrument.format_price(self.tp),
+                'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
+                'exit-open-time': self.dump_timestamp(self.ts),
+            }

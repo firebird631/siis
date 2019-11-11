@@ -390,14 +390,15 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                     if retained_exit:
                         self.process_exit(timestamp, trade, retained_exit.price)
-                        Terminal.inst().info("Exit trade %s %s" % (self.instrument.symbol, trade.id), view='debug')
 
         # update actives trades
         self.update_trades(timestamp)
 
         # retained long entry do the order entry signal
         for entry in retained_entries:
-            self.process_entry(timestamp, entry.price, entry.tp, entry.sl, entry.timeframe, entry.get('partial-take-profit', 0))
+            if not self.process_entry(timestamp, entry.price, entry.tp, entry.sl, entry.timeframe, entry.get('partial-take-profit', 0)):
+                # notify a signal only
+                self.notify_signal(timestamp, entry)
 
         # streaming
         self.stream()
@@ -484,29 +485,24 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage):
                 # notify
-                self.strategy.notify_entry(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
-                        timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
+                self.notify_trade_entry(timestamp, trade)
 
-                # want it on the streaming
-                if self._global_streamer:
-                    # @todo remove me after notify manage that
-                    self._global_streamer.member('buy-entry').update(price, timestamp)
+                return True
             else:
                 self.remove_trade(trade)
 
-        else:
-            # notify a signal only
-            self.strategy.notify_signal(Order.LONG, self.instrument.market_id, self.instrument.format_price(price),
-                    timestamp, timeframe, 'entry', None, self.instrument.format_price(stop_loss), self.instrument.format_price(take_profit))
+        return False
 
     def process_exit(self, timestamp, trade, exit_price):
+        if not self.activity:
+            return False
+
         if trade is None:
-            return
+            return False
 
-        do_order = self.activity
+        # close at market as taker
+        trader = self.strategy.trader()
+        trade.close(trader, self.instrument)
+        trade.exit_reason = trade.REASON_CLOSE_MARKET
 
-        if do_order:
-            # close at market as taker
-            trader = self.strategy.trader()
-            trade.close(trader, self.instrument)
-            trade.exit_reason = "exit-market"
+        return True

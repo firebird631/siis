@@ -61,7 +61,9 @@ class StrategyTrader(object):
         self.strategy = strategy
         self.instrument = instrument
 
+        self._trade_mutex = threading.RLock()
         self.trades = []
+
         self.regions = []
 
         self._next_trade_id = 1
@@ -377,12 +379,12 @@ class StrategyTrader(object):
                     if (trade.tp > 0) and (close_exec_price >= trade.tp) and not trade.has_limit_order():
                         # take profit trigger stop, close at market (taker fee)
                         if trade.close(trader, self.instrument) > 0:
-                            trade.exit_reason = "take-profit-market"
+                            trade.exit_reason = trade.REASON_TAKE_PROFIT_MARKET
 
                     elif (trade.sl > 0) and (close_exec_price <= trade.sl) and not trade.has_stop_order():
                         # stop loss trigger stop, close at market (taker fee)
                         if trade.close(trader, self.instrument) > 0:
-                            trade.exit_reason = "stop-loss-market"
+                            trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
 
                 #
                 # margin trade
@@ -413,12 +415,12 @@ class StrategyTrader(object):
                     if (trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (trade.direction < 0 and close_exec_price <= trade.tp)) and not trade.has_limit_order():
                         # close in profit at market (taker fee)
                         if trade.close(trader, self.instrument) > 0:
-                            trade.exit_reason = "take-profit-market"
+                            trade.exit_reason = trade.REASON_TAKE_PROFIT_MARKET
 
                     elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_stop_order():
                         # close a long or a short position at stop-loss level at market (taker fee)
                         if trade.close(trader, self.instrument) > 0:
-                            trade.exit_reason = "stop-loss-market"
+                            trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
 
         #
         # remove terminated, rejected, canceled and empty trades
@@ -501,27 +503,20 @@ class StrategyTrader(object):
                                 error_logger.error(str(e))
 
                         # notify
-                        if trade.exit_reason:
-                            exit_reason = trade.exit_reason
-                        elif trade.exit_price >= trade.take_profit and trade.take_profit > 0:
-                            exit_reason = 'take-profit-limit'
-                        elif trade.exit_price <= trade.stop_loss and trade.stop_loss > 0:
-                            exit_reason = 'stop-loss-market'
-                        else:
-                            exit_reason = 'unknown'
+                        if not trade.exit_reason:
+                            if trade.exit_price >= trade.take_profit and trade.take_profit > 0:
+                                trade.exit_reason = trade.REASON_TAKE_PROFIT_LIMIT
+                            elif trade.exit_price <= trade.stop_loss and trade.stop_loss > 0:
+                                trade.exit_reason = trade.REASON_STOP_LOSS_MARKET                    
 
-                        self.strategy.notify_exit(trade.id, trade.direction, self.instrument.market_id,
-                                record['axp'], trade.last_realized_exit_time, trade.timeframe,
-                                exit_reason, profit_loss)
+                        trade.pl = profit_loss
 
-                        # streaming (but must could done with notify)
-                        if self._global_streamer:
-                            self._global_streamer.member('buy-exit' if trade.direction > 0 else 'sell-exit').update(
-                                trade.exit_price, trade.last_realized_exit_time)
+                        self.notify_trade_exit(timestamp, trade)
                     else:
-                        self.strategy.notify_exit(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(trade.entry_price),
-                            timestamp, trade.timeframe, 'cancel', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp),
-                            comment='timeout')
+                        if not trade.exit_reason:
+                            trade.exit_reason = trade.REASON_CANCELED_TIMEOUT
+
+                        self.notify_trade_exit(timestamp, trade)
 
             # recreate the list of trades
             if mutated:
@@ -846,7 +841,7 @@ class StrategyTrader(object):
         if trade.is_entry_timeout(timestamp, timeout):
             trader = self.strategy.trader()
             trade.cancel_open(trader, self.instrument)
-            trade.exit_reason = 'timeout-cancel'
+            trade.exit_reason = trade.REASON_CANCELED_TIMEOUT
 
             return True
 
@@ -859,7 +854,7 @@ class StrategyTrader(object):
         if trade.is_trade_timeout(timestamp) and profit_loss_rate > 0.0 and trade.profit_loss > profit_loss_rate:
             trader = self.strategy.trader()
             trade.close(trader, self.instrument)
-            trade.exit_reason = 'timeout-market'
+            trade.exit_reason = trade.REASON_MARKET_TIMEOUT
 
             return True
 
@@ -884,7 +879,7 @@ class StrategyTrader(object):
         """
         return None
 
-    def subscribe(self, timeframe):
+    def subscribe_stream(self, timeframe):
         """
         Use or create a specific streamer.
         """
@@ -907,7 +902,7 @@ class StrategyTrader(object):
 
         return False
 
-    def unsubscribe(self, timeframe):
+    def unsubscribe_stream(self, timeframe):
         """
         Delete a specific streamer when no more subscribers.
         """
@@ -1080,3 +1075,43 @@ class StrategyTrader(object):
             Terminal.inst().notice(msg, view='status')
 
         return result
+
+    #
+    # notification
+    #
+
+    def notify_signal(self, timestamp, signal):
+        if signal:
+            self.strategy.notify_signal(timestamp, signal, self)
+
+            # want it on the streaming but would be deprecated
+            if self._global_streamer:
+                self._global_streamer.member('buy-entry' if signal.direction > 0 else 'sell-entry').update(signal.price, timestamp)
+
+    def notify_trade_entry(self, timestamp, trade):
+        if trade:
+            self.strategy.notify_trade_entry(timestamp, trade, self)
+
+            # want it on the streaming but would be deprecated
+            if self._global_streamer:
+                self._global_streamer.member('buy-entry' if trade.direction > 0 else 'sell-entry').update(trade.order_price, timestamp)
+
+            # for reporting if specified
+            if self._reporting == self.REPORTING_VERBOSE:
+                self.report(trade, True)
+
+    def notify_trade_exit(self, timestamp, trade):
+        if trade:
+            self.strategy.notify_trade_exit(timestamp, trade, self)
+
+            # want it on the streaming but would be deprecated
+            if self._global_streamer:
+                self._global_streamer.member('buy-exit' if trade.direction > 0 else 'sell-exit').update(trade.exit_price, timestamp)
+
+            # for reporting if specified
+            if self._reporting == self.REPORTING_VERBOSE:
+                self.report(trade, False)
+
+    # def notify_trade_update(self, timestamp, trade):
+    #     if trade:
+    #         self.strategy.notify_trade_update(timestamp, signal, self)

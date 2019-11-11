@@ -24,7 +24,7 @@ class StrategyAssetTrade(StrategyTrade):
     """
 
     __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', 'entry_oid', 'stop_oid', 'limit_oid', 'oco_oid', \
-                'stop_order_type', 'stop_order_qty', 'limit_order_type', 'limit_order_qty', '_use_oco'
+                'stop_order_qty', 'limit_order_qty', '_use_oco'
 
     def __init__(self, timeframe):
         super().__init__(StrategyTrade.TRADE_BUY_SELL, timeframe)
@@ -39,10 +39,7 @@ class StrategyAssetTrade(StrategyTrade):
         self.limit_oid = None   # related exit sell limit order id
         self.oco_oid = None     # related exit sell OCO order id
 
-        self.stop_order_type = Order.ORDER_MARKET
         self.stop_order_qty = 0.0
-
-        self.limit_order_type = Order.ORDER_MARKET
         self.limit_order_qty = 0.0
 
     def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None, use_oco=False):
@@ -184,7 +181,6 @@ class StrategyAssetTrade(StrategyTrade):
                     # REST sync
                     self.limit_ref_oid = None
                     self.limit_oid = None
-                    self.limit_order_type = Order.ORDER_MARKET
                     self.limit_order_qty = 0.0
                 else:
                     return self.ERROR
@@ -196,7 +192,6 @@ class StrategyAssetTrade(StrategyTrade):
                     # returns true, no need to wait signal confirmation
                     self.stop_ref_oid = None
                     self.stop_oid = None
-                    self.stop_order_type = Order.ORDER_MARKET
                     self.stop_order_qty = 0.0
                 else:
                     return self.ERROR
@@ -212,7 +207,7 @@ class StrategyAssetTrade(StrategyTrade):
                 order.price = limit_price
                 order.quantity = self.e - self.x  # remaining
 
-                self._stats['limit-order-type'] = order.order_type
+                self._stats['take-profit-order-type'] = order.order_type
 
                 # generated a reference order id
                 trader.set_ref_order_id(order)
@@ -221,12 +216,10 @@ class StrategyAssetTrade(StrategyTrade):
                 if trader.create_order(order, instrument):
                     # REST sync
                     self.limit_oid = order.order_id
-
-                    self.limit_order_type = order.order_type
                     self.limit_order_qty = order.quantity
 
-                    self.last_limit_ot[0] = order.created_time
-                    self.last_limit_ot[1] += 1
+                    self.last_tp_ot[0] = order.created_time
+                    self.last_tp_ot[1] += 1
 
                     self.tp = limit_price
 
@@ -260,7 +253,6 @@ class StrategyAssetTrade(StrategyTrade):
                     # returns true, no need to wait signal confirmation
                     self.stop_ref_oid = None
                     self.stop_oid = None
-                    self.stop_order_type = Order.ORDER_MARKET
                     self.stop_order_qty = 0.0
                 else:
                     return self.ERROR
@@ -272,7 +264,6 @@ class StrategyAssetTrade(StrategyTrade):
                     # returns true, no need to wait signal confirmation
                     self.limit_ref_oid = None
                     self.limit_oid = None
-                    self.limit_order_type = Order.ORDER_MARKET
                     self.limit_order_qty = 0.0
                 else:
                     return self.ERROR
@@ -297,8 +288,6 @@ class StrategyAssetTrade(StrategyTrade):
                 if trader.create_order(order, instrument):
                     # REST sync
                     self.stop_oid = order.order_id
-
-                    self.stop_order_type = order.order_type
                     self.stop_order_qty = order.quantity
 
                     self.last_stop_ot[0] = order.created_time
@@ -346,7 +335,6 @@ class StrategyAssetTrade(StrategyTrade):
                 if trader.cancel_order(self.limit_oid, instrument):
                     self.limit_ref_oid = None
                     self.limit_oid = None
-                    self.limit_order_type = Order.ORDER_MARKET
                     self.limit_order_qty = 0.0
                 else:
                     return self.ERROR
@@ -356,7 +344,6 @@ class StrategyAssetTrade(StrategyTrade):
                 if trader.cancel_order(self.stop_oid, instrument):
                     self.stop_ref_oid = None
                     self.stop_oid = None
-                    self.stop_order_type = Order.ORDER_MARKET
                     self.stop_order_qty = 0.0
                 else:
                     return self.ERROR
@@ -379,8 +366,6 @@ class StrategyAssetTrade(StrategyTrade):
             if trader.create_order(order, instrument):
                 # REST sync
                 self.stop_oid = order.order_id
-
-                self.stop_order_type = order.order_type
                 self.stop_order_qty = order.quantity
 
                 # closing order defined
@@ -703,10 +688,7 @@ class StrategyAssetTrade(StrategyTrade):
         data['oco-ref-oid'] = self.oco_ref_oid
         data['oco-oid'] = self.oco_oid
 
-        data['stop-order-type'] = self.stop_order_type
         data['stop-order-qty'] = self.stop_order_qty
-
-        data['limit-order-type'] = self.limit_order_type
         data['limit-order-qty'] = self.limit_order_qty
 
         return data
@@ -727,11 +709,8 @@ class StrategyAssetTrade(StrategyTrade):
         self.oco_ref_oid = data.get('oco-ref-oid', None)
         self.oco_ref_oid = data.get('oco-oid', None)
 
-        self.stop_order_type = data.get('stop-order-type', Order.ORDER_MARKET)
         self.stop_order_qty = data.get('stop_order_qty', 0.0)
-
-        self.limit_order_type = data.get('limit-order-type', Order.ORDER_MARKET)
-        self.limit_order_qty = data.get('limit_order_qty', 0.0)
+        self.limit_order_qty = data.get('limit-order-qty', 0.0)
 
         return True
 

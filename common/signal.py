@@ -7,9 +7,11 @@ class Signal(object):
 
 	SIGNAL_UNDEFINED = 0
 
-	SIGNAL_STRATEGY_SIGNAL = 50         # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'profit-loss', 'timestamp', ...}
-	SIGNAL_STRATEGY_ENTRY = 50          # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'profit-loss', 'timestamp', ...}
-	SIGNAL_STRATEGY_EXIT = 50           # data is a dict {'trader-name', 'trade-id', 'symbol', 'direction', 'price', 'symbol', 'action', 'profit-loss', 'timestamp', ...}
+	SIGNAL_STRATEGY_SIGNAL_ENTRY = 50   # data is a dict @see StrategySignal
+	SIGNAL_STRATEGY_SIGNAL_EXIT = 51    # data is a dict @see StrategySignal 
+	SIGNAL_STRATEGY_TRADE_ENTRY = 52    # data is a dict @see StrategyTrade
+	SIGNAL_STRATEGY_TRADE_EXIT = 53     # data is a dict @see StrategyTrade
+	SIGNAL_STRATEGY_TRADE_UPDATE = 54   # data is a dict @see StrategyTrade
 
 	SIGNAL_CANDLE_DATA = 100            # data is a pair with (market_id, Candle)
 	SIGNAL_TICK_DATA = 101              # data is a pair with (market_id, Tick)

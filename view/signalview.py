@@ -29,7 +29,7 @@ class SignalView(TableView):
     REFRESH_RATE = 60  # only on signal or 1 minute refresh
 
     MAX_SIGNALS = 200
-    COLUMNS = ('#', 'Market', 'Type', charmap.ARROWUPDN, 'TF', 'EP', 'SL', 'TP', 'Date', 'Comment', 'P/L')
+    COLUMNS = ('#', 'Market', 'Way', charmap.ARROWUPDN, 'TF', 'EP', 'SL', 'TP', 'Date', 'Comment', 'Reason', 'P/L')
 
     def __init__(self, service, strategy_service):
         super().__init__("signal", service)
@@ -52,13 +52,13 @@ class SignalView(TableView):
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if signal.signal_type in (Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
+            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
                 with self._mutex:
-                    if signal.data.get('identifier'):
-                        if signal.data['identifier'] not in self._signals_list:
-                            self._signals_list[signal.data['identifier']] = []
+                    if signal.data.get('app-id'):
+                        if signal.data['app-id'] not in self._signals_list:
+                            self._signals_list[signal.data['app-id']] = []
 
-                        signals_list = self._signals_list[signal.data['identifier']]
+                        signals_list = self._signals_list[signal.data['app-id']]
                         signals_list.append(signal.data)
 
                         if len(signals_list) > SignalView.MAX_SIGNALS:
@@ -81,7 +81,19 @@ class SignalView(TableView):
         limit = offset + limit
 
         if self._group:
-            signals.sort(key=lambda x: -x['timestamp'] and -x['trade-id'])
+            entries = [signal for signal in signals if (signal['way'] == "entry" or signal['id'] <= 0)]
+            entries.sort(key=lambda x: -x['timestamp'])
+            entries_exits = signals
+            signals = []
+
+            for entry in entries:
+                signals.append(entry)
+
+                # lookup for the related exit
+                if entry['id'] > 0:
+                    for exit in entries_exits:
+                        if exit['id'] == entry['id'] and exit['way'] == "exit":
+                            signals.append(exit)
         else:
             signals.sort(key=lambda x: -x['timestamp'])
 
@@ -89,27 +101,31 @@ class SignalView(TableView):
 
         for signal in signals:
             ldatetime = datetime.fromtimestamp(signal['timestamp']).strftime(self._datetime_format)
-            direction = Color.colorize_cond(charmap.ARROWUP if signal['direction'] > 0 else charmap.ARROWDN,
-                    signal['direction'] > 0, style, true=Color.GREEN, false=Color.RED)
+            direction = Color.colorize_cond(charmap.ARROWUP if signal['direction'] == "long" else charmap.ARROWDN,
+                    signal['direction'] == "long", style, true=Color.GREEN, false=Color.RED)
 
             symbol_color = int(hashlib.sha1(signal['symbol'].encode("utf-8")).hexdigest(), 16) % Color.count()-1
-            id_color = signal['trade-id'] % Color.count()-1
+            id_color = signal['id'] % Color.count()-1
 
-            lid = Color.colorize(str(signal['trade-id']), Color.color(id_color), style)
+            lid = Color.colorize(str(signal['id']), Color.color(id_color), style)
             lsymbol = Color.colorize(signal['symbol'], Color.color(symbol_color), style)
+
+            way = '>' if signal['way'] == "entry" else '<'
+            exit_reason = signal['stats'].get('exit-reason', "") if 'stats' in signal else ""
 
             row = (
                 lid,
                 lsymbol,
-                signal['action'],
+                way,
                 direction,
                 timeframe_to_str(signal['timeframe']),
-                signal['price'],
-                signal['stop-loss'],
-                signal['take-profit'],
+                signal['order-price'],
+                signal['stop-loss-price'],
+                signal['take-profit-price'],
                 ldatetime,
                 signal['comment'],
-                " (%.2f%%)" % ((signal['profit-loss'] * 100),) if signal['profit-loss'] is not None else ""
+                exit_reason,
+                " (%.2f%%)" % ((signal['profit-loss'] * 100),) if signal.get('profit-loss') is not None else ""
             )
 
             data.append(row[col_ofs:])
@@ -131,6 +147,8 @@ class SignalView(TableView):
                     self.table(columns, table, total_size)
                     num = total_size[1]
                 except Exception as e:
+                    import traceback
+                    error_logger.error(str(traceback.format_exc()))
                     error_logger.error(str(e))
 
             self.set_title("Signal list (%i) for strategy %s - %s" % (num, appliance.name, appliance.identifier))

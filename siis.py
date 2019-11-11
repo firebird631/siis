@@ -586,7 +586,7 @@ def application(argv):
                                         notifier_service.command(Notifier.COMMAND_TOGGLE, {'notifier': "desktop", 'value': "audible"})
                                 elif value == 'n':
                                     if notifier_service:
-                                        notifier_service.command(Notifier.COMMAND_TOGGLE, {'notifier': "desktop", 'value': "toggle-popup"})
+                                        notifier_service.command(Notifier.COMMAND_TOGGLE, {'notifier': "desktop", 'value': "popup"})
                                 elif value == '%':
                                     if view_service:
                                         view_service.toggle_percent()

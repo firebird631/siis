@@ -153,83 +153,53 @@ class Strategy(Runnable):
             return self._parameters
 
     #
-    # monitoring notification (@todo to be cleanup)
+    # monitoring notification
     #
 
-    def notify_signal(self, direction, symbol, price, timestamp, timeframe,
-            action='order', profit_loss=None, stop_loss=None, take_profit=None, comment=None, quantity=None):
+    def notify_signal(self, timestamp, signal, strategy_trader):
         """
         Notify a strategy signal (entry/take-profit) to the user. It must be called by the strategy-trader.
         """
-        signal_data = {
-            'trade-id': -1,
-            'trader-name': self._name,
-            'identifier': self.identifier,
-            'origin': "signal",
-            'action': action,
-            'timestamp': timestamp,
-            'timeframe': timeframe,
-            'direction': direction,
-            'symbol': symbol,
-            'price': price,
-            'profit-loss': profit_loss,
-            'stop-loss': stop_loss,
-            'take-profit': take_profit,
-            'comment': comment,
-            'quantity': quantity
-        }
+        if signal:
+            signal_data = signal.dumps_notify(timestamp, strategy_trader)
 
-        self.service.notify(Signal.SIGNAL_STRATEGY_SIGNAL, self._name, signal_data)
+            # entry or exit signal
+            if signal.signal > 0:
+                self.service.notify(Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY, self._name, signal_data)
+            elif signal.signal < 0:
+                self.service.notify(Signal.SIGNAL_STRATEGY_SIGNAL_EXIT, self._name, signal_data)
 
-    def notify_entry(self, trade_id, direction, symbol, price, timestamp, timeframe,
-            action='order', profit_loss=None, stop_loss=None, take_profit=None, comment=None, quantity=None):
+    def notify_signal_exit(self, timestamp, signal, strategy_trader):
+        """
+        Notify a strategy signal (entry/take-profit) to the user. It must be called by the strategy-trader.
+        """
+        if signal:
+            signal_data = signal.dumps_notify(timestamp, strategy_trader)
+            self.service.notify(Signal.SIGNAL_STRATEGY_SIGNAL_EXIT, self._name, signal_data)
+
+    def notify_trade_entry(self, timestamp, trade, strategy_trader):
         """
         Notify a strategy trade entry to the user. It must be called by the strategy-trader.
         """
-        signal_data = {
-            'trade-id': trade_id,
-            'trader-name': self._name,
-            'identifier': self.identifier,
-            'origin': "entry",
-            'action': action,
-            'timestamp': timestamp,
-            'timeframe': timeframe,
-            'direction': direction,
-            'symbol': symbol,
-            'price': price,
-            'profit-loss': profit_loss,
-            'stop-loss': stop_loss,
-            'take-profit': take_profit,
-            'comment': comment,
-            'quantity': quantity
-        }
+        if trade:
+            signal_data = trade.dumps_notify_entry(timestamp, strategy_trader)
+            self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_ENTRY, self._name, signal_data)
 
-        self.service.notify(Signal.SIGNAL_STRATEGY_ENTRY, self._name, signal_data)
-
-    def notify_exit(self, trade_id, direction, symbol, price, timestamp, timeframe,
-            action='order', profit_loss=None, stop_loss=None, take_profit=None, comment=None, quantity=None):
+    def notify_trade_exit(self, timestamp, trade, strategy_trader):
         """
         Notify a strategy trade exit to the user. It must be called by the strategy-trader.
         """
-        signal_data = {
-            'trade-id': trade_id,
-            'trader-name': self._name,
-            'identifier': self.identifier,
-            'origin': "exit",
-            'action': action,
-            'timestamp': timestamp,
-            'timeframe': timeframe,
-            'direction': direction,
-            'symbol': symbol,
-            'price': price,
-            'profit-loss': profit_loss,
-            'stop-loss': stop_loss,
-            'take-profit': take_profit,
-            'comment': comment,
-            'quantity': quantity
-        }
+        if trade:
+            signal_data = trade.dumps_notify_exit(timestamp, strategy_trader)
+            self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_EXIT, self._name, signal_data)
 
-        self.service.notify(Signal.SIGNAL_STRATEGY_EXIT, self._name, signal_data)
+    # def notify_trade_update(self, timestamp, trade, strategy_trader):
+    #     """
+    #     Notify a strategy trade update to the user. It must be called by the strategy-trader.
+    #     """
+    #     if trade:
+    #         signal_data = trade.dumps_notify_update(timestamp, strategy_trader)
+    #         self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_UPDATE, self._name, signal_data)
 
     def setup_streaming(self):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY, "status", self.identifier)
@@ -257,7 +227,7 @@ class Strategy(Runnable):
 
             self._last_call_ts = now
 
-    def subscribe(self, market_id, timeframe):
+    def subscribe_stream(self, market_id, timeframe):
         """
         Override to create a specific streamer.
         """
@@ -270,9 +240,9 @@ class Strategy(Runnable):
         if not strategy_trader:
             return False
 
-        return strategy_trader.subscribe(timeframe)
+        return strategy_trader.subscribe_stream(timeframe)
 
-    def unsubscribe(self, market_id, timeframe):
+    def unsubscribe_stream(self, market_id, timeframe):
         """
         Override to delete a specific streamer.
         """
@@ -285,7 +255,7 @@ class Strategy(Runnable):
         if not strategy_trader:
             return False
 
-        return strategy_trader.unsubscribe(timeframe)
+        return strategy_trader.unsubscribe_stream(timeframe)
 
     #
     # processing
@@ -385,7 +355,6 @@ class Strategy(Runnable):
                 continue
 
             # help with watcher matching method
-            # strategy_symbols = watcher.matching_symbols_set(watcher_conf.get('symbols'), watcher.watched_instruments())
             strategy_symbols = watcher.matching_symbols_set(watcher_conf.get('symbols'), watcher.available_instruments())
 
             # create an instrument per mapped symbol where to locally store received data
@@ -2583,7 +2552,7 @@ class Strategy(Runnable):
         if results['error']:
             return results
 
-        strategy_trader.subscribe(timeframe)
+        strategy_trader.subscribe_stream(timeframe)
 
         import subprocess
         p = subprocess.Popen(["python", "-m", "monitor.client.client", monitor_url[0], monitor_url[1]],
@@ -2593,7 +2562,7 @@ class Strategy(Runnable):
 
     def cmd_strategy_trader_stream(self, strategy_trader, data):
         """
-        Subscribe/Unsubscribe to a market.
+        Stream subscribe/unsubscribe to a market.
         """
         results = {
             'messages': [],
@@ -2606,7 +2575,7 @@ class Strategy(Runnable):
 
         if action == "subscribe":
             if typename == "chart":
-                strategy_trader.subscribe(timeframe)
+                strategy_trader.subscribe_stream(timeframe)
                 results['messages'].append("Subscribed for stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "default"))
             # elif typename == "info":
             #     strategy_trader.subscribe_info()
@@ -2618,7 +2587,7 @@ class Strategy(Runnable):
 
         elif action == "unsubscribe":
             if typename == "chart":            
-                strategy_trader.unsubscribe(timeframe)
+                strategy_trader.unsubscribe_stream(timeframe)
                 results['messages'].append("Unsubscribed from stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "any"))
             # elif typename == "info":
             #     strategy_trader.unsubscribe_info()
@@ -2650,7 +2619,7 @@ class Strategy(Runnable):
             elif not isinstance(param[key], (int, float)):
                 param[key] = None
 
-        # regulars parameters
+        # regulars parameters (@todo lets see maybe not all)
         parameters.setdefault('reversal', True)
         parameters.setdefault('market-type', 0)
         parameters.setdefault('max-trades', 1)

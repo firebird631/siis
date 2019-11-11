@@ -477,7 +477,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         for signal in retained_entries:
             if not self.process_entry(timestamp, signal.dir, signal.price, signal.tp, signal.sl, signal.timeframe, signal.get('partial-take-profit', 0)):
                 # notify a signal only
-                self.notify_signal(signal)
+                self.notify_signal(timestamp, signal)
 
         # streaming
         self.stream()
@@ -554,14 +554,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             # if stop_loss > 0:
             #     trade.modify_stop_loss(trader, self.instrument, stop_loss)
 
-            # notify
-            self.strategy.notify_entry(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
-                    timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
-
-            # want it on the streaming (take care its only the order signal, no the real complete execution)
-            if self._global_streamer:
-                # @todo remove me after notify manage that
-                self._global_streamer.member('buy-entry' if trade.direction > 0 else 'sell-entry').update(order_price, timestamp)
+            self.notify_trade_entry(timestamp, trade)
 
             return True
         else:
@@ -569,13 +562,13 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             return False
 
     def process_exit(self, timestamp, trade, exit_price):
+        if not self.activity:
+            return False
+
         if trade is None:
-            return
+            return False
 
-        do_order = self.activity
-
-        if do_order:
-            # close at market as taker
-            trader = self.strategy.trader()
-            trade.close(trader, self.instrument)
-            trade.exit_reason = "exit-market"
+        # close at market as taker
+        trader = self.strategy.trader()
+        trade.close(trader, self.instrument)
+        trade.exit_reason = trade.REASON_CLOSE_MARKET

@@ -190,14 +190,14 @@ class StrategyMarginTrade(StrategyTrade):
             trader.set_ref_order_id(order)
             self.limit_ref_oid = order.ref_order_id
 
-            self._stats['limit-order-type'] = order.order_type
+            self._stats['take-profit-order-type'] = order.order_type
 
             if trader.create_order(order, instrument):
                 self.limit_oid = order.order_id
                 self.limit_order_qty = order.quantity
 
-                self.last_limit_ot[0] = order.created_time
-                self.last_limit_ot[1] += 1
+                self.last_tp_ot[0] = order.created_time
+                self.last_tp_ot[1] += 1
 
                 self.tp = limit_price
 

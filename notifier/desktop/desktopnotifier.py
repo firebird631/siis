@@ -6,6 +6,7 @@
 import collections
 import threading
 import os
+import copy
 import time
 import logging
 import subprocess
@@ -39,19 +40,42 @@ class DesktopNotifier(Notifier):
     Desktop notifier for desktop popup and audio alerts.
     """
 
-    AUDIO_ALERT_SIMPLE = 0
-    AUDIO_ALERT_INTENSIVE = 1
+    AUDIO_ALERT_DEFAULT = 0
+    AUDIO_ALERT_NOTIFY = 1
     AUDIO_ALERT_WARNING = 2
-    AUDIO_ALERT_HAPPY = 3
+    AUDIO_ALERT_CRITICAL = 3
+    AUDIO_ALERT_NETWORK_ONLINE = 4
+    AUDIO_ALERT_NETWORK_OFFLINE = 5
+    AUDIO_ALERT_SIGNAL_NEW = 6
+    AUDIO_ALERT_TRADE_WIN = 7
+    AUDIO_ALERT_TRADE_LOST = 8
 
     DEFAULT_AUDIO_DEVICE = "pulse"
 
-    DEFAULT_AUDIO = [
-        ('/usr/share/sounds/info.wav', 3),
-        ('/usr/share/sounds/phone.wav', 2),
-        ('/usr/share/sounds/error.wav', 5),
-        ('/usr/share/sounds/logout.wav', 1)
+    # default alerts profiles
+    DEFAULT_ALERTS = [
+        ('/usr/share/sounds/info.wav', 2, 'contact-new'),
+        ('/usr/share/sounds/phone.wav', 2, 'contact-new'),
+        ('/usr/share/sounds/error.wav', 5, 'dialog-error'),
+        ('/usr/share/sounds/logout.wav', 2, 'dialog-error'),
+        ('/usr/share/sounds/info.wav', 3, 'contact-new'),
+        ('/usr/share/sounds/error.wav', 3, 'network-offline'),  # "network-error"
+        ('/usr/share/sounds/info.wav', 2, 'emblem-new'),  # "appointment-new" 
+        ('/usr/share/sounds/info.wav', 2, 'emblem-default'),  # "face-smile-big"
+        ('/usr/share/sounds/info.wav', 2, 'dialog-error'),
     ]
+
+    ALERT_STR_TO_ID = {
+        "default": AUDIO_ALERT_DEFAULT,
+        "notify": AUDIO_ALERT_NOTIFY,
+        "warning": AUDIO_ALERT_WARNING,
+        "critical": AUDIO_ALERT_CRITICAL,
+        "network-online": AUDIO_ALERT_NETWORK_ONLINE,
+        "network-offline": AUDIO_ALERT_NETWORK_OFFLINE,
+        "signal-new": AUDIO_ALERT_SIGNAL_NEW,
+        "trade-win": AUDIO_ALERT_TRADE_WIN,
+        "trade-lost": AUDIO_ALERT_TRADE_LOST
+    }
 
     def __init__(self, name, identifier, service, options):
         super().__init__("desktop", identifier, service)
@@ -64,13 +88,16 @@ class DesktopNotifier(Notifier):
         self._audible = notifier_config.get('play-alerts', False)
         self._popups = notifier_config.get('display-popups', False)
 
-        # @todo map audio alerts audio_config.gett('alerts')
-        audio_config = notifier_config.get('audio', {})
+        self._audio_device = notifier_config.get('audio-device', DesktopNotifier.DEFAULT_AUDIO_DEVICE)
 
-        self._audio_device = audio_config.get('device', DesktopNotifier.DEFAULT_AUDIO_DEVICE)
+        # map alerts
+        self._alerts = copy.copy(DesktopNotifier.DEFAULT_ALERTS)
+        alerts_config = notifier_config.get('alerts', {})
 
-        # @todo parse and map audio alerts
-        self._alerts = DesktopNotifier.DEFAULT_AUDIO
+        for k, alert in alerts_config.items():
+            alert_id = DesktopNotifier.ALERT_STR_TO_ID.get(k)
+            if alert_id is not None:
+                self._alerts[alert_id] = (alert[0], alert[1], alert[2])
 
     def start(self, options):
         self.notify2 = None
@@ -99,60 +126,68 @@ class DesktopNotifier(Notifier):
         message = ""
         icon = "contact-new"
         now = time.time()
-        audio_alert = None
+        alert = None
 
-        if signal.signal_type in (Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
-            # @todo in addition of entry/exit, modification and a reason of the exit/modification
+        if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
             icon = "contact-new"
             direction = "long" if signal.data['direction'] == Position.LONG else "short"
-            audio_alert = DesktopNotifier.AUDIO_ALERT_SIMPLE
+            alert = DesktopNotifier.AUDIO_ALERT_SIGNAL_NEW
 
-            if signal.data['action'] == 'stop':
-                audio_alert = DesktopNotifier.AUDIO_ALERT_WARNING
+            if signal.data['way'] == "exit" and 'profit-loss' in signal.data:
+                if signal.data['profit-loss'] < 0.0:
+                    alert = DesktopNotifier.AUDIO_ALERT_TRADE_LOST
+                    icon = self._alerts[alert][2]
+                else:
+                    alert = DesktopNotifier.AUDIO_ALERT_TRADE_WIN
+                    icon = self._alerts[alert][2]
 
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
-            label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
+            # generic signal reason
+            action = signal.data['way']
+
+            # specified exit reason
+            if action == "exit" and 'stats' in signal.data and 'exit-reason' in signal.data['stats']:
+                action = signal.data['stats']['exit-reason']
+
+            label = "Signal %s %s on %s" % (action, direction, signal.data['symbol'],)
+
+            way = '>' if signal.data['way'] == "entry" else '<'
+            exit_reason = signal.data['stats'].get('exit-reason', "") if 'stats' in signal.data else ""
 
             message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
                 signal.data['symbol'],
-                signal.data['price'],
-                signal.data['trader-name'],
-                signal.data['action'],
+                signal.data['order-price'],
+                signal.data['app-name'],
+                action,
                 direction,
                 ldatetime,
-                signal.data['trade-id'],
+                signal.data['id'],
                 timeframe_to_str(signal.data['timeframe']))
 
-            if signal.data['stop-loss']:
-                message += " SL@%s" % (signal.data['stop-loss'],)
+            if signal.data.get('stop-loss-price'):
+                message += " SL@%s" % (signal.data['stop-loss-price'],)
 
-            if signal.data['take-profit']:
-                message += " TP@%s" % (signal.data['take-profit'],)
+            if signal.data.get('take-profit-price'):
+                message += " TP@%s" % (signal.data['take-profit-price'],)
 
-            if signal.data['profit-loss'] is not None:
+            if signal.data.get('profit-loss') is not None:
                 message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
 
             if signal.data['comment'] is not None:
                 message += " (%s)" % signal.data['comment']
 
-            # log them to the signal view (@todo might goes to the View)
-            # Terminal.inst().notice(message, view="signal")
-
-            # and in signal logger (@todo to be moved to a SignalView)
+            # and in signal logger (@todo to be moved)
             signal_logger.info(message)
 
         # process sound
-        if not self._backtesting and self._audible and audio_alert is not None:
-            self.play_audio_alert(audio_alert)
+        if not self._backtesting and self._audible and alert is not None:
+            self.play_audio_alert(alert)
 
         if not self._backtesting and self._popups and message:
             if self.notify2:
                 n = self.notify2.Notification(label, message, icon)
                 n.show()
-
-        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
-            return
 
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return
@@ -178,7 +213,7 @@ class DesktopNotifier(Notifier):
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if signal.signal_type in (Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
+            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
                 self.push_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHDOG:

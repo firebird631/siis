@@ -39,10 +39,6 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
         self.min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', "15m"))
         self.max_traded_timeframe = self.timeframe_from_param(params.get('max-traded-timeframe', "4h"))
 
-        # @todo remove and prefers overrided default parameters once done
-        # if self.strategy.identifier == "binance-crystalball":
-        #     self.min_traded_timeframe = Instrument.TF_5MIN
-
         for k, timeframe in strategy.timeframes_config.items():
             if timeframe['mode'] == 'A':
                 sub = CrystalBallStrategySubA(self, timeframe)
@@ -98,16 +94,11 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
             self._last_filter_cache = (timestamp, False, False)
             return False, False
 
-        market = trader.market(self.instrument.market_id)
-
         for entry in entries:
-            self.strategy.notify_signal(entry.direction, self.instrument.market_id,
-                            market.format_price(entry.price), timestamp, entry.timeframe, 'entry',
-                            None, market.format_price(entry.sl), market.format_price(entry.tp))
+            self.notify_signal(timestamp, entry)
 
         for exit in exits:
-            self.strategy.notify_signal(exit.direction, self.instrument.market_id,
-                            market.format_price(exit.price), timestamp, exit.timeframe, 'exit')
+            self.notify_signal(timestamp, exit)
 
         # update user managed actives trades
         self.update_trades(timestamp)

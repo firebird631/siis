@@ -82,41 +82,46 @@ class DiscordNotifier(Notifier):
         label = ""
         message = ""
 
-        if signal.signal_type in (Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
-            if not signal.data['action'] in self._signals_opts:
+        if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            if not signal.data['way'] in self._signals_opts:
                 return
 
-            direction = "long" if signal.data['direction'] == Position.LONG else "short"
+            # generic signal reason
+            action = signal.data['way']
+
+            # specified exit reason
+            if action == "exit" and 'stats' in signal.data and 'exit-reason' in signal.data['stats']:
+                action = signal.data['stats']['exit-reason']
+
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-            label = "Signal %s %s on %s" % (signal.data['action'], direction, signal.data['symbol'],)
+            label = "Signal %s %s on %s" % (action, signal.data['direction'], signal.data['symbol'],)
+
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
             message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
                 signal.data['symbol'],
-                signal.data['price'],
-                signal.data['trader-name'],
-                signal.data['action'],
-                direction,
+                signal.data['order-price'],
+                signal.data['app-name'],
+                action,
+                signal.data['direction'],
                 ldatetime,
-                signal.data['trade-id'],
+                signal.data['id'],
                 timeframe_to_str(signal.data['timeframe']))
 
-            if signal.data['stop-loss'] and 'stop-loss' in self._signals_opts:
-                message += " SL@%s" % (signal.data['stop-loss'],)
+            if signal.data.get('stop-loss-price') and 'stop-loss' in self._signals_opts:
+                message += " SL@%s" % (signal.data['stop-loss-price'],)
 
-            if signal.data['take-profit'] and 'take-profit' in self._signals_opts:
-                message += " TP@%s" % (signal.data['take-profit'],)
+            if signal.data.get('take-profit-price') and 'take-profit' in self._signals_opts:
+                message += " TP@%s" % (signal.data['take-profit-price'],)
 
-            if signal.data['profit-loss'] is not None:
+            if signal.data.get('profit-loss') is not None:
                 message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
 
-            if signal.data['quantity'] is not None and 'quantity' in self._signals_opts:
-                message += " Q:%s" % signal.data['quantity']
+            if signal.data.get('order-qty') is not None and 'order-qty' in self._signals_opts:
+                message += " Q:%s" % signal.data['order-qty']
 
-            if signal.data['comment'] is not None:
+            if signal.data.get('comment') is not None:
                 message += " (%s)" % signal.data['comment']
-
-        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL:
-            return
 
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return
@@ -137,8 +142,7 @@ class DiscordNotifier(Notifier):
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if signal.signal_type in (Signal.SIGNAL_STRATEGY_SIGNAL, Signal.SIGNAL_STRATEGY_ENTRY, Signal.SIGNAL_STRATEGY_EXIT):
-
+            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
                 self.push_signal(signal)
 
     #
@@ -172,14 +176,14 @@ class DiscordNotifier(Notifier):
     #     for strategy in self.strategy_service.get_appliances():
     #         dst = None
 
-    #         if strategy.identifier + '.trades' in self._discord_webhook:
-    #             trades_dst = self._discord_webhook[strategy.identifier + '.trades']
+    #         if strategy.identifier + '.trades' in self._discord_webhooks:
+    #             trades_dst = self._discord_webhooks[strategy.identifier + '.trades']
 
-    #         if strategy.identifier + '.agg-trades' in self._discord_webhook:
-    #             agg_trades_dst = self._discord_webhook[strategy.identifier + '.agg-trades']
+    #         if strategy.identifier + '.agg-trades' in self._discord_webhooks:
+    #             agg_trades_dst = self._discord_webhooks[strategy.identifier + '.agg-trades']
 
-    #         if strategy.identifier + '.closed-trades' in self._discord_webhook:
-    #             closed_trades_dst = self._discord_webhook[strategy.identifier + '.closed-trades']
+    #         if strategy.identifier + '.closed-trades' in self._discord_webhooks:
+    #             closed_trades_dst = self._discord_webhooks[strategy.identifier + '.closed-trades']
 
     #         if trades_dst:
     #             columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True, percents=True)

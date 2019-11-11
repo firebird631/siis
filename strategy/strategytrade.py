@@ -8,7 +8,7 @@ from datetime import datetime
 from common.signal import Signal
 from common.utils import timeframe_to_str, timeframe_from_str
 
-from trader.order import Order
+from trader.order import Order, order_type_to_str
 
 import logging
 logger = logging.getLogger('siis.strategy.trade')
@@ -28,8 +28,8 @@ class StrategyTrade(object):
     """
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
-                'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', '_stats', 'last_limit_ot', 'last_stop_ot', \
-                'exit_trades', '_comment', '_entry_timeout', '_expiry', '_dirty', '_extra'
+                'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', '_stats', 'last_tp_ot', 'last_stop_ot', \
+                'exit_trades', '_comment', '_entry_timeout', '_expiry', '_dirty', '_extra', 'sl_mode', 'sl_tf', 'tp_mode', 'tp_tf'
 
     VERSION = "1.0.0"
 
@@ -55,9 +55,19 @@ class StrategyTrade(object):
     ACCEPTED = 1
     NOTHING_TO_DO = 2
 
+    REASON_NONE = 0
+    REASON_TAKE_PROFIT_MARKET = 1   # take-profit market hitted
+    REASON_TAKE_PROFIT_LIMIT = 2    # take-profit limit hitted
+    REASON_STOP_LOSS_MARKET = 3     # stop-loss market hitted
+    REASON_STOP_LOSS_LIMIT = 4      # stop-loss limit hitted
+    REASON_CLOSE_MARKET = 5         # exit signal at market
+    REASON_CANCELED_TIMEOUT = 6     # canceled after a timeout expiration delay
+    REASON_CANCELED_TARGETED = 7    # canceled before entering because take-profit price reached before entry price
+    REASON_MARKET_TIMEOUT = 8       # closed (in profit or in loss) after a timeout
+
     def __init__(self, trade_type, timeframe):
         self._trade_type = trade_type
-        
+
         self._entry_state = StrategyTrade.STATE_NEW
         self._exit_state = StrategyTrade.STATE_NEW
         self._closing = False
@@ -93,10 +103,15 @@ class StrategyTrade(object):
 
         self.pl = 0.0    # once closed profit/loss in percent (valid once partially or fully closed)
 
-        self.last_limit_ot = [0, 0]
-        self.last_stop_ot = [0, 0]
-
         self.exit_trades = {}  # contain each executed exit trades {<orderId< : (<qty<, <price>)}
+
+        self.last_stop_ot = [0, 0]
+        self.sl_mode = 0   # integer that could serves as stop-loss compute method (for update)
+        self.sl_tf = 0     # timeframe model of the stop-loss (not the float value)
+
+        self.last_tp_ot = [0, 0]
+        self.tp_mode = 0   # integer that could serves as take-profit compute method (for update)
+        self.tp_tf = 0     # timeframe model of the take-profit (not the float value)
 
         self._stats = {
             'best-price': 0.0,
@@ -104,7 +119,7 @@ class StrategyTrade(object):
             'worst-price': 0.0,
             'worst-timestamp': 0.0,
             'entry-order-type': Order.ORDER_LIMIT,
-            'limit-order-type': Order.ORDER_LIMIT,
+            'take-profit-order-type': Order.ORDER_LIMIT,
             'stop-order-type': Order.ORDER_MARKET,
             'first-realized-entry-timestamp': 0.0,
             'first-realized-exit-timestamp': 0.0,
@@ -114,7 +129,7 @@ class StrategyTrade(object):
             'profit-loss-currency': "",
             'entry-fees': 0.0,
             'exit-fees': 0.0,
-            'exit-reason': "",
+            'exit-reason': StrategyTrade.REASON_NONE,
             'conditions': {}
         }
 
@@ -271,7 +286,7 @@ class StrategyTrade(object):
     @property
     def last_take_profit(self):
         """Last take-profit order creation/modification timestamp"""
-        return self.last_limit_ot
+        return self.last_tp_ot
 
     @property
     def last_stop_loss(self):
@@ -474,10 +489,10 @@ class StrategyTrade(object):
         Can modify the limit order according to current timestamp and previous limit order timestamp,
         and max change per count duration in seconds.
         """
-        if self.last_limit_ot[0] <= 0 or self.last_limit_ot[1] <= 0:
+        if self.last_tp_ot[0] <= 0 or self.last_tp_ot[1] <= 0:
             return True
 
-        if timestamp - self.last_limit_ot[0] < timeout:
+        if timestamp - self.last_tp_ot[0] < timeout:
             return True
 
         if not self.has_limit_order():
@@ -639,6 +654,29 @@ class StrategyTrade(object):
         else:
             return StrategyTrade.STATE_UNDEFINED
 
+    @staticmethod
+    def reason_to_str(reason):
+        if reason == StrategyTrade.REASON_NONE:
+            return "undefined"
+        elif reason == StrategyTrade.REASON_MARKET_TIMEOUT:
+            return "timeout-market"
+        elif reason == StrategyTrade.REASON_CLOSE_MARKET:
+            return "close-market"
+        elif reason == StrategyTrade.REASON_STOP_LOSS_MARKET:
+            return "stop-loss-market"
+        elif reason == StrategyTrade.REASON_STOP_LOSS_LIMIT:
+            return "stop-loss-limit"
+        elif reason == StrategyTrade.REASON_TAKE_PROFIT_LIMIT:
+            return "take-profit-limit"
+        elif reason == StrategyTrade.REASON_TAKE_PROFIT_MARKET:
+            return "take-profit-market"
+        elif reason == StrategyTrade.REASON_CANCELED_TARGETED:
+            return "canceled-targeted"
+        elif reason == StrategyTrade.REASON_CANCELED_TIMEOUT:
+            return "canceled-timeout"
+        else:
+            return "undefined"
+
     #
     # presistance
     #
@@ -672,7 +710,11 @@ class StrategyTrade(object):
             'avg-entry-price': self.aep,
             'avg-exit-price': self.axp,
             'take-profit-price': self.tp,
+            'take-profit-mode': self.tp_mode,
+            'take-profit-timeframe': self.tp_tf.timeframe if self.tp_tf else 0,
             'stop-loss-price': self.sl,
+            'stop-loss-mode': self.sl_mode,
+            'stop-loss-timeframe': self.sl_tf.timeframe if self.sl_tf else 0,
             'direction': self.dir,  # self.direction_to_str(),
             'entry-open-time': self.eot,  # self.dump_timestamp(self.eot),
             'exit-open-time': self.xot,  # self.dump_timestamp(self.xot),
@@ -681,7 +723,7 @@ class StrategyTrade(object):
             'filled-exit-qty': self.x,
             'profit-loss-rate': self.pl,
             'exit-trades': self.exit_trades,
-            'last-take-profit-order-time': self.last_limit_ot,
+            'last-take-profit-order-time': self.last_tp_ot,
             'last-stop-loss-order-time': self.last_stop_ot,
             'statistics': self._stats,
             'extra': self._extra,
@@ -723,7 +765,7 @@ class StrategyTrade(object):
 
         self.pl = data.get('profit-loss-rate', 0.0)
 
-        self.last_limit_ot = data.get('last-take-profit-order-time')
+        self.last_tp_ot = data.get('last-take-profit-order-time')
         self.last_stop_ot = data.get('last-stop-loss-order-time')
 
         self.exit_trades = data.get('exit-trades', {})
@@ -734,7 +776,7 @@ class StrategyTrade(object):
             'worst-price': 0.0,
             'worst-timestamp': 0.0,
             'entry-order-type': Order.ORDER_LIMIT,
-            'limit-order-type': Order.ORDER_LIMIT,
+            'take-profit-order-type': Order.ORDER_LIMIT,
             'stop-order-type': Order.ORDER_MARKET,
             'entry-fees': 0.0,
             'exit-fees': 0.0,
@@ -835,9 +877,9 @@ class StrategyTrade(object):
         profit_loss -= self.entry_fees_rate()
 
         # count the exit fees related to limit order type
-        if self._stats['limit-order-type'] in (Order.ORDER_LIMIT, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT_LIMIT):
+        if self._stats['take-profit-order-type'] in (Order.ORDER_LIMIT, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT_LIMIT):
             profit_loss -= instrument.maker_fee
-        elif self._stats['limit-order-type'] in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT):
+        elif self._stats['take-profit-order-type'] in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT):
             profit_loss -= instrument.taker_fee
 
         return profit_loss
@@ -902,3 +944,86 @@ class StrategyTrade(object):
 
     def has_operations(self):
         return len(self._operations) > 0
+
+    #
+    # dumps for notify/history
+    #
+
+    def dumps_notify_entry(self, timestamp, strategy_trader):
+        """
+        Dumps to dict for notify/history.
+        """
+        return {
+            'version': self.version(),
+            'trade': self.trade_type_to_str(),
+            'id': self.id,
+            'app-name': strategy_trader.strategy.name,
+            'app-id': strategy_trader.strategy.identifier,
+            'timestamp': timestamp,
+            'symbol': strategy_trader.instrument.market_id,
+            'way': "entry",
+            'entry-timeout': timeframe_to_str(self._entry_timeout),
+            'expiry': self._expiry,
+            'timeframe': timeframe_to_str(self._timeframe),
+            'is-user-trade': self._user_trade,
+            'comment': self._comment,
+            'direction': self.direction_to_str(),
+            'order-price': strategy_trader.instrument.format_price(self.op),
+            'order-qty': strategy_trader.instrument.format_quantity(self.oq),
+            'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
+            'take-profit-price': strategy_trader.instrument.format_price(self.tp),
+            'avg-entry-price': strategy_trader.instrument.format_price(self.aep),
+            'entry-open-time': self.dump_timestamp(self.eot),
+            'stats': {
+                'entry-order-type': order_type_to_str(self._stats['entry-order-type']),
+            }
+        }
+
+    def dumps_notify_exit(self, timestamp, strategy_trader):
+        """
+        Dumps to dict for notify/history.
+        """
+        return {
+            'version': self.version(),
+            'trade': self.trade_type_to_str(),
+            'id': self.id,
+            'app-name': strategy_trader.strategy.name,
+            'app-id': strategy_trader.strategy.identifier,
+            'timestamp': timestamp,
+            'symbol': strategy_trader.instrument.market_id,
+            'way': "exit",
+            'entry-timeout': timeframe_to_str(self._entry_timeout),
+            'expiry': self._expiry,
+            'timeframe': timeframe_to_str(self._timeframe),
+            'is-user-trade': self._user_trade,
+            'comment': self._comment,
+            'direction': self.direction_to_str(),
+            'order-price': strategy_trader.instrument.format_price(self.op),
+            'order-qty': strategy_trader.instrument.format_quantity(self.oq),
+            'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
+            'take-profit-price': strategy_trader.instrument.format_price(self.tp),
+            'avg-entry-price': strategy_trader.instrument.format_price(self.aep),
+            'avg-exit-price': strategy_trader.instrument.format_price(self.axp),
+            'entry-open-time': self.dump_timestamp(self.eot),
+            'exit-open-time': self.dump_timestamp(self.xot),
+            'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
+            'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
+            'profit-loss-pct': round(self.pl * 100.0, 2),
+            'num-exit-trades': len(self.exit_trades),
+            'stats': {
+                'best-price': strategy_trader.instrument.format_price(self._stats['best-price']),
+                'best-datetime': self.dump_timestamp(self._stats['best-timestamp']),
+                'worst-price': strategy_trader.instrument.format_price(self._stats['worst-price']),
+                'worst-datetime': self.dump_timestamp(self._stats['worst-timestamp']),
+                'entry-order-type': order_type_to_str(self._stats['entry-order-type']),
+                'first-realized-entry-datetime': self.dump_timestamp(self._stats['first-realized-entry-timestamp']),
+                'first-realized-exit-datetime': self.dump_timestamp(self._stats['first-realized-exit-timestamp']),
+                'last-realized-entry-datetime': self.dump_timestamp(self._stats['last-realized-entry-timestamp']),
+                'last-realized-exit-datetime': self.dump_timestamp(self._stats['last-realized-exit-timestamp']),
+                'profit-loss-currency': self._stats['profit-loss-currency'],
+                'profit-loss': self._stats['unrealized-profit-loss'],
+                'entry-fees': self._stats['entry-fees'],
+                'exit-fees': self._stats['exit-fees'],
+                'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason'])
+            }
+        }

@@ -281,20 +281,7 @@ class Order(Keyed):
         return self._order_type in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT)
 
     def order_type_to_str(self):
-        if self._order_type == Order.ORDER_MARKET:
-            return "market"
-        elif self._order_type == Order.ORDER_LIMIT:
-            return "limit"
-        elif self._order_type == Order.ORDER_STOP:
-            return "stop"
-        elif self._order_type == Order.ORDER_STOP_LIMIT:
-            return "stop-limit"
-        elif self._order_type == Order.ORDER_TAKE_PROFIT:
-            return "take-profit"
-        elif self._order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
-            return "take-profit-limit"
-
-        return "unknown"
+        return order_type_to_str(self._order_type)
 
     def time_in_force_to_str(self):
         if self._time_in_force == Order.TIME_IN_FORCE_GTC:
@@ -317,3 +304,20 @@ class Order(Keyed):
             return "mark"
 
         return "unknown"
+
+
+def order_type_to_str(order_type):
+    if order_type == Order.ORDER_MARKET:
+        return "market"
+    elif order_type == Order.ORDER_LIMIT:
+        return "limit"
+    elif order_type == Order.ORDER_STOP:
+        return "stop"
+    elif order_type == Order.ORDER_STOP_LIMIT:
+        return "stop-limit"
+    elif order_type == Order.ORDER_TAKE_PROFIT:
+        return "take-profit"
+    elif order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
+        return "take-profit-limit"
+
+    return "unknown"

@@ -353,8 +353,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             if not self.process_entry(timestamp, signal.dir, signal_price, signal.tp, signal.sl, signal.timeframe):
                 # notify a signal only
-                self.notify_signal(signal)
-
+                self.notify_signal(timestamp, signal)
 
         # streaming
         self.stream()
@@ -452,13 +451,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             #     trade.modify_stop_loss(trader, self.instrument, stop_loss)
 
             # notify
-            self.strategy.notify_entry(trade.id, trade.dir, self.instrument.market_id, self.instrument.format_price(price),
-                    timestamp, trade.timeframe, 'entry', None, self.instrument.format_price(trade.sl), self.instrument.format_price(trade.tp))
-
-            # want it on the streaming (take care its only the order signal, no the real complete execution)
-            if self._global_streamer:
-                # @todo remove me after notify manage that
-                self._global_streamer.member('buy-entry' if trade.direction > 0 else 'sell-entry').update(order_price, timestamp)
+            self.notify_trade_entry(timestamp, trade)
 
             return True
         else:
@@ -475,7 +468,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # close at market as taker
         trader = self.strategy.trader()
         result = trade.close(trader, self.instrument) > 0
-        trade.exit_reason = "exit-market"
+        trade.exit_reason = trade.REASON_CLOSE_MARKET
 
         return result
 

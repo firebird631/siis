@@ -66,6 +66,23 @@ def timeframe_from_str(timeframe):
     return TIMEFRAME_FROM_STR_MAP.get(timeframe, 0.0)
 
 
+def direction_to_str(direction):
+    if direction > 0:
+        return 'long'
+    elif direction < 0:
+        return 'short'
+    else:
+        return ''
+
+def direction_from_str(direction):
+    if direction == 'long':
+        return 1
+    elif direction == 'short':
+        return -1
+    else:
+        return 0
+
+
 def matching_symbols_set(configured_symbols, available_symbols):
     """
     Special '*' symbol mean every symbol.

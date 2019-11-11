@@ -33,9 +33,9 @@ class TradeHistoryView(TableView):
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if signal.signal_type == Signal.SIGNAL_STRATEGY_EXIT:
+            if signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_EXIT:
                 with self._mutex:
-                    if "entry" not in signal.data.get('action'):
+                    if "exit" in signal.data.get('way'):
                         self._refresh = 0.0
 
     def refresh(self):
