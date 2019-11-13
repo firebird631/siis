@@ -26,9 +26,9 @@ from connector.kraken.connector import Connector
 
 import logging
 logger = logging.getLogger('siis.trader.kraken')
-error_logger = logging.getLogger('siis.error.kraken')
-order_logger = logging.getLogger('siis.order.kraken')
-traceback_logger = logging.getLogger('siis.traceback.kraken')
+error_logger = logging.getLogger('siis.error.trader.kraken')
+order_logger = logging.getLogger('siis.order.trader.kraken')
+traceback_logger = logging.getLogger('siis.traceback.trader.kraken')
 
 
 class KrakenTrader(Trader):

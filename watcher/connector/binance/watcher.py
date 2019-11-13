@@ -27,8 +27,8 @@ from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.watcher.binance')
-exec_logger = logging.getLogger('siis.exec.binance')
-error_logger = logging.getLogger('siis.error.binance')
+exec_logger = logging.getLogger('siis.exec.watcher.binance')
+error_logger = logging.getLogger('siis.error.watcher.binance')
 
 
 class BinanceWatcher(Watcher):
@@ -560,10 +560,6 @@ class BinanceWatcher(Watcher):
 
             tick = (trade_time, bid, ofr, vol)
 
-            # store for generation of OHLCs
-            with self._mutex:
-                self._last_tick[symbol] = tick
-
             self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
             if not self._read_only and self._store_trade:
@@ -571,6 +567,8 @@ class BinanceWatcher(Watcher):
 
             for tf in Watcher.STORED_TIMEFRAMES:
                 # generate candle per timeframe
+                candle = None
+
                 with self._mutex:
                     candle = self.update_ohlc(symbol, tf, trade_time, bid, ofr, vol)
 

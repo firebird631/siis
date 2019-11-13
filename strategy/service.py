@@ -434,9 +434,8 @@ class StrategyService(Service):
 
         signal = Signal(Signal.SOURCE_STRATEGY, source_name, signal_type, signal_data)
 
-        self._mutex.acquire()
-        self._signals_handler.notify(signal)
-        self._mutex.release()
+        with self._mutex:
+            self._signals_handler.notify(signal)
 
     def command(self, command_type, data):
         if command_type == Strategy.COMMAND_INFO:
@@ -464,17 +463,16 @@ class StrategyService(Service):
                 appliance.command(command_type, data)
 
     def __gen_command_key(self):
-        self._mutex.acquire()
-        next_key = self._next_key
-        self._next_key += 1
-        self._mutex.release()
+        with self._mutex:
+            next_key = self._next_key
+            self._next_key += 1
 
-        return next_key
+            return next_key
+
+        return -1
 
     def receiver(self, signal):
-        self._mutex.acquire()
-        now = time.time()
-        self._mutex.release()
+        pass
 
     def indicator(self, name):
         return self._indicators.get(name)

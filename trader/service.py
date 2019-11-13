@@ -165,9 +165,8 @@ class TraderService(Service):
 
         signal = Signal(Signal.SOURCE_TRADER, source_name, signal_type, signal_data)
 
-        self._mutex.acquire()
-        self._signals_handler.notify(signal)
-        self._mutex.release()
+        with self._mutex:
+            self._signals_handler.notify(signal)
 
     def command(self, command_type, data):
         for k, trader in self._traders.items():

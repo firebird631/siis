@@ -28,8 +28,9 @@ from trader.traderexception import TraderException
 
 import logging
 logger = logging.getLogger('siis.trader.binance')
-error_logger = logging.getLogger('siis.error.binance')
-order_logger = logging.getLogger('siis.order.binance')
+error_logger = logging.getLogger('siis.error.trader.binance')
+order_logger = logging.getLogger('siis.order.trader.binance')
+backtrace_logger = logging.getLogger('siis.backtrace.trader.binance')
 
 
 class BinanceTrader(Trader):
@@ -293,27 +294,19 @@ class BinanceTrader(Trader):
         """
         Cancel a pending or partially filled order.
         """
-        if not order or not market_or_instrument:
+        if not order_id or not market_or_instrument:
             return False
 
         if not self._watcher.connector:
             error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
             return False
 
-        # order type
-        if order.order_type == Order.ORDER_LIMIT:
-            order_type = Client.ORDER_TYPE_LIMIT
-        elif order.order_type == Order.ORDER_STOP:
-            order_type = Client.ORDER_TYPE_STOP_LOSS
-        else:
-            order_type = Client.ORDER_TYPE_MARKET
-
-        symbol = order.symbol
+        symbol = market_or_instrument.market_id
 
         data = {
             # 'newClientOrderId': ref_order_id,
             'symbol': symbol,
-            'orderId': order.order_id,
+            'orderId': order_id,
             'recvWindow': 10000
         }
 
@@ -390,6 +383,8 @@ class BinanceTrader(Trader):
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
         @param force Force to update the cache
         """
+        market = None
+
         with self._mutex:
             market = self._markets.get(market_id)
 
@@ -458,7 +453,7 @@ class BinanceTrader(Trader):
         try:
             balances_list = self._watcher.connector.balances()
             dust_log = self._watcher.connector.get_dust_log()
-            exchange_info = self._watcher.connector.client.get_exchange_info()
+            exchange_info = self._watcher._symbols_data # self._watcher.connector.client.get_exchange_info()
         except Exception as e:
             error_logger.error("__fetch_assets: %s" % repr(e))
             raise TraderException(self.name, "__fetch_assets: %s" % repr(e))
@@ -470,7 +465,8 @@ class BinanceTrader(Trader):
         symbols = {}
         markets = {}
 
-        for symbol in exchange_info['symbols']:
+        for k, symbol in exchange_info.items():
+            # for k, symbol in exchange_info.get('symbols', {}).items():
             # store asset precisions
             symbols[symbol['baseAsset']] = {
                 'precision': symbol['baseAssetPrecision']
@@ -488,7 +484,7 @@ class BinanceTrader(Trader):
 
         balances = {}  # to a dict
 
-        for balance in balances_list:
+        for balance in balances_list:           
             asset_name = balance['asset']
             balance['trades'] = []
 
@@ -508,6 +504,7 @@ class BinanceTrader(Trader):
 
         for k, balance in balances.items():
             asset_name = balance['asset']
+
             locked = float(balance['locked'])
             free = float(balance['free'])
 
@@ -1164,5 +1161,6 @@ class BinanceTrader(Trader):
         """
         with self._mutex:
             balances = [(k, asset.locked, asset.free) for k, asset in self._assets.items()]
+            return balances
 
-        return balances
+        return []

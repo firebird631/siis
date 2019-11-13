@@ -179,9 +179,8 @@ class NotifierService(Service):
             if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
 
                 # propagate the signal to the notifiers
-                self._mutex.acquire()
-                self._signals_handler.notify(signal)
-                self._mutex.release()
+                with self._mutex:
+                    self._signals_handler.notify(signal)
 
     def notify(self, signal_type, source_name, signal_data):
         if signal_data is None:
@@ -189,9 +188,8 @@ class NotifierService(Service):
 
         signal = Signal(Signal.SOURCE_NOTIFIER, source_name, signal_type, signal_data)
 
-        self._mutex.acquire()
-        self._signals_handler.notify(signal)
-        self._mutex.release()
+        with self._mutex:
+            self._signals_handler.notify(signal)
 
     def notifier(self, name):
         return self._notifiers_insts.get(name)

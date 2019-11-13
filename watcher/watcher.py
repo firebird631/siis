@@ -26,8 +26,6 @@ error_logger = logging.getLogger('siis.error.watcher')
 class Watcher(Runnable):
     """
     Watcher base class.
-
-    @todo subscribe/unsubscribe
     """
 
     UPDATE_MARKET_INFO_DELAY = 4*60*60  # 4h between each market data info fetch
@@ -87,7 +85,6 @@ class Watcher(Runnable):
         self._store_trade = False            # default never store trade/tick/quote during watching
         self._initial_fetch = True           # default fetch history of OHLC at connection
 
-        self._last_tick = {}  # last tick per market id
         self._last_ohlc = {}  # last ohlc per market id and then per timeframe
         self._last_update_times = {tf: 0.0 for tf in self.GENERATED_TF}
 
@@ -157,9 +154,7 @@ class Watcher(Runnable):
         ltimeframes = set.union(set(Watcher.STORED_TIMEFRAMES), set(timeframes))
 
         for timeframe in ltimeframes:
-            if timeframe == Instrument.TF_TICK and market_id not in self._last_tick:
-                self._last_tick[market_id] = None
-            else:
+            if timeframe != Instrument.TF_TICK:
                 if market_id not in self._last_ohlc:
                     self._last_ohlc[market_id] = {}
 
@@ -245,8 +240,7 @@ class Watcher(Runnable):
                 # only interested by the watcher of the same name
                 return
 
-            elif signal.signal_type not in [
-                    Signal.SIGNAL_MARKET_LIST_DATA,]:
+            elif signal.signal_type not in (Signal.SIGNAL_MARKET_LIST_DATA,):
                 return
 
             # signal of interest

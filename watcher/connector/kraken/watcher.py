@@ -26,10 +26,10 @@ from terminal.terminal import Terminal
 from database.database import Database
 
 import logging
-logger = logging.getLogger('siis.watcher.binance')
-exec_logger = logging.getLogger('siis.exec.binance')
-error_logger = logging.getLogger('siis.error.binance')
-traceback_logger = logging.getLogger('siis.traceback.binance')
+logger = logging.getLogger('siis.watcher.kraken')
+exec_logger = logging.getLogger('siis.exec.watcher.kraken')
+error_logger = logging.getLogger('siis.error.watcher.kraken')
+traceback_logger = logging.getLogger('siis.traceback.watcher.kraken')
 
 
 class KrakenWatcher(Watcher):
@@ -513,9 +513,6 @@ class KrakenWatcher(Watcher):
                 tick = (trade_time, bid, ofr, vol)
 
                 # store for generation of OHLCs
-                with self._mutex:
-                    self._last_tick[market_id] = tick
-
                 self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
                 if not self._read_only and self._store_trade:

@@ -511,9 +511,6 @@ class IGWatcher(Watcher):
 
                 tick = (float(utm) * 0.001, float(bid), float(ofr), float(ltv or "0"))
 
-                # keep last complete tick values for ohlc generation
-                self._last_tick[market_id] = tick
-
                 self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
                 for tf in Watcher.STORED_TIMEFRAMES:

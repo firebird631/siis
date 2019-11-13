@@ -975,36 +975,33 @@ class Terminal(object):
         """
         Switch the active content + header-content views to another couple.
         """
-        self._mutex.acquire()
+        with self._mutex:
+            if view != self._active_content:
+                av = self._views.get(self._active_content)
+                hav = self._views.get(self._active_content + '-head')
 
-        if view != self._active_content:
-            av = self._views.get(self._active_content)
-            hav = self._views.get(self._active_content + '-head')
+                bv = self._views.get(view)
+                hbv = self._views.get(view + '-head')
 
-            bv = self._views.get(view)
-            hbv = self._views.get(view + '-head')
+                if av and bv and hav and hbv:
+                    if av._active:
+                        av._active = False
+                        hav._active = False
+                        bv._active = True
+                        hbv._active = True
 
-            if av and bv and hav and hbv:
-                if av._active:
-                    av._active = False
-                    hav._active = False
-                    bv._active = True
-                    hbv._active = True
+                        hbv.redraw()
+                        bv.redraw()
+                    else:
+                        av._active = True
+                        hav._active = True
+                        bv._active = False
+                        hbv._active = False
 
-                    hbv.redraw()
-                    bv.redraw()
-                else:
-                    av._active = True
-                    hav._active = True
-                    bv._active = False
-                    hbv._active = False
+                        hav.redraw()
+                        av.redraw()
 
-                    hav.redraw()
-                    av.redraw()
-
-            self._active_content = view
-
-        self._mutex.release()
+                self._active_content = view
 
     def _append(self, color, content, endl, view):
         _view = self._views.get(view)
@@ -1175,13 +1172,10 @@ class Terminal(object):
         return self._key
 
     def flush(self, view='default'):
-        self._mutex.acquire()
-
-        _view = self._views.get(view)
-        if _view:
-            _view.refresh()
-
-        self._mutex.release()
+        with self._mutex:
+            _view = self._views.get(view)
+            if _view:
+                _view.refresh()
 
     def update(self):
         if self._query_reshape < 0 and time.time() > -self._query_reshape:

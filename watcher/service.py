@@ -145,9 +145,8 @@ class WatcherService(Service):
 
         signal = Signal(Signal.SOURCE_WATCHER, source_name, signal_type, signal_data)
 
-        self._mutex.acquire()
-        self._signals_handler.notify(signal)
-        self._mutex.release()
+        with self._mutex:
+            self._signals_handler.notify(signal)
 
     def find_author(self, watcher_name, author_id):
         watcher = self._watchers.get(watcher_name)

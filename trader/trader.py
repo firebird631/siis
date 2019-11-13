@@ -451,14 +451,19 @@ class Trader(Runnable):
         Market data for a market id.
         @param force True to force request and cache update.
         """
-        with self._mutex:
-            return self._markets.get(market_id)
+        # with self._mutex:
+        return self._markets.get(market_id)
+
+        # return None
 
     def asset(self, symbol):
         """
         Get asset for symbol.
         """
+        # with self._mutex:
         return self._assets.get(symbol)
+
+        # return None
 
     def has_asset(self, symbol):
         """
@@ -495,7 +500,8 @@ class Trader(Runnable):
                 return
 
             if signal.signal_type == Signal.SIGNAL_MARKET_DATA:
-                if not self.has_market(signal.data[0]):
+                # if not self.has_market(signal.data[0]):
+                if not signal.data[0] in self._markets:
                     # non interested by this instrument/symbol
                     return
 
