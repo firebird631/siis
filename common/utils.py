@@ -145,7 +145,8 @@ def fix_thread_set_name():
         error_logger = logging.getLogger('siis.error.utils')
         error_logger.warning('prctl module is not installed. You will not be able to see thread names')
 
-def truncate(number, digits) -> float:
+
+def truncate(number, digits):
     stepper = pow(10.0, digits)
     return math.trunc(stepper * number) / stepper
 

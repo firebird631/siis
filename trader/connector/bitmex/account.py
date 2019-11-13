@@ -61,6 +61,12 @@ class BitMexAccount(Account):
         self._margin_balance = funds['marginBalance']   # free margin
         self._risk_limit = funds['riskLimit']  # risk limit
 
+        used_margin = funds['walletBalance'] - funds['availableMargin']
+        if used_margin > 0.0:
+            self._margin_level = funds['marginBalance'] / used_margin
+        else:
+            self._margin_level = 0.0
+
         # we want account in XBt
         if funds['currency'] == 'XBt':
             self._ratio = 1.0 / 100000000

@@ -98,7 +98,7 @@ class BinanceWatcher(Watcher):
                     if not self._connector:
                         self._connector = Connector(
                             self.service,
-                            identity.get('account-id'),
+                            identity.get('account-id', ""),
                             identity.get('api-key'),
                             identity.get('api-secret'),
                             identity.get('host'))
@@ -211,7 +211,7 @@ class BinanceWatcher(Watcher):
     # instruments
     #
 
-    def subscribe(self, market_id, timeframe, depths=None):
+    def subscribe(self, market_id, timeframe, ohlc_depths=None, order_book_depth=None):
         result = False
         with self._mutex:
             try:

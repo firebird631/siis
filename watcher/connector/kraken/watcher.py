@@ -36,7 +36,10 @@ class KrakenWatcher(Watcher):
     """
     Kraken market watcher using REST + WS.
 
-    @todo complete
+    @todo create order, cancel order, position info
+    @todo contract_size, value_per_pip, base_exchange_rate (initials and updates)
+    @todo fee from 30 day traded volume
+    @todo order book WS
     """
 
     BASE_QUOTE = "ZUSD"
@@ -87,6 +90,7 @@ class KrakenWatcher(Watcher):
                     if not self._connector:
                         self._connector = Connector(
                             self.service,
+                            identity.get('account-id', ""),
                             identity.get('api-key'),
                             identity.get('api-secret'),
                             identity.get('host'))
@@ -198,7 +202,7 @@ class KrakenWatcher(Watcher):
     # instruments
     #
 
-    def subscribe(self, market_id, timeframe, depths=None):
+    def subscribe(self, market_id, timeframe, ohlc_depths=None, order_book_depth=None):
         result = False
         with self._mutex:
             try:
@@ -246,15 +250,15 @@ class KrakenWatcher(Watcher):
                         callback=self.__on_trade_data
                     )
 
-                    # @todo see later
-                    # self._connector.ws.subscribe_public(
-                    #     subscription={
-                    #         'name': 'book'
-                    #     },
-                    #     pair=pairs,
-                    #     depth=10,  # 10 25 100 500 1000
-                    #     callback=self.__on_depth_data
-                    # )
+                    if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
+                        self._connector.ws.subscribe_public(
+                            subscription={
+                                'name': 'book'
+                            },
+                            pair=pairs,
+                            depth=order_book_depth,
+                            callback=self.__on_depth_data
+                        )
 
                     result = True
 
@@ -405,16 +409,19 @@ class KrakenWatcher(Watcher):
                 market.fee_currency = instrument['fee_volume_currency']
 
             if quote_asset != self.BASE_QUOTE:
+                # from XXBTZUSD / XXBTZEUR ...
+                # @todo
                 pass
-            #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
-            #         market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
-            #     elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
-            #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
-            #     else:
-            #         market.base_exchange_rate = 1.0
+                # if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
+                #     market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
+                # elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
+                #     market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
+                # else:
+                #     market.base_exchange_rate = 1.0
             else:
                 market.base_exchange_rate = 1.0
 
+            # @todo contract_size
             # market.contract_size = 1.0 / mid_price
             # market.value_per_pip = market.contract_size / mid_price
 
@@ -477,7 +484,8 @@ class KrakenWatcher(Watcher):
             vol24_base = float(ticker['v'][0])
             vol24_quote = float(ticker['v'][0]) * float(ticker['p'][0])
 
-            # @todo compute base_exchange_rate
+            # compute base_exchange_rate (its always over primary account currency)
+            # @todo
             # if quote_asset != self.BASE_QUOTE:
             #     if quote_asset in self._assets:
             #         pass  # @todo direct or indirect

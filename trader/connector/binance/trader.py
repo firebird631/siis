@@ -30,7 +30,7 @@ import logging
 logger = logging.getLogger('siis.trader.binance')
 error_logger = logging.getLogger('siis.error.trader.binance')
 order_logger = logging.getLogger('siis.order.trader.binance')
-backtrace_logger = logging.getLogger('siis.backtrace.trader.binance')
+traceback_logger = logging.getLogger('siis.traceback.trader.binance')
 
 
 class BinanceTrader(Trader):
@@ -202,7 +202,7 @@ class BinanceTrader(Trader):
         if order.quantity < market_or_instrument.min_size:
             # reject if lesser than min size
             error_logger.error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in order %s !" % (
-                self.name, order.quantity, market_or_instrument.min_size, symbol, order.order_id))
+                self.name, order.quantity, market_or_instrument.min_size, symbol, order.ref_order_id))
             return False
 
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
@@ -213,7 +213,7 @@ class BinanceTrader(Trader):
         if notional < market_or_instrument.min_notional:
             # reject if lesser than min notinal
             error_logger.error("Trader %s refuse order because the min notional is not reached (%.f<%.f) %s in order %s !" % (
-                self.name, notional, market_or_instrument.min_notional, symbol, order.order_id))
+                self.name, notional, market_or_instrument.min_notional, symbol, order.ref_order_id))
             return False
 
         data = {
@@ -829,39 +829,39 @@ class BinanceTrader(Trader):
                 order = Order(self, data['symbol'])
 
                 order.set_order_id(data['orderId'])
-                order.quantity = data['origQty']
-                order.executed = data['executedQty']
+                order.quantity = float(data.get('origQty', "0.0"))
+                order.executed = float(data.get('executedQty', "0.0"))
 
                 order.direction = Order.LONG if data['side'] == 'BUY' else Order.SHORT
 
                 if data['type'] == 'LIMIT':
                     order.order_type = Order.ORDER_LIMIT
-                    order.price = data['price']
+                    order.price = float(data['price']) if 'price' in data else None
 
                 elif data['type'] == 'LIMIT_MAKER':
                     order.order_type = Order.ORDER_LIMIT # _MAKER
-                    order.price = data['price']
+                    order.price = float(data['price']) if 'price' in data else None
 
                 elif data['type'] == 'MARKET':
                     order.order_type = Order.ORDER_MARKET
 
                 elif data['type'] == 'STOP_LOSS':
                     order.order_type = Order.ORDER_STOP
-                    order.stop_price = data['stopPrice']
+                    order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
                 elif data['type'] == 'STOP_LOSS_LIMIT':
                     order.order_type = Order.ORDER_STOP_LIMIT
-                    order.price = data['price']
-                    order.stop_price = data['stopPrice']
+                    order.price = float(data['price']) if 'price' in data else None
+                    order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
                 elif data['type'] == 'TAKE_PROFIT':
                     order.order_type = Order.ORDER_TAKE_PROFIT
-                    order.stop_price = data['stopPrice']
+                    order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
                 elif data['type'] == 'TAKE_PROFIT_LIMIT':
                     order.order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                    order.price = data['price']
-                    order.stop_price = data['stopPrice']
+                    order.price = float(data['price']) if 'price' in data else None
+                    order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
                 order.created_time = data['time']
                 order.transact_time = data['updateTime']
@@ -878,16 +878,18 @@ class BinanceTrader(Trader):
                 # "icebergQty": "0.0"  # @todo a day when I'll be rich
                 orders[order.order_id] = order
 
-        if signals:
-            # deleted (for signals if no WS)
-            deleted_list = self._orders.keys() - orders.keys()
-            # @todo
+        # if signals:
+        #     # deleted (for signals if no WS)
+        #     deleted_list = self._orders.keys() - orders.keys()
+        #     # @todo
 
-            # created (for signals if no WS)
-            created_list = orders.keys() - self._orders.keys()
-            # @todo
+        #     # created (for signals if no WS)
+        #     created_list = orders.keys() - self._orders.keys()
+        #     # @todo
 
-        self._orders = orders
+        if orders:
+            with self._mutex:
+                self._orders = orders
 
     def __fetch_positions(self, signals=False):
         """
@@ -916,15 +918,19 @@ class BinanceTrader(Trader):
             return
 
         with self._mutex:
-            # update profit/loss (informational) for each asset
-            for k, asset in self._assets.items():
-                if asset.symbol == market.base and asset.quote == market.quote:
-                    asset.update_profit_loss(market)
+            try:
+                # update profit/loss (informational) for each asset
+                for k, asset in self._assets.items():
+                    if asset.symbol == market.base and asset.quote == market.quote:
+                        asset.update_profit_loss(market)
 
-            # update profit/loss for each positions
-            for k, position in self._positions.items():
-                if position.symbol == market.market_id:
-                    position.update_profit_loss(market)
+                # update profit/loss for each positions
+                for k, position in self._positions.items():
+                    if position.symbol == market.market_id:
+                        position.update_profit_loss(market)
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
     #
     # assets

@@ -264,7 +264,7 @@ class IGWatcher(Watcher):
     # instruments
     #
 
-    def subscribe(self, market_id, timeframe, depths=None):
+    def subscribe(self, market_id, timeframe, ohlc_depths=None, order_book_depth=None):
         with self._mutex:
             if market_id in self.__matching_symbols:
                 # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
@@ -436,7 +436,7 @@ class IGWatcher(Watcher):
                 # live account updates
                 values = item_update['values']
 
-                account_data = (float(values['FUNDS']), float(values['AVAILABLE_TO_DEAL']), float(values['PNL']), None, None)
+                account_data = (float(values['FUNDS']), float(values['AVAILABLE_TO_DEAL']), float(values['PNL']), None, float(values['MARGIN']))
                 self.service.notify(Signal.SIGNAL_ACCOUNT_DATA, self.name, account_data)
         except Exception as e:
             error.error(repr(e))

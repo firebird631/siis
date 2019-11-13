@@ -47,14 +47,19 @@ class KrakenAccount(Account):
             return
 
         if time.time() - self._last_update >= KrakenAccount.UPDATE_TIMEOUT:
+            # its all what we have... nothing just our internal mapping
+            self._name = connector.account_id
+
             data = connector.get_account(self.CURRENCY)
             alt_data = connector.get_account(self.ALT_CURRENCY)
 
-            self._asset_balance = float(data.get('tb', '0.0'))
+            self._asset_balance = float(data.get('eb', '0.0'))
             self._balance = float(data.get('e', '0.0'))
+            self._net_worth = float(data.get('e', '0.0'))
             self._margin_balance = float(data.get('mf', '0.0'))
             self._profit_loss = float(data.get('n', '0.0'))
-            self._risk_limit = float(data.get('ml', '0.0')) * 0.01
+            self._risk_limit = float(data.get('mf', '0.0'))
+            self._margin_level = float(data.get('ml', '0.0')) * 0.01
 
             # eb = solde équivalent (solde combiné de toutes les devises) 
             # tb = balance de trade (balance combinée de toutes les devises capital) 
@@ -66,10 +71,7 @@ class KrakenAccount(Account):
             # mf = marge libre = capital - marge initiale (marge maximale disponible pour ouvrir de nouvelles positions)
             # ml = niveau de marge = (capital / marge initiale) * 100
 
-            # self._balance = 0.0
             # self._net_worth = 0.0
-            # self._margin_balance = 0.0
-            # self._risk_limit = 0.0
 
             # self._profit_loss = 0.0
             # self._asset_profit_loss = 0.0
@@ -78,9 +80,9 @@ class KrakenAccount(Account):
             # self._free_asset_balance = 0.0
 
             if self._asset_balance:
-                alt_balance = float(alt_data.get('tb', '0.0'))
+                alt_balance = float(alt_data.get('eb', '0.0'))
                 if alt_balance:
-                    self._currency_ratio = self._asset_balance / alt_balance
+                    self._currency_ratio = alt_balance / self._asset_balance
 
             self._last_update = time.time()
 

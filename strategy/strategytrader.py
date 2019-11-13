@@ -311,7 +311,7 @@ class StrategyTrader(object):
             return False
 
         with self._mutex:
-            self.trades.remove(trade, self.instrument)
+            self.trades.remove(trade)
 
     def update_trades(self, timestamp):
         """

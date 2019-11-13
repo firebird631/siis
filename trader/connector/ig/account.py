@@ -69,8 +69,12 @@ class IGAccount(Account):
                 self._profit_loss = balance.get('profitLoss')
 
                 self._net_worth = self._balance + self._profit_loss
-
-                # cannot be computed because leverage depend of the instrument
                 self._risk_limit = balance.get('available')
+
+                used_margin = balance.get('balance') - balance.get('available')
+                if used_margin > 0.0:
+                    self._margin_level = balance.get('available') / used_margin
+                else:
+                    self._margin_level = 0.0
 
             self._last_update = time.time()

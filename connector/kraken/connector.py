@@ -56,9 +56,11 @@ class Connector(object):
         # 21600: 1296000,
     }
 
-    def __init__(self, service, api_key, api_secret, symbols, host="api.kraken.com", callback=None):
+    def __init__(self, service, account_id, api_key, api_secret, symbols, host="api.kraken.com", callback=None):
         self._protocol = "https://"
         self._host = host or "api.kraken.com"
+
+        self._account_id = account_id
 
         self._apiversion = '0'
 
@@ -122,6 +124,10 @@ class Connector(object):
     @property
     def ws_connected(self):
         return self._ws is not None
+
+    @property
+    def account_id(self):
+        return self._account_id
 
     @property
     def watched_instruments(self):
@@ -303,10 +309,41 @@ class Connector(object):
         return {}
 
     def get_balances(self):
-        result = self.query_private('Balance')
+        data = self.query_private('Balance')
 
         if data['error']:
             logger.error("query balance: %s" % ', '.join(data['error']))
+            return {}
+
+        if data['result']:
+            return data['result']
+
+        return {}
+
+    def get_trade_volume(self):
+        # pair = comma delimited list of asset pairs to get fee info on (optional)
+        # fee-info = whether or not to include fee info info results (optional)
+        data = self.query_private('TradeVolume')
+
+        # currency = volume currency
+        # volume = current discount volume
+        # fees = array of asset pairs and fee tier info (if requested)
+        #     fee = current fee in percent
+        #     minfee = minimum fee for pair (if not fixed fee)
+        #     maxfee = maximum fee for pair (if not fixed fee)
+        #     nextfee = next tier's fee for pair (if not fixed fee.  nil if at lowest fee tier)
+        #     nextvolume = volume level of next tier (if not fixed fee.  nil if at lowest fee tier)
+        #     tiervolume = volume level of current tier (if not fixed fee.  nil if at lowest fee tier)
+        # fees_maker = array of asset pairs and maker fee tier info (if requested) for any pairs on maker/taker schedule
+        #     fee = current fee in percent
+        #     minfee = minimum fee for pair (if not fixed fee)
+        #     maxfee = maximum fee for pair (if not fixed fee)
+        #     nextfee = next tier's fee for pair (if not fixed fee.  nil if at lowest fee tier)
+        #     nextvolume = volume level of next tier (if not fixed fee.  nil if at lowest fee tier)
+        #     tiervolume = volume level of current tier (if not fixed fee.  nil if at lowest fee tier)
+
+        if data['error']:
+            logger.error("query trade volume: %s" % ', '.join(data['error']))
             return {}
 
         if data['result']:
@@ -358,6 +395,146 @@ class Connector(object):
         #     fciq = préférer frais dans la devise de cotation (par défaut si achat)
         #     nompp = pas de protection des prix du marché
         # trades = tableau d'identifiants de transaction liés à l'ordre (si des informations sur les transactions sont demandées et les données disponibles)
+
+        # @todo
+
+        return {}
+
+    def get_trades_history(self):
+        """
+        @note Unless otherwise stated, costs, fees, prices, and volumes are in the asset pair's scale, not the currency's scale.
+        @note Times given by trade tx ids are more accurate than unix timestamps.
+        """
+        # type = type of trade (optional)
+        #     all = all types (default)
+        #     any position = any position (open or closed)
+        #     closed position = positions that have been closed
+        #     closing position = any trade closing all or part of a position
+        #     no position = non-positional trades
+        # trades = whether or not to include trades related to position in output (optional.  default = false)
+        # start = starting unix timestamp or trade tx id of results (optional.  exclusive)
+        # end = ending unix timestamp or trade tx id of results (optional.  inclusive)
+        # ofs = result offset
+        params = {}
+
+        result = self.query_private('OpenOrders', params)
+        # trades = array of trade info with txid as the key
+        #     ordertxid = order responsible for execution of trade
+        #     pair = asset pair
+        #     time = unix timestamp of trade
+        #     type = type of order (buy/sell)
+        #     ordertype = order type
+        #     price = average price order was executed at (quote currency)
+        #     cost = total cost of order (quote currency)
+        #     fee = total fee (quote currency)
+        #     vol = volume (base currency)
+        #     margin = initial margin (quote currency)
+        #     misc = comma delimited list of miscellaneous info
+        #         closing = trade closes all or part of a position
+        # count = amount of available trades info matching criteria
+        # If the trade opened a position :
+        #     posstatus = position status (open/closed)
+        #     cprice = average price of closed portion of position (quote currency)
+        #     ccost = total cost of closed portion of position (quote currency)
+        #     cfee = total fee of closed portion of position (quote currency)
+        #     cvol = total fee of closed portion of position (quote currency)
+        #     cmargin = total margin freed in closed portion of position (quote currency)
+        #     net = net profit/loss of closed portion of position (quote currency, quote currency scale)
+        #     trades = list of closing trades for position (if available)
+
+        # @todo
+
+        return {}
+
+    def create_order(self, data):
+        # pair = asset pair
+        # type = type of order (buy/sell)
+        # ordertype = order type:
+        #     market
+        #     limit (price = limit price)
+        #     stop-loss (price = stop loss price)
+        #     take-profit (price = take profit price)
+        #     stop-loss-profit (price = stop loss price, price2 = take profit price)
+        #     stop-loss-profit-limit (price = stop loss price, price2 = take profit price)
+        #     stop-loss-limit (price = stop loss trigger price, price2 = triggered limit price)
+        #     take-profit-limit (price = take profit trigger price, price2 = triggered limit price)
+        #     trailing-stop (price = trailing stop offset)
+        #     trailing-stop-limit (price = trailing stop offset, price2 = triggered limit offset)
+        #     stop-loss-and-limit (price = stop loss price, price2 = limit price)
+        #     settle-position
+        # price = price (optional.  dependent upon ordertype)
+        # price2 = secondary price (optional.  dependent upon ordertype)
+        # volume = order volume in lots
+        # leverage = amount of leverage desired (optional.  default = none)
+        # oflags = comma delimited list of order flags (optional):
+        #     viqc = volume in quote currency (not available for leveraged orders)
+        #     fcib = prefer fee in base currency
+        #     fciq = prefer fee in quote currency
+        #     nompp = no market price protection
+        #     post = post only order (available when ordertype = limit)
+        # starttm = scheduled start time (optional):
+        #     0 = now (default)
+        #     +<n> = schedule start time <n> seconds from now
+        #     <n> = unix timestamp of start time
+        # expiretm = expiration time (optional):
+        #     0 = no expiration (default)
+        #     +<n> = expire <n> seconds from now
+        #     <n> = unix timestamp of expiration time
+        # userref = user reference id.  32-bit signed number.  (optional)
+        # validate = validate inputs only.  do not submit order (optional)
+
+        # optional closing order to add to system when order gets filled:
+        #     close[ordertype] = order type
+        #     close[price] = price
+        #     close[price2] = secondary price
+        params = data
+
+        result = self.query_private('AddOrder', params)
+        # descr = order description info
+        #     order = order description
+        #     close = conditional close order description (if conditional close set)
+        # txid = array of transaction ids for order (if order was added successfully)
+
+        return result
+
+    def cancel_order(self, txid):
+        """
+        txid may be a user reference id.
+        """
+        params = {'txid': txid}
+
+        result = self.query_private('CancelOrder', params)
+        # count = number of orders canceled
+        # pending = if set, order(s) is/are pending cancellation
+
+        return result
+
+    def get_open_positions(self):
+        # txid = comma delimited list of transaction ids to restrict output to
+        # docalcs = whether or not to include profit/loss calculations (optional.  default = false)
+        # consolidation = what to consolidate the positions data around (optional.)
+        # market = will consolidate positions based on market pair
+        params = {}
+
+        result = self.query_private('OpenPositions', params)
+        # <position_txid> = open position info
+        #     ordertxid = order responsible for execution of trade
+        #     pair = asset pair
+        #     time = unix timestamp of trade
+        #     type = type of order used to open position (buy/sell)
+        #     ordertype = order type used to open position
+        #     cost = opening cost of position (quote currency unless viqc set in oflags)
+        #     fee = opening fee of position (quote currency)
+        #     vol = position volume (base currency unless viqc set in oflags)
+        #     vol_closed = position volume closed (base currency unless viqc set in oflags)
+        #     margin = initial margin (quote currency)
+        #     value = current value of remaining position (if docalcs requested.  quote currency)
+        #     net = unrealized profit/loss of remaining position (if docalcs requested.  quote currency, quote currency scale)
+        #     misc = comma delimited list of miscellaneous info
+        #     oflags = comma delimited list of order flags
+        #         viqc = volume in quote currency
+
+        # @todo
 
         return {}
 

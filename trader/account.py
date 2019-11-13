@@ -49,6 +49,7 @@ class Account(object):
         self._net_worth = 0.0
         self._margin_balance = 0.0
         self._risk_limit = 0.0
+        self._margin_level = 0.0  # equity / initial margin
 
         self._profit_loss = 0.0
         self._asset_profit_loss = 0.0
@@ -170,6 +171,10 @@ class Account(object):
     @property
     def risk_limit(self):
         return self._risk_limit
+
+    @property
+    def margin_level(self):
+        return self._margin_level
 
     @property
     def asset_balance(self):
