@@ -211,7 +211,7 @@ class BinanceWatcher(Watcher):
     # instruments
     #
 
-    def subscribe(self, market_id, timeframe):
+    def subscribe(self, market_id, timeframe, depths=None):
         result = False
         with self._mutex:
             try:
@@ -249,7 +249,7 @@ class BinanceWatcher(Watcher):
                     result = True
 
             except Exception as e:
-                error_logger.eror(repr(e))
+                error_logger.error(repr(e))
 
         return result
 

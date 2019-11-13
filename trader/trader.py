@@ -357,7 +357,7 @@ class Trader(Runnable):
             asset = self._assets.get(asset_name)
 
             if asset:
-                asset.free >= quantity
+                return asset.free >= quantity
 
         return False
 

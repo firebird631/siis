@@ -206,7 +206,7 @@ class BinanceTrader(Trader):
 
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
         # quantity = market_or_instrument.format_quantity(market_or_instrument.adjust_quantity(order.quantity))
-        quantity = market.adjust_quantity(order.quantity)
+        quantity = market_or_instrument.adjust_quantity(order.quantity)
         notional = quantity * (order.price or market_or_instrument.market_ofr)
 
         if notional < market_or_instrument.min_notional:
@@ -450,7 +450,7 @@ class BinanceTrader(Trader):
     def __fetch_assets(self):
         """
         Fetch recent asset and update the average unit price per asset and set it into positions.
-        
+
         @note Asset must be fetch before from DB if existings.
         """
         query_time = time.time()

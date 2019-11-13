@@ -207,7 +207,7 @@ class Watcher(Runnable):
         """
         return self._watched_instruments
 
-    def subscribe(self, market_id, timeframe):
+    def subscribe(self, market_id, timeframe, depths=None):
         """
         Subscribes for receiving data from price source for a market and a timeframe.
 

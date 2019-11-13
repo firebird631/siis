@@ -29,6 +29,7 @@ import logging
 logger = logging.getLogger('siis.watcher.binance')
 exec_logger = logging.getLogger('siis.exec.binance')
 error_logger = logging.getLogger('siis.error.binance')
+traceback_logger = logging.getLogger('siis.traceback.binance')
 
 
 class KrakenWatcher(Watcher):
@@ -64,6 +65,10 @@ class KrakenWatcher(Watcher):
 
         self._last_trade_id = {}
 
+        self.__configured_symbols = set()  # cache for configured symbols set
+        self.__matching_symbols = set()    # cache for matching symbols
+        self.__ws_symbols = set()          # cache for matching symbols WS names
+
         self._assets = {}
         self._instruments = {}
         self._wsname_lookup = {}
@@ -71,70 +76,158 @@ class KrakenWatcher(Watcher):
     def connect(self):
         super().connect()
 
-        try:
-            self.lock()
-            self._ready = False
+        with self._mutex:
+            try:
+                self._ready = False
+                self._connecting = True
 
-            identity = self.service.identity(self._name)
+                identity = self.service.identity(self._name)
 
-            if identity:
-                if not self._connector:
-                    self._connector = Connector(
-                        self.service,
-                        identity.get('api-key'),
-                        identity.get('api-secret'),
-                        identity.get('host'))
+                if identity:
+                    if not self._connector:
+                        self._connector = Connector(
+                            self.service,
+                            identity.get('api-key'),
+                            identity.get('api-secret'),
+                            identity.get('host'))
 
-                if not self._connector.connected or not self._connector.ws_connected:
-                    self._connector.connect()
+                    if not self._connector.connected or not self._connector.ws_connected:
+                        self._connector.connect()
 
-                # assets
-                self._assets = self._connector.assets()
+                    if self._connector and self._connector.connected:
+                        #
+                        # assets
+                        #
 
-                for asset_name, details in self._assets.items():
-                    # {'aclass': 'currency', 'altname': 'ADA', 'decimals': 8, 'display_decimals': 6},
-                    pass
- 
-                #
-                # instruments
-                #
+                        self._assets = self._connector.assets()
 
-                # get all products symbols
-                self._available_instruments = set()
+                        for asset_name, details in self._assets.items():
+                            # {'aclass': 'currency', 'altname': 'ADA', 'decimals': 8, 'display_decimals': 6},
+                            pass
+         
+                        #
+                        # instruments
+                        #
 
-                # prefetch all markets data with a single request to avoid one per market
-                self.__prefetch_markets()
+                        # get all products symbols
+                        self._available_instruments = set()
 
-                instruments = self._instruments
-                configured_symbols = self.configured_symbols()
-                matching_symbols = self.matching_symbols_set(configured_symbols, [instrument for instrument in list(self._instruments.keys())])
+                        # prefetch all markets data with a single request to avoid one per market
+                        self.__prefetch_markets()
+
+                        instruments = self._instruments
+                        configured_symbols = self.configured_symbols()
+                        matching_symbols = self.matching_symbols_set(configured_symbols, [instrument for instrument in list(self._instruments.keys())])
+
+                        # cache them
+                        self.__configured_symbols = configured_symbols
+                        self.__matching_symbols = matching_symbols
+
+                        for market_id, instrument in instruments.items():
+                            self._available_instruments.add(market_id)
+
+                        #
+                        # user data
+                        #
+
+                        ws_token = self._connector.get_ws_token()
+
+                        if ws_token and ws_token.get('token'):
+                            self._connector.ws.subscribe_private(
+                                subscription={
+                                    'name': 'ownTrades',
+                                    'token': ws_token['token']
+                                },
+                                callback=self.__on_own_trades
+                            )
+
+                            self._connector.ws.subscribe_private(
+                                subscription={
+                                    'name': 'openOrders',
+                                    'token': ws_token['token']
+                                },
+                                callback=self.__on_open_orders
+                        )
+
+                        # and start ws manager if necessarry
+                        try:
+                            self._connector.ws.start()
+                        except RuntimeError:
+                            logger.debug("%s WS already started..." % (self.name))
+
+                        # once market are init
+                        self._ready = True
+                        self._connecting = False
+
+                        logger.debug("%s connection successed" % (self.name))
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+        if self._ready and self._connector and self._connector.connected:
+            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+
+    def disconnect(self):
+        super().disconnect()
+
+        with self._mutex:
+            try:
+                if self._connector:
+                    self._connector.disconnect()
+                    self._connector = None
+
+                self._ready = False
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+    @property
+    def connector(self):
+        return self._connector
+
+    @property
+    def connected(self):
+        return self._connector is not None and self._connector.connected and self._connector.ws_connected
+
+    @property
+    def authenticated(self):
+        return self._connector and self._connector.authenticated
+
+    #
+    # instruments
+    #
+
+    def subscribe(self, market_id, timeframe, depths=None):
+        result = False
+        with self._mutex:
+            try:
+                if market_id not in self.__matching_symbols:
+                    return False
+
+                instrument = self._instruments.get(market_id)
+                if not instrument:
+                    return False
 
                 pairs = []
 
-                for market_id, instrument in instruments.items():
-                    self._available_instruments.add(market_id)
+                # live data
+                pairs.append(instrument['wsname'])
+                self._wsname_lookup[instrument['wsname']] = market_id
 
-                    # and watch it if configured or any
-                    if market_id in matching_symbols:
-                        # live data
-                        pairs.append(instrument['wsname'])
-                        self._wsname_lookup[instrument['wsname']] = market_id
+                # fetch from 1m to 1w
+                if self._initial_fetch:
+                    self.fetch_and_generate(market_id, Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE*3, Instrument.TF_3M)
+                    self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
+                    self.fetch_and_generate(market_id, Instrument.TF_15M, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_30M)
+                    self.fetch_and_generate(market_id, Instrument.TF_1H, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_2H)
+                    self.fetch_and_generate(market_id, Instrument.TF_4H, self.DEFAULT_PREFETCH_SIZE, None)
+                    self.fetch_and_generate(market_id, Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE*7, Instrument.TF_1W)
 
-                        # fetch from 1m to 1w
-                        if self._initial_fetch:
-                            self.fetch_and_generate(market_id, Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE*3, Instrument.TF_3M)
-                            self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
-                            self.fetch_and_generate(market_id, Instrument.TF_15M, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_30M)
-                            self.fetch_and_generate(market_id, Instrument.TF_1H, self.DEFAULT_PREFETCH_SIZE*2, Instrument.TF_2H)
-                            self.fetch_and_generate(market_id, Instrument.TF_4H, self.DEFAULT_PREFETCH_SIZE, None)
-                            self.fetch_and_generate(market_id, Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE*7, Instrument.TF_1W)
+                    logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                            time.sleep(6.0)
-
-                            logger.info("%s prefetch for %s" % (self.name, market_id))
-
-                        # one more watched instrument
-                        self.insert_watched_instrument(market_id, [0])
+                # one more watched instrument
+                self.insert_watched_instrument(market_id, [0])
 
                 if pairs:
                     self._connector.ws.subscribe_public(
@@ -163,73 +256,26 @@ class KrakenWatcher(Watcher):
                     #     callback=self.__on_depth_data
                     # )
 
-                #
-                # user data
-                #
+                    result = True
 
-                ws_token = self._connector.get_ws_token()
+            except Exception as e:
+                error_logger.error(repr(e))
 
-                if ws_token and ws_token.get('token'):
-                    self._connector.ws.subscribe_private(
-                        subscription={
-                            'name': 'ownTrades',
-                            'token': ws_token['token']
-                        },
-                        callback=self.__on_own_trades
-                    )
+        return result
 
-                    self._connector.ws.subscribe_private(
-                        subscription={
-                            'name': 'openOrders',
-                            'token': ws_token['token']
-                        },
-                        callback=self.__on_open_orders
-                )
+    def unsubscribe(self, market_id, timeframe):
+        with self._mutex:
+            if market_id in self._multiplex_handlers:
+                self._multiplex_handlers[market_id].close()
+                del self._multiplex_handlers[market_id]
 
-                # and start ws manager
-                self._connector.ws.start()
+                return True
 
-                # once market are init
-                self._ready = True
+        return False
 
-        except Exception as e:
-            logger.debug(repr(e))
-            error_logger.error(traceback.format_exc())
-        finally:
-            self.unlock()
-
-        if self._ready and self._connector and self._connector.connected:
-            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
-
-    def disconnect(self):
-        super().disconnect()
-
-        try:
-            self.lock()
-
-            if self._connector:
-                self._connector.disconnect()
-                self._connector = None
-
-            self._ready = False
-
-        except Exception as e:
-            logger.debug(repr(e))
-            error_logger.error(traceback.format_exc())
-        finally:
-            self.unlock()
-
-    @property
-    def connector(self):
-        return self._connector
-
-    @property
-    def connected(self):
-        return self._connector is not None and self._connector.connected and self._connector.ws_connected
-
-    @property
-    def authenticated(self):
-        return self._connector and self._connector.authenticated
+    #
+    # processing
+    #
 
     def pre_update(self):
         if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
@@ -252,9 +298,8 @@ class KrakenWatcher(Watcher):
         # ohlc close/open
         #
 
-        self.lock()
-        self.update_from_tick()
-        self.unlock()
+        with self._mutex:
+            self.update_from_tick()
 
         #
         # market info update (each 4h)
@@ -452,7 +497,6 @@ class KrakenWatcher(Watcher):
                 pass
 
     def __on_trade_data(self, data):
-        return
         if isinstance(data, list) and data[2] == "trade":
             market_id = self._wsname_lookup.get(data[3])
 
@@ -469,9 +513,8 @@ class KrakenWatcher(Watcher):
                 tick = (trade_time, bid, ofr, vol)
 
                 # store for generation of OHLCs
-                self.lock()
-                self._last_tick[market_id] = tick
-                self.unlock()
+                with self._mutex:
+                    self._last_tick[market_id] = tick
 
                 self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
@@ -480,9 +523,8 @@ class KrakenWatcher(Watcher):
 
                 for tf in Watcher.STORED_TIMEFRAMES:
                     # generate candle per timeframe
-                    self.lock()
-                    candle = self.update_ohlc(market_id, tf, trade_time, bid, ofr, vol)
-                    self.unlock()
+                    with self._mutex:
+                        candle = self.update_ohlc(market_id, tf, trade_time, bid, ofr, vol)
 
                     if candle is not None:
                         self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))

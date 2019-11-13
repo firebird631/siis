@@ -264,7 +264,7 @@ class IGWatcher(Watcher):
     # instruments
     #
 
-    def subscribe(self, market_id, timeframe):
+    def subscribe(self, market_id, timeframe, depths=None):
         with self._mutex:
             if market_id in self.__matching_symbols:
                 # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only

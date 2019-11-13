@@ -1944,7 +1944,7 @@ class Strategy(Runnable):
 
             order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
-        elif strategy_trader.instrument.has_margin and not strategy_trader.instrument.indivisible_position and not markets.has_position:
+        elif strategy_trader.instrument.has_margin and not strategy_trader.instrument.indivisible_position and not strategy_trader.instrument.has_position:
             trade = StrategyMarginTrade(timeframe)
 
             if not trader.has_margin(strategy_trader.instrument.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
