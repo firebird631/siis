@@ -53,7 +53,13 @@ class AndroidNotifier(Notifier):
         if 'watchdog' not in self._channels:
             self._channels['watchdog'] = "/topics/default"  # @todo
 
-        self._signals_opts = notifier_config.get('signals', ("entry", "exit" "take-profit", "stop-loss", "quantity"))
+        self._signals_opts = notifier_config.get('signals', (
+                "entry",
+                "exit",
+                "quantity",
+                "stop-loss",
+                "take-profit"))
+
         self._watchdog = notifier_config.get('watchdog', ("timeout", "unreachable"))
         self._account = notifier_config.get('account', ("balance", "assets-balance"))
 
@@ -76,7 +82,7 @@ class AndroidNotifier(Notifier):
         channel = ""
 
         if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
-            if not signal.data['action'] in self._signals_opts:
+            if signal.data['way'] not in self._signals_opts:
                 return
 
             channel = self._channels.get('signals')  # @todo
@@ -112,7 +118,7 @@ class AndroidNotifier(Notifier):
             if signal.data.get('profit-loss-pct') is not None:
                 message += " (%.2f%%)" % (signal.data['profit-loss-pct'],)
 
-            if signal.data.get('order-qty') is not None and 'order-qty' in self._signals_opts:
+            if signal.data.get('order-qty') is not None and 'quantity' in self._signals_opts:
                 message += " Q:%s" % signal.data['order-qty']
 
             if signal.data.get('comment') is not None:

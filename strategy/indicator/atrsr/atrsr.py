@@ -75,7 +75,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         elif direction < 0:
             for x in reversed(self._up):
@@ -86,7 +86,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         return 0.0
 
@@ -103,7 +103,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         elif direction < 0:
             for x in sorted(self._up, reverse=True):
@@ -114,7 +114,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         return 0.0
 
@@ -131,7 +131,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         elif direction < 0:
             for x in reversed(self._down):
@@ -142,7 +142,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         return 0.0
 
@@ -159,7 +159,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         elif direction < 0:
             for x in sorted(self._down, reverse=True):
@@ -170,7 +170,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         return 0.0
 
@@ -187,7 +187,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         elif direction < 0:
             for x in reversed(self._both):
@@ -198,7 +198,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         return 0.0
 
@@ -215,7 +215,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         elif direction < 0:
             for x in sorted(self._both, reverse=True):
@@ -226,7 +226,7 @@ class ATRSRIndicator(Indicator):
                 if n == depth:
                     break
 
-            return stop_loss
+            return stop_loss if n >= depth else 0.0
 
         return 0.0
 

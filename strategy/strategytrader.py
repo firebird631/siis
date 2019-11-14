@@ -834,6 +834,26 @@ class StrategyTrader(object):
     #                     update_sl = True
     #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
 
+    def check_entry_canceled(self, trade):
+        """
+        Cancel entry if take-profit price is reached before filling the entry.
+        """
+        if trade.is_opened() and trade.tp > 0.0:
+            if trade.direction > 0:
+                if self.instrument.close_exec_price(trade.direction) >= trade.tp:
+                    trader = self.strategy.trader()
+                    trade.cancel_open(trader, self.instrument)
+                    trade.exit_reason = trade.REASON_CANCELED_TARGETED
+            elif trade.direction < 0:
+                if self.instrument.close_exec_price(trade.direction) <= trade.tp:
+                    trader = self.strategy.trader()
+                    trade.cancel_open(trader, self.instrument)
+                    trade.exit_reason = trade.REASON_CANCELED_TARGETED
+
+            return True
+
+        return False
+
     def check_entry_timeout(self, trade, timestamp, timeout):
         """
         Timeout then can cancel a non filled trade if exit signal occurs before timeout (timeframe).

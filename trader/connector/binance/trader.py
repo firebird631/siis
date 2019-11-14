@@ -1141,6 +1141,11 @@ class BinanceTrader(Trader):
                 self.__update_asset(Order.ORDER_MARKET, commission_asset, commission_asset_market, None,
                     quote_exec_price, data['commission-amount'], False, data['timestamp'])
 
+        if data.get('fully-filled', False):
+            # fully filled, need to delete
+            if order.order_id in self._orders:
+                del self._orders[order.order_id]
+
     def on_order_deleted(self, market_id,  order_id, ref_order_id):
         with self._mutex:
             if order_id in self._orders:

@@ -87,13 +87,13 @@ class SignalView(TableView):
             signals = []
 
             for entry in entries:
-                signals.append(entry)
-
-                # lookup for the related exit
+                # lookup for the related exit (before)
                 if entry['id'] > 0:
                     for exit in entries_exits:
                         if exit['id'] == entry['id'] and exit['way'] == "exit":
                             signals.append(exit)
+
+                signals.append(entry)
         else:
             signals.sort(key=lambda x: -x['timestamp'])
 
