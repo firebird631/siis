@@ -2085,8 +2085,11 @@ class Strategy(Runnable):
                         break
 
             if trade:
-                # remove
+                # remove orders
                 trade.remove(trader, strategy_trader.instrument)
+
+                # and the trade, don't keet it for history because unqualifiable
+                strategy_trader.remove_trade(trade)
 
                 # add a success result message
                 results['messages'].append("Force remove trade %i on %s:%s" % (trade.id, self.identifier, strategy_trader.instrument.market_id))

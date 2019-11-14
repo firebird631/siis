@@ -72,6 +72,8 @@ class KrakenWatcher(Watcher):
         self.__matching_symbols = set()    # cache for matching symbols
         self.__ws_symbols = set()          # cache for matching symbols WS names
 
+        self._reconnect_user_ws = False
+
         self._assets = {}
         self._instruments = {}
         self._wsname_lookup = {}
@@ -100,17 +102,7 @@ class KrakenWatcher(Watcher):
 
                     if self._connector and self._connector.connected:
                         #
-                        # assets
-                        #
-
-                        self._assets = self._connector.assets()
-
-                        for asset_name, details in self._assets.items():
-                            # {'aclass': 'currency', 'altname': 'ADA', 'decimals': 8, 'display_decimals': 6},
-                            pass
-         
-                        #
-                        # instruments
+                        # assets and instruments
                         #
 
                         # get all products symbols
@@ -118,6 +110,10 @@ class KrakenWatcher(Watcher):
 
                         # prefetch all markets data with a single request to avoid one per market
                         self.__prefetch_markets()
+
+                        for asset_name, details in self._assets.items():
+                            # {'aclass': 'currency', 'altname': 'ADA', 'decimals': 8, 'display_decimals': 6},
+                            pass
 
                         instruments = self._instruments
                         configured_symbols = self.configured_symbols()
@@ -151,7 +147,7 @@ class KrakenWatcher(Watcher):
                                     'token': ws_token['token']
                                 },
                                 callback=self.__on_open_orders
-                        )
+                            )
 
                         # and start ws manager if necessarry
                         try:
@@ -297,6 +293,31 @@ class KrakenWatcher(Watcher):
 
         if not self.connected:
             return False
+
+        if 0:#self._reconnect_user_ws:
+            ws_token = self._connector.get_ws_token()
+
+            self._connector.ws.stop_socket('ownTrades')
+            self._connector.ws.stop_socket('openOrders')
+
+            if ws_token and ws_token.get('token'):
+                self._connector.ws.subscribe_private(
+                    subscription={
+                        'name': 'ownTrades',
+                        'token': ws_token['token']
+                    },
+                    callback=self.__on_own_trades
+                )
+
+                self._connector.ws.subscribe_private(
+                    subscription={
+                        'name': 'openOrders',
+                        'token': ws_token['token']
+                    },
+                    callback=self.__on_open_orders
+                )
+
+            self._reconnect_user_ws = False
 
         #
         # ohlc close/open
@@ -499,10 +520,11 @@ class KrakenWatcher(Watcher):
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
         elif isinstance(data, dict):
-            if data['event'] == "subscriptionStatus" and data['channelName'] == "ticker":
-                # @todo register channelID...
-                # {'channelID': 93, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'ticker'}}
-                pass
+            if data['event'] == "subscriptionStatus":
+                if data['status'] == "subscribed" and data['channelName'] == "ticker":
+                    # @todo register channelID...
+                    # {'channelID': 93, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'ticker'}}
+                    pass
 
     def __on_trade_data(self, data):
         if isinstance(data, list) and data[2] == "trade":
@@ -535,19 +557,54 @@ class KrakenWatcher(Watcher):
                         self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
         elif isinstance(data, dict):
-            if data['event'] == "subscriptionStatus" and data['channelName'] == "trade":
-                # @todo register channelID...
-                # {'channelID': 93, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'trade'}}
-                pass
+            if data['event'] == "subscriptionStatus":
+                if data['status'] == "subscribed" and data['channelName'] == "trade":
+                    # @todo register channelID...
+                    # {'channelID': 93, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'trade'}}
+                    pass
 
     def __on_kline_data(self, data):
         pass
 
     def __on_own_trades(self, data):
-        pass
+        if isinstance(data, list) and data[1] == "ownTrades":
+            # [{'TIJDLD-25ZOO-VCGYW2': {'cost': '110.15956', 'fee': '0.28642', 'margin': '22.03191', 'ordertxid': 'OKZ6PC-EQUXM-Y5ZMPH', 'ordertype': 'market', 'pair': 'XBT/EUR', 'posstatus': 'Closing', 'postxid': 'TCYFIL-S3NW6-UMNOSU', 'price': '7343.97067', 'time': '1571773989.359761', 'type': 'buy', 'vol': '0.01500000'}}, {'TCYFIL-S3NW6-UMNOSU': {'cost': '110.58150', 'fee': '0.29857', 'margin': '22.11630', 'ordertxid': 'OP3CY5-KWGI4-QKEUYO', 'ordertype': 'market', 'pair': 'XBT/EUR', 'posstatus': 'Opened', 'postxid': 'TKH2SE-M7IF5-CFI7LT', 'price': '7372.10000', 'time': '1571725122.392658', 'type': 'sell', 'vol': '0.01500000'}}]
+            logger.info(data[0])
+
+        elif isinstance(data, dict):
+            if data['event'] == 'heartBeat':
+                pass
+            elif data['event'] == 'systemStatus':
+                # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
+                pass
+            elif data['event'] == "subscriptionStatus":
+                if data['status'] == "error":
+                    # {'errorMessage': 'Private subscriptions are currently unavailable', 'event': 'subscriptionStatus', 'status': 'error', 'subscription': {
+                    #   'name': 'ownTrades', 'token': '...'}}
+                    self._reconnect_user_ws = True
+
+                elif data['status'] == "subscribed" and data['channelName'] == "ownTrades":
+                    pass
 
     def __on_open_orders(self, data):
-        pass
+        if isinstance(data, list) and data[1] == "openOrders":
+            # [{'OKFWD3-WEXNK-4YXRJ7': {'avg_price': '0.00000', 'cost': '0.00000', 'descr': {'close': None, 'leverage': None, 'order': 'sell 9.99355396 LTC/EUR @ limit 56.15000', 'ordertype': 'limit', 'pair': 'LTC/EUR', 'price': '56.15000', 'price2': '0.00000', 'type': 'sell'}, 'expiretm': None, 'fee': '0.00000', 'limitprice': '0.00000', 'misc': '', 'oflags': 'fciq', 'opentm': '1573672059.209149', 'refid': None, 'starttm': None, 'status': 'open', 'stopprice': '0.00000', 'userref': 0, 'vol': '9.99355396', 'vol_exec': '0.00000000'}}
+            logger.info(data[0])
+
+        elif isinstance(data, dict):
+            if data['event'] == 'heartBeat':
+                pass
+            elif data['event'] == 'systemStatus':
+                # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
+                pass
+            elif data['event'] == "subscriptionStatus":
+                if data['status'] == "error":
+                    # {'errorMessage': 'Private subscriptions are currently unavailable', 'event': 'subscriptionStatus', 'status': 'error', 'subscription': {
+                    #   'name': 'openOrders', 'token': '...'}}
+                    self._reconnect_user_ws = True
+
+                elif data['status'] == "subscribed" and data['channelName'] == "openOrders":
+                    pass
 
     #
     # miscs
