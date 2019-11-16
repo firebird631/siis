@@ -96,8 +96,8 @@ class KrakenClientFactory(WebSocketClientFactory, KrakenReconnectingClientFactor
 
 class KrakenSocketManager(threading.Thread):
 
-    # STREAM_URL = 'wss://ws.kraken.com'
-    STREAM_URL = 'wss://ws-auth.kraken.com'
+    STREAM_URL = 'wss://ws.kraken.com'
+    PRIVATE_STREAM_URL = 'wss://ws-auth.kraken.com'
 
     def __init__(self):  # client
         """Initialise the KrakenSocketManager"""
@@ -105,6 +105,7 @@ class KrakenSocketManager(threading.Thread):
         self.factories = {}
         self._connected_event = threading.Event()
         self._conns = {}
+        self._private_conns = {}
         self._user_timer = None
         self._user_listen_key = None
         self._user_callback = None
@@ -114,6 +115,19 @@ class KrakenSocketManager(threading.Thread):
             return False
 
         factory_url = self.STREAM_URL
+        factory = KrakenClientFactory(factory_url, payload=payload)
+        factory.base_client = self
+        factory.protocol = KrakenClientProtocol
+        factory.callback = callback
+        factory.reconnect = True
+        self.factories[id_] = factory
+        reactor.callFromThread(self.add_connection, id_)
+
+    def _start_private_socket(self, id_, payload, callback):
+        if id_ in self._private_conns:
+            return False
+
+        factory_url = self.PRIVATE_STREAM_URL
         factory = KrakenClientFactory(factory_url, payload=payload)
         factory.base_client = self
         factory.protocol = KrakenClientProtocol
@@ -152,6 +166,27 @@ class KrakenSocketManager(threading.Thread):
         self._conns[conn_key].disconnect()
         del self._conns[conn_key]
 
+    def stop_private_socket(self, conn_key):
+        """Stop a websocket given the connection key
+
+        Parameters
+        ----------
+        conn_key : str
+            Socket connection key
+
+        Returns
+        -------
+        str, bool
+            connection key string if successful, False otherwise
+        """
+        if conn_key not in self._private_conns:
+            return
+
+        # disable reconnecting if we are closing
+        self._private_conns[conn_key].factory = WebSocketClientFactory(self.PRIVATE_STREAM_URL)
+        self._private_conns[conn_key].disconnect()
+        del self._private_conns[conn_key]
+
     def run(self):
         try:
             reactor.run(installSignalHandlers=False)
@@ -166,6 +201,11 @@ class KrakenSocketManager(threading.Thread):
         for key in keys:
             self.stop_socket(key)
         self._conns = {}
+
+        keys = set(self._private_conns.keys())
+        for key in keys:
+            self.stop_private_socket(key)
+        self._private_conns = {}
 
 
 class WssClient(KrakenSocketManager):
@@ -206,4 +246,4 @@ class WssClient(KrakenSocketManager):
             'subscription': subscription,
         }
         payload = json.dumps(data, ensure_ascii=False).encode('utf8')
-        return self._start_socket(id_, payload, callback)
+        return self._start_private_socket(id_, payload, callback)
