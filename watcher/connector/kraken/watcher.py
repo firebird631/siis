@@ -577,7 +577,10 @@ class KrakenWatcher(Watcher):
             #    'postxid': 'xxxx-yyyy-zzzz', 'price': '7343.97067', 'time': '1571773989.359761', 'type': 'buy', 'vol': '0.01500000'}},
             #   {'xxxx-yyyy-zzzz': {'cost': '110.58150', 'fee': '0.29857', 'margin': '22.11630', 'ordertxid': 'xxxx-yyyy-zzzz', 'ordertype': 'market', 'pair': 'XBT/EUR', 'posstatus': 'Opened',
             #    'postxid': 'xxxx-yyyy-zzzz', 'price': '7372.10000', 'time': '1571725122.392658', 'type': 'sell', 'vol': '0.01500000'}}]
-            for txid, trade in data[0].items():
+            for entry in data[0]:
+                txid = entry.keys()[0]
+                trade = entry.values()[0]
+
                 exec_logger.info("kraken.com ownTrades : %s - %s" % (txid, trade))
 
                 market_id = self._wsname_lookup.get(trade['pair'])
@@ -771,8 +774,11 @@ class KrakenWatcher(Watcher):
             #   'ordertype': 'limit', 'pair': 'LTC/EUR', 'price': '56.15000', 'price2': '0.00000', 'type': 'sell'}, 'expiretm': None, 'fee': '0.00000', 'limitprice': '0.00000',
             #   'misc': '', 'oflags': 'fciq', 'opentm': '1573672059.209149', 'refid': None, 'starttm': None, 'status': 'open', 'stopprice': '0.00000', 'userref': 0,
             #   'vol': '9.99355396', 'vol_exec': '0.00000000'}}
-            for order_id, order in data[0].items():
-                exec_logger.info("kraken.com openOrders : %s - %s" % (txid, order))
+            for entry in data[0]:
+                order_id = entry.keys()[0]
+                order = entry.values()[0]
+
+                exec_logger.info("kraken.com openOrders : %s - %s" % (order_id, order))
 
                 status = order["status"]
 
