@@ -595,7 +595,7 @@ class KrakenWatcher(Watcher):
                 position_id = trade['postxid']
 
                 side = Order.LONG if trade['type'] == "buy" else Order.SHORT
-                cost, fee, vol, margin, orderType
+                # cost, fee, vol, margin, orderType
 
                 if trade['posstatus'] == 'Closing':
                     pass
