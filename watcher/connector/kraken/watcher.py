@@ -597,158 +597,163 @@ class KrakenWatcher(Watcher):
                 side = Order.LONG if trade['type'] == "buy" else Order.SHORT
                 # cost, fee, vol, margin, orderType
 
-                if trade['posstatus'] == 'Closing':
+                posstatus = trade.get('posstatus', "")
+
+                if posstatus == 'Closing':
                     pass
-                #     client_order_id = str(data['c'])
-                #     reason = ""
+                    #     client_order_id = str(data['c'])
+                    #     reason = ""
 
-                #     if data['r'] == 'INSUFFICIENT_BALANCE':
-                #         reason = 'insufficient balance'
+                    #     if data['r'] == 'INSUFFICIENT_BALANCE':
+                    #         reason = 'insufficient balance'
 
-                #     self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
+                    #     self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
 
-                # elif (data['x'] == 'TRADE') and (data['X'] == 'FILLED' or data['X'] == 'PARTIALLY_FILLED'):
-                #     order_id = str(data['i'])
-                #     client_order_id = str(data['c'])
+                    # elif (data['x'] == 'TRADE') and (data['X'] == 'FILLED' or data['X'] == 'PARTIALLY_FILLED'):
+                    #     order_id = str(data['i'])
+                    #     client_order_id = str(data['c'])
 
-                #     timestamp = float(data['T']) * 0.001  # transaction time
+                    #     timestamp = float(data['T']) * 0.001  # transaction time
 
-                #     price = None
-                #     stop_price = None
+                    #     price = None
+                    #     stop_price = None
 
-                #     if data['o'] == 'LIMIT':
-                #         order_type = Order.ORDER_LIMIT
-                #         price = float(data['p'])
+                    #     if data['o'] == 'LIMIT':
+                    #         order_type = Order.ORDER_LIMIT
+                    #         price = float(data['p'])
 
-                #     elif data['o'] == 'MARKET':
-                #         order_type = Order.ORDER_MARKET
+                    #     elif data['o'] == 'MARKET':
+                    #         order_type = Order.ORDER_MARKET
 
-                #     elif data['o'] == 'STOP_LOSS':
-                #         order_type = Order.ORDER_STOP
-                #         stop_price = float(data['P'])
+                    #     elif data['o'] == 'STOP_LOSS':
+                    #         order_type = Order.ORDER_STOP
+                    #         stop_price = float(data['P'])
 
-                #     elif data['o'] == 'STOP_LOSS_LIMIT':
-                #         order_type = Order.ORDER_STOP_LIMIT
-                #         price = float(data['p'])
-                #         stop_price = float(data['P'])
+                    #     elif data['o'] == 'STOP_LOSS_LIMIT':
+                    #         order_type = Order.ORDER_STOP_LIMIT
+                    #         price = float(data['p'])
+                    #         stop_price = float(data['P'])
 
-                #     elif data['o'] == 'TAKE_PROFIT':
-                #         order_type = Order.ORDER_TAKE_PROFIT
-                #         stop_price = float(data['P'])
+                    #     elif data['o'] == 'TAKE_PROFIT':
+                    #         order_type = Order.ORDER_TAKE_PROFIT
+                    #         stop_price = float(data['P'])
 
-                #     elif data['o'] == 'TAKE_PROFIT_LIMIT':
-                #         order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                #         price = float(data['p'])
-                #         stop_price = float(data['P'])
+                    #     elif data['o'] == 'TAKE_PROFIT_LIMIT':
+                    #         order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    #         price = float(data['p'])
+                    #         stop_price = float(data['P'])
 
-                #     elif data['o'] == 'LIMIT_MAKER':
-                #         order_type = Order.ORDER_LIMIT
-                #         price = float(data['p'])
+                    #     elif data['o'] == 'LIMIT_MAKER':
+                    #         order_type = Order.ORDER_LIMIT
+                    #         price = float(data['p'])
 
-                #     else:
-                #         order_type = Order.ORDER_LIMIT
+                    #     else:
+                    #         order_type = Order.ORDER_LIMIT
 
-                #     if data['f'] == 'GTC':
-                #         time_in_force = Order.TIME_IN_FORCE_GTC
-                #     elif data['f'] == 'IOC':
-                #         time_in_force = Order.TIME_IN_FORCE_IOC
-                #     elif data['f'] == 'FOK':
-                #         time_in_force = Order.TIME_IN_FORCE_FOK
-                #     else:
-                #         time_in_force = Order.TIME_IN_FORCE_GTC
+                    #     if data['f'] == 'GTC':
+                    #         time_in_force = Order.TIME_IN_FORCE_GTC
+                    #     elif data['f'] == 'IOC':
+                    #         time_in_force = Order.TIME_IN_FORCE_IOC
+                    #     elif data['f'] == 'FOK':
+                    #         time_in_force = Order.TIME_IN_FORCE_FOK
+                    #     else:
+                    #         time_in_force = Order.TIME_IN_FORCE_GTC
 
-                #     order = {
-                #         'id': order_id,
-                #         'symbol': symbol,
-                #         'type': order_type,
-                #         'trade-id': str(data['t']),
-                #         'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
-                #         'timestamp': timestamp,
-                #         'quantity': float(data['q']),
-                #         'price': price,
-                #         'stop-price': stop_price,
-                #         'exec-price': float(data['L']),
-                #         'filled': float(data['l']),
-                #         'cumulative-filled': float(data['z']),
-                #         'quote-transacted': float(data['Y']),  # similar as float(data['Z']) for cumulative
-                #         'stop-loss': None,
-                #         'take-profit': None,
-                #         'time-in-force': time_in_force,
-                #         'commission-amount': float(data['n']),
-                #         'commission-asset': data['N'],
-                #         'maker': data['m'],   # trade execution over or counter the market : true if maker, false if taker
-                #         'fully-filled': data['X'] == 'FILLED'  # fully filled status else its partially
-                #     }
+                    #     order = {
+                    #         'id': order_id,
+                    #         'symbol': symbol,
+                    #         'type': order_type,
+                    #         'trade-id': str(data['t']),
+                    #         'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
+                    #         'timestamp': timestamp,
+                    #         'quantity': float(data['q']),
+                    #         'price': price,
+                    #         'stop-price': stop_price,
+                    #         'exec-price': float(data['L']),
+                    #         'filled': float(data['l']),
+                    #         'cumulative-filled': float(data['z']),
+                    #         'quote-transacted': float(data['Y']),  # similar as float(data['Z']) for cumulative
+                    #         'stop-loss': None,
+                    #         'take-profit': None,
+                    #         'time-in-force': time_in_force,
+                    #         'commission-amount': float(data['n']),
+                    #         'commission-asset': data['N'],
+                    #         'maker': data['m'],   # trade execution over or counter the market : true if maker, false if taker
+                    #         'fully-filled': data['X'] == 'FILLED'  # fully filled status else its partially
+                    #     }
 
-                #     self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
+                    #     self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
 
-                elif trade['posstatus'] == 'Opened':
+                elif posstatus == 'Opened':
                     pass
-                #     order_id = str(data['i'])
-                #     timestamp = float(data['O']) * 0.001  # order creation time
-                #     client_order_id = str(data['c'])
+                    #     order_id = str(data['i'])
+                    #     timestamp = float(data['O']) * 0.001  # order creation time
+                    #     client_order_id = str(data['c'])
 
-                #     iceberg_qty = float(data['F'])
+                    #     iceberg_qty = float(data['F'])
 
-                #     price = None
-                #     stop_price = None
+                    #     price = None
+                    #     stop_price = None
 
-                #     if data['o'] == 'LIMIT':
-                #         order_type = Order.ORDER_LIMIT
-                #         price = float(data['p'])
+                    #     if data['o'] == 'LIMIT':
+                    #         order_type = Order.ORDER_LIMIT
+                    #         price = float(data['p'])
 
-                #     elif data['o'] == 'MARKET':
-                #         order_type = Order.ORDER_MARKET
+                    #     elif data['o'] == 'MARKET':
+                    #         order_type = Order.ORDER_MARKET
 
-                #     elif data['o'] == 'STOP_LOSS':
-                #         order_type = Order.ORDER_STOP
-                #         stop_price = float(data['P'])
+                    #     elif data['o'] == 'STOP_LOSS':
+                    #         order_type = Order.ORDER_STOP
+                    #         stop_price = float(data['P'])
 
-                #     elif data['o'] == 'STOP_LOSS_LIMIT':
-                #         order_type = Order.ORDER_STOP_LIMIT
-                #         price = float(data['p'])
-                #         stop_price = float(data['P'])
+                    #     elif data['o'] == 'STOP_LOSS_LIMIT':
+                    #         order_type = Order.ORDER_STOP_LIMIT
+                    #         price = float(data['p'])
+                    #         stop_price = float(data['P'])
 
-                #     elif data['o'] == 'TAKE_PROFIT':
-                #         order_type = Order.ORDER_TAKE_PROFIT
-                #         stop_price = float(data['P'])
+                    #     elif data['o'] == 'TAKE_PROFIT':
+                    #         order_type = Order.ORDER_TAKE_PROFIT
+                    #         stop_price = float(data['P'])
 
-                #     elif data['o'] == 'TAKE_PROFIT_LIMIT':
-                #         order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                #         price = float(data['p'])
-                #         stop_price = float(data['P'])
+                    #     elif data['o'] == 'TAKE_PROFIT_LIMIT':
+                    #         order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    #         price = float(data['p'])
+                    #         stop_price = float(data['P'])
 
-                #     elif data['o'] == 'LIMIT_MAKER':
-                #         order_type = Order.ORDER_LIMIT
-                #         price = float(data['p'])
+                    #     elif data['o'] == 'LIMIT_MAKER':
+                    #         order_type = Order.ORDER_LIMIT
+                    #         price = float(data['p'])
 
-                #     else:
-                #         order_type = Order.ORDER_LIMIT
+                    #     else:
+                    #         order_type = Order.ORDER_LIMIT
 
-                #     if data['f'] == 'GTC':
-                #         time_in_force = Order.TIME_IN_FORCE_GTC
-                #     elif data['f'] == 'IOC':
-                #         time_in_force = Order.TIME_IN_FORCE_IOC
-                #     elif data['f'] == 'FOK':
-                #         time_in_force = Order.TIME_IN_FORCE_FOK
-                #     else:
-                #         time_in_force = Order.TIME_IN_FORCE_GTC
+                    #     if data['f'] == 'GTC':
+                    #         time_in_force = Order.TIME_IN_FORCE_GTC
+                    #     elif data['f'] == 'IOC':
+                    #         time_in_force = Order.TIME_IN_FORCE_IOC
+                    #     elif data['f'] == 'FOK':
+                    #         time_in_force = Order.TIME_IN_FORCE_FOK
+                    #     else:
+                    #         time_in_force = Order.TIME_IN_FORCE_GTC
 
-                #     order = {
-                #         'id': order_id,
-                #         'symbol': symbol,
-                #         'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
-                #         'type': order_type,
-                #         'timestamp': event_timestamp,
-                #         'quantity': float(data['q']),
-                #         'price': price,
-                #         'stop-price': stop_price,
-                #         'time-in-force': time_in_force,
-                #         'stop-loss': None,
-                #         'take-profit': None
-                #     }
+                    #     order = {
+                    #         'id': order_id,
+                    #         'symbol': symbol,
+                    #         'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
+                    #         'type': order_type,
+                    #         'timestamp': event_timestamp,
+                    #         'quantity': float(data['q']),
+                    #         'price': price,
+                    #         'stop-price': stop_price,
+                    #         'time-in-force': time_in_force,
+                    #         'stop-loss': None,
+                    #         'take-profit': None
+                    #     }
 
-                #     self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
+                    #     self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
+
+                else:
+                    pass
 
         elif isinstance(data, dict):
             if data['event'] == 'heartBeat':
@@ -780,7 +785,7 @@ class KrakenWatcher(Watcher):
 
                 exec_logger.info("kraken.com openOrders : %s - %s" % (order_id, order))
 
-                status = order["status"]
+                status = order.get("status", "")
 
                 if status == "open":
                     ref_order_id = order['refid']
