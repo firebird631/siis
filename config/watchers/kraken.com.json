@@ -12,7 +12,7 @@
 		"ATOMCAD": {"altname":"ATOMCAD", "min-size": 0.1},
 		"ATOMETH": {"altname":"ATOMETH", "min-size": 0.1},
 		"ATOMEUR": {"altname":"ATOMEUR", "min-size": 0.1},
-		"ATOMUSD": {"altname":"ATOMUSD", "min-size": 0.1 },
+		"ATOMUSD": {"altname":"ATOMUSD", "min-size": 0.1},
 		"ATOMXBT": {"altname":"ATOMXBT", "min-size": 0.1},
 		"BATETH": {"altname":"BATETH", "min-size": 50},
 		"BATEUR": {"altname":"BATEUR", "min-size": 50},

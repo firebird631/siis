@@ -667,15 +667,15 @@ class Instrument(object):
         self._leverage = leverage
 
     def set_size_limits(self, min_size, max_size, step_size):
-        size_precision = decimal_place(step_size) if step_size > 0 else 0
+        size_precision = max(0, decimal_place(step_size) if step_size > 0 else 0)
         self._size_limits = (min_size, max_size, step_size, size_precision)
 
     def set_notional_limits(self, min_notional, max_notional, step_notional):
-        notional_precision = decimal_place(step_notional) if step_notional > 0 else 0
+        notional_precision = max(0, decimal_place(step_notional) if step_notional > 0 else 0)
         self._notional_limits = (min_notional, max_notional, step_notional, notional_precision)
 
     def set_price_limits(self, min_price, max_price, step_price):
-        price_precision = decimal_place(step_price) if step_price > 0 else 0
+        price_precision = max(0, decimal_place(step_price) if step_price > 0 else 0)
         self._price_limits = (min_price, max_price, step_price, price_precision)
 
     #
