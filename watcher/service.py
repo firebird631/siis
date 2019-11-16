@@ -8,6 +8,8 @@ import threading
 
 from importlib import import_module
 
+from terminal.terminal import Terminal
+
 from config import utils
 from common.service import Service
 

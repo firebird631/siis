@@ -46,6 +46,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         self.timeframes = {}  # analyser per timeframe
 
+        self.prev_price = 0.0
+        self.last_price = 0.0
+
     @property
     def base_timeframe(self):
         return self._base_timeframe
@@ -70,12 +73,17 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
                 generated = sub.candles_gen.generate_from_ticks(ticks)
                 if generated:
-                    self.instrument.add_candle(generated, sub.depth)  # sub.history)
+                    self.instrument.add_candle(generated, sub.depth)
 
                     # last OHLC close
                     sub._last_closed = True
 
-                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # sub.history) # with the non consolidated
+                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # with the non consolidated
+
+            # keep prev and last price at processing step
+            if self.instrument._ticks:
+                self.prev_price = self.last_price
+                self.last_price = (self.instrument._ticks[-1][1] + self.instrument._ticks[-1][2]) * 0.5  # last tick mid
 
             # no longer need them
             self.instrument.clear_ticks()
@@ -88,13 +96,18 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             # at tick we update any timeframes because we want the non consolidated candle
             for tf, sub in self.timeframes.items():
                 # update at candle timeframe
-                candles = self.instrument.candles_after(sub.sub_tf, sub.candles_gen.last_timestamp)
+                candles = self.instrument.candles_after(self._base_timeframe, sub.candles_gen.last_timestamp)
 
                 generated = sub.candles_gen.generate_from_candles(candles)
                 if generated:
-                    self.instrument.add_candle(generated, sub.depth)  # sub.history)
+                    self.instrument.add_candle(generated, sub.depth)
 
-                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # sub.history)  # with the non consolidated
+                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # with tne non consolidated
+
+            # keep prev and last price at processing step
+            if self.instrument._candles.get(self._base_timeframe):
+                self.prev_price = self.last_price
+                self.last_price = self.instrument._candles[self._base_timeframe][-1].close  # last mid close
 
     def compute(self, timeframe, timestamp):
         """
@@ -107,7 +120,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         if self.base_timeframe == timeframe:
             for tf, sub in self.timeframes.items():
                 if not sub.next_timestamp:
-                    # initial timestamp
+                    # initial timestamp only
                     sub.next_timestamp = self.strategy.timestamp
 
                 if sub.update_at_close:
@@ -123,6 +136,43 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                             entries.append(signal)
                         elif signal.signal == StrategySignal.SIGNAL_EXIT:
                             exits.append(signal)
+
+        # finally sort them by timeframe ascending
+        entries.sort(key=lambda s: s.timeframe)
+        exits.sort(key=lambda s: s.timeframe)
+
+        return entries, exits
+
+    def precompute(self, timestamp):
+        """
+        Compute the signals for the differents timeframes depending of the update policy.
+        """
+        # split entries from exits signals
+        entries = []
+        exits = []
+
+        for tf, sub in self.timeframes.items():
+            if not sub.next_timestamp:
+                # initial timestamp from older candle
+                candles = self.instrument.candles(tf)
+                if candles:
+                    sub.next_timestamp = candles[-1].timestamp
+                else:
+                    sub.next_timestamp = self.strategy.timestamp
+
+            if sub.update_at_close:
+                if sub.need_update(timestamp):
+                    compute = True
+            else:
+                compute = True
+
+            if compute:
+                signal = sub.process(timestamp)
+                if signal:
+                    if signal.signal == StrategySignal.SIGNAL_ENTRY:
+                        entries.append(signal)
+                    elif signal.signal == StrategySignal.SIGNAL_EXIT:
+                        exits.append(signal)
 
         # finally sort them by timeframe ascending
         entries.sort(key=lambda s: s.timeframe)

@@ -21,3 +21,8 @@ class CryptoAlphaStrategySub(TimeframeBasedSub):
                 setattr(self, ind, self.strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:]))
             else:
                 setattr(self, ind, None)
+
+        self.can_long = False
+        self.can_short = False
+
+        self.trend = 0

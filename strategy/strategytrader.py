@@ -71,6 +71,7 @@ class StrategyTrader(object):
 
         self._mutex = threading.RLock()
         self._activity = True
+        self._bootstraping = 1
 
         self._global_streamer = None
         self._timeframe_streamers = {}
@@ -110,6 +111,13 @@ class StrategyTrader(object):
         Enable/disable execution of the automated orders.
         """
         self._activity = status   
+
+    def bootstrap(self, timestamp):
+        """
+        Override this method to do her all the initial strategy work using the preloaded OHLCs history.
+        No trade must be done here, but signal pre-state could be computed.
+        """
+        pass
 
     def process(self, timeframe, timestamp):
         """
@@ -1079,7 +1087,12 @@ class StrategyTrader(object):
 
         return True
 
-    def has_max_trades(self, max_trades):
+    def has_max_trades(self, max_trades, same_timeframe=0, same_timeframe_num=0):
+        """
+        @param max_trades Max simultaneous trades for this instrument.
+        @param same_timeframe Compared timeframe.
+        @param same_timeframe_num 0 mean Allow multiple trade of the same timeframe, else it define the max allowed.
+        """
         result = False
 
         if self.trades:
@@ -1087,6 +1100,14 @@ class StrategyTrader(object):
                 if len(self.trades) >= max_trades:
                     # no more than max simultaneous trades
                     result = True
+
+                elif same_timeframe > 0 and same_timeframe_num > 0:
+                    for trade in self.trades:
+                        if trade.timeframe == same_timeframe:
+                            same_timeframe_num -= 1
+                            if same_timeframe_num <= 0:
+                                result = True
+                                break
 
         if result:
             msg = "Max trade reached for %s with %s" % (self.instrument.symbol, max_trades)

@@ -622,7 +622,7 @@ class BinanceWatcher(Watcher):
         event_type = data.get('e', '')
 
         if event_type == 'executionReport':
-            exec_logger.info("binance.com executionReport %s", str(data))
+            exec_logger.info("binance.com executionReport %s" % str(data))
 
             event_timestamp = float(data['E']) * 0.001
             symbol = data['s']

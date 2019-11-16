@@ -78,6 +78,11 @@ class KrakenWatcher(Watcher):
         self._instruments = {}
         self._wsname_lookup = {}
 
+        self._ws_own_trades = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
+        self._ws_open_orders = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
+
+        self._last_ws_hearbeat = 0.0
+
     def connect(self):
         super().connect()
 
@@ -568,43 +573,239 @@ class KrakenWatcher(Watcher):
 
     def __on_own_trades(self, data):
         if isinstance(data, list) and data[1] == "ownTrades":
-            # [{'TIJDLD-25ZOO-VCGYW2': {'cost': '110.15956', 'fee': '0.28642', 'margin': '22.03191', 'ordertxid': 'OKZ6PC-EQUXM-Y5ZMPH', 'ordertype': 'market', 'pair': 'XBT/EUR', 'posstatus': 'Closing', 'postxid': 'TCYFIL-S3NW6-UMNOSU', 'price': '7343.97067', 'time': '1571773989.359761', 'type': 'buy', 'vol': '0.01500000'}}, {'TCYFIL-S3NW6-UMNOSU': {'cost': '110.58150', 'fee': '0.29857', 'margin': '22.11630', 'ordertxid': 'OP3CY5-KWGI4-QKEUYO', 'ordertype': 'market', 'pair': 'XBT/EUR', 'posstatus': 'Opened', 'postxid': 'TKH2SE-M7IF5-CFI7LT', 'price': '7372.10000', 'time': '1571725122.392658', 'type': 'sell', 'vol': '0.01500000'}}]
-            logger.info(data[0])
+            # [{'xxxx-yyyy-zzzz': {'cost': '110.15956', 'fee': '0.28642', 'margin': '22.03191', 'ordertxid': 'xxxx-yyyy-zzzz', 'ordertype': 'market', 'pair': 'XBT/EUR', 'posstatus': 'Closing',
+            #    'postxid': 'xxxx-yyyy-zzzz', 'price': '7343.97067', 'time': '1571773989.359761', 'type': 'buy', 'vol': '0.01500000'}},
+            #   {'xxxx-yyyy-zzzz': {'cost': '110.58150', 'fee': '0.29857', 'margin': '22.11630', 'ordertxid': 'xxxx-yyyy-zzzz', 'ordertype': 'market', 'pair': 'XBT/EUR', 'posstatus': 'Opened',
+            #    'postxid': 'xxxx-yyyy-zzzz', 'price': '7372.10000', 'time': '1571725122.392658', 'type': 'sell', 'vol': '0.01500000'}}]
+            for txid, trade in data[0].items():
+                exec_logger.info("kraken.com ownTrades : %s - %s" % (txid, trade))
+
+                market_id = self._wsname_lookup.get(trade['pair'])
+                # base_asset, quote_asset = trade['pair'].split('/')
+
+                if not market_id:
+                    continue
+
+                timestamp = float(trade['time'])
+
+                order_id = trade['ordertxid']
+                position_id = trade['postxid']
+
+                side = Order.LONG if trade['type'] == "buy" else Order.SHORT
+                cost, fee, vol, margin, orderType
+
+                if trade['posstatus'] == 'Closing':
+                    pass
+                #     client_order_id = str(data['c'])
+                #     reason = ""
+
+                #     if data['r'] == 'INSUFFICIENT_BALANCE':
+                #         reason = 'insufficient balance'
+
+                #     self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
+
+                # elif (data['x'] == 'TRADE') and (data['X'] == 'FILLED' or data['X'] == 'PARTIALLY_FILLED'):
+                #     order_id = str(data['i'])
+                #     client_order_id = str(data['c'])
+
+                #     timestamp = float(data['T']) * 0.001  # transaction time
+
+                #     price = None
+                #     stop_price = None
+
+                #     if data['o'] == 'LIMIT':
+                #         order_type = Order.ORDER_LIMIT
+                #         price = float(data['p'])
+
+                #     elif data['o'] == 'MARKET':
+                #         order_type = Order.ORDER_MARKET
+
+                #     elif data['o'] == 'STOP_LOSS':
+                #         order_type = Order.ORDER_STOP
+                #         stop_price = float(data['P'])
+
+                #     elif data['o'] == 'STOP_LOSS_LIMIT':
+                #         order_type = Order.ORDER_STOP_LIMIT
+                #         price = float(data['p'])
+                #         stop_price = float(data['P'])
+
+                #     elif data['o'] == 'TAKE_PROFIT':
+                #         order_type = Order.ORDER_TAKE_PROFIT
+                #         stop_price = float(data['P'])
+
+                #     elif data['o'] == 'TAKE_PROFIT_LIMIT':
+                #         order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                #         price = float(data['p'])
+                #         stop_price = float(data['P'])
+
+                #     elif data['o'] == 'LIMIT_MAKER':
+                #         order_type = Order.ORDER_LIMIT
+                #         price = float(data['p'])
+
+                #     else:
+                #         order_type = Order.ORDER_LIMIT
+
+                #     if data['f'] == 'GTC':
+                #         time_in_force = Order.TIME_IN_FORCE_GTC
+                #     elif data['f'] == 'IOC':
+                #         time_in_force = Order.TIME_IN_FORCE_IOC
+                #     elif data['f'] == 'FOK':
+                #         time_in_force = Order.TIME_IN_FORCE_FOK
+                #     else:
+                #         time_in_force = Order.TIME_IN_FORCE_GTC
+
+                #     order = {
+                #         'id': order_id,
+                #         'symbol': symbol,
+                #         'type': order_type,
+                #         'trade-id': str(data['t']),
+                #         'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
+                #         'timestamp': timestamp,
+                #         'quantity': float(data['q']),
+                #         'price': price,
+                #         'stop-price': stop_price,
+                #         'exec-price': float(data['L']),
+                #         'filled': float(data['l']),
+                #         'cumulative-filled': float(data['z']),
+                #         'quote-transacted': float(data['Y']),  # similar as float(data['Z']) for cumulative
+                #         'stop-loss': None,
+                #         'take-profit': None,
+                #         'time-in-force': time_in_force,
+                #         'commission-amount': float(data['n']),
+                #         'commission-asset': data['N'],
+                #         'maker': data['m'],   # trade execution over or counter the market : true if maker, false if taker
+                #         'fully-filled': data['X'] == 'FILLED'  # fully filled status else its partially
+                #     }
+
+                #     self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
+
+                elif trade['posstatus'] == 'Opened':
+                    pass
+                #     order_id = str(data['i'])
+                #     timestamp = float(data['O']) * 0.001  # order creation time
+                #     client_order_id = str(data['c'])
+
+                #     iceberg_qty = float(data['F'])
+
+                #     price = None
+                #     stop_price = None
+
+                #     if data['o'] == 'LIMIT':
+                #         order_type = Order.ORDER_LIMIT
+                #         price = float(data['p'])
+
+                #     elif data['o'] == 'MARKET':
+                #         order_type = Order.ORDER_MARKET
+
+                #     elif data['o'] == 'STOP_LOSS':
+                #         order_type = Order.ORDER_STOP
+                #         stop_price = float(data['P'])
+
+                #     elif data['o'] == 'STOP_LOSS_LIMIT':
+                #         order_type = Order.ORDER_STOP_LIMIT
+                #         price = float(data['p'])
+                #         stop_price = float(data['P'])
+
+                #     elif data['o'] == 'TAKE_PROFIT':
+                #         order_type = Order.ORDER_TAKE_PROFIT
+                #         stop_price = float(data['P'])
+
+                #     elif data['o'] == 'TAKE_PROFIT_LIMIT':
+                #         order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                #         price = float(data['p'])
+                #         stop_price = float(data['P'])
+
+                #     elif data['o'] == 'LIMIT_MAKER':
+                #         order_type = Order.ORDER_LIMIT
+                #         price = float(data['p'])
+
+                #     else:
+                #         order_type = Order.ORDER_LIMIT
+
+                #     if data['f'] == 'GTC':
+                #         time_in_force = Order.TIME_IN_FORCE_GTC
+                #     elif data['f'] == 'IOC':
+                #         time_in_force = Order.TIME_IN_FORCE_IOC
+                #     elif data['f'] == 'FOK':
+                #         time_in_force = Order.TIME_IN_FORCE_FOK
+                #     else:
+                #         time_in_force = Order.TIME_IN_FORCE_GTC
+
+                #     order = {
+                #         'id': order_id,
+                #         'symbol': symbol,
+                #         'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
+                #         'type': order_type,
+                #         'timestamp': event_timestamp,
+                #         'quantity': float(data['q']),
+                #         'price': price,
+                #         'stop-price': stop_price,
+                #         'time-in-force': time_in_force,
+                #         'stop-loss': None,
+                #         'take-profit': None
+                #     }
+
+                #     self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
 
         elif isinstance(data, dict):
             if data['event'] == 'heartBeat':
-                pass
+                self._ws_own_trades['ping'] = time.time()
+
             elif data['event'] == 'systemStatus':
                 # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
-                pass
+                self._ws_own_trades['status'] = data['status'] == "online"
+                self._ws_own_trades['version'] = data['version']
+
             elif data['event'] == "subscriptionStatus":
                 if data['status'] == "error":
-                    # {'errorMessage': 'Private subscriptions are currently unavailable', 'event': 'subscriptionStatus', 'status': 'error', 'subscription': {
-                    #   'name': 'ownTrades', 'token': '...'}}
+                    error_logger.error("%s - %s" % (data['errorMessage'], data['name']))
+                    self._ws_own_trades['status'] = False
                     self._reconnect_user_ws = True
 
                 elif data['status'] == "subscribed" and data['channelName'] == "ownTrades":
-                    pass
+                    self._ws_own_trades['subscribed'] = True
 
     def __on_open_orders(self, data):
         if isinstance(data, list) and data[1] == "openOrders":
-            # [{'OKFWD3-WEXNK-4YXRJ7': {'avg_price': '0.00000', 'cost': '0.00000', 'descr': {'close': None, 'leverage': None, 'order': 'sell 9.99355396 LTC/EUR @ limit 56.15000', 'ordertype': 'limit', 'pair': 'LTC/EUR', 'price': '56.15000', 'price2': '0.00000', 'type': 'sell'}, 'expiretm': None, 'fee': '0.00000', 'limitprice': '0.00000', 'misc': '', 'oflags': 'fciq', 'opentm': '1573672059.209149', 'refid': None, 'starttm': None, 'status': 'open', 'stopprice': '0.00000', 'userref': 0, 'vol': '9.99355396', 'vol_exec': '0.00000000'}}
-            logger.info(data[0])
+            # [{'xxxx-yyyy-zzzz': {'avg_price': '0.00000', 'cost': '0.00000', 'descr': {'close': None, 'leverage': None, 'order': 'sell 9.99355396 LTC/EUR @ limit 56.15000',
+            #   'ordertype': 'limit', 'pair': 'LTC/EUR', 'price': '56.15000', 'price2': '0.00000', 'type': 'sell'}, 'expiretm': None, 'fee': '0.00000', 'limitprice': '0.00000',
+            #   'misc': '', 'oflags': 'fciq', 'opentm': '1573672059.209149', 'refid': None, 'starttm': None, 'status': 'open', 'stopprice': '0.00000', 'userref': 0,
+            #   'vol': '9.99355396', 'vol_exec': '0.00000000'}}
+            for order_id, order in data[0].items():
+                exec_logger.info("kraken.com openOrders : %s - %s" % (txid, order))
+
+                status = order["status"]
+
+                if status == "open":
+                    ref_order_id = order['refid']
+                    pass
+
+                elif status == "closed":
+                    pass
+
+                elif status == "updated":
+                    pass
+
+                elif status == "deleted":
+                    pass
 
         elif isinstance(data, dict):
             if data['event'] == 'heartBeat':
-                pass
+                self._ws_open_orders['ping'] = time.time()
+
             elif data['event'] == 'systemStatus':
                 # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
-                pass
+                self._ws_open_orders['status'] = data['status'] == "online"
+                self._ws_open_orders['version'] = data['version']
+
             elif data['event'] == "subscriptionStatus":
                 if data['status'] == "error":
-                    # {'errorMessage': 'Private subscriptions are currently unavailable', 'event': 'subscriptionStatus', 'status': 'error', 'subscription': {
-                    #   'name': 'openOrders', 'token': '...'}}
+                    error_logger.error("%s - %s" % (data['errorMessage'], data['name']))
+                    self._ws_open_orders['status'] = False
                     self._reconnect_user_ws = True
 
                 elif data['status'] == "subscribed" and data['channelName'] == "openOrders":
-                    pass
+                    self._ws_open_orders['subscribed'] = True
 
     #
     # miscs

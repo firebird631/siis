@@ -77,12 +77,12 @@ class DesktopNotifier(Notifier):
         "trade-lost": AUDIO_ALERT_TRADE_LOST
     }
 
-    def __init__(self, name, identifier, service, options):
+    def __init__(self, identifier, service, options):
         super().__init__("desktop", identifier, service)
 
         self._backtesting = options.get('backtesting', False)
 
-        notifier_config = service.notifier_config(name)
+        notifier_config = service.notifier_config(identifier)
 
         # default audio alert and popups stats configurable
         self._audible = notifier_config.get('play-alerts', False)

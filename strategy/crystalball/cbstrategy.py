@@ -71,12 +71,6 @@ class CrystalBallStrategy(Strategy):
     def create_trader(self, instrument):
         return CrystalBallStrategyTrader(self, instrument, self.specific_parameters(instrument.market_id))
 
-    def update_strategy(self, tf, instrument):
-        strategy_trader = self._strategy_traders.get(instrument)
-        if strategy_trader:
-            # and process instrument update
-            strategy_trader.process(tf, self.timestamp)
-
     def setup_live(self):
         super().setup_live()
 

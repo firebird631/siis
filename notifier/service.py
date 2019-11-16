@@ -108,7 +108,7 @@ class NotifierService(Service):
                     logger.error("Unknown notifier name %s for %s. Ignored !" % (notifier_conf['name'], k))
                     continue
 
-                inst = Clazz(k, notifier_conf, self, options)
+                inst = Clazz(k, self, options)
                 inst.set_identifier(k)
 
                 if inst.start(options):

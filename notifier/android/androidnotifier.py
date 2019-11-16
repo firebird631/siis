@@ -31,12 +31,12 @@ class AndroidNotifier(Notifier):
     Android Firebase push notifier.
     """
 
-    def __init__(self, name, identifier, service, options):
+    def __init__(self, identifier, service, options):
         super().__init__("android", identifier, service)
 
         self._backtesting = options.get('backtesting', False)
 
-        notifier_config = service.notifier_config(name)
+        notifier_config = service.notifier_config(identifier)
 
         self._display_percent = False
 

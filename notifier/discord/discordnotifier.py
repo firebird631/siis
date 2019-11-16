@@ -33,7 +33,7 @@ class DiscordNotifier(Notifier):
     @todo Active and history tables but this will need at least a timer or usage of API to delete the previous table.
     """
 
-    def __init__(self, name, identifier, service, options):
+    def __init__(self, identifier, service, options):
         super().__init__("discord", identifier, service)
 
         self._url_re = re.compile(
@@ -46,7 +46,7 @@ class DiscordNotifier(Notifier):
 
         self._backtesting = options.get('backtesting', False)
 
-        notifier_config = service.notifier_config(name)
+        notifier_config = service.notifier_config(identifier)
 
         self._who = notifier_config.get('who', 'SiiS')
         self._webhooks = notifier_config.get('webhooks', {})
@@ -68,8 +68,10 @@ class DiscordNotifier(Notifier):
                 if re.match(self._url_re, url) is None:
                     raise NotifierException(self.name, self.identifier, "Malformed webhook url %s" % url)
 
+            logger.info("Notifier %s - %s : signals webhook found and valid, start it..." % (self.name, self.identifier))
             return super().start(options)
         else:
+            logger.warning("Notifier %s - %s : signals webhook not found, not started !" % (self.name, self.identifier))
             return False
 
     def terminate(self):

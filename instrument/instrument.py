@@ -394,7 +394,8 @@ class Instrument(object):
     ORDER_ALL = 32-1
 
     __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_tradeable', '_currency', '_trade_quantity', '_leverage', \
-                '_market_bid', '_market_ofr', '_last_update_time', '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
+                '_market_bid', '_market_ofr', '_last_update_time', \
+                '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
                 '_ticks', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry'
 
     def __init__(self, name, symbol, market_id, alias=None):
@@ -866,6 +867,13 @@ class Instrument(object):
             return candles[-1]
 
         return None
+
+    def candles(self, tf):
+        """
+        Returns candles list for a specific timeframe.
+        @param tf Timeframe
+        """
+        return self._candles.get(tf)
 
     def last_ended_timestamp(self, tf):
         """

@@ -10,8 +10,8 @@ from .service import Service
 from config import utils
 
 import logging
-logger = logging.getLogger('siis.monitor')
-error_logger = logging.getLogger('siis.error.monitor')
+logger = logging.getLogger('siis.watchdog')
+error_logger = logging.getLogger('siis.error.watchdog')
 
 
 class WatchdogService(Service):

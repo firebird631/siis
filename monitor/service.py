@@ -7,6 +7,7 @@ import json
 import time, datetime
 import tempfile, os, posix
 import threading
+import traceback
 import collections
 import base64, hashlib
 
@@ -28,6 +29,8 @@ from config import utils
 
 import logging
 logger = logging.getLogger('siis.monitor')
+error_logger = logging.getLogger('siis.error.monitor')
+traceback_logger = logging.getLogger('siis.traceback.monitor')
 
 
 class ServerProtocol(WebSocketServerProtocol):
@@ -124,7 +127,7 @@ class MonitorService(Service):
                 try:
                     os.mkfifo(self._filename, 0o600)
                 except OSError as e:
-                    logger.error("Failed to create monitor write FIFO: %s" % repr(e))
+                    error_logger.error("Failed to create monitor write FIFO: %s" % repr(e))
                     os.rmdir(self._tmpdir)
                     self._filename = None
                 else:
@@ -136,7 +139,7 @@ class MonitorService(Service):
                 try:
                     os.mkfifo(self._filename_read, 0o600)
                 except OSError as e:
-                    logger.error("Failed to create monitor read FIFO: %s" % repr(e))
+                    error_logger.error("Failed to create monitor read FIFO: %s" % repr(e))
                     os.rmdir(self._tmpdir)
 
                     # close the write fifo
@@ -250,7 +253,8 @@ class MonitorService(Service):
                                     self.on_rpc_message(msg)
 
                                 except Exception as e:
-                                    logger.error(repr(e))
+                                    error_logger.error(repr(e))
+                                    traceback_logger.error(traceback.format_exc())
 
                                 cur = bytearray()
                             else:
@@ -276,7 +280,8 @@ class MonitorService(Service):
                     except (BrokenPipeError, IOError):
                         pass
                     except (TypeError, ValueError) as e:
-                        logger.error("Monitor error sending message : %s" % repr(c))
+                        error_logger.error("Monitor error sending message : %s" % repr(c))
+                        traceback_logger.error(traceback.format_exc())
 
                     count += 1
                     if count > 10:

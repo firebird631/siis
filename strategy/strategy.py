@@ -870,7 +870,7 @@ class Strategy(Runnable):
                     # sync before continue
                     # count_down.wait()
                 else:
-                    # no parallelisation below 4 instruments
+                    # no parallelisation below 2 instruments
                     for instrument, tf in do_update.items():
                         if instrument.ready():
                             self.update_strategy(tf, instrument)
@@ -885,12 +885,129 @@ class Strategy(Runnable):
 
         return True
 
+    def bootstrap(self, strategy_trader, instrument):
+        if strategy_trader._bootstraping == 2:
+            # in progress
+            return
+
+        # bootstraping in progress, avoid live until complete
+        strategy_trader._bootstraping = 2
+
+        # captures all initials candles
+        initial_candles = {}
+
+        # compute the begining timestamp
+        next_timestamp = self.timestamp
+
+        for tf, sub in strategy_trader.timeframes.items():
+            candles = instrument.candles(tf)
+            initial_candles[tf] = candles
+
+            # reset, distribute one at time
+            instrument._candles[tf] = []
+
+            if candles:
+                # get the nearest next candle
+                next_timestamp = min(next_timestamp, candles[0].timestamp + sub.depth*sub.timeframe)
+
+        logger.debug("%s bootstrap begin at %s, now is %s" % (instrument.market_id, next_timestamp, self.timestamp))
+
+        # initials candles
+        lower_timeframe = 0
+
+        for tf, sub in strategy_trader.timeframes.items():
+            candles = initial_candles[tf]
+
+            # feed with the initials candles
+            while candles and next_timestamp >= candles[0].timestamp:
+                candle = candles.pop(0)
+
+                instrument._candles[tf].append(candle)
+
+                # and last is closed
+                sub._last_closed = True
+
+                # keep safe size
+                if(len(instrument._candles[tf])) > sub.depth:
+                    instrument._candles[tf].pop(0)
+
+                # prev and last price according to the lower timeframe close
+                if not lower_timeframe or tf < lower_timeframe:
+                    lower_timeframe = tf
+                    strategy_trader.prev_price = strategy_trader.last_price
+                    strategy_trader.last_price = candle.close  # last mid close
+
+            sub.next_timestamp = next_timestamp  # + lower_timeframe
+            # logger.debug("%s for %s and time is %s rest=%s" % (len(instrument._candles[tf]), tf, sub.next_timestamp, len(initial_candles[tf])))
+
+        # process one lowest candle at time
+        while 1:
+            num_candles = 0
+            strategy_trader.bootstrap(next_timestamp)
+
+            # at least of lower timeframe
+            base_next_timestamp = 0.0
+            lower_timeframe = 0
+
+            # increment by the lower available timeframe
+            for tf, sub in strategy_trader.timeframes.items():
+                if initial_candles[tf]:
+                    if not base_next_timestamp:
+                        # initiate with the first
+                        base_next_timestamp = initial_candles[tf][0].timestamp
+
+                    elif initial_candles[tf][0].timestamp < base_next_timestamp:
+                        # found a lower
+                        base_next_timestamp = initial_candles[tf][0].timestamp
+
+            for tf, sub in strategy_trader.timeframes.items():
+                candles = initial_candles[tf]
+
+                # feed with the next candle
+                if candles and base_next_timestamp >= candles[0].timestamp:
+                    candle = candles.pop(0)
+
+                    instrument._candles[tf].append(candle)
+
+                    # and last is closed
+                    sub._last_closed = True
+
+                    # keep safe size
+                    if(len(instrument._candles[tf])) > sub.depth:
+                        instrument._candles[tf].pop(0)
+
+                    if not lower_timeframe or tf < lower_timeframe:
+                        lower_timeframe = tf
+                        strategy_trader.prev_price = strategy_trader.last_price
+                        strategy_trader.last_price = candle.close  # last mid close
+
+                    num_candles += 1
+
+            # logger.info("next is %s (delta=%s) / now %s (n=%i) (low=%s)" % (base_next_timestamp, base_next_timestamp-next_timestamp, self.timestamp, num_candles, lower_timeframe))
+            next_timestamp = base_next_timestamp
+
+            if not num_candles:
+                # no more candles to process
+                break
+
+        # bootstraping done, can now branch to live
+        strategy_trader._bootstraping = 0
+        logger.debug("%s bootstraping done" % instrument.market_id)
+
     def update_strategy(self, tf, instrument):
         """
         Override this method to compute a strategy step per instrument.
+        Default implementation supports bootstrapping.
         @param tf Smallest unit of time processed.
         """
-        pass
+        strategy_trader = self._strategy_traders.get(instrument)
+        if strategy_trader:
+            # bootstrap using preloaded data history, then live
+            if strategy_trader._bootstraping:
+                self.bootstrap(strategy_trader, instrument)
+            else:
+                # and process instrument update
+                strategy_trader.process(tf, self.timestamp)
 
     def setup_backtest(self, from_date, to_date):
         """
@@ -2580,30 +2697,30 @@ class Strategy(Runnable):
             if typename == "chart":
                 strategy_trader.subscribe_stream(timeframe)
                 results['messages'].append("Subscribed for stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "default"))
-            # elif typename == "info":
-            #     strategy_trader.subscribe_info()
-            #     results['messages'].append("Subscribed for stream info %s %s" % (self.identifier, strategy_trader.instrument.market_id))
+            elif typename == "info":
+                strategy_trader.subscribe_info()
+                results['messages'].append("Subscribed for stream info %s %s" % (self.identifier, strategy_trader.instrument.market_id))
             else:
                 # unsupported type
                 results['error'] = True
-                results['messages'].append("Unsupported stream type on trader %i" % trade.id)
+                results['messages'].append("Unsupported stream %s for trader %s" % (typename, strategy_trader.instrument.market_id))
 
         elif action == "unsubscribe":
             if typename == "chart":            
                 strategy_trader.unsubscribe_stream(timeframe)
                 results['messages'].append("Unsubscribed from stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "any"))
-            # elif typename == "info":
-            #     strategy_trader.unsubscribe_info()
-            #     results['messages'].append("Unsubscribed from stream info %s %s" % (self.identifier, strategy_trader.instrument.market_id))
+            elif typename == "info":
+                strategy_trader.unsubscribe_info()
+                results['messages'].append("Unsubscribed from stream info %s %s" % (self.identifier, strategy_trader.instrument.market_id))
             else:
                 # unsupported type
                 results['error'] = True
-                results['messages'].append("Unsupported stream type on trader %i" % trade.id)
+                results['messages'].append("Unsupported stream %s for trader %s" % (typename, strategy_trader.instrument.market_id))
 
         else:
              # unsupported action
             results['error'] = True
-            results['messages'].append("Unsupported stream action on trader %i" % trade.id)
+            results['messages'].append("Unsupported stream action %s for trader %s" % (action, strategy_trader.instrument.market_id))
 
         return results
 
