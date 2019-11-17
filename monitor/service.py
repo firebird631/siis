@@ -287,8 +287,9 @@ class MonitorService(Service):
                     if count > 10:
                         break
 
-            # don't waste the CPU
-            time.sleep(0.0001)  # yield 0.001)
+            # don't waste the CPU, might need a condition on outgoing data and on select incoming
+            # but this will be replaced by an asyncio WS + REST API
+            time.sleep(0.001)
 
     def run_autobahn(self):
         # async def push(self):

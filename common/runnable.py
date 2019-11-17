@@ -198,6 +198,9 @@ class Runnable(object):
         pass
 
     def ping(self, timeout):
+        if not self._running:
+            return
+        
         if self._mutex.acquire(timeout=timeout):
             self._ping = (0, None, True)
             self._mutex.release()
@@ -205,6 +208,9 @@ class Runnable(object):
             Terminal.inst().action("Unable to join thread %s for %s seconds" % (self._thread.name if self._thread else "unknown", timeout), view='content')
 
     def watchdog(self, watchdog_service, timeout):
+        if not self._running:
+            return
+
         if self._mutex.acquire(timeout=timeout):
             self._ping = (watchdog_service.gen_pid(self._thread.name if self._thread else "unknown"), watchdog_service, False)
             self._mutex.release()

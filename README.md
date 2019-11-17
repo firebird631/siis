@@ -88,6 +88,8 @@ If this project helped you out feel free to donate.
 
 * BTC: 1GVdwcVrvvbqBgzNMii6tGNhTYnGvsJZFE
 * ETH: 0xd9cbda09703cdd4df9aeabf63f23be8da19ca9bf
+* XLM: GA5XIGA5C7QTPTWXQHY6MCJRMTRZDOSHR6EFIBNDQTCQHG262N4GGKTM / memo: 3296292669
+* DOGE: D5oxDR7u1ssEwkGY444ewUJVHWzsHpCkoA
 
 
 Installation

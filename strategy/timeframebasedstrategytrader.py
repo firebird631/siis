@@ -109,7 +109,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 self.prev_price = self.last_price
                 self.last_price = self.instrument._candles[self._base_timeframe][-1].close  # last mid close
 
-    def compute(self, timeframe, timestamp):
+    def compute(self, timestamp):
         """
         Compute the signals for the differents timeframes depending of the update policy.
         """
@@ -117,25 +117,24 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         entries = []
         exits = []
 
-        if self.base_timeframe == timeframe:
-            for tf, sub in self.timeframes.items():
-                if not sub.next_timestamp:
-                    # initial timestamp only
-                    sub.next_timestamp = self.strategy.timestamp
+        for tf, sub in self.timeframes.items():
+            if not sub.next_timestamp:
+                # initial timestamp only
+                sub.next_timestamp = self.strategy.timestamp
 
-                if sub.update_at_close:
-                    if sub.need_update(timestamp):
-                        compute = True
-                else:
+            if sub.update_at_close:
+                if sub.need_update(timestamp):
                     compute = True
+            else:
+                compute = True
 
-                if compute:
-                    signal = sub.process(timestamp)
-                    if signal:
-                        if signal.signal == StrategySignal.SIGNAL_ENTRY:
-                            entries.append(signal)
-                        elif signal.signal == StrategySignal.SIGNAL_EXIT:
-                            exits.append(signal)
+            if compute:
+                signal = sub.process(timestamp)
+                if signal:
+                    if signal.signal == StrategySignal.SIGNAL_ENTRY:
+                        entries.append(signal)
+                    elif signal.signal == StrategySignal.SIGNAL_EXIT:
+                        exits.append(signal)
 
         # finally sort them by timeframe ascending
         entries.sort(key=lambda s: s.timeframe)

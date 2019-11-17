@@ -72,6 +72,8 @@ class StrategyTrader(object):
         self._mutex = threading.RLock()
         self._activity = True
         self._bootstraping = 1
+        self._processing = 0  # 0 if not processing, else 1 or worker id
+        self._dirty = 1       # initial, bootstrap
 
         self._global_streamer = None
         self._timeframe_streamers = {}
@@ -118,6 +120,36 @@ class StrategyTrader(object):
         No trade must be done here, but signal pre-state could be computed.
         """
         pass
+
+    def query_job(self, timeframe):
+        """
+        When some ticks or ohlcs data arrrives query for a job.
+        """
+        if timeframe == self.base_timeframe:
+            with self._mutex:
+                self._dirty += 1
+
+    def run_job(self, worker_id, timestamp):
+        """
+        Called by the worker or the single workflow, only if not currently processed and an update is needed.
+        @param worker_id Worker integer identifier or 1.
+        """
+        with self._mutex:
+            process = self._dirty > 0 and not self._processing
+            if process:
+                self._dirty = 0  # consume for processing
+                self._processing = worker_id
+            else:
+                return False
+
+        self.process(timestamp)
+
+        with self._mutex:
+            # processed
+            self._processing = 0
+
+            # need to reinject a job if dirty flag was set during processing
+            return self._dirty > 0
 
     def process(self, timeframe, timestamp):
         """

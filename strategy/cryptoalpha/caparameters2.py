@@ -8,7 +8,6 @@ DEFAULT_PARAMS = {
     "reversal": True,
     "max-trades": 2,    # max number of simultaned trades for a same market
     "trade-delay": 30,  # at least wait 30 seconds before sending another signal 
-    "base-timeframe": "t",   # process each time strategy receive a tick
     "min-traded-timeframe": "3m",
     "max-traded-timeframe": "3m",
     "sltp-timeframe": "1h",

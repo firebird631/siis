@@ -12,7 +12,6 @@ DEFAULT_PARAMS = {
     "score-trigger": 0.5,
     "score-increase-factor": 0.4,
     "score-regression-factor": 0.3,
-    "base-timeframe": "t",   # process each time strategy receive a tick
     "min-traded-timeframe": "1m",
     "max-traded-timeframe": "1m",
     "min-vol24h": 100,        # 300 BTC per 24h

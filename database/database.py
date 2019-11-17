@@ -117,6 +117,7 @@ class Database(object):
         Database.__instance = self
 
         self._mutex = threading.RLock()
+        self._condition = threading.Condition()
         self._running = False
         self._thread = threading.Thread(name="db", target=self.run)
 
@@ -204,8 +205,11 @@ class Database(object):
                 self.lock()
             self.unlock()
 
-        # join the thread
+        # wake-up and join the thread
         self._running = False
+        with self._condition:
+            self._condition.notify()
+
         if self._thread:
             self._thread.join()
             self._thread = None
@@ -257,6 +261,9 @@ class Database(object):
             # pending list of TickStorage controller having data to process to avoid to check everyone
             self._pending_tick_insert.append(tickstorage)
 
+            with self._condition:
+                self._condition.notify()
+
         tickstorage.store(data)
 
     def num_pending_ticks_storage(self):
@@ -286,6 +293,9 @@ class Database(object):
             else:
                 self._pending_ohlc_insert.append(data)
 
+            with self._condition:
+                self._condition.notify()
+
     def store_market_liquidation(self, data):
         """
         @param data is a tuple or an array of tuples containing data in that order and format :
@@ -301,6 +311,9 @@ class Database(object):
                 self._pending_liquidation_insert.extend(data)
             else:
                 self._pending_liquidation_insert.append(data)
+
+            with self._condition:
+                self._condition.notify()
 
     def store_market_info(self, data):
         """
@@ -346,6 +359,9 @@ class Database(object):
             else:
                 self._pending_market_info_insert.append(data)
 
+            with self._condition:
+                self._condition.notify()
+
     #
     # asyncs loads
     #
@@ -363,6 +379,9 @@ class Database(object):
 
             self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, from_ts, to_ts, None))
 
+            with self._condition:
+                self._condition.notify()
+
     def load_market_ohlc_last_n(self, service, broker_id, market_id, timeframe, last_n):
         """
         Load a set of market ohlc, fill the intermetiades missing ohlcs if necessary
@@ -372,6 +391,9 @@ class Database(object):
         with self._mutex:
             self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, None, None, last_n))
 
+            with self._condition:
+                self._condition.notify()
+
     def load_market_info(self, service, broker_id, market_id):
         """
         Load a specific market info given its market id.
@@ -380,6 +402,9 @@ class Database(object):
         with self._mutex:
             self._pending_market_info_select.append((service, broker_id, market_id))
 
+            with self._condition:
+                self._condition.notify()
+
     def load_market_list(self, service, broker_id):
         """
         Load the complete list of market available for a specific broker id.
@@ -387,6 +412,9 @@ class Database(object):
         """
         with self._mutex:
             self._pending_market_list_select.append((service, broker_id))
+
+            with self._condition:
+                self._condition.notify()
 
     #
     # Tick and ohlc streamer
@@ -426,6 +454,9 @@ class Database(object):
             else:
                 self._pending_asset_insert.append(data)
 
+            with self._condition:
+                self._condition.notify()
+
     def load_assets(self, service, trader, broker_id, account_id):
         """
         Load all asset for a specific broker_id
@@ -433,6 +464,9 @@ class Database(object):
         """
         with self._mutex:
             self._pending_asset_select.append((service, trader, broker_id, account_id))
+
+            with self._condition:
+                self._condition.notify()
 
     def store_user_trade(self, data):
         """
@@ -452,6 +486,9 @@ class Database(object):
             else:
                 self._pending_user_trade_insert.append(data)
 
+            with self._condition:
+                self._condition.notify()
+
     def load_user_trades(self, service, appliance, broker_id, account_id, appliance_id):
         """
         Load all user trades data and options for a specific appliance_id / broker_id / account_id
@@ -460,12 +497,18 @@ class Database(object):
         with self._mutex:
             self._pending_user_trade_select.append((service, appliance, broker_id, account_id, appliance_id))
 
+            with self._condition:
+                self._condition.notify()
+
     def clear_user_trades(self, broker_id, account_id, appliance_id):
         """
         Delete all user trades data and options for a specific appliance_id / broker_id / account_id
         """
         with self._mutex:
             self._pending_user_trade_delete.append((broker_id, account_id, appliance_id))
+
+            with self._condition:
+                self._condition.notify()
 
     def store_user_trader(self, data):
         """
@@ -484,6 +527,9 @@ class Database(object):
             else:
                 self._pending_user_trader_insert.append(data)
 
+            with self._condition:
+                self._condition.notify()
+
     def load_user_traders(self, service, appliance, broker_id, account_id, appliance_id):
         """
         Load all user traders data and options for a specific appliance_id / broker_id / account_id
@@ -492,20 +538,24 @@ class Database(object):
         with self._mutex:
             self._pending_user_trader_select.append((service, appliance, broker_id, account_id, appliance_id))
 
+            with self._condition:
+                self._condition.notify()
+
     #
     # Processing
     #
 
     def run(self):
         while self._running:
+            with self._condition:
+                self._condition.wait()
+
             if self.connected:
                 self.process_userdata()
                 self.process_market()
                 self.process_ohlc()
 
             self.process_tick()
-
-            time.sleep(0.001)  # don't waste the CPU
 
     def process_market(self):
         pass

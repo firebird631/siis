@@ -88,7 +88,7 @@ class Strategy(Runnable):
 
         self._instruments = {}       # mapped instruments
         self._feeders = {}           # feeders mapped by market id
-        self._strategy_traders = {}  # per instrument strategy data analyser
+        self._strategy_traders = {}  # per market id strategy data analyser
 
         # used during backtesting
         self._last_done_ts = 0
@@ -97,7 +97,7 @@ class Strategy(Runnable):
         self._next_backtest_update = None
 
         self._cpu_load = 0.0   # global CPU for all the instruments managed by a strategy
-        self._do_update = {}
+        self._condition = threading.Condition()
 
         if options.get('trader'):
             trader_conf = options['trader']
@@ -231,11 +231,7 @@ class Strategy(Runnable):
         """
         Override to create a specific streamer.
         """
-        if market_id not in self._instruments:
-            return False
-
-        instrument = self._instruments[market_id]
-        strategy_trader = self._strategy_traders.get(instrument)
+        strategy_trader = self._strategy_traders.get(market_id)
 
         if not strategy_trader:
             return False
@@ -246,11 +242,7 @@ class Strategy(Runnable):
         """
         Override to delete a specific streamer.
         """
-        if market_id not in self._instruments:
-            return False
-
-        instrument = self._instruments[market_id]
-        strategy_trader = self._strategy_traders.get(instrument)
+        strategy_trader = self._strategy_traders.get(market_id)
 
         if not strategy_trader:
             return False
@@ -316,7 +308,21 @@ class Strategy(Runnable):
             self.stream_call()
 
     def ping(self, timeout):
-        self._ping = (0, None, True)
+        if self._condition.acquire(timeout=timeout):
+            self._ping = (0, None, True)
+            self._condition.notify()
+            self._condition.release()
+        else:
+            Terminal.inst().action("Unable to join appliance %s - %s for %s seconds" % (self._name, self._identifier, timeout,), view='content')
+
+    def watchdog(self, watchdog_service, timeout):
+        if self._condition.acquire(timeout=timeout):
+            self._ping = (watchdog_service.gen_pid(self._thread.name if self._thread else "unknown"), watchdog_service, False)
+            self._condition.notify()
+            self._condition.release()
+        else:
+            watchdog_service.service_timeout(self._thread.name if self._thread else "unknown",
+                    "Unable to join appaliance %s - %s for %s seconds" % (self._name, self._identifier, timeout))
 
     def pong(self, timestamp, pid, watchdog_service, msg):
         if msg:
@@ -408,7 +414,7 @@ class Strategy(Runnable):
                         # and create the strategy-trader analyser per instrument
                         strategy_trader = self.create_trader(instrument)
                         if strategy_trader:
-                            self._strategy_traders[instrument] = strategy_trader
+                            self._strategy_traders[instrument.market_id] = strategy_trader
 
                             # initial market info only in live mode else market data are not complete at this time
                             if not self.service.backtesting:
@@ -429,6 +435,14 @@ class Strategy(Runnable):
             self.setup_backtest(self.service.from_date, self.service.to_date)
         else:
             self.setup_live()
+
+    def stop(self):
+        if self._running:
+            self._running = False
+
+            with self._condition:
+                # wake up the update
+                self._condition.notify()
 
     def terminate(self):
         """
@@ -461,11 +475,9 @@ class Strategy(Runnable):
         """
         if market_id:
             with self._mutex:
-                instrument = self.find_instrument(market_id)
-                if instrument:
-                    strategy_trader = self._strategy_traders.get(instrument)
-                    if strategy_trader:
-                        strategy_trader.set_activity(status)
+                strategy_trader = self._strategy_traders.get(market_id)
+                if strategy_trader:
+                    strategy_trader.set_activity(status)
         else:
             with self._mutex:
                 for k, strategy_trader in self._strategy_traders.items():
@@ -581,6 +593,7 @@ class Strategy(Runnable):
 
             self._feeders[feeder.market_id] = feeder
 
+    @property
     def base_timeframe(self):
         """
         Return the base timeframe at which the strategy process, and accept ticks or candles data from signals.
@@ -592,7 +605,13 @@ class Strategy(Runnable):
         """
         Does not override this method. Internal update mecanism.
         """
+        with self._condition:
+            # running cancel wait, ping too, normal case is a signal to process
+            while not len(self._signals) and self._running and not self._ping:
+                self._condition.wait()
+
         count = 0
+        do_update = set()
 
         while self._signals:
             signal = self._signals.popleft()
@@ -600,57 +619,53 @@ class Strategy(Runnable):
             if signal.source == Signal.SOURCE_STRATEGY:
                 if signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                     # incoming market info if backtesting
-                    instrument = self._instruments[signal.data[0]]
-                    if instrument is None:
-                        continue
-
+                    strategy_trader = self._strategy_traders.get(signal.data[0])
                     market = signal.data[1]
 
-                    if market:
-                        # in backtesting mode set the market object to the paper trader directly,
-                        # because there is no watcher
+                    if market and strategy_trader:
+                        # in backtesting mode set the market object to the paper trader directly because there is no watcher
                         if self.service.backtesting:
                             trader = self.trader_service.trader(self._trader_conf['name'])
                             if trader:
                                 trader.set_market(market)
 
-                            # put interesting market data into the instrument
-                            instrument.trade = market.trade
-                            instrument.orders = market.orders
-                            instrument.hedging = market.hedging
-                            instrument.tradeable = market.is_open
-                            instrument.expiry = market.expiry
+                            with strategy_trader._mutex:
+                                instrument = strategy_trader.instrument
 
-                            instrument.set_base(market.base)
-                            instrument.set_quote(market.quote)
+                                # put interesting market data into the instrument
+                                instrument.trade = market.trade
+                                instrument.orders = market.orders
+                                instrument.hedging = market.hedging
+                                instrument.tradeable = market.is_open
+                                instrument.expiry = market.expiry
 
-                            instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
-                            instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
-                            instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
+                                instrument.set_base(market.base)
+                                instrument.set_quote(market.quote)
 
-                            instrument.set_fees(market.maker_fee, market.taker_fee)
-                            instrument.set_commissions(market.maker_commission, market.taker_commission)
+                                instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
+                                instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
+                                instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
 
-                            strategy_trader = self._strategy_traders.get(instrument)
-                            if strategy_trader:
-                                strategy_trader.on_market_info()
+                                instrument.set_fees(market.maker_fee, market.taker_fee)
+                                instrument.set_commissions(market.maker_commission, market.taker_commission)
+
+                            strategy_trader.on_market_info()
 
                     if self.service.backtesting:
                         # retrieve the feeder by the relating instrument market_id or symbol
-                        feeder = self._feeders.get(instrument.market_id) or self._feeders.get(instrument.symbol)
+                        feeder = self._feeders.get(signal.data[0])
                         if feeder:
                             # set instrument once market data are fetched
-                            feeder.set_instrument(instrument)
+                            feeder.set_instrument(strategy_trader.instrument)
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_LIST:
                     # for each market load the corresponding trades to the strategy trader
                     for data in signal.data:
-                        instrument = self.find_instrument(data[0])
-                        if instrument:
-                            strategy_trader = self._strategy_traders.get(instrument)
+                        strategy_trader = self._strategy_traders.get(data[0])
 
-                            # instantiate the trade and add it
-                            if strategy_trader:
+                        # instantiate the trade and add it
+                        if strategy_trader:
+                            with strategy_trader._mutex:
                                 strategy_trader.loads_trade(data[1], data[2], data[3], data[4])
 
                         # clear once done (@todo or by trade...)
@@ -660,109 +675,88 @@ class Strategy(Runnable):
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADER_LIST:
                     # for each market load the corresponding settings and regions to the strategy trader
                     for data in signal.data:
-                        instrument = self.find_instrument(data[0])
-                        if instrument:
-                            strategy_trader = self._strategy_traders.get(instrument)
+                        strategy_trader = self._strategy_traders.get(data[0])
 
-                            # load strategy-trader data
-                            if strategy_trader:
+                        # load strategy-trader data
+                        if strategy_trader:
+                            with strategy_trader._mutex:
                                 strategy_trader.set_activity(data[1])
                                 strategy_trader.loads(data[2], data[3])
 
             elif signal.source == Signal.SOURCE_WATCHER:
                 if signal.signal_type == Signal.SIGNAL_TICK_DATA:
                     # interest in tick data
+                    strategy_trader = self._strategy_traders.get(signal.data[0])
+                    if strategy_trader:
+                        # add the new candle to the instrument in live mode
+                        with strategy_trader._mutex:
+                            if strategy_trader.instrument.ready():
+                                strategy_trader.instrument.add_tick(signal.data[1])
 
-                    # symbol mapping
-                    instrument = self._instruments[signal.data[0]]
-                    if instrument is None:
-                        continue
-
-                    # add the new candle to the instrument in live mode
-                    if instrument.ready():
-                        instrument.add_tick(signal.data[1])
-
-                    self._do_update[instrument] = 0
+                                do_update.add(strategy_trader)
 
                 elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA:
                     # interest in candle data
+                    strategy_trader = self._strategy_traders.get(signal.data[0])
+                    if strategy_trader:
+                        # add the new candle to the instrument in live mode
+                        with strategy_trader._mutex:
+                            if strategy_trader.instrument.ready():
+                                strategy_trader.instrument.add_candle(signal.data[1])
 
-                    # symbol mapping
-                    instrument = self._instruments[signal.data[0]]
-                    if instrument is None:
-                        continue
-
-                    # add the new candle to the instrument in live mode
-                    if instrument.ready():
-                        instrument.add_candle(signal.data[1])
-
-                    if instrument not in self._do_update:
-                        self._do_update[instrument] = signal.data[1].timeframe
-                    else:
-                        self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
+                                do_update.add(strategy_trader)
 
                 if signal.signal_type == Signal.SIGNAL_TICK_DATA_BULK:
                     # incoming bulk of history ticks
-                    instrument = self._instruments[signal.data[0]]
-                    if instrument is None:
-                        continue
+                    strategy_trader = self._strategy_traders.get(signal.data[0])
+                    if strategy_trader:
+                        # initials ticks loaded
+                        with strategy_trader._mutex:
+                            strategy_trader.instrument.ack_timeframe(0)
 
-                    # initials ticks loaded
-                    instrument.ack_timeframe(0)
-
-                    # insert the bulk of ticks into the instrument
-                    if signal.data[1]:
-                        strategy_trader = self._strategy_traders.get(instrument)
-                        if strategy_trader:
+                        # insert the bulk of ticks into the instrument
+                        if signal.data[1]:
                             with strategy_trader._mutex:
-                                instrument.add_tick(signal.data[1])
+                                # can accum before ready status
+                                strategy_trader.instrument.add_tick(signal.data[1])
 
-                        with self._mutex:
-                            self._do_update[instrument] = 0
+                                do_update.add(strategy_trader)
 
                 elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA_BULK:
                     # incoming bulk of history candles
-                    instrument = self._instruments[signal.data[0]]
-                    if instrument is None:
-                        continue
+                    strategy_trader = self._strategy_traders.get(signal.data[0])
+                    if strategy_trader:
+                        with strategy_trader._mutex:
+                            initial = strategy_trader.instrument.ack_timeframe(signal.data[1])
 
-                    initial = instrument.ack_timeframe(signal.data[1])
-
-                    # insert the bulk of candles into the instrument
-                    if signal.data[2]:
-                        strategy_trader = self._strategy_traders.get(instrument)
-                        if strategy_trader:
+                        # insert the bulk of candles into the instrument
+                        if signal.data[2]:
                             # in live mode directly add candles to instrument
                             with strategy_trader._mutex:
-                                instrument.add_candle(signal.data[2])
+                                strategy_trader.instrument.add_candle(signal.data[2])
 
-                        # initials candles loaded
-                        if initial:
-                            logger.debug("Retrieved %s OHLCs for %s in %s" % (len(signal.data[2]), instrument.market_id, timeframe_to_str(signal.data[1])))
+                            # initials candles loaded
+                            if initial:
+                                instrument = strategy_trader.instrument
 
-                            # append the current OHLC from the watcher on live mode
-                            if not self.service.backtesting:
-                                instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).current_ohlc(instrument.market_id, signal.data[1]))
+                                logger.debug("Retrieved %s OHLCs for %s in %s" % (len(signal.data[2]), instrument.market_id, timeframe_to_str(signal.data[1])))
 
-                            if strategy_trader:
-                                strategy_trader.on_received_initial_candles(signal.data[1])
+                                # append the current OHLC from the watcher on live mode
+                                if not self.service.backtesting:
+                                    with strategy_trader._mutex:
+                                        instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).current_ohlc(instrument.market_id, signal.data[1]))
 
-                        with self._mutex:
-                            if instrument not in self._do_update:
-                                self._do_update[instrument] = signal.data[1]
-                            else:
-                                self._do_update[instrument] = min(signal.data[1], self._do_update[instrument])
+                                strategy_trader.on_received_initial_candles(signal.data[1])                           
+
+                            do_update.add(strategy_trader)
 
                 elif signal.signal_type == Signal.SIGNAL_MARKET_DATA:
                     # update market data
-                    instrument = self._instruments[signal.data[0]]
-                    if instrument is None:
-                        continue
-
-                    strategy_trader = self._strategy_traders.get(instrument)
+                    strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         # update instrument data
                         with strategy_trader._mutex:
+                            instrument = strategy_trader.instrument
                             instrument.tradeable = signal.data[1]
 
                             if signal.data[1]:
@@ -785,16 +779,13 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                     # update market info data
-                    instrument = self._instruments[signal.data[0]]
-                    if instrument is None:
-                        continue
-
                     market = signal.data[1]
-
                     if market:
-                        strategy_trader = self._strategy_traders.get(instrument)
+                        strategy_trader = self._strategy_traders.get(signal.data[0])
                         if strategy_trader:
                             with strategy_trader._mutex:
+                                instrument = strategy_trader.instrument
+
                                 # put interesting market data into the instrument @todo using message data
                                 instrument.trade = market.trade
                                 instrument.orders = market.orders
@@ -812,22 +803,15 @@ class Strategy(Runnable):
                                 instrument.set_fees(market.maker_fee, market.taker_fee)
                                 instrument.set_commissions(market.maker_commission, market.taker_commission)
 
-                        if strategy_trader:
                             strategy_trader.on_market_info()
 
                 elif signal.signal_type == Signal.SIGNAL_LIQUIDATION_DATA:
                     # interest in liquidation data
-
-                    # symbol mapping
-                    instrument = self._instruments[signal.data[0]]
-                    if instrument is None:
-                        continue
-
-                    strategy_trader = self._strategy_traders.get(instrument)
+                    strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         strategy_trader.on_received_liquidation(signal.data)
 
-                    self._do_update[instrument] = 0
+                        do_update.add(strategy_trader)
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_CONNECTED:
                     # initiate the strategy prefetch initial data, only once all watchers are ready
@@ -848,32 +832,22 @@ class Strategy(Runnable):
 
             count += 1
             if count > 10:
-                # no more than 10 signals per loop
+                # no more than 10 signals per loop, allow aggregate fast ticks, and don't block the processing
                 break
 
         # only for normal processing
         if not self.service.backtesting:
-            if self._do_update:
-                with self._mutex:
-                    do_update = self._do_update
-                    self._do_update = {}
-
-                if len(self._instruments) >= 1:
-                    # @todo might not need sync in live mode, so add any jobs directly
-                    count_down = None  # self.service.worker_pool.new_count_down(len(self._instruments))
-
-                    for instrument, tf in do_update.items():
-                        if instrument.ready():
-                            # parallelize jobs on works
-                            self.service.worker_pool.add_job(count_down, (self.update_strategy, (tf, instrument,)))
-
-                    # sync before continue
-                    # count_down.wait()
+            if do_update:
+                if len(self._strategy_traders) >= 1:
+                    for strategy_trader in do_update:
+                        if strategy_trader.instrument.ready():
+                            # parallelize jobs on workers
+                            self.service.worker_pool.add_job(None, (self.update_strategy, (strategy_trader,)))
                 else:
                     # no parallelisation below 2 instruments
-                    for instrument, tf in do_update.items():
-                        if instrument.ready():
-                            self.update_strategy(tf, instrument)
+                    for strategy_trader in do_update:
+                        if strategy_trader.instrument.ready():
+                            self.update_strategy(strategy_trader)
         else:
             # process one more backtest step
             with self._mutex:
@@ -885,10 +859,12 @@ class Strategy(Runnable):
 
         return True
 
-    def bootstrap(self, strategy_trader, instrument):
+    def bootstrap(self, strategy_trader):
         if strategy_trader._bootstraping == 2:
             # in progress
             return
+
+        instrument = strategy_trader.instrument
 
         # bootstraping in progress, avoid live until complete
         strategy_trader._bootstraping = 2
@@ -994,20 +970,22 @@ class Strategy(Runnable):
         strategy_trader._bootstraping = 0
         logger.debug("%s bootstraping done" % instrument.market_id)
 
-    def update_strategy(self, tf, instrument):
+    def update_strategy(self, strategy_trader):
         """
         Override this method to compute a strategy step per instrument.
         Default implementation supports bootstrapping.
         @param tf Smallest unit of time processed.
         """
-        strategy_trader = self._strategy_traders.get(instrument)
         if strategy_trader:
             # bootstrap using preloaded data history, then live
             if strategy_trader._bootstraping:
-                self.bootstrap(strategy_trader, instrument)
+                self.bootstrap(strategy_trader)
             else:
                 # and process instrument update
-                strategy_trader.process(tf, self.timestamp)
+                redo = strategy_trader.process(self.timestamp)
+                # if redo:
+                #     # an update occured during processing, add a new job
+                #     self.service.worker_pool.add_job(None, (self.update_strategy, (strategy_trader,)))
 
     def setup_backtest(self, from_date, to_date):
         """
@@ -1019,30 +997,26 @@ class Strategy(Runnable):
         with self._mutex:
             self._next_backtest_update = (timestamp, total_ts)
 
-    def backtest_update_instrument(self, trader, instrument, timestamp):
-        # retrieve the feeder by market_id or symbol
-        feeder = self._feeders.get(instrument.market_id) or self._feeders.get(instrument.symbol)
+    def backtest_update_instrument(self, trader, strategy_trader, timestamp):
+        # retrieve the feeder by market_id
+        instrument = strategy_trader.instrument
+
+        feeder = self._feeders.get(instrument.market_id)
 
         # feed of candles prior equal the timestamp and update if new candles on configured timeframe
         updated = feeder.feed(timestamp)
 
-        if trader:
-            if not trader.has_market(instrument.market_id):
-                return
+        if trader and updated:
+            # update the market instrument data before processing
+            # but we does not have the exact base exchange rate and contract size, its emulated in the paper trader
 
-            # update market at minor candles
-            if updated:
-                # update the market instrument data before processing
-                # but we does not have the exact base exchange rate and contract size, its emulated in the paper trader
-
-                # the feeder update the instrument price data, so use them directly
-                trader.on_update_market(instrument.market_id, True, instrument.last_update_time,
-                        instrument.market_bid, instrument.market_ofr,
-                        None)
+            # the feeder update the instrument price data, so use them directly
+            trader.on_update_market(instrument.market_id, True, instrument.last_update_time,
+                    instrument.market_bid, instrument.market_ofr, None)
 
         # update strategy as necessary
         if updated:
-            self.update_strategy(updated[0], instrument)
+            self.update_strategy(strategy_trader)
 
     def backtest_update(self, timestamp, total_ts):
         """
@@ -1057,19 +1031,19 @@ class Strategy(Runnable):
         # processing timestamp
         self._timestamp = timestamp
 
-        if len(self._instruments) > 3:
-            count_down = self.service.worker_pool.new_count_down(len(self._instruments))
+        if len(self._strategy_traders) > 3:
+            count_down = self.service.worker_pool.new_count_down(len(self._strategy_traders))
 
-            for market_id, instrument in self._instruments.items():
+            for market_id, strategy_trader in self._strategy_traders.items():
                 # parallelize jobs on workers
-                self.service.worker_pool.add_job(count_down, (self.backtest_update_instrument, (trader, instrument, timestamp)))
+                self.service.worker_pool.add_job(count_down, (self.backtest_update_instrument, (trader, strategy_trader, timestamp)))
 
             # sync before continue
             count_down.wait()
         else:
             # no parallelisation below 4 instruments
-            for market_id, instrument in self._instruments.items():
-                self.backtest_update_instrument(trader, instrument, timestamp)
+            for market_id, strategy_trader in self._strategy_traders.items():
+                self.backtest_update_instrument(trader, strategy_trader, timestamp)
 
         # last done timestamp, to manage progression
         self._last_done_ts = timestamp
@@ -1095,8 +1069,8 @@ class Strategy(Runnable):
                         break
 
                 # and instruments wanted data
-                for k, instrument in self._instruments.items():
-                    if not instrument.ready():
+                for k, strategy_trader in self._strategy_traders.items():
+                    if not strategy_trader.instrument.ready():
                         prefetched = False
                         break
 
@@ -1155,11 +1129,8 @@ class Strategy(Runnable):
         # manually trade modify a trade (add/remove an operation)
         market_id = data.get('market-id')
 
-        # retrieve by market-id or mapped symbol
-        instrument = self.find_instrument(market_id)
-
-        if instrument:
-            strategy_trader = self._strategy_traders.get(instrument)
+        strategy_trader = self._strategy_traders.get(market_id)
+        if strategy_trader:
             Terminal.inst().notice("Trade %s for strategy %s - %s" % (label, self.name, self.identifier), view='content')
 
             # retrieve the trade and apply the modification
@@ -1178,12 +1149,9 @@ class Strategy(Runnable):
         # manually trade modify a trade (add/remove an operation)
         market_id = data.get('market-id')
 
-        # retrieve by market-id or mapped symbol
-        instrument = self.find_instrument(market_id)
-
-        if instrument:
-            strategy_trader = self._strategy_traders.get(instrument)
-            Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, instrument.market_id), view='content')
+        strategy_trader = self._strategy_traders.get(market_id)
+        if strategy_trader:
+            Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, market_id), view='content')
 
             # retrieve the trade and apply the modification
             results = func(strategy_trader, data)
@@ -1229,77 +1197,20 @@ class Strategy(Runnable):
     # signals/slots
     #
 
+    def _add_signal(self, signal):
+        with self._condition:
+            self._signals.append(signal)
+            self._condition.notify()
+
     def receiver(self, signal):
         if signal.source == Signal.SOURCE_STRATEGY:
-            # filter by instrument for tick data
-            # if signal.signal_type == Signal.SIGNAL_TICK_DATA:
-            #     if signal.data[0] not in self._instruments:
-            #         # non interested by this instrument/symbol
-            #         return
-
-            #     if Instrument.TF_TICK != self.base_timeframe():
-            #         # non interested by this tick data
-            #         return
-
-            #     # directly add the new tick to the instrument in backtesting mode
-            #     instrument = self._instruments[signal.data[0]]
-
-            #     if instrument.ready():
-            #         strategy_trader = self._strategy_traders.get(instrument)
-            #         if strategy_trader:
-            #             with strategy_trader._mutex:
-            #                 instrument.add_tick(signal.data[1])
-
-            #     with self._mutex:
-            #         self._do_update[instrument] = 0
-
-            #     # directly managed
-            #     return
-
-            # elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA:
-            #     if signal.data[0] not in self._instruments:
-            #         # non interested by this instrument/symbol
-            #         return
-
-            #     if signal.data[1].timeframe != self.base_timeframe():
-            #         # non interested by this candle data
-            #         return
-
-            #     # directly add the new candle to the instrument in backtesting mode
-            #     instrument = self._instruments[signal.data[0]]
-
-            #     # add the new candle to the instrument in live mode
-            #     if instrument.ready():
-            #         strategy_trader = self._strategy_traders.get(instrument)
-            #         if strategy_trader:
-            #             with strategy_trader._mutex:
-            #                 instrument.add_candle(signal.data[1])
-
-            #     with self._mutex:
-            #         if instrument not in self._do_update:
-            #             self._do_update[instrument] = signal.data[1].timeframe
-            #         else:
-            #             self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
-
-            #     # directly managed
-            #     return
-
-            # filter by instrument for buy/sell signal
-            if signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:
-                if signal.data[0] not in self._instruments:
+            if signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
+                if signal.data[0] not in self._strategy_traders:
                     # non interested by this instrument/symbol
                     return
 
                 # signal of interest
-                self._signals.append(signal)
-
-            elif signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
-                if signal.data[0] not in self._instruments:
-                    # non interested by this instrument/symbol
-                    return
-
-                # signal of interest
-                self._signals.append(signal)
+                self._add_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHER:
             if signal.source_name not in self._watchers_conf:
@@ -1308,70 +1219,36 @@ class Strategy(Runnable):
 
             # filter by instrument for tick data
             if signal.signal_type == Signal.SIGNAL_TICK_DATA:
-                if Instrument.TF_TICK != self.base_timeframe():
+                if Instrument.TF_TICK != self.base_timeframe:
                     # must be equal to the base timeframe only
                     return
 
-                if signal.data[0] not in self._instruments:
+                if signal.data[0] not in self._strategy_traders:
                     # non interested by this instrument/symbol
                     return
 
-                # # directly add the new tick to the instrument in live mode
-                # instrument = self._instruments[signal.data[0]]
-
-                # if instrument.ready():
-                #     strategy_trader = self._strategy_traders.get(instrument)
-                #     if strategy_trader:
-                #         with strategy_trader._mutex:
-                #             instrument.add_tick(signal.data[1])
-
-                #         with self._mutex:
-                #             self._do_update[instrument] = 0
-
-                # # directly managed
-                # return
-
             elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA:
-                if signal.data[1].timeframe != self.base_timeframe():
+                if signal.data[1].timeframe != self.base_timeframe:
                     # must be of equal to the base timeframe only
                     return
 
-                if signal.data[0] not in self._instruments:
+                if signal.data[0] not in self._strategy_traders:
                     # non interested by this instrument/symbol
                     return
 
-                # # directly add the new candle to the instrument in live mode
-                # instrument = self._instruments[signal.data[0]]
-
-                # # add the new candle to the instrument in live mode
-                # if instrument.ready():
-                #     strategy_trader = self._strategy_traders.get(instrument)
-                #     if strategy_trader:
-                #         with strategy_trader._mutex:
-                #             instrument.add_candle(signal.data[1])
-
-                #         with self._mutex:
-                #             if instrument not in self._do_update:
-                #                 self._do_update[instrument] = signal.data[1].timeframe
-                #             else:
-                #                 self._do_update[instrument] = min(signal.data[1].timeframe, self._do_update[instrument])
-
-                # # directly managed
-                # return
-
             # filter by instrument for buy/sell signal
             elif signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:
-                if signal.data[0] not in self._instruments:
+                if signal.data[0] not in self._strategy_traders:
                     # non interested by this instrument/symbol
                     return
 
             elif signal.signal_type == Signal.SIGNAL_MARKET_DATA:
-                if signal.data[0] not in self._instruments:
+                if signal.data[0] not in self._strategy_traders:
                     # non interested by this instrument/symbol
                     return
 
             elif signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
-                if signal.data[0] not in self._instruments:
+                if signal.data[0] not in self._strategy_traders:
                     # non interested by this instrument/symbol
                     return
 
@@ -1384,32 +1261,28 @@ class Strategy(Runnable):
                     return
 
             # signal of interest
-            self._signals.append(signal)
+            self._add_signal(signal)
 
         elif signal.source == Signal.SOURCE_TRADER:
             if self._trader_conf and signal.source_name == self._trader_conf['name']:
                 # signal of interest
-                self._signals.append(signal)
+                self._add_signal(signal)
 
     def position_signal(self, signal_type, data):
         """
         Receive of the position signals. Dispatch if mapped instrument.
         """
-        instrument = self._instruments.get(data[0])
-        if instrument:
-            strategy_trader = self._strategy_traders.get(instrument)
-            if strategy_trader:
-                strategy_trader.position_signal(signal_type, data)
+        strategy_trader = self._strategy_traders.get(data[0])
+        if strategy_trader:
+            strategy_trader.position_signal(signal_type, data)
 
     def order_signal(self, signal_type, data):
         """
         Receive of the order signals. Dispatch if mapped instrument.
         """
-        instrument = self._instruments.get(data[0])
-        if instrument:
-            strategy_trader = self._strategy_traders.get(instrument)
-            if strategy_trader:
-                strategy_trader.order_signal(signal_type, data)
+        strategy_trader = self._strategy_traders.get(data[0])
+        if strategy_trader:
+            strategy_trader.order_signal(signal_type, data)
 
     #
     # display views
@@ -2628,14 +2501,12 @@ class Strategy(Runnable):
         # info on the appliance
         if 'market-id' in data:
             with self._mutex:
-                instrument = self._instruments.get(data['market-id'])
-                if instrument in self._strategy_traders:
-                    strategy_trader = self._strategy_traders[instrument]
-                    if strategy_trader:
-                        Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s. Trade quantity is %s" % (
-                            data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused",
-                                strategy_trader.instrument.trade_quantity),
-                                view='content')
+                strategy_trader = self._strategy_traders.get(data['market-id'])
+                if strategy_trader:
+                    Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s. Trade quantity is %s" % (
+                        data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused",
+                            strategy_trader.instrument.trade_quantity),
+                            view='content')
         else:
             Terminal.inst().info("Appliances %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')
 
@@ -2743,7 +2614,6 @@ class Strategy(Runnable):
         parameters.setdefault('reversal', True)
         parameters.setdefault('market-type', 0)
         parameters.setdefault('max-trades', 1)
-        parameters.setdefault('base-timeframe', '4h')
         parameters.setdefault('min-traded-timeframe', '4h')
         parameters.setdefault('max-traded-timeframe', '4h')
         parameters.setdefault('min-vol24h', 0.0)

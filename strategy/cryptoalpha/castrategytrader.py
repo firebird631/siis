@@ -41,7 +41,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     """
 
     def __init__(self, strategy, instrument, params):
-        super().__init__(strategy, instrument, params['base-timeframe'])
+        super().__init__(strategy, instrument, Instrument.TF_TICK)
 
         # mean when there is already a position on the same direction does not increase in the same direction if 0 or increase at max N times
         self.max_trades = params['max-trades']
@@ -101,14 +101,9 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self._last_filter_cache = (timestamp, True, True)
         return True, True
 
-    def process(self, timeframe, timestamp):
-        # process only when signals of base timeframe
-        if timeframe != self.base_timeframe:
-            return
-
+    def process(self, timestamp):
         # update data at tick level
-        if timeframe == self.base_timeframe:
-            self.gen_candles_from_ticks(timestamp)
+        self.gen_candles_from_ticks(timestamp)
 
         accept, compute = self.filter_market(timestamp)
         if not accept:
@@ -120,7 +115,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         if compute:
             # we might receive only LONG signals
-            entries, exits = self.compute(timeframe, timestamp)
+            entries, exits = self.compute(timestamp)
 
         #
         # global indicators

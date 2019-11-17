@@ -67,7 +67,7 @@ class Worker(threading.Thread):
             self._running = False
 
     def __process_once(self):
-        count_down, job = self._pool.next_job()
+        count_down, job = self._pool.next_job(self)
 
         if job:
             try:
@@ -78,10 +78,6 @@ class Worker(threading.Thread):
 
         if count_down:
             count_down.done()
-
-        if not job:
-            # avoid CPU usage
-            time.sleep(0.00001)
 
         if self._ping:
             # process the pong message
@@ -125,7 +121,7 @@ class Worker(threading.Thread):
 
 class WorkerPool(object):
 
-    __slots__ = '_num_workers', '_workers', '_queue', '_mutex'
+    __slots__ = '_num_workers', '_workers', '_queue', '_condition'
 
     def __init__(self, num_workers=None):
         if not num_workers:
@@ -135,7 +131,7 @@ class WorkerPool(object):
 
         self._workers = []
         self._queue = collections.deque()
-        self._mutex = threading.RLock()
+        self._condition = threading.Condition()
 
     def start(self):
         self._workers = [Worker(self, i) for i in range(0, self._num_workers)]
@@ -147,38 +143,58 @@ class WorkerPool(object):
         for worker in self._workers:
             if worker._running:
                 worker.stop()
-                worker.join()
+
+        # wake up all with stop running status
+        with self._condition:
+            self._condition.notifyAll()
+
+        for worker in self._workers:
+            worker.join()
+
+        self._workers = []
 
     def ping(self, timeout):
-        if self._mutex.acquire(timeout=timeout):
+        if not self._workers:
+            return
+
+        if self._condition.acquire(timeout=timeout):
             for worker in self._workers:
                 worker.ping(timeout)
 
-            self._mutex.release()
+            self._condition.notifyAll()
+            self._condition.release()
         else:
             Terminal.inst().action("Unable to join worker pool for %s seconds" % (timeout,), view='content')
 
     def watchdog(self, watchdog_service, timeout):
-        if self._mutex.acquire(timeout=timeout):
+        if not self._workers:
+            return
+
+        if self._condition.acquire(timeout=timeout):
             for worker in self._workers:
                 worker.watchdog(watchdog_service, timeout)
-            self._mutex.release()
+
+            self._condition.notifyAll()
+            self._condition.release()
         else:
             watchdog_service.service_timeout("workerpool", "Unable to join worker pool for %s seconds" % timeout)
 
     def add_job(self, count_down, job):
-        self._mutex.acquire()
-        self._queue.append((count_down, job))
-        self._mutex.release()
+        with self._condition:
+            self._queue.append((count_down, job))
+            self._condition.notify()
 
-    def next_job(self):
+    def next_job(self, worker):
         count_down = None
         job = None
 
-        self._mutex.acquire()
-        if len(self._queue):
-            count_down, job = self._queue.popleft()
-        self._mutex.release()
+        with self._condition:
+            # running cancel wait, ping too, normal case is a job is pending
+            while not len(self._queue) and worker._running and not worker._ping:
+                self._condition.wait()
+
+            if len(self._queue):
+                count_down, job = self._queue.popleft()
 
         return count_down, job
 

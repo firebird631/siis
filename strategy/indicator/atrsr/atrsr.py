@@ -240,7 +240,15 @@ class ATRSRIndicator(Indicator):
         upper = basis + dev
         lower = basis - dev
 
-        bbr = (close - lower) / (upper - lower)
+        try:
+            bbr = (close - lower) / (upper - lower)
+        except:
+            logger.info(close)
+            logger.info(lower)
+            logger.info(upper)
+            logger.info(lower)
+            logger.info(atrs)
+
         bbe = ta_EMA(bbr, self._length_MA)
 
         if len(self._tup) != size:
