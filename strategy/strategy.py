@@ -298,10 +298,6 @@ class Strategy(Runnable):
             Terminal.inst().warning("Appliance %s has more than %s waiting signals, some market data could be ignored !" % (
                 self.name, Strategy.MAX_SIGNALS), view='debug')
 
-        # dont waste the CPU in live mode
-        if not self.service.backtesting:
-            time.sleep(0.0000001)  # 0.005 * max(1, self._cpu_load))
-
         # stream call
         with self._mutex:
             self.stream()
