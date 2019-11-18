@@ -2,6 +2,6 @@
 	"status": "load",
 	"name": "discord",
 	"classpath": "notifier.discord.discordnotifier.DiscordNotifier",
-	"webkhooks": {
+	"webhooks": {
 	}
 }

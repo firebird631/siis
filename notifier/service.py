@@ -72,7 +72,7 @@ class NotifierService(Service):
             if k == "default":
                 continue
 
-            if notifier.get("status") is not None and notifier.get("status") == "load":
+            if notifier.get("status") is not None and notifier.get("status") in ("load", "enabled"):
                 # retrieve the classname and instanciate it
                 parts = notifier.get('classpath').split('.')
 
@@ -164,15 +164,15 @@ class NotifierService(Service):
             user_notifier_config = utils.load_config(options, 'notifiers/' + profile_notifer_config.get('name'))
             if user_notifier_config:
                 # keep overrided
-                notifier_config[k] = user_notifier_config
+                notifier_config[k] = utils.merge_parameters(user_notifier_config, profile_notifer_config)
 
         return notifier_config
 
-    def notifier_config(self, name):
+    def notifier_config(self, identifier):
         """
         Get the configurations for a notifier as dict.
         """
-        return self._notifiers_config.get(name, {})
+        return self._notifiers_config.get(identifier, {})
 
     def receiver(self, signal):
         if signal.source == Signal.SOURCE_STRATEGY:
