@@ -122,8 +122,8 @@ class DiscordNotifier(Notifier):
             if signal.data.get('order-qty') is not None and 'order-qty' in self._signals_opts:
                 message += " Q:%s" % signal.data['order-qty']
 
-            if signal.data.get('comment') is not None:
-                message += " (%s)" % signal.data['comment']
+            if signal.data.get('label') is not None:
+                message += " (%s)" % signal.data['label']
 
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return

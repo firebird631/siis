@@ -174,8 +174,8 @@ class DesktopNotifier(Notifier):
             if signal.data.get('profit-loss') is not None:
                 message += " (%.2f%%)" % ((signal.data['profit-loss'] * 100),)
 
-            if signal.data['comment'] is not None:
-                message += " (%s)" % signal.data['comment']
+            if signal.data['label'] is not None:
+                message += " (%s)" % signal.data['label']
 
             # and in signal logger (@todo to be moved)
             # signal_logger.info(message)

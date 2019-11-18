@@ -788,7 +788,7 @@ class KrakenWatcher(Watcher):
                 status = order.get("status", "")
 
                 if status == "open":
-                    ref_order_id = order['refid']
+                    ref_order_id = order.get('refid')
                     pass
 
                 elif status == "closed":

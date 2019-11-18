@@ -34,7 +34,7 @@ class StrategySignal(object):
     - ts for timestamp (UTC)
     """
 
-    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'entry_timeout', 'expiry',  '_extra', '_comment'
+    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'entry_timeout', 'expiry', 'label', 'context', '_extra'
 
     VERSION = "1.0.0"
 
@@ -55,7 +55,9 @@ class StrategySignal(object):
         self.entry_timeout = 0.0   # trade entry expiration in seconds
         self.expiry = 0.0          # trade expiration if in profit after this delay
 
-        self._comment = ""  # optional comment
+        self.label = ""      # signal label
+        self.context = None  # can be any object inherited from StrategySignalContext (will be setted as reference to the trade)
+
         self._extra = {}
 
     @classmethod
@@ -81,14 +83,6 @@ class StrategySignal(object):
     @property
     def take_profit(self):
         return self.tp
-
-    @property
-    def comment(self):
-        return self._comment
-
-    @comment.setter
-    def comment(self, comment):
-        self._comment = comment
 
     #
     # helpers
@@ -143,8 +137,9 @@ class StrategySignal(object):
         self.p = _from.p
         self.sl = _from.sl
         self.tp = _from.tp
-        # self._extra = copy.copy(_from._extra)
-        # self._comment = _from.comment
+        
+        self.label = _from.label
+        self.context = _from.context
 
     def compare(self, _to):
         """
@@ -158,7 +153,7 @@ class StrategySignal(object):
 
         return "tf=%s ts=%s signal=%s dir=%s p=%s sl=%s tp=%s %s" % (
                 timeframe_to_str(self.timeframe), date_str, self.signal_type_str(), self.direction_str(),
-                self.p, self.sl, self.tp, self.comment)
+                self.p, self.sl, self.tp, self.label)
 
     #
     # profit/loss
@@ -193,7 +188,7 @@ class StrategySignal(object):
     def set(self, key, value):
         """
         Add a key:value paire in the extra member dict of the signal.
-        It allow to add you internal signal data, states you want to communicate to the orderer.
+        It allow to add you internal trade data, states you want to keep during the live of the trade and even in persistency
         """
         self._extra[key] = value
 
@@ -206,12 +201,12 @@ class StrategySignal(object):
         """Return a value for a previously defined key or default value if not exists"""
         return self._extra.get(key, default)
 
-    def timeframe_to_str(self):
-        return timeframe_to_str(self.timeframe)
-
     #
     # helpers
     #
+
+    def timeframe_to_str(self):
+        return timeframe_to_str(self.timeframe)
 
     def direction_to_str(self):
         return direction_to_str(self.dir)
@@ -241,7 +236,7 @@ class StrategySignal(object):
                 'expiry': self.expiry,
                 'timeframe': timeframe_to_str(self.timeframe),
                 'is-user-trade': False,
-                'comment': self._comment,
+                'label': self.label,
                 'direction': self.direction_to_str(),
                 'order-price': strategy_trader.instrument.format_price(self.p),
                 'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
@@ -262,7 +257,7 @@ class StrategySignal(object):
                 'expiry': self.expiry,
                 'timeframe': timeframe_to_str(self.timeframe),
                 'is-user-trade': False,
-                'comment': self._comment,
+                'label': self.label,
                 'direction': self.direction_to_str(),
                 'take-profit-price': strategy_trader.instrument.format_price(self.tp),
                 'stop-loss-price': strategy_trader.instrument.format_price(self.sl),

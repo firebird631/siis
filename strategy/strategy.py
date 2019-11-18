@@ -1310,7 +1310,7 @@ class Strategy(Runnable):
             x: executed exit qty
             aep: average entry price
             axp: average exit price
-            com: trade comment
+            label: trade label
             upnl: trade unrealized profit loss
             pnlcur: trade profit loss currency
         """
@@ -1348,7 +1348,7 @@ class Strategy(Runnable):
                         'w': strategy_trader.instrument.format_price(trade.worst_price()),
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
-                        'com': trade.comment,
+                        'label': trade.label,
                         'upnl': strategy_trader.instrument.format_price(trade.unrealized_profit_loss),
                         'pnlcur': trade.profit_loss_currency
                     })
@@ -1431,7 +1431,7 @@ class Strategy(Runnable):
                 q: ordered qty
                 e: executed entry qty
                 x: executed exit qty
-                com: trade comment
+                label: trade label
                 upnl: trade unrealized profit loss
                 pnlcur: trade profit loss currency
         """
@@ -1476,7 +1476,7 @@ class Strategy(Runnable):
                         'w': strategy_trader.instrument.format_price(trade.worst_price()),
                         'bt': trade.best_price_timestamp(),
                         'wt': trade.worst_price_timestamp(),
-                        'com': trade.comment,
+                        'label': trade.label,
                         'upnl': "%.f" % trade.unrealized_profit_loss,
                         'pnlcur': trade.profit_loss_currency
                     })
@@ -1536,7 +1536,7 @@ class Strategy(Runnable):
                                 'bt': trade['bt'],
                                 'w': trade['w'],
                                 'wt': trade['wt'],
-                                'com': trade['com'],
+                                'label': trade['label'],
                                 'fees': trade['fees'],
                                 'rpnl': trade['rpnl'],
                                 'pnlcur': trade['pnlcur']
@@ -1646,7 +1646,7 @@ class Strategy(Runnable):
         """
         Returns a table of any active trades.
         """
-        columns = ['Market', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Comment', 'UPNL']
+        columns = ['Market', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'UPNL']
 
         if quantities:
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -1726,7 +1726,7 @@ class Strategy(Runnable):
                     t['aep'],
                     datetime.fromtimestamp(t['lrxot']).strftime(datetime_format) if t['lrxot'] > 0 else "",
                     t['axp'],
-                    t['com'],
+                    t['label'],
                     "%s%s" % (t['upnl'], t['pnlcur'])
                 ]
 
@@ -1744,7 +1744,7 @@ class Strategy(Runnable):
         """
         Returns a table of any closed trades.
         """
-        columns = ['Market', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Comment', 'RPNL']
+        columns = ['Market', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'RPNL']
 
         if quantities:
             columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -1822,7 +1822,7 @@ class Strategy(Runnable):
                     t['aep'],
                     datetime.fromtimestamp(t['lrxot']).strftime(datetime_format),
                     t['axp'],
-                    t['com'],
+                    t['label'],
                     "%s%s" % (t['rpnl'], t['pnlcur'])
                 ]
 

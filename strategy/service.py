@@ -13,6 +13,7 @@ from importlib import import_module
 from common.service import Service
 from common.workerpool import WorkerPool
 from common.signal import Signal
+from common.utils import format_datetime, format_delta
 
 from terminal.terminal import Terminal
 from strategy.strategy import Strategy
@@ -298,6 +299,8 @@ class StrategyService(Service):
                         self.ts = ts
                         self.ppc = 0
                         self.tf = tf
+                        self.begin_ts = 0
+                        self.end_ts = 0
 
                     def run(self):
                         prev = self.c
@@ -318,6 +321,8 @@ class StrategyService(Service):
                         for appl in appliances:
                             if appl.trader() and appl.trader() not in traders:
                                 traders.append(appl.trader())
+
+                        self.begin_ts = time.time()   # bench
 
                         if len(appliances) == 1:
                             # a single appliance, don't need to parellelize, and to sync, python sync suxx a lot, avoid the overload in most of the
@@ -392,6 +397,8 @@ class StrategyService(Service):
                                 if self.abort:
                                     break
 
+                        self.end_ts = time.time()
+
                 self._timestep_thread = TimeStepThread(self, self._start_ts, self._end_ts, self._timestep, self._time_factor)
                 self._timestep_thread.setDaemon(True)
                 self._timestep_thread.start()
@@ -427,6 +434,11 @@ class StrategyService(Service):
 
                 # backtesting done => waiting user
                 Terminal.inst().info("Backtesting 100% finished !", view='status')
+
+                # bench message
+                logger.info("Backtested %i samples within a duration of %s" % (
+                    int((self._timestep_thread.c - self._timestep_thread.s) / self._timestep_thread.ts),
+                    format_delta(self._timestep_thread.end_ts - self._timestep_thread.begin_ts)))
 
     def notify(self, signal_type, source_name, signal_data):
         if signal_data is None:

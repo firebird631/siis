@@ -29,7 +29,7 @@ class SignalView(TableView):
     REFRESH_RATE = 60  # only on signal or 1 minute refresh
 
     MAX_SIGNALS = 200
-    COLUMNS = ('#', 'Market', charmap.ARROWLR, charmap.ARROWUPDN, 'TF', 'EP', 'SL', 'TP', 'Date', 'Comment', 'Reason', 'P/L')
+    COLUMNS = ('#', 'Market', charmap.ARROWLR, charmap.ARROWUPDN, 'TF', 'EP', 'SL', 'TP', 'Date', 'Label', 'Reason', 'P/L')
 
     def __init__(self, service, strategy_service):
         super().__init__("signal", service)
@@ -130,7 +130,7 @@ class SignalView(TableView):
                 signal.get('stop-loss-price', ""),
                 signal.get('take-profit-price', ""),
                 ldatetime,
-                signal.get('comment', ""),
+                signal.get('label', ""),
                 reason,
                 " (%.2f%%)" % (signal['profit-loss-pct'],) if signal.get('profit-loss-pct') is not None else ""
             )

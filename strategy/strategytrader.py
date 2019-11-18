@@ -524,7 +524,7 @@ class StrategyTrader(object):
                             'pl': profit_loss,
                             'fees': trade.entry_fees_rate() + trade.exit_fees_rate(),
                             'c': trade.get_conditions(),
-                            'com': trade.comment,
+                            'label': trade.label,
                             'rpnl': self.instrument.format_price(trade.unrealized_profit_loss),  # once close its realized
                             'pnlcur': trade.profit_loss_currency
                         }

@@ -165,3 +165,39 @@ def format_quantity(self, quantity, precision):
         qty = qty.rstrip('0').rstrip('.')
 
     return qty
+
+
+def format_datetime(timestamp):
+    """
+    Format as human readable in UTC.
+    """
+    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+
+def format_delta(td):
+    """
+    Format a time delta in a human readable format.
+    """
+    if td < 60.0:
+        return "%.6f seconds" % td
+
+    if td < 60*60:
+        m, r = divmod(td, 60)
+        s = r
+
+        return "%i minutes %i seconds" % (m, s)
+
+    elif td < 60*60*24:
+        h, r = divmod(td, 60*60)
+        m, r = divmod(r, 60)
+        s = r
+
+        return "%i hours %i minutes %i seconds" % (h, m, s)
+
+    else:
+        d, r = divmod(td, 60*60*24)
+        h, r = divmod(r, 60*60)
+        m, r = divmod(r, 60)
+        s = r
+
+        return "%i days %i hours %i minutes %i seconds" % (d, h, m, s)

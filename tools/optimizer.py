@@ -10,7 +10,7 @@ import traceback
 from datetime import datetime, timedelta
 
 from instrument.instrument import Instrument
-from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str
+from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, format_datetime, format_delta
 
 from terminal.terminal import Terminal
 from database.database import Database
@@ -21,35 +21,6 @@ logger = logging.getLogger('siis.tools.optimizer')
 # candles from 1m to 1 month
 GENERATED_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7, 60*60*24*30]
 # GENERATED_TF = [60, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
-
-def format_datetime(timestamp):
-    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S UTC')
-
-
-def format_delta(td):
-    if td < 60.0:
-        return "%.6f seconds" % td
-
-    if td < 60*60:
-        m, r = divmod(td, 60)
-        s = r
-
-        return "%i minutes %i seconds" % (m, s)
-
-    elif td < 60*60*24:
-        h, r = divmod(td, 60*60)
-        m, r = divmod(r, 60)
-        s = r
-
-        return "%i hours %i minutes %i seconds" % (h, m, s)
-
-    else:
-        d, r = divmod(td, 60*60*24)
-        h, r = divmod(r, 60*60)
-        m, r = divmod(r, 60)
-        s = r
-
-        return "%i days %i hours %i minutes %i seconds" % (d, h, m, s)
 
 
 def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):

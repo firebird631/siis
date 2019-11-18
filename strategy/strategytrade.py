@@ -29,7 +29,7 @@ class StrategyTrade(object):
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
                 'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', '_stats', 'last_tp_ot', 'last_stop_ot', \
-                'exit_trades', '_comment', '_entry_timeout', '_expiry', '_dirty', '_extra', 'sl_mode', 'sl_tf', 'tp_mode', 'tp_tf'
+                'exit_trades', '_label', '_entry_timeout', '_expiry', '_dirty', '_extra', 'sl_mode', 'sl_tf', 'tp_mode', 'tp_tf', 'context'
 
     VERSION = "1.0.0"
 
@@ -77,7 +77,7 @@ class StrategyTrade(object):
 
         self._operations = []      # list containing the operation to process during the trade for semi-automated trading
         self._user_trade = False   # true if the user is responsible of the TP & SL adjustement else (default) strategy manage it
-        self._comment = ""         # optionnal comment (must be few chars)
+        self._label = ""           # trade label(must be few chars)
         self._entry_timeout = 0    # expiration delay in seconds of the entry
         self._expiry = 0           # expiration delay in seconds or 0 if never
 
@@ -112,6 +112,8 @@ class StrategyTrade(object):
         self.last_tp_ot = [0, 0]
         self.tp_mode = 0   # integer that could serves as take-profit compute method (for update)
         self.tp_tf = 0     # timeframe model of the take-profit (not the float value)
+
+        self.context = None  # reference to an object concerning the context of the trade (ref from StrategySignal.context)
 
         self._stats = {
             'best-price': 0.0,
@@ -294,12 +296,12 @@ class StrategyTrade(object):
         return self.last_stop_ot
 
     @property
-    def comment(self):
-        return self._comment
+    def label(self):
+        return self._label
     
-    @comment.setter
-    def comment(self, comment):
-        self._comment = comment
+    @label.setter
+    def label(self, label):
+        self._label = label
 
     @property
     def is_dirty(self):
@@ -706,7 +708,7 @@ class StrategyTrade(object):
             'closing': self._closing,
             'timeframe': self._timeframe,  # self.timeframe_to_str(),
             'user-trade': self._user_trade,
-            'comment': self._comment,
+            'label': self._label,
             'avg-entry-price': self.aep,
             'avg-exit-price': self.axp,
             'take-profit-price': self.tp,
@@ -726,10 +728,11 @@ class StrategyTrade(object):
             'last-take-profit-order-time': self.last_tp_ot,
             'last-stop-loss-order-time': self.last_stop_ot,
             'statistics': self._stats,
+            'context': self.context.dumps() if self.context else None,
             'extra': self._extra,
         }
 
-    def loads(self, data):
+    def loads(self, data, context_builder=None):
         """
         Override this method to make a loads for the persistance model.
         @return True if success.
@@ -743,7 +746,7 @@ class StrategyTrade(object):
         self._closing = data.get('closing', False)
         self._timeframe =  data.get('timeframe', 0)  # timeframe_from_str(data.get('timeframe', '4h'))
         self._user_trade = data.get('user-trade')
-        self._comment = data.get('comment', "")
+        self._label = data.get('label', "")
 
         self._operations = []
         self._next_operation_id = -1
@@ -784,6 +787,11 @@ class StrategyTrade(object):
         })
 
         self._extra = data.get('extra', {})
+
+        if context_builder and data.get('context'):
+            self.context = context_builder.loads(data['context'])
+        else:
+            self.context = None
 
         return True
 
@@ -966,7 +974,7 @@ class StrategyTrade(object):
             'expiry': self._expiry,
             'timeframe': timeframe_to_str(self._timeframe),
             'is-user-trade': self._user_trade,
-            'comment': self._comment,
+            'label': self._label,
             'direction': self.direction_to_str(),
             'order-price': strategy_trader.instrument.format_price(self.op),
             'order-qty': strategy_trader.instrument.format_quantity(self.oq),
@@ -996,7 +1004,7 @@ class StrategyTrade(object):
             'expiry': self._expiry,
             'timeframe': timeframe_to_str(self._timeframe),
             'is-user-trade': self._user_trade,
-            'comment': self._comment,
+            'label': self._label,
             'direction': self.direction_to_str(),
             'order-price': strategy_trader.instrument.format_price(self.op),
             'order-qty': strategy_trader.instrument.format_quantity(self.oq),
