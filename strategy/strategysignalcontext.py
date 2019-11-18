@@ -5,19 +5,19 @@
 
 
 class StrategySignalContextBuilder(object):
-	"""
-	To be implemented by strategy to have specific context trade persistence.
-	"""
+    """
+    To be implemented by strategy to have specific context trade persistence.
+    """
 
-	@classmethod
-	def loads(cls, data):
-		return None
+    @classmethod
+    def loads(cls, data):
+        return None
 
 
 class StrategySignalContext(object):
-	"""
-	Base model for any signal/trade context.
-	"""
+    """
+    Base model for any signal/trade context.
+    """
 
     def __init__(self):
         pass
