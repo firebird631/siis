@@ -863,8 +863,8 @@ class BinanceTrader(Trader):
                     order.price = float(data['price']) if 'price' in data else None
                     order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
-                order.created_time = data['time']
-                order.transact_time = data['updateTime']
+                order.created_time = data['time'] * 0.001
+                order.transact_time = data['updateTime'] * 0.001
 
                 if data['timeInForce'] == 'GTC':
                     order.time_in_force = Order.TIME_IN_FORCE_GTC

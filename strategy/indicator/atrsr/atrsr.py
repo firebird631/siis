@@ -72,10 +72,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         elif direction < 0:
             for x in reversed(self._up):
@@ -83,10 +81,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         return 0.0
 
@@ -100,10 +96,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         elif direction < 0:
             for x in sorted(self._up, reverse=True):
@@ -111,10 +105,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         return 0.0
 
@@ -128,10 +120,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         elif direction < 0:
             for x in reversed(self._down):
@@ -139,10 +129,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         return 0.0
 
@@ -156,10 +144,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         elif direction < 0:
             for x in sorted(self._down, reverse=True):
@@ -167,10 +153,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         return 0.0
 
@@ -184,10 +168,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         elif direction < 0:
             for x in reversed(self._both):
@@ -195,10 +177,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         return 0.0
 
@@ -212,10 +192,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         elif direction < 0:
             for x in sorted(self._both, reverse=True):
@@ -223,10 +201,8 @@ class ATRSRIndicator(Indicator):
                     stop_loss = x
                     n += 1
 
-                if n == depth:
-                    break
-
-            return stop_loss if n >= depth else 0.0
+                    if n >= depth:
+                        return stop_loss
 
         return 0.0
 
@@ -235,7 +211,7 @@ class ATRSRIndicator(Indicator):
 
         basis = ta_SMA(close, self._length)
         atrs = ta_ATR(high, low, close, timeperiod=self._length)
-    
+
         dev = atrs * self._coeff
         upper = basis + dev
         lower = basis - dev
@@ -243,11 +219,12 @@ class ATRSRIndicator(Indicator):
         try:
             bbr = (close - lower) / (upper - lower)
         except:
-            logger.info(close)
-            logger.info(lower)
-            logger.info(upper)
-            logger.info(lower)
-            logger.info(atrs)
+            logger.warning("bbr = (close - lower) / (upper - lower) divided by zero")
+            logger.warning(close)
+            logger.warning(lower)
+            logger.warning(upper)
+            logger.warning(lower)
+            logger.warning(atrs)
 
         bbe = ta_EMA(bbr, self._length_MA)
 
@@ -257,7 +234,7 @@ class ATRSRIndicator(Indicator):
 
         for i in range(2, size):
             if bbe[i-1] > bbe[i] and bbe[i-2] < bbe[i-1]:
-                last = self._tup[i] = bbe[i]
+                self._tup[i] = bbe[i]
             else:
                 self._tup[i] = np.NaN
 
@@ -321,9 +298,11 @@ class ATRSRIndicator(Indicator):
                     if len(self._both) > 2*self._max_history:
                         self._both.pop(0)
 
-        # logger.info("%s %s" % (self._tup, self._tdn))
-        # logger.info("%s %s" % (self._up, self._down))
-        # logger.info("%s" % (self._both))
+        # if self.timeframe == 60*60*24:
+        #     logger.info("%s %s" % (self._tup, self._tdn))
+        #     logger.info("%s %s" % (self._up, self._down))
+        # if self.timeframe == 60*60*24:
+        #     logger.info("%s" % (self._both))
 
         self._last_timestamp = timestamp
 

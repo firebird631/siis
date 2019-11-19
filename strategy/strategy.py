@@ -280,14 +280,14 @@ class Strategy(Runnable):
         return True
 
     def pre_run(self):
-        Terminal.inst().info("Running appliance %s - %s..." % (self._name, self._identifier), view='content')
+        Terminal.inst().message("Running appliance %s - %s..." % (self._name, self._identifier), view='content')
 
         # watcher can be already ready in some cases, try it now
         if self.check_watchers() and not self._preset:
             self.preset()
 
     def post_run(self):
-        Terminal.inst().info("Joining appliance %s - %s..." % (self._name, self._identifier), view='content')
+        Terminal.inst().message("Joining appliance %s - %s..." % (self._name, self._identifier), view='content')
 
     def post_update(self):
         # load of the strategy
@@ -955,7 +955,7 @@ class Strategy(Runnable):
 
                     num_candles += 1
 
-            # logger.info("next is %s (delta=%s) / now %s (n=%i) (low=%s)" % (base_next_timestamp, base_next_timestamp-next_timestamp, self.timestamp, num_candles, lower_timeframe))
+            # logger.message("next is %s (delta=%s) / now %s (n=%i) (low=%s)" % (base_next_timestamp, base_next_timestamp-next_timestamp, self.timestamp, num_candles, lower_timeframe))
             next_timestamp = base_next_timestamp
 
             if not num_candles:
@@ -1139,7 +1139,7 @@ class Strategy(Runnable):
                     Terminal.inst().info("Done", view='status')
 
                 for message in results['messages']:
-                    Terminal.inst().info(message, view='content')
+                    Terminal.inst().message(message, view='content')
 
     def strategy_trader_command(self, label, data, func):
         # manually trade modify a trade (add/remove an operation)
@@ -1159,7 +1159,7 @@ class Strategy(Runnable):
                     Terminal.inst().info("Done", view='status')
 
                 for message in results['messages']:
-                    Terminal.inst().info(message, view='content')
+                    Terminal.inst().message(message, view='content')
 
     def command(self, command_type, data):
         """
@@ -2499,12 +2499,12 @@ class Strategy(Runnable):
             with self._mutex:
                 strategy_trader = self._strategy_traders.get(data['market-id'])
                 if strategy_trader:
-                    Terminal.inst().info("Market %s of appliance %s identified by \\2%s\\0 is %s. Trade quantity is %s" % (
+                    Terminal.inst().message("Market %s of appliance %s identified by \\2%s\\0 is %s. Trade quantity is %s" % (
                         data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused",
                             strategy_trader.instrument.trade_quantity),
                             view='content')
         else:
-            Terminal.inst().info("Appliances %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')
+            Terminal.inst().message("Appliances %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')
 
             enabled = []
             disabled = []
@@ -2512,17 +2512,17 @@ class Strategy(Runnable):
             with self._mutex:
                 for k, strategy_trader in self._strategy_traders.items():
                     if strategy_trader.activity:
-                        enabled.append(k.market_id)
+                        enabled.append(k)
                     else:
-                        disabled.append(k.market_id)
+                        disabled.append(k)
 
             if enabled:
                 enabled = [e if i%10 else e+'\n' for i, e in enumerate(enabled)]
-                Terminal.inst().info("Enabled instruments (%i): %s" % (len(enabled), " ".join(enabled)), view='content')
+                Terminal.inst().message("Enabled instruments (%i): %s" % (len(enabled), " ".join(enabled)), view='content')
 
             if disabled:
                 disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
-                Terminal.inst().info("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')
+                Terminal.inst().message("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')
 
     def cmd_strategy_trader_chart(self, strategy_trader, data):
         """

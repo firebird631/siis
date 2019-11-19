@@ -5,17 +5,16 @@
 
 import copy
 import logging
-import colorama
+# import colorama
 import curses
 
 from logging.handlers import RotatingFileHandler
-
 from terminal.terminal import Terminal
 
 class ColoredFormatter(logging.Formatter):
 
-    def __init__(self, msg, use_color = True):
-        logging.Formatter.__init__(self, msg)
+    def __init__(self, fmt, use_color = True):
+        logging.Formatter.__init__(self, fmt, datefmt='%H:%M:%S')
         self.use_color = use_color
 
     def colors(self, style):
@@ -59,7 +58,7 @@ class ColoredFormatter(logging.Formatter):
             return logging.Formatter.format(self, record)
 
         elif record.levelno == logging.INFO and self.use_color:
-            record.name = ''
+            record.name = '- '
             record.levelname = colors["DEFAULT"] + '- ' + copy.copy(record.levelname) + colors["DEFAULT"] + ' '
             record.msg = colors["DEFAULT"] + copy.copy(str(record.msg)) + colors["DEFAULT"]
             return logging.Formatter.format(self, record)
@@ -94,34 +93,35 @@ class TerminalHandler(logging.StreamHandler):
             if record.pathname.startswith('siis.error.'):
                 Terminal.inst().error(str(msg), view='content') if Terminal.inst() else print(str(msg))
             else:
-                # Terminal.inst().error(str(msg), view='default') if Terminal.inst() else print(str(msg))
                 Terminal.inst().error(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
         elif record.levelno == logging.ERROR:
             if record.pathname.startswith('siis.error.'):
                 Terminal.inst().error(str(msg), view='debug') if Terminal.inst() else print(str(msg))
             else:
-                # Terminal.inst().error(str(msg), view='default')
                 Terminal.inst().error(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
         elif record.levelno == logging.WARNING:
             if record.pathname.startswith('siis.error.'):
                 Terminal.inst().error(str(msg), view='debug') if Terminal.inst() else print(str(msg))
             else:
-                # Terminal.inst().warning(str(msg), view='default')
                 Terminal.inst().warning(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
         elif record.levelno == logging.INFO:
             if record.pathname.startswith('siis.error.'):
-                Terminal.inst().info(str(msg), view='debug') if Terminal.inst() else print(str(msg))
+                Terminal.inst().message(str(msg), view='debug') if Terminal.inst() else print(str(msg))
             else:
-                Terminal.inst().info(str(msg), view='content') if Terminal.inst() else print(str(msg))
+                Terminal.inst().message(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
         elif record.levelno == logging.DEBUG:
             Terminal.inst().message(str(msg), view='debug') if Terminal.inst() else print(str(msg))
 
         else:
             Terminal.inst().message(str(msg), view='default') if Terminal.inst() else print(str(msg))
+
+
+# register the color formatter
+logging.ColoredFormatter = ColoredFormatter
 
 
 class SiisLog(object):
@@ -131,14 +131,14 @@ class SiisLog(object):
 
     def __init__(self, options, style=''):
         # if init before terminal
-        colorama.init()
+        # colorama.init()
 
         # stderr to terminal in info level
         self.console = TerminalHandler()  #  logging.StreamHandler()
         self.console.setLevel(logging.DEBUG)
 
         # self.term_formatter = logging.Formatter('- %(name)-12s: %(levelname)-8s %(message)s')
-        self.term_formatter = ColoredFormatter('%(name)-s%(message)s', style)
+        self.term_formatter = ColoredFormatter('%(asctime)s %(name)-s%(message)s', style)
         self.console.setFormatter(self.term_formatter)
 
         # add the handler to the root logger
