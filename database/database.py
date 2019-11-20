@@ -199,15 +199,15 @@ class Database(object):
             # wait until all insertions
             self.lock()
 
-            with self._condition:
-                while self._pending_ohlc_insert or self._pending_asset_insert or self._pending_market_info_insert:
+            while self._pending_ohlc_insert or self._pending_asset_insert or self._pending_market_info_insert:
+                self._last_ohlc_flush = 0  # force flush remaining non stored ohlc
+                self.unlock()
+
+                with self._condition:
                     self._condition.notify()
-
-                    self._last_ohlc_flush = 0  # force flush remaining non stored ohlc
-
-                    self.unlock()
-                    time.sleep(0.1)
-                    self.lock()
+                    
+                time.sleep(0.1)
+                self.lock()
 
             self.unlock()
 
