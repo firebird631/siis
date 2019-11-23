@@ -319,8 +319,8 @@ class KrakenTrader(Trader):
 
                 order.set_order_id(str(result.get('txid')))
 
-                order.created_time = time.time()  # result['transactTime'] * 0.001
-                order.transact_time = time.time()  # result['transactTime'] * 0.001
+                order.created_time = time.time()
+                order.transact_time = time.time()
 
                 return True
 

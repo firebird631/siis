@@ -546,7 +546,7 @@ class PaperTrader(Trader):
                 if trader_market.indivisible_position:
                     return exec_indmargin_order(self, order, trader_market, open_exec_price, close_exec_price)
                 else:
-                    return exec_margin_order(self, order, market, open_exec_price, close_exec_price)
+                    return exec_margin_order(self, order, trader_market, open_exec_price, close_exec_price)
             elif not order.margin_trade and trader_market.has_spot:
                 return exec_buysell_order(self, order, trader_market, open_exec_price, close_exec_price)
         else:

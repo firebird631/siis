@@ -45,12 +45,14 @@ class StrategyPositionTrade(StrategyTrade):
         """
         order = Order(trader, instrument.market_id)
         order.direction = direction
-        order.price = order_price
         order.order_type = order_type
         order.quantity = quantity
         order.leverage = leverage
         order.margin_trade = True
         order.post_only = False
+
+        if order_type == Order.ORDER_LIMIT:
+            order.price = order_price
 
         if hedging:
             order.hedging = hedging
