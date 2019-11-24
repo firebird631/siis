@@ -64,7 +64,7 @@ class BitMexTrader(Trader):
         super().disconnect()
 
         with self._mutex:
-                if self._watcher:
+            if self._watcher:
                 self.service.watcher_service.remove_listener(self)
                 self._watcher = None
 

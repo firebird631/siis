@@ -579,8 +579,8 @@ class BitMexWatcher(Watcher):
                         # we have a tick when we have a volume in data content
                         tick = (update_time, bid, ofr, volume)
 
-                        with self._mutex:
-                            self._last_tick[market_id] = tick
+                        # with self._mutex:
+                        #     self._last_tick[market_id] = tick
 
                         # and notify
                         self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
