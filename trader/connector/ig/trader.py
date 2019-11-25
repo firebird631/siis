@@ -311,7 +311,7 @@ class IGTrader(Trader):
         return True
 
     def cancel_order(self, order_id, market_or_instrument):
-        if not order or not market_or_instrument:
+        if not order_id or not market_or_instrument:
             return False
 
         if not self._watcher.connector:
