@@ -463,7 +463,10 @@ class IGService:
         """
         params = {
             'limitLevel': limit_level,
-            'stopLevel': stop_level
+            'stopLevel': stop_level,
+            'trailingStop': False,
+            'trailingStopDistance': None,
+            'trailingStopIncrement': None
         }
         url_params = {
             'deal_id': deal_id
