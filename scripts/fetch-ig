@@ -2,21 +2,21 @@
 # update FROM= each time or use --last= and do it every day/week using a crontab
 MARKETS='CS.D.AUDNZD.MINI.IP,CS.D.EURCAD.MINI.IP,CS.D.EURJPY.MINI.IP,CS.D.EURUSD.MINI.IP,CS.D.GBPUSD.MINI.IP,CS.D.USDJPY.MINI.IP,CS.D.CFEGOLD.CFE.IP,IX.D.SPTRD.IFE.IP,IX.D.DAX.IFMM.IP'
 TO='2019-12-31T23:59:59'
-IDENTITY='demo'
+IDENTITY='real'
 
-FROM='2019-10-28T00:00:00'
+FROM='2019-12-02T00:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1w &
 
-FROM='2019-10-28T00:00:00'
+FROM='2019-12-05T00:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1d &
 
-FROM='2019-10-28T00:00:00'
+FROM='2019-12-05T12:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=4h &
 
-FROM='2019-10-28T00:00:00'
+FROM='2019-12-05T12:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=2h &
 
-FROM='2019-10-28T00:00:00'
+FROM='2019-12-05T12:00:00'
 python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1h
 
 FROM='2019-10-28T00:00:00'
