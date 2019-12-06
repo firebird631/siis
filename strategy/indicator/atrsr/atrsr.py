@@ -18,7 +18,7 @@ class ATRSRIndicator(Indicator):
     Average True Range Support and Resistance indicator.
     """
 
-    __slots__ = '_length', '_coeff', '_length_MA', '_down', '_up', '_both', '_max_history', '_tup', '_tdn'
+    __slots__ = '_length', '_coeff', '_length_MA', '_down', '_up', '_both', '_max_history', '_tup', '_tdn', '_last_atr', '_last_up', '_last_dn'
 
     @classmethod
     def indicator_type(cls):
@@ -46,6 +46,10 @@ class ATRSRIndicator(Indicator):
         self._tup = np.array([])
         self._tdn = np.array([])
 
+        self._last_atr = 0.0
+        self._last_up = 0.0
+        self._last_dn = 0.0
+
     @property
     def length(self):
         return self._length
@@ -61,6 +65,16 @@ class ATRSRIndicator(Indicator):
     @property
     def up(self):
         return self._up
+
+    @property
+    def last_up(self):
+        """Valid only if the last computation generate a new up else 0.0"""
+        return self._last_up
+
+    @property
+    def last_down(self):
+        """Valid only if the last computation generate a new down else 0.0"""
+        return self._last_dn
 
     def search_up(self, direction, last_price, depth=1, epsilon=0.0):
         n = 0
@@ -218,7 +232,7 @@ class ATRSRIndicator(Indicator):
 
         try:
             bbr = (close - lower) / (upper - lower)
-        except:
+        except RuntimeWarning:
             logger.warning("bbr = (close - lower) / (upper - lower) divided by zero")
             logger.warning(close)
             logger.warning(lower)
@@ -267,6 +281,10 @@ class ATRSRIndicator(Indicator):
         # base index
         num = len(timestamps)
 
+        # signal for a new dn/up
+        self._last_dn = 0.0
+        self._last_up = 0.0
+
         for b in range(num-delta, num):
             if timestamps[b] > self._last_timestamp:
                 if b > 0:
@@ -278,8 +296,12 @@ class ATRSRIndicator(Indicator):
 
                 if not np.isnan(self._tup[b]) and self._tup[b] != last_up:
                     last_up = self._tup[b]
+
                     self._up.append(last_up)
                     self._both.append(last_up)
+
+                    # retains the last for signal
+                    self._last_up = last_up
 
                     if len(self._up) > self._max_history:
                         self._up.pop(0)
@@ -289,8 +311,12 @@ class ATRSRIndicator(Indicator):
 
                 if not np.isnan(self._tdn[b]) and self._tdn[b] != last_dn:
                     last_dn = self._tdn[b]
+
                     self._down.append(last_dn)
                     self._both.append(last_dn)
+
+                    # retains the last for signal
+                    self._last_dn = last_dn
 
                     if len(self._down) > self._max_history:
                         self._down.pop(0)
@@ -303,6 +329,10 @@ class ATRSRIndicator(Indicator):
         #     logger.info("%s %s" % (self._up, self._down))
         # if self.timeframe == 60*60*24:
         #     logger.info("%s" % (self._both))
+
+        if len(atrs):
+            # retains last ATR value
+            self._last_atr = atrs[-1]
 
         self._last_timestamp = timestamp
 
