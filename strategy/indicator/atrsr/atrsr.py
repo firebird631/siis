@@ -18,7 +18,7 @@ class ATRSRIndicator(Indicator):
     Average True Range Support and Resistance indicator.
     """
 
-    __slots__ = '_length', '_coeff', '_length_MA', '_down', '_up', '_both', '_max_history', '_tup', '_tdn', '_last_atr', '_last_up', '_last_dn'
+    __slots__ = '_length', '_coeff', '_length_MA', '_down', '_up', '_both', '_max_history', '_tup', '_tdn', '_last_atr'
 
     @classmethod
     def indicator_type(cls):
@@ -47,8 +47,6 @@ class ATRSRIndicator(Indicator):
         self._tdn = np.array([])
 
         self._last_atr = 0.0
-        self._last_up = 0.0
-        self._last_dn = 0.0
 
     @property
     def length(self):
@@ -67,14 +65,22 @@ class ATRSRIndicator(Indicator):
         return self._up
 
     @property
-    def last_up(self):
-        """Valid only if the last computation generate a new up else 0.0"""
-        return self._last_up
+    def cur_up(self):
+        if len(self._tup) == 1 and self._tup[-1] != np.NaN:
+            return self._tup[-1]
+        elif len(self._tup) > 1 and self._tup[-1] != np.NaN and self._tup[-1] != self._tup[-2]:
+            return self._tup[-1]
+
+        return 0.0
 
     @property
-    def last_down(self):
-        """Valid only if the last computation generate a new down else 0.0"""
-        return self._last_dn
+    def cur_down(self):
+        if len(self._tdn) == 1 and self._tdn[-1] != np.NaN:
+            return self._tdn[-1]
+        elif len(self._tdn) > 1 and self._tdn[-1] != np.NaN and self._tdn[-1] != self._tdn[-2]:
+            return self._tdn[-1]
+
+        return 0.0
 
     def search_up(self, direction, last_price, depth=1, epsilon=0.0):
         n = 0
@@ -229,16 +235,11 @@ class ATRSRIndicator(Indicator):
         dev = atrs * self._coeff
         upper = basis + dev
         lower = basis - dev
-
-        try:
+ 
+        with np.errstate(divide='ignore', invalid='ignore'):
+            # replace by 0 when divisor is 0
             bbr = (close - lower) / (upper - lower)
-        except RuntimeWarning:
-            logger.warning("bbr = (close - lower) / (upper - lower) divided by zero")
-            logger.warning(close)
-            logger.warning(lower)
-            logger.warning(upper)
-            logger.warning(lower)
-            logger.warning(atrs)
+            bbr[bbr == np.inf] = 0.0
 
         bbe = ta_EMA(bbr, self._length_MA)
 
@@ -281,10 +282,6 @@ class ATRSRIndicator(Indicator):
         # base index
         num = len(timestamps)
 
-        # signal for a new dn/up
-        self._last_dn = 0.0
-        self._last_up = 0.0
-
         for b in range(num-delta, num):
             if timestamps[b] > self._last_timestamp:
                 if b > 0:
@@ -300,9 +297,6 @@ class ATRSRIndicator(Indicator):
                     self._up.append(last_up)
                     self._both.append(last_up)
 
-                    # retains the last for signal
-                    self._last_up = last_up
-
                     if len(self._up) > self._max_history:
                         self._up.pop(0)
 
@@ -315,18 +309,15 @@ class ATRSRIndicator(Indicator):
                     self._down.append(last_dn)
                     self._both.append(last_dn)
 
-                    # retains the last for signal
-                    self._last_dn = last_dn
-
                     if len(self._down) > self._max_history:
                         self._down.pop(0)
 
                     if len(self._both) > 2*self._max_history:
                         self._both.pop(0)
 
-        # if self.timeframe == 60*60*24:
-        #     logger.info("%s %s" % (self._tup, self._tdn))
-        #     logger.info("%s %s" % (self._up, self._down))
+        # if self.timeframe == 60:
+        #    logger.info("%s %s" % (self._tup, self._tdn))
+        #    logger.info("%s %s" % (self._up, self._down))
         # if self.timeframe == 60*60*24:
         #     logger.info("%s" % (self._both))
 
