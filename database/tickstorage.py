@@ -34,6 +34,8 @@ class TickStorage(object):
     @todo Seek to file position before writing.
     """
 
+    FLUSH_DELAY = 60.0
+
     def __init__(self, markets_path, broker_id, market_id, text=True, binary=True):
         self._markets_path = markets_path
         self._mutex = threading.RLock()
@@ -56,15 +58,15 @@ class TickStorage(object):
         """
         @param data tuple with (broker_id, market_id, timestamp, bid, ofr, volume)
         """
-        self._mutex.acquire()
-        if isinstance(data, list):
-            self._ticks.extend(data)
-        else:
-            self._ticks.append(data)        
-        self._mutex.release()
+        with self._mutex:
+            if isinstance(data, list):
+                self._ticks.extend(data)
+            else:
+                self._ticks.append(data)        
 
     def has_data(self):
-        return len(self._ticks) > 0
+        with self._mutex:
+            return len(self._ticks) > 0
 
     def open(self, date_utc):
         if self._text and not self._text_file:
@@ -104,24 +106,24 @@ class TickStorage(object):
             self._binary_file.close()
             self._binary_file = None            
 
-    def flush(self, force=False):
-        now = time.time()
-
+    def can_flush(self):
         # save only once per minute
-        if not force and ((now - self._last_save) < 60.0):
-            return
+        return (time.time() - self._last_save) >= TickStorage.FLUSH_DELAY
 
-        self._mutex.acquire()
-        ticks = copy.copy(self._ticks)
-        self._ticks.clear()
-        self._mutex.release()
+    def flush(self, close_at_end=True):
+        with self._mutex:
+            ticks = self._ticks
+            self._ticks = []
 
         if not ticks:
             return
 
         n = 0
         try:
-            for d in ticks:
+            while ticks:
+                # process next
+                d = ticks.pop(0)
+
                 date_utc = datetime.utcfromtimestamp(d[2] * 0.001)
 
                 if self._curr_date and (self._curr_date.year != date_utc.year or self._curr_date.month != date_utc.month):
@@ -145,12 +147,13 @@ class TickStorage(object):
             logger.error(repr(e))
 
             # retry the next time
-            self._mutex.acquire()
-            self._ticks = ticks + self._ticks[n:]
-            self._mutex.release()
+            with self._mutex:
+                self._ticks = ticks + self._ticks
 
         self._last_save = time.time()
-        self.close()  # avoid too many handles
+
+        if close_at_end:
+            self.close()  # avoid too many handles
 
 
 class TickStreamer(object):

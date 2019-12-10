@@ -148,9 +148,10 @@ class Database(object):
 
         self._markets_path = None
         self._tick_storages = {}    # TickStorage per market
-        self._pending_tick_insert = []
+        self._pending_tick_insert = set()
 
         self._autocleanup = False
+        self._fetch = False
 
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)
@@ -177,6 +178,9 @@ class Database(object):
         # start the thread
         self._running = True
         self._thread.start()
+
+        # is fetch mode fush tick continueously
+        self._fetch = options.get('fetch', False)
 
     def connect(self, config):
         """
@@ -226,11 +230,11 @@ class Database(object):
         # flush remaining ticks
         with self._mutex:
             for k, tick_storage in self._tick_storages.items():
-                tick_storage.flush(force=True)
+                tick_storage.flush()
                 tick_storage.close()
 
             self._tick_storages = {}
-            self._pending_tick_insert = []
+            self._pending_tick_insert = set()
 
     def setup_market_sql(self):
         pass
@@ -264,13 +268,13 @@ class Database(object):
                 tickstorage = TickStorage(self._markets_path, data[0], data[1])
                 self._tick_storages[key] = tickstorage
 
+            tickstorage.store(data)
+
             # pending list of TickStorage controller having data to process to avoid to check everyone
-            self._pending_tick_insert.append(tickstorage)
+            self._pending_tick_insert.add(tickstorage)
 
-            with self._condition:
-                self._condition.notify()
-
-        tickstorage.store(data)
+        with self._condition:
+            self._condition.notify()
 
     def num_pending_ticks_storage(self):
         """
@@ -299,8 +303,8 @@ class Database(object):
             else:
                 self._pending_ohlc_insert.append(data)
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def store_market_liquidation(self, data):
         """
@@ -318,8 +322,8 @@ class Database(object):
             else:
                 self._pending_liquidation_insert.append(data)
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def store_market_info(self, data):
         """
@@ -365,8 +369,8 @@ class Database(object):
             else:
                 self._pending_market_info_insert.append(data)
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     #
     # asyncs loads
@@ -385,8 +389,8 @@ class Database(object):
 
             self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, from_ts, to_ts, None))
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def load_market_ohlc_last_n(self, service, broker_id, market_id, timeframe, last_n):
         """
@@ -397,8 +401,8 @@ class Database(object):
         with self._mutex:
             self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, None, None, last_n))
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def load_market_info(self, service, broker_id, market_id):
         """
@@ -408,8 +412,8 @@ class Database(object):
         with self._mutex:
             self._pending_market_info_select.append((service, broker_id, market_id))
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def load_market_list(self, service, broker_id):
         """
@@ -419,8 +423,8 @@ class Database(object):
         with self._mutex:
             self._pending_market_list_select.append((service, broker_id))
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     #
     # Tick and ohlc streamer
@@ -460,8 +464,8 @@ class Database(object):
             else:
                 self._pending_asset_insert.append(data)
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def load_assets(self, service, trader, broker_id, account_id):
         """
@@ -471,8 +475,8 @@ class Database(object):
         with self._mutex:
             self._pending_asset_select.append((service, trader, broker_id, account_id))
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def store_user_trade(self, data):
         """
@@ -492,8 +496,8 @@ class Database(object):
             else:
                 self._pending_user_trade_insert.append(data)
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def load_user_trades(self, service, appliance, broker_id, account_id, appliance_id):
         """
@@ -503,8 +507,8 @@ class Database(object):
         with self._mutex:
             self._pending_user_trade_select.append((service, appliance, broker_id, account_id, appliance_id))
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def clear_user_trades(self, broker_id, account_id, appliance_id):
         """
@@ -513,8 +517,8 @@ class Database(object):
         with self._mutex:
             self._pending_user_trade_delete.append((broker_id, account_id, appliance_id))
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def store_user_trader(self, data):
         """
@@ -533,8 +537,8 @@ class Database(object):
             else:
                 self._pending_user_trader_insert.append(data)
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     def load_user_traders(self, service, appliance, broker_id, account_id, appliance_id):
         """
@@ -544,8 +548,8 @@ class Database(object):
         with self._mutex:
             self._pending_user_trader_select.append((service, appliance, broker_id, account_id, appliance_id))
 
-            with self._condition:
-                self._condition.notify()
+        with self._condition:
+            self._condition.notify()
 
     #
     # Processing
@@ -574,9 +578,15 @@ class Database(object):
 
     def process_tick(self):
         with self._mutex:
-            pti = copy.copy(self._pending_tick_insert)
-            self._pending_tick_insert.clear()
+            pti = self._pending_tick_insert
+            self._pending_tick_insert = set()
 
         for tick_storage in pti:
-            if tick_storage.has_data():
-                tick_storage.flush()
+            if self._fetch or tick_storage.can_flush():
+                if tick_storage.has_data():
+                    tick_storage.flush(close_at_end=not self._fetch)
+
+                if tick_storage.has_data():
+                    # data remaining
+                    with self._mutex:
+                        self._pending_tick_insert.add(tick_storage)

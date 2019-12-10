@@ -197,6 +197,9 @@ def do_rebuilder(options):
                 while Database.inst().num_pending_ticks_storage() > TICK_STORAGE_DELAY:
                    time.sleep(TICK_STORAGE_DELAY)  # wait a little before continue
 
+                if progression < 100:
+                    Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
+
         elif timeframe > 0:
             while not ohlc_streamer.finished():
                 ohlcs = ohlc_streamer.next(timestamp + timeframe * 100)  # per 100
@@ -209,7 +212,9 @@ def do_rebuilder(options):
                         break
 
                     if generators:
-                        last_ohlcs[timeframe].append(candle)
+                        last_ohlcs[timeframe].append(data)
+
+                    tts = data.timestamp
 
                 # generate higher candles
                 for generator in generators:
@@ -229,7 +234,7 @@ def do_rebuilder(options):
                 if timestamp - prev_update >= progression_incr:
                     progression += 1
 
-                    Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
+                    Terminal.inst().info("%i%% on %s, %s ohlcs for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
 
                     prev_update = timestamp
                     count = 0
@@ -240,8 +245,8 @@ def do_rebuilder(options):
                 if total_count == 0:
                     timestamp += timeframe * 100
 
-    if progression < 100:
-        Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
+            if progression < 100:
+                Terminal.inst().info("100%% on %s, %s ohlcs for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
 
     Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 
