@@ -1,6 +1,8 @@
 SIIS Strategy/Scalper Indicator Information System
 ==================================================
 
+![Intro image](/doc/img/bt_dax_trades.png)
+
 Abstract
 --------
 
