@@ -341,8 +341,8 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
         #     elif prices[-1] > self.bollingerbands.last_ma:
         #         bb_ma = 1
 
-        if self.bbawe:
-            bbawe = self.bbawe.compute(timestamp, self.price.high, self.price.low, self.price.close)
+        if self.bsawe:
+            bsawe = self.bsawe.compute(timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.atr:
             self.atr.compute(timestamp, self.price.high, self.price.low, self.price.close)
@@ -362,7 +362,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
             elif self.rsi.last < 0.6:  # initial: 0.6
                 level1_signal = 1
 
-        if bbawe > 0:# and level1_signal > 0:
+        if bsawe > 0:# and level1_signal > 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_ENTRY
             signal.dir = 1
@@ -371,7 +371,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
             # if self.tomdemark.c.tdst:
             #     signal.sl = self.tomdemark.c.tdst
 
-        elif bbawe < 0:# and level1_signal < 0:
+        elif bsawe < 0:# and level1_signal < 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_ENTRY
             signal.dir = -1

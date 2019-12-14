@@ -1,7 +1,7 @@
 # @date 2019-01-19
 # @author Frederic SCHERMA
 # @license Copyright (c) 2019 Dream Overflow
-# Crystal Ball strategy, based on bbawe+td9 indicators
+# Crystal Ball strategy, based on bsawe+td9 indicators
 
 import traceback
 

@@ -575,8 +575,8 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
         #     elif prices[-1] > self.bollingerbands.last_ma:
         #         bb_ma = 1
 
-        if self.bbawe:
-            bbawe = self.bbawe.compute(timestamp, self.price.high, self.price.low, self.price.close)
+        if self.bsawe:
+            bsawe = self.bsawe.compute(timestamp, self.price.high, self.price.low, self.price.close)
 
         ema_sma = 0
 
@@ -595,13 +595,13 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
 
         # @todo dip, bounce or trend...
 
-        if bbawe > 0 and ema_sma > 0:
+        if bsawe > 0 and ema_sma > 0:
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_ENTRY
             signal.dir = 1
             signal.p = self.price.close[-1]
 
-        elif bbawe < 0 and ema_sma < 0:
+        elif bsawe < 0 and ema_sma < 0:
             # exit signal
             signal = StrategySignal(self.tf, timestamp)
             signal.signal = StrategySignal.SIGNAL_EXIT
@@ -612,14 +612,14 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             # last_timestamp
             self.tomdemark.compute(timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
-            if 0: # self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and (ema_sma < 0 or bbawe < 0):
+            if 0: # self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and (ema_sma < 0 or bsawe < 0):
                 # setup complete and trend change
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT
                 signal.dir = 1
                 signal.p = self.price.close[-1]
 
-            elif 2 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0 and (ema_sma < 0 and bbawe < 0):
+            elif 2 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0 and (ema_sma < 0 and bsawe < 0):
                 # cancelation
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT

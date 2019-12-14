@@ -28,7 +28,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 5,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 1.0),  # was 1.5 , but too large else
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -49,7 +49,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 5,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 1.0),  # was 1.5 , but too large else
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -70,7 +70,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 5,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 1.0),
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -91,7 +91,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 5,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 3.0),
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -112,7 +112,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 5,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 3.0),
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -133,7 +133,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 5,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 3.0),
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,

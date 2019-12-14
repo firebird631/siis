@@ -168,8 +168,8 @@ DEFAULT_PARAMS = {
                 "bollingerbands": None, # ("bollingerbands", 26,),
                 "triangle": None,
                 "tomdemark": ("tomdemark", 9),
-                # "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
-                "bbawe": ("bbawe", 9, 2.0, 3.0, 5, 16, False),
+                # "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 9, 3.0, 5, 16, False),
             },
             "constants": {
                 "rsi_low": 0.3,

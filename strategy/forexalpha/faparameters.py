@@ -44,7 +44,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 0,),
                 "tomdemark": None,
                 "atr": ("atr", 14, 1.5),
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -87,7 +87,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 0,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 1.5),
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -132,7 +132,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 0,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 1.5),
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -175,7 +175,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 0,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 1.5),
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -218,7 +218,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 0,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 1.5),
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -261,7 +261,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 0,),
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 1.5),
-                "bbawe": ("bbawe", 20, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -303,7 +303,7 @@ DEFAULT_PARAMS = {
                 "pivotpoint": ("pivotpoint", 0,),  # classic or fibo
                 "tomdemark": ("tomdemark", 9),
                 "atr": ("atr", 14, 1.5),  # 0.75 is to low, 1.5 try, 3.0 can be to large or (40, 3.0)
-                "bbawe": ("bbawe", 36, 2.0, 3.0, 5, 34, False),
+                "bsawe": ("bsawe", 36, 3.0, 5, 34, False),
             },
             "constants": {
                 "rsi_low": 0.3,
@@ -353,7 +353,7 @@ DEFAULT_PARAMS = {
         #         "pivotpoint": ("pivotpoint", 0,),  # classic or fibo
         #         "tomdemark": ("tomdemark", 9),
         #         "atr": ("atr", 50, 5.0),  # 0.75 is to low, 1.5 try, 3.0 can be to large or (40, 3.0)  (50, 10.0)
-        #         "bbawe": ("bbawe", 50, 2.0, 3.0, 5, 34, False),
+        #         "bsawe": ("bsawe", 50, 3.0, 5, 34, False),
         #     },
         #     "constants": {
         #         "rsi_low": 0.3,

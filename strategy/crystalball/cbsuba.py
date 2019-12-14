@@ -101,12 +101,12 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
                     signal.dir = -1
                     signal.p = self.price.close[-1]
 
-        if self.bbawe:
+        if self.bsawe:
             if self.last_closed:
                 # use OHLC4 as price in place of close
-                bbawe = self.bbawe.compute(timestamp, self.price.high, self.price.low, self.price.prices)
+                bsawe = self.bsawe.compute(timestamp, self.price.high, self.price.low, self.price.prices)
 
-                if bbawe > 0:
+                if bsawe > 0:
                     signal = StrategySignal(self.tf, timestamp)
                     signal.signal = StrategySignal.SIGNAL_ENTRY
                     signal.dir = 1
@@ -118,7 +118,7 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
                     if len(self.pivotpoint.resistances[2]):
                         signal.tp = np.max(self.pivotpoint.resistances[2])
 
-                elif bbawe < 0:
+                elif bsawe < 0:
                     signal = StrategySignal(self.tf, timestamp)
                     signal.signal = StrategySignal.SIGNAL_ENTRY
                     signal.dir = -1

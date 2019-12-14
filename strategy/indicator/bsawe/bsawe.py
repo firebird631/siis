@@ -1,13 +1,13 @@
 # @date 2019-04-14
 # @author Frederic SCHERMA
 # @license Copyright (c) 2018 Dream Overflow
-# Bollinger band + Awesome indicator
+# Awesome based buy/sell signal indicator
 
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample, crossunder, crossover
 
 import numpy as np
-from talib import EMA as ta_EMA, SMA as ta_SMA, BBANDS as ta_BBANDS, STDDEV as ta_STDDEV
+from talib import EMA as ta_EMA, SMA as ta_SMA
 
 import numpy as np
 
@@ -15,15 +15,15 @@ import logging
 logger = logging.getLogger('siis.strategy.indicator')
 
 
-class BBAweIndicator(Indicator):
+class BSAweIndicator(Indicator):
     """
-    Bollinger band + Awesome indicator
+    Awesome based buy/sell signal indicator.
 
     @ref https://www.forexstrategiesresources.com/scalping-forex-strategies-iii/337-bollinger-bands-and-chaos-awesome-scalping-system
     @ref Squeeze Momentum Indicator [LazyBear]
     """
 
-    __slots__ = '_bb_L', '_base_multiplier', '_fast_MA_L', '_awesome_fast_L', '_awesome_slow_L', '_use_EMA', '_signal'
+    __slots__ = '_bb_L', '_fast_MA_L', '_awesome_fast_L', '_awesome_slow_L', '_use_EMA', '_signal'
 
     @classmethod
     def indicator_type(cls):
@@ -33,11 +33,10 @@ class BBAweIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
 
-    def __init__(self, timeframe, bb_L=20, base_multiplier=2.0, fast_MA_L=3.0, awesome_fast_L=5, awesome_slow_L=34, use_EMA=False):
-        super().__init__("bbawe", timeframe)
+    def __init__(self, timeframe, bb_L=20, fast_MA_L=3.0, awesome_fast_L=5, awesome_slow_L=34, use_EMA=False):
+        super().__init__("bsawe", timeframe)
 
         self._bb_L = bb_L
-        self._base_multiplier = base_multiplier
         self._fast_MA_L = fast_MA_L
         self._awesome_fast_L = awesome_fast_L
         self._awesome_slow_L = awesome_slow_L
@@ -52,15 +51,6 @@ class BBAweIndicator(Indicator):
         # Breakout Indicator Inputs
         bb_basis = ta_EMA(close, self._bb_L) if self._use_EMA else ta_SMA(close, self._bb_L)
         fast_ma = ta_EMA(close, self._fast_MA_L)
-
-        # Deviation (a simple BBAND)
-        # dev = ta_STDDEV(close, self._bb_L)
-        # bb_dev_inner = self._base_multiplier * dev
-
-        # Upper bands
-        # inner_high = bb_basis + bb_dev_inner
-        # Lower Bands
-        # inner_low = bb_basis - bb_dev_inner
 
         # Calculate Awesome Oscillator
         hl2 = (high + low) * 0.5

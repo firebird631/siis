@@ -935,10 +935,10 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
             if self.pivotpoint.compute_at_close and self.last_closed:
                 self.pivotpoint.compute(timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
 
-        if self.bbawe:
+        if self.bsawe:
             if self.last_closed:
                 # use OHLC4 as price in place of close
-                bbawe = self.bbawe.compute(timestamp, self.price.high, self.price.low, self.price.prices)
+                bsawe = self.bsawe.compute(timestamp, self.price.high, self.price.low, self.price.prices)
 
                 #
                 # trend signal
@@ -962,7 +962,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 # entry computation
                 #
 
-                if bbawe > 0 and ema_rsi_signal != -1:
+                if bsawe > 0 and ema_rsi_signal != -1:
                     # long entry
                     signal = StrategySignal(self.tf, timestamp)
                     signal.signal = StrategySignal.SIGNAL_ENTRY
@@ -979,7 +979,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                             signal.tp = (tp - signal.p) * 2.0 + signal.p
                             # signal.tp = tp
 
-                elif bbawe < 0 and ema_rsi_signal != 1:
+                elif bsawe < 0 and ema_rsi_signal != 1:
                     # short entry
                     signal = StrategySignal(self.tf, timestamp)
                     signal.signal = StrategySignal.SIGNAL_ENTRY

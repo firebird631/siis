@@ -104,9 +104,9 @@
         "classpath": "strategy.indicator.history.history.HistoryIndicator",
         "options": {}
     },
-    "bbawe": {
+    "bsawe": {
         "status": "load",
-        "classpath": "strategy.indicator.bbawe.bbawe.BBAweIndicator",
+        "classpath": "strategy.indicator.bsawe.bsawe.BSAweIndicator",
         "options": {}
     },
     "sinewave": {

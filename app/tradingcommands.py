@@ -149,12 +149,11 @@ class PauseCommand(Command):
 
 class InfoCommand(Command):
 
-    SUMMARY = "[traders,apps,notifiers] <[appliance-id,trader-id,notifier-id]> <appliance-market-id> to get info on trader(s), appliance(s) or notifier(s)."
+    SUMMARY = "[apps,notifiers] <[appliance-id,trader-id,notifier-id]> <appliance-market-id> to get info on appliance(s) or notifier(s)."
 
-    def __init__(self, trader_service, strategy_service, notifier_service):
+    def __init__(self, strategy_service, notifier_service):
         super().__init__('info', None)
 
-        self._trader_service = trader_service
         self._strategy_service = strategy_service
         self._notifier_service = notifier_service
 
@@ -163,17 +162,7 @@ class InfoCommand(Command):
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
-        if args[0] == 'traders':
-            if len(args) == 1:
-                self._trader_service.command(Trader.COMMAND_INFO, {})
-                return True
-            elif len(args) == 2:
-                self._trader_service.command(Trader.COMMAND_INFO, {'trader': args[1]})
-                return False
-            elif len(args) == 3:
-                self._trader_service.command(Trader.COMMAND_INFO, {'trader': args[1], 'market-id': args[2]})
-                return False
-        elif args[0] == 'apps':
+        if args[0] == 'apps':
             if len(args) == 1:
                 self._strategy_service.command(Strategy.COMMAND_INFO, {})
                 return True
@@ -195,14 +184,12 @@ class InfoCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, ['apps', 'traders', 'notifiers'], args, tab_pos, direction)
+            return self.iterate(0, ['apps', 'notifiers'], args, tab_pos, direction)
 
         elif len(args) <= 2:
-            # appliance/trader/notifier
+            # appliance/notifier
             if args[0] == "apps":
                 return self.iterate(1, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
-            elif args[0] == "traders":
-                return self.iterate(1, self._trader_service.traders_names(), args, tab_pos, direction)
             elif args[0] == "notifiers":
                 return self.iterate(1, self._notifier_service.notifiers_identifiers(), args, tab_pos, direction)
 
@@ -212,11 +199,6 @@ class InfoCommand(Command):
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     return self.iterate(2, appliance.symbols_ids(), args, tab_pos, direction)
-            elif args[0] == 'traders':
-                # market
-                trader = self._trader_service.trader(args[1])
-                if trader:
-                    return self.iterate(2, trader.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -1098,7 +1080,7 @@ def register_trading_commands(commands_handler, trader_service, strategy_service
 
     commands_handler.register(PlayCommand(strategy_service, notifier_service))
     commands_handler.register(PauseCommand(strategy_service, notifier_service))
-    commands_handler.register(InfoCommand(trader_service, strategy_service, notifier_service))
+    commands_handler.register(InfoCommand(strategy_service, notifier_service))
     commands_handler.register(ChartCommand(strategy_service, monitor_service))
     commands_handler.register(UserSaveCommand(strategy_service))
     commands_handler.register(SetQuantityCommand(strategy_service))
