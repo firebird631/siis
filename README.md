@@ -10,10 +10,7 @@ SiiS is a autotrading bot for forex, indices and crypto currencies markets.
 It also support semi-automated trading in way to manage your entries and exits
 with more possibilities than exchanges allows.
 
-This version is more a functionnal prototype than a final professional trading tool.
 It is developped in Python3, using TA-lib, numpy, and matplotlib for the basic charting client.
-
-A more performant, but still in developpement, SiiS revisited is available at [github:siis-rev](https://github.com/dream-overflow/siis-rev)
 
 
 Features
@@ -26,10 +23,9 @@ Features
     * [ ] Binance Future (planned)
     * [x] Bitmex
     * [x] Kraken (work in progress)
-    * [] Kraken Futures (planned)
+    * [ ] Kraken Futures (planned)
     * [x] IG
-    * [ ] Help for others are welcome :-)
-    * Ask if you want more, or to accelerate the work for a specific connector
+    * [ ] Ask if you want more, or to accelerate the work for a specific connector
 * Some others source of prices/volumes data fetchers
     * [x] HistData (only to import manually downloaded files)
     * [ ] AlphaVantage (WIP)
