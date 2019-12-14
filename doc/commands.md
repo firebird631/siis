@@ -1,6 +1,6 @@
 # Commands #
 
-Here are presented the differents command managed by the command mode into the terminal instance,
+Here are presented the differents commands managed by the command mode into the terminal instance,
 and also available from the monitoring Websocket throught a client (Web client...).
 
 Support of monitoring client is not realized at this time.
