@@ -52,7 +52,7 @@ Planned support, help is welcome.
 [More details of the Telegram (tm) notifier...](notifiers/telegram.md)
 
 
-## Hangout / Google Chat (tm) (c) ##
+## Hangout (tm) (c) Google / Google Chat (tm) (c) ##
 
 Planned support, help is welcome.
 
