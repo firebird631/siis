@@ -9,6 +9,8 @@ from common.signal import Signal
 from trader.order import Order
 from common.utils import timeframe_to_str, direction_to_str
 
+from instrument.instrument import Instrument
+
 import logging
 logger = logging.getLogger('siis.strategy.signal')
 
@@ -88,11 +90,11 @@ class StrategySignal(object):
     # helpers
     #
 
-    def base_time(self):
+    def basetime(self):
         """
         Related candle base time of the timestamp of the signal.
         """
-        return int(self.ts / self.timeframe) * self.timeframe
+        return Instrument.basetime(self.timeframe, self.ts)
 
     def as_exit(self):
         """
@@ -218,11 +220,18 @@ class StrategySignal(object):
     # dumps for notify/history
     #
 
+
+    def dump_timestamp(self, timestamp, v1=False):
+        if v1:
+            return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%SZ')
+        else:
+            return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
     def dumps_notify(self, timestamp, strategy_trader):
         """
         Dumps to dict for notify/history, same format as for StrategyTrade.
         """
-        if self.signal == StrategySignal.SIGNAL_EXIT:
+        if self.signal == StrategySignal.SIGNAL_ENTRY:
             return {
                 'version': self.version(),
                 'trade': "signal",

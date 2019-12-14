@@ -46,8 +46,8 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
 
         last_timestamp = candles[-1].timestamp
 
-        prices = self.price.compute(last_timestamp, candles)
-        volumes = self.volume.compute(last_timestamp, candles)
+        prices = self.price.compute(timestamp, candles)
+        volumes = self.volume.compute(timestamp, candles)
 
         signal = self.process1(timestamp, last_timestamp, candles, prices, volumes)
 
@@ -56,7 +56,7 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
             # self.last_signal = signal
             if (self.last_signal and (signal.signal == self.last_signal.signal) and
                     (signal.dir == self.last_signal.dir) and
-                    (signal.base_time() == self.last_signal.base_time())):
+                    (signal.basetime() == self.last_signal.basetime())):
                 # same base time avoid multiple entries on the same candle
                 signal = None
             else:
@@ -84,7 +84,7 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
         ema_sma_height = 0
 
         if self.rsi:
-            self.rsi.compute(last_timestamp, prices)
+            self.rsi.compute(timestamp, prices)
 
             if self.rsi.last < self.rsi_low:
                 rsi_30_70 = 1.0
@@ -100,8 +100,8 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
         #     volume_signal = -1
 
         if self.sma and self.ema:
-            self.sma.compute(last_timestamp, prices)
-            self.ema.compute(last_timestamp, prices)
+            self.sma.compute(timestamp, prices)
+            self.ema.compute(timestamp, prices)
 
             # ema over sma crossing
             ema_sma_cross = utils.cross((self.ema.prev, self.sma.prev), (self.ema.last, self.sma.last))
@@ -125,7 +125,7 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
 
         # TD9 on 1m are not very pertinant on crypto
         # if self.tomdemark:
-        #     self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
+        #     self.tomdemark.compute(timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
         return signal
 

@@ -47,8 +47,8 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
 
         last_timestamp = candles[-1].timestamp
 
-        prices = self.price.compute(last_timestamp, candles)
-        volumes = self.volume.compute(last_timestamp, candles)
+        prices = self.price.compute(timestamp, candles)
+        volumes = self.volume.compute(timestamp, candles)
 
         signal = self.process4(timestamp, last_timestamp, candles, prices, volumes)
 
@@ -57,7 +57,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
             # self.last_signal = signal
             if (self.last_signal and (signal.signal == self.last_signal.signal) and
                     (signal.dir == self.last_signal.dir) and
-                    (signal.base_time() == self.last_signal.base_time())):  # or (signal.ts - self.last_signal.ts) < (self.tf * 0.5):
+                    (signal.basetime() == self.last_signal.basetime())):  # or (signal.ts - self.last_signal.ts) < (self.tf * 0.5):
                 # same base time avoid multiple entries on the same candle
                 signal = None
             else:
@@ -278,11 +278,11 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
         ema_sma_height = 0
 
         if self.tf == 4*60*60:
-            self.sma200.compute(last_timestamp, prices)
-            self.sma55.compute(last_timestamp, prices)
+            self.sma200.compute(timestamp, prices)
+            self.sma55.compute(timestamp, prices)
 
         if self.rsi:
-            self.rsi.compute(last_timestamp, prices)
+            self.rsi.compute(timestamp, prices)
 
             if self.rsi.last < self.rsi_low:
                 rsi_30_70 = 1.0
@@ -295,7 +295,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
             rsi_trend = utils.trend_extremum(self.rsi.rsis)
 
         # if self.stochrsi:
-        #     self.stochrsi.compute(last_timestamp, prices)
+        #     self.stochrsi.compute(timestamp, prices)
 
         #     if self.stochrsi.last_k < 0.2:
         #         stochrsi_20_80 = 1.0
@@ -306,7 +306,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
         #         stochrsi_40_60 = 1
 
         # if self.volume_ema:
-        #     self.volume_ema.compute(last_timestamp, volumes)
+        #     self.volume_ema.compute(timestamp, volumes)
 
         #     if self.volume.last > self.volume_ema.last:
         #         volume_signal = 1
@@ -314,8 +314,8 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
         #         volume_signal = -1
 
         if self.sma and self.ema:
-            self.sma.compute(last_timestamp, prices)
-            self.ema.compute(last_timestamp, prices)
+            self.sma.compute(timestamp, prices)
+            self.ema.compute(timestamp, prices)
 
             # ema over sma crossing
             ema_sma_cross = utils.cross((self.ema.prev, self.sma.prev), (self.ema.last, self.sma.last))
@@ -326,7 +326,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
                 ema_sma_height = -1
 
         if self.bollingerbands:
-            self.bollingerbands.compute(last_timestamp, prices)
+            self.bollingerbands.compute(timestamp, prices)
 
             bb_break = 0
             bb_ma = 0
@@ -342,10 +342,10 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
         #         bb_ma = 1
 
         if self.bbawe:
-            bbawe = self.bbawe.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
+            bbawe = self.bbawe.compute(timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.atr:
-            self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
+            self.atr.compute(timestamp, self.price.high, self.price.low, self.price.close)
 
         level1_signal = 0
 
@@ -381,7 +381,7 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
             #     signal.sl = self.tomdemark.c.tdst
 
         if self.tomdemark:
-            self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
+            self.tomdemark.compute(timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
             #
             # setup completed

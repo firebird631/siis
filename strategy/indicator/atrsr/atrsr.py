@@ -3,10 +3,13 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Average True Range support and resistance indicator
 
+from instrument.instrument import Instrument
+
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import MM_n, down_sample
 from talib import ATR as ta_ATR, EMA as ta_EMA, MAX as ta_MAX, MIN as ta_MIN, SMA as ta_SMA
 
+from datetime import datetime
 import numpy as np
 
 import logging
@@ -247,6 +250,9 @@ class ATRSRIndicator(Indicator):
             self._tup = np.zeros(size)
             self._tdn = np.zeros(size)
 
+            self._tup[0] = self._tup[1] = np.NaN
+            self._tdn[0] = self._tdn[1] = np.NaN
+
         for i in range(2, size):
             if bbe[i-1] > bbe[i] and bbe[i-2] < bbe[i-1]:
                 self._tup[i] = bbe[i]
@@ -254,9 +260,9 @@ class ATRSRIndicator(Indicator):
                 self._tup[i] = np.NaN
 
         for i in range(2, size):
-            if bbe[i-1] < bbe[i] and bbe[i-2] < bbe[i-1]:
+            if bbe[i-1] < bbe[i] and bbe[i-2] > bbe[i-1]:
                 self._tdn[i] = bbe[i]
-            else:
+            else:   
                 self._tdn[i] = np.NaN
 
         highest = ta_MAX(high, 3)
@@ -265,33 +271,49 @@ class ATRSRIndicator(Indicator):
         last_up = 0.0
         last_dn = 0.0
 
-        for i in range(0, size):
+        for i in range(2, size):
             if not np.isnan(self._tup[i]):
                 last_up = self._tup[i] = highest[i]
-            else:
+            elif last_up > 0.0:
                 self._tup[i] = last_up
 
             if not np.isnan(self._tdn[i]):
                 last_dn = self._tdn[i] = lowest[i]
-            else:
+            elif last_dn > 0.0:
                 self._tdn[i] = last_dn
 
+        # logger.debug("%s %s %s" % (self._tdn[-3], self._tdn[-2], self._tdn[-1]))
+      
+        # logger.debug("%s - %s %s / %s %s %s /  %s %s %s / %s %s %s / %s %s %s" % (
+        #     datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'),
+        #     datetime.utcfromtimestamp(timestamps[-2]).strftime('%Y-%m-%d %H:%M:%S'),
+        #     datetime.utcfromtimestamp(timestamps[-1]).strftime('%Y-%m-%d %H:%M:%S'),
+        #     self._tdn[-3], self._tdn[-2], self._tdn[-1], close[-3], close[-2], close[-1], low[-3], low[-2], low[-1], lowest[-3], lowest[-2], lowest[-1]))
+
         # compact timeserie
-        delta = min(int((timestamp - self._last_timestamp) / self._timeframe), len(timestamps))
+        from_timestamp = Instrument.basetime(self.timeframe, self._last_timestamp)  # inclusive
+        to_timestamp = Instrument.basetime(self.timeframe, timestamp)               # exclusive
+
+        delta = min(int((to_timestamp - from_timestamp) / self._timeframe) + 1, len(timestamps))
 
         # base index
         num = len(timestamps)
 
-        for b in range(num-delta, num):
-            if timestamps[b] > self._last_timestamp:
-                if b > 0:
-                    last_up = self._tup[b-1]
-                    last_dn = self._tdn[b-1]
-                else:
-                    last_up = 0.0
-                    last_dn = 0.0
+        last_up = self._up[-1] if len(self._up) else np.NaN
+        last_dn = self._down[-1] if len(self._down) else np.NaN
 
-                if not np.isnan(self._tup[b]) and self._tup[b] != last_up:
+        # if len(self._tdn) and not np.isnan(self._tdn[-1]) and self._tdn[-1] != last_dn:
+        #     self._down.append(self._tdn[-1])
+        #     last_dn = self._tdn[-1]
+        #     logger.info("> %s %s" % (datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'), last_dn))
+
+        # if len(self._tup) and not np.isnan(self._tup[-1]) and self._tup[-1] != last_up:
+        #     self._up.append(self._tup[-1])
+
+        for b in range(num-delta, num):
+            # only most recent and complete
+            if from_timestamp <= timestamps[b] < to_timestamp:
+                if not np.isnan(self._tup[b]) and self._tup[b] != last_up and self._tup[b] > 0.0:
                     last_up = self._tup[b]
 
                     self._up.append(last_up)
@@ -303,8 +325,9 @@ class ATRSRIndicator(Indicator):
                     if len(self._both) > 2*self._max_history:
                         self._both.pop(0)
 
-                if not np.isnan(self._tdn[b]) and self._tdn[b] != last_dn:
+                if not np.isnan(self._tdn[b]) and self._tdn[b] != last_dn and self._tdn[b] > 0.0:
                     last_dn = self._tdn[b]
+                    # logger.info("%s %s" % (datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'), last_dn))
 
                     self._down.append(last_dn)
                     self._both.append(last_dn)

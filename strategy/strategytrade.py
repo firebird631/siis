@@ -6,7 +6,7 @@
 from datetime import datetime
 
 from common.signal import Signal
-from common.utils import timeframe_to_str, timeframe_from_str
+from common.utils import timeframe_to_str, timeframe_from_str, UTC
 
 from trader.order import Order, order_type_to_str
 
@@ -684,11 +684,11 @@ class StrategyTrade(object):
     #
 
     def dump_timestamp(self, timestamp):
-        return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%f')
+        return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
     def load_timestamp(self, datetime_str):
         if datetime_str:
-            return datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+            return datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).timestamp()
         else:
             return 0
 

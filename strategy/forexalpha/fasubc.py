@@ -55,7 +55,7 @@ class ForexAlphaStrategySubC(ForexAlphaStrategySub):
             # self.last_signal = signal
             if (self.last_signal and (signal.signal == self.last_signal.signal) and
                     (signal.dir == self.last_signal.dir) and
-                    (signal.base_time() == self.last_signal.base_time())):  # or (signal.ts - self.last_signal.ts) < (self.tf * 0.5):
+                    (signal.basetime() == self.last_signal.basetime())):  # or (signal.ts - self.last_signal.ts) < (self.tf * 0.5):
                 # same base time avoid multiple entries on the same candle
                 signal = None
             else:

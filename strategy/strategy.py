@@ -955,7 +955,7 @@ class Strategy(Runnable):
 
                     num_candles += 1
 
-            # logger.message("next is %s (delta=%s) / now %s (n=%i) (low=%s)" % (base_next_timestamp, base_next_timestamp-next_timestamp, self.timestamp, num_candles, lower_timeframe))
+            # logger.info("next is %s (delta=%s) / now %s (n=%i) (low=%s)" % (base_next_timestamp, base_next_timestamp-next_timestamp, self.timestamp, num_candles, lower_timeframe))
             next_timestamp = base_next_timestamp
 
             if not num_candles:

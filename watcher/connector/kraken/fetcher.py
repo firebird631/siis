@@ -50,6 +50,7 @@ class KrakenFetcher(Fetcher):
                         self.service,
                         identity.get('api-key'),
                         identity.get('api-secret'),
+                        [],
                         identity.get('host'))
 
                 if not self._connector.connected:

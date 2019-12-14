@@ -71,6 +71,8 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 # update at tick
                 ticks = self.instrument.ticks_after(sub.candles_gen.last_timestamp)
 
+                sub._last_closed = False
+
                 generated = sub.candles_gen.generate_from_ticks(ticks)
                 if generated:
                     self.instrument.add_candle(generated, sub.depth)
@@ -98,9 +100,14 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 # update at candle timeframe
                 candles = self.instrument.candles_after(self._base_timeframe, sub.candles_gen.last_timestamp)
 
+                sub._last_closed = False
+
                 generated = sub.candles_gen.generate_from_candles(candles)
                 if generated:
                     self.instrument.add_candle(generated, sub.depth)
+
+                    # last OHLC close
+                    sub._last_closed = True
 
                 self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # with tne non consolidated
 
@@ -125,6 +132,8 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             if sub.update_at_close:
                 if sub.need_update(timestamp):
                     compute = True
+                else:
+                    compute = False
             else:
                 compute = True
 

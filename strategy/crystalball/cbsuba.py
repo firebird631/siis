@@ -42,8 +42,8 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
 
         last_timestamp = candles[-1].timestamp
 
-        prices = self.price.compute(last_timestamp, candles)
-        volumes = self.volume.compute(last_timestamp, candles)
+        prices = self.price.compute(timestamp, candles)
+        volumes = self.volume.compute(timestamp, candles)
 
         signal = self.compute(timestamp, last_timestamp, candles, prices, volumes)
 
@@ -56,7 +56,7 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
             # self.last_signal = signal
             if (self.last_signal and (signal.signal == self.last_signal.signal) and
                     (signal.dir == self.last_signal.dir) and
-                    (signal.base_time() == self.last_signal.base_time())):  # or (signal.ts - self.last_signal.ts) < (self.tf * 0.5):
+                    (signal.basetime() == self.last_signal.basetime())):  # or (signal.ts - self.last_signal.ts) < (self.tf * 0.5):
                 # same base time avoid multiple entries on the same candle
                 signal = None
             else:
@@ -72,19 +72,20 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
         # volume_sma = utils.MM_n(self.depth-1, self.volume.volumes)
 
         if self.rsi:
-            self.rsi.compute(last_timestamp, prices)
+            self.rsi.compute(timestamp, prices)
 
         if self.pivotpoint:
             if self.pivotpoint.compute_at_close and self.last_closed:
-                self.pivotpoint.compute(last_timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
+                self.pivotpoint.compute(timestamp, self.price.open, self.price.high, self.price.low, self.price.close)
 
         if self.atr:
             if self.last_closed:
-                self.atr.compute(last_timestamp, self.price.high, self.price.low, self.price.close)
+                self.atr.compute(timestamp, self.price.high, self.price.low, self.price.close)
 
         if self.tomdemark:
             if self.tomdemark.compute_at_close and self.last_closed:
-                self.tomdemark.compute(last_timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.prices)
+                # last_timestamp
+                self.tomdemark.compute(timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.prices)
 
                 # sell-setup
                 if self.tomdemark.c.c == 9 and self.tomdemark.c.d < 0:
@@ -103,7 +104,7 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
         if self.bbawe:
             if self.last_closed:
                 # use OHLC4 as price in place of close
-                bbawe = self.bbawe.compute(last_timestamp, self.price.high, self.price.low, self.price.prices)
+                bbawe = self.bbawe.compute(timestamp, self.price.high, self.price.low, self.price.prices)
 
                 if bbawe > 0:
                     signal = StrategySignal(self.tf, timestamp)

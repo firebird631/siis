@@ -19,7 +19,9 @@ class TimeframeBasedSub(object):
         self.tf = timeframe
         self.depth = depth       # min samples size needed for processing
         self.history = history   # sample history size
-        self.next_timestamp = 0  # next waiting, to be processed ohlc timestamp
+
+        self.last_timestamp = 0.0
+        self.next_timestamp = 0.0  # next waiting, to be processed ohlc timestamp
 
         self._update_at_close = params.get('update-at-close', False)
         self._signal_at_close = params.get('signal-at-close', False)
@@ -75,8 +77,9 @@ class TimeframeBasedSub(object):
             # last processed candle timestamp (from last candle if non consolidated else from the next one)
             self.next_timestamp = candles[-1].timestamp if not candles[-1].ended else candles[-1].timestamp + self.tf
 
-        # last closed candle processed
-        self._last_closed = False
+        # last closed candle processed (reseted before next gen)
+        # self._last_closed = False
+        # self.last_timestamp = timestamp
 
     def cleanup(self, timestamp):
         """
