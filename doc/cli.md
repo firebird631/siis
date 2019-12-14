@@ -8,7 +8,7 @@ There is three sort of commands, on the terminal shell and 2 on the program term
 python siis.py <identity> [--help, --options...]
 ```
 
-Please read the main README.md file for this part.
+[Those options are explained into the general README.md.](/README.md)
 
 
 ## Program terminal instance ##

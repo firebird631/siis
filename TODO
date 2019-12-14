@@ -1,6 +1,6 @@
-#######################################
-# TODOs has moved to a dedicated tool #
-#######################################
+###################
+# Some TODOs here #
+###################
 
 ############
 # EN COURS #
@@ -26,8 +26,6 @@
 			pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier orde)
 	- Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
 
-#71 Vue latéral pour afficher les markets tradés de l'appliance séléctionné ?
-
 #93 Command doit y avoir un prob avec self._word qui doit être parfois mal définit, donc la complétion initial du premier verbe déconne parfois
 
 #95 Parfois on a un problème de quantité d'asset sur le paper-trader.
@@ -39,11 +37,7 @@
 # URGENT #
 ##########
 
-#82 SL sont en STOP, mais on pourrait avoir en STOP_LIMIT avec un prix assez large
-
 #81 Imaginer un filtre de prix utilisé pour les SL/TP pour éviter qu'ils s'active sur une mêche pour rien, peut être attendre sur une close sinon ?
-
-#78 Sur le monitor service avoir un gestionnaire des 'notifiers' (hangout, discord...)
 
 #75 TD9 countdown a debug et tester
 
@@ -65,26 +59,15 @@
 # REFLEXION #
 #############
 
-#89 Avoir une notion un model Tool, avoir une method pour avoir la liste des param obligatoire params(), une methode process(logger, options) et une methode cli_help()
+#89 Avoir une notion un model Tool, avoir une méthode pour avoir la liste des param obligatoire params(), une methode process(logger, options) et une methode cli_help()
 	-> Convertir binarizer, fetcher, optimizer et syncer avec ce modèle et avoir un paramètre --tool=
 
-#79 Pour trend et extremum_trend prob mnt qu'on ne garde pas d'histo sur les indic (pour raison de perf) et en plus TA lib va nous refiler des NaN
-	on va juste avoir Depth-N+1 valeurs (SMA...), voir Depth-N dans le cas de la RSI.
-	Deja pour cross on a besoin des 2 derns, et pour trend, donc plus, ça pourrait donc être un indicateur d'indicateur.
-	TrendIndicator() et TrendExtIndicator(), ainsi que CrossIndicator(). Ils pourraient conserver le nombre de samples min dont ils ont besoins, et comme on s'en sert pas
-	dans les strategies actuelle (sauf l'ancienne forexalpha) a voir...
-
-#76 Un process par strategie, avec un connecteur RPC ou autre sur le process qui supporte le watcher et le trader. Mieux pour relancer que la stratégie
-	que l'on souhaite (en plus des save des trade en cours pour reload au relancement), mais demande un peu de surcouche, et puis ça découple bien,
-	surtout en cas de plantage.
-	- Ce découplage est pensé et réalisé sur la V2
+#76 Découplage watcher/trader de la strategie avec communication asyncio interprocess pour éviter de relancer la partie watcher, et ainsi la laisser écouter le marché
 
 
 #######
 # TOP #
 #######
-
-#94 Bien vérifier si en fait mon fetching des ticks sur bitmex est correct
 
 #43 Mécanisme d'abonnement/desabonnement a un flux pour les chart par instrument (nécessite un socket bidir et donc l'API)
 	- Déjà on ne passe les flux de chart qu'en mode debug ou profilage
@@ -102,7 +85,7 @@
 # LESS #
 ########
 
-#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry
+#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, l'intérêt c'est d'avoir le trigger coté bot, pour ne pas bloquer de fond indéfiniment
 
 #38 Fetcher et (REST) Watcher Tiingo
 
@@ -110,18 +93,12 @@
 	pour ainsi faire tourner si plus de 5 marché suivis a une ut de 1m
 	=> finalement avec Tiingo ou PyEx on devrait tout avoir donc pas besoin d'en faire trop sur AlphaVantage.
 
-#17 Order cancelation pour annuler un ordre si pas passé ou pas totalement que le cours est reparti... En partie géré.
-
-#20 Supprime t'on le support de 1broker, et la stratégie boostedblueskyday, ou les gardes t'on à titre d'exemple ?
-
 
 #########
 # OPTIM #
 #########
 
-#42 On pourrait aggréger les signaux OHLC, et que faire on a tjs un TICK + MARKET DATA signal en même temps
-	mais comme ce ne sont pas les même notions quoi faire ?
-
+#
 
 #########################
 ## Idées de stratégies ##

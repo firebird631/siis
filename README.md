@@ -21,17 +21,19 @@ Features
 
 * Initially developped for Linux, but should work on Window or MacOSX
 * Traditionnals and crypto markets brokers for trading are supported
-    * Binance (done and margin planned)
-    * Bitmex
-    * Kraken (work in progress)
-    * Kraken Futures (planned)
-    * IG
-    * Jex (Binance futures) (planned)
-    * Help for others are welcome :-)
+    * [x] Binance
+    * [ ] Binance Margin (planned)
+    * [ ] Binance Future (planned)
+    * [x] Bitmex
+    * [x] Kraken (work in progress)
+    * [] Kraken Futures (planned)
+    * [x] IG
+    * [ ] Help for others are welcome :-)
+    * Ask if you want more, or to accelerate the work for a specific connector
 * Some others source of prices/volumes data fetchers
-    * HistData (only to import manually downloaded files)
-    * AlphaVantage (WIP)
-    * Tiingo (WIP)
+    * [x] HistData (only to import manually downloaded files)
+    * [ ] AlphaVantage (WIP)
+    * [ ] Tiingo (WIP)
 * Fetching of OHLC and ticks/trades history data in a PostgreSQL or MySQL database
 * Multiples instances can run at the same time
 * Many strategies and markets can run on a same instance (tested with 100+ markets on a single instance)
@@ -40,18 +42,20 @@ Features
 * Configuration of multiple profiles and appliances (an appliance is a context of a strategy)
     * Combine one or more appliances per profile
     * Configure multiple appliances and profiles with different options
+    * Customize per markets appliance parameters
 * Backtesting
+    * Can setup a slow-down factor to allow you to replay an history and doing manual and semi-automated trading
 * Paper-mode (simulate a broker for spot and margin trading using live market data)
-* Live-mode trading on your broker account
+* Live-mode real trading on your broker account
 * Interactive command line interface
-    * Backtesting with a slow down or real-time factor allowing you to replay an history
-      and doing manual and semi-automated trading
+    * Many views availables
 * Try as possible to take-care of the spread of the market and the commissions
 * Compute the average unit price of owned assets on Binance
 * Display account details and assets quantities
 * Display tickers and markets informations
 * Display per strategy current (active or pending) trades, trades history and performance
 * Works on multiple timeframes from 1 second to 1 month
+    * Can compute at each tick/trade or at a different timeframe
 * Common indicators are supported :
     * Momentum, RSI, Stochastic, Stochastic RSI
     * SMA, EMA, HMA, WMA, VWMA, MAMA, MACD
@@ -63,26 +67,36 @@ Features
     * TomDemark TD9
     * Ask if you want more :-)
 * Pure signal strategies are possibles in way to only generating some signals/alerts
-* Desktop notification on Linux via dbus
-* Audible notification on Linux via aplay
-* Basic Discord WebHook notifier (have to be redone)
-* 3 initials strategies (1 for bitcoin/ethereum, 1 for forex, 1 for majors altcoins)
+* Notifications : Signal, trade, performance and account status :
+    * [x] Android application (signal, trade, account) (WIP)
+    * [x] Discord WebHook (signal, trade, trade list, performance)
+    * [x] Desktop (Linux popup throught D-Bus, Audible alerte using aplay)
+    * [ ] Hangout / Google chat (planned)
+    * [ ] Telegram (planned)
+    * [ ] XMPP (planned)
+* 4 initials strategies serves as examples :
+    * BitcoinAlpha for serious coins
+    * CryptoAlpha for alt coins
+    * ForexAlpha for forex pairs
+    * CrystalBall as pure signal strategy
+    * Implements your own or ask for a dedicaded developpment :)
 * WebHook of TradingView strategies with an example of a such strategy (uses of TamperMonkey with a JS script, watch the strategy trade last)
 * Manual per trade directives
-    * Add many dynamic stop-loss (trigger level + stop price), useful to schedule how to follow the price
-    * Many exits conditions to be implemented
+    * Add many dynamic stop-loss operation (trigger level + stop price), useful to schedule how to follow the price
 * Manual regions of interest per market strategy to help the bot filtering some signals
     * Define a region for trade entry|exit|both in long|short|both direction
     * The strategy then can filters signal to only be processed in your regions of interest
     * Actually two type of regions :
-        * Range region : parallels horizontals low and high prices
-        * Trend channel region : oblics symetrics or asymmetrics low and high trends
+        * [x] Range region : parallels horizontals low and high prices
+        * [x] Trend channel region : oblics symetrics or asymmetrics low and high trends
     * Auto-expiration after a predefined delay, or after than a trigger price is reached
+
 
 ### Participate ###
 
 Any help is welcome, if you are a Python, Javascript or C++ developper, or a data scientist contact me if your are
 interested in participating seriously into this project.
+
 
 ### Donate ###
 
@@ -255,12 +269,14 @@ First running will try to create a data structure on your local user.
 The directory will contains 4 sub-directories:
 
 * config/ contains important configurations files (described belows)
-* log/ contains siis.log the main log and eventually some others logs files (error.siis.log, exec.siis.log, signal.siis.log)
-* markets/ contains sub-directories for each configured brokers (detailes belows)
-* reports/ contains the reports of the strategies trades, and the paper-trader reports
+* log/ contains siis.log the main log and eventually some others logs files (error.siis.log, exec.siis.log, signal.siis.log, order.siis.log)
+* markets/ contains sub-directories for each configured brokers (details belows)
+* reports/ contains the reports of the strategies traders
 
 Each json file of the config directory could be overrided by adding your own blank copy of the file in your local siis/config
 directory. Every parameters can be overrided, and new entries can be inserted, but do NEVER modify the original files.
+
+[Explanations of the differents log files.](/doc/logging.md)
 
 List of the files in config directory :
 * databases.json : The SiiS database configuration, you have to override if you changes the defaults
@@ -269,7 +285,7 @@ List of the files in config directory :
 * tradeops.json : Supported trade operations, except you create your own you don't have to override this file
 * regions.json : Supported regions, except you create your own you don't have to override this file
 * fetchers.json : Supported fetchers, except you create your own you don't have to override this file
-* stratetgies.json : Supported strategies, except you create your own you don't have to override this file
+* strategies.json : Supported strategies, except you create your own you don't have to override this file
 
 List of the sub-directories of config :
 * watchers/ : One file per watcher to configure, name of file must refers to a valid watcher name.
@@ -278,9 +294,11 @@ List of the sub-directories of config :
 * appliances/ : One file per appliance to configure
 * notifiers/ : One file per notifier to configure
 
+
 ### config/databases.json ###
 
 The 'siis' database configuration (type is pgsql or mysql). There is only one database for now.
+
 
 ### config/watchers/ ###
 
@@ -303,6 +321,7 @@ Parameters :
         * either a ! prefixed value (meaning not) for avoiding this particular market
         * you could have ['*BTC', '!BCHABCBTC'] for exemple to watching any BTC quote paires excepted the BCHABCBTC.
 * there is some more specific options on the tradingview webhook server (host and port of your listening server).
+
 
 ### config/traders/ ###
 
@@ -331,6 +350,7 @@ Parameters :
         * quote prefered quote (where asset + quote must related to a valid market)
         * initial initial quantity for the asset
 
+
 ### config/monitoring.json ###
 
 Contains the configuration of the listening service to connect a futur Web tools to control SiiS more friendly than using the CLI.
@@ -343,6 +363,7 @@ You must define one file per profile and one file per appliance, the name of the
 
 A profile refers to zero, one or many appliances. This is the profile name to used on the command line options --profiles=\<profilename>.
 It is a mixing of one or many appliances, that can be runned on a same instance of SiiS, with traders and watchers options overriding.
+
 
 #### config/profiles/ ####
 
@@ -359,6 +380,7 @@ Content of a \<myprofile>.json :
         * it is recommanded to have only one trader per profile (per running instance)
         * any of the options configured in the config.py TRADERS can be overrided here
           especially the paper-mode option when you want to make some specifics profiles of backtesting
+
 
 #### config/appliances/ ####
 
@@ -403,11 +425,11 @@ The template show you the needed values to configure for the supported brokers.
 
 ### markets/ ###
 
-Each broker have its own usage name, creating if directory. Then you have 1 sub-directory per market.
+Each broker have its own usage name, creating a directory. Then you have a sub-directory per market.
 The market is identified by the unique broker market name.
 
-Then you will have a sub-directory T/ meaning tick or trade. All filed then found defines data at the tick
-or trade level. For Binance this is a aggregate trade level, BitMex at trade, IG at tick.
+Then you will have a sub-directory T/ meaning tick or trade. Finally there is many files for the ticks
+or trades data. For Binance this is a aggregate trade level, BitMex at trade, IG at tick.
 
 There is one file per month, there is a binary and a tabular version of the file at this time. But maybe later
 the tabular version will be disabled and not stored by default.
@@ -417,15 +439,12 @@ See more details on the data fetching section.
 
 ### reports/ ###
 
-Each backtest generate a triplet of files beginning with the starting datetime of the backtest, plus 
-the related broker identifier, and suffixed by :
+Some strategy have the capacity to log trades, signals, performance and even more.
 
-* data.py some Python data array (possibles evolution of this file)
-* report.log this is a summary
-* trades.log this a tabular file containing each trades with profit/loss and balance
+The reports directory will contains a sub-directory per appliance, with a second level sub-directory with the name of the market.
+This is the basic initial reports data file structure.
 
-This part is subject to evolves. I no longer use them, but I've implemented another reporting mecanisme directly from the
-strategy part, writting in this reports have sub-directory per appliance and market.
+Inside this could be different for each strategy.
 
 
 Running
@@ -464,22 +483,10 @@ python siis.py <identity> [--help, --options...]
 You need to define the name of the identity to use. This is related to the name defined into the identity.json file.
 Excepted for fetch/binarize/check-data the name of the profile of appliances to use --profile=\<profilename> must be specified.
 
-```
-Important, about performance and stability :
-
-The nature of SiiS is to uses distinct thread per watcher, per websocket, per trader, plus a pool of workers
-for the strategies instances, and potentially some others thread for notification and communication extra services.
-
-Because of the Python GIL, thread are not as efficient as in Java or C++ programs. In Python using thread is good for IO, but not for computing where the GIL can be solicited too often and degrading the global performance of the program instance.
-
-In addition, to have a better stability it is more efficient to have distinct accounts, instance and profiles with the minimalist configuration.
-The lesser you have markets to watch and to trade, the more the instance will be fast.
-
-This version as a prototype is monolithic, the connector and the watcher is in the same instance as the strategies. Then stopping an instance mean stopping to watch and to store in local DB the related market data.
-```
-
 There are different running mode, the normal mode, will start the watching, trading capacity (paper-mode, live or backtesting) and offering an interactive terminal session,
 or you can run the specifics tools (fetcher, binarizer, optimizer, syncer, rebuilder...).
+
+[More information about the differents tools.](doc/tools/)
 
 
 Fetcher : importing some historical market data
@@ -539,6 +546,8 @@ Take care than some brokers have limitations. For example IG will limits to 1000
 Some other like BitMex limit to 30 queries per second in non auth mode or 60 in auth mode.
 Concretely thats mean get months of data of trades could take more than a day.
 
+[More information about the fetching process and the differents fetchers.](doc/fetching.md)
+
 
 Backtesting
 -----------
@@ -574,11 +583,13 @@ Adding the --time-factor=\<factor> will add a supplementary dealy during the bac
 and have the time to interact manually, like replaying a semi-automated day of scalping. The factor is a multiple of the time : 1 meaning real-time,
 and then 60 mean 1 minute of simulation per second.
 
+[More information about the backtesting processing and advanced usages.](doc/backtesting.md)
+
 
 How to create or modify a strategy
 ----------------------------------
 
-[A guide explaning how to create, modify and configure an existing strategy.](doc/strategy.md)
+[A guide explaning how to create, modify and configure a strategy.](doc/strategy.md)
 
 
 The winning strategy
@@ -614,6 +625,8 @@ A slippage factor will be implemented sooner.
 In that case the watchers are running and stores OHLC and ticks/trade data (or not if --read-only is specified).
 In paper-mode OHLCs are stored to the database like in a normal live mode.
 
+[More information about the paper-mode.](doc/papermode.md)
+
 
 Live-mode
 ---------
@@ -646,14 +659,14 @@ In addition there is a charting feature using matplotlib.
 The goal is to finish the monitoring service, and to realise a Web client to monitor and manage each instance.
 
 During the execution of the program you can type a command starting by a semicolumn : plus the name of the command.
-Lets first type the :help command. To exit the command is q then type : followed by w and then press enter.
+Lets first type the :help command. To exit the command is q then type : followed by q and then press enter.
 
 There is some direct keys, not using the semicolumn, in default mode, and some complex commands in command mode.
 
 The :help command give you the list a shortcut and commands, and :help \<command-name> to have detailed help
 for a specific command.
 
-[More information about the CLI.](doc/cli.md)
+[More information about the command line interface, the differents view and interacting with them.](doc/cli.md)
 
 
 About data storage
@@ -700,6 +713,34 @@ The problem is if you don't let an instance all the week, you will have some gap
 weekend the bot in that case, and to apply your strategies changes at this time.
 
 Finally you can disable writting of OHLCS generated during watcher using the option --read-only.
+
+[More information about the structure and organisation of the data.](doc/datastructure.md)
+
+
+Note about performance, stability and scalability
+-------------------------------------------------
+
+SiiS uses distinct threads per watcher, per WebSocket, per trader, per strategy, plus a pool of workers for the strategies traders,
+and potentially some others threads for notification and communication extra services.
+
+Because of the Python GIL, threads are efficients when used for the IO operations, but not for the computing.
+
+Performance seems good, tested with 100+ traded markets at trades/ticks level of watching.
+It could be interesting to use the asyncio capacities to distribute the computing, but in cost of extra communication, and an additional latency.
+
+I recommand to use only a single watcher/trader and a single strategy/appliance per profile.
+More will requires extra threads, causing possible global latencies.
+
+In addition, if you have different set of parameters for markets you could prefers to uses distinct profiles and then instance of SiiS.
+For example you trade EURUSD and USDPY using the same profile and instance, but you have a separate profile and instance for trade the indices,
+and another for trading the commodities.
+
+Another example, you trade pairs on USDT, but you distinct 4 sorts ok markets, serious coin, alt coin and shit coin and low volume shitcoins.
+Then you could have 4 distinct profiles and then 4 instances. And more probably you might have differents strategies.
+
+Again another example, a broker offers trading on asset and some others pairs on margin, considers having differents profiles, and then differents instances too.
+
+Finally, you could setup your differents VPS, one instance per VPS, lesser failures, lower resources usage, and you could adjust the hardware to the optimal point.
 
 
 Troubles
