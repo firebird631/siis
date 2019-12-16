@@ -172,7 +172,7 @@ class StrategySignal(object):
     def loss(self):
         if self.dir > 0:
             return ((self.p - self.sl) / self.p) if self.p > 0.0 else 0.0
-        elif self.dir > 0:
+        elif self.dir < 0:
             return ((self.sl - self.p) / self.p) if self.p > 0.0 else 0.0
 
         return 0.0
@@ -182,6 +182,22 @@ class StrategySignal(object):
         loss = self.loss()
 
         return loss / profit if profit > 0.0 else 0.0
+
+    def profit_dist(self):
+        if self.dir > 0:
+            return self.tp - self.p
+        elif self.dir < 0:
+            return self.p - self.tp
+
+        return 0.0
+
+    def loss_dist(self):
+        if self.dir > 0:
+            return self.p - self.sl
+        elif self.dir < 0:
+            return self.sl - self.p
+
+        return 0.0
 
     #
     # extra

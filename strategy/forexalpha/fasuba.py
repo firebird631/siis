@@ -46,12 +46,10 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
             # not enought samples
             return
 
-        last_timestamp = candles[-1].timestamp
-
         prices = self.price.compute(timestamp, candles)
         volumes = self.volume.compute(timestamp, candles)
 
-        signal = self.process_cb(timestamp, last_timestamp, candles, prices, volumes)
+        signal = self.process_cb(timestamp, self.last_timestamp, candles, prices, volumes)
 
         # avoid duplicates signals
         if signal and self.need_signal:
@@ -65,7 +63,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
                 # retains the last valid signal only if valid
                 self.last_signal = signal
 
-        self.complete(candles)
+        self.complete(candles, timestamp)
 
         return signal
 

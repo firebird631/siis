@@ -23,7 +23,7 @@ The command mode begin when you tip a semicolumn ":" character.
 
 ### Default mode ###
 
-Global fonctions are accessible throught direct keys :
+Global fonctions are accessible through direct keys :
 * changing the active view
 * clearing the console or signal or debug view content
 * toggle on the desktop notifier (popup and audio alerts)
@@ -72,7 +72,7 @@ Unused, but reserved for later usage, like to display the order book.
 
 #### Console view ####
 
-This is the initially displayed view, accessible throught the Shift+I shortcut.
+This is the initially displayed view, accessible through the Shift+I shortcut.
 All logged message goes to this view, you can scroll using shift+arrow and page-up/down keys.
 
 By default it always auto-scroll to the last message.
@@ -84,7 +84,7 @@ You can clear its content using Shift+C shortcut.
 
 #### Debug view ####
 
-This is where the developper debug message goes, accessible throught the Shift+D shortcut.
+This is where the developper debug message goes, accessible through the Shift+D shortcut.
 All logged message goes to this view, you can scroll using shift+arrow and page-up/down keys.
 
 By default it always auto-scroll to the last message.
@@ -96,7 +96,7 @@ You can clear its content using Shift+C shortcut.
 
 #### Signal view ####
 
-This is where the generated strategies/appliances signals goes, accessible throught the Shift+N shortcut.
+This is where the generated strategies/appliances signals goes, accessible through the Shift+N shortcut.
 
 * Generated signal or trade are catched by this view, the last 200 only are visibles.
 * Each signal has a hash color
@@ -110,7 +110,7 @@ This is where the generated strategies/appliances signals goes, accessible throu
 
 #### Markets view ####
 
-This display the status and details of the markets, accessible throught the Shift+M shortcut.
+This display the status and details of the markets, accessible through the Shift+M shortcut.
 
 ![Markets view](/doc/img/marketsview1.png)
 
@@ -119,7 +119,7 @@ This display the status and details of the markets, accessible throught the Shif
 
 #### Tickers view ####
 
-This display tickers of the markets, accessible throught the Shift+T shortcut.
+This display tickers of the markets, accessible through the Shift+T shortcut.
 
 ![Tickers view](/doc/img/tickersview1.png)
 
@@ -128,7 +128,7 @@ This display tickers of the markets, accessible throught the Shift+T shortcut.
 
 #### Account view ####
 
-This display accounts details like balance, margins, unrealized P/L are visibles, accessible throught the Shift+A shortcut.
+This display accounts details like balance, margins, unrealized P/L are visibles, accessible through the Shift+A shortcut.
 
 ![Accounts view](/doc/img/accountsview1.png)
 
@@ -137,7 +137,7 @@ This display accounts details like balance, margins, unrealized P/L are visibles
 
 #### Asset view ####
 
-This display assets balances, free, locked, total, unrealized P/L are visibles, accessible throught the Shift+Q shortcut.
+This display assets balances, free, locked, total, unrealized P/L are visibles, accessible through the Shift+Q shortcut.
 
 ![Assets view](/doc/img/accountsview1.png)
 
@@ -146,7 +146,7 @@ This display assets balances, free, locked, total, unrealized P/L are visibles, 
 
 #### Active trades view ####
 
-This display current active, valid or pending trades for the current strategy, accessible throught the Shift+F shortcut.
+This display current active, valid or pending trades for the current strategy, accessible through the Shift+F shortcut.
 
 The current displayed strategy/appliance can be switched using the Shift+Page-Up/Page-Down shortcuts.
 
@@ -157,7 +157,7 @@ The current displayed strategy/appliance can be switched using the Shift+Page-Up
 
 #### History trades view ####
 
-This display history of realized trades for the current strategy, accessible throught the Shift+S shortcut.
+This display history of realized trades for the current strategy, accessible through the Shift+S shortcut.
 
 The current displayed strategy/appliance can be switched using the Shift+Page-Up/Page-Down shortcuts.
 
@@ -168,7 +168,7 @@ The current displayed strategy/appliance can be switched using the Shift+Page-Up
 
 #### Performance/resume view ####
 
-This display sums of the differents trades per market and the total for the current strategy, accessible throught the Shift+P shortcut.
+This display sums of the differents trades per market and the total for the current strategy, accessible through the Shift+P shortcut.
 
 The current displayed strategy/appliance can be switched using the Shift+Page-Up/Page-Down shortcuts.
 

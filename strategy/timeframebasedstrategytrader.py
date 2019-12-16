@@ -71,7 +71,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 # update at tick
                 ticks = self.instrument.ticks_after(sub.candles_gen.last_timestamp)
 
-                sub._last_closed = False
+                # sub._last_closed = False
 
                 generated = sub.candles_gen.generate_from_ticks(ticks)
                 if generated:

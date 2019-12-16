@@ -430,21 +430,6 @@ class StrategyIndMarginTrade(StrategyTrade):
                     # probably need to update exit orders
                     self._dirty = True
 
-                if self.e >= self.oq:
-                    self._entry_state = StrategyTrade.STATE_FILLED
-
-                    # bitmex does not send ORDER_DELETED signal, cleanup here
-                    self.create_oid = None
-                    self.create_ref_oid = None
-                else:
-                    self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-
-                # retains the trade timestamp
-                if not self._stats['first-realized-entry-timestamp']:
-                    self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
-
-                self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
-
                 #
                 # fees/commissions
                 #
@@ -462,6 +447,29 @@ class StrategyIndMarginTrade(StrategyTrade):
                 # realized fees
                 if filled > 0:
                     self._stats['entry-fees'] += filled * (instrument.maker_fee if maker else instrument.taker_fee)
+
+                #
+                # cleanup
+                #
+
+                if self.e >= self.oq:
+                    self._entry_state = StrategyTrade.STATE_FILLED
+
+                    # bitmex does not send ORDER_DELETED signal, cleanup here
+                    self.create_oid = None
+                    self.create_ref_oid = None
+                else:
+                    self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+                #
+                # stats
+                #
+
+                # retains the trade timestamp
+                if not self._stats['first-realized-entry-timestamp']:
+                    self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
+
+                self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
             elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
                 # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twices
@@ -515,23 +523,6 @@ class StrategyIndMarginTrade(StrategyTrade):
                         # there is no longer entry order, then we have fully filled the exit
                         self._exit_state = StrategyTrade.STATE_FILLED
 
-                if self.x >= self.e:
-                    # bitmex does not send ORDER_DELETED signal, cleanup here
-                    if data['id'] == self.limit_oid:
-                        self.limit_oid = None
-                        self.limit_ref_oid = None
-                    elif data['id'] == self.stop_oid:
-                        self.stop_oid = None
-                        self.stop_ref_oid = None
-                else:
-                    self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-
-                # retains the trade timestamp
-                if not self._stats['first-realized-exit-timestamp']:
-                    self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
-
-                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
-
                 #
                 # fees/commissions
                 #
@@ -549,6 +540,31 @@ class StrategyIndMarginTrade(StrategyTrade):
                 # realized fees
                 if filled > 0:
                     self._stats['exit-fees'] += filled * (instrument.maker_fee if maker else instrument.taker_fee)
+
+                #
+                # cleanup
+                #
+
+                if self.x >= self.e:
+                    # bitmex does not send ORDER_DELETED signal, cleanup here
+                    if data['id'] == self.limit_oid:
+                        self.limit_oid = None
+                        self.limit_ref_oid = None
+                    elif data['id'] == self.stop_oid:
+                        self.stop_oid = None
+                        self.stop_ref_oid = None
+                else:
+                    self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+                #
+                # stats
+                #
+
+                # retains the trade timestamp
+                if not self._stats['first-realized-exit-timestamp']:
+                    self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
+                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
     def position_signal(self, signal_type, data, ref_order_id, instrument):
         # how to manage it correctly because cumulated position on the same size wrong its local trade value

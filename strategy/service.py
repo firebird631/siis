@@ -57,6 +57,7 @@ class StrategyService(Service):
         self._from_date = options.get('from')  # UTC tz
         self._to_date = options.get('to')  # UTC tz
         self._timestep = options.get('timestep', 60.0)
+        self._timeframe = options.get('timeframe', 0.0)
 
         self._timestamp = 0  # in backtesting current processed timestamp
 
@@ -288,7 +289,7 @@ class StrategyService(Service):
                 # start the time thread once all appliance get theirs data and are ready
                 class TimeStepThread(threading.Thread):
 
-                    def __init__(self, service, s, e, ts, tf=0.0):
+                    def __init__(self, service, s, e, ts, base_tf=0.0, tf=0.0):
                         super().__init__(name="backtest")
 
                         self.service = service
@@ -301,6 +302,7 @@ class StrategyService(Service):
                         self.tf = tf
                         self.begin_ts = 0
                         self.end_ts = 0
+                        self.base_tf = base_tf
 
                     def run(self):
                         prev = self.c
@@ -399,7 +401,7 @@ class StrategyService(Service):
 
                         self.end_ts = time.time()
 
-                self._timestep_thread = TimeStepThread(self, self._start_ts, self._end_ts, self._timestep, self._time_factor)
+                self._timestep_thread = TimeStepThread(self, self._start_ts, self._end_ts, self._timestep, self._timeframe, self._time_factor)
                 self._timestep_thread.setDaemon(True)
                 self._timestep_thread.start()
 
@@ -487,44 +489,57 @@ class StrategyService(Service):
         pass
 
     def indicator(self, name):
+        """Return a specific indicator model by its name"""
         return self._indicators.get(name)
 
     def strategy(self, name):
+        """Return a specific strategy model by its name"""
         return self._strategies.get(name)
 
     def appliance(self, name):
+        """Return a specific appliance instance by its name"""
         return self._appliances.get(name)
 
     def get_appliances(self):
+        """Returns a list of the appliances instances"""
         return list(self._appliances.values())
 
     def appliances_identifiers(self):
+        """Returns a list of the identifiers of the loaded appliances"""
         return [app.identifier for k, app in self._appliances.items()]
 
     @property
     def timestamp(self):
+        """Current live or backtesting timestamp"""
         return self._timestamp if self._backtesting else time.time()
 
     @property
     def backtesting(self):
+        """True if backtesting"""
         return self._backtesting
 
     @property
     def from_date(self):
+        """Backtestnig starting datetime"""
         return self._from_date
 
     @property
     def to_date(self):
+        """Backtesting ending datetime"""
         return self._to_date
 
     @property
+    def timeframe(self):
+        """Backtesting base timeframe"""
+        return self._timeframe
+
+    @property
     def report_path(self):
+        """Base path where to store appliances reports"""
         return self._report_path
 
     def profile_has_appliance(self, name):
-        """
-        Check if an appliance is allowed for the current loaded profile.
-        """
+        """Check if an appliance is allowed for the current loaded profile"""
         appliances = self._profile_config.get('appliances', [])
 
         for app_name in appliances:
@@ -543,21 +558,15 @@ class StrategyService(Service):
         return False
 
     def strategy_config(self, name):
-        """
-        Get the configurations for a strategy as dict.
-        """
+        """Get the configurations for a strategy as dict"""
         return self._strategies_config.get(name, {})
 
     def indicator_config(self, name):
-        """
-        Get the configurations for an indicator as dict.
-        """
+        """Get the configurations for an indicator as dict"""
         return self._indicators_config.get(name, {})
 
     def tradeop_config(self, name):
-        """
-        Get the configurations for a tradeop as dict.
-        """
+        """Get the configurations for a tradeop as dict"""
         return self._tradeops_config.get(name, {})
 
     def ping(self, timeout):

@@ -428,7 +428,7 @@ class Strategy(Runnable):
 
         # now can setup backtest or live mode
         if self.service.backtesting:
-            self.setup_backtest(self.service.from_date, self.service.to_date)
+            self.setup_backtest(self.service.from_date, self.service.to_date, self.service.timeframe)
         else:
             self.setup_live()
 
@@ -983,7 +983,7 @@ class Strategy(Runnable):
                 #     # an update occured during processing, add a new job
                 #     self.service.worker_pool.add_job(None, (self.update_strategy, (strategy_trader,)))
 
-    def setup_backtest(self, from_date, to_date):
+    def setup_backtest(self, from_date, to_date, base_timeframe=Instrument.TF_TICK):
         """
         Override this method to implement your backtesting strategy data set of instrument and feeders.
         """

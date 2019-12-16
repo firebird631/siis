@@ -52,12 +52,10 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
             # not enought samples
             return
 
-        last_timestamp = candles[-1].timestamp
-
         prices = self.price.compute(timestamp, candles)
         volumes = self.volume.compute(timestamp, candles)
 
-        signal = self.process1(timestamp, last_timestamp, candles, prices, volumes)
+        signal = self.process1(timestamp, self.last_timestamp, candles, prices, volumes)
 
         # avoid duplicates signals
         if signal and self.need_signal:
@@ -71,7 +69,7 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
                 # retains the last valid signal only if valid
                 self.last_signal = signal
 
-        self.complete(candles)
+        self.complete(candles, timestamp)
 
         return signal
 

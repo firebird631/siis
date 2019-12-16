@@ -66,7 +66,7 @@ Features
 * Notifications : Signal, trade, performance and account status :
     * [x] Android application (signal, trade, account) (WIP)
     * [x] Discord WebHook (signal, trade, trade list, performance)
-    * [x] Desktop (Linux popup throught D-Bus, Audible alerte using aplay)
+    * [x] Desktop Linux only (popup through D-Bus, audible alerts using aplay)
     * [ ] Hangout / Google chat (planned)
     * [ ] Telegram (planned)
     * [ ] XMPP (planned)
@@ -190,7 +190,11 @@ The first line of comment in these files describe a possible way to install them
 
 The futur version will need the requirement of TimescaleDB for optimized timeserie data.
 
+
 ##### TimescaleDB (not necessary at now) #####
+
+...
+
 
 ###### Debian / Ubuntu ######
 
@@ -204,6 +208,7 @@ sudo apt-get install timescaledb-postgresql-11
 ```
 
 You could have to replace `lsb_release -c -s` by buster ou bulleye if your are on a Debian sid.
+
 
 ##### Database creation #####
 

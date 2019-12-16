@@ -100,7 +100,7 @@ class ForexAlphaStrategy(Strategy):
 
         Terminal.inst().info("Appliance data retrieved", view='status')
 
-    def setup_backtest(self, from_date: datetime, to_date: datetime) -> None:
+    def setup_backtest(self, from_date, to_date, base_timeframe=Instrument.TF_TICK):
         trader = self.trader()
 
         # preload data for any supported instruments
