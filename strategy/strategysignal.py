@@ -6,7 +6,7 @@
 from datetime import datetime
 from common.signal import Signal
 
-from trader.order import Order
+from trader.order import Order, order_type_to_str
 from common.utils import timeframe_to_str, direction_to_str
 
 from instrument.instrument import Instrument
@@ -36,7 +36,7 @@ class StrategySignal(object):
     - ts for timestamp (UTC)
     """
 
-    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'entry_timeout', 'expiry', 'label', 'context', '_extra'
+    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'entry_timeout', 'expiry', 'label', 'context', '_extra', 'order_type',
 
     VERSION = "1.0.0"
 
@@ -59,6 +59,8 @@ class StrategySignal(object):
 
         self.label = ""      # signal label
         self.context = None  # can be any object inherited from StrategySignalContext (will be setted as reference to the trade)
+
+        self.order_type = Order.ORDER_MARKET
 
         self._extra = {}
 
@@ -257,6 +259,7 @@ class StrategySignal(object):
                 'timestamp': timestamp,
                 'symbol': strategy_trader.instrument.market_id,
                 'way': "entry",
+                "order-type": order_type_to_str(self.order_type),
                 'entry-timeout': timeframe_to_str(self.entry_timeout),
                 'expiry': self.expiry,
                 'timeframe': timeframe_to_str(self.timeframe),
@@ -278,6 +281,7 @@ class StrategySignal(object):
                 'timestamp': timestamp,
                 'symbol': strategy_trader.instrument.market_id,
                 'way': "exit",
+                "order-type": order_type_to_str(self.order_type),
                 'entry-timeout': timeframe_to_str(self.entry_timeout),
                 'expiry': self.expiry,
                 'timeframe': timeframe_to_str(self.timeframe),

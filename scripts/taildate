@@ -1,0 +1,4 @@
+#!/bin/bash
+# Return the last registered UTC datetime
+# Usage : taildate TICKFILENAME
+tail $1 -n1 | awk -F'\t' '{print strftime("%c", $1*0.001, 1)}'

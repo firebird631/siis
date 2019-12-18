@@ -1142,7 +1142,7 @@ class StrategyTrader(object):
                                 break
 
         if result:
-            msg = "Max trade reached for %s with %s" % (self.instrument.symbol, max_trades)
+            msg = "Max trade reached for %s with %s or max reached for the timeframe (>=%s)" % (self.instrument.symbol, max_trades, same_timeframe_num)
 
             logger.warning(msg)
             Terminal.inst().notice(msg, view='status')
