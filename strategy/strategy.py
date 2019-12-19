@@ -148,7 +148,7 @@ class Strategy(Runnable):
     def specific_parameters(self, market_id):
         """Strategy trader parameters overloaded by per market-id specific if exists"""
         if market_id in self._parameters['markets']:
-            return merge_parameters(parameters, self._parameters['markets'][market_id])
+            return merge_parameters(self._parameters, self._parameters['markets'][market_id])
         else:
             return self._parameters
 

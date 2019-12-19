@@ -61,14 +61,17 @@ class ATRSRIndicator(Indicator):
 
     @property
     def down(self):
+        """Array of supports, updated only at close, with a max history, temporal order, most recent last"""
         return self._down
 
     @property
     def up(self):
+        """Array of resistances, updated only at close, with a max history, temporal order, most recent last"""
         return self._up
 
     @property
     def cur_up(self):
+        """Currently computed, closed or not resistance"""
         if len(self._tup) == 1 and self._tup[-1] != np.NaN:
             return self._tup[-1]
         elif len(self._tup) > 1 and self._tup[-1] != np.NaN and self._tup[-1] != self._tup[-2]:
@@ -78,12 +81,18 @@ class ATRSRIndicator(Indicator):
 
     @property
     def cur_down(self):
+        """Currently computed, closed or not support"""
         if len(self._tdn) == 1 and self._tdn[-1] != np.NaN:
             return self._tdn[-1]
         elif len(self._tdn) > 1 and self._tdn[-1] != np.NaN and self._tdn[-1] != self._tdn[-2]:
             return self._tdn[-1]
 
         return 0.0
+
+    @property
+    def last_atr(self):
+        """Last ATR value of the serie"""
+        return self._last_atr
 
     def search_up(self, direction, last_price, depth=1, epsilon=0.0):
         n = 0
