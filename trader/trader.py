@@ -976,7 +976,7 @@ class Trader(Runnable):
                 else:
                     bid = market.format_price(market.bid)
                     ofr = market.format_price(market.ofr)
-                    spread = market.format_price(market.spread)
+                    spread = market.format_spread(market.spread)
 
                 if market.vol24h_quote:
                     # @todo could be configured
