@@ -197,8 +197,8 @@ def do_rebuilder(options):
                 while Database.inst().num_pending_ticks_storage() > TICK_STORAGE_DELAY:
                    time.sleep(TICK_STORAGE_DELAY)  # wait a little before continue
 
-                if progression < 100:
-                    Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
+            if progression < 100:
+                Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
 
         elif timeframe > 0:
             while not ohlc_streamer.finished():

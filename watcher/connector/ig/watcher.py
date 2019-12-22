@@ -273,14 +273,13 @@ class IGWatcher(Watcher):
                 if self._initial_fetch:
                     logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                    self.fetch_and_generate(market_id, Instrument.TF_1M, 5, None)
+                    self.fetch_and_generate(market_id, Instrument.TF_1M, 5, Instrument.TF_5M)
                     self.fetch_and_generate(market_id, Instrument.TF_3M, 2, None)
-                    self.fetch_and_generate(market_id, Instrument.TF_5M, 1, None)
-                    self.fetch_and_generate(market_id, Instrument.TF_15M, 1, None)
-                    self.fetch_and_generate(market_id, Instrument.TF_1H, 1, None)
-                    self.fetch_and_generate(market_id, Instrument.TF_4H, 1, None)
+                    self.fetch_and_generate(market_id, Instrument.TF_15M, 4, Instrument.TF_1H)
+                    self.fetch_and_generate(market_id, Instrument.TF_2H, 2, Instrument.TF_4H)
                     self.fetch_and_generate(market_id, Instrument.TF_1D, 1, None)
                     self.fetch_and_generate(market_id, Instrument.TF_1W, 1, None)
+                    # self.fetch_and_generate(market_id, Instrument.TF_1M, 1, None)
 
                 self.insert_watched_instrument(market_id, [0])
 

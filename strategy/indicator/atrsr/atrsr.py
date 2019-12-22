@@ -71,20 +71,16 @@ class ATRSRIndicator(Indicator):
 
     @property
     def cur_up(self):
-        """Currently computed, closed or not resistance"""
-        if len(self._tup) == 1 and self._tup[-1] != np.NaN:
-            return self._tup[-1]
-        elif len(self._tup) > 1 and self._tup[-1] != np.NaN and self._tup[-1] != self._tup[-2]:
+        """Currently computed, closed or not resistance or 0 if none"""
+        if len(self._tup) > 0 and not np.isnan(self._tup[-1]):
             return self._tup[-1]
 
         return 0.0
 
     @property
     def cur_down(self):
-        """Currently computed, closed or not support"""
-        if len(self._tdn) == 1 and self._tdn[-1] != np.NaN:
-            return self._tdn[-1]
-        elif len(self._tdn) > 1 and self._tdn[-1] != np.NaN and self._tdn[-1] != self._tdn[-2]:
+        """Currently computed, closed or not support or 0 if none"""
+        if len(self._tdn) > 0 and not np.isnan(self._tdn[-1]):
             return self._tdn[-1]
 
         return 0.0
@@ -93,6 +89,16 @@ class ATRSRIndicator(Indicator):
     def last_atr(self):
         """Last ATR value of the serie"""
         return self._last_atr
+
+    @property
+    def last_down(self):
+        """Last confirmed support or 0 if none"""
+        return self._down[-1] if len(self._down) else 0.0
+
+    @property
+    def last_up(self):
+        """Last confirmed resistance or 0 if none"""
+        return self._up[-1] if len(self._up) else 0.0
 
     def search_up(self, direction, last_price, depth=1, epsilon=0.0):
         n = 0
