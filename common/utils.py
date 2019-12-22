@@ -6,7 +6,7 @@
 import time
 import math
 
-from datetime import timedelta, tzinfo
+from datetime import datetime, timedelta, tzinfo
 
 
 class UTC(tzinfo):

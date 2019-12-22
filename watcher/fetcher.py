@@ -7,7 +7,7 @@ import time
 
 from datetime import datetime, timedelta
 
-from common.utils import matching_symbols_set, UTC
+from common.utils import matching_symbols_set, timeframe_to_str, UTC
 from terminal.terminal import Terminal
 
 from instrument.instrument import Tick, Candle, Instrument
@@ -185,13 +185,13 @@ class Fetcher(object):
 
                 if n == 10000:
                     n = 0
-                    Terminal.inst().info("%i..." % t)
+                    Terminal.inst().info("%i trades for %s..." % (t, market_id))
 
                 # calm down the storage of tick, if parsing is faster
                 while Database.inst().num_pending_ticks_storage() > Fetcher.MAX_PENDING_TICK:
                     time.sleep(Fetcher.TICK_STORAGE_DELAY)  # wait a little before continue
 
-            logger.info("Fetched %i trades" % t)
+            logger.info("Fetched %i trades for %s" % (t, market_id))
 
         elif timeframe > 0:
             for data in self.fetch_candles(market_id, timeframe, from_date, to_date, None):
@@ -230,9 +230,9 @@ class Fetcher(object):
 
                 if n == 1000:
                     n = 0
-                    Terminal.inst().info("%i..." % t)
+                    Terminal.inst().info("%i candles for %s in %s..." % (t, market_id, timeframe_to_str(timeframe)))
 
-            logger.info("Fetched %i candles" % t)
+            logger.info("Fetched %i candles for %s in %s" % (t, market_id, timeframe_to_str(timeframe)))
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
         """
