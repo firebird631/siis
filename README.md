@@ -480,9 +480,11 @@ python siis.py <identity> [--help, --options...]
 * --rebuild Rebuild OHLC from the trades/ticks data for a market. Need to specify --broker, --market, --timeframe, --from and --to date, --cascaded
 * --optimize Check one ore many market for trades/ticks or OHLCs, and returns data corruption or gaps (later could propose some fix). Need to specify --broker, --market, --timeframe, --from and --to date
 * --sync Synchronize the market data from the broker. Need to specify --broker and --market
+* --export Market data export tool, to use with --broker=, --market=, --from=, --to=, --timeframe= and --filename= arguments
+* --import Market data import tool from previous export, to use with --filename= argument
 
 You need to define the name of the identity to use. This is related to the name defined into the identity.json file.
-Excepted for fetch/binarize/check-data the name of the profile of appliances to use --profile=\<profilename> must be specified.
+Excepted for the tools (fetch, binarize, optimize, rebuild, sync, export, import) the name of the profile to use --profile=\<profilename> must be specified.
 
 There are different running mode, the normal mode, will start the watching, trading capacity (paper-mode, live or backtesting) and offering an interactive terminal session,
 or you can run the specifics tools (fetcher, binarizer, optimizer, syncer, rebuilder...).
@@ -684,7 +686,7 @@ the last OHLCs like :
 * 5m, 3m, 1m are kept for 8 days
 * 1s, 10s, 15s, 30s are never kept
 
-I will probably do more options in **datbases.json** in way to configure the max kept OHLC for each timeframe,
+I will probably do more options in **databases.json** in way to configure the max kept OHLC for each timeframe,
 and create a special db-cleanup running mode that will only process the db-cleanup for the live servers.
 
 There is not interest for live mode to kept to many past for low timeframe, but its necessarry to keep them for

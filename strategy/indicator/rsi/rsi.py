@@ -81,7 +81,7 @@ class RSIIndicator(Indicator):
 
     @staticmethod
     def RSI_n_sf(N, data, step=1, filtering=False):
-        """ 
+        """
         Calcule le RSI sur N periodes en prenant un echantillon tous les step avec ou sans filtrage prealable
         Retourne un array de la même taille que data. Lorsque step > 1, les valeurs sont interpolees lineairement.
         """

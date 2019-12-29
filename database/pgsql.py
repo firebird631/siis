@@ -192,7 +192,7 @@ class PgSql(Database):
                 cursor = self._db.cursor()
 
                 for mi in mki:
-                    if mi[16] is None:
+                    if mi[21] is None:
                         # margin factor is unavailable when market is down, so use previous value if available
                         cursor.execute("""SELECT margin_factor FROM market WHERE broker_id = '%s' AND market_id = '%s'""" % (mi[0], mi[1]))
                         row = cursor.fetchone()
@@ -201,9 +201,12 @@ class PgSql(Database):
                             # replace by previous margin factor from the DB
                             margin_factor = row[0]
                             mi = list(mi)
-                            mi[16] = margin_factor
+                            mi[21] = margin_factor
                         else:
-                            mi[16] = "1.0"
+                            mi[21] = "1.0"
+
+                        if not mi[21]:
+                            mi[21] = "1.0"
 
                     cursor.execute("""INSERT INTO market(broker_id, market_id, symbol,
                                         market_type, unit_type, contract_type,

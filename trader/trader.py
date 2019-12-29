@@ -902,7 +902,7 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets.
         """
-        columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract', 'Min Size', 'Min Notional')
+        columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract', 'Min Size', 'Min Notional', 'Leverage')
         total_size = (len(columns), 0)
         data = []
 
@@ -938,7 +938,9 @@ class Trader(Runnable):
                     str("%.8f" % market.lot_size).rstrip('0').rstrip('.'),
                     str("%.12f" % market.contract_size).rstrip('0').rstrip('.'),
                     market.min_size,
-                    market.min_notional)
+                    market.min_notional,
+                    "%.2f" % (1.0 / market.margin_factor if market.margin_factor > 0.0 else 1.0)
+                )
 
                 data.append(row[col_ofs:])
 
@@ -982,7 +984,7 @@ class Trader(Runnable):
                     # @todo could be configured
                     low = 0
                     if market.quote in ('USD', 'EUR', 'ZEUR', 'ZUSD', 'USDT', 'PAX', 'USDC', 'USDS', 'BUSD', 'TUSD'):
-                        low = 1000000
+                        low = 500000
                     elif market.quote in ('BTC'):
                         low = 100
                     elif market.quote in ('ETH'):

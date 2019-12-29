@@ -120,6 +120,12 @@ def application(argv):
                 elif arg == '--rebuild':
                     # use the rebuilder
                     options['rebuild'] = True
+                elif arg == '--export':
+                    # use the exporter
+                    options['export'] = True
+                elif arg == '--import':
+                    # use the importer
+                    options['import'] = True
 
                 elif arg == '--install-market':
                     options['install-market'] = True
@@ -136,6 +142,10 @@ def application(argv):
                 elif arg.startswith('--time-factor='):
                     # backtesting time-factor
                     options['time-factor'] = float(arg.split('=')[1])
+
+                elif arg.startswith('--filename='):
+                    # used with import or export
+                    options['filename'] = arg.split('=')[1]
 
                 elif arg.startswith('--from='):
                     # if backtest from date (if ommited use whoole data) date format is "yyyy-mm-dd-hh:mm:ss", fetch, binarize, optimize to date
@@ -263,6 +273,32 @@ def application(argv):
         if options.get('market') and options.get('from') and options.get('to') and options.get('broker') and options.get('timeframe'):
             from tools.rebuilder import do_rebuilder
             do_rebuilder(options)
+        else:
+            display_cli_help()
+
+        sys.exit(0)
+
+    #
+    # exporter mode
+    #
+
+    if options.get('export'):
+        if options.get('market') and options.get('from') and options.get('to') and options.get('broker') and options.get('filename'):
+            from tools.exporter import do_exporter
+            do_exporter(options)
+        else:
+            display_cli_help()
+
+        sys.exit(0)
+
+    #
+    # importer mode
+    #
+
+    if options.get('import'):
+        if options.get('filename'):
+            from tools.importer import do_importer
+            do_importer(options)
         else:
             display_cli_help()
 

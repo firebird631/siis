@@ -133,5 +133,10 @@
         "status": "load",
         "classpath": "strategy.indicator.atrsr.atrsr.ATRSRIndicator",
         "options": {}
+    },
+    "willy": {
+        "status": "load",
+        "classpath": "strategy.indicator.willy.willy.WillyIndicator",
+        "options": {}
     }
 }

@@ -728,13 +728,34 @@ class Market(object):
     #
 
     def effective_cost(self, quantity, price):
-        return quantity * (self._lot_size * self._contract_size) * price  # in base currency
+        """
+        Effective cost, not using the margin factor, for a quantity at specific price.
+        In contracts size, the price has no effect.
+        """
+        if self._unit_type == Market.UNIT_AMOUNT:
+            return quantity * (self._lot_size * self._contract_size) * price  # in quote currency
+        elif self._unit_type == Market.UNIT_CONTRACTS:
+            return quantity * (self._lot_size * self._contract_size / self._value_per_pip * price)
+        elif self._unit_type == Market.UNIT_SHARES:
+            return quantity * price  # in quote currency
+        else:
+            return quantity * (self._lot_size * self._contract_size) * price  # in quote currency
 
     def margin_cost(self, quantity, price):
-        realized_position_cost = quantity * (self._lot_size * self._contract_size) * price  # in base currency
-        margin_cost = realized_position_cost * self._margin_factor / self._base_exchange_rate
+        """
+        Cost in margin, using the margin factor, for a quantity at specific price.
+        In contracts size, the price has no effect.
+        """
+        if self._unit_type == Market.UNIT_AMOUNT:
+            realized_position_cost = quantity * (self._lot_size * self._contract_size) * price  # in quote currency
+        elif self._unit_type == Market.UNIT_CONTRACTS:
+            realized_position_cost = quantity * (self._lot_size * self._contract_size / self._value_per_pip * price)
+        elif self._unit_type == Market.UNIT_SHARES:
+            realized_position_cost = quantity * price  # in quote currency
+        else:
+            realized_position_cost = quantity * (self._lot_size * self._contract_size) * price  # in quote currency
 
-        return margin_cost
+        return realized_position_cost * self._margin_factor / self._base_exchange_rate  # in account currency
 
     def clamp_leverage(self, leverage):
         return max(self._leverages, min(self.self._leverages, leverage))

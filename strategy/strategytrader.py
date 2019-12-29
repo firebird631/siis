@@ -61,19 +61,17 @@ class StrategyTrader(object):
         self.strategy = strategy
         self.instrument = instrument
 
-        self._trade_mutex = threading.RLock()
+        self._mutex = threading.RLock()  # activity, global locker, region locker, instrument locker
+        self._activity = True
+        self._bootstraping = 1    # 1 bootstrap waited, 2 bootstrap in progress, 0 normal
+        self._processing = False  # True during processing
+
+        self._trade_mutex = threading.RLock()   # trades locker
         self.trades = []
+        self._next_trade_id = 1
 
         self.regions = []
-
-        self._next_trade_id = 1
         self._next_region_id = 1
-
-        self._mutex = threading.RLock()
-        self._activity = True
-        self._bootstraping = 1
-        self._processing = 0  # 0 if not processing, else 1 or worker id
-        self._dirty = 1       # initial, bootstrap
 
         self._global_streamer = None
         self._timeframe_streamers = {}
@@ -90,12 +88,6 @@ class StrategyTrader(object):
             'cont-win': 0,   # contigous win trades
             'cont-loss': 0,  # contigous loss trades
         }
-
-    def lock(self, blocking=True, timeout=-1):
-        self._mutex.acquire(blocking, timeout)
-
-    def unlock(self):
-        self._mutex.release()
 
     #
     # processing
@@ -121,36 +113,6 @@ class StrategyTrader(object):
         """
         pass
 
-    def query_job(self, timeframe):
-        """
-        When some ticks or ohlcs data arrrives query for a job.
-        """
-        if timeframe == self.base_timeframe:
-            with self._mutex:
-                self._dirty += 1
-
-    def run_job(self, worker_id, timestamp):
-        """
-        Called by the worker or the single workflow, only if not currently processed and an update is needed.
-        @param worker_id Worker integer identifier or 1.
-        """
-        with self._mutex:
-            process = self._dirty > 0 and not self._processing
-            if process:
-                self._dirty = 0  # consume for processing
-                self._processing = worker_id
-            else:
-                return False
-
-        self.process(timestamp)
-
-        with self._mutex:
-            # processed
-            self._processing = 0
-
-            # need to reinject a job if dirty flag was set during processing
-            return self._dirty > 0
-
     def process(self, timeframe, timestamp):
         """
         Override this method to do her all the strategy work. You must call the update_trades method
@@ -170,18 +132,19 @@ class StrategyTrader(object):
         trades_list = []
 
         with self._mutex:
-            for trade in self.trades:
-                if trade.can_delete() or not trade.is_active() or trade.is_closed():
-                    mutated = True
+            with self._trade_mutex:
+                for trade in self.trades:
+                    if trade.can_delete() or not trade.is_active() or trade.is_closed():
+                        mutated = True
 
-                    # cleanup if necessary before deleting the trade related refs
-                    trade.remove(trader, self.instrument)
-                else:
-                    trades_list.append(trade)
+                        # cleanup if necessary before deleting the trade related refs
+                        trade.remove(trader, self.instrument)
+                    else:
+                        trades_list.append(trade)
 
-            # updated trade list, the ones we would save
-            if mutated:
-                self.trades = trades_list
+                # updated trade list, the ones we would save
+                if mutated:
+                    self.trades = trades_list
 
     #
     # persistance
@@ -195,16 +158,17 @@ class StrategyTrader(object):
         trader = self.strategy.trader()
 
         with self._mutex:
-            for trade in self.trades:
-                t_data = trade.dumps()
-                ops_data = [operation.dumps() for operation in trade.operations]
+            with self._trade_mutex:
+                for trade in self.trades:
+                    t_data = trade.dumps()
+                    ops_data = [operation.dumps() for operation in trade.operations]
 
-                # debug only @todo remove after fixed
-                logger.info("log trade %s / %s" % (str(t_data), str(ops_data)))
+                    # debug only @todo remove after fixed
+                    logger.info("log trade %s / %s" % (str(t_data), str(ops_data)))
 
-                # store per trade
-                Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,
-                        self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
+                    # store per trade
+                    Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,
+                            self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
 
             # dumps of regions
             trader_data = {}
@@ -294,7 +258,7 @@ class StrategyTrader(object):
         """
         Update quantity/filled on a trade, deleted or canceled.
         """
-        with self._mutex:
+        with self._trade_mutex:
             try:
                 for trade in self.trades:
                     # update each trade relating the order (might be a unique)
@@ -312,7 +276,7 @@ class StrategyTrader(object):
         """
         Update quantity/filled on a trade, delete or cancel.
         """
-        with self._mutex:
+        with self._trade_mutex:
             try:
                 for trade in self.trades:
                     # update each trade relating the position (could be many)
@@ -337,7 +301,7 @@ class StrategyTrader(object):
         if not trade:
             return False
 
-        with self._mutex:
+        with self._trade_mutex:
             trade.id = self._next_trade_id
             self._next_trade_id += 1
 
@@ -350,7 +314,7 @@ class StrategyTrader(object):
         if not trade:
             return False
 
-        with self._mutex:
+        with self._trade_mutex:
             self.trades.remove(trade)
 
     def update_trades(self, timestamp):
@@ -366,7 +330,7 @@ class StrategyTrader(object):
         # for each trade check if the TP or SL is reached and trigger if necessary
         #
 
-        with self._mutex:
+        with self._trade_mutex:
             for trade in self.trades:
 
                 #
@@ -468,7 +432,7 @@ class StrategyTrader(object):
 
         mutated = False
 
-        with self._mutex:
+        with self._trade_mutex:
             for trade in self.trades:
                 if trade.can_delete():
                     mutated = True
@@ -654,22 +618,23 @@ class StrategyTrader(object):
         @param ofr flaot Last instrument ofr price
         @param allow Default returned value if there is no defined region (default True).
 
-        @warning Non thread-safe but must be protected.
+        @note Thread-safe method.
         """
         if self.regions:
             mutated = False
 
             # one ore many region, have to pass at least one test
-            for region in self.regions:
-                if region.can_delete(timestamp, bid, ofr):
-                    mutated |= True
+            with self._mutex:
+                for region in self.regions:
+                    if region.can_delete(timestamp, bid, ofr):
+                        mutated |= True
 
-                elif region.test_region(timestamp, signal):
-                    # match with at least one region
-                    return True
+                    elif region.test_region(timestamp, signal):
+                        # match with at least one region
+                        return True
 
-            if mutated:
-                self.cleanup_regions(timestamp, bid, ofr)
+                if mutated:
+                    self.cleanup_regions(timestamp, bid, ofr)
 
             return False
         else:
@@ -1128,7 +1093,7 @@ class StrategyTrader(object):
         result = False
 
         if self.trades:
-            with self._mutex:
+            with self._trade_mutex:
                 if len(self.trades) >= max_trades:
                     # no more than max simultaneous trades
                     result = True

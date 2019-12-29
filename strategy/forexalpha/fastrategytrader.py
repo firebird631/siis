@@ -210,7 +210,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             retained_entries.append(entry)
 
         if self.trades:
-            with self._mutex:
+            with self._trade_mutex:
                 for trade in self.trades:
                     tf_match = False
                     retained_exit = None

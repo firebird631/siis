@@ -192,7 +192,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         #
 
         if self.trades:
-            with self._mutex:
+            with self._trade_mutex:
                 for trade in self.trades:
                     retained_exit = None
 

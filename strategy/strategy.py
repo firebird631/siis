@@ -831,20 +831,7 @@ class Strategy(Runnable):
                 # no more than 10 signals per loop, allow aggregate fast ticks, and don't block the processing
                 break
 
-        # only for normal processing
-        if not self.service.backtesting:
-            if do_update:
-                if len(self._strategy_traders) >= 1:
-                    for strategy_trader in do_update:
-                        if strategy_trader.instrument.ready():
-                            # parallelize jobs on workers
-                            self.service.worker_pool.add_job(None, (self.update_strategy, (strategy_trader,)))
-                else:
-                    # no parallelisation below 2 instruments
-                    for strategy_trader in do_update:
-                        if strategy_trader.instrument.ready():
-                            self.update_strategy(strategy_trader)
-        else:
+        if self.service.backtesting:
             # process one more backtest step
             with self._mutex:
                 next_bt_upd = self._next_backtest_update
@@ -852,15 +839,31 @@ class Strategy(Runnable):
 
             if next_bt_upd:
                 self.backtest_update(next_bt_upd[0], next_bt_upd[1])
+        else:
+            # normal processing
+            if do_update:
+                if len(self._strategy_traders) >= 1:
+                    # always aync update process
+                    for strategy_trader in do_update:
+                        if strategy_trader.instrument.ready():
+                            # parallelize jobs on workers
+                            self.service.worker_pool.add_job(None, (self.async_update_strategy, (strategy_trader,)))
+                else:
+                    # no parallelisation for single instrument
+                    for strategy_trader in do_update:
+                        if strategy_trader.instrument.ready():
+                            self.update_strategy(strategy_trader)
 
         return True
 
     def bootstrap(self, strategy_trader):
+        """
+        Process the bootstrap of the strategy trader until complete using the preloaded OHLCs.
+        Any received updates are ignored until the bootstrap is completed.
+        """
         if strategy_trader._bootstraping == 2:
             # in progress
             return
-
-        instrument = strategy_trader.instrument
 
         # bootstraping in progress, avoid live until complete
         strategy_trader._bootstraping = 2
@@ -870,6 +873,8 @@ class Strategy(Runnable):
 
         # compute the begining timestamp
         next_timestamp = self.timestamp
+
+        instrument = strategy_trader.instrument
 
         for tf, sub in strategy_trader.timeframes.items():
             candles = instrument.candles(tf)
@@ -970,18 +975,46 @@ class Strategy(Runnable):
         """
         Override this method to compute a strategy step per instrument.
         Default implementation supports bootstrapping.
-        @param tf Smallest unit of time processed.
+        @param strategy_trader StrategyTrader Instance of the strategy trader to process.
+        @note Non thread-safe method.
         """
         if strategy_trader:
-            # bootstrap using preloaded data history, then live
+            strategy_trader._processing = True
+
             if strategy_trader._bootstraping:
+                # bootstrap using preloaded data history
                 self.bootstrap(strategy_trader)
             else:
-                # and process instrument update
-                redo = strategy_trader.process(self.timestamp)
-                # if redo:
-                #     # an update occured during processing, add a new job
-                #     self.service.worker_pool.add_job(None, (self.update_strategy, (strategy_trader,)))
+                # until process instrument update
+                strategy_trader.process(self.timestamp)
+
+            strategy_trader._processing = False
+
+    def async_update_strategy(self, strategy_trader):
+        """
+        Override this method to compute a strategy step per instrument.
+        Default implementation supports bootstrapping.
+        @param strategy_trader StrategyTrader Instance of the strategy trader to process.
+        @note Thread-safe method.
+        """
+        if strategy_trader:
+            # process only if previous job was completed
+            process = False
+
+            with strategy_trader._mutex:
+                if not strategy_trader._processing:
+                    # can process
+                    process = strategy_trader._processing = True
+
+            if process:
+                if strategy_trader._bootstraping:
+                    self.bootstrap(strategy_trader)
+                else:
+                    strategy_trader.process(self.timestamp)
+
+                with strategy_trader._mutex:
+                    # process complete
+                    strategy_trader._processing = False
 
     def setup_backtest(self, from_date, to_date, base_timeframe=Instrument.TF_TICK):
         """
@@ -1013,6 +1046,7 @@ class Strategy(Runnable):
         # update strategy as necessary
         if updated:
             self.update_strategy(strategy_trader)
+            # self.async_update_strategy(strategy_trader)
 
     def backtest_update(self, timestamp, total_ts):
         """

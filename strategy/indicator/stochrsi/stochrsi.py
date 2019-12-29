@@ -76,6 +76,7 @@ class StochRSIIndicator(Indicator):
         return self._ds
 
     def cross(self):
+        """K cross D line"""
         if (self._prev_k > self._prev_d and self._last_k < self._last_d):
             return -1
         elif (self._prev_k < self._prev_d and self._last_k > self._prev_d):

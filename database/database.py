@@ -333,6 +333,7 @@ class Database(object):
             str symbol (not empty)
             int market_type
             int unit_type
+            int contract_type
             int trade_type
             int orders
             str base (not empty)

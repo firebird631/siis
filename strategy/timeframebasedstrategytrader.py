@@ -64,6 +64,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     def gen_candles_from_ticks(self, timestamp):
         """
         Generate the news candles from ticks.
+        @note Thread-safe method.
         """
         with self._mutex:
             # at tick we update any timeframes because we want the non consolidated candle
@@ -71,7 +72,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 # update at tick
                 ticks = self.instrument.ticks_after(sub.candles_gen.last_timestamp)
 
-                # sub._last_closed = False
+                sub._last_closed = False
 
                 generated = sub.candles_gen.generate_from_ticks(ticks)
                 if generated:
@@ -93,6 +94,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     def gen_candles_from_candles(self, timestamp):
         """
         Generate the news candles from the same base of candle.
+        @note Thread-safe method.
         """
         with self._mutex:
             # at tick we update any timeframes because we want the non consolidated candle

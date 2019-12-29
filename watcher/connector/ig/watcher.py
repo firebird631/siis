@@ -1030,12 +1030,14 @@ class IGWatcher(Watcher):
             market.bid = snapshot['bid']
             market.ofr = snapshot['offer']
 
-        # "marginFactorUnit": "PERCENTAGE" not avalaible if market is down
         if instrument.get('marginFactor') and market.is_open:
-            market.margin_factor = float(instrument['marginFactor'])
-            margin_factor = instrument['marginFactor']
+            if instrument.get('marginFactorUnit', '') == "PERCENTAGE":
+                market.margin_factor = float(instrument['marginFactor']) * 0.01
+            else:
+                market.margin_factor = float(instrument['marginFactor'])
+            margin_factor = str(market.margin_factor)
         elif instrument.get('margin') and market.is_open:
-            market.margin_factor = 0.1 / float(instrument['margin'])
+            market.margin_factor = float(instrument['margin'])
             margin_factor = str(market.margin_factor)
         else:
             # we don't want this when market is down because it could overwrite the previous stored value

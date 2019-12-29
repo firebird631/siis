@@ -1,11 +1,12 @@
-# @date 2018-08-07
+# @date 2019-12-23
 # @author Frederic SCHERMA
 # @license Copyright (c) 2018 Dream Overflow
-# Optimizer tool.
+# Exporter tool.
 
 import sys
 import logging
 import traceback
+import time
 
 from datetime import datetime, timedelta
 
@@ -16,14 +17,19 @@ from terminal.terminal import Terminal
 from database.database import Database
 
 import logging
-logger = logging.getLogger('siis.tools.optimizer')
+logger = logging.getLogger('siis.tools.exporter')
+
+EXPORT_VERSION = "1.0.0"
 
 # candles from 1m to 1 month
-GENERATED_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7, 60*60*24*30]
-# GENERATED_TF = [60, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
+EXPORT_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7, 60*60*24*30]
 
 
-def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
+def write_ohlc(ohlc, dst):
+    pass
+
+
+def export_ohlcs(broker_id, market_id, timeframe, from_date, to_date, dst):
     last_ohlcs = {}
 
     ohlc_streamer = Database.inst().create_ohlc_streamer(broker_id, market_id, timeframe, from_date=from_date, to_date=to_date, buffer_size=100)
@@ -46,36 +52,16 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
         total_count += len(ohlcs)
 
         for ohlc in ohlcs:
+            dst.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (
+                ohlc.timestamp,
+                ohlc.bid_open, ohlc.bid_high, ohlc.bid_low, ohlc.bid_close,
+                ohlc.ofr_open, ohlc.ofr_high, ohlc.ofr_low, ohlc.ofr_close,
+                ohlc.volume))
+
             tts = ohlc.timestamp
 
             if not prev_tts:
                 prev_tts = tts
-
-            gap_duration = tts - prev_tts
-            if gap_duration > timeframe:
-                date = format_datetime(timestamp)
-                Terminal.inst().warning("Ohlc gap of %s on %s !" % (format_delta(gap_duration), date))
-
-            if ohlc.bid_open <= 0.0:
-                Terminal.inst().warning("Bid open price is lesser than 0 %s on %s !" % (ohlc.bid_open, date))
-            if ohlc.bid_high <= 0.0:
-                Terminal.inst().warning("Bid high price is lesser than 0 %s on %s !" % (ohlc.bid_high, date))
-            if ohlc.bid_low <= 0.0:
-                Terminal.inst().warning("Bid close price is lesser than 0 %s on %s !" % (ohlc.bid_low, date))
-            if ohlc.bid_close <= 0.0:
-                Terminal.inst().warning("Bid close price is lesser than 0 %s on %s !" % (ohlc.bid_close, date))
-
-            if ohlc.ofr_open <= 0.0:
-                Terminal.inst().warning("Ofr open price is lesser than 0 %s on %s !" % (ohlc.ofr_open, date))
-            if ohlc.ofr_high <= 0.0:
-                Terminal.inst().warning("Ofr high price is lesser than 0 %s on %s !" % (ohlc.ofr_high, date))
-            if ohlc.ofr_low <= 0.0:
-                Terminal.inst().warning("Ofr low price is lesser than 0 %s on %s !" % (ohlc.ofr_low, date))
-            if ohlc.ofr_close <= 0.0:
-                Terminal.inst().warning("Ofr close price is lesser than 0 %s on %s !" % (ohlc.ofr_close, date))
-
-            if ohlc.volume < 0.0:
-                Terminal.inst().warning("Volume quantity is lesser than 0 %s on %s !" % (ohlc.volume, date))
 
             prev_tts = tts
             timestamp = tts
@@ -103,7 +89,7 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
     Terminal.inst().info("Last candle datetime is %s" % (format_datetime(tts),))
 
 
-def check_ticks(broker_id, market_id, from_date, to_date):
+def export_ticks(broker_id, market_id, from_date, to_date, dst):
     last_ticks = []
 
     tick_streamer = Database.inst().create_tick_streamer(broker_id, market_id, from_date=from_date, to_date=to_date)
@@ -126,31 +112,10 @@ def check_ticks(broker_id, market_id, from_date, to_date):
         total_count += len(ticks)
 
         for data in ticks:
-            tts = data[0]
-            bid = data[1]
-            ofr = data[2]
-            vol = data[3]
+            dst.write("%s\t%s\t%s\t%s\n" % (data[0], data[1], data[2], data[3]))
 
             if not prev_tts:
                 prev_tts = tts
-
-            gap_duration = tts - prev_tts
-
-            if tts != prev_tts and gap_duration < 0.0:
-                date = format_datetime(timestamp)
-                Terminal.inst().error("Tick timestamp is before previous of %s on %s ! Broken file !" % (format_delta(gap_duration), date))
-
-            if gap_duration > 60.0:
-                date = format_datetime(timestamp)
-                Terminal.inst().warning("Tick gap of %s on %s !" % (format_delta(gap_duration), date))
-
-            if bid <= 0.0:
-                Terminal.inst().warning("Bid price is lesser than 0 %s on %s !" % (bid, date))
-            if ofr <= 0.0:
-                Terminal.inst().warning("Ofr price is lesser than 0 %s on %s !" % (ofr, date))
-
-            if vol < 0.0:
-                Terminal.inst().warning("Volume quantity is lesser than 0 %s on %s !" % (vol, date))
 
             prev_tts = tts
 
@@ -161,7 +126,7 @@ def check_ticks(broker_id, market_id, from_date, to_date):
             progression += 1
 
             Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
-            
+
             prev_update = timestamp
             count = 0
 
@@ -176,8 +141,8 @@ def check_ticks(broker_id, market_id, from_date, to_date):
     Terminal.inst().info("Last tick datetime is %s" % (format_datetime(tts),))
 
 
-def do_optimizer(options):
-    Terminal.inst().info("Starting SIIS optimizer...")
+def do_exporter(options):
+    Terminal.inst().info("Starting SIIS exporter...")
     Terminal.inst().flush()
 
     # database manager
@@ -191,6 +156,8 @@ def do_optimizer(options):
 
     from_date = options.get('from')
     to_date = options.get('to')
+
+    filename = options.get('filename')
 
     if not to_date:
         today = datetime.now().astimezone(UTC())
@@ -214,25 +181,43 @@ def do_optimizer(options):
                 pass
 
     try:
-        # checking data integrity, gap...
+        # exporting data...
         if timeframe is None:
             for market in options['market'].split(','):
                 if market.startswith('!') or market.startswith('*'):
                     continue
 
-                for tf in GENERATED_TF:
-                    Terminal.inst().info("Verifying %s OHLC %s..." % (market, timeframe_to_str(tf)))
+                dst = open("%s-%s-%s.siis" % (filename, broker_id, market), "wt")
 
-                    check_ohlcs(options['broker'], market, tf, from_date, to_date)
+                # write file header
+                dst.write("SIIS\tversion=%s\tutc=%s\tbroker=%s\tmarket=%s\tfrom=%s\tto=%s\ttimeframe=any\n" % (
+                    EXPORT_VERSION, int(time.time()*1000), broker_id, market, from_date, to_date, timeframe))
+
+                for tf in GENERATED_TF:
+                    Terminal.inst().info("Exporting %s OHLC %s..." % (market, timeframe_to_str(tf)))
+
+                    export_ohlcs(options['broker'], market, tf, from_date, to_date, dst)
+
+                dst.close()
+                dst = None
 
         elif timeframe == Instrument.TF_TICK:
             for market in options['market'].split(','):
                 if market.startswith('!') or market.startswith('*'):
                     continue
 
-                Terminal.inst().info("Verifying %s ticks/trades..." % (market,))
+                dst = open("%s-%s-%s.siis" % (filename, broker_id, market), "wt")
 
-                check_ticks(options['broker'], market, from_date, to_date)
+                # write file header
+                dst.write("SIIS\tversion=%s\tutc=%s\tbroker=%s\tmarket=%s\tfrom=%s\tto=%s\ttimeframe=t\n" % (
+                    EXPORT_VERSION, int(time.time()*1000), broker_id, market, from_date, to_date))
+
+                Terminal.inst().info("Exporting %s ticks/trades..." % (market,))
+
+                export_ticks(options['broker'], market, from_date, to_date, dst)
+
+                dst.close()
+                dst = None
 
         elif timeframe > 0:
             # particular ohlc
@@ -240,20 +225,27 @@ def do_optimizer(options):
                 if market.startswith('!') or market.startswith('*'):
                     continue
 
-                Terminal.inst().info("Verifying %s OHLC %s..." % (market, timeframe_to_str(timeframe)))
+                dst = open("%s-%s-%s.siis" % (filename, broker_id, market), "wt")
 
-                check_ohlcs(options['broker'], market, timeframe, from_date, to_date)
+                # write file header
+                dst.write("SIIS\tversion=%s\tutc=%s\tbroker=%s\tmarket=%s\tfrom=%s\tto=%s\ttimeframe=%s\n" % (
+                    EXPORT_VERSION, int(time.time()*1000), broker_id, market, from_date, to_date, timeframe_to_str(timeframe)))
+
+                Terminal.inst().info("Exporting %s OHLC %s..." % (market, timeframe_to_str(timeframe)))
+
+                export_ohlcs(options['broker'], market, timeframe, from_date, to_date, dst)
+
+                dst.close()
+                dst = None
+
     except KeyboardInterrupt:
         pass
     finally:
         pass
 
-    Terminal.inst().info("Flushing database...")
-    Terminal.inst().flush() 
-
     Database.terminate()
 
-    Terminal.inst().info("Optimization done!")
+    Terminal.inst().info("Exportation done!")
     Terminal.inst().flush()
 
     Terminal.terminate()

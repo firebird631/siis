@@ -320,11 +320,15 @@ class IGTrader(Trader):
 
         try:
             results = self._watcher.connector.ig.delete_working_order(order_id)
-        except IGException as e:
-            error_logger.error("%s except on order %s cancelation - cause : %s !" % (self.name, order_id, repr(e)))
-            return False
+            order_logger.info(results)
 
-        order_logger.info(results)
+            if results.get('dealReference', '') != 'ACCEPTED':
+                error_logger.error("%s rejected cancel order %s - %s !" % (self.name, order_id, market_or_instrument.market_id))
+                return False
+
+        except IGException as e:
+            error_logger.error("%s except on order %s cancelation - cause : %s !" % (self.name, order_id, str(e)))
+            return False
 
         return True
 
@@ -367,14 +371,12 @@ class IGTrader(Trader):
             results = self._watcher.connector.ig.close_open_position(deal_id, direction, epic, expiry, level, order_type, quote_id, size)
             order_logger.info(results)
      
-            if results.get('dealStatus', '') == 'ACCEPTED':
-                pass
-            else:
+            if results.get('dealStatus', '') != 'ACCEPTED':
                 error_logger.error("%s rejected close position %s - %s !" % (self.name, position_id, market_or_instrument.market_id))
                 return False
 
         except IGException as e:
-            error_logger.error("%s except close position %s - %s !" % (self.name, position_id, market_or_instrument.market_id))
+            error_logger.error("%s except close position %s - %s - cause : %s !" % (self.name, position_id, market_or_instrument.market_id, str(e)))
             return False
 
         return True
@@ -399,18 +401,15 @@ class IGTrader(Trader):
             results = self._watcher.connector.ig.update_open_position(limit_level, stop_level, position_id)
             order_logger.info(results)
 
-            if results.get('dealStatus', '') == 'ACCEPTED':
-                return True
-            else:
+            if results.get('dealStatus', '') != 'ACCEPTED':
                 error_logger.error("%s rejected modify position %s - %s !" % (self.name, position_id, market_or_instrument.market_id))
-
-            return True
+                return False
 
         except IGException as e:
-            error_logger.error("%s except close position %s - %s !" % (self.name, position_id, market_or_instrument.market_id))
+            error_logger.error("%s except modify position %s - %s - cause : %s !" % (self.name, position_id, market_or_instrument.market_id, str(e)))
             return False
 
-        return False
+        return True
 
     #
     # global accessors
