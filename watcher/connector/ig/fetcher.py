@@ -9,6 +9,7 @@ import time
 import traceback
 
 from datetime import datetime
+from common.utils import UTC
 from watcher.fetcher import Fetcher
 
 from terminal.terminal import Terminal
@@ -22,7 +23,9 @@ error_logger = logging.getLogger('siis.error.fetcher.ig')
 class IGFetcher(Fetcher):
     """
     IG watcher data fetcher.
-    @noto Limitation on 10000 candles per week.
+    @note Initial limitation to 10000 candles per week.
+    @warning UTC timestamp are erroneous in D, W and M because there is an issue with DST changes.
+    Then have to fix that cases.
     """
 
     def __init__(self, service):
@@ -31,6 +34,7 @@ class IGFetcher(Fetcher):
         self._host = "ig.com"
         self._connector = None
         self._account_id = ""
+        self._timezone = 0
 
     def connect(self):
         super().connect()
@@ -51,6 +55,7 @@ class IGFetcher(Fetcher):
                     identity.get('api-key'),
                     identity.get('host'))
 
+                self._timezone = identity.get('timezone', 0)
                 self._connector.connect()
 
                 self._available_instruments = set()
@@ -101,8 +106,17 @@ class IGFetcher(Fetcher):
 
         prices = data.get('prices', [])
 
+        # fix for D,W,M snapshotTimeUTC
+        # if timeframe == 60*60*24:
+        #     pass
+        # elif timeframe == 60*60*24*7:
+        #     pass
+        # elif timeframe == 60*60*24*30:
+        #     pass
+
         for price in prices:
-            timestamp = datetime.strptime(price['snapshotTime'], '%Y:%m:%d-%H:%M:%S').timestamp()
+            print(price)
+            timestamp = datetime.strptime(price['snapshotTimeUTC'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC()).timestamp()
 
             if price.get('highPrice')['bid'] is None and price.get('highPrice')['ask'] is None:
                 # ignore empty candles

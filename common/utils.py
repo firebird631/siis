@@ -178,16 +178,16 @@ def format_delta(td):
     """
     Format a time delta in a human readable format.
     """
-    if td < 60.0:
+    if abs(td) < 60.0:
         return "%.6f seconds" % td
 
-    if td < 60*60:
+    if abs(td) < 60*60:
         m, r = divmod(td, 60)
         s = r
 
         return "%i minutes %i seconds" % (m, s)
 
-    elif td < 60*60*24:
+    elif abs(td) < 60*60*24:
         h, r = divmod(td, 60*60)
         m, r = divmod(r, 60)
         s = r

@@ -43,6 +43,10 @@ def do_syncer(options):
         watcher.initial_fetch = options.get('initial-fetch', False)
 
         watcher.connect()
+
+        for market_id in markets:
+            watcher._watched_instruments.add(market_id)
+
         watcher.update_markets_info()
         watcher.disconnect()
 

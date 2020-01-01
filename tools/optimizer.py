@@ -47,13 +47,14 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
 
         for ohlc in ohlcs:
             tts = ohlc.timestamp
+            print(ohlc)
 
             if not prev_tts:
                 prev_tts = tts
 
-            gap_duration = tts - prev_tts
-            if gap_duration > timeframe:
-                date = format_datetime(timestamp)
+            gap_duration = tts - prev_tts - timeframe
+            if gap_duration != 0:
+                date = format_datetime(tts)
                 Terminal.inst().warning("Ohlc gap of %s on %s !" % (format_delta(gap_duration), date))
 
             if ohlc.bid_open <= 0.0:
@@ -80,10 +81,10 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
             prev_tts = tts
             timestamp = tts
 
-            if timestamp > to_timestamp:
+            if tts > to_timestamp:
                 break
 
-        if timestamp - prev_update >= progression_incr:
+        if tts - prev_update >= progression_incr:
             progression += 1
 
             Terminal.inst().info("%i%% on %s, %s for last 100 candles, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
@@ -91,10 +92,11 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
             prev_update = timestamp
             count = 0
 
-        if timestamp > to_timestamp:
+        if tts > to_timestamp:
             break
 
-        if total_count == 0:
+        if len(ohlcs) == 0:
+            # no results, inc from one step
             timestamp += timeframe * 100
 
     if progression < 100:
@@ -120,6 +122,7 @@ def check_ticks(broker_id, market_id, from_date, to_date):
     prev_tts = 0.0
 
     while not tick_streamer.finished():
+        # return any ticks until last time to 1 min more
         ticks = tick_streamer.next(timestamp + Instrument.TF_1M)
 
         count = len(ticks)
@@ -157,15 +160,15 @@ def check_ticks(broker_id, market_id, from_date, to_date):
             if tts > to_timestamp:
                 break
 
-        if timestamp - prev_update >= progression_incr:
+        if tts - prev_update >= progression_incr:
             progression += 1
 
             Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
-            
-            prev_update = timestamp
+
+            prev_update = tts
             count = 0
 
-        if timestamp > to_timestamp:
+        if tts > to_timestamp:
             break
 
         timestamp += Instrument.TF_1M  # by step of 1m

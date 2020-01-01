@@ -1037,7 +1037,7 @@ class IGWatcher(Watcher):
                 market.margin_factor = float(instrument['marginFactor'])
             margin_factor = str(market.margin_factor)
         elif instrument.get('margin') and market.is_open:
-            market.margin_factor = float(instrument['margin'])
+            market.margin_factor = float(instrument['margin']) * 0.01
             margin_factor = str(market.margin_factor)
         else:
             # we don't want this when market is down because it could overwrite the previous stored value

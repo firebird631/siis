@@ -9,6 +9,7 @@ Modified by Femto Trader - 2014-2015 - https://github.com/femtotrader/
 
 import json
 import time
+import urllib
 
 from requests import Session
 
@@ -738,33 +739,39 @@ class IGService:
         """
         Returns a list of historical prices for the given epic, resolution, multiplier and date range
         """
-        # v2
-        # start_date = conv_datetime(start_date, 2)
-        # end_date = conv_datetime(end_date, 2)
-        # params = {}
-        # url_params = {
-        #     'epic': epic,
-        #     'resolution': resolution,
-        #     'start_date': start_date,
-        #     'end_date': end_date
-        # }
-        # endpoint = "/prices/{epic}/{resolution}/{startDate}/{endDate}".\
-        #     format(**url_params)
+        # v3
+        start_date = conv_datetime(start_date, 4)
+        end_date = conv_datetime(end_date, 4)
+        params = {}
+        url_params = {
+            'resolution': resolution,
+            'from': start_date,
+            'to': end_date
+        }
+
+        # https://demo-api.ig.com/gateway/deal/prices/CS.D.EURUSD.CFD.IP?resolution=MONTH&from=2019-12-01T00%3A00%3A00
+        endpoint = "/prices/%s?%s" % (epic, urllib.parse.urlencode(url_params))
 
         # v1
-        start_date = conv_datetime(start_date, 1)
-        end_date = conv_datetime(end_date, 1)
-        params = {
-            'startdate': start_date,
-            'enddate': end_date
-        }
-        url_params = {
-            'epic': epic,
-            'resolution': resolution
-        }
-        endpoint = "/prices/{epic}/{resolution}".format(**url_params)
+        # start_date = conv_datetime(start_date, 1)
+        # end_date = conv_datetime(end_date, 1)
+        # params = {
+        #     'startdate': start_date,
+        #     'enddate': end_date
+        # }
+        # url_params = {
+        #     'epic': epic,
+        #     'resolution': resolution
+        # }
+        # endpoint = "/prices/{epic}/{resolution}".format(**url_params)
+
+        # need header version 3
         action = 'read'
+
+        self.crud_session.HEADERS['LOGGED_IN']['Version'] = "3"
         response = self._req(action, endpoint, params, session)
+        del(self.crud_session.HEADERS['LOGGED_IN']['Version'])
+
         data = self.parse_response(response.text)
 
         return data

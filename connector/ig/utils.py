@@ -18,7 +18,8 @@ def conv_datetime(dt, version=1):
         d_formats = {
             1: "%Y:%m:%d-%H:%M:%S",
             2: "%Y/%m/%d %H:%M:%S",
-            3: "%Y/%m/%dT%H:%M:%S"
+            3: "%Y/%m/%dT%H:%M:%S",
+            4: "%Y-%m-%dT%H:%M:%S",
         }
         fmt = d_formats[version]
         return dt.strftime(fmt)
