@@ -19,5 +19,8 @@
     },
     "kraken.com": {
         "classpath": "watcher.connector.kraken.fetcher.KrakenFetcher"
+    },
+    "tickstory.com": {
+        "classpath": "watcher.connector.tickstory.fetcher.TickStoryFetcher"
     }
 }

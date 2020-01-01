@@ -6,11 +6,13 @@
 import urllib
 import json
 import time
+import pytz
 import traceback
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from common.utils import UTC
 from watcher.fetcher import Fetcher
+from instrument.instrument import Instrument
 
 from terminal.terminal import Terminal
 from connector.ig.connector import IGConnector
@@ -34,7 +36,7 @@ class IGFetcher(Fetcher):
         self._host = "ig.com"
         self._connector = None
         self._account_id = ""
-        self._timezone = 0
+        self._tzname = None
 
     def connect(self):
         super().connect()
@@ -55,7 +57,7 @@ class IGFetcher(Fetcher):
                     identity.get('api-key'),
                     identity.get('host'))
 
-                self._timezone = identity.get('timezone', 0)
+                self._tzname = identity.get('tzname')
                 self._connector.connect()
 
                 self._available_instruments = set()
@@ -106,17 +108,35 @@ class IGFetcher(Fetcher):
 
         prices = data.get('prices', [])
 
-        # fix for D,W,M snapshotTimeUTC
-        # if timeframe == 60*60*24:
-        #     pass
-        # elif timeframe == 60*60*24*7:
-        #     pass
-        # elif timeframe == 60*60*24*30:
-        #     pass
+        # get local timezone, assume its the same of the account, or overrided by account detail
+        tzname = self._tzname or time.tzname[0]
+        pst = pytz.timezone(tzname)
 
         for price in prices:
-            print(price)
-            timestamp = datetime.strptime(price['snapshotTimeUTC'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC()).timestamp()
+            dt = datetime.strptime(price['snapshotTimeUTC'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
+            # ldt = datetime.strptime(price['snapshotTime'], '%Y/%m/%d %H:%M:%S')
+
+            # timezone + DST aware conversion
+            # print("<", dt, ldt)
+            # dt = dt + pst.localize(ldt).dst() + pst.localize(ldt).utcoffset()
+
+            # fix for D,W,M snapshotTimeUTC, probaby because of the DST (then might be +1 or -1 hour)
+            if timeframe in (Instrument.TF_1D, Instrument.TF_1W, Instrument.TF_1M):
+                if dt.hour == 23:
+                    # is 23:00 on the previous day, add 1h
+                    dt = dt + timedelta(hours=1)
+                elif dt.hour == 1:
+                    # is 01:00 on the same day, sub 1h
+                    dt = dt - timedelta(hours=1)
+
+            elif timeframe == Instrument.TF_4H:
+                if dt.hour in (3, 7, 11, 15, 19, 23):
+                    dt = dt + timedelta(hours=1)
+                elif dt.hour in (1, 5, 9, 13, 17, 21):
+                     dt = dt - timedelta(hours=1)
+
+            # print(">", dt, ldt)
+            timestamp = dt.timestamp()
 
             if price.get('highPrice')['bid'] is None and price.get('highPrice')['ask'] is None:
                 # ignore empty candles

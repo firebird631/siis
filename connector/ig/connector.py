@@ -122,12 +122,14 @@ class IGConnector(object):
         return market
 
     def history_range(self, market_id, tf, from_date, to_date):
-        # history = self._ig_service.fetch_historical_prices_by_epic(market_id, IGConnector.TF_MAP[tf], from_date, to_date)  # V3 format
-        history = self._ig_service.fetch_historical_prices_by_epic_and_date_range(market_id, IGConnector.TF_MAP[tf], from_date, to_date)
+        # history = self._ig_service.fetch_historical_prices_by_epic(market_id, IGConnector.TF_MAP[tf], from_date, to_date)
+        # history = self._ig_service.fetch_historical_prices_by_epic_and_date_range(market_id, IGConnector.TF_MAP[tf], from_date, to_date)
+        history = self._ig_service.fetch_historical_prices_by_epic(market_id, IGConnector.TF_MAP[tf], from_date, to_date, pagesize=100000)  # V3 format with UTC
         return history
 
     def history_last_n(self, market_id, tf, n):
-        history = self._ig_service.fetch_historical_prices_by_epic_and_num_points(market_id, IGConnector.TF_MAP[tf], n)
+        # history = self._ig_service.fetch_historical_prices_by_epic_and_num_points(market_id, IGConnector.TF_MAP[tf], n)
+        history = self._ig_service.fetch_historical_prices_by_epic(market_id, IGConnector.TF_MAP[tf], numpoints=n, pagesize=n+1)  # V3 format with UTC
         return history
 
     @property

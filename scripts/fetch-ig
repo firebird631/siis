@@ -1,29 +1,34 @@
 #!/bin/bash
 # update FROM= each time or use --last= and do it every day/week using a crontab
-MARKETS='CS.D.AUDUSD.MINI.IP' #,CS.D.AUDNZD.MINI.IP,CS.D.EURCAD.MINI.IP,CS.D.EURJPY.MINI.IP,CS.D.EURUSD.MINI.IP,CS.D.GBPUSD.MINI.IP,CS.D.USDJPY.MINI.IP,CS.D.CFEGOLD.CFE.IP,IX.D.SPTRD.IFE.IP,IX.D.DAX.IFMM.IP'
-TO='2019-12-31T23:59:59'
-IDENTITY='demo'
+MARKETS='CS.D.AUDNZD.MINI.IP' #,CS.D.EURCAD.MINI.IP,CS.D.EURJPY.MINI.IP,CS.D.EURUSD.MINI.IP,CS.D.GBPUSD.MINI.IP,CS.D.USDJPY.MINI.IP,CS.D.CFEGOLD.CFE.IP,IX.D.SPTRD.IFE.IP,IX.D.DAX.IFMM.IP'
+TO='2020-12-31T23:59:59'
+IDENTITY='real'
 
-# FROM='2019-10-01T00:00:00'
-#python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1w &
+# STARTED='2017-01-01T00:00:00'
+# FROM='2019-12-28T00:00:00'
+FROM='2019-10-10T00:00:00'
+python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1w &
 
-# FROM='2019-12-29T00:00:00'
+# STARTED='2017-01-01T00:00:00'
+# FROM='2019-12-31T00:00:00'
+# FROM='2019-10-25T00:00:00'
 # python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1d &
 
-FROM='2018-12-31T12:00:00'
-python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=4h &
+# STARTED='2019-10-01T00:00:00'
+# FROM='2019-10-01T00:00:00'
+# python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=4h &
 
-# FROM='2019-12-29T12:00:00'
+# FROM='2019-07-01T00:00:00'
 # python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=2h &
 
-# FROM='2019-12-29T12:00:00'
+# FROM='2019-07-01T00:00:00'
 # python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1h
 
-# FROM='2019-12-23T12:00:00'
+# FROM='2019-07-01T00:00:00'
 # python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=30m
 
-# FROM='2019-12-29T12:00:00'
+# FROM='2019-07-01T00:00:00'
 # python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=15m
 
-# FROM='2019-12-17T00:00:00'
+# FROM='2019-07-01T00:00:00'
 # python siis.py $IDENTITY --fetch --broker=ig.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=5m

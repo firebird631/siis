@@ -27,6 +27,18 @@ class HistDataFetcher(Fetcher):
     HistData market data fetcher.
 
     Identity configuration must contains an entry with a "base-path" defined where the raw histdata are located.
+
+    Could be used for TickStory data export using 1 file per month :
+        - tick :
+            - Datetime : UTC
+            - Header : None
+            - Format : {Timestamp:yyyyMMdd} {Timestamp:HHmmssfff} {BidPrice},{AskPrice},{BidVolume},{AskVolume}
+            - Filename : DAT_ASCII_{Symbol}_T{Timestamp:yyyyMM}.csv
+        - ohlc :
+            - Datetime : UTC
+            - Header : None
+            - Format : @todo
+            - Filename : @todo
     """
 
     BASE_PATH = "/mnt/storage/Data/market/histdata.com"

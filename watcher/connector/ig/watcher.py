@@ -8,10 +8,11 @@ import math
 import urllib
 import json
 import time
+import pytz
 import os.path
 import traceback
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from watcher.watcher import Watcher
 from common.signal import Signal
@@ -80,6 +81,7 @@ class IGWatcher(Watcher):
         self._lightstreamer = None
         self._subscriptions = []
         self._account_id = ""
+        self._tzname = None
 
         self._subscribed_markets = {}
         self._subscribed_ticks = {}
@@ -114,6 +116,7 @@ class IGWatcher(Watcher):
                         identity.get('api-key'),
                         identity.get('host'))
 
+                    self._tzname = identity.get('tzname')
                     self._connector.connect()
 
                     # from CST and XST
@@ -1130,8 +1133,29 @@ class IGWatcher(Watcher):
 
         prices = data.get('prices', [])
 
+        # get local timezone, assume its the same of the account, or overrided by account detail
+        tzname = self._tzname or time.tzname[0]
+        pst = pytz.timezone(tzname)
+
         for price in prices:
-            timestamp = datetime.strptime(price['snapshotTime'], '%Y:%m:%d-%H:%M:%S').timestamp()
+            dt = datetime.strptime(price['snapshotTimeUTC'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
+
+            # fix for D,W,M snapshotTimeUTC, probaby because of the DST (then might be +1 or -1 hour)
+            if timeframe in (Instrument.TF_1D, Instrument.TF_1W, Instrument.TF_1M):
+                if dt.hour == 23:
+                    # is 23:00 on the previous day, add 1h
+                    dt = dt + timedelta(hours=1)
+                elif dt.hour == 1:
+                    # is 01:00 on the same day, sub 1h
+                    dt = dt - timedelta(hours=1)
+
+            elif timeframe == Instrument.TF_4H:
+                if dt.hour in (3, 7, 11, 15, 19, 23):
+                    dt = dt + timedelta(hours=1)
+                elif dt.hour in (1, 5, 9, 13, 17, 21):
+                     dt = dt - timedelta(hours=1)
+
+            timestamp = dt.timestamp()
 
             if price.get('highPrice')['bid'] is None and price.get('highPrice')['ask'] is None:
                 # ignore empty candles

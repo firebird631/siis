@@ -698,9 +698,9 @@ class IGService:
         if resolution:
             params['resolution'] = resolution
         if start_date:
-            params['from'] = conv_datetime(start_date, 3)
+            params['from'] = conv_datetime(start_date, 4)
         if end_date:
-            params['to'] = conv_datetime(end_date, 3)
+            params['to'] = conv_datetime(end_date, 4)
         if numpoints:
             params['max'] = numpoints
         if pagesize:
