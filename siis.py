@@ -126,6 +126,12 @@ def application(argv):
                 elif arg == '--import':
                     # use the importer
                     options['import'] = True
+                elif arg == '--clean':
+                    # use the cleaner
+                    options['clean'] = True
+
+                elif arg == '--no-conf':
+                    options['no-conf'] = True
 
                 elif arg == '--install-market':
                     options['install-market'] = True
@@ -302,6 +308,19 @@ def application(argv):
         if options.get('filename'):
             from tools.importer import do_importer
             do_importer(options)
+        else:
+            display_cli_help()
+
+        sys.exit(0)
+
+    #
+    # syncer mode
+    #
+
+    if options.get('clean'):
+        if options.get('broker'):
+            from tools.cleaner import do_cleaner
+            do_cleaner(options)
         else:
             display_cli_help()
 

@@ -742,3 +742,22 @@ class MySql(Database):
     @property
     def connected(self):
         return self._db != None
+
+    #
+    # Extra
+    #
+
+    def cleanup_ohlc(self, broker_id, market_id=None, timeframes=None, from_date=None, to_date=None):
+        if not broker_id:
+            return
+
+        # @todo timeframes, from_date, to_date
+    
+        if not market_id:
+            cursor = self._db.cursor()
+            cursor.execute("DELETE FROM ohlc WHERE broker_id = '%s'" % (broker_id,))
+            self._db.commit()
+        else:
+            cursor = self._db.cursor()
+            cursor.execute("DELETE FROM ohlc WHERE broker_id = '%s' AND market_id = '%s'" % (broker_id, market_id))
+            self._db.commit()

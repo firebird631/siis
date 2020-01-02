@@ -9,7 +9,7 @@ import traceback
 
 from datetime import datetime, timedelta
 
-from common.utils import UTC, TIMEFRAME_FROM_STR_MAP
+from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, timeframe_from_str
 
 from terminal.terminal import Terminal
 from database.database import Database
@@ -19,6 +19,7 @@ from instrument.candlegenerator import CandleGenerator
 
 import logging
 logger = logging.getLogger('siis.tools.rebuilder')
+error_logger = logging.getLogger('siis.error.tools.rebuilder')
 
 
 # candles from 1m to 1 week
@@ -75,7 +76,7 @@ def do_rebuilder(options):
                 pass
 
     if timeframe < 0:
-        logger.error("Invalid timeframe")
+        error_logger.error("Invalid timeframe")
         sys.exit(-1)
 
     from_date = options.get('from')
@@ -92,8 +93,8 @@ def do_rebuilder(options):
         to_date = to_date.replace(microsecond=0)
 
     if timeframe > 0 and timeframe not in GENERATED_TF:
-        logger.error("Timeframe %i is not allowed !" % (timeframe,))
-        return
+        logger.error("Timeframe %s is not allowed !" % timeframe_to_str(timeframe))
+        sys.exit(-1)
 
     for market in options['market'].split(','):
         if market.startswith('!') or market.startswith('*'):
@@ -140,17 +141,15 @@ def do_rebuilder(options):
 
         if options.get('target'):
             target = TIMEFRAME_FROM_STR_MAP.get(options.get('target'))
-            
-            if target == Instrument.TF_3M:
-                # special case for 3M because 5M is not multiple of 3M
-                if timeframe <= Instrument.TF_1M:
-                    from_tf = timeframe
-                    tf = Instrument.TF_3M
 
-                    generators.append(CandleGenerator(from_tf, tf))
+            if target % timeframe != 0:
+                logger.error("Timeframe %s is not a multiple of %s !" % (timeframe_to_str(target), timeframe_to_str(timeframe)))
+                sys.exit(-1)
 
-                    # store for generation
-                    last_ohlcs[tf] = []
+            generators.append(CandleGenerator(timeframe, target))
+
+            # store for generation
+            last_ohlcs[target] = []
 
         if timeframe > 0:
             last_ohlcs[timeframe] = []

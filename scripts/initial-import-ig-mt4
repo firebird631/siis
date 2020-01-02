@@ -1,4 +1,5 @@
 #!/bin/bash
+# @deprecated import-ig-mt4.py is prefered
 BROKER='ig.com'
 BASE_PATH='/mnt/storage/Data/market/ig.com/MT4'
 

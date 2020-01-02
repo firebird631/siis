@@ -170,7 +170,7 @@ def do_exporter(options):
         if timeframe == Instrument.TF_MONTH:
             to_date = today + timedelta(months=1)
         else:
-            to_date = today + timedelta(seconds=timeframe)
+            to_date = today + timedelta(seconds=timeframe or 1.0)
 
         to_date = to_date.replace(microsecond=0)
 

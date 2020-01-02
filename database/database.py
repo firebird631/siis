@@ -591,3 +591,16 @@ class Database(object):
                     # data remaining
                     with self._mutex:
                         self._pending_tick_insert.add(tick_storage)
+
+    #
+    # Extra
+    #
+
+    def cleanup_ohlc(self, broker_id, market_id=None, timeframes=None, from_date=None, to_date=None):
+        """
+        Cleanup any OHLC for a specific broker_id.
+        If market_id is specified only delete for this market else any market related to the broker identifier
+        If timeframes is specified only delete this timeframes else any
+        @note This is a synchronous method.
+        """
+        pass
