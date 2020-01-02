@@ -172,6 +172,9 @@ def application(argv):
                 elif arg.startswith('--cascaded='):
                     # fetch cascaded ohlc generation
                     options['cascaded'] = arg.split('=')[1]
+                elif arg.startswith('--target='):
+                    # target ohlc generation
+                    options['target'] = arg.split('=')[1]
 
                 elif arg == '--watcher-only':
                     # feed only with live data (not compatible with --read-only)
@@ -244,7 +247,7 @@ def application(argv):
     #
 
     if options.get('optimize'):
-        if options.get('market') and options.get('from') and options.get('to') and options.get('broker'):
+        if options.get('market') and options.get('from') and options.get('broker'):
             from tools.optimizer import do_optimizer
             do_optimizer(options)
         else:
@@ -270,7 +273,7 @@ def application(argv):
     #
 
     if options.get('rebuild'):
-        if options.get('market') and options.get('from') and options.get('to') and options.get('broker') and options.get('timeframe'):
+        if options.get('market') and options.get('from') and options.get('broker') and options.get('timeframe'):
             from tools.rebuilder import do_rebuilder
             do_rebuilder(options)
         else:
@@ -283,7 +286,7 @@ def application(argv):
     #
 
     if options.get('export'):
-        if options.get('market') and options.get('from') and options.get('to') and options.get('broker') and options.get('filename'):
+        if options.get('market') and options.get('from') and options.get('broker') and options.get('filename'):
             from tools.exporter import do_exporter
             do_exporter(options)
         else:

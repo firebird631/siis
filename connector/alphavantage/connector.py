@@ -10,6 +10,7 @@ import requests
 
 from datetime import datetime
 from instrument.instrument import Instrument
+from common.utils import UTC
 
 from terminal.terminal import Terminal
 
@@ -284,6 +285,6 @@ class Connector(object):
 
 	def parse_datetime(self, ts):
 		if ' ' in ts:
-			return int(datetime.strptime(ts, '%Y-%m-%d %H:%M:%S').timestamp()*1000)
+			return int(datetime.strptime(ts, '%Y-%m-%d %H:%M:%S').replace(tzinfo=UTC()).timestamp()*1000)
 		else:
-			return int(datetime.strptime(ts, '%Y-%m-%d').timestamp()*1000)
+			return int(datetime.strptime(ts, '%Y-%m-%d').replace(tzinfo=UTC()).timestamp()*1000)

@@ -83,8 +83,8 @@ class IGSessionCRUD(object):
         session = self._get_session(session)
         response = session.post(url, data=json.dumps(params), headers=self.HEADERS['BASIC'])
         if not response.ok:
-            raise(Exception("HTTP status code %s %s " %
-                            (response.status_code, response.text)))
+            raise(Exception("HTTP status code %s %s " % (response.status_code, response.text)))
+
         self._set_headers(response.headers, True)
         self.create = self._create_logged_in
 
@@ -465,9 +465,9 @@ class IGService:
         params = {
             'limitLevel': limit_level,
             'stopLevel': stop_level,
-            'trailingStop': False,
-            'trailingStopDistance': None,
-            'trailingStopIncrement': None
+            # 'trailingStop': False,  # only in v2
+            # 'trailingStopDistance': None,
+            # 'trailingStopIncrement': None
         }
         url_params = {
             'deal_id': deal_id

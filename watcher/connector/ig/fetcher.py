@@ -144,12 +144,12 @@ class IGFetcher(Fetcher):
 
             # yield (timestamp, high bid, low, open, close, high ofr, low, open, close, volume)
             yield([int(timestamp * 1000),
+                str(price.get('openPrice')['bid'] or price.get('openPrice')['ask']),
                 str(price.get('highPrice')['bid'] or price.get('highPrice')['ask']),
                 str(price.get('lowPrice')['bid'] or price.get('lowPrice')['ask']),
-                str(price.get('openPrice')['bid'] or price.get('openPrice')['ask']),
                 str(price.get('closePrice')['bid'] or price.get('closePrice')['ask']),
+                str(price.get('openPrice')['ask'] or price.get('openPrice')['bid']),
                 str(price.get('highPrice')['ask'] or price.get('highPrice')['bid']),
                 str(price.get('lowPrice')['ask'] or price.get('lowPrice')['bid']),
-                str(price.get('openPrice')['ask'] or price.get('openPrice')['bid']),
                 str(price.get('closePrice')['ask'] or price.get('closePrice')['bid']),
                 price.get('lastTradedVolume', '0')])

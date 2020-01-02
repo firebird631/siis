@@ -383,6 +383,10 @@ class StrategyPositionTrade(StrategyTrade):
             if data.get('profit-currency'):
                 self._stats['profit-loss-currency'] = data['profit-currency']
 
+            # filled exit quantity equal to the entry
+            if self.x < self.e:
+                self.x += self.e - self.x
+
             self.position_quantity = 0.0
             self._exit_state = StrategyTrade.STATE_FILLED
 

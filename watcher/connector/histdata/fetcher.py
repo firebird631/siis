@@ -184,7 +184,7 @@ class HistDataFetcher(Fetcher):
                             count += 1
                             # 20180101 170014;1.200370;1.200870,0;1.200870,0;1.200870,0
                             # timestamp, open, high, low, close
-                            yield self.parse_candle(line)
+                            yield self.parse_min(line)
 
                         handle.close()
                     finally:

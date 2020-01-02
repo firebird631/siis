@@ -47,7 +47,6 @@ def check_ohlcs(broker_id, market_id, timeframe, from_date, to_date):
 
         for ohlc in ohlcs:
             tts = ohlc.timestamp
-            print(ohlc)
 
             if not prev_tts:
                 prev_tts = tts

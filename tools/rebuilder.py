@@ -7,7 +7,7 @@ import sys
 import logging
 import traceback
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from common.utils import UTC, TIMEFRAME_FROM_STR_MAP
 
@@ -138,6 +138,20 @@ def do_rebuilder(options):
                 else:
                     from_tf = tf
 
+        if options.get('target'):
+            target = TIMEFRAME_FROM_STR_MAP.get(options.get('target'))
+            
+            if target == Instrument.TF_3M:
+                # special case for 3M because 5M is not multiple of 3M
+                if timeframe <= Instrument.TF_1M:
+                    from_tf = timeframe
+                    tf = Instrument.TF_3M
+
+                    generators.append(CandleGenerator(from_tf, tf))
+
+                    # store for generation
+                    last_ohlcs[tf] = []
+
         if timeframe > 0:
             last_ohlcs[timeframe] = []
 
@@ -216,6 +230,12 @@ def do_rebuilder(options):
 
                     tts = data.timestamp
 
+                    if not prev_tts:
+                        prev_tts = tts
+
+                    prev_tts = tts
+                    timestamp = tts
+
                 # generate higher candles
                 for generator in generators:
                     candles = generator.generate_from_candles(last_ohlcs[generator.from_tf])
@@ -228,9 +248,6 @@ def do_rebuilder(options):
                     # remove consumed candles
                     last_ohlcs[generator.from_tf] = []
 
-                prev_tts = tts
-                timestamp = tts
-
                 if timestamp - prev_update >= progression_incr:
                     progression += 1
 
@@ -242,7 +259,7 @@ def do_rebuilder(options):
                 if timestamp > to_timestamp:
                     break
 
-                if total_count == 0:
+                if count == 0:
                     timestamp += timeframe * 100
 
             if progression < 100:

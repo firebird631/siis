@@ -305,6 +305,10 @@ class Instrument(object):
     @todo may we need hedging, leverage limits, contract_size, lot_size, one_pip_mean, value_per_pip ?
     """
 
+    # TF_QUOTE = -2
+    # TF_Q = TF_QUOTE
+    # TF_TRADE = -1
+    # TF_TR = TF_TRADE
     TF_TICK = 0
     TF_T = TF_TICK
     TF_SEC = 1
@@ -352,6 +356,7 @@ class Instrument(object):
     TF_WEEK = 60*60*24*7
     TF_1W = TF_WEEK
     TF_MONTH = 60*60*24*30
+    TF_YEAR = 60*60*365
 
     PRICE_OPEN = 0
     PRICE_HIGH = 1

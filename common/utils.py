@@ -24,6 +24,8 @@ class UTC(tzinfo):
 
 # timeframe to str map (double: str)
 TIMEFRAME_TO_STR_MAP = {
+    # -2: 'q',
+    # -1: 'tr',
     0: 't',
     1: '1s',
     3: '3s',
@@ -51,7 +53,8 @@ TIMEFRAME_TO_STR_MAP = {
     2*24*60*60: '2d',
     3*24*60*60: '3d',
     7*24*60*60: '1w',
-    30*24*60*60: '1M'
+    30*24*60*60: '1M',
+    365*24*60*60: '1Y'
 }
 
 # timeframe reverse map (str: double)

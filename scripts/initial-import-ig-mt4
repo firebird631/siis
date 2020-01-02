@@ -1,0 +1,295 @@
+#!/bin/bash
+BROKER='ig.com'
+BASE_PATH='/mnt/storage/Data/market/ig.com/MT4'
+
+# each symbol map to a market (epic)
+SYMBOLS='AUDNZD,AUDUSD,EURCAD,EURCHF,EURGBP,EURUSD,GER30,GBPUSD,NAS100,SPX500,US30,USDCHF,USDJPY,XAGUSD,XAUUSD'
+MARKETS='CS.D.AUDNZD.MINI.IP,CS.D.AUDUSD.MINI.IP,CS.D.EURCAD.MINI.IP,CS.D.EURCHF.MINI.IP,CS.D.EURGBP.MINI.IP,CS.D.EURUSD.MINI.IP,IX.D.DAX.IFMM.IP,CS.D.GBPUSD.MINI.IP,IX.D.NASDAQ.IFE.IP,IX.D.SPTRD.IFE.IP,IX.D.DOW.IFE.IP,CS.D.USDCHF.MINI.IP,CS.D.USDJPY.MINI.IP,CS.D.CFDSILVER.CFM.IP,CS.D.CFEGOLD.CFE.IP'
+
+
+# AUDNZD
+SYMBOL='AUDNZD'
+MARKET='CS.D.AUDNZD.MINI.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# AUDUSD
+SYMBOL='AUDUSD'
+MARKET='CS.D.AUDUSD.MINI.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# EURCAD
+SYMBOL='EURCAD'
+MARKET='CS.D.EURCAD.MINI.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# EURCHF
+SYMBOL='EURCHF'
+MARKET='CS.D.EURCHF.MINI.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# EURGBP
+SYMBOL='EURGBP'
+MARKET='CS.D.EURGBP.MINI.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# EURJPY
+SYMBOL='EURJPY'
+MARKET='CS.D.EURJPY.MINI.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# EURUSD
+SYMBOL='EURUSD'
+MARKET='CS.D.EURUSD.MINI.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# GER30
+SYMBOL='GER30'
+MARKET='IX.D.DAX.IFMM.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# GBPUSD
+SYMBOL='GBPUSD'
+MARKET='CS.D.GBPUSD.MINI.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# NAS100
+SYMBOL='NAS100'
+MARKET='IX.D.NASDAQ.IFE.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# SPX500
+SYMBOL='SPX500'
+MARKET='IX.D.SPTRD.IFE.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# US30
+SYMBOL='US30'
+MARKET='IX.D.DOW.IFE.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# USDCHF
+SYMBOL='USDCHF'
+MARKET='CS.D.USDCHF.MINI.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# USDJPY
+SYMBOL='USDJPY'
+MARKET='CS.D.USDJPY.MINI.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# XAGUSD
+SYMBOL='XAGUSD'
+MARKET='CS.D.CFDSILVER.CFM.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
+
+
+# XAUUSD
+SYMBOL='XAUUSD'
+MARKET='CS.D.CFEGOLD.CFE.IP'
+
+echo $SYMBOL
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}43200.csv --broker=ig.com --market=$MARKET --timeframe=1M --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}10080.csv --broker=ig.com --market=$MARKET --timeframe=1w --from=2000-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1440.csv --broker=ig.com --market=$MARKET --timeframe=1d --from=2017-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}240.csv --broker=ig.com --market=$MARKET --timeframe=4h --from=2019-01-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}60.csv --broker=ig.com --market=$MARKET --timeframe=1h --from=2019-07-01T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1h --cascaded=2h --from=2019-07-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}30.csv --broker=ig.com --market=$MARKET --timeframe=30m --from=2019-10-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}15.csv --broker=ig.com --market=$MARKET --timeframe=15m --from=2019-12-01T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}5.csv --broker=ig.com --market=$MARKET --timeframe=5m --from=2019-12-15T00:00:00
+python siis.py real --import --filename=${BASE_PATH}/${SYMBOL}/${SYMBOL}1.csv --broker=ig.com --market=$MARKET --timeframe=1m --from=2019-12-25T00:00:00
+python siis.py real --rebuild --broker=$BROKER --market=$MARKET --timeframe=1m --target=3m --from=2019-12-25T00:00:00
