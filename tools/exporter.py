@@ -7,6 +7,7 @@ import sys
 import logging
 import traceback
 import time
+import zipfile
 
 from datetime import datetime, timedelta
 
@@ -144,6 +145,14 @@ def export_ticks_siis_1_0_0(broker_id, market_id, from_date, to_date, dst):
     Terminal.inst().info("Last tick datetime is %s" % (format_datetime(tts),))
 
 
+def zip_file(filename_list, zip_filename):
+    zout = zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED)
+    for fname in filename_list:
+        zout.write(fname)
+
+    zout.close()
+
+
 def do_exporter(options):
     Terminal.inst().info("Starting SIIS exporter...")
     Terminal.inst().flush()
@@ -157,12 +166,9 @@ def do_exporter(options):
 
     timeframe = None
 
+    # UTC option dates
     from_date = options.get('from')
     to_date = options.get('to')
-
-    # UTC option dates
-    from_date = from_date.replace(tzinfo=UTC()) if from_date else None
-    to_date = to_date.replace(tzinfo=UTC()) if to_date else None
 
     if not to_date:
         today = datetime.now().astimezone(UTC())

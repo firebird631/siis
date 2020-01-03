@@ -6,6 +6,7 @@
 import sys
 import logging
 import traceback
+import zipfile
 
 from datetime import datetime, timedelta
 
@@ -87,6 +88,15 @@ def import_ohlc_mt4(broker_id, market_id, timeframe, from_date, to_date, row):
     return 1
 
 
+def unzip_file(filename, tmpdir="/tmp/"):
+    target = tmpdir + 'siis_' + filename.split('/')[-1].rstrip(".zip")
+
+    with zipfile.ZipFile(filename, 'r') as zip_ref:
+        zip_ref.extractall(target)
+
+    return target
+
+
 def error_exit(src, msg):
     src.close()
     error_logger.error(msg)
@@ -118,12 +128,9 @@ def do_importer(options):
     market_id = ""
     broker_id = ""
 
+    # UTC option dates    
     from_date = options.get('from')
     to_date = options.get('to')
-
-    # UTC option dates    
-    from_date = from_date.replace(tzinfo=UTC()) if from_date else None
-    to_date = to_date.replace(tzinfo=UTC()) if to_date else None
 
     if not options.get('timeframe'):
         timeframe = None

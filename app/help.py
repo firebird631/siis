@@ -6,6 +6,7 @@
 from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME
 
 from terminal.terminal import Terminal
+from random import randint
 
 
 def display_help(commands_handler, user_context=False):
@@ -78,34 +79,53 @@ def display_cli_help():
     Terminal.inst().message("")
     Terminal.inst().message('%s command line usage:' % APP_LONG_NAME)
     Terminal.inst().message("")
-    Terminal.inst().message("\tcmd <identity> <--options>")
+    Terminal.inst().message("  python siis.py <identity> <--options>")
     Terminal.inst().message("")
-    Terminal.inst().message("\tProfile name must be defined in the identy.py file from .siis local data. With that way you can manage multiple account, having identity for demo.")
-    Terminal.inst().message("\t --help display command line help.")
-    Terminal.inst().message("\t --version display the version number.")
-    Terminal.inst().message("\t --profile=<profile> Use a specific profile of appliance else default loads any.")
-    Terminal.inst().message("\t --paper-mode instanciate paper mode trader and simulate as best as possible.")
-    Terminal.inst().message("\t --backtest process a backtesting, uses paper mode traders and data history avalaible in the database.")
-    Terminal.inst().message("\t --timestep=<seconds> Timestep in seconds to increment the backesting. More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal candles size uses in the backtested strategies. Default is 60 seconds.")
-    Terminal.inst().message("\t --time-factor=<factor> in backtesting mode only allow the user to change the time factor and permit to interact during the backtesting. Default speed factor is as fast as possible.")
-    Terminal.inst().message("\t --check-data @todo Process a test on candles data. Check if there is inconsitencies into the time of the candles and if there is some gaps. The test is done only on the defined range of time.")
-    Terminal.inst().message("\t --from=<YYYY-MM-DDThh:mm:ss> define the date time from which start the backtesting, fetcher or binarizer. If ommited use whoole data set (take care).")
-    Terminal.inst().message("\t --to=<YYYY-MM-DDThh:mm:ss> define the date time to which stop the backtesting, fetcher or binarizer. If ommited use now.")
-    Terminal.inst().message("\t --last=<number> Fast last number of candles for every watched market (take care can take all requests credits on the broker). By default it is configured to get 1m, 5m and 1h candles.")
-    Terminal.inst().message("\t --market=<market-id> Specific market identifier to fetch, binarize only.")
-    Terminal.inst().message("\t --broker=<broker-name> Specific fetcher or watcher name to fetche or binarize market from.")
-    Terminal.inst().message("\t --timeframe=<timeframe> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in 1m 5m 15m 1h 2h 4h d m w")
-    Terminal.inst().message("\t --cascaded=<max-timeframe> During fetch process generate the candles of highers timeframe from lowers. Default is no. Take care to have entire multiple to fullfill the generated candles.")
-    Terminal.inst().message("\t --spec=<specific-option> Specific fetcher option (exemple STOCK for alphavantage.co fetcher to fetch a stock market).")
-    Terminal.inst().message("\t --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.")
-    Terminal.inst().message("\t --read-only Don't write market neither candles data to the database. Default is writing to the database.")
-    # Terminal.inst().message("\t --tool=<tool-name> Execute a specific tool @todo.")
-    Terminal.inst().message("\t --fetch Process the data fetcher.")
-    Terminal.inst().message("\t --binarize Process to text file to binary conversion for a market.")
-    Terminal.inst().message("\t --sync Process a synchronization of the watched market from a particular broker.")
-    Terminal.inst().message("\t --rebuild Rebuild OHLC from the trades/ticks data for a market. Need to specify --broker, --market, --timeframe, --from and --to date, --cascaded.")
+    Terminal.inst().message("Profiles are defined in config/identities.json located at .siis local data.")
     Terminal.inst().message("")
-    Terminal.inst().message("\t During usage press ':h<ENTER>' to get interative commands help. Press ':q<ENTER>' to exit. Knows issues can lock one ore more thread, then you will need to kill the process yourself.")
+    Terminal.inst().message("  --help display command line help.")
+    Terminal.inst().message("  --version display the version number.")
+    Terminal.inst().message("  --profile=<profile> Use a specific profile of appliance else default loads any.")
+    Terminal.inst().message("  --paper-mode instanciate paper mode trader and simulate as best as possible.")
+    Terminal.inst().message("  --backtest process a backtesting, uses paper mode traders and data history avalaible in the database.")
+    Terminal.inst().message("  --timestep=<seconds> Timestep in seconds to increment the backesting.")
+    Terminal.inst().message("    More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal")
+    Terminal.inst().message("    candles size uses in the backtested strategies. Default is 60 seconds.")
+    Terminal.inst().message("  --time-factor=<factor> in backtesting mode only allow the user to change the time factor and permit to interact")
+    Terminal.inst().message("    during the backtesting. Default speed factor is as fast as possible.")
+    Terminal.inst().message("  --from=<YYYY-MM-DDThh:mm:ss> define the date time from which start the backtesting, fetcher or binarizer.")
+    Terminal.inst().message("    If ommited use whoole data set (take care).")
+    Terminal.inst().message("  --to=<YYYY-MM-DDThh:mm:ss> define the date time to which stop the backtesting, fetcher or binarizer. If ommited use now.")
+    Terminal.inst().message("  --last=<number> Fast last number of candles for every watched market (take care can take all requests credits on the broker).")
+    Terminal.inst().message("    By default it is configured to get 1m, 5m and 1h candles.")
+    Terminal.inst().message("  --market=<market-id> Specific market identifier to fetch, binarize only.")
+    Terminal.inst().message("  --broker=<broker-name> Specific fetcher or watcher name to fetche or binarize market from.")
+    Terminal.inst().message("  --timeframe=<timeframe> Time frame unit or 0 for trade level. For fetcher, higher candles are generated.")
+    Terminal.inst().message("    Defined value is in second or an alias in 1m 5m 15m 1h 2h 4h d m w")
+    Terminal.inst().message("  --cascaded=<max-timeframe> During fetch process generate the candles of highers timeframe from lowers.")
+    Terminal.inst().message("    Default is none. Take care to have entire multiple to fullfill the generated candles.")
+    Terminal.inst().message("  --spec=<specific-option> Specific fetcher option (exemple STOCK for alphavantage.co fetcher to fetch a stock market).")
+    Terminal.inst().message("  --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.")
+    Terminal.inst().message("  --read-only Don't write market neither candles data to the database. Default is writing to the database.")
+    Terminal.inst().message("")
+    Terminal.inst().message("Tools :")
+    # Terminal.inst().message("   --tool=<tool-name> Execute a specific tool @todo.")
+    Terminal.inst().message("  --fetch Process the data fetcher.")
+    Terminal.inst().message("    Specify --broker, --market, --timeframe, --from and --to date. Optional : --cascaded.")
+    Terminal.inst().message("  --binarize Process ticks/trades/quotes text file to binary conversion.")
+    Terminal.inst().message("    Specify --broker, --market, --from and --to date.")
+    Terminal.inst().message("  --sync Process a synchronization of the watched market from a particular broker.")
+    Terminal.inst().message("    Specify --broker, --market.")
+    Terminal.inst().message("  --rebuild Rebuild OHLCs from the trades/ticks/quotes file data.")
+    Terminal.inst().message("    Specify --broker, --market, --timeframe, --from and --to date. Plus one of : --target or --cascaded.")
+    Terminal.inst().message("  --import Import a SIIS or MT4 data set from a file.")
+    Terminal.inst().message("    For MT4 specify --broker, --market, --timeframe, --from and --to date. Optional --zip.")
+    Terminal.inst().message("  --export Export a data set to a SIIS file format.")
+    Terminal.inst().message("    Specify --broker, --market, --from and --to date. Optional --timeframe else any.")
+    Terminal.inst().message("  --clean Remove some data from the database.")
+    Terminal.inst().message("    Specify --broker. Optional : --market, --from and --to date, --timeframe, --objects.")
+    Terminal.inst().message("")
+    Terminal.inst().message("During usage press ':h<ENTER>' to get interative commands help. Press ':q<ENTER>' to exit.")
     Terminal.inst().message("")
 
 
@@ -115,4 +135,34 @@ def display_welcome():
     Terminal.inst().action("To type a command line, start with a ':', finally validate by <ENTER> or cancel with <ESC>.", view='content')
     Terminal.inst().action("Enter command :help or :h for command details, and :quit :q to exit", view='content')
 
-    # @todo an ASCII art centered SIIS title
+    LOGO1 = """
+   SSSSSSSSSSSSSSS IIIIIIIIIIIIIIIIIIII   SSSSSSSSSSSSSSS 
+ SS:::::::::::::::SI::::::::II::::::::I SS:::::::::::::::S
+S:::::SSSSSS::::::SI::::::::II::::::::IS:::::SSSSSS::::::S
+S:::::S     SSSSSSSII::::::IIII::::::IIS:::::S     SSSSSSS
+S:::::S              I::::I    I::::I  S:::::S            
+S:::::S              I::::I    I::::I  S:::::S            
+ S::::SSSS           I::::I    I::::I   S::::SSSS         
+  SS::::::SSSSS      I::::I    I::::I    SS::::::SSSSS    
+    SSS::::::::SS    I::::I    I::::I      SSS::::::::SS  
+       SSSSSS::::S   I::::I    I::::I         SSSSSS::::S 
+            S:::::S  I::::I    I::::I              S:::::S
+            S:::::S  I::::I    I::::I              S:::::S
+SSSSSSS     S:::::SII::::::IIII::::::IISSSSSSS     S:::::S
+S::::::SSSSSS:::::SI::::::::II::::::::IS::::::SSSSSS:::::S
+S:::::::::::::::SS I::::::::II::::::::IS:::::::::::::::SS 
+ SSSSSSSSSSSSSSS   IIIIIIIIIIIIIIIIIIII SSSSSSSSSSSSSSS"""
+
+    LOGO2 = """
+   ▄████████  ▄█   ▄█     ▄████████ 
+  ███    ███ ███  ███    ███    ███ 
+  ███    █▀  ███▌ ███▌   ███    █▀  
+  ███        ███▌ ███▌   ███        
+▀███████████ ███▌ ███▌ ▀███████████ 
+         ███ ███  ███           ███ 
+   ▄█    ███ ███  ███     ▄█    ███ 
+ ▄████████▀  █▀   █▀    ▄████████▀"""
+
+    # ASCII art centered SIIS title
+    logo = LOGO1 if randint(0, 10) < 5 else LOGO2
+    Terminal.inst().message(logo, view="content")

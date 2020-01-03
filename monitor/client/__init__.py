@@ -6,5 +6,5 @@
 __version__ = '0.1.1'
 
 APP_SHORT_NAME = "siis"
-APP_LONG_NAME = "Strategy Investor Information System - Monitor"
+APP_LONG_NAME = "Strategy Indicator Information System - Monitor"
 APP_VERSION = (0, 1, 1)

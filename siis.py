@@ -72,6 +72,34 @@ def terminate(watchdog_service, watcher_service, trader_service, strategy_servic
     if watchdog_service:
         watchdog_service.terminate()
 
+
+def parse_datetime(formatted):
+    if formatted:
+        try:
+            if formatted.endswith('Z'):
+                # always UTC
+                formatted = formatted.rstrip('Z')
+
+            if 'T' in formatted:
+                if formatted.count(':') == 2:
+                    return datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
+                elif formatted.count(':') == 1:
+                    return datetime.strptime(formatted, '%Y-%m-%dT%H:%M').replace(tzinfo=UTC())
+                elif formatted.count(':') == 0:
+                    return datetime.strptime(formatted, '%Y-%m-%dT%H').replace(tzinfo=UTC())
+            else:
+                if formatted.count('-') == 2:
+                    return datetime.strptime(formatted, '%Y-%m-%d').replace(tzinfo=UTC())
+                elif formatted.count('-') == 1:
+                    return datetime.strptime(formatted, '%Y-%m').replace(tzinfo=UTC())
+                elif formatted.count('-') == 0:
+                    return datetime.strptime(formatted, '%Y').replace(tzinfo=UTC())
+        except:
+            return None
+
+    return None
+
+
 def application(argv):
     fix_thread_set_name()
 
@@ -132,12 +160,15 @@ def application(argv):
 
                 elif arg == '--no-conf':
                     options['no-conf'] = True
+                elif arg == '--zip':
+                    options['zip'] = True
 
                 elif arg == '--install-market':
                     options['install-market'] = True
                 elif arg == '--initial-fetch':
                     # do the initial OHLC fetch for watchers
                     options['initial-fetch'] = True
+
                 elif arg == '--backtest':
                     # backtest mean always paper-mode
                     options['paper-mode'] = True
@@ -154,14 +185,23 @@ def application(argv):
                     options['filename'] = arg.split('=')[1]
 
                 elif arg.startswith('--from='):
-                    # if backtest from date (if ommited use whoole data) date format is "yyyy-mm-dd-hh:mm:ss", fetch, binarize, optimize to date
-                    options['from'] = datetime.strptime(arg.split('=')[1], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
+                    # if backtest from date and tools
+                    options['from'] = parse_datetime(arg.split('=')[1])
+                    if not options['from']:
+                        Terminal.inst().error("Invalid 'from' datetime format")
+                        sys.exit(-1)
                 elif arg.startswith('--to='):
-                    # if backtest to date (can be ommited), fetch, binarize, optimize to date
-                    options['to'] = datetime.strptime(arg.split('=')[1], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
+                    # if backtest to date and tools
+                    options['to'] = parse_datetime(arg.split('=')[1])
+                    if not options['to']:
+                        Terminal.inst().error("Invalid 'to' datetime format")
+                        sys.exit(-1)
                 elif arg.startswith('--last='):
                     # fetch the last n data history
                     options['last'] = int(arg.split('=')[1])
+                    if options['last'] <= 0:
+                        Terminal.inst().error("Invalid 'last' value. Must be at least 1")
+                        sys.exit(-1)
 
                 elif arg.startswith('--market='):
                     # fetch, binarize, optimize the data history for this market
@@ -184,14 +224,10 @@ def application(argv):
 
                 elif arg == '--watcher-only':
                     # feed only with live data (not compatible with --read-only)
-                    options['watcher-only'] = True
-                
+                    options['watcher-only'] = True              
                 elif arg == '--read-only':
                     # does not write to the database (not compatible with --watcher-only)
                     options['read-only'] = True
-                elif arg == '--check-data':
-                    # check DB ohlc data (@todo)
-                    options['check-data'] = True
 
                 elif arg.startswith('--profile='):
                     # appliances profile name
