@@ -7,6 +7,8 @@ import sys
 import logging
 import traceback
 
+from tools.tool import Tool
+    
 from terminal.terminal import Terminal
 from database.database import Database
 
@@ -15,47 +17,87 @@ from watcher.service import WatcherService
 
 import logging
 logger = logging.getLogger('siis.tools.syncer')
+error_logger = logging.getLogger('siis.tools.error.syncer')
 
 
-def do_syncer(options):
+class Syncer(Tool):
     """
     Make a connection and synchronize the market data in local DB.
-    """
-    Terminal.inst().info("Starting SIIS syncer using %s identity..." % options['identity'])
-    Terminal.inst().flush()
+    @todo merge do_syncer into this model
+    """ 
 
-    # database manager
-    Database.create(options)
-    Database.inst().setup(options)
+    @classmethod
+    def alias(cls):
+        return "sync"
 
-    # default no initial fetch, opt-in
-    if 'initial-fetch' not in options:
-        options['initial-fetch'] = False
+    @classmethod
+    def help(cls):
+        return ("Process a synchronization of the watched market from a particular broker.",
+                "Specify --broker, --market.")
 
-    # watcher service
-    Terminal.inst().info("Starting watcher's service...")
-    watcher_service = WatcherService(options)
+    @classmethod
+    def detailed_help(cls):
+        return tuple()
 
-    markets = options['market'].split(',')
+    @classmethod
+    def need_identity(cls):
+        return True
 
-    watcher = watcher_service.create_watcher(options, options['broker'], markets)
-    if watcher:
-        watcher.initial_fetch = options.get('initial-fetch', False)
+    def __init__(self, options):
+        super().__init__("syncer", options)
 
-        watcher.connect()
+        self._watcher_service = None
 
-        for market_id in markets:
-            watcher._watched_instruments.add(market_id)
+    def check_options(self, options):
+        if options.get('market') and options.get('broker'):
+            return True
 
-        watcher.update_markets_info()
-        watcher.disconnect()
+        return False
 
-    watcher_service.terminate()
+    def init(self, options):
+        # database manager
+        Database.create(options)
+        Database.inst().setup(options)
 
-    Database.terminate()
+        # default no initial fetch, opt-in
+        if 'initial-fetch' not in options:
+            options['initial-fetch'] = False
 
-    Terminal.inst().info("Sync done!")
-    Terminal.inst().flush()
+        return True
 
-    Terminal.terminate()
-    sys.exit(0)
+    def run(self, options):
+        Terminal.inst().info("Starting watcher's service...")
+        self._watcher_service = WatcherService(options)
+
+        markets = options['market'].split(',')
+
+        watcher = self._watcher_service.create_watcher(options, options['broker'], markets)
+        if watcher:
+            watcher.initial_fetch = options.get('initial-fetch', False)
+
+            watcher.connect()
+
+            for market_id in markets:
+                watcher._watched_instruments.add(market_id)
+
+            try:
+                watcher.update_markets_info()
+            except Exception as e:
+                error_logger.error(str(e))
+
+            watcher.disconnect()
+
+        return True
+
+    def terminate(self, options):
+        self._watcher_service.terminate()
+
+        Database.terminate()
+
+        return True
+
+    def forced_interrupt(self, options):
+        return True
+
+
+tool = Syncer

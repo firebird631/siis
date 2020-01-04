@@ -29,6 +29,7 @@ from strategy.service import StrategyService
 from monitor.service import MonitorService
 from notifier.service import NotifierService
 from common.watchdog import WatchdogService
+from tools.tool import Tool
 
 from terminal.terminal import Terminal
 from terminal.command import CommandsHandler
@@ -133,30 +134,34 @@ def application(argv):
                 if arg == '--paper-mode':
                     # livemode but in paper-mode
                     options['paper-mode'] = True            
+
                 elif arg == '--fetch':
                     # use the fetcher
-                    options['fetch'] = True
+                    options['tool'] = "fetcher"
                 elif arg == '--binarize':
                     # use the binarizer
-                    options['binarize'] = True
-                elif arg == '--optimize':
+                    options['tool'] = "binarize"
+                elif arg == '--optimizer':
                     # use the optimizer
-                    options['optimize'] = True
+                    options['tool'] = "optimizer"
                 elif arg == '--sync':
                     # use the syncer
-                    options['sync'] = True
+                    options['tool'] = "syncer"
                 elif arg == '--rebuild':
                     # use the rebuilder
-                    options['rebuild'] = True
+                    options['tool'] = "rebuilder"
                 elif arg == '--export':
                     # use the exporter
-                    options['export'] = True
+                    options['tool'] = "exporter"
                 elif arg == '--import':
                     # use the importer
-                    options['import'] = True
+                    options['tool'] = "importer"
                 elif arg == '--clean':
                     # use the cleaner
-                    options['clean'] = True
+                    options['tool'] = "cleaner"
+                elif arg.startswith("--tool="):
+                    # use a named tool
+                    options['tool'] = arg.split('=')[1]
 
                 elif arg == '--no-conf':
                     options['no-conf'] = True
@@ -255,14 +260,11 @@ def application(argv):
                 Terminal.inst().error("Backtesting need from= and to= date time")
                 sys.exit(-1)
 
-    if options['identity'].startswith('-'):
-        Terminal.inst().error("First option must be the identity name")
-
     #
     # binarizer mode
     #
 
-    if options.get('binarize'):
+    if options.get('tool') == "binarizer":
         if options.get('market') and options.get('from') and options.get('to') and options.get('broker'):
             from tools.binarizer import do_binarizer
             do_binarizer(options)
@@ -275,7 +277,7 @@ def application(argv):
     # fetcher mode
     #
 
-    if options.get('fetch'):
+    if options.get('tool') == "fetcher":
         if options.get('market') and options.get('broker'):
             from tools.fetcher import do_fetcher
             do_fetcher(options)
@@ -288,7 +290,7 @@ def application(argv):
     # optimizer mode
     #
 
-    if options.get('optimize'):
+    if options.get('tool') == "optimizer":
         if options.get('market') and options.get('from') and options.get('broker'):
             from tools.optimizer import do_optimizer
             do_optimizer(options)
@@ -298,23 +300,10 @@ def application(argv):
         sys.exit(0)
 
     #
-    # syncer mode
-    #
-
-    if options.get('sync'):
-        if options.get('market') and options.get('broker'):
-            from tools.syncer import do_syncer
-            do_syncer(options)
-        else:
-            display_cli_help()
-
-        sys.exit(0)
-
-    #
     # rebuilder mode
     #
 
-    if options.get('rebuild'):
+    if options.get('tool') == "rebuilder":
         if options.get('market') and options.get('from') and options.get('broker') and options.get('timeframe'):
             from tools.rebuilder import do_rebuilder
             do_rebuilder(options)
@@ -327,7 +316,7 @@ def application(argv):
     # exporter mode
     #
 
-    if options.get('export'):
+    if options.get('tool') == "exporter":
         if options.get('market') and options.get('from') and options.get('broker') and options.get('filename'):
             from tools.exporter import do_exporter
             do_exporter(options)
@@ -340,7 +329,7 @@ def application(argv):
     # importer mode
     #
 
-    if options.get('import'):
+    if options.get('tool') == "importer":
         if options.get('filename'):
             from tools.importer import do_importer
             do_importer(options)
@@ -350,17 +339,45 @@ def application(argv):
         sys.exit(0)
 
     #
-    # syncer mode
+    # tool mode
     #
 
-    if options.get('clean'):
-        if options.get('broker'):
-            from tools.cleaner import do_cleaner
-            do_cleaner(options)
-        else:
-            display_cli_help()
+    if options.get('tool'):
+        ToolClazz = Tool.load_tool(options.get('tool'))
+        if ToolClazz:
+            if ToolClazz.need_identity():
+                if options['identity'].startswith('-'):
+                    Terminal.inst().error("First option must be the identity name")
+                    Terminal.inst().flush()
 
-        sys.exit(0)
+                    sys.exit(-1)
+
+            tool = ToolClazz(options)
+
+            if not tool.check_options(options):
+                display_cli_help()
+                sys.exit(-1)
+
+            if ToolClazz.need_identity():
+                Terminal.inst().info("Starting SIIS %s using %s identity..." % (options.get('tool'), options['identity']))
+            else:
+                Terminal.inst().info("Starting SIIS %s..." % options.get('tool'))
+
+            Terminal.inst().flush()
+
+            tool.execute(options)
+
+            Terminal.inst().info("%s done!" % (ToolClazz.alias() or options.get('tool')).capitalize())
+            Terminal.inst().flush()
+
+            Terminal.terminate()
+
+            sys.exit(0)
+        else:
+            sys.exit(-1)
+
+    if options['identity'].startswith('-'):
+        Terminal.inst().error("First option must be the identity name")
 
     #
     # normal mode

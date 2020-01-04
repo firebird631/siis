@@ -7,6 +7,8 @@ import sys
 import logging
 import traceback
 
+from tools.tool import Tool
+
 from terminal.terminal import Terminal
 from database.database import Database
 
@@ -15,49 +17,78 @@ logger = logging.getLogger('siis.tools.cleaner')
 error_logger = logging.getLogger('siis.error.tools.cleaner')
 
 
-def do_cleaner(options):
+class Cleaner(Tool):
     """
     Clean the database for a specific data set.
     @todo timeframe(s), --from, --to
-    """
-    Terminal.inst().info("Starting SIIS cleaner...")
-    Terminal.inst().flush()
+    """ 
 
-    # default no initial fetch, opt-in
-    if 'object' not in options:
-        options['object'] = "ohlc"
+    @classmethod
+    def alias(cls):
+        return "clean"
 
-    broker_id = options.get('broker')
-    if not broker_id:
-        error_logger.error("Undefined broker identifier")
-        sys.exit(-1)
+    @classmethod
+    def help(cls):
+        return ("Remove some data from the database.",
+                "Specify --broker. Optional : --market, --from and --to date, --timeframe, --objects.")
 
-    markets = options.get('market').split(',') if options.get('market', None) else None
+    @classmethod
+    def detailed_help(cls):
+        return tuple()
 
-    if not options.get('no-conf', False):
-        sys.stdout.write("Confirm you want to delete [Y/n] ? ")
-        confirm = input()
+    @classmethod
+    def need_identity(cls):
+        return False
 
-        if confirm != 'Y':
-            print("Canceled !")
-            sys.exit(0)
+    def __init__(self, options):
+        super().__init__("cleaner", options)
 
-    # database manager
-    Database.create(options)
-    Database.inst().setup(options)
+    def check_options(self, options):
+        if options.get('broker'):
+            return True
 
-    print("Processing...")
+        return False
 
-    if markets:
-        for market_id in markets:
-            Database.inst().cleanup_ohlc(broker_id=broker_id, market_id=market_id)
-    else:
-        Database.inst().cleanup_ohlc(broker_id)
+    def init(self, options):
+        # database manager
+        Database.create(options)
+        Database.inst().setup(options)
 
-    Database.terminate()
+        # default no initial fetch, opt-in
+        if 'object' not in options:
+            options['object'] = "ohlc"
 
-    Terminal.inst().info("Cleanup done!")
-    Terminal.inst().flush()
+        return True
 
-    Terminal.terminate()
-    sys.exit(0)
+    def run(self, options):
+        broker_id = options.get('broker')
+        markets = options.get('market').split(',') if options.get('market', None) else None
+
+        if not options.get('no-conf', False):
+            sys.stdout.write("Confirm you want to delete [Y/n] ? ")
+            confirm = input()
+
+            if confirm != 'Y':
+                Terminal.inst().message("Canceled !")
+                return True
+
+        Terminal.inst().message("Processing...")
+
+        if markets:
+            for market_id in markets:
+                Database.inst().cleanup_ohlc(broker_id=broker_id, market_id=market_id)
+        else:
+            Database.inst().cleanup_ohlc(broker_id)
+
+        return True
+
+    def terminate(self, options):
+        Database.terminate()
+
+        return True
+
+    def forced_interrupt(self, options):
+        return True
+
+
+tool = Cleaner

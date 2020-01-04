@@ -7,6 +7,7 @@ from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME
 
 from terminal.terminal import Terminal
 from random import randint
+from tools.tool import Tool
 
 
 def display_help(commands_handler, user_context=False):
@@ -109,13 +110,14 @@ def display_cli_help():
     Terminal.inst().message("  --read-only Don't write market neither candles data to the database. Default is writing to the database.")
     Terminal.inst().message("")
     Terminal.inst().message("Tools :")
-    # Terminal.inst().message("   --tool=<tool-name> Execute a specific tool @todo.")
+    Terminal.inst().message("  --tool=<tool-name> Execute a specific tool.")
+    Terminal.inst().message("")
+    display_help_tools()
+    # @todo after replaced any tools by theirs model remove below
     Terminal.inst().message("  --fetch Process the data fetcher.")
     Terminal.inst().message("    Specify --broker, --market, --timeframe, --from and --to date. Optional : --cascaded.")
     Terminal.inst().message("  --binarize Process ticks/trades/quotes text file to binary conversion.")
     Terminal.inst().message("    Specify --broker, --market, --from and --to date.")
-    Terminal.inst().message("  --sync Process a synchronization of the watched market from a particular broker.")
-    Terminal.inst().message("    Specify --broker, --market.")
     Terminal.inst().message("  --rebuild Rebuild OHLCs from the trades/ticks/quotes file data.")
     Terminal.inst().message("    Specify --broker, --market, --timeframe, --from and --to date. Plus one of : --target or --cascaded.")
     Terminal.inst().message("  --import Import a SIIS or MT4 data set from a file.")
@@ -127,6 +129,24 @@ def display_cli_help():
     Terminal.inst().message("")
     Terminal.inst().message("During usage press ':h<ENTER>' to get interative commands help. Press ':q<ENTER>' to exit.")
     Terminal.inst().message("")
+
+
+def display_help_tools():
+    tools = Tool.find_tools()
+
+    for tool in tools:
+        try:
+            alias, msgs = Tool.tool_help(tool)
+
+            if alias:
+                Terminal.inst().message("  --tool=%s, --%s %s" % (tool, alias, msgs[0] if len(msgs) > 0 else ""))
+            else:
+                Terminal.inst().message("  --tool=%s %s" % (tool, msgs[0] if len(msgs) > 0 else ""))
+
+            for msg in msgs[1:]:
+                Terminal.inst().message("    " + msg)
+        except:
+            pass
 
 
 def display_welcome():
