@@ -50,6 +50,9 @@ def do_rebuilder(options):
     Database.create(options)
     Database.inst().setup(options)
 
+    # want speedup the database inserts
+    Database.inst().enable_fetch_mode()
+
     timeframe = -1
     cascaded = None
 

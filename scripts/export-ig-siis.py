@@ -4,7 +4,7 @@ import subprocess
 import pathlib
 
 BROKER = "ig.com"
-DST_PATH = "/mnt/storage/Data/market/ig.com/dumps"
+DST_PATH = "/mnt/storage/Data/market/ig.com/siis"
 PREFIX = "full"
 
 MARKETS = {

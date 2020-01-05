@@ -1,17 +1,19 @@
 # @date 2019-12-23
 # @author Frederic SCHERMA
 # @license Copyright (c) 2018 Dream Overflow
-# Importer tool.
+# SIIS and MT4, MT5 Importer tool.
 
 import sys
 import logging
 import traceback
 import zipfile
+import pathlib
 
 from datetime import datetime, timedelta
+from tools.tool import Tool
 
 from instrument.instrument import Instrument
-from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_from_str, format_datetime, format_delta
+from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_from_str, timeframe_to_str, format_datetime, format_delta
 
 from terminal.terminal import Terminal
 from database.database import Database
@@ -20,12 +22,58 @@ import logging
 logger = logging.getLogger('siis.tools.importer')
 error_logger = logging.getLogger('siis.error.tools.importer')
 
-# format SIIS version 1.0.0 : tick, trade, quote, ohlc
-# format MT4 OHLC : tick, ohlc
+
+class Importer(object):  # Tool
+    """
+    SIIS and MT4, MT5 Importer tool.
+
+    format SIIS version 1.0.0 : tick, trade, quote, ohlc
+    format MT4 : tick, ohlc
+    format MT5 : tick, ohlc
+    """
+
+    def __init__(self):
+        self.prev_bid = None
+        self.prev_ask = None
+
 
 FORMAT_UNDEFINED = 0
 FORMAT_SIIS = 1
 FORMAT_MT4 = 2
+FORMAT_MT5 = 3
+
+MT4_TIMEFRAMES = {
+    '1': Instrument.TF_1M,
+    '2': Instrument.TF_2M,
+    '3': Instrument.TF_3M,
+    '5': Instrument.TF_5M,
+    '10': Instrument.TF_10M,
+    '15': Instrument.TF_15M,
+    '30': Instrument.TF_30M,
+    '60': Instrument.TF_1H,
+    '120': Instrument.TF_2H,
+    '240': Instrument.TF_4H,
+    '1440': Instrument.TF_1D,
+    '10080': Instrument.TF_1W
+}
+
+MT5_TIMEFRAMES = {
+    'M1': Instrument.TF_1M,
+    'M2': Instrument.TF_2M,
+    'M3': Instrument.TF_3M,
+    'M5': Instrument.TF_5M,
+    'M10': Instrument.TF_10M,
+    'M15': Instrument.TF_15M,
+    'M30': Instrument.TF_30M,
+    'H1': Instrument.TF_1H,
+    'H2': Instrument.TF_2H,
+    'H4': Instrument.TF_4H,
+    'D1': Instrument.TF_1D,
+    'W1': Instrument.TF_1W
+}
+
+prev_bid = None
+prev_ask = None
 
 
 def import_tick_siis_1_0_0(broker_id, market_id, from_date, to_date, row):
@@ -63,8 +111,35 @@ def import_ohlc_siis_1_0_0(broker_id, market_id, timeframe, from_date, to_date, 
     return 1
 
 
-def import_tick_mt4(broker_id, market_id, from_date, to_date, row):
-    return 0
+def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
+    parts = row.split(',')
+
+    dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S.%f').replace(tzinfo=UTC())
+    timestamp = int(dt.timestamp() * 1000)
+
+    if from_date and dt < from_date:
+        return 0
+
+    if to_date and dt > to_date:
+        return 0
+
+    if parts[2]:
+        self.prev_bid = float(parts[2])
+    
+    if parts[3]:
+        self.prev_ask = float(parts[3])
+
+    if parts[5]:
+        ltv = float(parts[5])
+    else:
+        ltv = 0
+
+    Database.inst().store_market_trade((
+        broker_id, market_id, timestamp,
+        self.prev_bid, self.prev_ask,
+        ltv))
+
+    return 1
 
 
 def import_ohlc_mt4(broker_id, market_id, timeframe, from_date, to_date, row):
@@ -88,6 +163,58 @@ def import_ohlc_mt4(broker_id, market_id, timeframe, from_date, to_date, row):
     return 1
 
 
+def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
+    parts = row.split('\t')
+
+    dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S.%f').replace(tzinfo=UTC())
+    timestamp = int(dt.timestamp() * 1000)
+
+    if from_date and dt < from_date:
+        return 0
+
+    if to_date and dt > to_date:
+        return 0
+
+    if parts[2]:
+        self.prev_bid = float(parts[2])
+
+    if parts[3]:
+        self.prev_ask = float(parts[3])
+
+    if parts[5]:
+        ltv = float(parts[5])
+    else:
+        ltv = 0
+
+    Database.inst().store_market_trade((
+        broker_id, market_id, timestamp,
+        self.prev_bid, self.prev_ask,
+        ltv))
+
+    return 1
+
+
+def import_ohlc_mt5(broker_id, market_id, timeframe, from_date, to_date, row):
+    parts = row.split('\t')
+
+    dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S').replace(tzinfo=UTC())
+    timestamp = int(dt.timestamp() * 1000)
+
+    if from_date and dt < from_date:
+        return 0
+
+    if to_date and dt > to_date:
+        return 0
+
+    Database.inst().store_market_ohlc((
+        broker_id, market_id, timestamp, int(timeframe),
+        parts[2], parts[3], parts[4], parts[5],
+        parts[2], parts[3], parts[4], parts[5],
+        parts[7]))
+
+    return 1
+
+
 def unzip_file(filename, tmpdir="/tmp/"):
     target = tmpdir + 'siis_' + filename.split('/')[-1].rstrip(".zip")
 
@@ -98,7 +225,9 @@ def unzip_file(filename, tmpdir="/tmp/"):
 
 
 def error_exit(src, msg):
-    src.close()
+    if src:
+        src.close()
+
     error_logger.error(msg)
 
     Database.terminate()
@@ -108,6 +237,8 @@ def error_exit(src, msg):
 
 
 def do_importer(options):
+    tool = Importer()
+
     Terminal.inst().info("Starting SIIS importer...")
     Terminal.inst().flush()
 
@@ -115,22 +246,19 @@ def do_importer(options):
     Database.create(options)
     Database.inst().setup(options)
 
+    # want speedup the database inserts
+    Database.inst().enable_fetch_mode()
+
     filename = options.get('filename')
     detected_format = FORMAT_UNDEFINED
+    detected_timeframe = None
+    is_mtx_tick = False
 
-    if filename.endswith(".siis"):
-        detected_format = FORMAT_SIIS
-    elif filename.endswith(".csv"):
-        detected_format = FORMAT_MT4
+    pathname = pathlib.Path(filename)
+    if not pathname.exists():
+        error_exit(None, "File %s does not exists" % pathname.name)
 
     timeframe = None
-
-    market_id = ""
-    broker_id = ""
-
-    # UTC option dates    
-    from_date = options.get('from')
-    to_date = options.get('to')
 
     if not options.get('timeframe'):
         timeframe = None
@@ -144,6 +272,66 @@ def do_importer(options):
                 pass
 
     src = open(filename, "rt")
+
+    if filename.endswith(".siis"):
+        detected_format = FORMAT_SIIS
+    elif filename.endswith(".csv"):
+        # detect the format from the first row
+        row = src.readline().rstrip('\n')
+        if row.count('\t') > 0:
+            if row.count('\t') == 5 and row == "<DATE>\t<TIME>\t<BID>\t<ASK>\t<LAST>\t<VOLUME>":
+                detected_format = FORMAT_MT5
+                detected_timeframe = Instrument.TF_TICK
+                is_mtx_tick = True
+
+            elif row.count('\t') == 8 and row == "<DATE>\t<TIME>\t<OPEN>\t<HIGH>\t<LOW>\t<CLOSE>\t<TICKVOL>\t<VOL>\t<SPREAD>":
+                detected_format = FORMAT_MT5
+                is_mtx_tick = False
+
+                # from filename try to detect the timeframe
+                parts = pathname.name.split('_')
+                if len(parts) >= 2:
+                    detected_timeframe = MT5_TIMEFRAMES.get(parts[1])
+
+            # ignore the header line
+        elif row.count(',') > 0:
+            if row.count(',') == 4:
+                detected_format = FORMAT_MT4
+                detected_timeframe = Instrument.TF_TICK
+                is_mtx_tick = True
+
+            elif row.count(',') == 6:
+                detected_format = FORMAT_MT4
+                is_mtx_tick = False
+
+                # from filename try to detect the timeframe
+                parts = pathname.name.split('.')
+                if len(parts) > 0:
+                    for mt_tf, tf in MT4_TIMEFRAMES.items():
+                        if parts[0].endswith(mt_tf):
+                            detected_timeframe = tf
+                            break
+
+            # reset because first row is data
+            src.seek(0, 0)
+
+    if detected_format == FORMAT_UNDEFINED:
+         error_exit(src, "Unknown file format")
+
+    if detected_format in (FORMAT_MT4, FORMAT_MT5):
+        if detected_timeframe is not None and timeframe is None:
+            Terminal.inst().message("Auto-detected timeframe %s" % timeframe_to_str(detected_timeframe))
+
+        if detected_timeframe and timeframe and detected_timeframe != timeframe:
+            error_exit(src, "Auto-detected timeframe %s is different of specified timeframe %s" % (
+                timeframe_to_str(detected_timeframe), timeframe_to_str(timeframe)))
+
+    market_id = ""
+    broker_id = ""
+
+    # UTC option dates    
+    from_date = options.get('from')
+    to_date = options.get('to')
 
     if detected_format == FORMAT_SIIS:
         # first row gives format details
@@ -175,8 +363,7 @@ def do_importer(options):
                     timeframe = timeframe_from_str(v)
                 else:
                     timeframe = None
-
-    if detected_format == FORMAT_MT4:
+    else:
         # need broker, market and timeframe
         broker_id = options.get('broker')
         market_id = options.get('market')
@@ -187,8 +374,13 @@ def do_importer(options):
         if not market_id or ',' in market_id:
             error_exit(src, "Missing or invalid target market identifier")
 
-        if not timeframe:
-            error_exit(src, "Missing target timeframe")
+        if timeframe is None:
+            if is_mtx_tick:
+                timeframe = Instrument.TF_TICK
+            elif detected_timeframe:
+                timeframe = detected_timeframe
+            else:
+                error_exit(src, "Missing target timeframe")
 
     # limited sub-range
     from_date_str = from_date.strftime("%Y-%m-%dT%H:%M:%SZ") if from_date else None
@@ -225,7 +417,7 @@ def do_importer(options):
                     total_count += import_ohlc_siis_1_0_0(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
 
         elif detected_format == FORMAT_MT4:
-            cur_timeframe = timeframe
+            cur_timeframe = timeframe if not is_mtx_tick else Instrument.TF_TICK
             cur_from_date = from_date
             cur_to_date = to_date
 
@@ -236,7 +428,7 @@ def do_importer(options):
                         break
 
                     row = row.rstrip("\n")
-                    total_count += import_tick_mt4(broker_id, market_id, cur_from_date, cur_to_date, row)
+                    total_count += import_tick_mt4(tool, broker_id, market_id, cur_from_date, cur_to_date, row)
 
             elif cur_timeframe > 0:
                 while 1:
@@ -246,6 +438,29 @@ def do_importer(options):
 
                     row = row.rstrip("\n")
                     total_count += import_ohlc_mt4(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
+
+        elif detected_format == FORMAT_MT5:
+            cur_timeframe = timeframe if not is_mtx_tick else Instrument.TF_TICK
+            cur_from_date = from_date
+            cur_to_date = to_date
+
+            if cur_timeframe == Instrument.TF_TICK:
+                while 1:
+                    row = src.readline()
+                    if not row:
+                        break
+
+                    row = row.rstrip("\n")
+                    total_count += import_tick_mt5(tool, broker_id, market_id, cur_from_date, cur_to_date, row)
+
+            elif cur_timeframe > 0:
+                while 1:
+                    row = src.readline()
+                    if not row:
+                        break
+
+                    row = row.rstrip("\n")
+                    total_count += import_ohlc_mt5(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
 
     except Exception as e:
         error_logger.error(str(e))

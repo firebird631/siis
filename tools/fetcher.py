@@ -28,6 +28,9 @@ def do_fetcher(options):
     Database.create(options)
     Database.inst().setup(options)
 
+    # want speedup the database inserts
+    Database.inst().enable_fetch_mode()
+
     watcher_service = WatcherService(options)
     fetcher = watcher_service.create_fetcher(options, options['broker'])
 

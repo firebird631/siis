@@ -3,6 +3,7 @@ import sys
 import subprocess
 import pathlib
 
+MODE = "ohlc"
 BROKER = "ig.com"
 BASE_PATH = "/mnt/storage/Data/market/ig.com/MT4"
 
@@ -41,12 +42,12 @@ IMPORT_TFS = {
 # second to minutes
 TFS_TO_MT4 = {
     "1m": "1",
-    # "3m": "3",
+    "3m": "3",
     "5m": "5",
     "15m": "15",
     "30m": "30",
     "1h": "60",
-    #"2h": "120",
+    "2h": "120",
     "4h": "240",
     "1d": "1440",
     "1w": "10080",
@@ -54,7 +55,11 @@ TFS_TO_MT4 = {
 }
 
 
-def import_mt4(market, symbol):
+def import_mt4_tick(market, symbol):
+    pass
+
+
+def import_mt4_ohlc(market, symbol):
     """Distinct file per timeframe"""
     for tf, lfrom in IMPORT_TFS.items():
         src_path = pathlib.Path(BASE_PATH, symbol)
@@ -90,8 +95,14 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 2:
         # overrides
-        PREFIX = sys.argv[2]
+        MODE = sys.argv[2]
 
-    for market, symbol in MARKETS.items():
-        # use unique file
-        import_mt4(market, symbol)
+    if MODE == "ohlc":
+        for market, symbol in MARKETS.items():
+            # use unique file
+            import_mt4_ohlc(market, symbol)
+
+    elif MODE == "tick":
+        for market, symbol in MARKETS.items():
+            # use unique file
+            import_mt4_tick(market, symbol)

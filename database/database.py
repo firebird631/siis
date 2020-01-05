@@ -179,8 +179,9 @@ class Database(object):
         self._running = True
         self._thread.start()
 
+    def enable_fetch_mode(self):
         # is fetch mode fush tick continueously
-        self._fetch = options.get('fetch', False)
+        self._fetch = True
 
     def connect(self, config):
         """

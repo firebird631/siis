@@ -115,7 +115,7 @@ def export_ticks_siis_1_0_0(broker_id, market_id, from_date, to_date, dst):
 
         for data in ticks:
             tick_dt = datetime.utcfromtimestamp(ohlc.timestamp).strftime("%Y%m%d %H%M%S%f")
-            
+
             dst.write("%s\t%s\t%s\t%s\n" % (tick_dt, data[1], data[2], data[3]))
 
             if not prev_tts:

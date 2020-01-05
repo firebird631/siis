@@ -59,6 +59,9 @@ class Syncer(Tool):
         Database.create(options)
         Database.inst().setup(options)
 
+        # want speedup the database inserts
+        Database.inst().enable_fetch_mode()
+
         # default no initial fetch, opt-in
         if 'initial-fetch' not in options:
             options['initial-fetch'] = False
