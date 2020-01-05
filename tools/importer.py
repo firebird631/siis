@@ -77,7 +77,22 @@ prev_ask = None
 
 
 def import_tick_siis_1_0_0(broker_id, market_id, from_date, to_date, row):
-    return 0
+    parts = row.split('\t')
+
+    dt = datetime.strptime(parts[0], '%Y%m%d %H%M%S%f').replace(tzinfo=UTC())
+    timestamp = int(dt.timestamp() * 1000)
+
+    if from_date and dt < from_date:
+        return 0
+
+    if to_date and dt > to_date:
+        return 0
+
+    Database.inst().store_market_trade((
+        broker_id, market_id, timestamp,
+        *parts[1:]))
+
+    return 1
 
 
 def import_trade_siis_1_0_0(broker_id, market_id, from_date, to_date, row):
@@ -85,10 +100,6 @@ def import_trade_siis_1_0_0(broker_id, market_id, from_date, to_date, row):
 
 
 def import_quote_siis_1_0_0(broker_id, market_id, from_date, to_date, row):
-    return 0
-
-
-def import_tick_siis_1_0_0(broker_id, market_id, from_date, to_date, row):
     return 0
 
 
@@ -124,15 +135,15 @@ def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
         return 0
 
     if parts[2]:
-        self.prev_bid = float(parts[2])
+        self.prev_bid = parts[2]
     
     if parts[3]:
-        self.prev_ask = float(parts[3])
+        self.prev_ask = parts[3]
 
     if parts[5]:
-        ltv = float(parts[5])
+        ltv = parts[5]
     else:
-        ltv = 0
+        ltv = "0"
 
     Database.inst().store_market_trade((
         broker_id, market_id, timestamp,
@@ -176,13 +187,13 @@ def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
         return 0
 
     if parts[2]:
-        self.prev_bid = float(parts[2])
+        self.prev_bid = parts[2]
 
     if parts[3]:
-        self.prev_ask = float(parts[3])
+        self.prev_ask = parts[3]
 
     if parts[5]:
-        ltv = float(parts[5])
+        ltv = parts[5]
     else:
         ltv = 0
 

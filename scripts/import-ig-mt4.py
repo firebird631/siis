@@ -13,6 +13,7 @@ MARKETS = {
     "CS.D.EURCAD.MINI.IP": "EURCAD",
     "CS.D.EURCHF.MINI.IP": "EURCHF",
     "CS.D.EURGBP.MINI.IP": "EURGBP",
+    "CS.D.EURJPY.MINI.IP": "EURJPY",
     "CS.D.EURUSD.MINI.IP": "EURUSD",
     "IX.D.DAX.IFMM.IP": "GER30",
     "CS.D.GBPUSD.MINI.IP": "GBPUSD",
@@ -53,10 +54,6 @@ TFS_TO_MT4 = {
     "1w": "10080",
     "1M": "43200"
 }
-
-
-def import_mt4_tick(market, symbol):
-    pass
 
 
 def import_mt4_ohlc(market, symbol):
@@ -101,8 +98,3 @@ if __name__ == "__main__":
         for market, symbol in MARKETS.items():
             # use unique file
             import_mt4_ohlc(market, symbol)
-
-    elif MODE == "tick":
-        for market, symbol in MARKETS.items():
-            # use unique file
-            import_mt4_tick(market, symbol)
