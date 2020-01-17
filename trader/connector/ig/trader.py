@@ -83,8 +83,15 @@ class IGTrader(Trader):
 
         with self._mutex:
             # initials orders and positions
-            self.__fetch_orders()
-            self.__fetch_positions()
+            try:
+                self.__fetch_orders()
+            except:
+                pass
+
+            try:
+                self.__fetch_positions()
+            except:
+                pass
 
             self.account.update(self._watcher.connector)
 
@@ -462,7 +469,7 @@ class IGTrader(Trader):
         try:
             positions = self._watcher.connector.positions()
         except Exception as e:
-            logger.error("fetch_market_by_epic: %s" % repr(e))
+            error_logger.error("fetch positions: %s" % repr(e))
             raise
 
         # too this can be done by signals
@@ -569,7 +576,7 @@ class IGTrader(Trader):
         try:
             orders = self._watcher.connector.orders()
         except Exception as e:
-            logger.error("__fetch_orders: %s" % repr(e))
+            error_logger.error("fetch orders: %s" % repr(e))
             raise
 
         # @todo add/update/remove orders
