@@ -145,7 +145,7 @@ def do_rebuilder(options):
         if options.get('target'):
             target = TIMEFRAME_FROM_STR_MAP.get(options.get('target'))
 
-            if target % timeframe != 0:
+            if (timeframe > 0 and target % timeframe != 0):
                 logger.error("Timeframe %s is not a multiple of %s !" % (timeframe_to_str(target), timeframe_to_str(timeframe)))
                 sys.exit(-1)
 

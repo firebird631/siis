@@ -404,20 +404,19 @@ class BinanceWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
 
             # store the last market info to be used for backtesting
-            if not self._read_only:
-                Database.inst().store_market_info((self.name, market.market_id, market.symbol,
-                    market.market_type, market.unit_type, market.contract_type,  # type
-                    market.trade, market.orders,  # type
-                    market.base, market.base_display, market.base_precision,  # base
-                    market.quote, market.quote_display, market.quote_precision,  # quote
-                    market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
-                    str(market.lot_size), str(market.contract_size), str(market.base_exchange_rate),
-                    str(market.value_per_pip), str(market.one_pip_means), '-',
-                    *size_limits,
-                    *notional_limits,
-                    *price_limits,
-                    str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))
-                )
+            Database.inst().store_market_info((self.name, market.market_id, market.symbol,
+                market.market_type, market.unit_type, market.contract_type,  # type
+                market.trade, market.orders,  # type
+                market.base, market.base_display, market.base_precision,  # base
+                market.quote, market.quote_display, market.quote_precision,  # quote
+                market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
+                str(market.lot_size), str(market.contract_size), str(market.base_exchange_rate),
+                str(market.value_per_pip), str(market.one_pip_means), '-',
+                *size_limits,
+                *notional_limits,
+                *price_limits,
+                str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))
+            )
 
         return market
 
@@ -562,7 +561,7 @@ class BinanceWatcher(Watcher):
 
             self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
-            if not self._read_only and self._store_trade:
+            if self._store_trade:
                 Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q']))
 
             for tf in Watcher.STORED_TIMEFRAMES:
@@ -606,7 +605,7 @@ class BinanceWatcher(Watcher):
 
             self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
 
-            if k['x'] and not self._read_only:
+            if k['x'] and self._store_ohlc:
                 # write only consolidated candles. values are string its perfect
                 Database.inst().store_market_ohlc((
                     self.name, symbol, int(k['t']), tf,

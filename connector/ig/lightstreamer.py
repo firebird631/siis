@@ -422,6 +422,7 @@ class LSClient(object):
 
 			if self._stream_connection:
 				self._stream_connection.close()
+				self._stream_connection = None
 
 			if self._session:
 				self._session.clear()

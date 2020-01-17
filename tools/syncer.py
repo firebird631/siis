@@ -33,7 +33,8 @@ class Syncer(Tool):
     @classmethod
     def help(cls):
         return ("Process a synchronization of the watched market from a particular broker.",
-                "Specify --broker, --market.")
+                "Specify --broker, --market.",
+                "Optional --initial-fetch, default False")
 
     @classmethod
     def detailed_help(cls):

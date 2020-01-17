@@ -81,9 +81,10 @@ class Watcher(Runnable):
         self._watched_instruments = set()    # watched instruments
 
         self._data_streams = {}
-        self._read_only = service.read_only  # no db storage in read-only mode
-        self._store_trade = False            # default never store trade/tick/quote during watching
-        self._initial_fetch = True           # default fetch history of OHLC at connection
+
+        self._store_ohlc = service.store_ohlc        # default never store OHLC to DB storage
+        self._store_trade = service.store_trade      # default never store trade/tick/quote during watching
+        self._initial_fetch = service.initial_fetch  # default never fetch history of OHLC at connection
 
         self._last_ohlc = {}  # last ohlc per market id and then per timeframe
         self._last_update_times = {tf: 0.0 for tf in self.GENERATED_TF}
@@ -532,7 +533,7 @@ class Watcher(Runnable):
             for generator in generators:              
                 candles = generator.generate_from_candles(last_ohlcs[generator.from_tf], False)
                 if candles:
-                    if not self._read_only:
+                    if self._store_ohlc:
                         for c in candles:
                             self.store_candle(market_id, generator.to_tf, c)
 

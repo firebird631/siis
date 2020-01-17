@@ -169,10 +169,17 @@ def application(argv):
                     options['zip'] = True
 
                 elif arg == '--install-market':
+                    # fetcher option
                     options['install-market'] = True
                 elif arg == '--initial-fetch':
-                    # do the initial OHLC fetch for watchers
+                    # do the initial OHLC fetch for watchers (syncer, watcher), default False
                     options['initial-fetch'] = True
+                elif arg == '--store-trade':
+                    # store trade/quote/tick during wather process (watcher), default False
+                    options['store-trade'] = True
+                elif arg == '--store-ohlc':
+                    # store OHLCs during wather process (watcher), default False
+                    options['store-ohlc'] = True
 
                 elif arg == '--backtest':
                     # backtest mean always paper-mode
@@ -228,11 +235,8 @@ def application(argv):
                     options['target'] = arg.split('=')[1]
 
                 elif arg == '--watcher-only':
-                    # feed only with live data (not compatible with --read-only)
+                    # feed only with live data, does not run the trader and strategy services
                     options['watcher-only'] = True              
-                elif arg == '--read-only':
-                    # does not write to the database (not compatible with --watcher-only)
-                    options['read-only'] = True
 
                 elif arg.startswith('--profile='):
                     # appliances profile name
@@ -247,11 +251,6 @@ def application(argv):
                     sys.exit(0)
             else:
                 options['identity'] = argv[1]
-
-        # watcher-only read-only mutual exclusion
-        if options.get('watcher-only') and options.get('read-only'):
-            Terminal.inst().error("Options --watcher-only and --read-only are mutually exclusive !")
-            sys.exit(-1)
 
         # backtesting
         if options.get('backtesting', False):

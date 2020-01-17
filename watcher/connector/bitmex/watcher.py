@@ -70,7 +70,8 @@ class BitMexWatcher(Watcher):
 
                     # testnet (demo) server doesn't provided real prices, so never store info from it !
                     if identity.get('host') == 'testnet.bitmex.com':
-                        self._read_only = True
+                        self._store_ohlc = False
+                        self._store_trade = False
 
                     if not self._connector.connected or not self._connector.ws_connected:
                         self._connector.connect()
@@ -482,7 +483,7 @@ class BitMexWatcher(Watcher):
             #         # and notify
             #         self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
-            #         if not self._read_only and self._store_trade:
+            #         if self._store_trade:
             #             # store trade
             #             Database.inst().store_market_trade((self.name, symbol, int(trade_time*1000), price, price, quantity))
 
@@ -585,7 +586,7 @@ class BitMexWatcher(Watcher):
                         # and notify
                         self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
-                        if not self._read_only and self._store_trade:
+                        if self._store_trade:
                             # store trade/tick
                             Database.inst().store_market_trade((self.name, symbol, int(update_time*1000), bid, ofr, volume))
 
@@ -716,20 +717,19 @@ class BitMexWatcher(Watcher):
             market.taker_fee = instrument.get('takerFee', 0.0)
 
             # store the last market info to be used for backtesting
-            if not self._read_only:
-                Database.inst().store_market_info((self.name, market_id, market.symbol,
-                    market.market_type, market.unit_type, market.contract_type,  # type
-                    market.trade, market.orders,  # type
-                    market.base, market.base_display, market.base_precision,  # base
-                    market.quote, market.quote_display, market.quote_precision,  # quote
-                    market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
-                    str(market.lot_size), str(market.contract_size), str(market.base_exchange_rate),
-                    str(market.value_per_pip), str(market.one_pip_means), str(market.margin_factor),
-                    str(market.min_size), str(market.max_size), str(market.step_size),  # size limits
-                    str(market.min_notional), str(market.max_notional), str(market.step_notional),  # notional limits
-                    str(market.min_price), str(market.max_price), str(market.tick_price),  # price limits
-                    str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))  # fees
-                )
+            Database.inst().store_market_info((self.name, market_id, market.symbol,
+                market.market_type, market.unit_type, market.contract_type,  # type
+                market.trade, market.orders,  # type
+                market.base, market.base_display, market.base_precision,  # base
+                market.quote, market.quote_display, market.quote_precision,  # quote
+                market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
+                str(market.lot_size), str(market.contract_size), str(market.base_exchange_rate),
+                str(market.value_per_pip), str(market.one_pip_means), str(market.margin_factor),
+                str(market.min_size), str(market.max_size), str(market.step_size),  # size limits
+                str(market.min_notional), str(market.max_notional), str(market.step_notional),  # notional limits
+                str(market.min_price), str(market.max_price), str(market.tick_price),  # price limits
+                str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))  # fees
+            )
 
             # notify for strategy
             self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))

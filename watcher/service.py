@@ -47,8 +47,14 @@ class WatcherService(Service):
         self._start_timestamp = options['from'].timestamp() if options.get('from') else 0
         self._end_timestamp = options['to'].timestamp() if options.get('to') else 0
 
-        # read-only, means to do not write to the market DB
-        self._read_only = options.get('read-only', False)
+        # store OHLCs into the DB during watcher process, default is False
+        self._store_ohlc = options.get('store-ohlc', False)
+
+        # process the initial data fetch at each instrument subscription, default is False
+        self._initial_fetch = options.get('initial-fetch', False)
+
+        # store trade/tick/quote during watcher process, default is False
+        self._store_trade = options.get('store-trade', False)
 
     def create_fetcher(self, options, watcher_name):
         fetcher = self._fetchers_config.get(watcher_name)
@@ -190,9 +196,21 @@ class WatcherService(Service):
         else:
             watchdog_service.service_timeout(self.name, "Unable to join service %s for %s seconds" % (self.name, timeout))
 
+    #
+    # preferences
+    #
+
     @property
-    def read_only(self):
-        return self._read_only
+    def store_ohlc(self):
+        return self._store_ohlc
+
+    @property
+    def initial_fetch(self):
+        return self._initial_fetch
+
+    @property
+    def store_trade(self):
+        return self._store_trade
 
     #
     # config

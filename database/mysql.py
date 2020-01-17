@@ -204,10 +204,11 @@ class MySql(Database):
                         cursor.execute("""SELECT margin_factor FROM market WHERE broker_id = '%s' AND market_id = '%s'""" % (mi[0], mi[1]))
                         row = cursor.fetchone()
 
+                        mi = list(mi)
+
                         if row:
                             # replace by previous margin factor from the DB
                             margin_factor = row[0]
-                            mi = list(mi)
                             mi[21] = margin_factor
                         else:
                             mi[21] = "1.0"

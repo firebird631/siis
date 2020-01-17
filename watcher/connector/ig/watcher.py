@@ -90,7 +90,6 @@ class IGWatcher(Watcher):
         self.__matching_symbols = set()    # cache for matching symbols
 
         self._cached_tick = {}    # caches for when a value is not defined
-        self._store_trade = True  # default store trade because we can't get history else
 
     def connect(self):
         super().connect()
@@ -276,14 +275,17 @@ class IGWatcher(Watcher):
                 if self._initial_fetch:
                     logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                    self.fetch_and_generate(market_id, Instrument.TF_1M, 5, None)
-                    self.fetch_and_generate(market_id, Instrument.TF_3M, 2, None)
-                    self.fetch_and_generate(market_id, Instrument.TF_5M, 1, None)
-                    self.fetch_and_generate(market_id, Instrument.TF_15M, 4, Instrument.TF_1H)
-                    self.fetch_and_generate(market_id, Instrument.TF_2H, 2, Instrument.TF_4H)
-                    self.fetch_and_generate(market_id, Instrument.TF_1D, 1, None)
-                    self.fetch_and_generate(market_id, Instrument.TF_1W, 1, None)
-                    # self.fetch_and_generate(market_id, Instrument.TF_1M, 1, None)
+                    try:
+                        self.fetch_and_generate(market_id, Instrument.TF_1M, 5, Instrument.TF_3M)
+                        self.fetch_and_generate(market_id, Instrument.TF_5M, 5, Instrument.TF_15M)
+                        self.fetch_and_generate(market_id, Instrument.TF_30M, 5, Instrument.TF_2H)
+                        self.fetch_and_generate(market_id, Instrument.TF_4H, 1, None)  # fixed timestamp
+                        self.fetch_and_generate(market_id, Instrument.TF_1D, 1, None)  # fixed timestamp
+                        self.fetch_and_generate(market_id, Instrument.TF_1W, 1, None)  # fixed timestamp
+                        self.fetch_and_generate(market_id, Instrument.TF_1M, 1, None)  # fixed timestamp
+                    except:
+                        # exceed of quota...
+                        pass
 
                 self.insert_watched_instrument(market_id, [0])
 
@@ -524,8 +526,7 @@ class IGWatcher(Watcher):
                     if candle is not None:
                         self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
-                # disabled for now
-                if not self._read_only and self._store_trade:
+                if self._store_trade:
                     Database.inst().store_market_trade((self.name, market_id, int(utm), bid, ofr, ltv or 0))
 
         except Exception as e:
@@ -591,7 +592,7 @@ class IGWatcher(Watcher):
 
     #             self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (name[1], candle))
 
-    #             if values['CONS_END'] == '1' and not self._read_only:
+    #             if values['CONS_END'] == '1' and self._store_ohlc:
     #                 # write only consolidated candles. values are string its perfect if not last traded volume then 0
     #                 Database.inst().store_market_ohlc((
     #                     self.name, name[1], int(utm), tf,
@@ -1081,20 +1082,19 @@ class IGWatcher(Watcher):
         commission = "0.0"
 
         # store the last market info to be used for backtesting
-        if not self._read_only:
-            Database.inst().store_market_info((self.name, epic, market.symbol,
-                market.market_type, market.unit_type, market.contract_type,  # type
-                market.trade, market.orders,  # type
-                market.base, market.base_display, market.base_precision,  # base
-                market.quote, market.quote_display, market.quote_precision,  # quote
-                market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
-                instrument['lotSize'], instrument['contractSize'], str(market.base_exchange_rate),
-                instrument['valueOfOnePip'], instrument['onePipMeans'].split(' ')[0], margin_factor,
-                dealing_rules["minDealSize"]["value"], "0.0", dealing_rules["minDealSize"]["value"],  # size limits
-                "0.0", "0.0", "0.0",  # notional limits
-                "0.0", "0.0", "0.0",  # price limits
-                "0.0", "0.0", commission, commission)  # fees
-            )
+        Database.inst().store_market_info((self.name, epic, market.symbol,
+            market.market_type, market.unit_type, market.contract_type,  # type
+            market.trade, market.orders,  # type
+            market.base, market.base_display, market.base_precision,  # base
+            market.quote, market.quote_display, market.quote_precision,  # quote
+            market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
+            instrument['lotSize'], instrument['contractSize'], str(market.base_exchange_rate),
+            instrument['valueOfOnePip'], instrument['onePipMeans'].split(' ')[0], margin_factor,
+            dealing_rules["minDealSize"]["value"], "0.0", dealing_rules["minDealSize"]["value"],  # size limits
+            "0.0", "0.0", "0.0",  # notional limits
+            "0.0", "0.0", "0.0",  # price limits
+            "0.0", "0.0", commission, commission)  # fees
+        )
 
         # print(market.symbol, market._size_limits, market._price_limits)
 
