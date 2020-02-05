@@ -64,7 +64,10 @@ class AndroidNotifier(Notifier):
         self._account = notifier_config.get('account', ("balance", "assets-balance"))
 
     def start(self, options):
-        if self._auth_key and self._channels.get('signals') and not self._backtesting:
+        if self._backtesting:
+            logger.warning("Notifier %s - %s : signals not started because of backtesting !" % (self.name, self.identifier))
+            return False
+        elif self._auth_key and self._channels.get('signals'):
             return super().start(options)
         else:
             return False

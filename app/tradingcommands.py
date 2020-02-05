@@ -1022,7 +1022,7 @@ class UserSaveCommand(Command):
 
 class SetQuantityCommand(Command):
 
-    SUMMARY = "to change the traded quantity per market of a strategy"
+    SUMMARY = "to change the traded quantity and scale factor per market of a strategy"
     
     def __init__(self, strategy_service):
         super().__init__('setquantity', 'SETQTY')
@@ -1034,9 +1034,11 @@ class SetQuantityCommand(Command):
             Terminal.inst().action("Missing parameters", view='status')
             return False
 
-        # ie: ":setquantity altbtc BTCUSDT 1000"
+        # ie: ":setquantity altbtc BTCUSDT 1000 1"
         appliance = None
         market_id = None
+        quantity = 0.0
+        max_factor = 1
 
         if len(args) < 3:
             Terminal.inst().action("Missing parameters", view='status')
@@ -1045,7 +1047,6 @@ class SetQuantityCommand(Command):
         try:
             appliance, market_id = args[0], args[1]
             quantity = float(args[2])
-
         except Exception:
             Terminal.inst().action("Invalid parameters", view='status')
             return False
@@ -1054,11 +1055,19 @@ class SetQuantityCommand(Command):
             Terminal.inst().action("Invalid quantity", view='status')
             return False
 
+        if len(args) == 4:
+            try:
+                max_factor = int(args[3])
+            except Exception:
+                Terminal.inst().action("Invalid scale factor value", view='status')
+            return False
+
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'appliance': appliance,
             'market-id': market_id,
             'action': "set-quantity",
-            'quantity': quantity
+            'quantity': quantity,
+            'max-factor': max_factor
         })
 
     def completion(self, args, tab_pos, direction):

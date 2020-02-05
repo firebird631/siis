@@ -216,6 +216,7 @@ class IGWatcher(Watcher):
                     self._ready = False
                     self._connector = None
 
+                    # @todo does the subsriptions renegociated by the ws client ?
                     reconnect = True
 
             if reconnect:
@@ -228,6 +229,8 @@ class IGWatcher(Watcher):
             return False
 
         if not self.connected:
+            # connection lost, ready status to false to retry a connection
+            self._ready = False
             return False
 
         #
@@ -1004,25 +1007,19 @@ class IGWatcher(Watcher):
 
         market.base_exchange_rate = instrument['currencies'][0]['baseExchangeRate']   # "exchangeRate": 0.77
 
-        market.one_pip_means = float(instrument['onePipMeans'].split(' ')[0])  # "1 Index Point", "0.0001 USD/EUR"
+        # "1 Index Point" => 1.0
+        # "1 Cents/Troy Ounce" => 0.01
+        # "0.0001 USD/EUR" => 0.0001
+        if "Index Point" in instrument['onePipMeans']:
+            market.one_pip_means = float(instrument['onePipMeans'].split(' ')[0])
+        elif "Cents/" in instrument['onePipMeans']:
+            market.one_pip_means = float(instrument['onePipMeans'].split(' ')[0]) * 0.01
+        else:
+            market.one_pip_means = float(instrument['onePipMeans'].split(' ')[0])
+
         market.value_per_pip = float(instrument['valueOfOnePip'])
         market.contract_size = float(instrument['contractSize'])
         market.lot_size = float(instrument['lotSize'])
-
-        market.set_base(
-            base_symbol,
-            base_symbol,
-            decimal_place(market.one_pip_means))
-
-        if instrument['type'] in ('CURRENCIES'):
-            pass  # quote_precision = 
-        elif instrument['type'] in ('INDICES', 'COMMODITIES', 'SHARES', 'RATES', 'SECTORS'):
-            pass  # quote_precision = 
-
-        market.set_quote(
-            instrument["currencies"][0]["name"],
-            instrument["currencies"][0]['symbol'],
-            decimal_place(market.one_pip_means))
 
         # "forceOpenAllowed": true,
         # "stopsLimitsAllowed": true,
@@ -1033,6 +1030,23 @@ class IGWatcher(Watcher):
             market.is_open = snapshot["marketStatus"] == "TRADEABLE"
             market.bid = snapshot['bid']
             market.ofr = snapshot['offer']
+
+            # determine precision from snapshot
+            base_precision = decimal_place(market.one_pip_means)
+
+            if 'decimalPlacesFactor' in snapshot:
+                base_precision = int(snapshot['decimalPlacesFactor'])
+            elif 'bid' in snapshot:
+                parts = snapshot['bid'].split('.')
+                if len(parts) == 2:
+                    base_precision = len(parts[1])
+
+            market.set_base(base_symbol, base_symbol, base_precision)
+        else:
+            market.set_base(base_symbol, base_symbol, decimal_place(market.one_pip_means))
+
+        quote_precision = base_precision  # most of the currencies have 2 decimals for usage
+        market.set_quote(instrument["currencies"][0]["code"], instrument["currencies"][0]['symbol'], quote_precision)
 
         if instrument.get('marginFactor') and market.is_open:
             if instrument.get('marginFactorUnit', '') == "PERCENTAGE":

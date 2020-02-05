@@ -378,6 +378,8 @@ class Strategy(Runnable):
                                 market_id=mapped_symbol, alias=mapped_instrument.get('alias'))
 
                         instrument.trade_quantity = mapped_instrument.get('size', 0.0)
+                        instrument.trade_max_factor = mapped_instrument.get('max-factor', 1)
+
                         instrument.leverage = mapped_instrument.get('leverage', 1.0)
 
                         # if self.service.backtesting:
@@ -2438,16 +2440,35 @@ class Strategy(Runnable):
 
             elif action == "set-quantity":
                 quantity = 0.0
+                max_factor = 1
 
                 try:
-                    quantity = float(data.get('quantity', -1))
+                    base_quantity = float(data.get('quantity', -1))
                 except Exception:
                     results['error'] = True
                     results['messages'].append("Invalid quantity")
 
-                if quantity > 0.0:
+                try:
+                    max_factor = int(data.get('max-factor', 1))
+                except Exception:
+                    results['error'] = True
+                    results['messages'].append("Invalid max factor")
+
+                if quantity < 0.0:
+                    results['error'] = True
+                    results['messages'].append("Quantity must be greater than zero")
+
+                if max_factor <= 0:
+                    results['error'] = True
+                    results['messages'].append("Max factor must be greater than zero")
+
+                if quantity > 0.0 and strategy_trader.instrument.trade_quantity != quantity:
                     strategy_trader.instrument.trade_quantity = quantity
                     results['messages'].append("Modified trade quantity for %s to %s" % (strategy_trader.instrument.market_id, quantity))
+
+                if max_factor > 0 and strategy_trader.instrument.trade_max_factor != max_factor:
+                    strategy_trader.instrument.max_factor = max_factor
+                    results['messages'].append("Modified trade quantity max factor for %s to %s" % (strategy_trader.instrument.market_id, max_factor))
 
             else:
                 results['error'] = True
@@ -2514,7 +2535,7 @@ class Strategy(Runnable):
                 results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
 
                 # quantity
-                results['messages'].append("Trade quantity : %s" % strategy_trader.instrument.trade_quantity)
+                results['messages'].append("Trade quantity : %s x%s" % (strategy_trader.instrument.trade_quantity, strategy_trader.instrument.trade_max_factor))
 
                 # regions
                 results['messages'].append("List %i regions:" % len(strategy_trader.regions))
@@ -2533,9 +2554,9 @@ class Strategy(Runnable):
             with self._mutex:
                 strategy_trader = self._strategy_traders.get(data['market-id'])
                 if strategy_trader:
-                    Terminal.inst().message("Market %s of appliance %s identified by \\2%s\\0 is %s. Trade quantity is %s" % (
+                    Terminal.inst().message("Market %s of appliance %s identified by \\2%s\\0 is %s. Trade quantity is %s x%s" % (
                         data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused",
-                            strategy_trader.instrument.trade_quantity),
+                            strategy_trader.instrument.trade_quantity, strategy_trader.instrument.trade_max_factor),
                             view='content')
         else:
             Terminal.inst().message("Appliances %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')

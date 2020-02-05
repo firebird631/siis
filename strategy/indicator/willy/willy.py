@@ -103,7 +103,10 @@ class WillyIndicator(Indicator):
             self._willys = 100.0 * (close - upper) / (upper - lower)
             self._willys[self._willys == np.inf] = 0.0
 
-        self._emas = ta_EMA(self._willys, self._len_EMA)
+        try:
+            self._emas = ta_EMA(self._willys, self._len_EMA)
+        except:
+            self._emas = np.array(len(close)*[np.NaN])
 
         self._last_timestamp = timestamp
 

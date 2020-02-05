@@ -300,6 +300,9 @@ class Connector(object):
             results = self.request(path=endpoint, query=params, verb='GET')
 
             for c in results:
+                if not c['timestamp']:
+                    continue
+
                 dt = self._parse_datetime(c['timestamp']).replace(tzinfo=UTC())
                 if to_date and dt > to_date:
                     break

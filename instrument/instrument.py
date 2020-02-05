@@ -398,7 +398,7 @@ class Instrument(object):
     ORDER_TAKE_PROFIT_LIMIT = 16
     ORDER_ALL = 32-1
 
-    __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_tradeable', '_currency', '_trade_quantity', '_leverage', \
+    __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_tradeable', '_currency', '_trade_quantity', '_trade_max_factor', '_leverage', \
                 '_market_bid', '_market_ofr', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
                 '_ticks', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry'
@@ -421,7 +421,10 @@ class Instrument(object):
         self._hedging = False
 
         self._currency = "USD"
+
         self._trade_quantity = 0.0
+        self._trade_max_factor = 1
+
         self._leverage = 1.0  # 1 / margin_factor
 
         self._market_bid = 0.0
@@ -562,7 +565,17 @@ class Instrument(object):
 
     @trade_quantity.setter
     def trade_quantity(self, quantity):
-        self._trade_quantity = quantity
+        if quantity > 0.0:
+            self._trade_quantity = quantity
+
+    @property
+    def trade_max_factor(self):
+        return self._trade_max_factor
+
+    @trade_max_factor.setter
+    def trade_max_factor(self, max_factor):
+        if max_factor >= 1:
+            self._trade_max_factor = max_factor
 
     #
     # price/volume

@@ -60,7 +60,10 @@ class DiscordNotifier(Notifier):
         self._strategy_service = None
 
     def start(self, options):
-        if self._webhooks.get('signals') and not self._backtesting:
+        if self._backtesting:
+            logger.warning("Notifier %s - %s : signals not started because of backtesting !" % (self.name, self.identifier))
+            return False
+        elif self._webhooks.get('signals'):
             # only of signals webhook is defined
 
             # could validate url format

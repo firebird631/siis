@@ -902,7 +902,7 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets.
         """
-        columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract', 'Min Size', 'Min Notional', 'Leverage')
+        columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract', 'Min Size', 'Min Notional', 'Leverage', 'Rate')
         total_size = (len(columns), 0)
         data = []
 
@@ -939,7 +939,8 @@ class Trader(Runnable):
                     str("%.12f" % market.contract_size).rstrip('0').rstrip('.'),
                     market.min_size,
                     market.min_notional,
-                    "%.2f" % (1.0 / market.margin_factor if market.margin_factor > 0.0 else 1.0)
+                    "%.2f" % (1.0 / market.margin_factor if market.margin_factor > 0.0 else 1.0),
+                    market.base_exchange_rate
                 )
 
                 data.append(row[col_ofs:])

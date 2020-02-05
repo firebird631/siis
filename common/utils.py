@@ -77,6 +77,7 @@ def direction_to_str(direction):
     else:
         return ''
 
+
 def direction_from_str(direction):
     if direction == 'long':
         return 1

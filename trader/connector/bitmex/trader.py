@@ -73,7 +73,7 @@ class BitMexTrader(Trader):
 
         logger.info("- Trader bitmex.com retrieving data...")
 
-        for symbol in matching_symbols:
+        for symbol in self._watcher.connector.watched_instruments:
             self.market(symbol, True)
 
         with self._mutex:
@@ -185,6 +185,24 @@ class BitMexTrader(Trader):
                 positions = []
 
             return positions
+
+    #
+    # global information
+    #
+
+    def has_margin(self, market_id, quantity, price):
+        """
+        Return True for a margin trading if the account have sufficient free margin.
+        Specialized because of the margin balance is defined in XBT, but computed margin is in USD.
+        """
+        with self._mutex:
+            market = self._markets.get(market_id)
+            margin = market.margin_cost(quantity, price)
+
+            if margin:
+                return self.account.margin_balance * self._markets["XBTUSD"].price >= margin
+
+        return False
 
     #
     # ordering

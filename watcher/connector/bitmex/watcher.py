@@ -127,6 +127,7 @@ class BitMexWatcher(Watcher):
                     self._ready = False
                     self._connector = None
 
+                    # any configured market are subscribed at ws connection
                     reconnect = True
 
             if reconnect:
@@ -139,6 +140,8 @@ class BitMexWatcher(Watcher):
             return False
 
         if not self.connected:
+            # connection lost, ready status to false to retry a connection
+            self._ready = False
             return False
 
         #

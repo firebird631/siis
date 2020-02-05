@@ -130,7 +130,6 @@ class DesktopNotifier(Notifier):
 
         if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
             icon = "contact-new"
-            direction = "long" if signal.data['direction'] == Position.LONG else "short"
             alert = DesktopNotifier.AUDIO_ALERT_SIGNAL_NEW
 
             if signal.data['way'] == "exit" and 'profit-loss' in signal.data:
@@ -150,7 +149,7 @@ class DesktopNotifier(Notifier):
             if action == "exit" and 'stats' in signal.data and 'exit-reason' in signal.data['stats']:
                 action = signal.data['stats']['exit-reason']
 
-            label = "Signal %s %s on %s" % (action, direction, signal.data['symbol'],)
+            label = "Signal %s %s on %s" % (action, signal.data['direction'], signal.data['symbol'],)
 
             way = '>' if signal.data['way'] == "entry" else '<'
             exit_reason = signal.data['stats'].get('exit-reason', "") if 'stats' in signal.data else ""
@@ -160,7 +159,7 @@ class DesktopNotifier(Notifier):
                 signal.data['order-price'],
                 signal.data['app-name'],
                 action,
-                direction,
+                signal.data['direction'],
                 ldatetime,
                 signal.data['id'],
                 timeframe_to_str(signal.data['timeframe']))

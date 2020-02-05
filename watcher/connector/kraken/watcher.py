@@ -297,6 +297,8 @@ class KrakenWatcher(Watcher):
             return False
 
         if not self.connected:
+            # connection lost, ready status to false to retry a connection
+            self._ready = False
             return False
 
         if 0:#self._reconnect_user_ws:

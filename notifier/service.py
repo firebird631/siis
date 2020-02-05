@@ -38,9 +38,9 @@ class NotifierService(Service):
         if 'notifiers' not in self._profile_config:
             self._profile_config['notifiers'] = {}
 
-        if "desktop" not in self._profile_config['notifiers']:
+        if 'desktop' not in self._profile_config['notifiers']:
             # always default add a desktop notifier, but could be disable opt-in in the profile
-            self._profile_config['notifiers']["desktop"] = {
+            self._profile_config['notifiers']['desktop'] = {
                 'status': "enabled",
                 'name': "desktop"
             }

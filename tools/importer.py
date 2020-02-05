@@ -123,6 +123,11 @@ def import_ohlc_siis_1_0_0(broker_id, market_id, timeframe, from_date, to_date, 
 
 
 def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
+    """
+    Date + time MT4 tick
+
+    DATE,TIME,BID,ASK,LAST,VOL
+    """
     parts = row.split(',')
 
     dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S.%f').replace(tzinfo=UTC())
@@ -141,19 +146,24 @@ def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
         self.prev_ask = parts[3]
 
     if parts[5]:
-        ltv = parts[5]
+        fvol = parts[5]
     else:
-        ltv = "0"
+        fvol = "1"
 
     Database.inst().store_market_trade((
         broker_id, market_id, timestamp,
         self.prev_bid, self.prev_ask,
-        ltv))
+        fvol))
 
     return 1
 
 
 def import_ohlc_mt4(broker_id, market_id, timeframe, from_date, to_date, row):
+    """
+    Date + time MT4 OHLC
+
+    DATE,TIME,OPEN,HIGH,LOW,CLOSE,TICKVOL
+    """
     parts = row.split(',')
 
     dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M').replace(tzinfo=UTC())
@@ -165,16 +175,63 @@ def import_ohlc_mt4(broker_id, market_id, timeframe, from_date, to_date, row):
     if to_date and dt > to_date:
         return 0
 
+    if parts[6]:
+        fvol = parts[6]
+    else:
+        fvol = "1"
+
     Database.inst().store_market_ohlc((
         broker_id, market_id, timestamp, int(timeframe),
         parts[2], parts[3], parts[4], parts[5],
         parts[2], parts[3], parts[4], parts[5],
-        parts[6]))
+        fvol))
+
+    return 1
+
+
+def import_ohlc_mt4_long(broker_id, market_id, timeframe, from_date, to_date, row):
+    """
+    Date + time + vol + spread MT4 OHLC
+
+    DATE,TIME,OPEN,HIGH,LOW,CLOSE,TICKVOL,VOL,SPREAD
+    """
+    parts = row.split(',')
+
+    dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M').replace(tzinfo=UTC())
+    timestamp = int(dt.timestamp() * 1000)
+
+    if from_date and dt < from_date:
+        return 0
+
+    if to_date and dt > to_date:
+        return 0
+
+    # vol else tick vol
+    tickvol = float(parts[6]) if parts[6] else 0.0
+    vol = float(parts[7]) if parts[7] else 0.0
+
+    if vol > 0:
+        fvol = parts[7]
+    elif tickvol > 0:
+        fvol = parts[6]
+    else:
+        fvol = "1"
+
+    Database.inst().store_market_ohlc((
+        broker_id, market_id, timestamp, int(timeframe),
+        parts[2], parts[3], parts[4], parts[5],
+        parts[2], parts[3], parts[4], parts[5],
+        fvol))
 
     return 1
 
 
 def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
+    """
+    Date + time MT5 tick
+
+    <DATE>  <TIME>  <BID>   <ASK>   <LAST>  <VOLUME>
+    """
     parts = row.split('\t')
 
     dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S.%f').replace(tzinfo=UTC())
@@ -195,7 +252,7 @@ def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
     if parts[5]:
         ltv = parts[5]
     else:
-        ltv = 0
+        ltv = "1"  # at least 1 tick mean 1 tick volume, but could depend of what we want
 
     Database.inst().store_market_trade((
         broker_id, market_id, timestamp,
@@ -206,6 +263,48 @@ def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
 
 
 def import_ohlc_mt5(broker_id, market_id, timeframe, from_date, to_date, row):
+    """
+    Date MT5 OHLC
+
+    <DATE>  <OPEN>  <HIGH>  <LOW>   <CLOSE> <TICKVOL>   <VOL>   <SPREAD>
+    """
+    parts = row.split('\t')
+
+    dt = datetime.strptime(parts[0], '%Y.%m.%d').replace(tzinfo=UTC())
+    timestamp = int(dt.timestamp() * 1000)
+
+    if from_date and dt < from_date:
+        return 0
+
+    if to_date and dt > to_date:
+        return 0
+
+    # vol else tick vol
+    tickvol = float(parts[5]) if parts[5] else 0.0
+    vol = float(parts[6]) if parts[6] else 0.0
+
+    if vol > 0:
+        fvol = parts[6]
+    elif tickvol > 0:
+        fvol = parts[5]
+    else:
+        fvol = "1"
+
+    Database.inst().store_market_ohlc((
+        broker_id, market_id, timestamp, int(timeframe),
+        parts[1], parts[2], parts[3], parts[4],
+        parts[1], parts[2], parts[3], parts[4],
+        fvol))
+
+    return 1
+
+
+def import_ohlc_mt5_time(broker_id, market_id, timeframe, from_date, to_date, row):
+    """
+    Date + time MT5 OHLC
+    
+    <DATE>  <TIME>  <OPEN>  <HIGH>  <LOW>   <CLOSE> <TICKVOL>   <VOL>   <SPREAD>
+    """
     parts = row.split('\t')
 
     dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S').replace(tzinfo=UTC())
@@ -217,11 +316,22 @@ def import_ohlc_mt5(broker_id, market_id, timeframe, from_date, to_date, row):
     if to_date and dt > to_date:
         return 0
 
+    # vol else tick vol
+    tickvol = float(parts[6]) if parts[6] else 0.0
+    vol = float(parts[7]) if parts[7] else 0.0
+
+    if vol > 0:
+        fvol = parts[7]
+    elif tickvol > 0:
+        fvol = parts[6]
+    else:
+        fvol = "1"
+
     Database.inst().store_market_ohlc((
         broker_id, market_id, timestamp, int(timeframe),
         parts[2], parts[3], parts[4], parts[5],
         parts[2], parts[3], parts[4], parts[5],
-        parts[7]))
+        fvol))
 
     return 1
 
@@ -263,7 +373,10 @@ def do_importer(options):
     filename = options.get('filename')
     detected_format = FORMAT_UNDEFINED
     detected_timeframe = None
+    
     is_mtx_tick = False
+    is_mtx_time = False
+    is_mtx_long = False
 
     pathname = pathlib.Path(filename)
     if not pathname.exists():
@@ -290,14 +403,33 @@ def do_importer(options):
         # detect the format from the first row
         row = src.readline().rstrip('\n')
         if row.count('\t') > 0:
+            # tabular based file, might be MT5, with an header row
             if row.count('\t') == 5 and row == "<DATE>\t<TIME>\t<BID>\t<ASK>\t<LAST>\t<VOLUME>":
+                # ticks
                 detected_format = FORMAT_MT5
                 detected_timeframe = Instrument.TF_TICK
                 is_mtx_tick = True
+                is_mtx_time = True
+                is_mtx_long = False
 
-            elif row.count('\t') == 8 and row == "<DATE>\t<TIME>\t<OPEN>\t<HIGH>\t<LOW>\t<CLOSE>\t<TICKVOL>\t<VOL>\t<SPREAD>":
+            elif row.count('\t') == 7 and row == "<DATE>\t<OPEN>\t<HIGH>\t<LOW>\t<CLOSE>\t<TICKVOL>\t<VOL>\t<SPREAD>":
+                # has not time col, true vol and spread
                 detected_format = FORMAT_MT5
                 is_mtx_tick = False
+                is_mtx_time = False
+                is_mtx_long = True
+
+                # from filename try to detect the timeframe
+                parts = pathname.name.split('_')
+                if len(parts) >= 2:
+                    detected_timeframe = MT5_TIMEFRAMES.get(parts[1])
+
+            elif row.count('\t') == 8 and row == "<DATE>\t<TIME>\t<OPEN>\t<HIGH>\t<LOW>\t<CLOSE>\t<TICKVOL>\t<VOL>\t<SPREAD>":
+                # has time col, true vol and spread
+                detected_format = FORMAT_MT5
+                is_mtx_tick = False
+                is_mtx_time = True
+                is_mtx_long = True
 
                 # from filename try to detect the timeframe
                 parts = pathname.name.split('_')
@@ -306,14 +438,39 @@ def do_importer(options):
 
             # ignore the header line
         elif row.count(',') > 0:
+            # comma based file, might be MT4, without header row
             if row.count(',') == 4:
+                # ticks
                 detected_format = FORMAT_MT4
                 detected_timeframe = Instrument.TF_TICK
+                
                 is_mtx_tick = True
+                is_mtx_time = True
+                is_mtx_long = False
 
             elif row.count(',') == 6:
+                # has always time col
                 detected_format = FORMAT_MT4
+
                 is_mtx_tick = False
+                is_mtx_time = True
+                is_mtx_long = False
+
+                # from filename try to detect the timeframe
+                parts = pathname.name.split('.')
+                if len(parts) > 0:
+                    for mt_tf, tf in MT4_TIMEFRAMES.items():
+                        if parts[0].endswith(mt_tf):
+                            detected_timeframe = tf
+                            break
+
+            elif row.count(',') == 8:
+                # has true vol and spread cols
+                detected_format = FORMAT_MT4
+
+                is_mtx_tick = False
+                is_mtx_time = True
+                is_mtx_long = True
 
                 # from filename try to detect the timeframe
                 parts = pathname.name.split('.')
@@ -442,13 +599,22 @@ def do_importer(options):
                     total_count += import_tick_mt4(tool, broker_id, market_id, cur_from_date, cur_to_date, row)
 
             elif cur_timeframe > 0:
-                while 1:
-                    row = src.readline()
-                    if not row:
-                        break
+                if is_mtx_long:
+                    while 1:
+                        row = src.readline()
+                        if not row:
+                            break
 
-                    row = row.rstrip("\n")
-                    total_count += import_ohlc_mt4(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
+                        row = row.rstrip("\n")
+                        total_count += import_ohlc_mt4_long(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
+                else:
+                    while 1:
+                        row = src.readline()
+                        if not row:
+                            break
+
+                        row = row.rstrip("\n")
+                        total_count += import_ohlc_mt4(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
 
         elif detected_format == FORMAT_MT5:
             cur_timeframe = timeframe if not is_mtx_tick else Instrument.TF_TICK
@@ -465,13 +631,22 @@ def do_importer(options):
                     total_count += import_tick_mt5(tool, broker_id, market_id, cur_from_date, cur_to_date, row)
 
             elif cur_timeframe > 0:
-                while 1:
-                    row = src.readline()
-                    if not row:
-                        break
+                if is_mtx_time:
+                    while 1:
+                        row = src.readline()
+                        if not row:
+                            break
 
-                    row = row.rstrip("\n")
-                    total_count += import_ohlc_mt5(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
+                        row = row.rstrip("\n")
+                        total_count += import_ohlc_mt5_time(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
+                else:
+                    while 1:
+                        row = src.readline()
+                        if not row:
+                            break
+
+                        row = row.rstrip("\n")
+                        total_count += import_ohlc_mt5(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
 
     except Exception as e:
         error_logger.error(str(e))

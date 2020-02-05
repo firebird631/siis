@@ -344,7 +344,8 @@ class StrategyPositionTrade(StrategyTrade):
             if data.get('stop-loss'):
                 self.position_limit = data['stop-loss']
 
-            last_qty = data.get('quantity', 0.0)
+            # current position quantity
+            last_qty = data.get('quantity', self.position_quantity)
 
             if self.position_quantity != last_qty:
                 if last_qty < self.position_quantity:
@@ -385,7 +386,7 @@ class StrategyPositionTrade(StrategyTrade):
 
             # filled exit quantity equal to the entry
             if self.x < self.e:
-                self.x += self.e - self.x
+                self.x = self.e
 
             self.position_quantity = 0.0
             self._exit_state = StrategyTrade.STATE_FILLED
@@ -408,37 +409,38 @@ class StrategyPositionTrade(StrategyTrade):
             if data.get('stop-loss'):
                 self.position_limit = data['stop-loss']
 
-            last_qty = data.get('quantity', 0.0)
+            # current position quantity
+            # last_qty = data.get('quantity', self.position_quantity)
 
-            if self.position_quantity != last_qty:
-                if last_qty < self.position_quantity:
-                    # decrease mean exit
-                    if not self._stats['first-realized-exit-timestamp']:
-                        self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+            # if self.position_quantity != last_qty:
+            #     if last_qty < self.position_quantity:
+            #         # decrease mean exit
+            #         if not self._stats['first-realized-exit-timestamp']:
+            #             self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
-                    self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+            #         self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
-                    # filled entry quantity from the diff with the previous one
-                    self.x += self.position_quantity - last_qty
+            #         # filled entry quantity from the diff with the previous one
+            #         self.x += self.position_quantity - last_qty
 
-                    if last_qty > 0.0:
-                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                    if last_qty <= 0.0:
-                        self._exit_state = StrategyTrade.STATE_FILLED
+            #         if last_qty > 0.0:
+            #             self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+            #         if last_qty <= 0.0:
+            #             self._exit_state = StrategyTrade.STATE_FILLED
 
-                elif last_qty > self.position_quantity:
-                    # increase mean entry
-                    self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
+            #     elif last_qty > self.position_quantity:
+            #         # increase mean entry
+            #         self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
-                    # filled entry quantity from the diff with the previous one
-                    self.e += last_qty - self.position_quantity
+            #         # filled entry quantity from the diff with the previous one
+            #         self.e += last_qty - self.position_quantity
 
-                    if last_qty < self.oq:
-                        self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                    if last_qty >= self.oq:
-                        self._entry_state = StrategyTrade.STATE_FILLED
+            #         if last_qty < self.oq:
+            #             self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+            #         if last_qty >= self.oq:
+            #             self._entry_state = StrategyTrade.STATE_FILLED
 
-                self.position_quantity = last_qty
+            #     self.position_quantity = last_qty
 
         if data.get('profit'):
             self._stats['unrealized-profit-loss'] = data['profit']

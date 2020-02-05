@@ -36,7 +36,8 @@ class StrategySignal(object):
     - ts for timestamp (UTC)
     """
 
-    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'entry_timeout', 'expiry', 'label', 'context', '_extra', 'order_type',
+    __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'entry_timeout', 'expiry', 'label', \
+        'context', '_extra', 'order_type', 'score'
 
     VERSION = "1.0.0"
 
@@ -56,6 +57,7 @@ class StrategySignal(object):
         self.tp = 0.0      # primary possible take profit price
         self.entry_timeout = 0.0   # trade entry expiration in seconds
         self.expiry = 0.0          # trade expiration if in profit after this delay
+        self.score = 1     # integer score, can be used as a size scale
 
         self.label = ""      # signal label
         self.context = None  # can be any object inherited from StrategySignalContext (will be setted as reference to the trade)

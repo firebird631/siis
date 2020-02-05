@@ -105,7 +105,7 @@ class BitMEXWebsocket():
 		if self._connected:
 			logger.debug('- BitMex connected to WS. Waiting for data images, this may take a moment...')
 
-			self.__wait_for_symbol(symbol)
+			self.__wait_for_symbol(symbols)
 			if self.should_auth:
 				self.__wait_for_account()
 

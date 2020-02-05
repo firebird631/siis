@@ -417,6 +417,17 @@ class StrategyTrade(object):
                 (self._expiry > 0.0) and (self.e > 0) and (self.eot > 0) and (timestamp > 0.0) and ((timestamp - self.eot) >= self._expiry)
             )
 
+    def is_duration_timeout(self, timestamp, duration):
+        """
+        Return true if the trade timeout after given duration.
+
+        @note created timestamp t must be valid else it will timeout every time.
+        """
+        return (
+                (self._entry_state in (StrategyTrade.STATE_PARTIALLY_FILLED, StrategyTrade.STATE_FILLED)) and
+                (duration > 0.0) and (self.e > 0) and (self.eot > 0) and (timestamp > 0.0) and ((timestamp - self.eot) >= duration)
+            )
+
     def is_valid(self, timestamp, validity):
         """
         Return true if the trade is not expired (signal still acceptable) and entry quantity not fully filled.

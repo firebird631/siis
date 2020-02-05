@@ -872,16 +872,32 @@ class StrategyTrader(object):
 
         return False
 
-    def check_trade_timeout(self, trade, timestamp, profit_loss_rate):
+    def check_trade_timeout(self, trade, timestamp):
         """
         Close a profitable trade that has passed its expiry.
         """
-        if trade.is_trade_timeout(timestamp) and profit_loss_rate > 0.0 and trade.profit_loss > profit_loss_rate:
-            trader = self.strategy.trader()
-            trade.close(trader, self.instrument)
-            trade.exit_reason = trade.REASON_MARKET_TIMEOUT
+        if not trade:
+            return False
 
-            return True
+        trade_profit_loss = trade.profit_loss
+
+        if trade_profit_loss >= 0.0:
+            if trade.context and trade.context.take_profit and trade.context.take_profit.timeout > 0 and trade.context.take_profit.timeout_distance != 0.0:
+                if trade.is_duration_timeout(timestamp, trade.context.take_profit.timeout) and trade_profit_loss < trade.context.take_profit.timeout_distance:
+                    trader = self.strategy.trader()
+                    trade.close(trader, self.instrument)
+                    trade.exit_reason = trade.REASON_MARKET_TIMEOUT
+
+                    return True
+
+        elif trade_profit_loss < 0.0:
+            if trade.context and trade.context.stop_loss and trade.context.stop_loss.timeout > 0 and trade.context.stop_loss.timeout_distance != 0.0:
+                if trade.is_duration_timeout(timestamp, trade.context.stop_loss.timeout) and -trade_profit_loss > trade.context.stop_loss.timeout_distance:
+                    trader = self.strategy.trader()
+                    trade.close(trader, self.instrument)
+                    trade.exit_reason = trade.REASON_MARKET_TIMEOUT
+
+                    return True
 
         return False
 
