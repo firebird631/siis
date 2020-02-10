@@ -200,7 +200,7 @@ class BitMexTrader(Trader):
             margin = market.margin_cost(quantity, price)
 
             if margin:
-                return self.account.margin_balance * self._markets["XBTUSD"].price >= margin
+                return self.account.margin_balance >= margin
 
         return False
 

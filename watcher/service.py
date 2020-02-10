@@ -128,9 +128,6 @@ class WatcherService(Service):
                 else:
                     inst_watcher = Clazz(self)
 
-                    # default do the initial fetching of OHLCs, but could be disabled at command line, opt-out
-                    # inst_watcher.initial_fetch = options.get('initial-fetch', True)
-
                 if inst_watcher.start():
                     self._watchers[k] = inst_watcher
 

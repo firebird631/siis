@@ -39,9 +39,13 @@ class Connector(object):
         self._base_url = "/api/v1/"
         self._timeout = 7   
         self._retries = 0  # initialize counter
-        
-        self._watched_symbols = symbols  # followed instruments
+
+        self._watched_symbols = symbols or set()  # followed instruments
         self._all_instruments = []   # availables listed instruments
+
+        # always XBTUSD as needed for others pairs or computing
+        if 'XBTUSD' not in self._watched_symbols:
+            self._watched_symbols.add('XBTUSD')
 
         self.__api_key = api_key
         self.__api_secret = api_secret
