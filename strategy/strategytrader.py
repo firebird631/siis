@@ -1046,18 +1046,22 @@ class StrategyTrader(object):
     # checks
     #
 
-    def compute_asset_quantity(self, trader, price):
+    def compute_asset_quantity(self, trader, price, trade_quantity=0.0):
         quantity = 0.0
+
+        if not trade_quantity:
+            # if not specified use default
+            trade_quantity = self.instrument.trade_quantity
 
         if trader.has_asset(self.instrument.quote):
             # quantity = min(quantity, trader.asset(self.instrument.quote).free) / self.instrument.market_ofr
-            if trader.has_quantity(self.instrument.quote, self.instrument.trade_quantity):
-                quantity = self.instrument.adjust_quantity(self.instrument.trade_quantity / price)  # and adjusted to 0/max/step
+            if trader.has_quantity(self.instrument.quote, trade_quantity or self.instrument.trade_quantity):
+                quantity = self.instrument.adjust_quantity(trade_quantity / price)  # and adjusted to 0/max/step
             else:
                 msg = "Not enought free quote asset %s, has %s but need %s" % (
                     self.instrument.quote,
                     self.instrument.format_quantity(trader.asset(self.instrument.quote).free),
-                    self.instrument.format_quantity(self.instrument.trade_quantity))
+                    self.instrument.format_quantity(trade_quantity))
 
                 logger.warning(msg)
                 Terminal.inst().notice(msg, view='status')
@@ -1069,18 +1073,22 @@ class StrategyTrader(object):
 
         return quantity
 
-    def compute_margin_quantity(self, trader, price):
+    def compute_margin_quantity(self, trader, price, trade_quantity=0.0):
         quantity = 0.0
 
-        if not trader.has_margin(self.instrument.market_id, self.instrument.trade_quantity, price):
+        if not trade_quantity:
+            # if not specified use default
+            trade_quantity = self.instrument.trade_quantity
+
+        if not trader.has_margin(self.instrument.market_id, trade_quantity, price):
             msg = "Not enought free margin %s, has %s but need %s" % (
                 self.instrument.quote, self.instrument.format_quantity(trader.account.margin_balance),
-                self.instrument.format_quantity(self.instrument.trade_quantity))
+                self.instrument.format_quantity(trade_quantity))
 
             logger.warning(msg)
             Terminal.inst().notice(msg, view='status')
         else:
-            quantity = self.instrument.adjust_quantity(self.instrument.trade_quantity)
+            quantity = self.instrument.adjust_quantity(trade_quantity)
 
         return quantity
 
