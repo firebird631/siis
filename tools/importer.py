@@ -130,7 +130,11 @@ def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
     """
     parts = row.split(',')
 
-    dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S.%f').replace(tzinfo=UTC())
+    if '.' in parts[0]:
+        dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S.%f').replace(tzinfo=UTC())
+    else:
+        dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y%m%d %H:%M:%S').replace(tzinfo=UTC())
+
     timestamp = int(dt.timestamp() * 1000)
 
     if from_date and dt < from_date:
@@ -166,7 +170,11 @@ def import_ohlc_mt4(broker_id, market_id, timeframe, from_date, to_date, row):
     """
     parts = row.split(',')
 
-    dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M').replace(tzinfo=UTC())
+    if '.' in parts[0]:
+        dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M').replace(tzinfo=UTC())
+    else:
+        dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y%m%d %H:%M:%S').replace(tzinfo=UTC())
+
     timestamp = int(dt.timestamp() * 1000)
 
     if from_date and dt < from_date:
@@ -197,7 +205,11 @@ def import_ohlc_mt4_long(broker_id, market_id, timeframe, from_date, to_date, ro
     """
     parts = row.split(',')
 
-    dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M').replace(tzinfo=UTC())
+    if '.' in parts[0]:
+        dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M').replace(tzinfo=UTC())
+    else:
+        dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y%m%d %H:%M:%S').replace(tzinfo=UTC())
+
     timestamp = int(dt.timestamp() * 1000)
 
     if from_date and dt < from_date:
@@ -439,11 +451,11 @@ def do_importer(options):
             # ignore the header line
         elif row.count(',') > 0:
             # comma based file, might be MT4, without header row
-            if row.count(',') == 4:
+            if row.count(',') == 5:
                 # ticks
                 detected_format = FORMAT_MT4
                 detected_timeframe = Instrument.TF_TICK
-                
+
                 is_mtx_tick = True
                 is_mtx_time = True
                 is_mtx_long = False
