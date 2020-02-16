@@ -1090,7 +1090,7 @@ class IGWatcher(Watcher):
         # @todo there is some limits in contract size
         market.set_notional_limits(0.0, 0.0, 0.0)
         # use one pip means for minimum and tick price size
-        market.set_price_limits(market.one_pip_means, 0.0, market.one_pip_means)
+        market.set_price_limits(round(pow(0.1, quote_precision), quote_precision), 0.0, round(pow(0.1, quote_precision), quote_precision))
 
         # commission for stocks @todo
         commission = "0.0"
@@ -1106,7 +1106,7 @@ class IGWatcher(Watcher):
             instrument['valueOfOnePip'], instrument['onePipMeans'].split(' ')[0], margin_factor,
             dealing_rules["minDealSize"]["value"], "0.0", dealing_rules["minDealSize"]["value"],  # size limits
             "0.0", "0.0", "0.0",  # notional limits
-            "0.0", "0.0", "0.0",  # price limits
+            market.min_price, market.max_price, market.step_price,  # price limits
             "0.0", "0.0", commission, commission)  # fees
         )
 

@@ -120,9 +120,10 @@ class TickStorage(object):
 
         n = 0
         try:
-            while ticks:
-                # process next
-                d = ticks.pop(0)
+            for d in ticks:
+                # while ticks:
+                #     # process next
+                #     d = ticks.pop(0)  # too slow when millions of elements
 
                 date_utc = datetime.utcfromtimestamp(d[2] * 0.001)
 
@@ -138,7 +139,7 @@ class TickStorage(object):
 
                 if self._binary_file:
                     # convert to a struct
-                    f = [float(d[2]) * 0.001, float(d[3]), float(d[4]), float(d[5])]  # t b o v (t in second)
+                    f = (float(d[2]) * 0.001, float(d[3]), float(d[4]), float(d[5]))  # t b o v (t in second)
                     s = struct.pack('<dddd', *f)
                     self._binary_file.write(s)
 
@@ -148,7 +149,8 @@ class TickStorage(object):
 
             # retry the next time
             with self._mutex:
-                self._ticks = ticks + self._ticks
+                # self._ticks = ticks + self._ticks
+                self._ticks = ticks[n:] + self._ticks
 
         self._last_save = time.time()
 

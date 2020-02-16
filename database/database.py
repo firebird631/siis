@@ -266,7 +266,7 @@ class Database(object):
             tickstorage = self._tick_storages.get(key)
 
             if not tickstorage:
-                tickstorage = TickStorage(self._markets_path, data[0], data[1])
+                tickstorage = TickStorage(self._markets_path, data[0], data[1], text=False, binary=True)
                 self._tick_storages[key] = tickstorage
 
             tickstorage.store(data)

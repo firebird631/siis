@@ -518,7 +518,6 @@ class Market(object):
     def adjust_price(self, price):
         """
         Format the price according to the precision.
-        @param use_quote True use quote display or quote, False base, None no symbol only price.
         """
         if price is None:
             price = 0.0
