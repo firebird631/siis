@@ -185,13 +185,17 @@ class Fetcher(object):
 
                 if n == 10000:
                     n = 0
-                    Terminal.inst().info("%i trades for %s..." % (t, market_id))
+                    Terminal.inst().info("%i trades for %s, latest %s UTC..." % (
+                        t, market_id,
+                        datetime.fromtimestamp(float(data[0]) * 0.001, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%S.%f')))
 
                 # calm down the storage of tick, if parsing is faster
                 while Database.inst().num_pending_ticks_storage() > Fetcher.MAX_PENDING_TICK:
                     time.sleep(Fetcher.TICK_STORAGE_DELAY)  # wait a little before continue
 
-            logger.info("Fetched %i trades for %s" % (t, market_id))
+            logger.info("Fetched %i trades for %s, latest %s UTC" % (
+                t, market_id,
+                datetime.fromtimestamp(float(data[0]) * 0.001, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%S.%f')))
 
         elif timeframe > 0:
             for data in self.fetch_candles(market_id, timeframe, from_date, to_date, None):
@@ -230,9 +234,13 @@ class Fetcher(object):
 
                 if n == 1000:
                     n = 0
-                    Terminal.inst().info("%i candles for %s in %s..." % (t, market_id, timeframe_to_str(timeframe)))
+                    Terminal.inst().info("%i OHLCs for %s in %s, latest %s UTC..." % (
+                        t, market_id, timeframe_to_str(timeframe),
+                        datetime.fromtimestamp(float(data[0]) * 0.001, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%S')))
 
-            logger.info("Fetched %i candles for %s in %s" % (t, market_id, timeframe_to_str(timeframe)))
+            logger.info("Fetched %i OHLCs for %s in %s, latest %s UTC" % (
+                t, market_id, timeframe_to_str(timeframe),
+                datetime.fromtimestamp(float(data[0]) * 0.001, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%S')))
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
         """

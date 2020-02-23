@@ -83,7 +83,10 @@ def parse_datetime(formatted):
 
             if 'T' in formatted:
                 if formatted.count(':') == 2:
-                    return datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
+                    if formatted.count('.') == 1:
+                        return datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC())
+                    else:
+                        return datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
                 elif formatted.count(':') == 1:
                     return datetime.strptime(formatted, '%Y-%m-%dT%H:%M').replace(tzinfo=UTC())
                 elif formatted.count(':') == 0:
@@ -140,7 +143,7 @@ def application(argv):
                     options['tool'] = "fetcher"
                 elif arg == '--binarize':
                     # use the binarizer
-                    options['tool'] = "binarize"
+                    options['tool'] = "binarizer"
                 elif arg == '--optimizer':
                     # use the optimizer
                     options['tool'] = "optimizer"

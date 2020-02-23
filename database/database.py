@@ -152,6 +152,8 @@ class Database(object):
 
         self._autocleanup = False
         self._fetch = False
+        self._store_trade_text = True
+        self._store_trade_binary = True
 
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)
@@ -164,6 +166,8 @@ class Database(object):
         config = utils.load_config(options, 'databases')
 
         self._autocleanup = config.get('auto-cleanup', False)
+        self._store_trade_text = config.get('trade-text', True)
+        self._store_trade_binary = config.get('trade-binary', True)
 
         self.connect(config)
 
@@ -266,7 +270,7 @@ class Database(object):
             tickstorage = self._tick_storages.get(key)
 
             if not tickstorage:
-                tickstorage = TickStorage(self._markets_path, data[0], data[1], text=False, binary=True)
+                tickstorage = TickStorage(self._markets_path, data[0], data[1], text=self._store_trade_text, binary=self._store_trade_binary)
                 self._tick_storages[key] = tickstorage
 
             tickstorage.store(data)
