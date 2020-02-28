@@ -30,7 +30,8 @@ class Cleaner(Tool):
     @classmethod
     def help(cls):
         return ("Remove some data from the database.",
-                "Specify --broker. Optional : --market, --from and --to date, --timeframe, --objects.")
+                "Specify --broker.",
+                "Optional : --market, --from and --to date, --timeframe, --objects.")
 
     @classmethod
     def detailed_help(cls):

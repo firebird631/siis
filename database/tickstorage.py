@@ -54,6 +54,8 @@ class TickStorage(object):
         self._text = text
         self._binary = binary
 
+        self._struct = struct.Struct('<dddd')
+
     def store(self, data):
         """
         @param data tuple with (broker_id, market_id, timestamp, bid, ofr, volume)
@@ -140,7 +142,9 @@ class TickStorage(object):
                 if self._binary_file:
                     # convert to a struct
                     f = (float(d[2]) * 0.001, float(d[3]), float(d[4]), float(d[5]))  # t b o v (t in second)
-                    s = struct.pack('<dddd', *f)
+                    # s = struct.pack('<dddd', *f)
+                    s = self._struct.pack(*f)
+
                     self._binary_file.write(s)
 
                 n += 1
@@ -211,7 +215,7 @@ class TickStreamer(object):
                 st = os.stat(pathname)
                 file_size = st.st_size
 
-                # direcrly seek to intial position to avoid useless parsing
+                # directly seek to intial position to avoid useless parsing
                 timestamp = self._curr_date.timestamp()
                 prev_timestamp = 0
                 pos = 0
@@ -330,7 +334,7 @@ class TickStreamer(object):
 
             if self._file:
                 if self._is_binary:
-                    arr = self._file.read(4*8*self._buffer_size)  # read 4 float64 * n
+                    arr = self._file.read(TickStreamer.TICK_SIZE*self._buffer_size)  # read 4 float64 * n
                     data = self._struct.iter_unpack(arr)
 
                     if len(arr) < self._buffer_size:
@@ -402,6 +406,8 @@ class TextToBinary(object):
         self._text_file = None
         self._binary_file = None
 
+        self._struct = struct.Struct('<dddd')
+
     def open(self):
         if self._text_file:
             return
@@ -452,7 +458,9 @@ class TextToBinary(object):
 
                     # convert to a struct
                     f = [ts, float(bid), float(ofr), float(vol)]  # t b o v (t in second)
-                    s = struct.pack('<dddd', *f)
+                    # s = struct.pack('<dddd', *f)
+                    s = self._struct.pack(*f)
+
                     self._binary_file.write(s)
 
             self.close()
@@ -462,3 +470,154 @@ class TextToBinary(object):
                 self._curr_date = self._curr_date.replace(year=self._curr_date.year+1, month=1)
             else:
                 self._curr_date = self._curr_date.replace(month=self._curr_date.month+1)
+
+
+class LastTickFinder(object):
+    """
+    Last tick find helper.
+    """
+
+    TICK_SIZE = 4*8  # 32B
+
+    def __init__(self, markets_path, broker_id, market_id, buffer_size=1000, binary=True):
+        self._markets_path = markets_path
+        self._broker_id = broker_id
+        self._market_id = market_id
+
+        self._curr_date = datetime.now()
+
+        self._buffer_size = buffer_size
+        self._binary = binary  # use binary format
+
+        self._struct = struct.Struct('dddd')
+        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('o', 'float64'), ('v', 'float64')])
+
+    def open(self):
+        data_path = pathlib.Path(self._markets_path, self._broker_id, self._market_id, 'T')
+        if not data_path.exists():
+            return None
+
+        # try first with binary file
+        if self._binary:
+            # with .dat extension
+            filename = "%s%s.dat" % (self._curr_date.strftime('%Y%m'), self._market_id)
+            pathname = '/'.join((str(data_path), filename))
+
+            tick = None
+
+            if os.path.isfile(pathname):
+                bfile = open(pathname, "rb")
+
+                # directly seek to the last tick entry
+                bfile.seek(-TickStreamer.TICK_SIZE, 2)
+
+                arr = bfile.read(TickStreamer.TICK_SIZE)
+                tick = self._struct.unpack(arr)
+
+                bfile.close()
+
+            return tick
+
+        # if not binary asked or binary not found try with text file
+        else:
+            # no extension
+            filename = "%s%s" % (self._curr_date.strftime('%Y%m'), self._market_id)
+            pathname = '/'.join((str(data_path), filename))
+
+            tick = None
+
+            if os.path.isfile(pathname):
+                tfile = open(pathname, "rb")
+
+                # directly seek to the last tick entry
+                tfile.seek(-self._buffer_size, 2)
+
+                data = tfile.read(self._buffer_size)
+                content = data.decode('utf-8').rstrip('\n')
+                pos = content.rfind('\n')
+
+                if pos >= 0:
+                    row = content[pos+1:]
+                    ts, bid, ofr, vol = row.rstrip('\n').split('\t')
+
+                    # timestamp in seconds
+                    tick = (float(ts) * 0.001, bid, ofr, vol)
+
+                tfile.close()
+
+            return tick
+
+        return None
+
+    def last(self):
+        tick = None
+
+        while 1:
+            tick = self.open()
+
+            if tick:
+                break
+
+            # prev month/year
+            if self._curr_date.month == 1:
+                self._curr_date = self._curr_date.replace(year=self._curr_date.year-1, month=12, day=1)
+            else:
+                self._curr_date = self._curr_date.replace(month=self._curr_date.month-1, day=1)
+
+
+        return tick
+
+    def __bufferize(self):
+        if self._curr_date < self._to_date:
+            if not self._file:
+                self.open()
+
+            file_end = False
+
+            if self._file:
+                if self._is_binary:
+                    arr = self._file.read(LastTickFinder.TICK_SIZE*self._buffer_size)  # read 4 float64 * n
+                    data = self._struct.iter_unpack(arr)
+
+                    if len(arr) < self._buffer_size:
+                       file_end = True
+
+                    # speedup using numpy fromfile but its a one shot loads
+                    # data = np.fromfile(self._file, dtype=self._tick_type)
+                    # file_end = True
+
+                    self._buffer.extend(data)
+
+                    # not really necessary, its slow
+                    # no longer necessary because open() at the best initial position
+                    # for d in data:
+                    #     if d[0] >= self._from_date.timestamp():
+                    #         self._buffer.append(d)
+                else:
+                    # text
+                    for n in range(0, self._buffer_size):
+                        row = self._file.readline()
+
+                        if not row:
+                            file_end = True
+                            break
+
+                        ts, bid, ofr, vol = row.rstrip('\n').split('\t')
+
+                        ts = float(ts) * 0.001
+                        if ts < self._from_date.timestamp():
+                            # ignore older than initial date
+                            continue
+
+                        self._buffer.append((ts, float(bid), float(ofr), float(vol)))
+            else:
+                file_end = True
+
+            if file_end:
+                self.close()
+
+                # prev month/year
+                if self._curr_date.month == 1:
+                    self._curr_date = self._curr_date.replace(year=self._curr_date.year-1, month=12, day=1)
+                else:
+                    self._curr_date = self._curr_date.replace(month=self._curr_date.month-1, day=1)

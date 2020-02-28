@@ -20,7 +20,7 @@ from trader.asset import Asset
 
 from config import utils
 
-from .tickstorage import TickStorage, TickStreamer
+from .tickstorage import TickStorage, TickStreamer, LastTickFinder
 from .ohlcstorage import OhlcStorage, OhlcStreamer
 
 import logging
@@ -431,6 +431,18 @@ class Database(object):
 
         with self._condition:
             self._condition.notify()
+
+    #
+    # sync loads
+    #
+
+    def get_last_tick(self, broker_id, market_id):
+        """Load and return only the last found and most recent stored tick."""
+        return LastTickFinder(self._markets_path, broker_id, market_id, binary=True).last()
+
+    def get_last_ohlc(self, broker_id, market_id, timeframe):
+        """Load and return only the last found and most recent stored OHLC from a specific timeframe."""
+        return None
 
     #
     # Tick and ohlc streamer

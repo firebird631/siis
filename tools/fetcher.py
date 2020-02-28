@@ -7,17 +7,119 @@ import sys
 import logging
 import traceback
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from common.utils import UTC, TIMEFRAME_FROM_STR_MAP
 
 from watcher.service import WatcherService
+from instrument.instrument import Instrument
 
 from terminal.terminal import Terminal
 from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.tools.fetcher')
+error_logger = logging.getLogger('siis.error.tools.fetcher')
+
+
+# class Fetcher(Tool):
+#     """
+#     Make a connection and fetch the market data in local DB.
+#     """ 
+
+#     @classmethod
+#     def alias(cls):
+#         return "fetch"
+
+#     @classmethod
+#     def help(cls):
+#         return ("Process the data OHLC and tick/trade/quote fetcher.",
+#                 "Specify --broker, --market, --timeframe, --from and --to date.",
+#                 " Optional : --cascaded, --from or --update.")
+
+#     @classmethod
+#     def detailed_help(cls):
+#         return tuple()
+
+#     @classmethod
+#     def need_identity(cls):
+#         return True
+
+#     def __init__(self, options):
+#         super().__init__("fetcher", options)
+
+#         self._watcher_service = None
+
+#     def check_options(self, options):
+#         if not options.get('market') or not options.get('broker'):
+#             return False
+
+#         if not options.get('to'):
+#             return False
+
+#         if not options.get('from') or not options.get('update'):
+#             return False
+
+#         if options.get('from') and options.get('update'):            
+#             error_logger.error("Either --from or --update parameters must be defined")
+#             return False
+
+#         return True
+
+#     def init(self, options):
+#         # database manager
+#         Database.create(options)
+#         Database.inst().setup(options)
+
+#         # want speedup the database inserts
+#         Database.inst().enable_fetch_mode()
+
+#         return True
+
+#     def run(self, options):
+#         Terminal.inst().info("Starting watcher's service...")
+#         self._watcher_service = WatcherService(options)
+
+#         markets = options['market'].split(',')
+
+#         fetcher = watcher_service.create_fetcher(options, options['broker'])
+#         if fetcher:
+#             fetcher.connect()
+
+#             for market_id in markets:
+#                 pass  # @todo merge here
+
+#             fetcher.disconnect()
+
+#         return True
+
+#     def terminate(self, options):
+#         self._watcher_service.terminate()
+
+#         Terminal.inst().info("Flushing database...")
+#         Database.terminate()
+
+#         return True
+
+#     def forced_interrupt(self, options):
+#         return True
+
+
+# tool = Fetcher
+
+
+
+def terminate(code=0):
+    Terminal.inst().info("Flushing database...")
+    Terminal.inst().flush() 
+
+    Database.terminate()
+
+    Terminal.inst().info("Fetch done!")
+    Terminal.inst().flush()
+
+    Terminal.terminate()
+    sys.exit(code)
 
 
 def do_fetcher(options):
@@ -38,7 +140,7 @@ def do_fetcher(options):
     cascaded = None
 
     if not options.get('timeframe'):
-        timeframe = 60  # default to 1min
+        timeframe = Instrument.TF_TICK  # default to tick
     else:
         if options['timeframe'] in TIMEFRAME_FROM_STR_MAP:
             timeframe = TIMEFRAME_FROM_STR_MAP[options['timeframe']]
@@ -60,13 +162,22 @@ def do_fetcher(options):
                 pass
 
     if timeframe < 0:
-        logger.error("Invalid timeframe")
+        error_logger.error("Invalid timeframe")
         sys.exit(-1)
+
+    do_update = False
+
+    if options.get('update'):
+        if options.get('from'):
+            error_logger.error("Either --from or --update parameters must be defined")
+            terminate(-1)
+        else:
+            do_update = True
 
     try:
         fetcher.connect()
     except:
-        sys.exit(-1)
+        terminate(-1)
 
     if fetcher.connected:
         logger.info("Fetcher authentified to %s, trying to collect data..." % fetcher.name)
@@ -81,6 +192,21 @@ def do_fetcher(options):
                     if options.get('install-market', False):
                         fetcher.install_market(market_id)
                     else:
+                        if do_update:
+                            # update from last entry, compute the from datetime
+                            if timeframe == Instrument.TF_TICK:
+                                # get last datetime from tick storage and add 1 millisecond
+                                last_tick = Database.inst().get_last_tick(options['broker'], market_id)
+                                next_date = datetime.fromtimestamp(last_tick[0] + 0.001, tz=UTC()) if last_tick else None
+
+                                options['from'] = next_date
+                            else:
+                                # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
+                                last_ohlc = Database.inst().get_last_ohlc(options['broker'], options['broker'])
+                                last_date = datetime.fromtimestamp(last_ohlc.timestamp, tz=UTC()) if last_ohlc else None
+
+                                options['from'] = last_date
+
                         fetcher.fetch_and_generate(market_id, timeframe,
                             options.get('from'), options.get('to'), options.get('last'),
                             options.get('spec'), cascaded)
@@ -92,13 +218,4 @@ def do_fetcher(options):
 
     fetcher = None
 
-    Terminal.inst().info("Flushing database...")
-    Terminal.inst().flush() 
-
-    Database.terminate()
-
-    Terminal.inst().info("Fetch done!")
-    Terminal.inst().flush()
-
-    Terminal.terminate()
-    sys.exit(0)
+    terminate(0)

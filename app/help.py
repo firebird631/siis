@@ -117,7 +117,7 @@ def display_cli_help():
     display_help_tools()
     # @todo after replaced any tools by theirs model remove below
     Terminal.inst().message("  --fetch Process the data fetcher.")
-    Terminal.inst().message("    Specify --broker, --market, --timeframe, --from and --to date. Optional : --cascaded.")
+    Terminal.inst().message("    Specify --broker, --market, --timeframe, --from and --to date. Optional : --cascaded, --from or --update.")
     Terminal.inst().message("  --binarize Process ticks/trades/quotes text file to binary conversion.")
     Terminal.inst().message("    Specify --broker, --market, --from and --to date.")
     Terminal.inst().message("  --rebuild Rebuild OHLCs from the trades/ticks/quotes file data.")

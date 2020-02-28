@@ -146,6 +146,7 @@ class Fetcher(object):
 
         n = 0
         t = 0
+        data = None
 
         if timeframe == 0:
             for data in self.fetch_trades(market_id, from_date, to_date, None):
@@ -193,9 +194,10 @@ class Fetcher(object):
                 while Database.inst().num_pending_ticks_storage() > Fetcher.MAX_PENDING_TICK:
                     time.sleep(Fetcher.TICK_STORAGE_DELAY)  # wait a little before continue
 
-            logger.info("Fetched %i trades for %s, latest %s UTC" % (
-                t, market_id,
-                datetime.fromtimestamp(float(data[0]) * 0.001, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%S.%f')))
+            if data:
+                logger.info("Fetched %i trades for %s, latest %s UTC" % (
+                    t, market_id,
+                    datetime.fromtimestamp(float(data[0]) * 0.001, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%S.%f')))
 
         elif timeframe > 0:
             for data in self.fetch_candles(market_id, timeframe, from_date, to_date, None):
@@ -238,9 +240,10 @@ class Fetcher(object):
                         t, market_id, timeframe_to_str(timeframe),
                         datetime.fromtimestamp(float(data[0]) * 0.001, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%S')))
 
-            logger.info("Fetched %i OHLCs for %s in %s, latest %s UTC" % (
-                t, market_id, timeframe_to_str(timeframe),
-                datetime.fromtimestamp(float(data[0]) * 0.001, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%S')))
+            if data:
+                logger.info("Fetched %i OHLCs for %s in %s, latest %s UTC" % (
+                    t, market_id, timeframe_to_str(timeframe),
+                    datetime.fromtimestamp(float(data[0]) * 0.001, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%S')))
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
         """

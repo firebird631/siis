@@ -170,6 +170,8 @@ def application(argv):
                     options['no-conf'] = True
                 elif arg == '--zip':
                     options['zip'] = True
+                elif arg == '--update':
+                    options['update'] = True
 
                 elif arg == '--install-market':
                     # fetcher option

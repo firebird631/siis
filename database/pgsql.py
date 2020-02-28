@@ -175,6 +175,35 @@ class PgSql(Database):
         return OhlcStreamer(self._db, broker_id, market_id, timeframe, from_date, to_date, buffer_size)
 
     #
+    # sync loads
+    #
+
+    def get_last_ohlc(self, broker_id, market_id, timeframe):
+        cursor = self._db.cursor()
+
+        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp DESC LIMIT 1""" % (
+                            broker_id, market_id, timeframe))
+
+        row = cursor.fetchone()
+
+        if row:
+            timestamp = float(row[0]) * 0.001  # to float second timestamp
+            ohlc = Candle(timestamp, timeframe)
+
+            ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+            ohlc.set_ofr_ohlc(float(row[5]), float(row[6]), float(row[7]), float(row[8]))
+
+            ohlc.set_volume(float(row[9]))
+
+            if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
+                ohlc.set_consolidated(False)  # current
+
+            return ohlc
+
+        return None
+
+    #
     # Processing
     #
 

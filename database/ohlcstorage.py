@@ -124,108 +124,108 @@ class OhlcStorage(object):
         except Exception as e:
             logger.error(repr(e))
 
-    def async_query(self, service, timeframe, from_date, to_date, limit):
-        with self._mutex:
-            self._queries.append((service, timeframe, from_date, to_date, limit))
+    # def async_query(self, service, timeframe, from_date, to_date, limit):
+    #     with self._mutex:
+    #         self._queries.append((service, timeframe, from_date, to_date, limit))
 
-    def query(self, timeframe, from_date, to_date, limit_or_last_n, auto_close=True):
-        """
-        Query ohlcs for a timeframe.
-        @param from_date Optional
-        @param to_date Optional
-        @param limit_or_last_n Optional
-        """
-        cursor = self._db.cursor()
+    # def query(self, timeframe, from_date, to_date, limit_or_last_n, auto_close=True):
+    #     """
+    #     Query ohlcs for a timeframe.
+    #     @param from_date Optional
+    #     @param to_date Optional
+    #     @param limit_or_last_n Optional
+    #     """
+    #     cursor = self._db.cursor()
 
-        try:
-            if from_date and to_date:
-                from_ts = int(from_date.timestamp() * 1000.0)
-                to_ts = int(to_date.timestamp() * 1000.0)
-                self.query_from_to(cursor, timeframe, from_date, to_date)
-            elif from_date:
-                from_ts = int(from_date.timestamp() * 1000.0)
-                self.query_from_limit(cursor, timeframe, from_date, limit_or_last_n)
-            elif to_date:
-                to_ts = int(to_date.timestamp() * 1000.0)
-                self.query_from_limit(cursor, timeframe, to_date)
-            elif limit:
-                self.query_last(cursor, timeframe, limit_or_last_n)
-            else:
-                self.query_all(cursor, timeframe)
-        except Exception as e:
-            logger.error(repr(e))
+    #     try:
+    #         if from_date and to_date:
+    #             from_ts = int(from_date.timestamp() * 1000.0)
+    #             to_ts = int(to_date.timestamp() * 1000.0)
+    #             self.query_from_to(cursor, timeframe, from_date, to_date)
+    #         elif from_date:
+    #             from_ts = int(from_date.timestamp() * 1000.0)
+    #             self.query_from_limit(cursor, timeframe, from_date, limit_or_last_n)
+    #         elif to_date:
+    #             to_ts = int(to_date.timestamp() * 1000.0)
+    #             self.query_from_limit(cursor, timeframe, to_date)
+    #         elif limit:
+    #             self.query_last(cursor, timeframe, limit_or_last_n)
+    #         else:
+    #             self.query_all(cursor, timeframe)
+    #     except Exception as e:
+    #         logger.error(repr(e))
 
-            self.close()
-            return []
+    #         self.close()
+    #         return []
 
-        rows = cursor.fetchall()
-        ohlcs = []
+    #     rows = cursor.fetchall()
+    #     ohlcs = []
 
-        for row in rows:
-            timestamp = float(row[0]) * 0.001  # to float second timestamp
-            ohlc = Candle(timestamp, timeframe)
+    #     for row in rows:
+    #         timestamp = float(row[0]) * 0.001  # to float second timestamp
+    #         ohlc = Candle(timestamp, timeframe)
 
-            ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
-            ohlc.set_ofr_ohlc(float(row[5]), float(row[6]), float(row[7]), float(row[8]))
+    #         ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+    #         ohlc.set_ofr_ohlc(float(row[5]), float(row[6]), float(row[7]), float(row[8]))
 
-            ohlc.set_volume(float(row[9]))
+    #         ohlc.set_volume(float(row[9]))
 
-            ohlcs.append(ohlc)
+    #         ohlcs.append(ohlc)
 
-        if auto_close:
-            self.close()
+    #     if auto_close:
+    #         self.close()
 
-        return data
+    #     return data
 
-    def query_all(self, cursor, timeframe):
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                            WHERE timeframe = %s ORDER BY timestamp ASC""" % (timeframe,))
+    # def query_all(self, cursor, timeframe):
+    #     cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+    #                         WHERE timeframe = %s ORDER BY timestamp ASC""" % (timeframe,))
 
-    def query_last(self, cursor, timeframe, limit):
-        cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE timeframe = %s""" % (timeframe,))
-        count = int(cursor.fetchone()[0])
-        offset = max(0, count - limit)
+    # def query_last(self, cursor, timeframe, limit):
+    #     cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE timeframe = %s""" % (timeframe,))
+    #     count = int(cursor.fetchone()[0])
+    #     offset = max(0, count - limit)
 
-        # LIMIT should not be necessary then
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                        WHERE timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (timeframe, limit, offset))
+    #     # LIMIT should not be necessary then
+    #     cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+    #                     WHERE timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (timeframe, limit, offset))
 
-    def query_from_to(self, cursor, timeframe, from_ts, to_ts):
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                        WHERE timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                            timeframe, from_ts, to_ts))
+    # def query_from_to(self, cursor, timeframe, from_ts, to_ts):
+    #     cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+    #                     WHERE timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
+    #                         timeframe, from_ts, to_ts))
 
-    def query_from_limit(self, cursor, timeframe, from_ts, limit):
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                        WHERE timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC LIMIT %i""" % (
-                            timeframe, from_ts, limit))
+    # def query_from_limit(self, cursor, timeframe, from_ts, limit):
+    #     cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+    #                     WHERE timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC LIMIT %i""" % (
+    #                         timeframe, from_ts, limit))
 
-    def query_to(self, cursor, timeframe, to_ts):
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
-                        WHERE timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                            timeframe, to_ts))
+    # def query_to(self, cursor, timeframe, to_ts):
+    #     cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+    #                     WHERE timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
+    #                         timeframe, to_ts))
 
-    def process_async_queries(self):
-        with self._mutex:
-            queries = self._queries
-            self._queries.clear()
+    # def process_async_queries(self):
+    #     with self._mutex:
+    #         queries = self._queries
+    #         self._queries.clear()
 
-        failed = []
+    #     failed = []
 
-        for query in queries:
-            try:
-                ohlcs = self.query(query[1], query[2], query[3], query[4], False)
+    #     for query in queries:
+    #         try:
+    #             ohlcs = self.query(query[1], query[2], query[3], query[4], False)
 
-                # and signal notification
-                service.notify(Signal.SIGNAL_CANDLE_DATA_BULK, self._broker_id, (self._market_id, query[1], ohlcs))
-            except Exception as e:
-                logger.error(repr(e))
-                failed.append(query)
+    #             # and signal notification
+    #             service.notify(Signal.SIGNAL_CANDLE_DATA_BULK, self._broker_id, (self._market_id, query[1], ohlcs))
+    #         except Exception as e:
+    #             logger.error(repr(e))
+    #             failed.append(query)
 
-        # retry the next time
-        if failed:
-            with self._mutex:
-                self._queries = failed + self._queries
+    #     # retry the next time
+    #     if failed:
+    #         with self._mutex:
+    #             self._queries = failed + self._queries
 
     def process(self):
         """
@@ -249,8 +249,8 @@ class OhlcStorage(object):
 
                 self._last_write = time.time()
 
-            if self._queries:
-                self.process_async_queries()
+            # if self._queries:
+            #     self.process_async_queries()
             
             self.close()
 
