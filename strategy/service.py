@@ -36,6 +36,7 @@ class StrategyService(Service):
         self._appliances = {}
         self._tradeops = {}
         self._regions = {}
+        self._alerts = {}
 
         self._watcher_service = watcher_service
         self._trader_service = trader_service
@@ -49,6 +50,7 @@ class StrategyService(Service):
         self._indicators_config = utils.load_config(options, 'indicators')
         self._tradeops_config = utils.load_config(options, 'tradeops')
         self._regions_config = utils.load_config(options, 'regions')
+        self._alerts_config = utils.load_config(options, 'alerts')
         self._strategies_config = utils.load_config(options, 'strategies')
         self._profile_config = utils.load_config(options, "profiles/%s" % self._profile)
 
@@ -113,6 +115,10 @@ class StrategyService(Service):
     def regions(self):
         return self._regions
 
+    @property
+    def alerts(self):
+        return self._alerts
+
     def set_activity(self, status):
         """
         Enable/disable execution of orders for all appliances.
@@ -122,10 +128,10 @@ class StrategyService(Service):
 
     def start(self, options):
         # indicators
-        for k, indicators in self._indicators_config.items():
-            if indicators.get("status") is not None and indicators.get("status") == "load":
+        for k, indicator in self._indicators_config.items():
+            if indicator.get("status") is not None and indicator.get("status") == "load":
                 # retrieve the classname and instanciate it
-                parts = indicators.get('classpath').split('.')
+                parts = indicator.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
                 Clazz = getattr(module, parts[-1])
@@ -136,10 +142,10 @@ class StrategyService(Service):
                 self._indicators[k] = Clazz
 
         # tradeops
-        for k, tradeops in self._tradeops_config.items():
-            if tradeops.get("status") is not None and tradeops.get("status") == "load":
+        for k, tradeop in self._tradeops_config.items():
+            if tradeop.get("status") is not None and tradeop.get("status") == "load":
                 # retrieve the classname and instanciate it
-                parts = tradeops.get('classpath').split('.')
+                parts = tradeop.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
                 Clazz = getattr(module, parts[-1])
@@ -150,10 +156,10 @@ class StrategyService(Service):
                 self._tradeops[k] = Clazz
 
         # regions
-        for k, regions in self._regions_config.items():
-            if regions.get("status") is not None and regions.get("status") == "load":
+        for k, region in self._regions_config.items():
+            if region.get("status") is not None and region.get("status") == "load":
                 # retrieve the classname and instanciate it
-                parts = regions.get('classpath').split('.')
+                parts = region.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
                 Clazz = getattr(module, parts[-1])
@@ -162,6 +168,20 @@ class StrategyService(Service):
                     raise StrategyServiceException("Cannot load region %s" % k) 
 
                 self._regions[k] = Clazz
+
+        # alerts
+        for k, alert in self._alerts_config.items():
+            if alert.get("status") is not None and alert.get("status") == "load":
+                # retrieve the classname and instanciate it
+                parts = alert.get('classpath').split('.')
+
+                module = import_module('.'.join(parts[:-1]))
+                Clazz = getattr(module, parts[-1])
+
+                if not Clazz:
+                    raise StrategyServiceException("Cannot load alert %s" % k) 
+
+                self._alerts[k] = Clazz
 
         # strategies
         for k, strategy in self._strategies_config.items():

@@ -392,6 +392,7 @@ class View(object):
                         self._content = self._content[-Terminal.MAX_NUM_ENTRIES:]
 
                         self._first_row -= m
+                        self._n -= m  # to refresh the newest
 
             except Exception as e:
                 error_logger.error(str(e))
@@ -513,8 +514,9 @@ class View(object):
                             sys.stdout.write('\n')
 
                         sys.stdout.flush()
-                        self._n = len(self._content)
 
+                        # next row to display
+                        self._n = len(self._content)
                         self._dirty = False
 
             except Exception as e:

@@ -137,7 +137,8 @@ class PgSql(Database):
                 appliance_id VARCHAR(255) NOT NULL,
                 activity INTEGER NOT NULL DEFAULT 1,
                 data TEXT NOT NULL DEFAULT '{}',
-                regions TEXT NOT NULL DEFAULT '{}',
+                regions TEXT NOT NULL DEFAULT '[]',
+                alerts TEXT NOT NULL DEFAULT '[]',
                 UNIQUE(broker_id, account_id, market_id, appliance_id))""")
 
         self._db.commit()
@@ -599,10 +600,12 @@ class PgSql(Database):
                 cursor = self._db.cursor()
 
                 query = ' '.join((
-                    "INSERT INTO user_trader(broker_id, account_id, market_id, appliance_id, activity, data, regions) VALUES",
+                    "INSERT INTO user_trader(broker_id, account_id, market_id, appliance_id, activity, data, regions, alerts) VALUES",
                     ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
-                            json.dumps(ut[5]).replace("'", "''"), json.dumps(ut[6]).replace("'", "''")) for ut in uti]),
-                    "ON CONFLICT (broker_id, account_id, market_id, appliance_id) DO UPDATE SET activity = EXCLUDED.activity, data = EXCLUDED.data, regions = EXCLUDED.regions"
+                            json.dumps(ut[5]).replace("'", "''"),
+                            json.dumps(ut[6]).replace("'", "''"),
+                            json.dumps(ut[7]).replace("'", "''")) for ut in uti]),
+                    "ON CONFLICT (broker_id, account_id, market_id, appliance_id) DO UPDATE SET activity = EXCLUDED.activity, data = EXCLUDED.data, regions = EXCLUDED.regions, alerts = EXCLUDED.alerts"
                 ))
 
                 cursor.execute(query)
@@ -634,7 +637,7 @@ class PgSql(Database):
                 cursor = self._db.cursor()
 
                 for ut in uts:
-                    cursor.execute("""SELECT market_id, activity, data, regions FROM user_trader WHERE
+                    cursor.execute("""SELECT market_id, activity, data, regions, alerts FROM user_trader WHERE
                         broker_id = '%s' AND account_id = '%s' AND appliance_id = '%s'""" % (ut[2], ut[3], ut[4]))
 
                     rows = cursor.fetchall()
@@ -642,7 +645,7 @@ class PgSql(Database):
                     user_traders = []
 
                     for row in rows:
-                        user_traders.append((row[0], row[1] > 0, json.loads(row[2]), json.loads(row[3])))
+                        user_traders.append((row[0], row[1] > 0, json.loads(row[2]), json.loads(row[3]), json.loads(row[4])))
 
                     # notify
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADER_LIST, ut[4], user_traders)

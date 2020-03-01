@@ -9,7 +9,7 @@ import traceback
 
 from datetime import datetime, timedelta
 
-from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, timeframe_from_str
+from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, timeframe_from_str, format_datetime
 
 from terminal.terminal import Terminal
 from database.database import Database
@@ -28,10 +28,6 @@ GENERATED_TF = [60, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60
 
 TICK_STORAGE_DELAY = 0.05  # 50ms
 MAX_PENDING_TICK = 10000
-
-
-def format_datetime(timestamp):
-    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S UTC')
 
 
 def store_ohlc(broker_name, market_id, timeframe, ohlc):

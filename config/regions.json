@@ -1,12 +1,12 @@
 {
     "range": {
         "status": "load",
-        "classpath": "strategy.region.region.RangeRegion",
+        "classpath": "strategy.region.rangeregion.RangeRegion",
         "options": {}
     },
     "trend": {
         "status": "load",
-        "classpath": "strategy.region.region.TrendRegion",
+        "classpath": "strategy.region.trendregion.TrendRegion",
         "options": {}
     }
 }

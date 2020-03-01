@@ -1,17 +1,18 @@
 # @date 2018-08-07
 # @author Frederic SCHERMA
 # @license Copyright (c) 2018 Dream Overflow
-# service worker
+# Service signals
 
 class Signal(object):
 
 	SIGNAL_UNDEFINED = 0
 
-	SIGNAL_STRATEGY_SIGNAL_ENTRY = 50   # data is a dict @see StrategySignal
-	SIGNAL_STRATEGY_SIGNAL_EXIT = 51    # data is a dict @see StrategySignal 
-	SIGNAL_STRATEGY_TRADE_ENTRY = 52    # data is a dict @see StrategyTrade
-	SIGNAL_STRATEGY_TRADE_EXIT = 53     # data is a dict @see StrategyTrade
-	SIGNAL_STRATEGY_TRADE_UPDATE = 54   # data is a dict @see StrategyTrade
+	SIGNAL_STRATEGY_SIGNAL_ENTRY = 50   # data is a dict @see StrategySignal (signal entry, no trade)
+	SIGNAL_STRATEGY_SIGNAL_EXIT = 51    # data is a dict @see StrategySignal (signal exit, no trade)
+	SIGNAL_STRATEGY_TRADE_ENTRY = 52    # data is a dict @see StrategyTrade (trade entry)
+	SIGNAL_STRATEGY_TRADE_EXIT = 53     # data is a dict @see StrategyTrade (trade exit)
+	SIGNAL_STRATEGY_TRADE_UPDATE = 54   # data is a dict @see StrategyTrade (fill qty, modify stop-loss, take-profit...)
+	SIGNAL_STRATEGY_ALERT = 55          # data is a dict @see StrategyAlert (alert, notify an custom or contextual event)
 
 	SIGNAL_CANDLE_DATA = 100            # data is a pair with (market_id, Candle)
 	SIGNAL_TICK_DATA = 101              # data is a pair with (market_id, Tick)

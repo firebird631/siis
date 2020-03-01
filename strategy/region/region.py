@@ -203,11 +203,11 @@ class Region(object):
             'region': self.region(),    # integer type
             'name': self.name(),        # str type
             'id': self._id,             # previous integer unique id
-            'created': self._created,   # created timestamp
+            'created': self._created,   # created timestamp datetime.utcfromtimestamp(self._created).strftime('%Y-%m-%dT%H:%M:%SZ'),
             'stage': self._stage,  #  "entry" if self._stage == Region.STAGE_ENTRY else "exit" if self._stage == Region.STAGE_EXIT else "both",
             'direction': self._dir,  # "long" if self._dir == Region.LONG else "short" if self._dir == Region.SHORT else "both",
             'timeframe': self._timeframe,  # timeframe_to_str(self._timeframe),
-            'expiry': self._expiry,  # datetime.fromtimestamp(self._expiry).strftime('%Y-%m-%dT%H:%M:%S'),
+            'expiry': self._expiry,  # datetime.utcfromtimestamp(self._expiry).strftime('%Y-%m-%dT%H:%M:%SZ'),
         }
 
     def loads(self, data):
@@ -215,11 +215,11 @@ class Region(object):
         Override this method and add specific parameters for loads parameters from persistance model.
         """
         self._id = data.get('id', -1)
-        self._created = data.get('created', 0)  # datetime.strptime(data.get('created', '1970-01-01T00:00:00'), '%Y-%m-%dT%H:%M:%S').timestamp()
+        self._created = data.get('created', 0)  # datetime.strptime(data.get('created', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
         self._stage = data.get('stage', 0)  # self.stage_from_str(data.get('stage', ''))
         self._dir = data.get('direction', 0)  # self.direction_from_str(data.get('direction', ''))
         self._timeframe = data.get('timeframe')  # timeframe_from_str(data.get('timeframe', 't'))
-        self._expiry = data.get('expiry', 0)  # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00'), '%Y-%m-%dT%H:%M:%S').timestamp()
+        self._expiry = data.get('expiry', 0)  # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
 
     def stage_to_str(self):
         if self._stage == Region.STAGE_ENTRY:
@@ -268,207 +268,12 @@ class Region(object):
             return "any"
 
     def created_to_str(self):
+        """In local time"""
         return datetime.fromtimestamp(self._created).strftime('%Y-%m-%d %H:%M:%S')
 
     def expiry_to_str(self):
+        """In local time"""
         if self._expiry > 0:
             return datetime.fromtimestamp(self._expiry).strftime('%Y-%m-%d %H:%M:%S')
         else:
             return "never"
-
-
-class RangeRegion(Region):
-    """
-    Rectangle region with two horizontal price limit (low/high).
-
-    low Absolute low price
-    high Absolute high price (high > low)
-    trigger Absolute price if reached the region is deleted
-
-    Trigger depends of the direction :
-        - in long if the price goes below trigger then delete the region
-        - in short if the price goes above trigger then delete the region
-        - if no trigger is defined there is no such deletion
-    """
-
-    NAME = "range"
-    REGION = Region.REGION_RANGE
-
-    def __init__(self, created, stage, direction, timeframe):
-        super().__init__(created, stage, direction, timeframe)
-
-        self._low = 0.0
-        self._high = 0.0
-
-        self._cancelation = 0.0
-
-    def init(self, parameters):
-        self._low = parameters.get('low', 0.0)
-        self._high = parameters.get('high', 0.0)
-
-        self._cancelation = parameters.get('cancelation', 0.0)
-
-    def check(self):
-        return self._low > 0 and self._high > 0 and self._high >= self._low
-
-    def test(self, timestamp, signal):
-        # signal price is in low / high range
-        return self._low <= signal.price <= self._high
-
-    def can_delete(self, timestamp, bid, ofr):
-        if self._expiry > 0 and timestamp >= self._expiry:
-            return True
-
-        # trigger price reached in accordance with the direction
-        if self._dir == Region.LONG and ofr < self._cancelation:
-            return True
-
-        if self._dir == Region.SHORT and bid > self._cancelation:
-            return True
-
-        return False
-
-    def str_info(self):
-        return "Range region from %s to %s, stage %s, direction %s, timeframe %s, expiry %s, cancelation %s" % (
-                self._low, self._high, self.stage_to_str(), self.direction_to_str(),
-                self.timeframe_to_str(), self.expiry_to_str(), self._cancelation)
-
-    def parameters(self):
-        params = super().parameters()
-
-        params['label'] = "Range region"
-        
-        params['low'] = self._low,
-        params['high'] = self._high
-        
-        params['cancelation'] = self._cancelation
-
-        return params
-
-    def dumps(self):
-        data = super().dumps()
-        
-        data['low'] = self._low
-        data['high'] = self._high
-        
-        data['cancelation'] = self._cancelation
-
-        return data
-
-    def loads(self, data):
-        super().loads(data)
-
-        self._low = data.get('low', 0.0)
-        self._high = data.get('high', 0.0)
-        
-        self._cancelation = data.get('cancelation', 0.0)
-
-
-class TrendRegion(Region):
-    """
-    Trend channel region with two trends price limit (low/high).
-
-    With ylow = ax + b and yhigh = a2x + b2 to produce non parallels channels.
-    """
-
-    NAME = "channel"
-    REGION = Region.REGION_TREND
-
-    def __init__(self, created, stage, direction, timeframe):
-        super().__init__(created, stage, direction, timeframe)
-
-        self.dl = 0.0  # delta low trend
-        self.dh = 0.0  # delta high trend
-
-    def init(self, parameters):
-        self._low_a = parameters.get('low-a', 0.0)
-        self._high_a = parameters.get('high-a', 0.0)
-        self._low_b = parameters.get('low-b', 0.0)
-        self._high_b = parameters.get('high-b', 0.0)
-        self._cancelation = parameters.get('cancelation', 0.0)
-
-        self._dl = (self._low_b - self._low_a) / (self._expiry - self._created)
-        self._dh = (self._high_b - self._high_a) / (self._expiry - self._created)
-
-    def check(self):
-        if self._low_a <= 0.0 or self._high_a <= 0.0 or self._low_b <= 0.0 or self._high_b <= 0.0:
-            # points must be greater than 0
-            return False
-
-        if (self._low_a > self._high_a) or (self._low_b > self._high_b):
-            # highs must be greater than lows
-            return False
-
-        if self._expiry <= self._created:
-            # expiry must be defined and higher than its creation timestamp
-            return False
-
-        return True
-
-    def test(self, timestamp, signal):
-        timeframe = signal.timeframe
-
-        # y = ax + b
-        dt = timestamp - self._created
-
-        low = dt * self._dl + self._low_a
-        high = dt * self._dh + self._high_a
-
-        return low <= signal.price <= high
-
-    def can_delete(self, timestamp, bid, ofr):
-        if self._expiry > 0 and timestamp >= self._expiry:
-            return True
-
-        # trigger price reached in accordance with the direction
-        if self._dir == Region.LONG and ofr < self._cancelation:
-            return True
-
-        if self._dir == Region.SHORT and bid > self._cancelation:
-            return True
-
-        return False
-
-    def str_info(self):
-        return "Trend region from %s/%s to %s/%s, stage %s, direction %s, timeframe %s, expiry %s" % (
-                self._low_a, self._high_a, self._low_b, self._high_b,
-                self.stage_to_str(), self.direction_to_str(), self.timeframe_to_str(), self.expiry_to_str())
-
-    def parameters(self):
-        params = super().parameters()
-
-        params['label'] = "Trend region"
-        
-        params['low-a'] = self._low_a,
-        params['high-a'] = self._high_a
-
-        params['low-b'] = self._low_b,
-        params['high-b'] = self._high_b
-
-        params['cancelation'] = self._cancelation
-
-        return params
-
-    def dumps(self):
-        data = super().dumps()
-
-        data['low-a'] = self._low_a
-        data['high-a'] = self._high_a
-
-        data['low-b'] = self._low_b
-        data['high-b'] = self._high_b
-
-        data['cancelation'] = self._cancelation
-
-        return data
-
-    def loads(self, data):
-        super().loads(data)
-
-        self._low_a = data.get('low-a', 0.0)
-        self._high_a = data.get('high-a', 0.0)
-
-        self._low_b = data.get('low-b', 0.0)
-        self._high_b = data.get('high-b', 0.0)
-
-        self._cancelation = data.get('cancelation', 0.0)

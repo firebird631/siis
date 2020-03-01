@@ -175,7 +175,9 @@ def format_datetime(timestamp):
     """
     Format as human readable in UTC.
     """
-    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S UTC')
+    return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S UTC')
+    # same as utcfromtimestamp but contains the tzinfo
+    # return datetime.fromtimestamp(timestamp, tz=UTC()).strftime('%Y-%m-%d %H:%M:%S UTC')
 
 
 def format_delta(td):

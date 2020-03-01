@@ -73,6 +73,9 @@ class StrategyTrader(object):
         self.regions = []
         self._next_region_id = 1
 
+        self.alerts = []
+        self._next_alert_id= 1
+
         self._global_streamer = None
         self._timeframe_streamers = {}
 
@@ -170,14 +173,15 @@ class StrategyTrader(object):
                     Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,
                             self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
 
-            # dumps of regions
+            # dumps of trader data, regions and alerts
             trader_data = {}
             regions_data = [region.dumps() for region in self.regions]
+            alerts_data = [alert.dumps() for alert in self.alerts]
 
             Database.inst().store_user_trader((trader.name, trader.account.name, self.instrument.market_id,
-                    self.strategy.identifier, self.activity, trader_data, regions_data))
+                    self.strategy.identifier, self.activity, trader_data, regions_data, alerts_data))
 
-    def loads(self, data, regions):
+    def loads(self, data, regions, alerts):
         """
         Load strategy trader state and regions.
         """
@@ -192,16 +196,31 @@ class StrategyTrader(object):
                     region.loads(r)
 
                     if region.check():
-                        # append the region to the strategy trader
-                        strategy_trader.add_region(region)
+                        self.add_region(region)
                     else:
                         error_logger.error("During loads, region checking error %s" % (r['name'],))
-
-                    self.add_region(region)
                 except Exception as e:
                     error_logger.error(repr(e))
             else:
                 error_logger.error("During loads, unsupported region %s" % (r['name'],))
+
+        # instanciates the alerts
+        for a in alerts:
+            if a['name'] in self.strategy.service.alerts:
+                try:
+                    # instanciate the alert
+                    alert = self.strategy.service.alerts[a['name']](0, 0, 0, 0)
+                    alert.loads(a)
+
+                    if alert.check():
+                        self.add_alert(alert)
+                    else:
+                        error_logger.error("During loads, alert checking error %s" % (a['name'],))
+                except Exception as e:
+                    error_logger.error(repr(e))
+            else:
+                error_logger.error("During loads, unsupported alert %s" % (a['name'],))
+
 
     def loads_trade(self, trade_id, trade_type, data, operations):
         """
@@ -613,7 +632,7 @@ class StrategyTrader(object):
     def check_regions(self, timestamp, bid, ofr, signal, allow=True):
         """
         Compare a signal to defined regions if somes are defineds.
-        @param signal float Signal to check with any regions.
+        @param signal StrategySignal to check with any regions.
         @param bid float Last instrument bid price
         @param ofr flaot Last instrument ofr price
         @param allow Default returned value if there is no defined region (default True).
@@ -640,6 +659,71 @@ class StrategyTrader(object):
         else:
             # no region always pass
             return allow
+
+    #
+    # alert management
+    #
+
+    def add_alert(self, alert):
+        with self._mutex:
+            alert.set_id(self._next_alert_id)
+            self._next_alert_id += 1
+            self.alerts.append(alert)
+
+    def remove_alert(self, alert_id):
+        with self._mutex:
+            for alert in self.alerts:
+                if alert.id == alert_id:
+                    self.alerts.remove(alert)
+                    return True
+
+        return False
+
+    def cleanup_alerts(self, timestamp, bid, ofr):
+        """
+        Regenerate the list of alerts by removing the expired alerts.
+        @warning Non thread-safe but must be protected.
+        """
+        alerts = []
+
+        for alert in self.alerts:
+            if not alert.can_delete(timestamp, bid, ofr):
+                alerts.append(alert)
+
+        # replace the alerts list
+        self.alerts = alerts
+
+    def check_alerts(self, timestamp, bid, ofr, timeframes):
+        """
+        Compare timeframes indicators values to defined alerts if somes are defineds.
+        @param bid float Last instrument bid price
+        @param ofr flaot Last instrument ofr price
+        @param timeframes list of TimeframeBasedSub to check with any alerts.
+
+        @note Thread-safe method.
+        """
+        if self.alerts:
+            mutated = False
+
+            # one ore many alert, have to pass at least one test
+            with self._mutex:
+                results = []
+
+                for alert in self.alerts:
+                    if alert.can_delete(timestamp, bid, ofr):
+                        mutated |= True
+
+                    elif alert.test_alert(timestamp, bid, ofr, timeframes):
+                        # alert triggered
+                        results.append(alert.dumps_notify(timestamp, strategy_trader, bid, ofr, timeframes))
+
+                if mutated:
+                    self.cleanup_alerts(timestamp, bid, ofr)
+
+            return None
+        else:
+            # no region always pass
+            return None
 
     #
     # miscs
@@ -704,140 +788,6 @@ class StrategyTrader(object):
                 trade.sl = stop_loss
             else:
                 trade.modify_stop_loss(trader, instrument, stop_loss)
-
-    def update_exit(self, trade, close_exec_price, price, pointpivot):
-        """
-        According to a pivotpoint compute the next stop-loss trailing price,
-        and potentially a new take-profit price.
-
-        Return a couple of two 2 couples :
-            - stop-loss: boolean update, float price
-            - take-profit: boolean update, float price
-        """
-        done = False
-
-        stop_loss = 0.0
-        take_profit = 0.0
-
-        update_sl = False
-        update_tp = False
-
-        return ((update_sl, stop_loss), (update_tp, take_profit))
-
-    #     if pivotpoint.last_pivot > 0.0:
-    #         if trade.direction > 0:
-    #             # long
-    #             done = False
-
-    #             for n in range(pivotpoint.num-1, 0, -1):
-    #                 if close_exec_price > pivotpoint.last_resistances[n]:
-    #                     if utils.crossover(price.prices, pivotpoint.resistances[n]):
-    #                         update_tp = True
-
-    #                     if stop_loss < pivotpoint.last_resistances[n-1]:
-    #                         update_sl = True
-    #                         # stop_loss = pivotpoint.last_resistances[n-1]
-
-    #                     return ((update_sl, stop_loss), (update_tp, take_profit))
-
-    #             if close_exec_price > pivotpoint.last_resistances[0]:
-    #                 if utils.crossover(price.prices, pivotpoint.resistances[0]):
-    #                     update_tp = True
-
-    #                 if stop_loss < pivotpoint.last_pivot:
-    #                     update_sl = True
-    #                     # stop_loss = pivotpoint.last_pivot
-
-    #                 return ((update_sl, stop_loss), (update_tp, take_profit))
-
-    #             if close_exec_price > pivotpoint.last_pivot:
-    #                 if utils.crossover(price.prices, pivotpoint.pivot):
-    #                     update_tp = True
-
-    #                 if stop_loss < pivotpoint.last_supports[0]:
-    #                     update_sl = True
-    #                     # stop_loss = pivotpoint.last_supports[0]
-
-    #                 return ((update_sl, stop_loss), (update_tp, take_profit))
-
-    #             for n in range(0, pivotpoint.num-1):
-    #                 if close_exec_price > pivotpoint.last_supports[n]:
-    #                     if utils.crossover(price.prices, pivotpoint.supports[n]):
-    #                         update_tp = True
-
-    #                     if stop_loss < pivotpoint.last_supports[n+1]:
-    #                         update_sl = True
-    #                         # stop_loss = pivotpoint.last_supports[n+1]
-
-    #                     return ((update_sl, stop_loss), (update_tp, take_profit))
-
-    #                 if close_exec_price > pivotpoint.last_supports[pivotpoint.num-1]:
-    #                     if utils.crossover(price.prices, pivotpoint.supports[pivotpoint.num-1]):
-    #                         update_tp = True
-
-    #                     if stop_loss < pivotpoint.last_supports[pivotpoint.num-1]:
-    #                         update_sl = True
-    #                         # stop_loss = pivotpoint.last_supports[pivotpoint.num-1]
-
-    #                     return ((update_sl, stop_loss), (update_tp, take_profit))
-
-    #         elif trade.direction < 0:
-    #             # short (could use the sign, but if we want a non symmetrical approch...)
-    #             if close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
-    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[2]):
-    #                     update_tp = True
-
-    #                 if close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
-    #                     update_sl = True
-    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
-
-    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
-    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[1]):
-    #                     update_tp = True
-
-    #                 if trade.sl > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
-    #                     update_sl = True
-    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
-
-    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
-    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[0]):
-    #                     update_tp = True
-
-    #                 if trade.sl > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
-    #                     update_sl = True
-    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]
-
-    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
-    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.pivot):
-    #                     update_tp = True
-
-    #                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
-    #                     update_sl = True
-    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]
-
-    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
-    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[0]):
-    #                     update_tp = True
-
-    #                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
-    #                     update_sl = True
-    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_pivot
-
-    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
-    #                 if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[1]):
-
-    #                     update_tp = True
-    #                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
-    #                     update_sl = True
-    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
-
-    #             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]:
-    #                 if utils.crossunder(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[2]):
-    #                     update_tp = True
-
-    #                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
-    #                     update_sl = True
-    #                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
 
     def check_entry_canceled(self, trade):
         """
@@ -923,44 +873,15 @@ class StrategyTrader(object):
     def subscribe_stream(self, timeframe):
         """
         Use or create a specific streamer.
+        Must be overrided.
         """
-        result = False
-        
-        with self._mutex:
-            if timeframe is not None and isinstance(timeframe, (float, int)):
-                timeframe = self.timeframes.get(timeframe)
-
-            if timeframe in self._timeframe_streamers:
-                self._timeframe_streamers[timeframe].use()
-                result = True
-            else:
-                streamer = self.create_chart_streamer(timeframe)
-
-                if streamer:
-                    streamer.use()
-                    self._timeframe_streamers[timeframe] = streamer
-                    result = True
-
         return False
 
     def unsubscribe_stream(self, timeframe):
         """
         Delete a specific streamer when no more subscribers.
+        Must be overrided.
         """
-        result = False
-        
-        with self._mutex:
-            if timeframe is not None and isinstance(timeframe, (float, int)):
-                timeframe = self.timeframes.get(timeframe)
-
-            if timeframe in self._timeframe_streamers:
-                self._timeframe_streamers[timeframe].unuse()
-                if self._timeframe_streamers[timeframe].is_free():
-                    # delete if 0 subscribers
-                    del self._timeframe_streamers[timeframe]
-        
-                result = True
-
         return False
 
     def stream_call(self):
@@ -1174,6 +1095,10 @@ class StrategyTrader(object):
             if self._reporting == self.REPORTING_VERBOSE:
                 self.report(trade, False)
 
-    # def notify_trade_update(self, timestamp, trade):
-    #     if trade:
-    #         self.strategy.notify_trade_update(timestamp, signal, self)
+    def notify_trade_update(self, timestamp, trade):
+        if trade:
+            self.strategy.notify_trade_update(timestamp, trade, self)
+
+    def notify_alert(self, timestamp, alert):
+        if alert:
+            self.strategy.notify_alert(timestamp, alert, self)

@@ -193,13 +193,22 @@ class Strategy(Runnable):
             signal_data = trade.dumps_notify_exit(timestamp, strategy_trader)
             self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_EXIT, self._name, signal_data)
 
-    # def notify_trade_update(self, timestamp, trade, strategy_trader):
-    #     """
-    #     Notify a strategy trade update to the user. It must be called by the strategy-trader.
-    #     """
-    #     if trade:
-    #         signal_data = trade.dumps_notify_update(timestamp, strategy_trader)
-    #         self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_UPDATE, self._name, signal_data)
+    def notify_trade_update(self, timestamp, trade, strategy_trader):
+        """
+        Notify a strategy trade update to the user. It must be called by the strategy-trader.
+        """
+        if trade:
+            signal_data = trade.dumps_notify_update(timestamp, strategy_trader)
+            self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_UPDATE, self._name, signal_data)
+
+    def notify_alert(self, timestamp, alert, strategy_trader):
+        """
+        Notify a strategy alert to the user. It must be called by the strategy-trader.
+        """
+        if alert:
+            signal_data = alert.dumps_notify(timestamp, strategy_trader)
+
+            self.service.notify(Signal.SIGNAL_STRATEGY_ALERT, self._name, signal_data)
 
     def setup_streaming(self):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY, "status", self.identifier)
@@ -679,7 +688,7 @@ class Strategy(Runnable):
                         if strategy_trader:
                             with strategy_trader._mutex:
                                 strategy_trader.set_activity(data[1])
-                                strategy_trader.loads(data[2], data[3])
+                                strategy_trader.loads(data[2], data[3], data[4])
 
             elif signal.source == Signal.SOURCE_WATCHER:
                 if signal.signal_type == Signal.SIGNAL_TICK_DATA:

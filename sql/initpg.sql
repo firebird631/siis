@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS user_trader(
     appliance_id VARCHAR(255) NOT NULL,
     activity INTEGER NOT NULL DEFAULT 1,
     data TEXT NOT NULL DEFAULT '{}',
-    regions TEXT NOT NULL DEFAULT '{}',
+    regions TEXT NOT NULL DEFAULT '[]',
+    alerts TEXT NOT NULL DEFAULT '[]',
     UNIQUE(broker_id, account_id, market_id, appliance_id));
 
 -- liquidation

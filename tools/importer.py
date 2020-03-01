@@ -105,7 +105,7 @@ def import_quote_siis_1_0_0(broker_id, market_id, from_date, to_date, row):
 
 def import_ohlc_siis_1_0_0(broker_id, market_id, timeframe, from_date, to_date, row):
     parts = row.split('\t')
-    
+
     dt = datetime.strptime(parts[0], '%Y%m%d %H%M%S').replace(tzinfo=UTC())
     timestamp = int(dt.timestamp() * 1000)
 
@@ -369,6 +369,23 @@ def error_exit(src, msg):
     sys.exit(-1)
 
 
+def adjust_from_date(broker_id, market_id, timeframe, from_date)
+    # from date is adjusted to the most recent to not overwrite ticks/trade/quote
+    if timeframe <= Instrument.TF_TICK:
+        # import from last entry, compute the from datetime
+        # get last datetime from tick storage and add 1 millisecond
+        last_tick = Database.inst().get_last_tick(broker_id, market_id)
+        next_date = datetime.fromtimestamp(last_tick[0] + 0.001, tz=UTC()) if last_tick else None
+
+        return next_date if next_date > from_date else from_date
+    else:
+        # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
+        last_ohlc = Database.inst().get_last_ohlc(broker_id, market_id)
+        last_date = datetime.fromtimestamp(last_ohlc.timestamp, tz=UTC()) if last_ohlc else None
+
+        return last_date if last_date >= from_date else from_date
+
+
 def do_importer(options):
     tool = Importer()
 
@@ -607,6 +624,9 @@ def do_importer(options):
                     if not row:
                         break
 
+                    # do not overwrite ticks/trades/quotes
+                    cur_from_date = adjust_from_date(broker_id, market_id, cur_timeframe, cur_from_date)
+
                     row = row.rstrip("\n")
                     total_count += import_tick_mt4(tool, broker_id, market_id, cur_from_date, cur_to_date, row)
 
@@ -638,6 +658,9 @@ def do_importer(options):
                     row = src.readline()
                     if not row:
                         break
+
+                    # do not overwrite ticks/trades/quotes
+                    cur_from_date = adjust_from_date(broker_id, market_id, cur_timeframe, cur_from_date)
 
                     row = row.rstrip("\n")
                     total_count += import_tick_mt5(tool, broker_id, market_id, cur_from_date, cur_to_date, row)

@@ -1,24 +1,4 @@
 {
-	"1broker.com": {
-		"real" : {
-			"api_key": "<real-api-key>",
-			"host": "1broker.com"
-		},
-		"demo": {
-			"api_key": "<second-real-but-for-demo-api-key>",
-			"host": "1broker.com"
-		}
-	},
-	"1fox.com": {
-		"real" : {
-			"api_key": "<real-api-key>",
-			"host": "1fox.com"
-		},
-		"demo": {
-			"api_key": "<second-real-but-for-demo-api-key>",
-			"host": "1fox.com"
-		}
-	},
 	"binance.com": {
 		"real": {
 			"account-id": "<generate-your-own-for-local-mapping>",

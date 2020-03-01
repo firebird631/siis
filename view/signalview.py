@@ -1,7 +1,7 @@
 # @date 2019-06-28
 # @author Frederic SCHERMA
 # @license Copyright (c) 2019 Dream Overflow
-# Signal view.
+# Signals view.
 
 import threading
 import hashlib
@@ -45,7 +45,7 @@ class SignalView(TableView):
         if not self._strategy_service:
             return 0
 
-        return(self._strategy_service.get_traders())
+        return (self._strategy_service.get_traders())
 
     def receiver(self, signal):
         if not signal:

@@ -12,6 +12,11 @@ def setup_default_views(view_service, watcher_service, trader_service, strategy_
     signal = SignalView(view_service, strategy_service)
     view_service.add_view(signal)
 
+    # 'alert'
+    from view.alertview import AlertView
+    alert = AlertView(view_service, strategy_service)
+    view_service.add_view(alert)
+
     # 'account'
     from view.accountview import AccountView
     account = AccountView(view_service, trader_service)

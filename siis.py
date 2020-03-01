@@ -687,6 +687,8 @@ def application(argv):
                                     Terminal.inst().switch_view('asset')
                                 elif value == 'N':
                                     Terminal.inst().switch_view('signal')
+                                elif value == 'W':
+                                    Terminal.inst().switch_view('alert')
 
                                 elif value == '?':
                                     # ping services and workers

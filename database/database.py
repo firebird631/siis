@@ -548,6 +548,7 @@ class Database(object):
             integer activity (not null)
             dict data (to be json encoded)
             dict regions (to be json encoded)
+            dict alerts (to be json encoded)
         """
         with self._mutex:
             if isinstance(data, list):

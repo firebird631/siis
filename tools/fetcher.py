@@ -194,7 +194,7 @@ def do_fetcher(options):
                     else:
                         if do_update:
                             # update from last entry, compute the from datetime
-                            if timeframe == Instrument.TF_TICK:
+                            if timeframe <= Instrument.TF_TICK:
                                 # get last datetime from tick storage and add 1 millisecond
                                 last_tick = Database.inst().get_last_tick(options['broker'], market_id)
                                 next_date = datetime.fromtimestamp(last_tick[0] + 0.001, tz=UTC()) if last_tick else None
@@ -202,7 +202,7 @@ def do_fetcher(options):
                                 options['from'] = next_date
                             else:
                                 # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
-                                last_ohlc = Database.inst().get_last_ohlc(options['broker'], options['broker'])
+                                last_ohlc = Database.inst().get_last_ohlc(options['broker'], market_id)
                                 last_date = datetime.fromtimestamp(last_ohlc.timestamp, tz=UTC()) if last_ohlc else None
 
                                 options['from'] = last_date
