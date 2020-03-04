@@ -207,14 +207,11 @@ class Strategy(Runnable):
         """
         if alert:
             signal_data = alert.dumps_notify(timestamp, strategy_trader)
-
             self.service.notify(Signal.SIGNAL_STRATEGY_ALERT, self._name, signal_data)
 
     def setup_streaming(self):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY, "status", self.identifier)
-
         self._streamable.add_member(StreamMemberFloat('cpu-load'))
-
         self._last_call_ts = 0.0
 
     def stream(self):

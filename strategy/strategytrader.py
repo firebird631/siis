@@ -166,9 +166,6 @@ class StrategyTrader(object):
                     t_data = trade.dumps()
                     ops_data = [operation.dumps() for operation in trade.operations]
 
-                    # debug only @todo remove after fixed
-                    logger.info("log trade %s / %s" % (str(t_data), str(ops_data)))
-
                     # store per trade
                     Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,
                             self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
@@ -186,6 +183,7 @@ class StrategyTrader(object):
         Load strategy trader state and regions.
         """
         # data reserved
+        # ...
 
         # instanciates the regions
         for r in regions:
@@ -209,7 +207,7 @@ class StrategyTrader(object):
             if a['name'] in self.strategy.service.alerts:
                 try:
                     # instanciate the alert
-                    alert = self.strategy.service.alerts[a['name']](0, 0, 0, 0)
+                    alert = self.strategy.service.alerts[a['name']](0, 0)
                     alert.loads(a)
 
                     if alert.check():
@@ -221,7 +219,6 @@ class StrategyTrader(object):
             else:
                 error_logger.error("During loads, unsupported alert %s" % (a['name'],))
 
-
     def loads_trade(self, trade_id, trade_type, data, operations):
         """
         Load a strategy trader trade and its operations.
@@ -232,6 +229,7 @@ class StrategyTrader(object):
         """
         trade = None
 
+        # trade builder
         if trade_type == StrategyTrade.TRADE_BUY_SELL:
             trade = StrategyAssetTrade(0)
         elif trade_type == StrategyTrade.TRADE_MARGIN:
@@ -249,7 +247,7 @@ class StrategyTrader(object):
         # operations
         for op in operations:
             if op['name'] in self.strategy.service.tradeops:
-                try:                
+                try:
                     operation = self.strategy.service.tradeops[op['name']]()
                     operation.loads(op)
 
