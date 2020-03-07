@@ -47,6 +47,7 @@ from app.setup import install
 from app.generalcommands import register_general_commands
 from app.tradingcommands import register_trading_commands
 from app.regioncommands import register_region_commands
+from app.alertcommands import register_alert_commands
 
 
 def signal_handler(sig, frame):
@@ -514,6 +515,7 @@ def application(argv):
     register_general_commands(commands_handler)
     register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service, notifier_service)
     register_region_commands(commands_handler, strategy_service)
+    register_alert_commands(commands_handler, strategy_service)
 
     # setup and start the monitor service
     monitor_service.setup(watcher_service, trader_service, strategy_service)
@@ -689,6 +691,8 @@ def application(argv):
                                     Terminal.inst().switch_view('signal')
                                 elif value == 'W':
                                     Terminal.inst().switch_view('alert')
+                                elif value == 'Z':
+                                    Terminal.inst().switch_view('traderstate')
 
                                 elif value == '?':
                                     # ping services and workers

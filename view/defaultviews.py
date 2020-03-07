@@ -17,6 +17,11 @@ def setup_default_views(view_service, watcher_service, trader_service, strategy_
     alert = AlertView(view_service, strategy_service)
     view_service.add_view(alert)
 
+    # # 'traderstate' @todo
+    # from view.traderstate import TraderStateView
+    # traderstate = TraderStateView(view_service, strategy_service)
+    # view_service.add_view(traderstate)
+
     # 'account'
     from view.accountview import AccountView
     account = AccountView(view_service, trader_service)
@@ -62,7 +67,7 @@ def setup_default_views(view_service, watcher_service, trader_service, strategy_
     asset = AssetView(view_service, trader_service)
     view_service.add_view(asset)
 
-    # # 'orderbook'
+    # # 'orderbook' @todo
     # from view.orderbookview import OrderBookView
     # orderbook = AssetView(view_service, trader_service)
     # view_service.add_view(orderbook)
