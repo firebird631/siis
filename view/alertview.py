@@ -28,7 +28,7 @@ class AlertView(TableView):
 
     REFRESH_RATE = 60  # only on alert or 1 minute refresh
 
-    MAX_ALERTS = 200
+    MAX_ALERTS = 500
     COLUMNS = ('#', 'Market', 'Label', charmap.ARROWUPDN, 'TF', 'Last Price', 'Reason', 'User', 'Date')
 
     def __init__(self, service, strategy_service):
