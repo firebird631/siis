@@ -248,7 +248,7 @@ class RemoveRegionCommand(Command):
         market_id = None
 
         action = 'del-region'
-        operation_id = None        
+        region_id = None        
 
         # ie ":rmregion _ EURUSD 1"
         if len(args) < 3:

@@ -699,6 +699,7 @@ class StrategyTrader(object):
         @param timeframes list of TimeframeBasedSub to check with any alerts.
 
         @note Thread-safe method.
+        @note If the alert is triggered, it still keep alive until the next check_alerts call, even if its a one shot alert.
         """
         if self.alerts:
             mutated = False
@@ -710,17 +711,21 @@ class StrategyTrader(object):
                 for alert in self.alerts:
                     if alert.can_delete(timestamp, bid, ofr):
                         mutated |= True
-
-                    elif alert.test_alert(timestamp, bid, ofr, timeframes):
-                        # alert triggered
-                        results.append(alert.dumps_notify(timestamp, strategy_trader, bid, ofr, timeframes))
+                    else:
+                        result = alert.test_alert(timestamp, bid, ofr, timeframes)
+                        if result:
+                            # alert triggered, dump message could be done user alert dump_notify and result data
+                            results.append((alert, result))
 
                 if mutated:
                     self.cleanup_alerts(timestamp, bid, ofr)
 
+                if results:
+                    return results
+
             return None
         else:
-            # no region always pass
+            # no alerts
             return None
 
     #
@@ -1097,6 +1102,6 @@ class StrategyTrader(object):
         if trade:
             self.strategy.notify_trade_update(timestamp, trade, self)
 
-    def notify_alert(self, timestamp, alert):
-        if alert:
-            self.strategy.notify_alert(timestamp, alert, self)
+    def notify_alert(self, timestamp, alert, result):
+        if alert and result:
+            self.strategy.notify_alert(timestamp, alert, result, self)

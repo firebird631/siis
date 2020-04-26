@@ -1,16 +1,19 @@
 #!/bin/bash
 # update FROM= each time or use --last= and do it every day/week using a crontab
 TO='2020-12-31T23:59:59'
-MARKETS='XBTUSD,ETHUSD,XRPUSD,ETHH20,BCHH20,LTCH20,TRXH20,EOSH20,XRPH20,ADAH20,XBTH20,XBTM20'
+MARKETS='XBTUSD,ETHUSD,XRPUSD,ETHM20,BCHM20,LTCM20,TRXM20,EOSM20,XRPM20,ADAM20,XBTM20,XBTM20'
 
 # need the last 7 day to reconstruct the weekly
-FROM='2020-02-03T00:00:00'
-python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1d --cascaded=1w
+FROM='2020-04-21T00:00:00'
+# python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1d --cascaded=1w
+python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --update --to=$TO --timeframe=1d --cascaded=1w
 
-# need the last 4 1h to reconstruct the 4h
-FROM='2019-02-07T08:00:00'
-python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1h --cascaded=4h
+# # need the last 4 1h to reconstruct the 4h
+FROM='2019-04-21T08:00:00'
+# python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=1h --cascaded=4h
+python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --update --to=$TO --timeframe=1h --cascaded=4h
 
 # need the last 3 5m to reconstruct the 15m
-FROM='2019-02-07T08:00:00'
-python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=5m --cascaded=30m
+FROM='2020-04-21T08:00:00'
+# python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --from=$FROM --to=$TO --timeframe=5m --cascaded=30m
+python siis.py real --fetch --broker=bitmex.com --market=$MARKETS --update --to=$TO --timeframe=5m --cascaded=30m

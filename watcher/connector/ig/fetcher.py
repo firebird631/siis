@@ -58,7 +58,7 @@ class IGFetcher(Fetcher):
                     identity.get('host'))
 
                 self._tzname = identity.get('tzname')
-                self._connector.connect()
+                self._connector.connect(encryption=identity.get('encryption', False))
 
                 self._available_instruments = set()
 
@@ -92,7 +92,7 @@ class IGFetcher(Fetcher):
         return True  # @todo check...
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None, fetch_option=""):
-        pass
+        return []
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None, fetch_option=""):
         try:

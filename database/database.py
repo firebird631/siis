@@ -38,7 +38,6 @@ class Database(object):
     Timestamp fetched are in accordance with the object property (mostly second timestamp).
 
     @todo store maker/taker fee and commission for each market
-    ://www.postgresqltutorial.com/postgresql-python/connect/
 
     All markets information are stored in postgresql DB.
     User asset are stored in postgresql DB.
@@ -48,12 +47,6 @@ class Database(object):
     Ticks are run in exclusive read or write mode :
         - first case is when watcher or fetcher are writing some news data.
         - second case is during backtesting, streaming data from ticks.
-
-    PosgreSQL DB creation :
-
-    CREATE DATABASE siis;
-    CREATE USER siis WITH ENCRYPTED PASSWORD 'siis';
-    GRANT ALL PRIVILEGES ON DATABASE siis TO siis;
 
     OHLCs
     =======

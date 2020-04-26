@@ -202,7 +202,7 @@ def do_fetcher(options):
                                 options['from'] = next_date
                             else:
                                 # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
-                                last_ohlc = Database.inst().get_last_ohlc(options['broker'], market_id)
+                                last_ohlc = Database.inst().get_last_ohlc(options['broker'], market_id, timeframe)
                                 last_date = datetime.fromtimestamp(last_ohlc.timestamp, tz=UTC()) if last_ohlc else None
 
                                 options['from'] = last_date

@@ -1,15 +1,18 @@
 #!/bin/bash
 # update FROM= each time or use --last= and do it every day/week using a crontab
-TO='2019-12-31T23:59:59'
+TO='2020-12-31T23:59:59'
 
-FROM='2019-12-23T00:00:00'
-python siis.py real --fetch --broker=kraken.com --market=*ZEUR,*XBT --from=$FROM --to=$TO --timeframe=1d --cascaded=1w
+FROM='2020-04-06T00:00:00'
+# python siis.py real --fetch --broker=kraken.com --market=*ZEUR,*XBT --from=$FROM --to=$TO --timeframe=1d --cascaded=1w
+python siis.py real --fetch --broker=kraken.com --market=*ZEUR,*XBT --update --to=$TO --timeframe=1d --cascaded=1w
 
-FROM='2019-12-23T08:00:00'
-python siis.py real --fetch --broker=kraken.com --market=*ZEUR,*XBT --from=$FROM --to=$TO --timeframe=4h
+FROM='2020-04-06T00:00:00'
+# python siis.py real --fetch --broker=kraken.com --market=*ZEUR,*XBT --from=$FROM --to=$TO --timeframe=4h
+python siis.py real --fetch --broker=kraken.com --market=*ZEUR,*XBT --update --to=$TO --timeframe=4h
 
-FROM='2019-12-23T10:00:00'
-python siis.py real --fetch --broker=kraken.com --market=*ZEUR,*XBT --from=$FROM --to=$TO --timeframe=1h --cascaded=2h
+FROM='2020-04-06T00:00:00'
+# python siis.py real --fetch --broker=kraken.com --market=*ZEUR,*XBT --from=$FROM --to=$TO --timeframe=1h --cascaded=2h
+python siis.py real --fetch --broker=kraken.com --market=*ZEUR,*XBT --update --to=$TO --timeframe=1h --cascaded=2h
 
 # FROM='2019-10-21T00:00:00'
 # python siis.py real --fetch --broker=kraken.com --market=*ZEUR,*XBT --from=$FROM --to=$TO --timeframe=15m --cascaded=30m

@@ -252,7 +252,7 @@ class Fetcher(object):
         @param from_date
         @param to_date
         """
-        pass
+        return []
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         """
@@ -263,7 +263,7 @@ class Fetcher(object):
         @param to_date
         @param n_last Last n data
         """
-        pass
+        return []
 
     def store_candle(self, market_id, timeframe, candle):
         Database.inst().store_market_ohlc((

@@ -116,7 +116,7 @@ class IGWatcher(Watcher):
                         identity.get('host'))
 
                     self._tzname = identity.get('tzname')
-                    self._connector.connect()
+                    self._connector.connect(encryption=identity.get('encryption', False))
 
                     # from CST and XST
                     password = "CST-%s|XST-%s" % (self._connector.cst, self._connector.xst)

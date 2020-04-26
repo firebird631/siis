@@ -201,12 +201,12 @@ class Strategy(Runnable):
             signal_data = trade.dumps_notify_update(timestamp, strategy_trader)
             self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_UPDATE, self._name, signal_data)
 
-    def notify_alert(self, timestamp, alert, strategy_trader):
+    def notify_alert(self, timestamp, alert, result, strategy_trader):
         """
         Notify a strategy alert to the user. It must be called by the strategy-trader.
         """
         if alert:
-            signal_data = alert.dumps_notify(timestamp, strategy_trader)
+            signal_data = alert.dumps_notify(timestamp, result, strategy_trader)
             self.service.notify(Signal.SIGNAL_STRATEGY_ALERT, self._name, signal_data)
 
     def setup_streaming(self):
@@ -2358,7 +2358,7 @@ class Strategy(Runnable):
 
     def cmd_strategy_trader_modify(self, strategy_trader, data):
         """
-        Modify a strategy-trader region or state.
+        Modify a strategy-trader state, a region or an alert.
         """        
         results = {
             'messages': [],
@@ -2367,15 +2367,15 @@ class Strategy(Runnable):
 
         action = ""
         expiry = 0
+        countdown = -1
         timeframe = 0
 
         with strategy_trader._mutex:
             try:
-                region_id = int(data.get('region-id', -1))
                 action = data.get('action')
             except Exception:
                 results['error'] = True
-                results['messages'].append("Invalid trade identifier")
+                results['messages'].append("Invalid trader action")
 
             if action == "add-region":
                 region_name = data.get('region', "")
@@ -2424,11 +2424,64 @@ class Strategy(Runnable):
                     region_id = int(data.get('region-id', -1))
                 except Exception:
                     results['error'] = True
-                    results['messages'].append("Invalid region identifier")
+                    results['messages'].append("Invalid region identifier format")
 
                 if region_id >= 0:
                     if not strategy_trader.remove_region(region_id):
                         results['messages'].append("Invalid region identifier")
+
+            elif action == 'add-alert':
+                alert_name = data.get('alert', "")
+
+                try:
+                    created = float(data.get('created', 0.0))
+                    expiry = float(data.get('expiry', 0.0))
+                    countdown = int(data.get('countdown', -1))
+
+                    if 'timeframe' in data and type(data['timeframe']) is str:
+                        timeframe = timeframe_from_str(data['timeframe'])
+
+                except ValueError:
+                    results['error'] = True
+                    results['messages'].append("Invalid parameters")
+
+                if not results['error']:
+                    if alert_name in self.service.alerts:
+                        try:
+                            # instanciate the alert
+                            alert = self.service.alerts[alert_name](created, timeframe)
+                            alert.set_countdown(countdown)
+
+                            if expiry:
+                                alert.set_expiry(expiry)                         
+
+                            # and defined the parameters
+                            alert.init(data)
+
+                            if alert.check():
+                                # append the alert to the strategy trader
+                                strategy_trader.add_alert(alert)
+                            else:
+                                results['error'] = True
+                                results['messages'].append("Alert checking error %s" % (alert_name,))
+
+                        except Exception as e:
+                            results['error'] = True
+                            results['messages'].append(repr(e))
+                    else:
+                        results['error'] = True
+                        results['messages'].append("Unsupported alert %s" % (alert_name,))
+
+            elif action == 'del-alert':
+                try:
+                    alert_id = int(data.get('alert-id', -1))
+                except Exception:
+                    results['error'] = True
+                    results['messages'].append("Invalid alert identifier format")
+
+                if alert_id >= 0:
+                    if not strategy_trader.remove_alert(alert_id):
+                        results['messages'].append("Invalid alert identifier")
 
             elif action == "enable":
                 if not strategy_trader.activity:

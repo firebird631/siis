@@ -98,6 +98,9 @@ class Region(object):
 
     @property
     def timeframe(self):
+        """
+        Timeframe to check for.
+        """
         return self._timeframe
 
     #

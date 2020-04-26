@@ -1,5 +1,5 @@
 {
-    "pricecross": {
+    "price-cross": {
         "status": "load",
         "classpath": "strategy.alert.pricealert.PriceCrossAlert",
         "options": {}

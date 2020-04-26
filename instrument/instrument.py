@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from common.utils import UTC, timeframe_to_str, truncate, decimal_place
 
 import logging
-logger = logging.getLogger('siis.strategy.instrument')
+logger = logging.getLogger('siis.instrument.instrument')
 
 
 class Candle(object):

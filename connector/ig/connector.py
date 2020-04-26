@@ -54,6 +54,7 @@ class IGConnector(object):
         self._session = None
         self._ig_service = None
         self._client_id = None
+        self._encryption = False
 
         self._account_type = "LIVE" if self._host == "api.ig.com" else "DEMO"
 
@@ -61,7 +62,7 @@ class IGConnector(object):
     def username(self):
         return self.__username
 
-    def connect(self):
+    def connect(self, encryption=False):
         if self.connected:
             return
 
@@ -75,8 +76,9 @@ class IGConnector(object):
             self._session)
 
         try:
-            res = self._ig_service.create_session()
+            res = self._ig_service.create_session(encryption=encryption)
             self._client_id = res.get('clientId')
+            self._encryption = encryption
         except Exception as e:
             self._session = None
             self._ig_service = None
@@ -84,6 +86,8 @@ class IGConnector(object):
             raise e
 
     def disconnect(self):
+        self._encryption = False
+        self._client_id = None
         self._ig_service = None
         self._session = None
 
@@ -100,7 +104,7 @@ class IGConnector(object):
         Every 6h we have to update the user session.
         """
         try:
-            res = self._ig_service.create_session()
+            res = self._ig_service.create_session(encryption=self._encryption)
             self._client_id = res.get('clientId')
         except:
             self._session = None

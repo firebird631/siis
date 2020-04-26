@@ -11,6 +11,9 @@ import json
 import time
 import urllib
 
+from base64 import b64encode, b64decode
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_v1_5
 from requests import Session
 
 from .utils import conv_datetime, conv_to_ms
@@ -81,6 +84,10 @@ class IGSessionCRUD(object):
         """
         url = self._url(endpoint)
         session = self._get_session(session)
+
+        if type (params['password']) is bytes:
+            params['password'] = params['password'].decode()
+
         response = session.post(url, data=json.dumps(params), headers=self.HEADERS['BASIC'])
         if not response.ok:
             raise(Exception("HTTP status code %s %s " % (response.status_code, response.text)))
@@ -859,12 +866,32 @@ class IGService:
         action = 'delete'
         self._req(action, endpoint, params, session)
 
-    def create_session(self, session=None):
+    def get_encryption_key(self, session=None):
+        """Get encryption key to encrypt the password"""
+        endpoint = '/session/encryptionKey'
+        session = self._get_session(session)
+        response = session.get(self.BASE_URL + endpoint, headers=self.crud_session.HEADERS['BASIC'])
+        if not response.ok:
+            raise IGException('Could not get encryption key for login.')
+        data = response.json()
+        return data['encryptionKey'], data['timeStamp']
+
+    def encrypted_password(self, session=None):
+        """Encrypt password for login"""
+        key, timestamp = self.get_encryption_key(session)
+        rsakey = RSA.importKey(b64decode(key))
+        string = self.IG_PASSWORD + '|' + str(int(timestamp))
+        message = b64encode(string.encode())
+        return b64encode(PKCS1_v1_5.new(rsakey).encrypt(message))
+
+    def create_session(self, session=None, encryption=False):
         """Creates a trading session, obtaining session tokens for subsequent API access"""
+        password = self.encrypted_password(session) if encryption else self.IG_PASSWORD
         params = {
             'identifier': self.IG_USERNAME,
-            'password': self.IG_PASSWORD
+            'password': password
         }
+        if encryption: params['encryptedPassword'] = True
         endpoint = '/session'
         action = 'create'
         # this is the first create (BASIC_HEADERS)

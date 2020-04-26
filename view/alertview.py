@@ -87,8 +87,8 @@ class AlertView(TableView):
 
         for alert in alerts:
             ldatetime = datetime.fromtimestamp(alert['timestamp']).strftime(self._datetime_format)
-            trigger = Color.colorize_cond(charmap.ARROWUP if alert['trigger'] == "up" else charmap.ARROWDN,
-                    alert['trigger'] == "up", style, true=Color.GREEN, false=Color.RED)
+            trigger = Color.colorize_cond(charmap.ARROWUP if alert['trigger'] > 0 else charmap.ARROWDN,
+                    alert['trigger'] > 0, style, true=Color.GREEN, false=Color.RED)
 
             symbol_color = int(hashlib.sha1(alert['symbol'].encode("utf-8")).hexdigest(), 16) % Color.count()-1
             id_color = alert['id'] % Color.count()-1
@@ -99,7 +99,7 @@ class AlertView(TableView):
             row = (
                 lid,
                 lsymbol,
-                alert.get('label', ""),
+                alert.get('name', ""),
                 trigger,
                 alert.get('timeframe', ""),
                 alert.get('last-price', ""),

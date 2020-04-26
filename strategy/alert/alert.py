@@ -42,6 +42,7 @@ class Alert(object):
         self._created = created      # creation timestamp (always defined)
         self._dir = direction        # apply on long, short or both signal direction
         self._expiry = 0             # expiration timestamp (<=0 never)
+        self._countdown = -1         # max trigger occurences, -1 mean forever (until expiry)
         self._timeframe = timeframe  # specific timeframe or 0 for any
         self._message = ""           # optional user short message
 
@@ -71,9 +72,43 @@ class Alert(object):
         return self._id
 
     @property
+    def expiry(self):
+        """
+        Expiry timestamp in second.
+        """
+        return self._expiry
+
+    @property
+    def timeframe(self):
+        """
+        Timeframe to check for.
+        """
+        return self._timeframe
+
+    @property
+    def countdown(self):
+        """
+        Expiry countdown integer. -1 for infinite. 0 means terminated.
+        """
+        return self._countdown
+
+    @property
     def message(self):
         return self._message
-    
+
+    #
+    # setters
+    #
+
+    def set_id(self, _id):
+        self._id = _id
+
+    def set_expiry(self, expiry):
+        self._expiry = expiry
+
+    def set_countdown(self, countdown):
+        self._countdown = countdown
+  
     @message.setter
     def message(self, message):
         self.message = message
@@ -91,11 +126,11 @@ class Alert(object):
         """
         if self._expiry > 0 and timestamp >= self._expiry:
             # alerte expired
-            return False
+            return None
 
         if self._timeframe > 0 and self._timeframe not in timeframes:
             # missing timeframe
-            return False
+            return None
 
         return self.test(timestamp, bid, ofr, timeframes)
 
@@ -119,8 +154,10 @@ class Alert(object):
     def test(self, timestamp, bid, ofr, timeframes):
         """
         Perform the test of the alert on the last price and timeframes data.
+
+        @return A valid dict with trigger condition if trigger, else None
         """
-        return False
+        return None
 
     def can_delete(self, timestamp, bid, ofr):
         """
@@ -132,6 +169,12 @@ class Alert(object):
         @param ofr float last ofr price
         """
         return self._expiry > 0 and timestamp >= self._expiry
+
+    def str_info(self):
+        """
+        Override this method to implement the single line message info of the alert.
+        """
+        return ""
 
     #
     # helpers
@@ -159,6 +202,12 @@ class Alert(object):
         else:
             return "never"
 
+    def countdown_to_str(self):
+        if self._countdown >= 0:
+            return str(self._countdown)
+        else:
+            return "inf"
+
     #
     # dumps for notify/history
     #
@@ -169,13 +218,12 @@ class Alert(object):
         else:
             return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
-    def dumps_notify(self, timestamp, strategy_trader, bid, ofr, timeframes):
+    def dumps_notify(self, timestamp, result, strategy_trader):
         """
         Dumps to dict for notify/history.
         """
         return {
             'version': self.version(),
-            'type': "alert",
             'alert': self.alert(),
             'name': self.name(),
             'id': self._id,
@@ -185,9 +233,9 @@ class Alert(object):
             'symbol': strategy_trader.instrument.market_id,
             'timeframe': timeframe_to_str(self._timeframe),
             'message': self._message,
-            'trigger': "",
+            'trigger': 0,  # 1 for up, -1 for down
             'last-price': strategy_trader.instrument.format_price((bid + ofr) * 0.5),
-            'reason': "",
+            'reason': "",  # alert specific detail of the trigger
         }
 
     #
@@ -199,12 +247,13 @@ class Alert(object):
         Override this method and add specific parameters to be displayed into an UI or a table.
         """
         return {
-            'label': "undefined",
             'name': self.name(),
             'id': self._id,
             'created': self.created_to_str(),
             'timeframe': self.timeframe_to_str(),
-            'expiry': self.expiry_to_str()
+            'expiry': self.expiry_to_str(),
+            'countdown': self.countdown_to_str(),
+            'message': self._message
         }
 
     def dumps(self):
@@ -219,6 +268,8 @@ class Alert(object):
             'created': self._created,   # created timestamp datetime.utcfromtimestamp(self._created).strftime('%Y-%m-%dT%H:%M:%SZ'),
             'timeframe': self._timeframe,  # timeframe_to_str(self._timeframe),
             'expiry': self._expiry,  # datetime.utcfromtimestamp(self._expiry).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'countdown': self._countdown,  # integer countdown
+            'message': self._message       # str user message
         }
 
     def loads(self, data):
@@ -229,3 +280,5 @@ class Alert(object):
         self._created = data.get('created', 0)  # datetime.strptime(data.get('created', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
         self._timeframe = data.get('timeframe')  # timeframe_from_str(data.get('timeframe', 't'))
         self._expiry = data.get('expiry', 0)  # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC())..timestamp()
+        self._countdown = data.get('countdown', -1)
+        self._message = data.get('message', "")
