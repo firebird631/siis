@@ -11,6 +11,9 @@ from .exceptions import BinanceAPIException, BinanceRequestException, BinanceWit
 
 class Client(object):
 
+    KLINES_HISTORY_MAX_RETRY = 3
+    AGGTRADES_HISTORY_MAX_RETRY = 3
+
     API_URL = 'https://api.binance.com/api'
     WITHDRAW_API_URL = 'https://api.binance.com/wapi'
     WEBSITE_URL = 'https://www.binance.com'
@@ -669,27 +672,48 @@ class Client(object):
                     start_ts = start_str
                 else:
                     start_ts = date_to_milliseconds(start_str)
+
                 trades = self.get_aggregate_trades(
                     symbol=symbol,
                     startTime=start_ts,
                     endTime=start_ts + (60 * 60 * 1000))
+
             for t in trades:
+                # inclusive date
+                if end_ts and t[self.AGG_TIME] > end_ts:
+                    # no need more
+                    return
+
                 yield t
+
             last_id = trades[-1][self.AGG_ID] if trades else 0
+
+        retry_count = 0
 
         while 1:
             # There is no need to wait between queries, to avoid hitting the
             # rate limit. We're using blocking IO, and as long as we're the
             # only thread running calls like this, Binance will automatically
             # add the right delay time on their end, forcing us to wait for
-            # data. That really simplifies this function's job. Binance is
-            # fucking awesome.
-            trades = self.get_aggregate_trades(symbol=symbol, fromId=last_id)
+            # data.
+            try:
+                trades = self.get_aggregate_trades(symbol=symbol, fromId=last_id)
+            except requests.exceptions.ReadTimeout:
+                retry_count += 1
+
+                if retry_count > Client.AGG_TRADES_HISTORY_MAX_RETRY:
+                    # break after max error count reached
+                    raise BinanceRequestException("Max retry reached")
+                else:
+                    # retry
+                    continue
+
             # fromId=n returns a set starting with id n, but we already have
             # that one. So get rid of the first item in the result set.
             trades = trades[1:]
             if len(trades) == 0:
                 return
+
             for t in trades:
                 # inclusive date
                 if end_ts and t[self.AGG_TIME] > end_ts:
@@ -810,16 +834,27 @@ class Client(object):
             else:
                 end_ts = date_to_milliseconds(end_str)
 
+        retry_count = 0
+
         idx = 0
         while 1:
             # fetch the klines from start_ts up to max 500 entries or the end_ts if set
-            temp_data = self.get_klines(
-                symbol=symbol,
-                interval=interval,
-                limit=limit,
-                startTime=start_ts,
-                endTime=end_ts
-            )
+            try:
+                temp_data = self.get_klines(
+                    symbol=symbol,
+                    interval=interval,
+                    limit=limit,
+                    startTime=start_ts,
+                    endTime=end_ts)
+            except requests.exceptions.ReadTimeout:
+                retry_count += 1
+
+                if retry_count > Client.KLINES_HISTORY_MAX_RETRY:
+                    # break after max error count reached
+                    raise BinanceRequestException("Max retry reached")
+                else:
+                    # retry
+                    continue
 
             # handle the case where exactly the limit amount of data was returned last loop
             if not len(temp_data):

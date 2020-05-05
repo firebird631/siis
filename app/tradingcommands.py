@@ -8,12 +8,10 @@ from strategy.strategy import Strategy
 from notifier.notifier import Notifier
 from trader.trader import Trader
 
-from terminal.terminal import Terminal
 from common.utils import timeframe_from_str
-
 from instrument.instrument import Instrument
 
-# @todo replace Terminal... by a return str in addition of the status
+# @todo ClosePositionCommand, CloseAllPositionCommand
 
 class PlayCommand(Command):
 
@@ -27,39 +25,36 @@ class PlayCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         if args[0] == 'apps':
             if len(args) == 1:
                 self._strategy_service.set_activity(True)
-                Terminal.inst().action("Activated any instruments for all appliances", view='status')
-                return True
+                return True, "Activated any instruments for all appliances"
+
             elif len(args) == 2:
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     appliance.set_activity(True)
-                    Terminal.inst().action("Activated any instrument for appliance %s" % args[1], view='status')
-                return True
+                    return True, "Activated any instrument for appliance %s" % args[1]
+
             elif len(args) == 3:
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     appliance.set_activity(True, args[2])
-                    Terminal.inst().action("Activated instrument %s for appliance %s" % (args[2], args[1]), view='status')
-                return True
+                    return True, "Activated instrument %s for appliance %s" % (args[2], args[1])
+
         elif args[0] == 'notifiers':
             if len(args) == 1:
                 self.notifier_service.set_activity(True)
-                Terminal.inst().action("Activated all notifiers", view='status')
-                return True
+                return True, "Activated all notifiers"
             elif len(args) == 2:
                 notifier = self._notifier_service.notifier(args[1])
                 if notifier:
                     notifier.set_activity(True)
-                    Terminal.inst().action("Activated notifier %s" % args[1], view='status')
-                return True
+                    return True, "Activated notifier %s" % args[1]
 
-        return False
+        return False, None
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -93,39 +88,37 @@ class PauseCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         if args[0] == 'apps':
             if len(args) == 1:
                 self._strategy_service.set_activity(False)
-                Terminal.inst().action("Paused any instruments for all appliances", view='status')
-                return True
+                return True, "Paused any instruments for all appliances"
+
             elif len(args) == 2:
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     appliance.set_activity(False)
-                    Terminal.inst().action("Paused any instruments for appliances %s" % args[1], view='status')
-                    return True
+                    return True, "Paused any instruments for appliances %s" % args[1]
+
             elif len(args) == 3:
                 appliance = self._strategy_service.appliance(args[1])
                 if appliance:
                     appliance.set_activity(False, args[2])
-                    Terminal.inst().action("Paused instrument %s for appliances %s" % (args[2], args[1]), view='status')
-                    return True
+                    return True, "Paused instrument %s for appliances %s" % (args[2], args[1])
+
         elif args[0] == 'notifiers':
             if len(args) == 1:
                 self.notifier_service.set_activity(False)
-                Terminal.inst().action("Paused all notifiers", view='status')
-                return True
+                return True, "Paused all notifiers"
+                
             elif len(args) == 2:
                 notifier = self._notifier_service.notifier(args[1])
                 if notifier:
                     notifier.set_activity(False)
-                    Terminal.inst().action("Paused notifier %s" % args[1], view='status')
-                return True
+                    return True, "Paused notifier %s" % args[1]
 
-        return False
+        return False, None
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -159,28 +152,27 @@ class InfoCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         if args[0] == 'apps':
             if len(args) == 1:
                 self._strategy_service.command(Strategy.COMMAND_INFO, {})
-                return True
+                return True, []
             elif len(args) == 2:
                 self._strategy_service.command(Strategy.COMMAND_INFO, {'appliance': args[1]})
-                return True
+                return True, []
             elif len(args) == 3:
                 self._strategy_service.command(Strategy.COMMAND_INFO, {'appliance': args[1], 'market-id': args[2]})
-                return True
+                return True, []
         elif args[0] == 'notifiers':
             if len(args) == 1:
                 self._notifier_service.command(Notifier.COMMAND_INFO, {})
-                return True
+                return True, []
             elif len(args) == 2:
                 self._notifier_service.command(Notifier.COMMAND_INFO, {'notifier': args[1]})
-                return True
+                return True, []
 
-        return False
+        return False, None
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -214,8 +206,7 @@ class LongCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         # ie: ":long altbtc BTCUSDT L@8500 SL@8300 TP@9600 1.0"
         appliance = None
@@ -234,8 +225,7 @@ class LongCommand(Command):
         leverage = None
 
         if len(args) < 2:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
@@ -266,20 +256,16 @@ class LongCommand(Command):
                     leverage = float(value[1:])
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         if limit_price and stop_loss and stop_loss > limit_price:
-            Terminal.inst().action("Stop-loss must be lesser than limit price", view='status')
-            return False
+            return False, "Stop-loss must be lesser than limit price"
 
         if limit_price and take_profit and take_profit < limit_price:
-            Terminal.inst().action("Take-profit must be greater than limit price", view='status')
-            return False
+            return False, "Take-profit must be greater than limit price"
 
         if quantity_rate <= 0.0:
-            Terminal.inst().action("Quantity must be non empty", view='status')
-            return False
+            return False, "Quantity must be non empty"
 
         self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, {
             'appliance': appliance,
@@ -296,7 +282,7 @@ class LongCommand(Command):
             'leverage': leverage
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -321,8 +307,7 @@ class ShortCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         # ie: ":long altbtc BTCUSDT L@8500 SL@8300 TP@9600 1.0"
         appliance = None
@@ -341,8 +326,7 @@ class ShortCommand(Command):
         leverage = None
 
         if len(args) < 2:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
@@ -373,20 +357,16 @@ class ShortCommand(Command):
                     leverage = float(value[1:])
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         if limit_price and stop_loss and stop_loss < limit_price:
-            Terminal.inst().action("Stop-loss must be greater than limit price", view='status')
-            return False
+            return False, "Stop-loss must be greater than limit price"
 
         if limit_price and take_profit and take_profit > limit_price:
-            Terminal.inst().action("Take-profit must be lesser than limit price", view='status')
-            return False
+            return False, "Take-profit must be lesser than limit price"
 
         if quantity_rate <= 0.0:
-            Terminal.inst().action("Quantity must be non empty", view='status')
-            return False
+            return False, "Quantity must be non empty"
 
         self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, {
             'appliance': appliance,
@@ -403,7 +383,7 @@ class ShortCommand(Command):
             'leverage': leverage
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -428,8 +408,7 @@ class CloseCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -438,16 +417,14 @@ class CloseCommand(Command):
 
         # ie ":close _ EURUSD 5"
         if len(args) != 3:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
             trade_id = int(args[2])
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, {
             'appliance': appliance,
@@ -456,7 +433,7 @@ class CloseCommand(Command):
             'action': action
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -481,8 +458,7 @@ class CleanCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -491,16 +467,14 @@ class CleanCommand(Command):
 
         # ie ":clean _ XRPUSDT 5"
         if len(args) != 3:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
             trade_id = int(args[2])
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADE_CLEAN, {
             'appliance': appliance,
@@ -509,7 +483,7 @@ class CleanCommand(Command):
             'action': action
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -541,8 +515,7 @@ class DynamicStopLossOperationCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -556,8 +529,7 @@ class DynamicStopLossOperationCommand(Command):
 
         # ie ":DSL _ EURUSD 4 1.12 1.15"
         if len(args) != 5:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
@@ -567,8 +539,7 @@ class DynamicStopLossOperationCommand(Command):
             trigger = float(args[3])
             stop_loss = float(args[4])
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
             'appliance': appliance,
@@ -580,7 +551,7 @@ class DynamicStopLossOperationCommand(Command):
             'stop-loss': stop_loss
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -610,8 +581,7 @@ class RemoveOperationCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -622,8 +592,7 @@ class RemoveOperationCommand(Command):
 
         # ie ":SL _ EURUSD 1 5"
         if len(args) < 4:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
@@ -631,8 +600,7 @@ class RemoveOperationCommand(Command):
             trade_id = int(args[2])
             operation_id = int(args[3])   
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
             'appliance': appliance,
@@ -642,7 +610,7 @@ class RemoveOperationCommand(Command):
             'operation-id': operation_id
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -674,7 +642,7 @@ class ModifyStopLossCommand(Command):
 
     def execute(self, args):
         if not args:
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -686,8 +654,7 @@ class ModifyStopLossCommand(Command):
 
         # ie ":SL _ EURUSD 1 1.10"
         if len(args) < 4:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
@@ -700,8 +667,7 @@ class ModifyStopLossCommand(Command):
                 force = str(args[4]) == "force"
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
             'appliance': appliance,
@@ -712,7 +678,7 @@ class ModifyStopLossCommand(Command):
             'force': force
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -744,8 +710,7 @@ class ModifyTakeProfitCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -757,8 +722,7 @@ class ModifyTakeProfitCommand(Command):
 
         # ie ":TP _ EURUSD 1 1.15"
         if len(args) < 4:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
@@ -771,8 +735,7 @@ class ModifyTakeProfitCommand(Command):
                 force = str(args[4]) == "force"
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
             'appliance': appliance,
@@ -783,7 +746,7 @@ class ModifyTakeProfitCommand(Command):
             'force': force
         })
 
-        return True
+        return True, []
     
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -813,8 +776,7 @@ class TradeInfoCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -830,8 +792,7 @@ class TradeInfoCommand(Command):
                     trade_id = -1
 
             except Exception:
-                Terminal.inst().action("Invalid parameters", view='status')
-                return False
+                return False, "Invalid parameters"
 
             self._strategy_service.command(Strategy.COMMAND_TRADE_INFO, {
                 'appliance': appliance,
@@ -839,12 +800,11 @@ class TradeInfoCommand(Command):
                 'trade-id': trade_id
             })
 
-            return True
+            return True, []
         else:
-            Terminal.inst().action("Missing or invalid parameters", view='status')
-            return False
+            return False, "Missing or invalid parameters"
 
-        return False
+        return False, None
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -869,8 +829,7 @@ class AssignCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         # ie: ":assign altbtc BTCUSDT EP@8500 SL@8300 TP@9600 0.521"
         appliance = None
@@ -885,8 +844,7 @@ class AssignCommand(Command):
         timeframe = Instrument.TF_4HOUR
 
         if len(args) < 4:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
@@ -907,24 +865,19 @@ class AssignCommand(Command):
                     quantity = float(value)
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         if entry_price <= 0.0:
-            Terminal.inst().action("Entry price must be specified", view='status')
-            return False
+            return False, "Entry price must be specified"
 
         if stop_loss and stop_loss > entry_price:
-            Terminal.inst().action("Stop-loss must be lesser than entry price", view='status')
-            return False
+            return False, "Stop-loss must be lesser than entry price"
 
         if take_profit and take_profit < entry_price:
-            Terminal.inst().action("Take-profit must be greater than entry price", view='status')
-            return False
+            return False, "Take-profit must be greater than entry price"
 
         if quantity <= 0.0:
-            Terminal.inst().action("Quantity must be specified", view='status')
-            return False
+            return False, "Quantity must be specified"
 
         self._strategy_service.command(Strategy.COMMAND_TRADE_ASSIGN, {
             'appliance': appliance,
@@ -937,7 +890,7 @@ class AssignCommand(Command):
             'timeframe': timeframe
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -963,8 +916,7 @@ class ChartCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         # ie: ":chart altbtc BTCUSDT"
         appliance = None
@@ -974,8 +926,7 @@ class ChartCommand(Command):
         timeframe = None
 
         if len(args) < 2:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
@@ -984,8 +935,7 @@ class ChartCommand(Command):
                 timeframe = timeframe_from_str(args[2])
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_CHART, {
             'appliance': appliance,
@@ -993,6 +943,8 @@ class ChartCommand(Command):
             'timeframe': timeframe,
             'monitor-url': self._monitor_service.url()
         })
+
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1031,8 +983,7 @@ class SetQuantityCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         # ie: ":setquantity altbtc BTCUSDT 1000 1"
         appliance = None
@@ -1041,26 +992,22 @@ class SetQuantityCommand(Command):
         max_factor = 1
 
         if len(args) < 3:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
             quantity = float(args[2])
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         if quantity <= 0.0:
-            Terminal.inst().action("Invalid quantity", view='status')
-            return False
+            return False, "Invalid quantity"
 
         if len(args) == 4:
             try:
                 max_factor = int(args[3])
             except Exception:
-                Terminal.inst().action("Invalid scale factor value", view='status')
-            return False
+                return False, "Invalid scale factor value"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'appliance': appliance,
@@ -1070,6 +1017,8 @@ class SetQuantityCommand(Command):
             'max-factor': max_factor
         })
 
+        return True, []
+
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
             return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
@@ -1078,6 +1027,123 @@ class SetQuantityCommand(Command):
             appliance = self._strategy_service.appliance(args[0])
             if appliance:
                 return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
+class CloseAllTradeCommand(Command):
+
+    SUMMARY = "to close any current position and trade (for a specified appliance, or any, and a specified market or any)"
+    
+    def __init__(self, strategy_service):
+        super().__init__('!closeall', '!CA')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        # ie: ":closeall altbtc BTCUSDT"
+        appliance = None
+        market_id = None
+
+        if len(args) == 1:
+            appliance = args[0]
+
+        if len(args) == 2:
+            market_id = args[1]
+
+        self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT_ALL, {
+            'appliance': appliance,
+            'market-id': market_id,
+        })
+
+        return True, []
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            appliance = self._strategy_service.appliance(args[0])
+            if appliance:
+                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
+class SellAllAssetCommand(Command):
+
+    SUMMARY = "to sell at market, immediately any quantity availables of free assets (for a specified trader, or any, and a specified market or any)"
+    
+    def __init__(self, trader_service):
+        super().__init__('!sellall', '!SA')
+
+        self._trader_service = trader_service
+
+    def execute(self, args):
+        # ie: ":sellall binance.com BTCUSDT"
+        trader = None
+        market_id = None
+
+        if len(args) == 1:
+            trader = args[0]
+
+        if len(args) == 2:
+            market_id = args[1]
+
+        self._strategy_service.command(Trader.COMMAND_SELL_ALL_ASSET, {
+            'trader': trader,
+            'market-id': market_id,
+        })
+
+        return True, []
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._trader_service.traders_names(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            trader = self._trader_service.trader(args[0])
+            if trader:
+                return self.iterate(1, trader.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
+class CancelAllOrderCommand(Command):
+
+    SUMMARY = "to cancel any orders, immediately (for a specified trader, or any, and a specified market or any)"
+    
+    def __init__(self, trader_service):
+        super().__init__('!rmallorder', '!CAO')
+
+        self._trader_service = trader_service
+
+    def execute(self, args):
+        # ie: ":sellall binance.com BTCUSDT"
+        trader = None
+        market_id = None
+
+        if len(args) == 1:
+            trader = args[0]
+
+        if len(args) == 2:
+            market_id = args[1]
+
+        self._strategy_service.command(Trader.COMMAND_CANCEL_ALL_ORDER, {
+            'trader': trader,
+            'market-id': market_id,
+        })
+
+        return True, []
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._trader_service.traders_names(), args, tab_pos, direction)
+
+        elif len(args) <= 2:
+            trader = self._trader_service.trader(args[0])
+            if trader:
+                return self.iterate(1, trader.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -1113,3 +1179,13 @@ def register_trading_commands(commands_handler, trader_service, strategy_service
     commands_handler.register(TradeInfoCommand(strategy_service))
     commands_handler.register(RemoveOperationCommand(strategy_service))
     commands_handler.register(DynamicStopLossOperationCommand(strategy_service))
+
+    #
+    # multi-trades operations
+    #
+
+    commands_handler.register(CloseAllTradeCommand(strategy_service))
+    commands_handler.register(SellAllAssetCommand(trader_service))
+    commands_handler.register(CancelAllOrderCommand(trader_service))
+    # commands_handler.register(CloseAllPositionCommand(trader_service))
+    # commands_handler.register(ClosePositionCommand(trader_service))

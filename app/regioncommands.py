@@ -11,9 +11,7 @@ from terminal.command import Command
 from strategy.strategy import Strategy
 from trader.trader import Trader
 
-from terminal.terminal import Terminal
 from common.utils import timeframe_from_str
-
 from instrument.instrument import Instrument
 
 
@@ -35,8 +33,7 @@ class RangeRegionCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -55,8 +52,7 @@ class RangeRegionCommand(Command):
 
         # ie ":RR _ EURUSD 1.12 1.15"
         if len(args) < 4:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
@@ -88,8 +84,7 @@ class RangeRegionCommand(Command):
                     stage = -1
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'appliance': appliance,
@@ -106,7 +101,7 @@ class RangeRegionCommand(Command):
             'cancelation': cancelation
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -138,8 +133,7 @@ class TrendRegionCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -160,8 +154,7 @@ class TrendRegionCommand(Command):
 
         # ie ":TR _ EURUSD 4 1.12 1.15 1.15 1.2"
         if len(args) < 7:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
@@ -196,8 +189,7 @@ class TrendRegionCommand(Command):
                     stage = -1
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'appliance': appliance,
@@ -216,7 +208,7 @@ class TrendRegionCommand(Command):
             'cancelation': cancelation
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -241,8 +233,7 @@ class RemoveRegionCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -252,16 +243,14 @@ class RemoveRegionCommand(Command):
 
         # ie ":rmregion _ EURUSD 1"
         if len(args) < 3:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
 
             region_id = int(args[2])   
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'appliance': appliance,
@@ -270,7 +259,7 @@ class RemoveRegionCommand(Command):
             'region-id': region_id
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -295,8 +284,7 @@ class RegionInfoCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -312,8 +300,7 @@ class RegionInfoCommand(Command):
                     region_id = -1
 
             except Exception:
-                Terminal.inst().action("Invalid parameters", view='status')
-                return False
+                return False, "Invalid parameters"
 
             self._strategy_service.command(Strategy.COMMAND_TRADER_INFO, {
                 'appliance': appliance,
@@ -322,12 +309,11 @@ class RegionInfoCommand(Command):
                 'region-id': region_id
             })
 
-            return True
+            return True, []
         else:
-            Terminal.inst().action("Missing or invalid parameters", view='status')
-            return False
+            return False, "Missing or invalid parameters"
 
-        return False
+        return False, None
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:

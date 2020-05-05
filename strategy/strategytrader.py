@@ -334,6 +334,27 @@ class StrategyTrader(object):
         with self._trade_mutex:
             self.trades.remove(trade)
 
+    def has_trades(self):
+        """
+        Is pending or active trades.
+        """
+        with self._trade_mutex:
+            return len(self.trades) > 0
+
+        return False
+
+    def list_trades(self):
+        """
+        List of ids of pendings and actives trades.
+        """
+        results = []
+
+        with self._trade_mutex:
+            for trade in self.trades:
+                results.append(trade.id)
+
+        return results
+
     def update_trades(self, timestamp):
         """
         Update managed trades per instruments and delete terminated trades.

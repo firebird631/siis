@@ -14,28 +14,29 @@ class PriceCrossAlert(Alert):
     @todo Complete
     """
 
+    __slots__ = '_price', '_price_src', '_last_price'
+
     NAME = "price-cross"
     ALERT = Alert.ALERT_PRICE_CROSS
-
-    PRICE_SRC_BID = 0
-    PRICE_SRC_OFR = 1
-    PRICE_SRC_MID = 2
 
     def __init__(self, created, timeframe):
         super().__init__(created, timeframe)
 
-        self._dir = 0    # price cross-up or down
-        self._price = 0  # price value
+        self._dir = 0      # price cross-up or down
+        self._price = 0.0  # price value
         self._price_src = PriceCrossAlert.PRICE_SRC_BID  # source of the price (bid, ofr or mid)
+
+        self._last_price = 0.0
 
     #
     # processing
     #
 
     def init(self, parameters):
-        self._dir = parameters['dir']
+        self._dir = parameters['direction']
         self._price = parameters['price']
         self._price_src = parameters['price-src']
+        self._last_price = 0.0
 
     def check(self):
         return (self._dir in (-1, 1) and
@@ -43,25 +44,48 @@ class PriceCrossAlert(Alert):
                 self._price_src in (PriceCrossAlert.PRICE_SRC_BID, PriceCrossAlert.PRICE_SRC_OFR, PriceCrossAlert.PRICE_SRC_MID))
 
     def test(self, timestamp, bid, ofr, timeframes):
-        if self._dir > 0:
-            if self._price_src == PRICE_SRC_BID:
-                return bid > self._price
-            elif self._price_src == PRICE_SRC_OFR:
-                return ofr > self._price
-            else:
-                return (bid + ofr) * 0.5 > self._price
-        elif self._dir < 0:
-            if self._price_src == PRICE_SRC_BID:
-                return bid < self._price
-            elif self._price_src == PRICE_SRC_OFR:
-                return  ofr < self._price
-            else:
-                return  (bid + ofr) * 0.5 < self._price
+        result = False
 
-        return False
+        if self._last_price <= 0.0:
+            if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
+                self._last_price = bid
+            elif self._price_src == PriceCrossAlert.PRICE_SRC_OFR:
+                self._last_price = ofr
+            else:
+                mid = (bid + ofr) * 0.5
+                self._last_price = mid
+
+            # need one more sample
+            return False
+
+        if self._dir > 0:
+            if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
+                result = bid >= self._price and self._last_price < self._price
+                self._last_price = bid
+            elif self._price_src == PriceCrossAlert.PRICE_SRC_OFR:
+                result = ofr >= self._price and self._last_price < self._price
+                self._last_price = ofr
+            else:
+                mid = (bid + ofr) * 0.5
+                result = mid > self._price and self._last_price < self._price
+                self._last_price = mid
+
+        elif self._dir < 0:
+            if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
+                result = bid <= self._price and self._last_price < self._price
+                self._last_price = bid
+            elif self._price_src == PriceCrossAlert.PRICE_SRC_OFR:
+                result = ofr <= self._price and self._last_price < self._price
+                self._last_price = ofr
+            else:
+                mid = (bid + ofr) * 0.5
+                result = mid < self._price and self._last_price > self._price
+                self._last_price = mid
+
+        return result
 
     def can_delete(self, timestamp, bid, ofr):
-        return self._expiry > 0 and timestamp >= self._expiry
+        return (self._expiry > 0 and timestamp >= self._expiry) or self._countdown == 0
 
     def str_info(self):
         if self._dir >= 0:
@@ -77,7 +101,7 @@ class PriceCrossAlert(Alert):
     #
 
     def dumps_notify(self, timestamp, result, strategy_trader):
-        result = super().dumps_notify(timestamp, result, strategy_trader):
+        result = super().dumps_notify(timestamp, result, strategy_trader)
 
         # result['trigger'] =
         # result['reason'] = 

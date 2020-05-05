@@ -39,8 +39,9 @@ def display_help(commands_handler, user_context=False):
         Terminal.inst().message(" - 'P' show performance view", view='content')
         Terminal.inst().message(" - 'I' show console view", view='content')
         Terminal.inst().message(" - 'N' show notification/signal view", view='content')
-        Terminal.inst().message(" - 'X' list positions", view='content')
-        Terminal.inst().message(" - 'O' list orders", view='content')
+        Terminal.inst().message(" - 'X' show positions view", view='content')
+        Terminal.inst().message(" - 'O' show orders view", view='content')
+        Terminal.inst().message(" - 'W' show alerts view", view='content')
         Terminal.inst().message(" - 'D' show debug view", view='content')
         Terminal.inst().message(" - 'C' clear current view", view='content')
 

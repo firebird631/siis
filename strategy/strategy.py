@@ -47,11 +47,17 @@ class Strategy(Runnable):
     and when speaking of strategy it refers to the algorithm, the model, the implementation.
 
     @todo Move Each COMMAND_ to command/ and have a registry
+    @todo Add possibility to insert/delete a strategy trader during runtime only in live mode.
+    @todo Alert info details
+
+    @note In backtesting the method backtest_update don't mutex the strategy_traders list because
+        in that case the dict never changes.
     """
 
     MAX_SIGNALS = 2000   # max size of the signals messages queue before ignore some market data (tick, ohlc)
 
     COMMAND_INFO = 1
+    COMMAND_TRADE_EXIT_ALL = 2  # close any trade for any market of the appliance or only for a specific market-id
 
     COMMAND_TRADE_ENTRY = 10    # manually create a new trade
     COMMAND_TRADE_MODIFY = 11   # modify an existing trade
@@ -207,6 +213,7 @@ class Strategy(Runnable):
         """
         if alert:
             signal_data = alert.dumps_notify(timestamp, result, strategy_trader)
+            Terminal.inst().info(str(signal_data))
             self.service.notify(Signal.SIGNAL_STRATEGY_ALERT, self._name, signal_data)
 
     def setup_streaming(self):
@@ -228,8 +235,9 @@ class Strategy(Runnable):
             self._streamable.member('cpu-load').update(self._cpu_load)
             self._streamable.push()
 
-            for k, strategy_trader in self._strategy_traders.items():
-                strategy_trader.stream_call()
+            with self._mutex:
+                for k, strategy_trader in self._strategy_traders.items():
+                    strategy_trader.stream_call()
 
             self._last_call_ts = now
 
@@ -418,7 +426,8 @@ class Strategy(Runnable):
                         # and create the strategy-trader analyser per instrument
                         strategy_trader = self.create_trader(instrument)
                         if strategy_trader:
-                            self._strategy_traders[instrument.market_id] = strategy_trader
+                            with self._mutex:
+                                self._strategy_traders[instrument.market_id] = strategy_trader
 
                             # initial market info only in live mode else market data are not complete at this time
                             if not self.service.backtesting:
@@ -1060,6 +1069,8 @@ class Strategy(Runnable):
         """
         Process the backtesting update, for any instrument feeds candles to instruments and does the necessary updates.
         Override only if necessary. This default implementation should suffise.
+
+        The strategy_trader list here is not mutexed, because it backtesting context we never could add or remove one.
         """
         trader = self.trader()
 
@@ -1183,6 +1194,64 @@ class Strategy(Runnable):
                 for message in results['messages']:
                     Terminal.inst().message(message, view='content')
 
+    def exit_all_trade_command(self, data):
+        # manually trade modify a trade or any trades (add/remove an operation)
+        market_id = data.get('market-id')
+
+        strategy_trader = self._strategy_traders.get(market_id)
+        if strategy_trader and strategy_trader.has_trades():
+            Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (self.name, self.identifier), view='content')
+
+            # retrieve any trades
+            trades = []
+
+            # if there is some trade, cancel or close them, else goes to the next trader
+            if strategy_trader.has_trades():
+                trades.extend([(strategy_trader.instrument.market_id, trade_id) for trade_id in strategy_trader.list_trades()])
+
+            for trade in trades:
+                # retrieve the trade and apply the modification
+                strategy_trader = self._strategy_traders.get(trade[0])
+                data['trade-id'] = trade[1]
+
+                results = cmd_trade_exit(strategy_trader, data)
+
+                if results:
+                    if results['error']:
+                        Terminal.inst().info(results['messages'][0], view='status')
+                    else:
+                        Terminal.inst().info("Done", view='status')
+
+                    for message in results['messages']:
+                        Terminal.inst().message(message, view='content')
+        else:
+            Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (self.name, self.identifier), view='content')
+
+            # retrieve any trades for any traders
+            trades = []
+
+            with self._mutex:
+                for strategy_trader in self._strategy_traders.items():
+                    # if there is some trade, cancel or close them, else goes to the next trader
+                    if strategy_trader.has_trades():
+                        trades.extend([(strategy_trader.instrument.market_id, trade_id) for trade_id in strategy_trader.list_trades()])
+
+            for trade in trades:
+                # retrieve the trade and apply the modification
+                strategy_trader = self._strategy_traders.get(trade[0])
+                data['trade-id'] = trade[1]
+
+                results = cmd_trade_exit(strategy_trader, data)
+
+                if results:
+                    if results['error']:
+                        Terminal.inst().info(results['messages'][0], view='status')
+                    else:
+                        Terminal.inst().info("Done", view='status')
+
+                    for message in results['messages']:
+                        Terminal.inst().message(message, view='content')
+
     def strategy_trader_command(self, label, data, func):
         # manually trade modify a trade (add/remove an operation)
         market_id = data.get('market-id')
@@ -1210,6 +1279,10 @@ class Strategy(Runnable):
         """
         if command_type == Strategy.COMMAND_INFO:
             self.cmd_trader_info(data)
+
+        elif command_type == Strategy.COMMAND_TRADE_EXIT_ALL:
+            self.exit_all_trade_command(data)
+
         elif command_type == Strategy.COMMAND_TRADE_ENTRY:
             self.trade_command("entry", data, self.cmd_trade_entry)
         elif command_type == Strategy.COMMAND_TRADE_EXIT:
@@ -1222,6 +1295,7 @@ class Strategy(Runnable):
             self.trade_command("info", data, self.cmd_trade_info)
         elif command_type == Strategy.COMMAND_TRADE_ASSIGN:
             self.trade_command("assign", data, self.cmd_trade_assign)
+
         elif command_type == Strategy.COMMAND_TRADER_MODIFY:
             self.strategy_trader_command("info", data, self.cmd_strategy_trader_modify)
         elif command_type == Strategy.COMMAND_TRADER_INFO:
@@ -1359,41 +1433,45 @@ class Strategy(Runnable):
         results = []
         trader = self.trader()
 
-        for k, strategy_trader in self._strategy_traders.items():
-            with strategy_trader._mutex:
-                for trade in strategy_trader.trades:
-                    profit_loss = trade.estimate_profit_loss(strategy_trader.instrument)
+        with self._mutex:
+            try:
+                for k, strategy_trader in self._strategy_traders.items():
+                    with strategy_trader._mutex:
+                        for trade in strategy_trader.trades:
+                            profit_loss = trade.estimate_profit_loss(strategy_trader.instrument)
 
-                    results.append({
-                        'mid': strategy_trader.instrument.market_id,
-                        'sym': strategy_trader.instrument.symbol,
-                        'id': trade.id,
-                        'eot': trade.entry_open_time,
-                        'xot': trade.exit_open_time,
-                        'freot': trade.first_realized_entry_time,
-                        'frxot': trade.first_realized_exit_time,
-                        'lreot': trade.last_realized_entry_time,
-                        'lrxot': trade.last_realized_exit_time,
-                        'd': trade.direction_to_str(),
-                        'l': strategy_trader.instrument.format_price(trade.order_price),
-                        'aep': strategy_trader.instrument.format_price(trade.entry_price),
-                        'axp': strategy_trader.instrument.format_price(trade.exit_price),
-                        'q': strategy_trader.instrument.format_quantity(trade.order_quantity),
-                        'e': strategy_trader.instrument.format_quantity(trade.exec_entry_qty),
-                        'x': strategy_trader.instrument.format_quantity(trade.exec_exit_qty),
-                        'tp': strategy_trader.instrument.format_price(trade.take_profit),
-                        'sl': strategy_trader.instrument.format_price(trade.stop_loss),
-                        'pl': profit_loss,
-                        'tf': timeframe_to_str(trade.timeframe),
-                        's': trade.state_to_str(),
-                        'b': strategy_trader.instrument.format_price(trade.best_price()),
-                        'w': strategy_trader.instrument.format_price(trade.worst_price()),
-                        'bt': trade.best_price_timestamp(),
-                        'wt': trade.worst_price_timestamp(),
-                        'label': trade.label,
-                        'upnl': strategy_trader.instrument.format_price(trade.unrealized_profit_loss),
-                        'pnlcur': trade.profit_loss_currency
-                    })
+                            results.append({
+                                'mid': strategy_trader.instrument.market_id,
+                                'sym': strategy_trader.instrument.symbol,
+                                'id': trade.id,
+                                'eot': trade.entry_open_time,
+                                'xot': trade.exit_open_time,
+                                'freot': trade.first_realized_entry_time,
+                                'frxot': trade.first_realized_exit_time,
+                                'lreot': trade.last_realized_entry_time,
+                                'lrxot': trade.last_realized_exit_time,
+                                'd': trade.direction_to_str(),
+                                'l': strategy_trader.instrument.format_price(trade.order_price),
+                                'aep': strategy_trader.instrument.format_price(trade.entry_price),
+                                'axp': strategy_trader.instrument.format_price(trade.exit_price),
+                                'q': strategy_trader.instrument.format_quantity(trade.order_quantity),
+                                'e': strategy_trader.instrument.format_quantity(trade.exec_entry_qty),
+                                'x': strategy_trader.instrument.format_quantity(trade.exec_exit_qty),
+                                'tp': strategy_trader.instrument.format_price(trade.take_profit),
+                                'sl': strategy_trader.instrument.format_price(trade.stop_loss),
+                                'pl': profit_loss,
+                                'tf': timeframe_to_str(trade.timeframe),
+                                's': trade.state_to_str(),
+                                'b': strategy_trader.instrument.format_price(trade.best_price()),
+                                'w': strategy_trader.instrument.format_price(trade.worst_price()),
+                                'bt': trade.best_price_timestamp(),
+                                'wt': trade.worst_price_timestamp(),
+                                'label': trade.label,
+                                'upnl': strategy_trader.instrument.format_price(trade.unrealized_profit_loss),
+                                'pnlcur': trade.profit_loss_currency
+                            })
+            except Exception as e:
+                error_logger.error(repr(e))
 
         return results
 
@@ -1413,39 +1491,43 @@ class Strategy(Runnable):
         results = []
         trader = self.trader()
 
-        for k, strategy_trader in self._strategy_traders.items():
-            pl = 0.0
-            perf = 0.0
+        with self._mutex:
+            try:
+                for k, strategy_trader in self._strategy_traders.items():
+                    pl = 0.0
+                    perf = 0.0
 
-            with strategy_trader._mutex:
-                perf = strategy_trader._stats['perf']
-                best = strategy_trader._stats['best']
-                worst = strategy_trader._stats['worst']
+                    with strategy_trader._mutex:
+                        perf = strategy_trader._stats['perf']
+                        best = strategy_trader._stats['best']
+                        worst = strategy_trader._stats['worst']
 
-                success = len(strategy_trader._stats['success'])
-                failed = len(strategy_trader._stats['failed'])
-                roe = len(strategy_trader._stats['roe'])
+                        success = len(strategy_trader._stats['success'])
+                        failed = len(strategy_trader._stats['failed'])
+                        roe = len(strategy_trader._stats['roe'])
 
-                mid = strategy_trader.instrument.market_id
-                sym = strategy_trader.instrument.symbol
+                        mid = strategy_trader.instrument.market_id
+                        sym = strategy_trader.instrument.symbol
 
-                num = len(strategy_trader.trades)
+                        num = len(strategy_trader.trades)
 
-                for trade in strategy_trader.trades:
-                    pl += trade.estimate_profit_loss(strategy_trader.instrument)
+                        for trade in strategy_trader.trades:
+                            pl += trade.estimate_profit_loss(strategy_trader.instrument)
 
-            if pl != 0.0 or num > 0 or success > 0 or failed > 0 or roe > 0:
-                results.append({
-                    'mid': mid,
-                    'sym': sym,
-                    'pl': pl,
-                    'perf': perf,
-                    'best': best,
-                    'worst': worst,
-                    'success': success,
-                    'failed': failed,
-                    'roe': roe
-                })
+                    if pl != 0.0 or num > 0 or success > 0 or failed > 0 or roe > 0:
+                        results.append({
+                            'mid': mid,
+                            'sym': sym,
+                            'pl': pl,
+                            'perf': perf,
+                            'best': best,
+                            'worst': worst,
+                            'success': success,
+                            'failed': failed,
+                            'roe': roe
+                        })
+            except Exception as e:
+                error_logger.error(repr(e))
 
         return results
 
@@ -1481,62 +1563,66 @@ class Strategy(Runnable):
 
         trader = self.trader()
 
-        for k, strategy_trader in self._strategy_traders.items():
-            profit_loss = 0.0
-            trades = []
-            perf = 0.0
+        with self._mutex:
+            try:
+                for k, strategy_trader in self._strategy_traders.items():
+                    profit_loss = 0.0
+                    trades = []
+                    perf = 0.0
 
-            with strategy_trader._mutex:
-                perf = strategy_trader._stats['perf']
-                best = strategy_trader._stats['best']
-                worst = strategy_trader._stats['worst']
+                    with strategy_trader._mutex:
+                        perf = strategy_trader._stats['perf']
+                        best = strategy_trader._stats['best']
+                        worst = strategy_trader._stats['worst']
 
-                success = len(strategy_trader._stats['success'])
-                failed = len(strategy_trader._stats['failed'])
-                roe = len(strategy_trader._stats['roe'])
+                        success = len(strategy_trader._stats['success'])
+                        failed = len(strategy_trader._stats['failed'])
+                        roe = len(strategy_trader._stats['roe'])
 
-                market = trader.market(strategy_trader.instrument.market_id) if trader else None
-                for trade in strategy_trader.trades:
-                    trade_pl = trade.estimate_profit_loss(strategy_trader.instrument)
+                        market = trader.market(strategy_trader.instrument.market_id) if trader else None
+                        for trade in strategy_trader.trades:
+                            trade_pl = trade.estimate_profit_loss(strategy_trader.instrument)
 
-                    trades.append({
-                        'id': trade.id,
-                        'eot': trade.entry_open_time,
-                        'd': trade.direction_to_str(),
-                        'l': strategy_trader.instrument.format_price(trade.order_price),
-                        'aep': strategy_trader.instrument.format_price(trade.entry_price),
-                        'axp': strategy_trader.instrument.format_price(trade.exit_price),
-                        'q': strategy_trader.instrument.format_quantity(trade.order_quantity),
-                        'e': strategy_trader.instrument.format_quantity(trade.exec_entry_qty),
-                        'x': strategy_trader.instrument.format_quantity(trade.exec_exit_qty),
-                        'tp': strategy_trader.instrument.format_price(trade.take_profit),
-                        'sl': strategy_trader.instrument.format_price(trade.stop_loss),
-                        'pl': trade_pl,
-                        'tf': timeframe_to_str(trade.timeframe),
-                        's': trade.state_to_str(),
-                        'b': strategy_trader.instrument.format_price(trade.best_price()),
-                        'w': strategy_trader.instrument.format_price(trade.worst_price()),
-                        'bt': trade.best_price_timestamp(),
-                        'wt': trade.worst_price_timestamp(),
-                        'label': trade.label,
-                        'upnl': "%.f" % trade.unrealized_profit_loss,
-                        'pnlcur': trade.profit_loss_currency
+                            trades.append({
+                                'id': trade.id,
+                                'eot': trade.entry_open_time,
+                                'd': trade.direction_to_str(),
+                                'l': strategy_trader.instrument.format_price(trade.order_price),
+                                'aep': strategy_trader.instrument.format_price(trade.entry_price),
+                                'axp': strategy_trader.instrument.format_price(trade.exit_price),
+                                'q': strategy_trader.instrument.format_quantity(trade.order_quantity),
+                                'e': strategy_trader.instrument.format_quantity(trade.exec_entry_qty),
+                                'x': strategy_trader.instrument.format_quantity(trade.exec_exit_qty),
+                                'tp': strategy_trader.instrument.format_price(trade.take_profit),
+                                'sl': strategy_trader.instrument.format_price(trade.stop_loss),
+                                'pl': trade_pl,
+                                'tf': timeframe_to_str(trade.timeframe),
+                                's': trade.state_to_str(),
+                                'b': strategy_trader.instrument.format_price(trade.best_price()),
+                                'w': strategy_trader.instrument.format_price(trade.worst_price()),
+                                'bt': trade.best_price_timestamp(),
+                                'wt': trade.worst_price_timestamp(),
+                                'label': trade.label,
+                                'upnl': "%.f" % trade.unrealized_profit_loss,
+                                'pnlcur': trade.profit_loss_currency
+                            })
+
+                            profit_loss += trade_pl
+
+                    results.append({
+                        'mid': strategy_trader.instrument.market_id,
+                        'sym': strategy_trader.instrument.symbol,
+                        'pl': profit_loss,
+                        'perf': perf,
+                        'trades': trades,
+                        'best': best,
+                        'worst': worst,
+                        'success': success,
+                        'failed': failed,
+                        'roe': roe
                     })
-
-                    profit_loss += trade_pl
-
-            results.append({
-                'mid': strategy_trader.instrument.market_id,
-                'sym': strategy_trader.instrument.symbol,
-                'pl': profit_loss,
-                'perf': perf,
-                'trades': trades,
-                'best': best,
-                'worst': worst,
-                'success': success,
-                'failed': failed,
-                'roe': roe
-            })
+            except Exception as e:
+                error_logger.error(repr(e))
 
         return results
 
@@ -2356,6 +2442,32 @@ class Strategy(Runnable):
 
         return results
 
+    def cmd_trade_close_all(self, strategy_trader, data):
+        """
+        Close any active trade for the strategy trader, at market, deleted related orders.
+        """
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        # @todo
+
+        return results
+
+    def cmd_trade_sell_all(self, strategy_trader, data):
+        """
+        Assign a free quantity of an asset to a newly created trade according data on given strategy_trader.
+        """
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        # @todo
+
+        return results
+
     def cmd_strategy_trader_modify(self, strategy_trader, data):
         """
         Modify a strategy-trader state, a region or an alert.
@@ -2581,6 +2693,10 @@ class Strategy(Runnable):
 
                     for region in strategy_trader.regions:
                         results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
+
+            elif detail == "alert":
+                # @todo
+                pass
 
             elif detail == "status":
                 # status

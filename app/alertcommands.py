@@ -11,10 +11,9 @@ from terminal.command import Command
 from strategy.strategy import Strategy
 from trader.trader import Trader
 
-from terminal.terminal import Terminal
 from common.utils import timeframe_from_str
-
 from instrument.instrument import Instrument
+from strategy.alert.alert import Alert
 
 
 class PriceCrossAlertCommand(Command):
@@ -33,8 +32,7 @@ class PriceCrossAlertCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -49,31 +47,32 @@ class PriceCrossAlertCommand(Command):
 
         price = 0.0
         cancelation = 0.0
-        price_src = 'bid'
+        price_src = Alert.PRICE_SRC_BID
 
-        # ie ":PCA _ EURUSD bid > 1.12"
-        if len(args) < 4:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+        # ie ":PCA _ EURUSD bid >1.12"
+        if len(args) < 3:
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
 
             for value in args[2:]:
-                if value == '>':
+                if value.startswith('>'):
                     direction = 1
-                elif value == '<':
+                    price = float(value[1:])
+                elif value.startswith('<'):
                     direction = -1
+                    price = float(value[1:])
                 elif value == "bid":
-                    price_src = "bid"
+                    price_src = Alert.PRICE_SRC_BID
                 elif value == "ofr":
-                    price_src = "ofr"
+                    price_src = Alert.PRICE_SRC_OFR
                 elif value == "ask":
-                    price_src = "ofr"
+                    price_src = Alert.PRICE_SRC_OFR
                 elif value == "mid":
-                    price_src = "mid"
+                    price_src = Alert.PRICE_SRC_MID
                 elif value.startswith("x"):
-                    countdown = timeframe_from_str(value[1:])
+                    countdown = int(value[1:])
                 elif value.startswith("'"):
                     timeframe = timeframe_from_str(value[1:])
                 elif value.startswith('C@'):
@@ -89,8 +88,7 @@ class PriceCrossAlertCommand(Command):
                         expiry = created + duration
 
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'appliance': appliance,
@@ -107,7 +105,7 @@ class PriceCrossAlertCommand(Command):
             'cancelation': cancelation
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -133,8 +131,7 @@ class RemoveAlertCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -144,16 +141,14 @@ class RemoveAlertCommand(Command):
 
         # ie ":rmalert _ EURUSD 1"
         if len(args) < 3:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         try:
             appliance, market_id = args[0], args[1]
 
             alert_id = int(args[2])   
         except Exception:
-            Terminal.inst().action("Invalid parameters", view='status')
-            return False
+            return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'appliance': appliance,
@@ -162,7 +157,7 @@ class RemoveAlertCommand(Command):
             'alert-id': alert_id
         })
 
-        return True
+        return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -187,8 +182,7 @@ class AlertInfoCommand(Command):
 
     def execute(self, args):
         if not args:
-            Terminal.inst().action("Missing parameters", view='status')
-            return False
+            return False, "Missing parameters"
 
         appliance = None
         market_id = None
@@ -204,8 +198,7 @@ class AlertInfoCommand(Command):
                     alert_id = -1
 
             except Exception:
-                Terminal.inst().action("Invalid parameters", view='status')
-                return False
+                return False, "Invalid parameters"
 
             self._strategy_service.command(Strategy.COMMAND_TRADER_INFO, {
                 'appliance': appliance,
@@ -214,12 +207,11 @@ class AlertInfoCommand(Command):
                 'alert-id': alert_id
             })
 
-            return True
+            return True, []
         else:
-            Terminal.inst().action("Missing or invalid parameters", view='status')
-            return False
+            return False, "Missing or invalid parameters"
 
-        return False
+        return False, None
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:

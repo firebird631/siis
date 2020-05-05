@@ -29,6 +29,79 @@ GENERATED_TF = [60, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60
 TICK_STORAGE_DELAY = 0.05  # 50ms
 MAX_PENDING_TICK = 10000
 
+# class Rebuilder(Tool):
+#     """
+#     Rebuild a range of OHLCs from a sub-multiple of a timeframe and store them into the local DB.
+#     Note than the start date must start correctly for the target timeframe.
+#     For exemple, think to includes the first day of a week, when rebuild 1W from 1D, same for 4H from 1H,
+#     that will need to be modulo the previous 4H OHLC.
+#     """ 
+
+#     @classmethod
+#     def alias(cls):
+#         return "rebuild"
+
+#     @classmethod
+#     def help(cls):
+#         return ("Process the data OHLC and tick/trade/quote rebuild from a timeframe to a multiple target timeframe.",
+#                 "Specify --broker, --market, --timeframe, --from and --to date, --timeframe, and --target or --cascaded.",)
+
+#     @classmethod
+#     def detailed_help(cls):
+#         return tuple()
+
+#     @classmethod
+#     def need_identity(cls):
+#         return True
+
+#     def __init__(self, options):
+#         super().__init__("rebuilder", options)
+
+#         self._watcher_service = None
+
+#     def check_options(self, options):
+#         if not options.get('market') or not options.get('broker'):
+#             return False
+
+#         if not options.get('to'):
+#             return False
+
+#         if not options.get('from') or not options.get('update'):
+#             return False
+
+#         if options.get('from') and options.get('update'):            
+#             error_logger.error("Either --from or --update parameters must be defined")
+#             return False
+
+#         return True
+
+#     def init(self, options):
+#         # database manager
+#         Database.create(options)
+#         Database.inst().setup(options)
+
+#         # want speedup the database inserts
+#         Database.inst().enable_fetch_mode()
+
+#         return True
+
+#     def run(self, options):
+#         markets = options['market'].split(',')
+
+#         return True
+
+#     def terminate(self, options):
+#         Terminal.inst().info("Flushing database...")
+#         Database.terminate()
+
+#         return True
+
+#     def forced_interrupt(self, options):
+#         return True
+
+
+# tool = Rebuilder
+
 
 def store_ohlc(broker_name, market_id, timeframe, ohlc):
     Database.inst().store_market_ohlc((
@@ -249,7 +322,7 @@ def do_rebuilder(options):
                 if timestamp - prev_update >= progression_incr:
                     progression += 1
 
-                    Terminal.inst().info("%i%% on %s, %s ohlcs for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
+                    Terminal.inst().info("%i%% on %s, %s ohlcs per bulk of 100, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
 
                     prev_update = timestamp
                     count = 0
@@ -261,7 +334,7 @@ def do_rebuilder(options):
                     timestamp += timeframe * 100
 
             if progression < 100:
-                Terminal.inst().info("100%% on %s, %s ohlcs for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
+                Terminal.inst().info("100%% on %s, %s ohlcs per bulk of 100, current total of %s..." % (format_datetime(timestamp), count, total_count))
 
     Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 

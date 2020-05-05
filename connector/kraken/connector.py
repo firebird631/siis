@@ -44,6 +44,9 @@ class Connector(object):
     # @ref WSS https://www.kraken.com/en-us/features/websocket-api
     """
 
+    CANDLES_HISTORY_MAX_RETRY = 3
+    TRADES_HISTORY_MAX_RETRY = 3
+
     INTERVALS = {
         1: 60.0,        # 1m
         5: 300.0,
@@ -186,6 +189,7 @@ class Connector(object):
         prev_last_ts = ""
         last_datetime = str(int(from_date.timestamp() * 1000000000))
         to_ts = to_date.timestamp()
+        retry_count = 0
 
         while 1:
             if last_datetime:
@@ -196,6 +200,15 @@ class Connector(object):
             if results.get('error', []):
                 if results['error'][0] == "EAPI:Rate limit exceeded":
                     time.sleep(5.0)
+                    continue
+
+                elif results['error'][0] == "EService:Busy":
+                    time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
+                        raise ValueError("Kraken historical trades : %s !" % '\n'.join(results['error']))
+
                     continue
                 else:
                     raise ValueError("Kraken historical trades : %s !" % '\n'.join(results['error']))
@@ -242,6 +255,7 @@ class Connector(object):
 
         last_datetime = from_date.timestamp() - 1.0  # minus 1 sec else will not have from current
         to_ts = to_date.timestamp()
+        retry_count = 0
 
         delta = None
 
@@ -256,7 +270,20 @@ class Connector(object):
             results = self.query_public('OHLC', params)
 
             if results.get('error', []):
-                raise ValueError("Kraken historical candle : %s !" % '\n'.join(results['error']))
+                if results['error'][0] == "EAPI:Rate limit exceeded":
+                    time.sleep(5.0)
+                    continue
+
+                elif results['error'][0] == "EService:Busy":
+                    time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
+                        raise ValueError("Kraken historical candles : %s !" % '\n'.join(results['error']))
+
+                    continue
+                else:
+                    raise ValueError("Kraken historical trades : %s !" % '\n'.join(results['error']))
 
             candles = results.get('result', {}).get(symbol, [])
 

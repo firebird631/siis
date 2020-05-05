@@ -472,7 +472,7 @@ class StrategyService(Service):
             self._signals_handler.notify(signal)
 
     def command(self, command_type, data):
-        if command_type == Strategy.COMMAND_INFO:
+        if command_type == Strategy.COMMAND_INFO or command_type == Strategy.COMMAND_TRADE_EXIT_ALL:
             # any or specific commands
             appliance_identifier = data.get('appliance')
 

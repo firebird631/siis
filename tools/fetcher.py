@@ -203,9 +203,19 @@ def do_fetcher(options):
                             else:
                                 # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
                                 last_ohlc = Database.inst().get_last_ohlc(options['broker'], market_id, timeframe)
-                                last_date = datetime.fromtimestamp(last_ohlc.timestamp, tz=UTC()) if last_ohlc else None
 
-                                options['from'] = last_date
+                                if last_ohlc:
+                                    # if cascaded is defined, then we need more past data to have a full range
+                                    # (until 7x1d for the week, until 4x1h for the 4h...)
+                                    if cascaded:
+                                        last_timestamp = Instrument.basetime(cascaded, last_ohlc.timestamp)
+                                    else:
+                                        last_timestamp = last_ohlc.timestamp
+
+                                    last_date = datetime.fromtimestamp(last_timestamp, tz=UTC())
+                                    options['from'] = last_date
+                                else:
+                                    options['from'] = None
 
                         fetcher.fetch_and_generate(market_id, timeframe,
                             options.get('from'), options.get('to'), options.get('last'),

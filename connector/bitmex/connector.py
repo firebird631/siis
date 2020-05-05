@@ -20,6 +20,9 @@ logger = logging.getLogger('siis.connector.bitmex')
 
 class Connector(object):
 
+    TRADES_HISTORY_MAX_RETRY = 3
+    CANDLES_HISTORY_MAX_RETRY = 3
+
     TIMEFRAME_TO_BIN_SIZE = {
         60: '1m',
         5*60: '5m',
@@ -294,6 +297,7 @@ class Connector(object):
         start = 0
         last_datetime = from_date
         last_trade_id = ""
+        retry_count = 0  # in case of request http error (timeout, expired timestamp)
 
         while 1:
             if last_datetime:
@@ -301,7 +305,12 @@ class Connector(object):
 
             params['start'] = start  # offset if timestamp are same
 
-            results = self.request(path=endpoint, query=params, verb='GET')
+            try:
+                results = self.request(path=endpoint, query=params, verb='GET')
+            except requests.exceptions.HTTPError as e:
+                retry_count += 1
+                if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
+                    raise e
 
             for c in results:
                 if not c['timestamp']:
@@ -386,7 +395,12 @@ class Connector(object):
             if last_datetime:
                 params['startTime'] = self._format_datetime(last_datetime)
 
-            results = self.request(path=endpoint, query=params, verb='GET')
+            try:
+                results = self.request(path=endpoint, query=params, verb='GET')
+            except requests.exceptions.HTTPError as e:
+                retry_count += 1
+                if retry_count > Connector.CANDLES_HISTORY_MAX_RETRY:
+                    raise e
 
             for c in results:
                 dt = self._parse_datetime(c['timestamp']).replace(tzinfo=UTC())

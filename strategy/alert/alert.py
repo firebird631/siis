@@ -22,7 +22,7 @@ class Alert(object):
     The direction of the alert is optional.
     """
 
-    __slots__ = '_timeframe', '_id', '_created', '_dir', '_expiry', '_message'
+    __slots__ = '_timeframe', '_id', '_created', '_dir', '_expiry', '_countdown', '_message'
 
     VERSION = "1.0.0"
 
@@ -34,13 +34,16 @@ class Alert(object):
     ALERT_PRICE_PCT_CHANGE_UP = 5
     ALERT_PRICE_PCT_CHANGE_DOWN = 6
 
+    PRICE_SRC_BID = 0
+    PRICE_SRC_OFR = 1
+    PRICE_SRC_MID = 2
+
     NAME = "undefined"
     REGION = ALERT_UNDEFINED
 
     def __init__(self, created, timeframe):
         self._id = -1                # alert unique identifier
         self._created = created      # creation timestamp (always defined)
-        self._dir = direction        # apply on long, short or both signal direction
         self._expiry = 0             # expiration timestamp (<=0 never)
         self._countdown = -1         # max trigger occurences, -1 mean forever (until expiry)
         self._timeframe = timeframe  # specific timeframe or 0 for any
@@ -132,7 +135,17 @@ class Alert(object):
             # missing timeframe
             return None
 
-        return self.test(timestamp, bid, ofr, timeframes)
+        if self._countdown == 0:
+            # countdown reached 0 previously
+            return None
+
+        result = self.test(timestamp, bid, ofr, timeframes)
+
+        if result and self._countdown > 0:
+            # dec countdown
+            self._countdown -= 1
+
+        return result
 
     #
     # overrides
@@ -168,7 +181,7 @@ class Alert(object):
         @param bid float last bid price
         @param ofr float last ofr price
         """
-        return self._expiry > 0 and timestamp >= self._expiry
+        return (self._expiry > 0 and timestamp >= self._expiry) or self._countdown == 0
 
     def str_info(self):
         """
@@ -234,7 +247,7 @@ class Alert(object):
             'timeframe': timeframe_to_str(self._timeframe),
             'message': self._message,
             'trigger': 0,  # 1 for up, -1 for down
-            'last-price': strategy_trader.instrument.format_price((bid + ofr) * 0.5),
+            'last-price': strategy_trader.instrument.format_price((strategy_trader.instrument.market_price)),
             'reason': "",  # alert specific detail of the trigger
         }
 

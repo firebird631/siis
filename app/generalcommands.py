@@ -20,12 +20,12 @@ class HelpCommand(Command):
     def execute(self, args):
         if not args:
             display_help(self._commands_handler)
-            return True
+            return True, []
         elif len(args) == 1:
             display_command_help(self._commands_handler, args[0])
-            return True
+            return True, []
 
-        return False
+        return False, None
 
 
 class UserHelpCommand(Command):
@@ -40,12 +40,12 @@ class UserHelpCommand(Command):
     def execute(self, args):
         if not args:
             display_help(self._commands_handler, True)
-            return True
+            return True, []
         elif len(args) == 1:
             display_command_help(self._commands_handler, args[0])
-            return True
+            return True, []
 
-        return False
+        return False, None
 
 
 class AliasCommand(Command):
@@ -59,7 +59,7 @@ class AliasCommand(Command):
 
     def execute(self, args):
         if len(args) < 2:
-            return False
+            return False, "Missing parameters"
 
         key = args[0]
         key_code = ""
@@ -68,15 +68,15 @@ class AliasCommand(Command):
             try:
                 num = int(key[1:])
             except ValueError:
-                return False
+                return False, "Invalid key-code"
 
             key_code = "KEY_F(%i)" % num
 
         if not key_code:
-            return False
+            return False, "Invalid key-code"
 
         self._commands_handler.set_alias(key_code, args[1:])
-        return True
+        return True, None
 
 
 class UnaliasCommand(Command):
@@ -90,7 +90,7 @@ class UnaliasCommand(Command):
 
     def execute(self, args):
         if len(args) != 1:
-            return False
+            return False, "Missing parameters"
 
         key = args[0]
         key_code = ""
@@ -99,15 +99,15 @@ class UnaliasCommand(Command):
             try:
                 num = int(key[1:])
             except ValueError:
-                return False
+                return False, "Invalid key-code"
 
             key_code = "KEY_F(%i)" % num
 
         if not key_code:
-            return False
+            return False, "Invalid key-code"
 
         self._commands_handler.reset_alias(key_code)
-        return True
+        return True, None
 
 
 def register_general_commands(commands_handler):

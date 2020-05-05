@@ -6,6 +6,7 @@
 import json
 
 from app.appexception import CommandHandlerException, CommandException, CommandAutocompleteException, CommandParseException, CommandExecException
+from terminal.terminal import Terminal
 
 import logging
 logger = logging.getLogger('siis.command')
@@ -64,8 +65,9 @@ class Command(object):
         Override this method to perform the command.
 
         @param args list without the first name of the command
+        @return A tuple(boolean, None or str or list(str) or tuple(str)) Results status, list of message str to display.
         """
-        return True
+        return True, None
 
     def completion(self, args, tab_pos, direction):
         """
@@ -203,6 +205,34 @@ class CommandsHandler(object):
         if command.accelerator:
             self._accelerators[command.accelerator] = command.name
 
+    def print_exec_msg(self, command_name, success, msgs):
+        """
+        Display to the terminal the results of a command execution.
+        If the msgs is a single str or None it will be displayed as an error, else as an action.
+        If the msgs list if None a default message is displayed as an error or an action.
+        If the msgs is a str it is displayed as an error or an action.
+        If the msgs is a list or a tuple the messages will be displayed in console.
+        If the msgs is an empty list it will display nothing more than the command could have already displayed internally.
+        """
+        if msgs is None:
+            if success:
+                Terminal.inst().action("Command %s done" % command_name, view='status')
+            else:
+                Terminal.inst().error("Command %s failed" % command_name, view='status')
+        else:
+            if success:
+                if type(msgs) == str:
+                    Terminal.inst().action(msgs, view='status')
+                elif type(msgs) == list or type(msgs) == tuple:
+                    for msg in msgs:
+                        Terminal.inst().info(msg, view='content')
+            else:
+                if type(msgs) == str:
+                    Terminal.inst().error(msgs, view='status')
+                elif type(msgs) == list or type(msgs) == tuple:
+                    for msg in msgs:
+                        Terminal.inst().error(msg, view='content')
+
     def process_accelerator(self, key):
         """
         Process from accelerator (key shortcut).
@@ -212,7 +242,8 @@ class CommandsHandler(object):
             command = self._commands.get(command_name)
             if command:
                 try:
-                    command.execute(command.default_args())
+                    success, msgs = command.execute(command.default_args())
+                    self.print_exec_msg(command_name, success, msgs)
                 except Exception as e:
                     logger.error(str(e))
                     return False
@@ -246,7 +277,8 @@ class CommandsHandler(object):
 
             if cmd in self._commands:
                 try:
-                    self._commands[cmd].execute(args[1:])
+                    success, msgs = self._commands[cmd].execute(args[1:])
+                    self.print_exec_msg(cmd, success, msgs)
                 except Exception as e:
                     logger.error(str(e))
                     return False
@@ -257,7 +289,8 @@ class CommandsHandler(object):
                 command_name = self._alias[cmd]
                 if command_name in self._commands:
                     try:
-                        result = self._commands[command_name].execute(args[1:])
+                        success, msgs = self._commands[command_name].execute(args[1:])
+                        self.print_exec_msg(command_name, success, msgs)
                     except Exception as e:
                         logger.error(str(e))
                         return False

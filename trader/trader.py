@@ -35,6 +35,7 @@ class Trader(Runnable):
     Trader base class to specialize per broker.
 
     @todo Not as central ressource, only for intial or informational, strategy must have theirs local proxy methods/data.
+    @todo Create sell order for COMMAND_SELL_ALL_ASSET.
     """
 
     MAX_SIGNALS = 1000                        # max signals queue size before ignore some market data updates
@@ -48,6 +49,8 @@ class Trader(Runnable):
     # order commands
     COMMAND_CLOSE_MARKET = 110                # close a managed or unmanaged position at market now
     COMMAND_CLOSE_ALL_MARKET = 111            # close any positions of this account at market now
+    COMMAND_CANCEL_ALL_ORDER = 112            # cancel any pending orders
+    COMMAND_SELL_ALL_ASSET = 113              # sell any quantity of asset at market price
 
     def __init__(self, name, service):
         super().__init__("td-%s" % name)
@@ -132,7 +135,7 @@ class Trader(Runnable):
 
     def symbols_ids(self):
         """
-        Returns the complete list containing market-ids, theirs alias and theirs related symbol name.
+        Returns the complete list containing market-ids, their alias and their related symbol name.
         """
         names = []
 
@@ -287,34 +290,15 @@ class Trader(Runnable):
         Some parts are mutexed some others are not.
         """
         if command_type == Trader.COMMAND_INFO:
-            # info on the trade
             self.cmd_trader_info(data)
-
         elif command_type == Trader.COMMAND_CLOSE_MARKET:
-            # manually close a specified position at market now
-            with self._mutex:
-                for k, position in self._positions.items():
-                    if position.key == data['key']:
-                        # query close position
-                        market = self.market(position.symbol)
-                        if market:
-                            self.close_position(position.position_id, market, position.direction, position.quantity, True, None)
-
-                        Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
-                        break
-
+            self.cmd_close_market(data)
         elif command_type == Trader.COMMAND_CLOSE_ALL_MARKET:
-            # manually close any position related to this account/trader at market now
-            with self._mutex:
-                for k, position in self._positions.items():
-                    # query close position
-                    market = self.market(position.symbol)
-
-                    if market:
-                        self.close_position(position.position_id, market, position.direction, position.quantity, True, None)
-
-                    Terminal.inst().action("Closing position %s..." % (position.position_id, ), view='content')
-                    break
+            self.cmd_close_all_market(data)
+        elif command_type == Trader.COMMAND_CANCEL_ALL_ORDER:
+            self.cmd_cancel_all_order(data)
+        elif command_type == Trader.COMMAND_SELL_ALL_ASSET:
+            self.cmd_sell_all_asset(data)
 
     def ping(self, timeout):
         self._ping = (0, None, True)
@@ -1451,3 +1435,104 @@ class Trader(Runnable):
     def cmd_trader_info(self, data):
         # info on the global trader instance
         pass
+
+    def cmd_close_market(self, data):
+        """Manually close a specified position at market now"""
+        position_id = None
+        direction = 0
+        quantity = 0.0
+        market = None
+
+        with self._mutex:
+            for k, position in self._positions.items():
+                if position.key == data['key']:
+                    position_id = position.position_id
+                    direction = position.direction
+                    quantity = position.quantity
+
+                    market = self.market(position.symbol)
+
+        if position_id:
+            # query close position
+            if market:
+                try:
+                    self.close_position(position_id, market, direction, quantity, True, None)
+                    Terminal.inst().action("Closing position %s..." % (position_id, ))
+                except Exception as e:
+                    error_logger.error(repr(e))
+            else:
+                Terminal.inst().error("No market found to close position %s" % (position_id, ))
+        else:
+            Terminal.inst().error("No position found to close for key %s" % (data['key'], ))
+
+    def cmd_close_all_market(self, data):
+        """Manually close any positions related to this account/trader at market now"""
+        positions = []
+
+        with self._mutex:
+            for k, position in self._positions.items():
+                market = self.market(position.symbol)
+
+                if market:
+                    positions.append((position.position_id, market, position.direction, position.quantity))
+                else:
+                    Terminal.inst().error("No market found to close position %s..." % (position.position_id, ))
+
+        for position in positions:
+            # query close position
+            try:
+                self.close_position(position[0], position[1], position[2], position[3], True, None)
+                Terminal.inst().action("Closing position %s..." % (position.position_id, ))
+            except Exception as e:
+                error_logger.error(repr(e))
+
+    def cmd_cancel_all_order(self, data):
+        orders = []
+
+        with self._mutex:
+            for k, order in self._orders.items():
+                market = self.market(order.symbol)
+
+                if market:
+                   orders.append((order.order_id, market))                        
+                else:
+                    Terminal.inst().error("No market found to cancel order %s..." % (order.order_id, ))
+
+        for order in orders:
+            # query cancel order
+            try:
+                self.cancel_order(order[0], order[1])
+                Terminal.inst().action("Cancel order %s..." % (order[0], ))
+            except Exception as e:
+                error_logger.error(repr(e))
+
+    def cmd_sell_all_asset(self, data):
+        assets = []
+
+        with self._mutex:
+            for k, asset in self._assets.items():
+                # query create order to sell any asset quantity
+                # try over the primary currency, then over the alt one
+                # user could have to to it in two phase
+                market = None
+
+                for market_id in asset.market_ids:
+                    m = self.market(asset.market_ids)
+
+                    if m.quote == self._account.currency:
+                        market = m  # first choice
+                        break
+
+                    elif m.quote == self._account.alt_currency:
+                        market = m  # second choice
+
+                if market:
+                    assets.append(asset.symbol, market, asset.free)
+                else:
+                    Terminal.inst().error("No market found to sell all off asset %s..." % (asset.symbol, ))
+
+        for asset in assets:
+            # @todo order
+            pass
+            # self.create_order(order, asset[1])
+            # Terminal.inst().action("Create order %s to sell all of %s on %s..." % (order.order_id, asset[0], asset[1].market_id))
