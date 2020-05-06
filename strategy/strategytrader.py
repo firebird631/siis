@@ -735,7 +735,7 @@ class StrategyTrader(object):
                     else:
                         result = alert.test_alert(timestamp, bid, ofr, timeframes)
                         if result:
-                            # alert triggered, dump message could be done user alert dump_notify and result data
+                            # alert triggered, dump message could be done with alert dump_notify and result data
                             results.append((alert, result))
 
                 if mutated:

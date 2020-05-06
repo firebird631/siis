@@ -4,6 +4,7 @@
 # Strategy price alert
 
 from .alert import Alert
+from instrument.instrument import Instrument
 
 import logging
 logger = logging.getLogger('siis.strategy.alert.price')
@@ -14,7 +15,7 @@ class PriceCrossAlert(Alert):
     @todo Complete
     """
 
-    __slots__ = '_price', '_price_src', '_last_price'
+    __slots__ = '_price', '_price_src', '_last_price', '_last_trigger_timestamp'
 
     NAME = "price-cross"
     ALERT = Alert.ALERT_PRICE_CROSS
@@ -27,6 +28,7 @@ class PriceCrossAlert(Alert):
         self._price_src = PriceCrossAlert.PRICE_SRC_BID  # source of the price (bid, ofr or mid)
 
         self._last_price = 0.0
+        self._last_trigger_timestamp = 0.0
 
     #
     # processing
@@ -44,45 +46,47 @@ class PriceCrossAlert(Alert):
                 self._price_src in (PriceCrossAlert.PRICE_SRC_BID, PriceCrossAlert.PRICE_SRC_OFR, PriceCrossAlert.PRICE_SRC_MID))
 
     def test(self, timestamp, bid, ofr, timeframes):
-        result = False
+        trigger = 0
+
+        if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
+            ref_price = bid
+        elif self._price_src == PriceCrossAlert.PRICE_SRC_OFR:
+            result = ofr >= self._price and self._last_price < self._price
+            ref_price = ofr
+        else:
+            ref_price = mid = (bid + ofr) * 0.5
 
         if self._last_price <= 0.0:
-            if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
-                self._last_price = bid
-            elif self._price_src == PriceCrossAlert.PRICE_SRC_OFR:
-                self._last_price = ofr
-            else:
-                mid = (bid + ofr) * 0.5
-                self._last_price = mid
+            self._last_price = ref_price
 
             # need one more sample
-            return False
+            return None
 
         if self._dir > 0:
-            if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
-                result = bid >= self._price and self._last_price < self._price
-                self._last_price = bid
-            elif self._price_src == PriceCrossAlert.PRICE_SRC_OFR:
-                result = ofr >= self._price and self._last_price < self._price
-                self._last_price = ofr
-            else:
-                mid = (bid + ofr) * 0.5
-                result = mid > self._price and self._last_price < self._price
-                self._last_price = mid
-
+            if ref_price >= self._price and self._last_price < self._price:
+                trigger = 1
         elif self._dir < 0:
-            if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
-                result = bid <= self._price and self._last_price < self._price
-                self._last_price = bid
-            elif self._price_src == PriceCrossAlert.PRICE_SRC_OFR:
-                result = ofr <= self._price and self._last_price < self._price
-                self._last_price = ofr
-            else:
-                mid = (bid + ofr) * 0.5
-                result = mid < self._price and self._last_price > self._price
-                self._last_price = mid
+            if ref_price <= self._price and self._last_price > self._price:
+                trigger = -1
 
-        return result
+        self._last_price = ref_price
+
+        if trigger == 0:
+            return None
+
+        if self._timeframe > 0:
+            # check if occurs many time during the same timeframe
+            prev_bt = Instrument.basetime(self._timeframe, self._last_trigger_timestamp)
+            cur_bt = Instrument.basetime(self._timeframe, timestamp)
+
+            if cur_bt <= prev_bt:
+                return None
+
+        self._last_trigger_timestamp = timestamp
+
+        return {
+            'trigger': trigger,
+        }
 
     def can_delete(self, timestamp, bid, ofr):
         return (self._expiry > 0 and timestamp >= self._expiry) or self._countdown == 0
@@ -100,11 +104,15 @@ class PriceCrossAlert(Alert):
     # dumps for notify/history
     #
 
-    def dumps_notify(self, timestamp, result, strategy_trader):
-        result = super().dumps_notify(timestamp, result, strategy_trader)
+    def dumps_notify(self, timestamp, alert_result, strategy_trader):
+        result = super().dumps_notify(timestamp, alert_result, strategy_trader)
 
-        # result['trigger'] =
-        # result['reason'] = 
+        result['trigger'] = alert_result['trigger']
+
+        if alert_result['trigger'] > 0:
+            result['reason'] = "Price cross-up %s" % self._price
+        elif alert_result['trigger'] < 0:
+            result['reason'] = "Price cross-down %s" % self._price
 
         return result
 

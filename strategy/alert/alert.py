@@ -231,7 +231,7 @@ class Alert(object):
         else:
             return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
-    def dumps_notify(self, timestamp, result, strategy_trader):
+    def dumps_notify(self, timestamp, alert_result, strategy_trader):
         """
         Dumps to dict for notify/history.
         """

@@ -213,7 +213,6 @@ class Strategy(Runnable):
         """
         if alert:
             signal_data = alert.dumps_notify(timestamp, result, strategy_trader)
-            Terminal.inst().info(str(signal_data))
             self.service.notify(Signal.SIGNAL_STRATEGY_ALERT, self._name, signal_data)
 
     def setup_streaming(self):
@@ -2549,9 +2548,13 @@ class Strategy(Runnable):
                     created = float(data.get('created', 0.0))
                     expiry = float(data.get('expiry', 0.0))
                     countdown = int(data.get('countdown', -1))
+                    timeframe = 0
 
-                    if 'timeframe' in data and type(data['timeframe']) is str:
-                        timeframe = timeframe_from_str(data['timeframe'])
+                    if 'timeframe' in data:
+                        if type(data['timeframe']) is str:
+                            timeframe = timeframe_from_str(data['timeframe'])
+                        elif type(data['timeframe']) in (float, int):
+                            timeframe = data['timeframe']
 
                 except ValueError:
                     results['error'] = True
