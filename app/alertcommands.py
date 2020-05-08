@@ -119,7 +119,6 @@ class PriceCrossAlertCommand(Command):
         return args, 0
 
 
-
 class RemoveAlertCommand(Command):
 
     SUMMARY = "to manually remove an alert from a strategy"
@@ -173,7 +172,7 @@ class RemoveAlertCommand(Command):
 
 class AlertInfoCommand(Command):
 
-    SUMMARY = "to get alert info of a specific strategy"
+    SUMMARY = "to get alert info for a specific strategy"
 
     def __init__(self, strategy_service):
         super().__init__('alert', 'A')

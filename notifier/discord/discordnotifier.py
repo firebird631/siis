@@ -31,6 +31,7 @@ class DiscordNotifier(Notifier):
     """
     Discord notifier for webhooks.
     @todo Active and history tables but this will need at least a timer or usage of API to delete the previous table.
+    @todo Strategey alert notifications
     """
 
     def __init__(self, identifier, service, options):
@@ -55,7 +56,14 @@ class DiscordNotifier(Notifier):
         self._active_trades = notifier_config.get('active-trades', False)
         self._historical_trades = notifier_config.get('historical-trades', False)
 
-        self._signals_opts = notifier_config.get('signals', ("entry", "exit"))  # "take-profit", "stop-loss", "quantity"
+        self._signals_opts = notifier_config.get('signals', (
+                "alert",
+                "entry",
+                "exit",
+                # "take-profit",
+                # "stop-loss",
+                # "quantity",
+            ))
 
         self._strategy_service = None
 
@@ -88,7 +96,7 @@ class DiscordNotifier(Notifier):
         message = ""
 
         if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
-            if not signal.data['way'] in self._signals_opts:
+            if signal.data['way'] not in self._signals_opts:
                 return
 
             # generic signal reason
@@ -128,6 +136,38 @@ class DiscordNotifier(Notifier):
             if signal.data.get('label') is not None:
                 message += " (%s)" % signal.data['label']
 
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_ALERT:
+            if 'alert' not in self._signals_opts:
+                return
+
+            # detailed alert reason
+            reason = signal.data['reason']
+
+            if signal.data['trigger'] > 0:
+                border = "green"
+            elif signal.data['trigger'] < 0:
+                border = "orange"
+            else:
+                border = "default"
+
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            label = "Alert %s %s on %s" % (signal.data['name'], signal.data['reason'], signal.data['symbol'],)
+
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+
+            message = "%s %s@%s (%s) %s at %s - #%s in %s" % (
+                signal.data['name'],
+                signal.data['symbol'],
+                signal.data['last-price'],
+                signal.data['app-name'],
+                signal.data['reason'],
+                ldatetime,
+                signal.data['id'],
+                signal.data['timeframe'])
+
+            if signal.data.get('user') is not None:
+                message += " (%s)" % signal.data['user']
+
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return
 
@@ -147,7 +187,7 @@ class DiscordNotifier(Notifier):
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_ALERT:
                 self.push_signal(signal)
 
     #

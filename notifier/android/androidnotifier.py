@@ -29,6 +29,8 @@ error_logger = logging.getLogger('siis.error.notifier.android')
 class AndroidNotifier(Notifier):
     """
     Android Firebase push notifier.
+
+    @todo Strategey alert notifications
     """
 
     def __init__(self, identifier, service, options):
@@ -54,11 +56,13 @@ class AndroidNotifier(Notifier):
             self._channels['watchdog'] = "/topics/default"  # @todo
 
         self._signals_opts = notifier_config.get('signals', (
+                "alert",
                 "entry",
                 "exit",
                 "quantity",
                 "stop-loss",
-                "take-profit"))
+                "take-profit"
+            ))
 
         self._watchdog = notifier_config.get('watchdog', ("timeout", "unreachable"))
         self._account = notifier_config.get('account', ("balance", "assets-balance"))
@@ -127,6 +131,40 @@ class AndroidNotifier(Notifier):
             if signal.data.get('label') is not None:
                 message += " (%s)" % signal.data['label']
 
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_ALERT:
+            if 'alert' not in self._signals_opts:
+                return
+
+            channel = self._channels.get('signals')  # @todo
+
+            # detailed alert reason
+            reason = signal.data['reason']
+
+            if signal.data['trigger'] > 0:
+                notifcation_type = "alert-up"
+            elif signal.data['trigger'] < 0:
+                notifcation_type = "alert-down"
+            else:
+                notifcation_type = "alert"
+
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            label = "Alert %s %s on %s" % (signal.data['name'], signal.data['reason'], signal.data['symbol'],)
+
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+
+            message = "%s %s@%s (%s) %s at %s - #%s in %s" % (
+                signal.data['name'],
+                signal.data['symbol'],
+                signal.data['last-price'],
+                signal.data['app-name'],
+                signal.data['reason'],
+                ldatetime,
+                signal.data['id'],
+                signal.data['timeframe'])
+
+            if signal.data.get('user') is not None:
+                message += " (%s)" % signal.data['user']
+
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return
 
@@ -167,7 +205,7 @@ class AndroidNotifier(Notifier):
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_ALERT:
                 self.push_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHDOG:

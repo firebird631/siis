@@ -12,10 +12,13 @@ logger = logging.getLogger('siis.strategy.alert.price')
 
 class PriceCrossAlert(Alert):
     """
-    @todo Complete
+    Alert when price cross up or down a specified value, and at a timeframe or each time if no timeframe defined.
+
+    @todo Persistance
+    @todo Cancelation price
     """
 
-    __slots__ = '_price', '_price_src', '_last_price', '_last_trigger_timestamp'
+    __slots__ = '_price', '_price_src', '_cancelation_price', '_last_price', '_last_trigger_timestamp'
 
     NAME = "price-cross"
     ALERT = Alert.ALERT_PRICE_CROSS
@@ -27,6 +30,8 @@ class PriceCrossAlert(Alert):
         self._price = 0.0  # price value
         self._price_src = PriceCrossAlert.PRICE_SRC_BID  # source of the price (bid, ofr or mid)
 
+        self._cancelation_price = 0.0  # Remove the alert if price reach it
+
         self._last_price = 0.0
         self._last_trigger_timestamp = 0.0
 
@@ -35,9 +40,10 @@ class PriceCrossAlert(Alert):
     #
 
     def init(self, parameters):
-        self._dir = parameters['direction']
-        self._price = parameters['price']
-        self._price_src = parameters['price-src']
+        self._dir = parameters.get('direction', 0)
+        self._price = parameters.get('price', 0.0)
+        self._price_src = parameters.get('price-src', 0)
+        self._cancelation_price = parameters.get('cancelation', 0.0)
         self._last_price = 0.0
 
     def check(self):

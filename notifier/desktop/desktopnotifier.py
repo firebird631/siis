@@ -38,6 +38,8 @@ signal_logger = logging.getLogger('siis.signal.desktop')
 class DesktopNotifier(Notifier):
     """
     Desktop notifier for desktop popup and audio alerts.
+
+    @todo Strategey alert notifications
     """
 
     AUDIO_ALERT_DEFAULT = 0
@@ -49,6 +51,8 @@ class DesktopNotifier(Notifier):
     AUDIO_ALERT_SIGNAL_NEW = 6
     AUDIO_ALERT_TRADE_WIN = 7
     AUDIO_ALERT_TRADE_LOST = 8
+    AUDIO_ALERT_UP = 9
+    AUDIO_ALERT_DOWN = 10
 
     DEFAULT_AUDIO_DEVICE = "pulse"
 
@@ -63,6 +67,8 @@ class DesktopNotifier(Notifier):
         ('/usr/share/sounds/info.wav', 2, 'emblem-new'),  # "appointment-new" 
         ('/usr/share/sounds/info.wav', 2, 'emblem-default'),  # "face-smile-big"
         ('/usr/share/sounds/info.wav', 2, 'dialog-error'),
+        ('/usr/share/sounds/info.wav', 2, 'emblem-new'),
+        ('/usr/share/sounds/info.wav', 2, 'emblem-new'),
     ]
 
     ALERT_STR_TO_ID = {
@@ -74,7 +80,9 @@ class DesktopNotifier(Notifier):
         "network-offline": AUDIO_ALERT_NETWORK_OFFLINE,
         "signal-new": AUDIO_ALERT_SIGNAL_NEW,
         "trade-win": AUDIO_ALERT_TRADE_WIN,
-        "trade-lost": AUDIO_ALERT_TRADE_LOST
+        "trade-lost": AUDIO_ALERT_TRADE_LOST,
+        "alert-up": AUDIO_ALERT_UP,
+        "alert-down": AUDIO_ALERT_DOWN,
     }
 
     def __init__(self, identifier, service, options):
@@ -176,17 +184,33 @@ class DesktopNotifier(Notifier):
             if signal.data['label'] is not None:
                 message += " (%s)" % signal.data['label']
 
-            # and in signal logger (@todo to be moved)
-            # signal_logger.info(message)
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_ALERT:
+            icon = "emblem-new"
+            alert = DesktopNotifier.AUDIO_ALERT_SIGNAL_NEW
 
-        # process sound
-        if not self._backtesting and self._audible and alert is not None:
-            self.play_audio_alert(alert)
+            if signal.data['trigger'] > 0:
+                alert = DesktopNotifier.AUDIO_ALERT_UP
+                icon = self._alerts[alert][2]
+            elif signal.data['trigger'] < 0:
+                alert = DesktopNotifier.AUDIO_ALERT_DOWN
+                icon = self._alerts[alert][2]
 
-        if not self._backtesting and self._popups and message:
-            if self.notify2:
-                n = self.notify2.Notification(label, message, icon)
-                n.show()
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+
+            label = "Alert %s %s on %s" % (signal.data['name'], signal.data['reason'], signal.data['symbol'],)
+
+            message = "%s %s@%s (%s) %s at %s - #%s in %s" % (
+                signal.data['name'],
+                signal.data['symbol'],
+                signal.data['last-price'],
+                signal.data['app-name'],
+                signal.data['reason'],
+                ldatetime,
+                signal.data['id'],
+                timeframe_to_str(signal.data['timeframe']))
+
+            if signal.data['message'] is not None:
+                message += " (%s)" % signal.data['message']
 
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return
@@ -196,6 +220,15 @@ class DesktopNotifier(Notifier):
 
         elif signal.signal_type == Signal.SIGNAL_WATCHDOG_UNREACHABLE:
             return
+
+        # process sound
+        if not self._backtesting and self._audible and alert is not None:
+            self.play_audio_alert(alert)
+
+        if not self._backtesting and self._popups and message:
+            if self.notify2:
+                n = self.notify2.Notification(label, message, icon)
+                n.show()
 
     def command(self, command_type, data):
         if command_type == self.COMMAND_TOGGLE and data and data.get("value", "") == "popup":
@@ -208,11 +241,11 @@ class DesktopNotifier(Notifier):
             Terminal.inst().info("desktop notifier is %s" % ("active" if self._playpause else "disabled",), view='content')
 
     def receiver(self, signal):
-        if not self._playpause or not signal:  # or self._backtesting :
+        if not self._playpause or self._backtesting or not signal:
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_ALERT:
                 self.push_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHDOG:
