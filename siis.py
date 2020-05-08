@@ -691,6 +691,8 @@ def application(argv):
                                     Terminal.inst().switch_view('signal')
                                 elif value == 'W':
                                     Terminal.inst().switch_view('alert')
+                                # elif value == 'w':
+                                #     Terminal.inst().switch_view('alertlist')
                                 elif value == 'Z':
                                     Terminal.inst().switch_view('traderstate')
 

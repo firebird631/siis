@@ -17,10 +17,10 @@ def setup_default_views(view_service, watcher_service, trader_service, strategy_
     alert = AlertView(view_service, strategy_service)
     view_service.add_view(alert)
 
-    # # 'traderstate' @todo
-    # from view.traderstate import TraderStateView
-    # traderstate = TraderStateView(view_service, strategy_service)
-    # view_service.add_view(traderstate)
+    # 'traderstate'
+    from view.traderstateview import TraderStateView
+    traderstate = TraderStateView(view_service, strategy_service)
+    view_service.add_view(traderstate)
 
     # 'account'
     from view.accountview import AccountView

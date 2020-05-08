@@ -29,11 +29,11 @@ class TraderStateView(TableView):
     It depend of the specific implementation per strategy.
     """
 
-    REFRESH_RATE = 60  # only on alert or 1 minute refresh
+    REFRESH_RATE = 60
+    FAST_REFRESH_RATE = 10
+    VERY_FAST_REFRESH_RATE = 1
 
     #into the title, appname/market last-bid/last-ofr/last-spread
-
-    MAX_ALERTS = 200
     COLUMNS = ('Name', 'TF', charmap.ARROWUPDN)
 
     def __init__(self, service, strategy_service):
@@ -44,6 +44,8 @@ class TraderStateView(TableView):
         self._market_id = None
         self._signals_state = {}
 
+        self._upd_freq = TraderStateView.REFRESH_RATE
+
         # listen to its service
         self.service.add_listener(self)
 
@@ -53,68 +55,121 @@ class TraderStateView(TableView):
 
         return (self._strategy_service.get_traders())
 
+    def on_key_pressed(self, key):
+        super().on_key_pressed(key)
+
+        if key == 'KEY_STAB' or key == 'KEY_BTAB':
+            self.toggle_update_freq()
+        elif key == 'KEY_LEFT':
+            self.prev_instrument()
+        elif key == 'KEY_RIGHT':
+            self.next_instrument()
+
+    def toggle_update_freq(self):
+        if self._upd_freq == TraderStateView.REFRESH_RATE:
+            self._upd_freq = TraderStateView.FAST_REFRESH_RATE
+            Terminal.inst().action("Change to fast refresh rate", view="status")
+
+        elif self._upd_freq == TraderStateView.FAST_REFRESH_RATE:
+            self._upd_freq = TraderStateView.VERY_FAST_REFRESH_RATE
+            Terminal.inst().action("Change to very-fast refresh rate", view="status")
+
+        elif self._upd_freq == TraderStateView.VERY_FAST_REFRESH_RATE:
+            self._upd_freq = TraderStateView.REFRESH_RATE
+            Terminal.inst().action("Change to default refresh rate", view="status")
+
+    def prev_instrument(self):
+        if not self._strategy_service:
+            return
+
+        appliances = self._strategy_service.get_appliances()
+        if len(appliances) > 0 and -1 < self._item < len(appliances):
+            appliance = appliances[self._item]
+            instruments_ids = appliance.instruments_ids()
+
+            if not instruments_ids:
+                with self._mutex:
+                    self._market_id = None
+
+                return
+
+            if self._market_id is None:
+                with self._mutex:
+                    self._market_id = instruments_ids[0]
+
+                return
+
+            with self._mutex:
+                index = instruments_ids.index(self._market_id)
+                if index > 0:
+                    self._market_id = instruments_ids[index-1]
+                else:
+                    self._market_id = instruments_ids[-1]
+
+    def next_instrument(self):
+        if not self._strategy_service:
+            return
+
+        appliances = self._strategy_service.get_appliances()
+        if len(appliances) > 0 and -1 < self._item < len(appliances):
+            appliance = appliances[self._item]
+            instruments_ids = appliance.instruments_ids()
+
+            if not instruments_ids:
+                with self._mutex:
+                    self._market_id = None
+
+                return
+
+            if self._market_id is None:
+                with self._mutex:
+                    self._market_id = instruments_ids[0]
+                
+                return
+
+            with self._mutex:
+                index = instruments_ids.index(self._market_id)
+                if index < len(instruments_ids)-1:
+                    self._market_id = instruments_ids[index+1]
+                else:
+                    self._market_id = instruments_ids[0]
+
     def receiver(self, signal):
         if not signal:
             return
 
-        # if signal.source == Signal.SOURCE_STRATEGY:
-        #     if signal.signal_type == Signal.SIGNAL_STRATEGY_ALERT:
-        #         with self._mutex:
-        #             if signal.data.get('app-id'):
-        #                 if signal.data['app-id'] not in self._alerts_list:
-        #                     self._alerts_list[signal.data['app-id']] = []
+        if signal.source == Signal.SOURCE_STRATEGY:
+            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_ALERT:
+                with self._mutex:
+                    # force refresh on signal
+                    self._refresh = 0.0
 
-        #                 alerts_list = self._alerts_list[signal.data['app-id']]
-        #                 alerts_list.append(signal.data)
-
-        #                 if len(alerts_list) > AlertView.MAX_ALERTS:
-        #                     alerts_list.pop(0)
-
-        #                 self._refresh = 0.0
-
-    def signal_state_table(self, appliance, style='', offset=None, limit=None, col_ofs=None):
+    def trader_state_table(self, appliance, style='', offset=None, limit=None, col_ofs=None):
         data = []
 
-        signals_states = self._alerts_list.get(appliance.identifier, [])
-        total_size = (len(TraderStateView.COLUMNS), len(signals_states))
+        states = []
+        # states = self._signals_state.get(appliance.identifier, [])
+        # columns, table, total_size = appliance.agg_trades_stats_table(*self.table_format(), summ=True)
+        total_size = (len(TraderStateView.COLUMNS), len(states))
 
         if offset is None:
             offset = 0
 
         if limit is None:
-            limit = len(signals_states)
+            limit = len(states)
 
         limit = offset + limit
 
-        signals_states = signals_states[offset:limit]
+        states = states[offset:limit]
 
-        for signal_state in signals_states:
+        for state in states:
             pass
-        #     ldatetime = datetime.fromtimestamp(alert['timestamp']).strftime(self._datetime_format)
-        #     trigger = Color.colorize_cond(charmap.ARROWUP if alert['trigger'] == "up" else charmap.ARROWDN,
-        #             alert['trigger'] == "up", style, true=Color.GREEN, false=Color.RED)
-
-        #     symbol_color = int(hashlib.sha1(alert['symbol'].encode("utf-8")).hexdigest(), 16) % Color.count()-1
-        #     id_color = alert['id'] % Color.count()-1
-
-        #     lid = Color.colorize(str(alert['id']), Color.color(id_color), style)
-        #     lsymbol = Color.colorize(alert['symbol'], Color.color(symbol_color), style)
-
         #     row = (
-        #         lid,
-        #         lsymbol,
-        #         alert.get('label', ""),
-        #         trigger,
-        #         alert.get('timeframe', ""),
-        #         alert.get('last-price', ""),
-        #         alert.get('reason', ""),
-        #         alert.get('message', ""),
-        #         ldatetime
         #     )
 
         #     data.append(row[col_ofs:])
 
-        return AlertView.COLUMNS[col_ofs:], data, total_size
+        return TraderStateView.COLUMNS[col_ofs:], data, total_size
 
     def refresh(self):
         if not self._strategy_service:
@@ -128,7 +183,7 @@ class TraderStateView(TableView):
 
                 with self._mutex:
                     try:
-                        columns, table, total_size = self.signal_state_table(appliance, *self.table_format())
+                        columns, table, total_size = self.trader_state_table(appliance, *self.table_format())
                         self.table(columns, table, total_size)
                         num = total_size[1]
                     except Exception as e:
@@ -137,7 +192,7 @@ class TraderStateView(TableView):
                         error_logger.error(str(e))
 
                 # @todo price...
-                self.set_title("Trader state for strategy %s - %s on %s" % (num, appliance.name, appliance.identifier, self._market_id))
+                self.set_title("Trader state for strategy %s - %s on %s" % (appliance.name, appliance.identifier, self._market_id))
             else:
                 self.set_title("Trader state - No selected market")
         else:

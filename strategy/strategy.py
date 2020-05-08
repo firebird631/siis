@@ -543,6 +543,20 @@ class Strategy(Runnable):
 
         return names
 
+    def instruments_ids(self):
+        """
+        Returns the complete list containing market-ids (instruments only).
+        """
+        with self._mutex:
+            names = []
+
+            for k, instrument in self._instruments.items():
+                names.append(instrument.market_id)
+
+            names.sort()
+
+        return names
+
     def instrument(self, symbol_or_market_id):
         """
         Return the mapped instrument data from the watcher/strategy adapted to the trader
