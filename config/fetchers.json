@@ -4,6 +4,9 @@
     },
     "binance.com": {
         "classpath": "watcher.connector.binance.fetcher.BinanceFetcher"
+    },
+    "binancefutures.com": {
+        "classpath": "watcher.connector.binancefutures.fetcher.BinanceFuturesFetcher"
     },  
     "bitmex.com": {
         "classpath": "watcher.connector.bitmex.fetcher.BitMexFetcher"

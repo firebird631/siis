@@ -14,7 +14,6 @@ from trader.trader import Trader
 from .account import BinanceAccount
 
 from trader.asset import Asset
-from trader.position import Position
 from trader.order import Order
 from trader.account import Account
 from trader.market import Market
@@ -89,8 +88,8 @@ class BinanceTrader(Trader):
     def on_watcher_connected(self, watcher_name):
         super().on_watcher_connected(watcher_name)
 
-        # markets, orders and positions
-        logger.info("- Trader binance.com retrieving data...")
+        # markets and orders
+        logger.info("- Trader %s retrieving data..." % self._name)
 
         # insert the assets (fetch after)
         try:
@@ -119,7 +118,7 @@ class BinanceTrader(Trader):
         # fetch the asset from the DB and after signal fetch from binance
         Database.inst().load_assets(self.service, self, self.name, self.account.name)
 
-        logger.info("Trader binance.com got data. Running.")
+        logger.info("Trader %s got data. Running." % self._name)
 
     def on_watcher_disconnected(self, watcher_name):
         super().on_watcher_disconnected(watcher_name)
@@ -194,7 +193,7 @@ class BinanceTrader(Trader):
             order_type = Client.ORDER_TYPE_MARKET
 
         symbol = order.symbol
-        side = Client.SIDE_BUY if order.direction == Position.LONG else Client.SIDE_SELL
+        side = Client.SIDE_BUY if order.direction == Order.LONG else Client.SIDE_SELL
 
         # @todo as option for the order strategy
         time_in_force = Client.TIME_IN_FORCE_GTC
@@ -338,7 +337,7 @@ class BinanceTrader(Trader):
 
     def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         """
-        @todo Soon support of margin trading.
+        Not supported.
         """
         if not position_id or not market_or_instrument:
             return False
@@ -347,13 +346,11 @@ class BinanceTrader(Trader):
             error_logger.error("Trader %s refuse to close position because of missing connector" % (self.name,))
             return False
 
-        # @todo
-
         return False
 
     def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
         """
-        @todo Soon support of margin trading.
+        Not supported.
         """
         if not position_id or not market_or_instrument:
             return False
@@ -362,21 +359,13 @@ class BinanceTrader(Trader):
             error_logger.error("Trader %s refuse to close position because of missing connector" % (self.name,))
             return False
 
-        # @todo
-
         return False
 
     def positions(self, market_id):
-        positions = []
-
-        with self._mutex:
-            position = self._positions.get(market_id)
-            if position:
-                positions = [copy.copy(position)]
-            else:
-                positions = []
-
-        return positions
+        """
+        Not supported.
+        """
+        return []
 
     def market(self, market_id, force=False):
         """
@@ -409,7 +398,7 @@ class BinanceTrader(Trader):
         if assets is None:
             return
 
-        logger.info("Trader binance.com retrieving asset and orders...")
+        logger.info("Trader %s retrieving asset and orders..." % self._name)
 
         with self._mutex:
             try:
@@ -425,15 +414,14 @@ class BinanceTrader(Trader):
                         # store it
                         self._assets[asset.symbol] = asset
 
-                # and fetch them to be synced + opened orders + actives positions
+                # and fetch them to be synced + opened orders
                 self.__fetch_assets()
                 self.__fetch_orders()
-                self.__fetch_positions()
 
                 # can deal with
                 self._ready = True
 
-                logger.info("Trader binance.com got asset and orders.")
+                logger.info("Trader %s got asset and orders." % self._name)
 
             except Exception as e:
                 error_logger.error(repr(e))
@@ -749,13 +737,13 @@ class BinanceTrader(Trader):
 
                     if quantity_deviation >= 0.001:
                         # significant deviation...                          
-                        logger.debug("binance.com deviation of computed quantity for %s from %s but must be %s" % (
-                            asset_name, market.format_quantity(curr_qty), market.format_quantity(quantity)))
+                        logger.debug("%s deviation of computed quantity for %s from %s but must be %s" % (
+                            self._name ,asset_name, market.format_quantity(curr_qty), market.format_quantity(quantity)))
                 else:
                     if quantity_deviation >= 0.001:
                         # significant deviation...
-                        logger.debug("binance.com deviation of computed quantity for %s from %.8f but must be %.8f" % (
-                            asset_name, curr_qty, quantity))
+                        logger.debug("%s deviation of computed quantity for %s from %.8f but must be %.8f" % (
+                            self._name, asset_name, curr_qty, quantity))
 
                 # store in database with the last computed entry price
                 Database.inst().store_asset((self._name, self.account.name,
@@ -891,15 +879,6 @@ class BinanceTrader(Trader):
             with self._mutex:
                 self._orders = orders
 
-    def __fetch_positions(self, signals=False):
-        """
-        This is the synchronous REST fetching, but prefer the WS asynchronous and live one.
-        Mainly used for initial fetching.
-
-        @todo Soon support of margin trading.
-        """
-        pass
-
     #
     # markets
     #
@@ -910,7 +889,7 @@ class BinanceTrader(Trader):
 
         super().on_update_market(market_id, tradable, last_update_time, bid, ofr, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
 
-        # update positions profit/loss for the related market id
+        # update trades profit/loss for the related market id
         market = self.market(market_id)
 
         # market must be valid
@@ -924,10 +903,6 @@ class BinanceTrader(Trader):
                     if asset.symbol == market.base and asset.quote == market.quote:
                         asset.update_profit_loss(market)
 
-                # update profit/loss for each positions
-                for k, position in self._positions.items():
-                    if position.symbol == market.market_id:
-                        position.update_profit_loss(market)
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
@@ -942,7 +917,7 @@ class BinanceTrader(Trader):
         if asset is not None:
             # significant deviation...
             if abs((locked+free)-asset.quantity) / ((locked+free) or 1.0) >= 0.001:
-                logger.debug("binance.com deviation of computed quantity for %s from %s but must be %s" % (asset_name, asset.quantity, (locked+free)))
+                logger.debug("%s deviation of computed quantity for %s from %s but must be %s" % (self._name, asset_name, asset.quantity, (locked+free)))
 
             asset.set_quantity(locked, free)
 
@@ -1155,12 +1130,6 @@ class BinanceTrader(Trader):
         with self._mutex:
             if order_id in self._orders:
                 del self._orders[order_id]
-
-    #
-    # positions slots
-    #
-
-    # @todo Soon support of margin trading.
 
     #
     # miscs

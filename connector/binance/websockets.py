@@ -66,6 +66,7 @@ class BinanceClientFactory(WebSocketClientFactory, BinanceReconnectingClientFact
 class BinanceSocketManager(threading.Thread):
 
     STREAM_URL = 'wss://stream.binance.com:9443/'
+    FUTURES_STREAM_URL = 'wss://fstream.binance.com/'
 
     WEBSOCKET_DEPTH_5 = '5'
     WEBSOCKET_DEPTH_10 = '10'
@@ -73,7 +74,7 @@ class BinanceSocketManager(threading.Thread):
 
     DEFAULT_USER_TIMEOUT = 30 * 60  # 30 minutes
 
-    def __init__(self, client, user_timeout=DEFAULT_USER_TIMEOUT):
+    def __init__(self, client, user_timeout=DEFAULT_USER_TIMEOUT, futures=False):
         """Initialise the BinanceSocketManager
 
         :param client: Binance API client
@@ -91,11 +92,13 @@ class BinanceSocketManager(threading.Thread):
         self._client = client
         self._user_timeout = user_timeout
 
+        self._url = BinanceSocketManager.FUTURES_STREAM_URL if futures else BinanceSocketManager.FUTURES_STREAM_URL
+
     def _start_socket(self, path, callback, prefix='ws/'):
         if path in self._conns:
             return False
 
-        factory_url = self.STREAM_URL + prefix + path
+        factory_url = self._url + prefix + path
         factory = BinanceClientFactory(factory_url)
         factory.protocol = BinanceClientProtocol
         factory.callback = callback
@@ -409,6 +412,35 @@ class BinanceSocketManager(threading.Thread):
         """
         return self._start_socket('!ticker@arr', callback)
 
+    def start_book_ticker_socket(self, callback):
+        """Start a websocket for all book ticker data
+
+        By default all markets are included in an array.
+
+        https://binance-docs.github.io/apidocs/futures/en/#all-market-tickers-streams
+
+        :param callback: callback function to handle messages
+        :type callback: function
+
+        :returns: connection key string if successful, False otherwise
+
+        Message Format
+
+        .. code-block:: python
+
+            [
+                {
+                    "u":400900217,     // order book updateId
+                    "s":"BNBUSDT",     // symbol
+                    "b":"25.35190000", // best bid price
+                    "B":"31.21000000", // best bid qty
+                    "a":"25.36520000", // best ask price
+                    "A":"40.66000000"  // best ask qty
+                }
+            ]
+        """
+        return self._start_socket('!bookTicker', callback)
+
     def start_multiplex_socket(self, streams, callback):
         """Start a multiplexed socket using a list of socket names.
         User stream sockets can not be included.
@@ -504,7 +536,7 @@ class BinanceSocketManager(threading.Thread):
             return
 
         # disable reconnecting if we are closing
-        self._conns[conn_key].factory = WebSocketClientFactory(self.STREAM_URL + 'tmp_path')
+        self._conns[conn_key].factory = WebSocketClientFactory(self._url + 'tmp_path')
         self._conns[conn_key].disconnect()
         del(self._conns[conn_key])
 

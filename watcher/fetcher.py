@@ -344,8 +344,8 @@ class Fetcher(object):
                 market.contract_type = Market.CONTRACT_SPOT
             elif market_data['contract'] == 'cfd':
                 market.contract_type = Market.CONTRACT_CFD
-            elif market_data['contract'] == 'futur':
-                market.contract_type = Market.CONTRACT_FUTUR
+            elif market_data['contract'] == 'future':
+                market.contract_type = Market.CONTRACT_FUTURE
             elif market_data['contract'] == 'option':
                 market.contract_type = Market.CONTRACT_OPTION
             elif market_data['contract'] == 'warrant':

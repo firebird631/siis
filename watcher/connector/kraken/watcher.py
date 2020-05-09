@@ -62,7 +62,6 @@ class KrakenWatcher(Watcher):
         self._connector = None
         self._depths = {}  # depth chart per symbol tuple (last_id, bids, ofrs)
 
-        self._acount_data = {}
         self._symbols_data = {}
         self._tickers_data = {}
 

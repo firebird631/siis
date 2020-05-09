@@ -365,7 +365,7 @@ class Instrument(object):
 
     CONTRACT_UNDEFINED = 0
     CONTRACT_CFD = 1
-    CONTRACT_FUTUR = 2
+    CONTRACT_FUTURE = 2
 
     TYPE_UNKNOWN = 0
     TYPE_CURRENCY = 1     # FOREX

@@ -18,9 +18,6 @@ class BinanceAccount(Account):
     """
     Binance trader related account.
     Account currency is BTC and alternative currency is USDT.
-    
-    @note Done once per minute, but could be done more frequently using data get through WS and avoiding the extra API call.
-    @todo Margin support.
     """
 
     CURRENCY = "BTC"
@@ -31,7 +28,7 @@ class BinanceAccount(Account):
     def __init__(self, parent):
         super().__init__(parent)
 
-        self._account_type = Account.TYPE_ASSET  # | Account.TYPE_MARGIN
+        self._account_type = Account.TYPE_ASSET
 
         self._currency = BinanceAccount.CURRENCY
         self._currency_display = BinanceAccount.CURRENCY_SYMBOL

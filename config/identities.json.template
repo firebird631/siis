@@ -12,7 +12,7 @@
 			"api-secret": "<second-real-but-for-demo-api-secret>",
 			"host": "binance.com"
 		}
-	},		
+	},
 	"bitmex.com": {
 		"real" : {
 			"api_key": "<api-key>",

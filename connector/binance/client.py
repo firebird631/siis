@@ -14,12 +14,16 @@ class Client(object):
     KLINES_HISTORY_MAX_RETRY = 3
     AGGTRADES_HISTORY_MAX_RETRY = 3
 
-    API_URL = 'https://api.binance.com/api'
-    WITHDRAW_API_URL = 'https://api.binance.com/wapi'
-    WEBSITE_URL = 'https://www.binance.com'
+    API_URL = 'https://api.binance.{}/api'
+    WITHDRAW_API_URL = 'https://api.binance.{}/wapi'
+    MARGIN_API_URL = 'https://api.binance.{}/sapi'
+    WEBSITE_URL = 'https://www.binance.{}'
+    FUTURES_URL = 'https://fapi.binance.{}/fapi'
     PUBLIC_API_VERSION = 'v1'
     PRIVATE_API_VERSION = 'v3'
     WITHDRAW_API_VERSION = 'v3'
+    MARGIN_API_VERSION = 'v1'
+    FUTURES_API_VERSION = 'v1'
 
     SYMBOL_TYPE_SPOT = 'SPOT'
 
@@ -77,12 +81,8 @@ class Client(object):
     AGG_BUYER_MAKES = 'm'
     AGG_BEST_MATCH = 'M'
 
-    # @todo margin/transfer, margin/loan, margin/repay, margin/order, margin/account
-    # @todo margin/asset, margin/pair, margin/priceIndex, margin/openOrders, margin/allOrders, margin/myTrades
-    # @todo margin/maxBorrowable, margin/maxTransferable 
-
-    def __init__(self, api_key, api_secret, requests_params=None):
-        """Binance API Client constructor
+    def __init__(self, api_key, api_secret, requests_params=None, tld='com'):
+        """Binance API Client constructor (spot support, margin support, no margin, no lending)
 
         :param api_key: Api Key
         :type api_key: str.
@@ -93,6 +93,12 @@ class Client(object):
 
         """
 
+        self.API_URL = self.API_URL.format(tld)
+        self.WITHDRAW_API_URL = self.WITHDRAW_API_URL.format(tld)
+        self.MARGIN_API_URL = self.MARGIN_API_URL.format(tld)
+        self.WEBSITE_URL = self.WEBSITE_URL.format(tld)
+        self.FUTURES_URL = self.FUTURES_URL.format(tld)
+
         self.API_KEY = api_key
         self.API_SECRET = api_secret
         self.session = self._init_session()
@@ -102,7 +108,6 @@ class Client(object):
         self.ping()
 
     def _init_session(self):
-
         session = requests.session()
         session.headers.update({'Accept': 'application/json',
                                 'User-Agent': 'binance/python',
@@ -118,6 +123,9 @@ class Client(object):
 
     def _create_website_uri(self, path):
         return self.WEBSITE_URL + '/' + path
+
+    def _create_futures_api_uri(self, path):
+        return self.FUTURES_URL + '/' + self.FUTURES_API_VERSION + '/' + path
 
     def _generate_signature(self, data):
 
@@ -214,19 +222,19 @@ class Client(object):
 
     def _request_api(self, method, path, signed=False, version=PUBLIC_API_VERSION, **kwargs):
         uri = self._create_api_uri(path, signed, version)
-
         return self._request(method, uri, signed, **kwargs)
 
     def _request_withdraw_api(self, method, path, signed=False, **kwargs):
         uri = self._create_withdraw_api_uri(path)
-
         return self._request(method, uri, signed, True, **kwargs)
 
     def _request_website(self, method, path, signed=False, **kwargs):
-
         uri = self._create_website_uri(path)
-
         return self._request(method, uri, signed, **kwargs)
+
+    def _request_futures_api(self, method, path, signed=False, **kwargs):
+        uri = self._create_futures_api_uri(path)
+        return self._request(method, uri, signed, True, **kwargs)
 
     def _handle_response(self, response):
         """Internal helper for handling API responses from the Binance server.
@@ -2151,3 +2159,682 @@ class Client(object):
             'listenKey': listenKey
         }
         return self._delete('userDataStream', False, data=params)
+
+    # Sub Accounts
+
+    def get_sub_account_list(self, **params):
+        """Query Sub-account List.
+
+        https://github.com/binance-exchange/binance-official-api-docs/blob/master/wapi-api.md#query-sub-account-listfor-master-account
+
+        :param email: optional
+        :type email: str
+        :param startTime: optional
+        :type startTime: int
+        :param endTime: optional
+        :type endTime: int
+        :param page: optional
+        :type page: int
+        :param limit: optional
+        :type limit: int
+        :param recvWindow: optional
+        :type recvWindow: int
+
+        :returns: API response
+
+        .. code-block:: python
+
+            {
+                "success":true,
+                "subAccounts":[
+                    {
+                        "email":"123@test.com",
+                        "status":"enabled",
+                        "activated":true,
+                        "mobile":"91605290",
+                        "gAuth":true,
+                        "createTime":1544433328000
+                    },
+                    {
+                        "email":"321@test.com",
+                        "status":"disabled",
+                        "activated":true,
+                        "mobile":"22501238",
+                        "gAuth":true,
+                        "createTime":1544433328000
+                    }
+                ]
+            }
+
+        :raises: BinanceRequestException, BinanceAPIException
+
+        """
+        return self._request_withdraw_api('get', 'sub-account/list.html', True, data=params)
+
+    def get_sub_account_transfer_history(self, **params):
+        """Query Sub-account Transfer History.
+
+        https://github.com/binance-exchange/binance-official-api-docs/blob/master/wapi-api.md#query-sub-account-transfer-historyfor-master-account
+
+        :param email: required
+        :type email: str
+        :param startTime: optional
+        :type startTime: int
+        :param endTime: optional
+        :type endTime: int
+        :param page: optional
+        :type page: int
+        :param limit: optional
+        :type limit: int
+        :param recvWindow: optional
+        :type recvWindow: int
+
+        :returns: API response
+
+        .. code-block:: python
+
+            {
+                "success":true,
+                "transfers":[
+                    {
+                        "from":"aaa@test.com",
+                        "to":"bbb@test.com",
+                        "asset":"BTC",
+                        "qty":"1",
+                        "time":1544433328000
+                    },
+                    {
+                        "from":"bbb@test.com",
+                        "to":"ccc@test.com",
+                        "asset":"ETH",
+                        "qty":"2",
+                        "time":1544433328000
+                    }
+                ]
+            }
+
+        :raises: BinanceRequestException, BinanceAPIException
+
+        """
+        return self._request_withdraw_api('get', 'sub-account/transfer/history.html', True, data=params)
+
+    def create_sub_account_transfer(self, **params):
+        """Execute sub-account transfer
+
+        https://github.com/binance-exchange/binance-official-api-docs/blob/9dbe0e961b80557bb19708a707c7fad08842b28e/wapi-api.md#sub-account-transferfor-master-account
+
+        :param fromEmail: required - Sender email
+        :type fromEmail: str
+        :param toEmail: required - Recipient email
+        :type toEmail: str
+        :param asset: required
+        :type asset: str
+        :param amount: required
+        :type amount: decimal
+        :param recvWindow: optional
+        :type recvWindow: int
+
+        :returns: API response
+
+        .. code-block:: python
+
+            {
+                "success":true,
+                "txnId":"2966662589"
+            }
+
+        :raises: BinanceRequestException, BinanceAPIException
+
+        """
+        return self._request_withdraw_api('post', 'sub-account/transfer.html', True, data=params)
+
+    def get_sub_account_assets(self, **params):
+        """Fetch sub-account assets
+
+        https://github.com/binance-exchange/binance-official-api-docs/blob/9dbe0e961b80557bb19708a707c7fad08842b28e/wapi-api.md#query-sub-account-assetsfor-master-account
+
+        :param email: required
+        :type email: str
+        :param symbol: optional
+        :type symbol: str
+        :param recvWindow: optional
+        :type recvWindow: int
+
+        :returns: API response
+
+        .. code-block:: python
+
+            {
+                "success":true,
+                "balances":[
+                    {
+                        "asset":"ADA",
+                        "free":10000,
+                        "locked":0
+                    },
+                    {
+                        "asset":"BNB",
+                        "free":10003,
+                        "locked":0
+                    },
+                    {
+                        "asset":"BTC",
+                        "free":11467.6399,
+                        "locked":0
+                    },
+                    {
+                        "asset":"ETH",
+                        "free":10004.995,
+                        "locked":0
+                    },
+                    {
+                        "asset":"USDT",
+                        "free":11652.14213,
+                        "locked":0
+                    }
+                ]
+            }
+
+        :raises: BinanceRequestException, BinanceAPIException
+
+        """
+        return self._request_withdraw_api('get', 'sub-account/assets.html', True, data=params)
+
+    # Futures API
+
+    def futures_ping(self):
+        """Test connectivity to the Rest API
+
+        https://binance-docs.github.io/apidocs/futures/en/#test-connectivity
+
+        """
+        return self._request_futures_api('get', 'ping')
+
+    def futures_time(self):
+        """Test connectivity to the Rest API and get the current server time.
+
+        https://binance-docs.github.io/apidocs/futures/en/#check-server-time
+
+        """
+        return self._request_futures_api('get', 'time')
+
+    def futures_exchange_info(self):
+        """Current exchange trading rules and symbol information
+
+        https://binance-docs.github.io/apidocs/futures/en/#exchange-information-market_data
+
+        """
+        return self._request_futures_api('get', 'exchangeInfo')
+
+    def futures_order_book(self, **params):
+        """Get the Order Book for the market
+
+        https://binance-docs.github.io/apidocs/futures/en/#order-book-market_data
+
+        """
+        return self._request_futures_api('get', 'depth', data=params)
+
+    def futures_recent_trades(self, **params):
+        """Get recent trades (up to last 500).
+
+        https://binance-docs.github.io/apidocs/futures/en/#recent-trades-list-market_data
+
+        """
+        return self._request_futures_api('get', 'trades', data=params)
+
+    def futures_historical_trades(self, **params):
+        """Get older market historical trades.
+
+        https://binance-docs.github.io/apidocs/futures/en/#old-trades-lookup-market_data
+
+        """
+        return self._request_futures_api('get', 'historicalTrades', data=params)
+
+    def futures_aggregate_trades(self, **params):
+        """Get compressed, aggregate trades. Trades that fill at the time, from the same order, with the same
+        price will have the quantity aggregated.
+
+        https://binance-docs.github.io/apidocs/futures/en/#compressed-aggregate-trades-list-market_data
+
+        """
+        return self._request_futures_api('get', 'aggTrades', data=params)
+
+    def aggregate_trade_iter(self, symbol, start_str=None, last_id=None, end_str=None):
+        """Iterate over aggregate trade data from (start_time or last_id) to
+        the end of the history so far.
+
+        If start_time is specified, start with the first trade after
+        start_time. Meant to initialise a local cache of trade data.
+
+        If last_id is specified, start with the trade after it. This is meant
+        for updating a pre-existing local trade data cache.
+
+        Only allows start_str or last_id—not both. Not guaranteed to work
+        right if you're running more than one of these simultaneously. You
+        will probably hit your rate limit.
+
+        See dateparser docs for valid start and end string formats http://dateparser.readthedocs.io/en/latest/
+
+        If using offset strings for dates add "UTC" to date string e.g. "now UTC", "11 hours ago UTC"
+
+        :param symbol: Symbol string e.g. ETHBTC
+        :type symbol: str
+        :param start_str: Start date string in UTC format or timestamp in milliseconds. The iterator will
+        return the first trade occurring later than this time.
+        :type start_str: str|int
+        :param last_id: aggregate trade ID of the last known aggregate trade.
+        Not a regular trade ID. See https://github.com/binance-exchange/binance-official-api-docs/blob/master/rest-api.md#compressedaggregate-trades-list.
+
+        :returns: an iterator of JSON objects, one per trade. The format of
+        each object is identical to Client.aggregate_trades().
+
+        :type last_id: int
+        """
+        if start_str is not None and last_id is not None:
+            raise ValueError(
+                'start_time and last_id may not be simultaneously specified.')
+
+        if end_str:
+            if type(end_str) == int:
+                end_ts = end_str
+            else:
+                end_ts = date_to_milliseconds(end_str)
+        else:
+            end_ts = 0
+
+        # If there's no last_id, get one.
+        if last_id is None:
+            # Without a last_id, we actually need the first trade.  Normally,
+            # we'd get rid of it. See the next loop.
+            if start_str is None:
+                trades = self.futures_aggregate_trades(symbol=symbol, fromId=0)
+            else:
+                # The difference between startTime and endTime should be less
+                # or equal than an hour and the result set should contain at
+                # least one trade.
+                if type(start_str) == int:
+                    start_ts = start_str
+                else:
+                    start_ts = date_to_milliseconds(start_str)
+
+                trades = self.futures_aggregate_trades(
+                    symbol=symbol,
+                    startTime=start_ts,
+                    endTime=start_ts + (60 * 60 * 1000))
+
+            for t in trades:
+                # inclusive date
+                if end_ts and t[self.AGG_TIME] > end_ts:
+                    # no need more
+                    return
+
+                yield t
+
+            last_id = trades[-1][self.AGG_ID] if trades else 0
+
+        retry_count = 0
+
+        while 1:
+            # There is no need to wait between queries, to avoid hitting the
+            # rate limit. We're using blocking IO, and as long as we're the
+            # only thread running calls like this, Binance will automatically
+            # add the right delay time on their end, forcing us to wait for
+            # data.
+            try:
+                trades = self.futures_aggregate_trades(symbol=symbol, fromId=last_id)
+            except requests.exceptions.ReadTimeout:
+                retry_count += 1
+
+                if retry_count > Client.AGG_TRADES_HISTORY_MAX_RETRY:
+                    # break after max error count reached
+                    raise BinanceRequestException("Max retry reached")
+                else:
+                    # retry
+                    continue
+
+            # fromId=n returns a set starting with id n, but we already have
+            # that one. So get rid of the first item in the result set.
+            trades = trades[1:]
+            if len(trades) == 0:
+                return
+
+            for t in trades:
+                # inclusive date
+                if end_ts and t[self.AGG_TIME] > end_ts:
+                    break
+
+                yield t
+
+            last_id = trades[-1][self.AGG_ID] if trades else 0
+
+            if end_ts and trades and trades[-1][self.AGG_TIME] >= end_ts:
+                break
+
+    def futures_klines(self, **params):
+        """Kline/candlestick bars for a symbol. Klines are uniquely identified by their open time.
+
+        https://binance-docs.github.io/apidocs/futures/en/#kline-candlestick-data-market_data
+
+        """
+        return self._request_futures_api('get', 'klines', data=params)
+
+    def _futures_earliest_valid_timestamp(self, symbol, interval):
+        """Get earliest valid open timestamp from Binance
+
+        :param symbol: Name of symbol pair e.g BNBBTC
+        :type symbol: str
+        :param interval: Binance Kline interval
+        :type interval: str
+
+        :return: first valid timestamp
+
+        """
+        kline = self.futures_klines(
+            symbol=symbol,
+            interval=interval,
+            limit=1,
+            startTime=0,
+            endTime=None
+        )
+        return kline[0][0]
+
+    def futures_historical_klines(self, symbol, interval, start_str, end_str=None):
+        """Get Historical Klines from Binance futures
+
+        See dateparser docs for valid start and end string formats http://dateparser.readthedocs.io/en/latest/
+
+        If using offset strings for dates add "UTC" to date string e.g. "now UTC", "11 hours ago UTC"
+
+        :param symbol: Name of symbol pair e.g BNBBTC
+        :type symbol: str
+        :param interval: Binance Kline interval
+        :type interval: str
+        :param start_str: Start date string in UTC format or timestamp in milliseconds
+        :type start_str: str|int
+        :param end_str: optional - end date string in UTC format or timestamp in milliseconds (default will fetch everything up to now)
+        :type end_str: str|int
+
+        :return: list of OHLCV values
+
+        """
+        # init our list
+        output_data = []
+
+        # setup the max limit
+        limit = 500
+
+        # convert interval to useful value in seconds
+        timeframe = interval_to_milliseconds(interval)
+
+        # convert our date strings to milliseconds
+        if type(start_str) == int:
+            start_ts = start_str
+        else:
+            start_ts = date_to_milliseconds(start_str)
+
+        # establish first available start timestamp
+        first_valid_ts = self._futures_earliest_valid_timestamp(symbol, interval)
+        start_ts = max(start_ts, first_valid_ts)
+
+        # if an end time was passed convert it
+        end_ts = None
+        if end_str:
+            if type(end_str) == int:
+                end_ts = end_str
+            else:
+                end_ts = date_to_milliseconds(end_str)
+
+        retry_count = 0
+
+        idx = 0
+        while 1:
+            # fetch the klines from start_ts up to max 500 entries or the end_ts if set
+            try:
+                temp_data = self.futures_klines(
+                    symbol=symbol,
+                    interval=interval,
+                    limit=limit,
+                    startTime=start_ts,
+                    endTime=end_ts)
+            except requests.exceptions.ReadTimeout:
+                retry_count += 1
+
+                if retry_count > Client.KLINES_HISTORY_MAX_RETRY:
+                    # break after max error count reached
+                    raise BinanceRequestException("Max retry reached")
+                else:
+                    # retry
+                    continue
+
+            # handle the case where exactly the limit amount of data was returned last loop
+            if not len(temp_data):
+                break
+
+            # append this loops data to our output data
+            output_data += temp_data
+
+            # set our start timestamp using the last value in the array
+            start_ts = temp_data[-1][0]
+
+            idx += 1
+            # check if we received less than the required limit and exit the loop
+            if len(temp_data) < limit:
+                # exit the while loop
+                break
+
+            # increment next call by our timeframe
+            start_ts += timeframe
+
+            # sleep after every 3rd call to be kind to the API
+            if idx % 3 == 0:
+                time.sleep(1)
+
+        return output_data
+
+    def futures_mark_price(self, **params):
+        """Get Mark Price and Funding Rate
+
+        https://binance-docs.github.io/apidocs/futures/en/#mark-price-market_data
+
+        """
+        return self._request_futures_api('get', 'premiumIndex', data=params)
+
+    def futures_funding_rate(self, **params):
+        """Get funding rate history
+
+        https://binance-docs.github.io/apidocs/futures/en/#get-funding-rate-history-market_data
+
+        """
+        return self._request_futures_api('get', 'fundingRate', data=params)
+
+    def futures_ticker(self, **params):
+        """24 hour rolling window price change statistics.
+
+        https://binance-docs.github.io/apidocs/futures/en/#24hr-ticker-price-change-statistics-market_data
+
+        """
+        return self._request_futures_api('get', 'ticker/24hr', data=params)
+
+    def futures_symbol_ticker(self, **params):
+        """Latest price for a symbol or symbols.
+
+        https://binance-docs.github.io/apidocs/futures/en/#symbol-price-ticker-market_data
+
+        """
+        return self._request_futures_api('get', 'ticker/price', data=params)
+
+    def futures_orderbook_ticker(self, **params):
+        """Best price/qty on the order book for a symbol or symbols.
+
+        https://binance-docs.github.io/apidocs/futures/en/#symbol-order-book-ticker-market_data
+
+        """
+        return self._request_futures_api('get', 'ticker/bookTicker', data=params)
+
+    def futures_liquidation_orders(self, **params):
+        """Get all liquidation orders
+
+        https://binance-docs.github.io/apidocs/futures/en/#get-all-liquidation-orders-market_data
+
+        """
+        return self._request_futures_api('get', 'ticker/allForceOrders', data=params)
+
+    def futures_open_interest(self, **params):
+        """Get present open interest of a specific symbol.
+
+        https://binance-docs.github.io/apidocs/futures/en/#open-interest-market_data
+
+        """
+        return self._request_futures_api('get', 'ticker/openInterest', data=params)
+
+    def futures_leverage_bracket(self, **params):
+        """Notional and Leverage Brackets
+
+        https://binance-docs.github.io/apidocs/futures/en/#notional-and-leverage-brackets-market_data
+
+        """
+        return self._request_futures_api('get', 'ticker/leverageBracket', True, data=params)
+
+    def futures_transfer_history(self, **params):
+        """Get future account transaction history list
+
+        https://binance-docs.github.io/apidocs/futures/en/#new-future-account-transfer
+
+        """
+        return self._request_margin_api('get', 'futures/transfer', True, data=params)
+
+    def futures_create_order(self, **params):
+        """Send in a new order.
+
+        https://binance-docs.github.io/apidocs/futures/en/#new-order-trade
+
+        """
+        return self._request_futures_api('post', 'order', True, data=params)
+
+    def futures_get_order(self, **params):
+        """Check an order's status.
+
+        https://binance-docs.github.io/apidocs/futures/en/#query-order-user_data
+
+        """
+        return self._request_futures_api('get', 'order', True, data=params)
+
+    def futures_get_open_orders(self, **params):
+        """Get all open orders on a symbol.
+
+        https://binance-docs.github.io/apidocs/futures/en/#current-open-orders-user_data
+
+        """
+        return self._request_futures_api('get', 'openOrders', True, data=params)
+
+    def futures_get_all_orders(self, **params):
+        """Get all futures account orders; active, canceled, or filled.
+
+        https://binance-docs.github.io/apidocs/futures/en/#all-orders-user_data
+
+        """
+        return self._request_futures_api('get', 'allOrders', True, data=params)
+
+    def futures_cancel_order(self, **params):
+        """Cancel an active futures order.
+
+        https://binance-docs.github.io/apidocs/futures/en/#cancel-order-trade
+
+        """
+        return self._request_futures_api('delete', 'order', True, data=params)
+
+    def futures_cancel_all_open_orders(self, **params):
+        """Cancel all open futures orders
+
+        https://binance-docs.github.io/apidocs/futures/en/#cancel-all-open-orders-trade
+
+        """
+        return self._request_futures_api('delete', 'allOpenOrders', True, data=params)
+
+    def futures_cancel_orders(self, **params):
+        """Cancel multiple futures orders
+
+        https://binance-docs.github.io/apidocs/futures/en/#cancel-multiple-orders-trade
+
+        """
+        return self._request_futures_api('delete', 'batchOrders', True, data=params)
+
+    def futures_account_balance(self, **params):
+        """Get futures account balance
+
+        https://binance-docs.github.io/apidocs/futures/en/#future-account-balance-user_data
+
+        """
+        return self._request_futures_api('get', 'balance', True, data=params)
+
+    def futures_account(self, **params):
+        """Get current account information.
+
+        https://binance-docs.github.io/apidocs/futures/en/#account-information-user_data
+
+        """
+        return self._request_futures_api('get', 'account', True, data=params)
+
+    def futures_change_leverage(self, **params):
+        """Change user's initial leverage of specific symbol market
+
+        https://binance-docs.github.io/apidocs/futures/en/#change-initial-leverage-trade
+
+        """
+        return self._request_futures_api('post', 'leverage', True, data=params)
+
+    def futures_position_side_dual(self, **params):
+        """Get position side dual state
+
+        https://binance-docs.github.io/apidocs/futures/en/#get-future-account-transaction-history-list-user_data
+
+        """
+        return self._request_futures_api('get', 'positionSide/dual', True, data=params)
+
+    def futures_change_margin_type(self, **params):
+        """Change the margin type for a symbol
+
+        https://binance-docs.github.io/apidocs/futures/en/#change-margin-type-trade
+
+        """
+        return self._request_futures_api('post', 'marginType', True, data=params)
+
+    def futures_change_position_margin(self, **params):
+        """Change the position margin for a symbol
+
+        https://binance-docs.github.io/apidocs/futures/en/#modify-isolated-position-margin-trade
+
+        """
+        return self._request_futures_api('post', 'positionMargin', True, data=params)
+
+    def futures_position_margin_history(self, **params):
+        """Get position margin change history
+
+        https://binance-docs.github.io/apidocs/futures/en/#get-postion-margin-change-history-trade
+
+        """
+        return self._request_futures_api('get', 'positionMargin/history', True, data=params)
+
+    def futures_position_information(self, **params):
+        """Get position information
+
+        https://binance-docs.github.io/apidocs/futures/en/#position-information-user_data
+
+        """
+        return self._request_futures_api('get', 'positionRisk', True, data=params)
+
+    def futures_account_trades(self, **params):
+        """Get trades for the authenticated account and symbol.
+
+        https://binance-docs.github.io/apidocs/futures/en/#account-trade-list-user_data
+
+        """
+        return self._request_futures_api('get', 'userTrades', True, data=params)
+
+    def futures_income_history(self, **params):
+        """Get income history for authenticated account
+
+        https://binance-docs.github.io/apidocs/futures/en/#get-income-history-user_data
+
+        """
+        return self._request_futures_api('get', 'income', True, data=params)

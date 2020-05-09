@@ -39,7 +39,7 @@ class Market(object):
 
     CONTRACT_SPOT = 0
     CONTRACT_CFD = 1
-    CONTRACT_FUTUR = 2
+    CONTRACT_FUTURE = 2
     CONTRACT_OPTION = 3
     CONTRACT_WARRANT = 4
     CONTRACT_TURBO = 5
@@ -792,8 +792,8 @@ class Market(object):
             return "spot"
         elif self._contract_type == Market.CONTRACT_CFD:
             return "cfd"
-        elif self._contract_type == Market.CONTRACT_FUTUR:
-            return "futur"
+        elif self._contract_type == Market.CONTRACT_FUTURE:
+            return "future"
         elif self._contract_type == Market.CONTRACT_OPTION:
             return "option"
         elif self._contract_type == Market.CONTRACT_WARRANT:

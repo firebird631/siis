@@ -70,7 +70,7 @@ class BinanceWatcher(Watcher):
         self._connector = None
         self._depths = {}  # depth chart per symbol tuple (last_id, bids, ofrs)
 
-        self._acount_data = {}
+        self._account_data = {}
         self._symbols_data = {}
         self._tickers_data = {}
 
@@ -311,7 +311,7 @@ class BinanceWatcher(Watcher):
         """
         symbol = self._symbols_data.get(market_id)
         ticker = self._tickers_data.get(market_id)
-        account = self._acount_data
+        account = self._account_data
 
         market = None
 
@@ -342,7 +342,7 @@ class BinanceWatcher(Watcher):
 
             # size min/max/step
             for afilter in symbol["filters"]:
-                if afilter['filterType'] == "LOT_SIZE":
+                if afilter['filterType'] == "LOT_SIZE":  # 'MARKET_LOT_SIZE'
                     size_limits = [afilter['minQty'], afilter['maxQty'], afilter['stepSize']]
 
                 elif afilter['filterType'] == "MIN_NOTIONAL":
@@ -399,7 +399,7 @@ class BinanceWatcher(Watcher):
 
             # volume 24h
 
-            # in client.get_ticker but cost is 40 for any symbols then wait it at all-tickets WS event
+            # in client.get_ticker but cost is 40 for any symbols then wait it at all-tickers WS event
             # vol24_base = ticker24h('volume')
             # vol24_quote = ticker24h('quoteVolume')
 
@@ -436,7 +436,7 @@ class BinanceWatcher(Watcher):
         symbols = self._connector.client.get_exchange_info().get('symbols', [])
         tickers = self._connector.client.get_all_tickers()
 
-        self._acount_data = self._connector.client.get_account()
+        self._account_data = self._connector.client.get_account()
         self._symbols_data = {}
         self._tickers_data = {}
 
@@ -629,11 +629,6 @@ class BinanceWatcher(Watcher):
             event_timestamp = float(data['E']) * 0.001
             symbol = data['s']
             cid = data['c']
-
-            reason = ""
-            side = ''
-            quantity = 0
-            partially = 0
 
             if data['x'] == 'REJECTED':  # and data['X'] == '?':
                 client_order_id = str(data['c'])
