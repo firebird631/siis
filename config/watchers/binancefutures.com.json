@@ -1,0 +1,6 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.binancefutures.watcher.BinanceFuturesWatcher",
+    "symbols": [],
+    "_symbols": ["*USDT"]
+}
