@@ -92,6 +92,7 @@ class BinanceSocketManager(threading.Thread):
         self._client = client
         self._user_timeout = user_timeout
 
+        self._future = futures
         self._url = BinanceSocketManager.FUTURES_STREAM_URL if futures else BinanceSocketManager.FUTURES_STREAM_URL
 
     def _start_socket(self, path, callback, prefix='ws/'):
@@ -477,7 +478,7 @@ class BinanceSocketManager(threading.Thread):
         Message Format - see Binance API docs for all types
         """
         # Get the user listen key
-        user_listen_key = self._client.stream_get_listen_key()
+        user_listen_key = self._client.future_stream_get_listen_key() if self._future else self._client.stream_get_listen_key()
         # and start the socket with this specific key
         conn_key = self._start_user_socket(user_listen_key, callback)
         return conn_key
@@ -506,7 +507,7 @@ class BinanceSocketManager(threading.Thread):
 
     def _keepalive_user_socket(self):
         try:
-            user_listen_key = self._client.stream_get_listen_key()
+            user_listen_key = self._client.future_stream_get_listen_key() if self._future else self._client.stream_get_listen_key()
         except Exception as e:
             # very rare exception ConnectTimeout
             error_logger.error(repr(e))

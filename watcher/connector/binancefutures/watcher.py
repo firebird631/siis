@@ -659,7 +659,7 @@ class BinanceFuturesWatcher(Watcher):
         elif event_type == "ACCOUNT_UPDATE":
             # balance and position updated
             # @ref https://binance-docs.github.io/apidocs/futures/en/#event-balance-and-position-update
-            exec_logger.info("binancefutures.com ACCOUNT_UPDATE %s" % str(data))
+            # exec_logger.info("binancefutures.com ACCOUNT_UPDATE %s" % str(data))
             event_timestamp = float(data['E']) * 0.001
 
             total_wallet_balance = None
@@ -669,6 +669,7 @@ class BinanceFuturesWatcher(Watcher):
 
             if 'B' in data['a']:
                 total_wallet_balance = 0.0
+                total_cross_margin_balance = 0.0
 
                 balances = data['a']['B']
                 for b in balances:
@@ -778,27 +779,26 @@ class BinanceFuturesWatcher(Watcher):
                 elif order['o'] == 'MARKET':
                     order_type = Order.ORDER_MARKET
 
-                elif order['o'] == 'STOP_LOSS':
+                elif order['o'] == 'STOP_MARKET':
                     order_type = Order.ORDER_STOP
                     stop_price = float(order['sp'])
 
-                elif order['o'] == 'STOP_LOSS_LIMIT':
+                elif order['o'] == 'STOP':
                     order_type = Order.ORDER_STOP_LIMIT
                     price = float(order['p'])
                     stop_price = float(order['sp'])
 
-                elif order['o'] == 'TAKE_PROFIT':
+                elif order['o'] == 'TAKE_PROFIT_MARKET':
                     order_type = Order.ORDER_TAKE_PROFIT
                     stop_price = float(order['sp'])
 
-                elif order['o'] == 'TAKE_PROFIT_LIMIT':
+                elif order['o'] == 'TAKE_PROFIT':
                     order_type = Order.ORDER_TAKE_PROFIT_LIMIT
                     price = float(order['p'])
                     stop_price = float(order['sp'])
 
-                elif order['o'] == 'LIMIT_MAKER':
-                    order_type = Order.ORDER_LIMIT
-                    price = float(order['p'])
+                elif order['o'] == 'TRAILING_STOP_MARKET':
+                    order_type = Order.ORDER_TRAILING_STOP_MARKET
 
                 else:
                     order_type = Order.ORDER_LIMIT
@@ -854,27 +854,26 @@ class BinanceFuturesWatcher(Watcher):
                 elif order['o'] == 'MARKET':
                     order_type = Order.ORDER_MARKET
 
-                elif order['o'] == 'STOP_LOSS':
+                elif order['o'] == 'STOP_MARKET':
                     order_type = Order.ORDER_STOP
                     stop_price = float(order['sp'])
 
-                elif order['o'] == 'STOP_LOSS_LIMIT':
+                elif order['o'] == 'STOP':
                     order_type = Order.ORDER_STOP_LIMIT
                     price = float(order['p'])
                     stop_price = float(order['sp'])
 
-                elif order['o'] == 'TAKE_PROFIT':
+                elif order['o'] == 'TAKE_PROFIT_MARKET':
                     order_type = Order.ORDER_TAKE_PROFIT
                     stop_price = float(order['sp'])
 
-                elif order['o'] == 'TAKE_PROFIT_LIMIT':
+                elif order['o'] == 'TAKE_PROFIT':
                     order_type = Order.ORDER_TAKE_PROFIT_LIMIT
                     price = float(order['p'])
                     stop_price = float(order['sp'])
 
-                elif order['o'] == 'LIMIT_MAKER':
-                    order_type = Order.ORDER_LIMIT
-                    price = float(order['p'])
+                elif order['o'] == 'TRAILING_STOP_MARKET':
+                    order_type = Order.ORDER_TRAILING_STOP_MARKET
 
                 else:
                     order_type = Order.ORDER_LIMIT

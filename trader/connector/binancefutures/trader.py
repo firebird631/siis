@@ -260,7 +260,7 @@ class BinanceFuturesTrader(Trader):
             if 'orderId' in result:
                 order_logger.info(result)
 
-                order.set_order_id(str(result['orderId']))
+                order.set_order_id(result['orderId'])
 
                 order.created_time = result['updateTime'] * 0.001
                 order.transact_time = result['updateTime'] * 0.001

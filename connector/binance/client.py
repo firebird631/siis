@@ -2120,6 +2120,29 @@ class Client(object):
         res = self._post('userDataStream', False, data={})
         return res['listenKey']
 
+    def future_stream_get_listen_key(self):
+        """Start a new user data stream and return the listen key
+        If a stream already exists it should return the same key.
+        If the stream becomes invalid a new key is returned.
+
+        Can be used to keep the user stream alive.
+
+        https://binance-docs.github.io/apidocs/futures/en/#start-user-data-stream-user_stream
+
+        :returns: API response
+
+        .. code-block:: python
+
+            {
+                "listenKey": "pqia91ma19a5s61cv6a81va65sdf19v8a65a1a5s61cv6a81va65sdf19v8a65a1"
+            }
+
+        :raises: BinanceRequestException, BinanceAPIException
+
+        """
+        res = self._request_futures_api('post', 'listenKey', True, data={})
+        return res['listenKey']
+
     def stream_keepalive(self, listenKey):
         """PING a user data stream to prevent a time out.
 
