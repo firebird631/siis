@@ -377,6 +377,12 @@ class Trader(Runnable):
         """
         return False
 
+    def cancel_all_orders(self, market_or_instrument):
+        """
+        Cancel any existing order for a specific market.
+        """
+        return False
+
     def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         """
         Close an existing position.
@@ -458,6 +464,7 @@ class Trader(Runnable):
     def positions(self, market_id):
         """
         Get actives positions for a market id.
+        @deprecated
         """
         return []
 

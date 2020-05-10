@@ -61,13 +61,6 @@ class BinanceFuturesAccount(Account):
 
                     self._risk_limit = float(account['totalMarginBalance'])
 
-                    used_margin = float(account['totalWalletBalance']) - float(account['totalMarginBalance'])
-
-                    if used_margin > 0.0:
-                        self._margin_level = float(account['totalMarginBalance']) / used_margin
-                    else:
-                        self._margin_level = 0.0
-
                     currency_market = self.parent.market(self._alt_currency+self._currency)
                     if currency_market:
                         self._currency_precision = currency_market.base_precision
@@ -81,13 +74,19 @@ class BinanceFuturesAccount(Account):
                 balance = self.parent()._watcher.balance()
 
                 self._balance = balance['totalWalletBalance']
-                self._balance = balance['totalUnrealizedProfit']
 
                 # net worth : balance + unrealized profit/loss
-                self._net_worth = float(self._balance['totalWalletBalance']) + float(self._balance['totalUnrealizedProfit'])
-                self._margin_balance = self._balance['totalMarginBalance']   # free margin
+                self._net_worth = self._balance['totalWalletBalance'] + self._balance['totalUnrealizedProfit']
+                self._margin_balance = self._balance['totalCrossMarginBalance'] + self._balance['totalIsolatedMarginBalance']   # free margin
 
-                self._risk_limit = float(account['totalMarginBalance'])
+                self._risk_limit = self._balance['totalCrossMarginBalance'] + self._balance['totalIsolatedMarginBalance']
+
+            # margin level
+            used_margin = self._balance - self._margin_balance
+            if used_margin > 0.0:
+                self._margin_level = self._margin_balance / used_margin
+            else:
+                self._margin_level = 0.0
 
             self._currency_ratio = 1.0 / (self.parent.last_price(self._alt_currency+self._currency) or 1.0)
             self._last_update = time.time()

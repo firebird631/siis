@@ -56,12 +56,16 @@ class Client(object):
 
     ORDER_TYPE_LIMIT = 'LIMIT'
     ORDER_TYPE_MARKET = 'MARKET'
+    ORDER_TYPE_STOP_MARKET = 'STOP_MARKET'  # future stop market
+    ORDER_TYPE_STOP = 'STOP'  # future stop limit
     ORDER_TYPE_STOP_LOSS = 'STOP_LOSS'
     ORDER_TYPE_STOP_LOSS_LIMIT = 'STOP_LOSS_LIMIT'
-    ORDER_TYPE_TAKE_PROFIT = 'TAKE_PROFIT'
+    ORDER_TYPE_TAKE_PROFIT = 'TAKE_PROFIT'  # future take profit stop limit
+    ORDER_TYPE_TAKE_PROFIT_MARKET = 'TAKE_PROFIT_MARKET'  # future take profit stop market
     ORDER_TYPE_TAKE_PROFIT_LIMIT = 'TAKE_PROFIT_LIMIT'
     ORDER_TYPE_LIMIT_MAKER = 'LIMIT_MAKER'
     ORDER_TYPE_ONE_CANCEL_OTHER = 'OCO'
+    ORDER_TRAILING_STOP_MARKET = 'TRAILING_STOP_MARKET'  # future trailing stop market
 
     TIME_IN_FORCE_GTC = 'GTC'  # Good till cancelled
     TIME_IN_FORCE_IOC = 'IOC'  # Immediate or cancel
@@ -2677,7 +2681,7 @@ class Client(object):
         https://binance-docs.github.io/apidocs/futures/en/#get-all-liquidation-orders-market_data
 
         """
-        return self._request_futures_api('get', 'ticker/allForceOrders', data=params)
+        return self._request_futures_api('get', 'allForceOrders', data=params)
 
     def futures_open_interest(self, **params):
         """Get present open interest of a specific symbol.
@@ -2685,7 +2689,7 @@ class Client(object):
         https://binance-docs.github.io/apidocs/futures/en/#open-interest-market_data
 
         """
-        return self._request_futures_api('get', 'ticker/openInterest', data=params)
+        return self._request_futures_api('get', 'openInterest', data=params)
 
     def futures_leverage_bracket(self, **params):
         """Notional and Leverage Brackets
@@ -2693,7 +2697,7 @@ class Client(object):
         https://binance-docs.github.io/apidocs/futures/en/#notional-and-leverage-brackets-market_data
 
         """
-        return self._request_futures_api('get', 'ticker/leverageBracket', True, data=params)
+        return self._request_futures_api('get', 'leverageBracket', True, data=params)
 
     def futures_transfer_history(self, **params):
         """Get future account transaction history list
@@ -2701,7 +2705,7 @@ class Client(object):
         https://binance-docs.github.io/apidocs/futures/en/#new-future-account-transfer
 
         """
-        return self._request_margin_api('get', 'futures/transfer', True, data=params)
+        return self._request_futures_api('get', 'futures/transfer', True, data=params)
 
     def futures_create_order(self, **params):
         """Send in a new order.

@@ -364,6 +364,7 @@ class BinanceTrader(Trader):
     def positions(self, market_id):
         """
         Not supported.
+        @deprecated
         """
         return []
 
@@ -803,7 +804,7 @@ class BinanceTrader(Trader):
         Mainly used for initial fetching.
         """
         try:
-            open_orders = self._watcher.connector.open_orders()
+            open_orders = self._watcher.connector.open_orders()  # API cost 40 
         except Exception as e:
             logger.error("__fetch_orders: %s" % repr(e))
             raise

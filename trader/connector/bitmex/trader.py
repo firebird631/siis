@@ -177,6 +177,11 @@ class BitMexTrader(Trader):
         time.sleep(0.005)
 
     def positions(self, market_id):
+        """
+        @deprecated
+        """
+        positions = []
+
         with self._mutex:
             position = self._positions.get(market_id)
             if position:
@@ -184,7 +189,7 @@ class BitMexTrader(Trader):
             else:
                 positions = []
 
-            return positions
+        return positions
 
     #
     # global information

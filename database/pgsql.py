@@ -601,7 +601,7 @@ class PgSql(Database):
 
                 query = ' '.join((
                     "INSERT INTO user_trader(broker_id, account_id, market_id, appliance_id, activity, data, regions, alerts) VALUES",
-                    ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
+                    ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
                             json.dumps(ut[5]).replace("'", "''"),
                             json.dumps(ut[6]).replace("'", "''"),
                             json.dumps(ut[7]).replace("'", "''")) for ut in uti]),

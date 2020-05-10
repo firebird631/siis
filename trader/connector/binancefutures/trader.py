@@ -1,7 +1,7 @@
 # @date 2020-05-09
 # @author Frederic SCHERMA
 # @license Copyright (c) 2020 Dream Overflow
-# Trader/autotrader connector for binance.com
+# Trader/autotrader connector for binancefutures.com
 
 import time
 import copy
@@ -89,6 +89,9 @@ class BinanceFuturesTrader(Trader):
             try:
                 self.account.update(self._watcher.connector)
 
+                self.__fetch_orders()
+                self.__fetch_positions()
+
             except Exception as e:
                 error_logger.error(repr(e))
 
@@ -149,6 +152,7 @@ class BinanceFuturesTrader(Trader):
     def create_order(self, order, market_or_instrument):
         """
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
+        @todo Hedging with positionSide
         """
         if not order or not market_or_instrument:
             return False
@@ -161,7 +165,7 @@ class BinanceFuturesTrader(Trader):
         if order.order_type == Order.ORDER_LIMIT:
             order_type = Client.ORDER_TYPE_LIMIT
         elif order.order_type == Order.ORDER_STOP:
-            order_type = Client.ORDER_TYPE_STOP_LOSS
+            order_type = Client.ORDER_TYPE_STOP_MARKET
         else:
             # @todo others
             order_type = Client.ORDER_TYPE_MARKET
@@ -192,11 +196,22 @@ class BinanceFuturesTrader(Trader):
         data = {
             'symbol': symbol,
             'side': side,
+            'positionSide': 'BOTH',
             'type': order_type,
             'quantity': quantity,
             'newOrderRespType': Client.ORDER_RESP_TYPE_RESULT,
             'recvWindow': 10000
         }
+
+        # reduce only
+        if order.reduce_only:
+            data['reduceOnly'] = True
+
+        # price type @todo let the default for now (last for limit, mark for stop)
+        # if order.price_type == Order.MARK_PRICE:
+        #     data['workingType'] = 'MARK_PRICE'
+        # elif order.price_type == Order.PRICE_LAST:
+        #     data['workingType'] = 'CONTRACT_PRICE'
 
         # limit order need timeInForce
         if order.order_type == Order.ORDER_LIMIT:
@@ -216,7 +231,6 @@ class BinanceFuturesTrader(Trader):
             data['timeInForce'] = time_in_force
 
         data['newClientOrderId'] = order.ref_order_id
-        # data['icebergQty'] = 0.0
 
         logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('quantity'), symbol, data.get('price')))
 
@@ -224,8 +238,7 @@ class BinanceFuturesTrader(Trader):
         reason = None
 
         try:
-            result = self._watcher.connector.client.create_order(**data)
-            # result = self._watcher.connector.client.create_test_order(**data)
+            result = self._watcher.connector.client.futures_create_order(**data)
         except BinanceRequestException as e:
             reason = str(e)
         except BinanceAPIException as e:
@@ -247,10 +260,10 @@ class BinanceFuturesTrader(Trader):
             if 'orderId' in result:
                 order_logger.info(result)
 
-                order.set_order_id(result['orderId'])
+                order.set_order_id(str(result['orderId']))
 
-                order.created_time = result['transactTime'] * 0.001
-                order.transact_time = result['transactTime'] * 0.001
+                order.created_time = result['updateTime'] * 0.001
+                order.transact_time = result['updateTime'] * 0.001
 
                 # if result['executedQty']:
                 #     # partially or fully executed quantity
@@ -287,7 +300,7 @@ class BinanceFuturesTrader(Trader):
         result = None
 
         try:
-            result = self._watcher.connector.client.cancel_order(**data)
+            result = self._watcher.connector.client.futures_cancel_order(**data)
         except BinanceRequestException as e:
             reason = str(e)
         except BinanceAPIException as e:
@@ -309,31 +322,63 @@ class BinanceFuturesTrader(Trader):
 
         return True
 
-    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
-        if not position_id or not market_or_instrument:
+    def cancel_all_orders(self, market_or_instrument):
+        """
+        Cancel any existing order for a specific market.
+        """
+        if not market_or_instrument:
             return False
 
         if not self._watcher.connector:
-            error_logger.error("Trader %s refuse to close position because of missing connector" % (self.name,))
+            error_logger.error("Trader %s refuse to cancel all orders because of missing connector" % (self.name,))
             return False
 
-        # @todo
+        reason = None
+        result = None
 
+        symbol = market_or_instrument.market_id
+
+        data = {
+            # 'newClientOrderId': ref_order_id,
+            'symbol': symbol,
+            'recvWindow': 10000
+        }
+
+        try:
+            result = self._watcher.connector.client.futures_cancel_all_open_orders(**data)
+        except BinanceRequestException as e:
+            reason = str(e)
+        except BinanceAPIException as e:
+            reason = str(e)
+        except BinanceOrderException as e:
+            reason = str(e)
+
+        if reason:
+            error_logger.error("Trader %s rejected cancel all orders %s reason %s !" % (self.name, symbol, reason))
+            return False
+
+        if result:
+            if result.get('status', "") == Client.ORDER_STATUS_REJECTED:
+                error_logger.error("Trader %s rejected cancel all orders %s reason %s !" % (self.name, symbol, reason))
+                order_logger.error(result)
+                return False
+
+            order_logger.info(result)
+
+        return False
+
+    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
+        """Not supported, use create_order for that"""
         return False
 
     def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
-        if not position_id or not market_or_instrument:
-            return False
-        
-        if not self._watcher.connector:
-            error_logger.error("Trader %s refuse to close position because of missing connector" % (self.name,))
-            return False
-
-        # @todo
-
+        """Not supported, use cancel_order/create_order for that"""
         return False
 
     def positions(self, market_id):
+        """
+        @deprecated
+        """
         positions = []
 
         with self._mutex:
@@ -383,7 +428,7 @@ class BinanceFuturesTrader(Trader):
         Mainly used for initial fetching.
         """
         try:
-            open_orders = self._watcher.connector.futures_open_orders()
+            open_orders = self._watcher.connector.future_open_orders()  # API cost 40 
         except Exception as e:
             logger.error("__fetch_orders: %s" % repr(e))
             raise
@@ -397,6 +442,8 @@ class BinanceFuturesTrader(Trader):
                 order = Order(self, data['symbol'])
 
                 order.set_order_id(data['orderId'])
+                order.set_ref_order_id(data['clientOrderId'])
+
                 order.quantity = float(data.get('origQty', "0.0"))
                 order.executed = float(data.get('executedQty', "0.0"))
 
@@ -406,34 +453,40 @@ class BinanceFuturesTrader(Trader):
                     order.order_type = Order.ORDER_LIMIT
                     order.price = float(data['price']) if 'price' in data else None
 
-                elif data['type'] == 'LIMIT_MAKER':
-                    order.order_type = Order.ORDER_LIMIT # _MAKER
-                    order.price = float(data['price']) if 'price' in data else None
-
                 elif data['type'] == 'MARKET':
                     order.order_type = Order.ORDER_MARKET
 
-                elif data['type'] == 'STOP_LOSS':
-                    order.order_type = Order.ORDER_STOP
-                    order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
-
-                elif data['type'] == 'STOP_LOSS_LIMIT':
+                elif data['type'] == 'STOP':
                     order.order_type = Order.ORDER_STOP_LIMIT
                     order.price = float(data['price']) if 'price' in data else None
                     order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
                 elif data['type'] == 'TAKE_PROFIT':
-                    order.order_type = Order.ORDER_TAKE_PROFIT
-                    order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
-
-                elif data['type'] == 'TAKE_PROFIT_LIMIT':
                     order.order_type = Order.ORDER_TAKE_PROFIT_LIMIT
                     order.price = float(data['price']) if 'price' in data else None
                     order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
+                elif data['type'] == 'STOP_MARKET':
+                    order.order_type = Order.ORDER_STOP
+                    order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
+
+                elif data['type'] == 'TAKE_PROFIT_MARKET':
+                    order.order_type = Order.ORDER_TAKE_PROFIT
+                    order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
+
+                elif data['type']== 'TRAILING_STOP_MARKET':
+                    order.order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    # @todo order.trailing_distance data['callbackRate']
+
                 order.created_time = data['time'] * 0.001
                 order.transact_time = data['updateTime'] * 0.001
 
+                order.reduce_only = data['reduceOnly']
+                # data['closePosition']
+                # data['positionSide']
+                # data['cumQuote']
+
+                # time-in-force
                 if data['timeInForce'] == 'GTC':
                     order.time_in_force = Order.TIME_IN_FORCE_GTC
                 elif data['timeInForce'] == 'IOC':
@@ -443,7 +496,14 @@ class BinanceFuturesTrader(Trader):
                 else:
                     order.time_in_force = Order.TIME_IN_FORCE_GTC
 
-                # "icebergQty": "0.0"  # @todo a day when I'll be rich
+                # execution price
+                if data['workingType'] == 'CONTRACT_PRICE':
+                    order.price_type = Order.PRICE_LAST
+                elif data['workingType'] == 'MARK_PRICE':
+                    order.price_type = Order.PRICE_MARK
+                else:
+                    order.price_type = Order.PRICE_LAST
+
                 orders[order.order_id] = order
 
         # if signals:
@@ -463,10 +523,83 @@ class BinanceFuturesTrader(Trader):
         """
         This is the synchronous REST fetching, but prefer the WS asynchronous and live one.
         Mainly used for initial fetching.
-
-        @todo
+        @todo Distinct LONG/SHORT position when hedging enabled
         """
-        pass
+        try:
+            open_positions = self._watcher.connector.futures_position_information()  # API cost 5
+        except Exception as e:
+            logger.error("__fetch_positions: %s" % repr(e))
+            raise
+
+        positions = {}
+
+        for data in open_positions:
+            symbol = data['symbol']
+            quantity = float(data['positionAmt'])
+            market = self.market(symbol)
+            position = None
+
+            if data['positionSide'] == 'LONG' or data['positionSide'] == 'SHORT':
+                # only if hedgin @todo
+                continue
+
+            if self._positions.get(symbol):
+                position = self._positions.get(symbol)
+
+            elif quantity != 0.0:
+                # insert the new position
+                position = Position(self)
+                position.set_position_id(symbol)
+                position.set_key(self.service.gen_key())
+
+                quantity = abs(quantity)
+                direction = Position.LONG if quantity > 0.0 else Position.SHORT
+
+                position.entry(direction, symbol, quantity)
+
+                position.leverage = float(data['leverage'])
+
+                # liquidation_price = data['liquidationPrice']
+                # position.mark_price = data['markPrice']
+                # data['marginType'] == 'isolated'
+                # data['maxNotionalValue']
+                # data['isAutoAddMargin']
+                position.entry_price = float(data['entryPrice'])
+                # position.created_time =
+
+                # id is symbol
+                self._positions[symbol] = position
+
+            elif (quantity == 0.0) and self._positions.get(symbol):
+                # no more position
+                del self._positions[symbol]
+
+            if position:
+                # absolute value because we work with positive quantity + direction information
+                position.quantity = abs(quantity)
+                position.direction = Position.LONG if quantity > 0.0 else Position.SHORT
+
+                position.leverage = float(data['leverage'])
+
+                # position.liquidation_price = data['liquidationPrice']
+                # position.mark_price = data['markPrice']
+                position.entry_price = float(data['entryPrice'])
+                # position.created_time = 
+
+                # @todo minus taker-fee (it is compared to mark-price, but it woth only for mark-price stop-loss)
+                position.profit_loss = float(data['unRealizedProfit'])
+                # position.profit_loss_rate = float(data[''])
+
+                # @todo minus maker-fee
+                position.profit_loss_market = float(data['unRealizedProfit'])
+                # position.profit_loss_market_rate = float(data[''])
+
+                # compute profit loss in base currency (disabled, uses values aboves)
+                # position.update_profit_loss(market)
+
+        if positions:
+            with self._mutex:
+                self._positions = positions
 
     #
     # markets

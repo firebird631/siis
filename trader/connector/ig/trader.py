@@ -426,6 +426,7 @@ class IGTrader(Trader):
         """
         Returns current positions for an instrtument. If the trader does not use a WS API it is possible
         to constat a latency between the reality and what it returns. Prefers use WS API as possible.
+        @deprecated
         """
         positions = []
 

@@ -70,13 +70,17 @@ class BinanceFuturesWatcher(Watcher):
 
         self._symbols_data = {}
         self._tickers_data = {}
+        self._leverages_data = {}
+
         self._total_balance = {
             'totalWalletBalance': 0.0,
             'totalUnrealizedProfit': 0.0,
-            'totalMarginBalance': 0.0
+            'totalCrossMarginBalance': 0.0,
+            'totalIsolatedMarginBalance': 0.0,
         }
 
         self._last_trade_id = {}
+        self._last_positions = {}    # cache of the last position for a symbol
 
         self.__configured_symbols = set()  # cache for configured symbols set
         self.__matching_symbols = set()    # cache for matching symbols
@@ -313,10 +317,10 @@ class BinanceFuturesWatcher(Watcher):
     def fetch_market(self, market_id):
         """
         Fetch and cache it. It rarely changes.
-        @todo
         """
         symbol = self._symbols_data.get(market_id)
         ticker = self._tickers_data.get(market_id)
+        leverage = self._leverages_data.get(market_id)
 
         market = None
 
@@ -367,8 +371,8 @@ class BinanceFuturesWatcher(Watcher):
             if hedging:
                 market.hedging = hedging['dualSidePosition']
 
-            # special case if dual side position
-            market.trade |= Market.TRADE_IND_MARGIN
+            # @todo special case if dual side position
+            market.trade = Market.TRADE_MARGIN | Market.TRADE_IND_MARGIN
 
             # @todo orders capacities
             # symbol['orderTypes'] in ['LIMIT', 'MARKET', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT', 'TAKE_PROFIT_MARKET', 'TRAILING_STOP_MARKET']
@@ -385,9 +389,8 @@ class BinanceFuturesWatcher(Watcher):
             # market.buyer_commission = 
             # market.seller_commission = 
 
-            # leverage = self.connector.client.futures_leverage_bracket(symbol=symbol)
-            # if leverage:
-            #     market.margin_factor = 1.0 / leverage['brackets']['initialLeverage']
+            if leverage:
+                market.margin_factor = 1.0 / leverage[1]  # leverage[0] to know if isolated margin
 
             # only order book can give us bid/ofr
             market.bid = float(ticker['bidPrice'])
@@ -435,8 +438,8 @@ class BinanceFuturesWatcher(Watcher):
         return market
 
     def fetch_order_book(self, market_id):
-        # get_orderbook_tickers
-        # get_order_book(market_id)
+        # future_orderbook_tickers
+        # future_order_book(market_id)
         pass
 
     #
@@ -446,15 +449,20 @@ class BinanceFuturesWatcher(Watcher):
     def __prefetch_markets(self):
         symbols = self._connector.client.futures_exchange_info().get('symbols', [])
         tickers = self._connector.client.futures_orderbook_ticker()
+        account = self._connector.client.futures_account()
 
         self._symbols_data = {}
         self._tickers_data = {}
+        self._leverages_data = {}
 
         for symbol in symbols:
             self._symbols_data[symbol['symbol']] = symbol
 
         for ticker in tickers:
             self._tickers_data[ticker['symbol']] = ticker
+
+        for position in account.get('positions', []):
+            self._leverages_data[position['symbol']] = (position.get('isolated', False), float(position.get('leverage', '1')))
 
     def __on_tickers_data(self, data):
         # market data instrument by symbol
@@ -651,105 +659,93 @@ class BinanceFuturesWatcher(Watcher):
         elif event_type == "ACCOUNT_UPDATE":
             # balance and position updated
             # @ref https://binance-docs.github.io/apidocs/futures/en/#event-balance-and-position-update
+            exec_logger.info("binancefutures.com ACCOUNT_UPDATE %s" % str(data))
             event_timestamp = float(data['E']) * 0.001
 
+            total_wallet_balance = None
+            total_unrealized_profit = None
+            total_cross_margin_balance = None
+            total_isolated_margin_balance = None
+
             if 'B' in data['a']:
-                self._total_balance['totalWalletBalance'] = 0.0
+                total_wallet_balance = 0.0
 
                 balances = data['a']['B']
                 for b in balances:
-                    self._total_balance['totalWalletBalance'] += float(b['wb'])
+                    total_wallet_balance += float(b['wb'])
+                    total_cross_margin_balance += float(b['cw'])
 
             if 'P' in data['a']:
-                self._total_balance['totalUnrealizedProfit'] = 0.0
-                self._total_balance['totalMarginBalance'] = 0.0
+                total_unrealized_profit = 0.0
+                total_isolated_margin_balance = 0.0
 
                 positions = data['a']['P']
                 for pos in positions:
-                    self._total_balance['totalUnrealizedProfit'] += float(pos['up'])
-                    self._total_balance['totalMarginBalance'] += float(pos['iw'])
-
                     symbol = pos['s']
+                    ref_order_id = ""
 
-                    # # 'leverage': 10, 'crossMargin': False
+                    if pos['ps'] == "LONG":
+                        direction = Order.LONG
+                    elif pos['ps'] == "SHORT":
+                        direction = Order.SHORT
+                    else:
+                        # could be BOTH for the sum of the position in case of hedging on the same instrument
+                        continue
 
-                    # if ld.get('currentQty') is None:
-                    #     # no position
-                    #     continue
+                    total_unrealized_profit += float(pos['up'])
+                    total_isolated_margin_balance += float(pos['iw'])
 
-                    # # exec_logger.info("bitmex.com position %s" % str(ld))
+                    operation_time = float(data['T'])
+                    quantity = abs(float(pos['pa']))
 
-                    # if ld.get('currentQty', 0) != 0:
-                    #     direction = Order.SHORT if ld['currentQty'] < 0 else Order.LONG
-                    # elif ld.get('openOrderBuyQty', 0) > 0:
-                    #     direction = Order.LONG
-                    # elif ld.get('openOrderSellQty', 0) > 0:
-                    #     direction = Order.SHORT
-                    # else:
-                    #     direction = 0
+                    position_data = {
+                        'id': symbol,
+                        'symbol': symbol,
+                        'direction': direction,
+                        'timestamp': operation_time,
+                        'quantity': quantity,
+                        'avg-entry-price': float(pos['ep']),
+                        'exec-price': None,
+                        'stop-loss': None,
+                        'take-profit': None,
+                        'cumulative-filled': quantity,
+                        'filled': None,  # no have
+                        'liquidation-price': None,  # no have
+                        'commission': 0.0,
+                        'profit-currency': self.BASE_QUOTE,
+                        'profit-loss': float(pos['up']),
+                        'profit-loss-rate': None,
+                    }
 
-                    # operation_time = self._parse_datetime(ld.get('timestamp')).replace(tzinfo=UTC()).timestamp()
-                    # quantity = abs(float(ld['currentQty']))
+                    # needed to know if opened or deleted position
+                    key = "%s%s" % (direction, symbol)
+                    entry = self._last_positions.get(key)
 
-                    # # 'execQty': ?? 'execBuyQty', 'execSellQty': ??
-                    # # 'commission': 0.00075 'execComm': 0 ?? 'currentComm': 0
+                    if not entry or entry == 0.0:
+                        # not current quantity, but open order qty
+                        self._last_positions[key] = quantity
+                        self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (symbol, position_data, ref_order_id))
+                    elif quantity > 0:
+                        # current qty updated
+                        self._last_positions[key] = quantity
+                        self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, ref_order_id))
+                    else:
+                        # empty quantity no open order qty, position deleted
+                        del self._last_positions[key]
+                        self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (symbol, position_data, ref_order_id))
 
-                    # position_data = {
-                    #     'id': symbol,
-                    #     'symbol': symbol,
-                    #     'direction': direction,
-                    #     'timestamp': operation_time,
-                    #     'quantity': quantity,
-                    #     'avg-entry-price': ld.get('avgEntryPrice', None),
-                    #     'exec-price': None,
-                    #     'stop-loss': None,
-                    #     'take-profit': None,
-                    #     'cumulative-filled': quantity,
-                    #     'filled': None,  # no have
-                    #     'liquidation-price': ld.get('liquidationPrice'),
-                    #     'commission': ld.get('commission', 0.0),
-                    #     'profit-currency': ld.get('currency'),
-                    #     'profit-loss': ld.get('unrealisedPnl'),
-                    #     'profit-loss-rate': ld.get('unrealisedPnlPcnt')
-                    # }
+            with self._mutex:
+                if total_wallet_balance is not None:
+                    self._total_balance['totalWalletBalance'] = total_wallet_balance
 
-                    # if (ld.get('openOrderSellQty', 0) or ld.get('openOrderSellQty', 0)) and quantity == 0.0:
-                    #     # not current quantity, but open order qty
-                    #     self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (symbol, position_data, ref_order_id))
-                    # elif quantity > 0:
-                    #     # current qty updated
-                    #     self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, ref_order_id))
-                    # else:
-                    #     # empty quantity no open order qty, position deleted
-                    #     self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (symbol, position_data, ref_order_id))
+                if total_unrealized_profit is not None:
+                    self._total_balance['totalUnrealizedProfit'] = total_unrealized_profit
 
-                    # @todo
-                    #       "pa":"0",                 // Position Amount
-                    #       "ep":"0.00000",            // Entry Price
-                    #       "cr":"200",               // (Pre-fee) Accumulated Realized
-                    #       "up":"0",                     // Unrealized PnL
-                    #       "mt":"isolated",              // Margin Type
-                    #       "iw":"0.00000000",            // Isolated Wallet (if isolated position)
-                    #       "ps":"BOTH"                   // Position Side
+                if total_cross_margin_balance is not None:
+                    self._total_balance['totalCrossMarginBalance'] = total_cross_margin_balance
 
-                    #         "s":"BTCUSDT",
-                    #         "pa":"20",
-                    #         "ep":"6563.66500",
-                    #         "cr":"0",
-                    #         "up":"2850.21200",
-                    #         "mt":"isolated",
-                    #         "iw":"13200.70726908",
-                    #         "ps":"LONG"
-
-                    #         "s":"BTCUSDT",
-                    #         "pa":"-10",
-                    #         "ep":"6563.86000",
-                    #         "cr":"-45.04000000",
-                    #         "up":"-1423.15600",
-                    #         "mt":"isolated",
-                    #         "iw":"6570.42511771",
-                    #         "ps":"SHORT"
-
+                if total_isolated_margin_balance is not None:
+                    self._total_balance['totalIsolatedMarginBalance'] = total_isolated_margin_balance
 
         elif event_type == "ORDER_TRADE_UPDATE":
             # order trade created, updated

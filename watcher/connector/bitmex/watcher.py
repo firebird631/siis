@@ -332,7 +332,7 @@ class BitMexWatcher(Watcher):
                         'profit-loss-rate': ld.get('unrealisedPnlPcnt')
                     }
 
-                    if (ld.get('openOrderSellQty', 0) or ld.get('openOrderSellQty', 0)) and quantity == 0.0:
+                    if (ld.get('openOrderBuyQty', 0) or ld.get('openOrderSellQty', 0)) and quantity == 0.0:
                         # not current quantity, but open order qty
                         self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (symbol, position_data, ref_order_id))
                     elif quantity > 0:

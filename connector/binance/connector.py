@@ -163,6 +163,7 @@ class Connector(object):
         return []
 
     def open_orders(self):
+        # cost 40
         if self._session:
             return self._session.get_open_orders()
 
@@ -246,7 +247,7 @@ class Connector(object):
 
         return None
 
-    def orders_for(self, symbol):
+    def future_orders_for(self, symbol):
         """
         Returns active orders for a specific symbol.
         """
@@ -256,7 +257,8 @@ class Connector(object):
 
         return []
 
-    def open_orders(self):
+    def future_open_orders(self):
+        # cost 40
         if self._session:
             return self._session.futures_get_all_orders()
 
@@ -280,6 +282,11 @@ class Connector(object):
 
         return []
 
-    # @todo position
-    # @todo margin
-    # @todo leverage
+    def futures_position_information(self):
+        """
+        Returns any positions.
+        """
+        if self._session:
+            return self._session.futures_position_information()
+
+        return []

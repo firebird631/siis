@@ -14,12 +14,13 @@ class Order(Keyed):
     LONG = 1    # long direction
     SHORT = -1  # short direction
 
-    ORDER_MARKET = 0             # market order
-    ORDER_LIMIT = 1              # entry or exit limit
-    ORDER_STOP = 2               # stop at market
-    ORDER_STOP_LIMIT = 3         # stop limit order
-    ORDER_TAKE_PROFIT = 4        # take profit market
-    ORDER_TAKE_PROFIT_LIMIT = 5  # take profit limit
+    ORDER_MARKET = 0                # market order
+    ORDER_LIMIT = 1                 # entry or exit limit
+    ORDER_STOP = 2                  # stop at market
+    ORDER_STOP_LIMIT = 3            # stop limit order
+    ORDER_TAKE_PROFIT = 4           # take profit market
+    ORDER_TAKE_PROFIT_LIMIT = 5     # take profit limit
+    ORDER_TRAILING_STOP_MARKET = 6  # trailing stop market
 
     STOP_NONE = 0
     STOP_TRAILING = 1    # trailing stop
@@ -319,5 +320,7 @@ def order_type_to_str(order_type):
         return "take-profit"
     elif order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
         return "take-profit-limit"
+    elif order_type == Order.ORDER_TRAILING_STOP_MARKET:
+        return "trailing-stop-market"
 
     return "unknown"

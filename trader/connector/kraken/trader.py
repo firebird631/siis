@@ -383,6 +383,9 @@ class KrakenTrader(Trader):
         return False
 
     def positions(self, market_id):
+        """
+        @deprecated
+        """
         with self._mutex:
             position = self._positions.get(market_id)
             if position:
