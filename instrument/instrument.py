@@ -398,7 +398,11 @@ class Instrument(object):
     ORDER_TAKE_PROFIT_LIMIT = 16
     ORDER_ALL = 32-1
 
-    __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_tradeable', '_currency', '_trade_quantity', '_trade_max_factor', '_leverage', \
+    TRADE_QUANTITY_DEFAULT = 0
+    TRADE_QUANTITY_QUOTE_TO_BASE = 1
+
+    __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_tradeable', '_currency', \
+                '_trade_quantity', '_trade_max_factor', '_trade_quantity_mode', '_leverage', \
                 '_market_bid', '_market_ofr', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
                 '_ticks', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry'
@@ -424,6 +428,7 @@ class Instrument(object):
 
         self._trade_quantity = 0.0
         self._trade_max_factor = 1
+        self._trade_quantity_mode = Instrument.TRADE_QUANTITY_DEFAULT
 
         self._leverage = 1.0  # 1 / margin_factor
 
@@ -576,6 +581,14 @@ class Instrument(object):
     def trade_max_factor(self, max_factor):
         if max_factor >= 1:
             self._trade_max_factor = max_factor
+
+    @property
+    def trade_quantity_mode(self):
+        return self._trade_quantity_mode
+
+    @trade_quantity_mode.setter
+    def trade_quantity_mode(self, trade_quantity_mode):
+        self._trade_quantity_mode = trade_quantity_mode
 
     #
     # price/volume
@@ -1327,6 +1340,14 @@ class Instrument(object):
             return self._market_ofr
         else:
             return self._market_bid
+
+    def trade_quantity_mode_to_str(self):
+        if self._trade_quantity_mode == Instrument.TRADE_QUANTITY_DEFAULT:
+            return "default"
+        elif self._trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
+            return "quote-to-base"
+        else:
+            return "default"
 
     #
     # format/adjust

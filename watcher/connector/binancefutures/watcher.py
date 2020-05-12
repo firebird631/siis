@@ -503,7 +503,7 @@ class BinanceFuturesWatcher(Watcher):
         # else:
         #     market.base_exchange_rate = 1.0
 
-        market_data = (symbol, None, None, bid, ofr, None, None, None, None, None)
+        market_data = (symbol, True, None, bid, ofr, None, None, None, None, None)
         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_depth_data(self, data):
@@ -813,6 +813,12 @@ class BinanceFuturesWatcher(Watcher):
                     time_in_force = Order.TIME_IN_FORCE_GTC
 
                 # "ap":"0" Average Price
+                fees = float(order['n'])
+                exec_price = float(order['L'])
+
+                if order['N'] == self.BASE_QUOTE:
+                    # fees expressed in USDT
+                    fees /= exec_price
 
                 order_data = {
                     'id': order_id,
@@ -824,13 +830,14 @@ class BinanceFuturesWatcher(Watcher):
                     'quantity': float(order['q']),
                     'price': price,
                     'stop-price': stop_price,
-                    'exec-price': float(order['L']),
+                    'exec-price': exec_price,
+                    'avg-price': float(order['ap']),
                     'filled': float(order['l']),
                     'cumulative-filled': float(order['z']),
                     'stop-loss': None,
                     'take-profit': None,
                     'time-in-force': time_in_force,
-                    'commission-amount': float(order['n']),
+                    'commission-amount': fees,
                     'commission-asset': order['N'],
                     'maker': order['m'],   # trade execution over or counter the market : true if maker, false if taker
                     'fully-filled': order['X'] == 'FILLED'  # fully filled status else its partially
@@ -846,7 +853,7 @@ class BinanceFuturesWatcher(Watcher):
 
                 price = None
                 stop_price = None
-                
+
                 if order['o'] == 'LIMIT':
                     order_type = Order.ORDER_LIMIT
                     price = float(order['p'])

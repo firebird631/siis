@@ -260,7 +260,7 @@ class BinanceFuturesTrader(Trader):
             if 'orderId' in result:
                 order_logger.info(result)
 
-                order.set_order_id(result['orderId'])
+                order.set_order_id(str(result['orderId']))
 
                 order.created_time = result['updateTime'] * 0.001
                 order.transact_time = result['updateTime'] * 0.001
@@ -441,7 +441,7 @@ class BinanceFuturesTrader(Trader):
             if data['status'] == 'NEW':  # might be...
                 order = Order(self, data['symbol'])
 
-                order.set_order_id(data['orderId'])
+                order.set_order_id(str(data['orderId']))
                 order.set_ref_order_id(data['clientOrderId'])
 
                 order.quantity = float(data.get('origQty', "0.0"))
@@ -627,43 +627,3 @@ class BinanceFuturesTrader(Trader):
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
-
-    #
-    # order slots
-    #
-
-    @Trader.mutexed
-    def on_order_traded(self, market_id, data, ref_order_id):
-        """
-        Order update.
-        @note Consume 1 API credit to get the asset quote price at the time of the trade.
-        """
-        market = self._markets.get(data['symbol'])
-
-        if market is None:
-            # not interested by this market
-            return
-
-        if data['trade-id']:
-            pass # @todo
-
-        if data.get('fully-filled', False):
-            # fully filled, need to delete
-            if order.order_id in self._orders:
-                del self._orders[order.order_id]
-
-    def on_order_deleted(self, market_id,  order_id, ref_order_id):
-        with self._mutex:
-            if order_id in self._orders:
-                del self._orders[order_id]
-
-    def on_order_canceled(self, market_id, order_id, ref_order_id):
-        with self._mutex:
-            if order_id in self._orders:
-                del self._orders[order_id]
-
-    #
-    # positions slots
-    #
-
-    # @todo

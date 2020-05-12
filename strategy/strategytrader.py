@@ -883,6 +883,38 @@ class StrategyTrader(object):
 
         return False
 
+    def retrieve_context(self, name):
+        """
+        Return a trade context object. Used by set_trade_context.
+        Must be overrided.
+        """
+        return None
+
+    def apply_trade_context(self, trade, context):
+        """
+        Apply a trade context to a valide trade.
+        Must be overrided.
+        """
+        if not trade or not context:
+            return False
+
+        return True
+
+    def set_trade_context(self, trade, name):
+        """
+        Apply a trade context to a valide trade.
+        Must be overrided.
+        """
+        if not trade or not name:
+            return False
+
+        context = self.retrieve_context(name)
+
+        if not context:
+            return False
+
+        return self.apply_trade_context(trade, context)
+
     #
     # signal data streaming
     #
@@ -1025,15 +1057,18 @@ class StrategyTrader(object):
             # if not specified use default
             trade_quantity = self.instrument.trade_quantity
 
-        if not trader.has_margin(self.instrument.market_id, trade_quantity, price):
+        if trader.has_margin(self.instrument.market_id, trade_quantity, price):
+            if self.instruments.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
+                quantity = self.instrument.adjust_quantity(trade_quantity / price)  # and adjusted to 0/max/step
+            else:
+                quantity = self.instrument.adjust_quantity(trade_quantity)
+        else:
             msg = "Not enought free margin %s, has %s but need %s" % (
                 self.instrument.quote, self.instrument.format_quantity(trader.account.margin_balance),
                 self.instrument.format_quantity(trade_quantity))
 
             logger.warning(msg)
             Terminal.inst().notice(msg, view='status')
-        else:
-            quantity = self.instrument.adjust_quantity(trade_quantity)
 
         return quantity
 

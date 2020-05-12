@@ -393,6 +393,11 @@ class Strategy(Runnable):
                         instrument.trade_quantity = mapped_instrument.get('size', 0.0)
                         instrument.trade_max_factor = mapped_instrument.get('max-factor', 1)
 
+                        trade_qty_mode = mapped_instrument.get('size-mode', None)
+                        if trade_qty_mode:
+                            if trade_qty_mode == "quote-to-base":
+                                instrument.trade_quantity_mode = Instrument.TRADE_QUANTITY_QUOTE_TO_BASE
+
                         instrument.leverage = mapped_instrument.get('leverage', 1.0)
 
                         # if self.service.backtesting:
@@ -2003,6 +2008,7 @@ class Strategy(Runnable):
         hedging = data.get('hedging', True)
         margin_trade = data.get('margin-trade', False)
         entry_timeout = data.get('entry-timeout', None)
+        context = data.get('context', None)
 
         if quantity_rate <= 0.0:
             results['messages'].append("Missing or empty quantity.")
@@ -2060,7 +2066,10 @@ class Strategy(Runnable):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
-            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+            if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
+                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
+            else:
+                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
         elif strategy_trader.instrument.has_margin and strategy_trader.instrument.indivisible_position:
             trade = StrategyIndMarginTrade(timeframe)
@@ -2069,7 +2078,10 @@ class Strategy(Runnable):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
-            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+            if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
+                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
+            else:
+                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
         elif strategy_trader.instrument.has_margin and not strategy_trader.instrument.indivisible_position and not strategy_trader.instrument.has_position:
             trade = StrategyMarginTrade(timeframe)
@@ -2078,7 +2090,10 @@ class Strategy(Runnable):
                 results['error'] = True
                 results['messages'].append("Not enought margin")
 
-            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+            if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
+                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
+            else:
+                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
 
         else:
             results['error'] = True
@@ -2098,8 +2113,16 @@ class Strategy(Runnable):
             trade.set_user_trade()
 
             if entry_timeout:
-                # entry timeout expiration defined
+                # entry timeout expiration defined (could be overrided by trade context if specified)
                 trade.entry_timeout = entry_timeout
+
+            if context:
+                if not strategy_trader.set_trade_context(trade, context):
+                    # add an error result message
+                    results['error'] = True
+                    results['messages'].append("Rejected trade on %s:%s because the context was not found" % (self.identifier, strategy_trader.instrument.market_id))
+
+                    return results
 
             # the new trade must be in the trades list if the event comes before, and removed after only it failed
             strategy_trader.add_trade(trade)
@@ -2727,7 +2750,11 @@ class Strategy(Runnable):
                 results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
 
                 # quantity
-                results['messages'].append("Trade quantity : %s x%s" % (strategy_trader.instrument.trade_quantity, strategy_trader.instrument.trade_max_factor))
+                results['messages'].append("Trade quantity : %s, max factor is x%s, mode is %s" % (
+                    strategy_trader.instrument.trade_quantity,
+                    strategy_trader.instrument.trade_max_factor,
+                    strategy_trader.instrument.trade_quantity_mode_to_str()
+                ))
 
                 # regions
                 results['messages'].append("List %i regions:" % len(strategy_trader.regions))

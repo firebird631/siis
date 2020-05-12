@@ -223,6 +223,7 @@ class LongCommand(Command):
         timeframe = Instrument.TF_4HOUR
         entry_timeout = None
         leverage = None
+        context = None
 
         if len(args) < 2:
             return False, "Missing parameters"
@@ -254,6 +255,8 @@ class LongCommand(Command):
                     entry_timeout = timeframe_from_str(value[1:])
                 elif value.startswith("x"):
                     leverage = float(value[1:])
+                elif value.startswith("-"):
+                    context = value[1:]
 
         except Exception:
             return False, "Invalid parameters"
@@ -279,7 +282,8 @@ class LongCommand(Command):
             'take-profit': take_profit,
             'timeframe': timeframe,
             'entry-timeout': entry_timeout,
-            'leverage': leverage
+            'leverage': leverage,
+            'context': context
         })
 
         return True, []
@@ -324,6 +328,7 @@ class ShortCommand(Command):
         timeframe = Instrument.TF_4HOUR
         entry_timeout = None
         leverage = None
+        context = None
 
         if len(args) < 2:
             return False, "Missing parameters"
@@ -355,6 +360,8 @@ class ShortCommand(Command):
                     entry_timeout = timeframe_from_str(value[1:])
                 elif value.startswith("x"):
                     leverage = float(value[1:])
+                elif value.startswith("-"):
+                    context = value[1:]
 
         except Exception:
             return False, "Invalid parameters"
@@ -380,7 +387,8 @@ class ShortCommand(Command):
             'take-profit': take_profit,
             'timeframe': timeframe,
             'entry-timeout': entry_timeout,
-            'leverage': leverage
+            'leverage': leverage,
+            'context': context
         })
 
         return True, []

@@ -231,6 +231,10 @@ class StrategyTrade(object):
     def timeframe(self):
         return self._timeframe
 
+    @timeframe.setter
+    def timeframe(self, timeframe):
+        self._timeframe = timeframe
+
     @property
     def expiry(self):
         return self._expiry
@@ -755,7 +759,7 @@ class StrategyTrade(object):
         self._entry_state = data.get('entry-state', 0)  # self.trade_state_from_str(data.get('entry-state', ''))
         self._exit_state = data.get('exit-state', 0)  # self.trade_state_from_str(data.get('exit-state', ''))
         self._closing = data.get('closing', False)
-        self._timeframe =  data.get('timeframe', 0)  # timeframe_from_str(data.get('timeframe', '4h'))
+        self._timeframe = data.get('timeframe', 0)  # timeframe_from_str(data.get('timeframe', '4h'))
         self._user_trade = data.get('user-trade')
         self._label = data.get('label', "")
 

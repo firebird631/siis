@@ -408,7 +408,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                 elif data.get('filled') is not None and data['filled'] > 0:
                     filled = data['filled']
                 else:
-                    filled = 0                    
+                    filled = 0
 
                 if data.get('avg-price') is not None and data['avg-price'] > 0:
                     # in that case we have avg-price already computed
@@ -434,11 +434,15 @@ class StrategyIndMarginTrade(StrategyTrade):
                 # fees/commissions
                 #
 
-                maker = False
+                maker = data.get('maker', None)
 
-                if self._stats.get('entry-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
-                    # @todo only if execution price is equal or better then order price (depends of direction)
-                    maker = True
+                if maker is None:
+                    # no information, try to detect it
+                    if self._stats.get('entry-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
+                        # @todo only if execution price is equal or better then order price (depends of direction)
+                        maker = True
+                    else:
+                        maker = False
 
                 if filled > 0 and self.e == 0:
                     # initial fill we count the commission fee
@@ -527,11 +531,14 @@ class StrategyIndMarginTrade(StrategyTrade):
                 # fees/commissions
                 #
 
-                maker = False
+                maker = data.get('maker', None)
 
-                if data['id'] == self.limit_oid and self._stats.get('take-profit-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
-                    # @todo only if execution price is equal or better then order price (depends of direction)
-                    maker = True
+                if maker is None:
+                    if data['id'] == self.limit_oid and self._stats.get('take-profit-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
+                        # @todo only if execution price is equal or better then order price (depends of direction)
+                        maker = True
+                    else:
+                        maker = False
 
                 if filled > 0 and self.x == 0:
                     # initial fill we count the commission fee
