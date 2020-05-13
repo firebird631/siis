@@ -337,12 +337,10 @@ class BinanceFuturesWatcher(Watcher):
             market.set_quote(quote_asset, symbol.get('quoteAssetUnit', quote_asset), symbol['pricePrecision'])
 
             # tick size at the base asset precision
-            market.one_pip_means = math.pow(10.0, -symbol['baseAssetPrecision'])
+            market.one_pip_means = math.pow(10.0, -symbol['pricePrecision'])
             market.value_per_pip = 1.0
             market.contract_size = 1.0
             market.lot_size = 1.0
-
-            # @todo add margin support
             market.margin_factor = 1.0
 
             size_limits = ["1.0", "0.0", "1.0"]
@@ -383,11 +381,11 @@ class BinanceFuturesWatcher(Watcher):
             # market.time_in_force = 
 
             # no info, hard coded, could be parameters
-            market.maker_fee = 0.2 * 0.01
-            market.taker_fee = 0.4 * 0.01
+            market.maker_fee = 0.02 * 0.01
+            market.taker_fee = 0.04 * 0.01
 
-            # market.buyer_commission = 
-            # market.seller_commission = 
+            # market.buyer_commission = 0.0
+            # market.seller_commission = 0.0
 
             if leverage:
                 market.margin_factor = 1.0 / leverage[1]  # leverage[0] to know if isolated margin
@@ -408,11 +406,10 @@ class BinanceFuturesWatcher(Watcher):
             else:
                 market.base_exchange_rate = 1.0
 
-            market.contract_size = 1.0 / mid_price
-            market.value_per_pip = market.contract_size / mid_price
+            market.contract_size = 1.0
+            market.value_per_pip = math.pow(10.0, math.ceil(math.log10(mid_price) - 4))
 
             # volume 24h
-
             # in ticker/24hr but cost is 40 for any symbols then wait it at all-tickers WS event
             # vol24_base = ticker24h('volume')
             # vol24_quote = ticker24h('quoteVolume')
@@ -492,18 +489,20 @@ class BinanceFuturesWatcher(Watcher):
         bid = float(data['b'])  # B for qty
         ofr = float(data['a'])  # A for qty
 
-        # @todo compute base_exchange_rate
-        # if quote_asset != self.BASE_QUOTE:
-        #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
-        #         market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
-        #     elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
-        #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
-        #     else:
-        #         market.base_exchange_rate = 1.0
-        # else:
-        #     market.base_exchange_rate = 1.0
+        base_exchange_rate = 1.0
+        value_per_pip = math.pow(10.0, math.ceil(math.log10((bid + ofr) * 0.5) - 4))
 
-        market_data = (symbol, True, None, bid, ofr, None, None, None, None, None)
+        # if market.quote != self.BASE_QUOTE:
+        #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
+        #         base_exchange_rate = float(self._tickers_data.get(market.quote+self.BASE_QUOTE, {'price', '1.0'})['price'])
+        #     elif self._tickers_data.get(self.BASE_QUOTE+market.quote):
+        #         base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+market.quote, {'price', '1.0'})['price'])
+        #     else:
+        #         base_exchange_rate = 1.0
+        # else:
+        #     base_exchange_rate = 1.0
+
+        market_data = (symbol, True, None, bid, ofr, base_exchange_rate, None, value_per_pip, None, None)
         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_depth_data(self, data):

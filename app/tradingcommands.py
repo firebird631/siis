@@ -219,6 +219,8 @@ class LongCommand(Command):
         trigger_price = None
         stop_loss = 0.0
         take_profit = 0.0
+        stop_loss_price_mode = "price"
+        take_profit_price_mode = "price"
         quantity_rate = 1.0
         timeframe = Instrument.TF_4HOUR
         entry_timeout = None
@@ -235,36 +237,57 @@ class LongCommand(Command):
                 if not value:
                     continue
 
-                if value.startswith("L@"):
+                if value.startswith("L@") or value.startswith("l@"):
                     method = 'limit'
                     limit_price = float(value[2:])
-                elif value.startswith("T@"):
+
+                elif value.startswith("T@") or value.startswith("t@"):
                     method = 'trigger'
                     trigger_price = float(value[2:])
-                elif value.startswith("SL@"):
+
+                elif value.startswith("SL@") or value.startswith("sl@"):
                     stop_loss = float(value[3:])
-                elif value.startswith("TP@"):
+                elif value.startswith("SL%") or value.startswith("sl%"):
+                    stop_loss = float(value[3:])
+                    stop_loss_price_mode = "percent"
+                elif value.startswith("SL!") or value.startswith("sl!"):
+                    stop_loss = float(value[3:])
+                    stop_loss_price_mode = "pip"
+
+                elif value.startswith("TP@") or value.startswith("tp@"):
                     take_profit = float(value[3:])
+                elif value.startswith("TP%") or value.startswith("tp%"):
+                    take_profit = float(value[3:])
+                    take_profit_price_mode = "percent"
+                elif value.startswith("TP!") or value.startswith("tp!"):
+                    take_profit = float(value[3:])
+                    take_profit_price_mode = "pip"
+
                 elif value.startswith("'"):
                     timeframe = timeframe_from_str(value[1:])
+
                 elif value.startswith("*"):
                     quantity_rate = float(value[1:])
+
                 elif value.endswith("%"):
                     quantity_rate = float(value[:-1]) * 0.01
+
                 elif value.startswith("/"):
                     entry_timeout = timeframe_from_str(value[1:])
+
                 elif value.startswith("x"):
                     leverage = float(value[1:])
+
                 elif value.startswith("-"):
                     context = value[1:]
 
         except Exception:
             return False, "Invalid parameters"
 
-        if limit_price and stop_loss and stop_loss > limit_price:
+        if limit_price and stop_loss and stop_loss_price_mode == "price" and stop_loss > limit_price:
             return False, "Stop-loss must be lesser than limit price"
 
-        if limit_price and take_profit and take_profit < limit_price:
+        if limit_price and take_profit and take_profit_price_mode == "price" and take_profit < limit_price:
             return False, "Take-profit must be greater than limit price"
 
         if quantity_rate <= 0.0:
@@ -280,6 +303,8 @@ class LongCommand(Command):
             'quantity-rate': quantity_rate,
             'stop-loss': stop_loss,
             'take-profit': take_profit,
+            'stop-loss-price-mode': stop_loss_price_mode,
+            'take-profit-price-mode': take_profit_price_mode,
             'timeframe': timeframe,
             'entry-timeout': entry_timeout,
             'leverage': leverage,
@@ -324,6 +349,8 @@ class ShortCommand(Command):
         trigger_price = None
         stop_loss = 0.0
         take_profit = 0.0
+        stop_loss_price_mode = "price"
+        take_profit_price_mode = "price"
         quantity_rate = 1.0
         timeframe = Instrument.TF_4HOUR
         entry_timeout = None
@@ -340,36 +367,57 @@ class ShortCommand(Command):
                 if not value:
                     continue
 
-                if value.startswith("L@"):
+                if value.startswith("L@") or value.startswith("l@"):
                     method = 'limit'
                     limit_price = float(value[2:])
-                elif value.startswith("T@"):
+
+                elif value.startswith("T@") or value.startswith("t@"):
                     method = 'trigger'
                     trigger_price = float(value[2:])
-                elif value.startswith("SL@"):
+
+                elif value.startswith("SL@") or value.startswith("sl@"):
                     stop_loss = float(value[3:])
-                elif value.startswith("TP@"):
+                elif value.startswith("SL%") or value.startswith("sl%"):
+                    stop_loss = float(value[3:])
+                    stop_loss_price_mode = "percent"
+                elif value.startswith("SL!") or value.startswith("sl!"):
+                    stop_loss = float(value[3:])
+                    stop_loss_price_mode = "pip"
+
+                elif value.startswith("TP@") or value.startswith("tp@"):
                     take_profit = float(value[3:])
+                elif value.startswith("TP%") or value.startswith("tp%"):
+                    take_profit = float(value[3:])
+                    take_profit_price_mode = "percent"
+                elif value.startswith("TP!") or value.startswith("tp!"):
+                    take_profit = float(value[3:])
+                    take_profit_price_mode = "pip"
+
                 elif value.startswith("'"):
                     timeframe = timeframe_from_str(value[1:])
+
                 elif value.startswith("*"):
                     quantity_rate = float(value[1:])
+
                 elif value.endswith("%"):
                     quantity_rate = float(value[:-1]) * 0.01
+
                 elif value.startswith("/"):
                     entry_timeout = timeframe_from_str(value[1:])
+
                 elif value.startswith("x"):
                     leverage = float(value[1:])
+
                 elif value.startswith("-"):
                     context = value[1:]
 
         except Exception:
             return False, "Invalid parameters"
 
-        if limit_price and stop_loss and stop_loss < limit_price:
+        if limit_price and stop_loss and stop_loss_price_mode == "price"  and stop_loss < limit_price:
             return False, "Stop-loss must be greater than limit price"
 
-        if limit_price and take_profit and take_profit > limit_price:
+        if limit_price and take_profit and take_profit_price_mode == "price" and take_profit > limit_price:
             return False, "Take-profit must be lesser than limit price"
 
         if quantity_rate <= 0.0:
@@ -385,6 +433,8 @@ class ShortCommand(Command):
             'quantity-rate': quantity_rate,
             'stop-loss': stop_loss,
             'take-profit': take_profit,
+            'stop-loss-price-mode': stop_loss_price_mode,
+            'take-profit-price-mode': take_profit_price_mode,
             'timeframe': timeframe,
             'entry-timeout': entry_timeout,
             'leverage': leverage,

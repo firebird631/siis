@@ -803,6 +803,9 @@ class Strategy(Runnable):
                                 # if signal.data[5]:
                                 #     instrument.base_exchange_rate = signal.data[5]
 
+                                if signal.data[7]:
+                                    instrument.value_per_pip = signal.data[7]
+
                                 if signal.data[8]:
                                     instrument.vol24h_base = signal.data[8]
                                 if signal.data[9]:
@@ -2003,6 +2006,8 @@ class Strategy(Runnable):
         quantity_rate = data.get('quantity-rate', 1.0)
         stop_loss = data.get('stop-loss', 0.0)
         take_profit = data.get('take-profit', 0.0)
+        stop_loss_price_mode = data.get('stop-loss-price-mode', 'price')
+        take_profit_price_mode = data.get('take-profit-price-mode', 'price')
         timeframe = data.get('timeframe', Instrument.TF_4HOUR)
         leverage = data.get('leverage', 1.0)
         hedging = data.get('hedging', True)
@@ -2106,7 +2111,77 @@ class Strategy(Runnable):
         if results['error']:
             return results
 
-        order_price = float(strategy_trader.instrument.adjust_price(price))
+        order_price = strategy_trader.instrument.adjust_price(price)
+
+        #
+        # compute stop-loss and take-profit price depending of their respective mode
+        #
+
+        if stop_loss_price_mode == "percent":
+            if direction > 0:
+                stop_loss = strategy_trader.instrument.adjust_price(order_price * (1.0 - stop_loss * 0.01))
+            elif direction < 0:
+                stop_loss = strategy_trader.instrument.adjust_price(order_price * (1.0 + stop_loss * 0.01))
+
+        elif stop_loss_price_mode == "pip":
+            if direction > 0:
+                stop_loss = strategy_trader.instrument.adjust_price(order_price - stop_loss * strategy_trader.instruments.value_per_pip)
+            elif direction < 0:
+                stop_loss = strategy_trader.instrument.adjust_price(order_price + stop_loss * strategy_trader.instruments.value_per_pip)
+
+        if take_profit_price_mode == "percent":
+            if direction > 0:
+                take_profit = strategy_trader.instrument.adjust_price(order_price * (1.0 + take_profit * 0.01))
+            elif direction < 0:
+                take_profit = strategy_trader.instrument.adjust_price(order_price * (1.0 - take_profit * 0.01))
+
+        elif take_profit_price_mode == "pip":
+            if direction > 0:
+                take_profit = strategy_trader.instrument.adjust_price(order_price + take_profit * strategy_trader.instruments.value_per_pip)
+            elif direction < 0:
+                take_profit = strategy_trader.instrument.adjust_price(order_price - take_profit * strategy_trader.instruments.value_per_pip)
+
+        #
+        # check stop-loss and take-profit and reject if not consistent
+        #
+
+        if stop_loss < 0.0:
+            results['error'] = True
+            results['messages'].append("Rejected trade on %s:%s because the stop-loss is negative" % (self.identifier, strategy_trader.instrument.market_id))
+
+            return results
+
+        if take_profit < 0.0:
+            results['error'] = True
+            results['messages'].append("Rejected trade on %s:%s because the take-profit is negative" % (self.identifier, strategy_trader.instrument.market_id))
+
+            return results
+
+        if direction > 0:
+            if stop_loss > order_price:
+                results['error'] = True
+                results['messages'].append("Rejected trade on %s:%s because the stop-loss is above the entry price" % (self.identifier, strategy_trader.instrument.market_id))
+
+                return results
+
+            if take_profit < order_price:
+                results['error'] = True
+                results['messages'].append("Rejected trade on %s:%s because the take-profit is below the entry price" % (self.identifier, strategy_trader.instrument.market_id))
+
+                return results
+
+        elif direction < 0:
+            if stop_loss < order_price:
+                results['error'] = True
+                results['messages'].append("Rejected trade on %s:%s because the stop-loss is below the entry price" % (self.identifier, strategy_trader.instrument.market_id))
+
+                return results
+
+            if take_profit > order_price:
+                results['error'] = True
+                results['messages'].append("Rejected trade on %s:%s because the take-profit is above the entry price" % (self.identifier, strategy_trader.instrument.market_id))
+
+                return results
 
         if trade:
             # user managed trade

@@ -302,7 +302,7 @@ class Instrument(object):
 
     @note ofr is a synonym for ask.
 
-    @todo may we need hedging, leverage limits, contract_size, lot_size, one_pip_mean, value_per_pip ?
+    @todo may we need hedging, leverage limits, contract_size, lot_size, one_pip_mean ?
     """
 
     # TF_QUOTE = -2
@@ -405,7 +405,8 @@ class Instrument(object):
                 '_trade_quantity', '_trade_max_factor', '_trade_quantity_mode', '_leverage', \
                 '_market_bid', '_market_ofr', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
-                '_ticks', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry'
+                '_ticks', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry', \
+                '_value_per_pip'
 
     def __init__(self, name, symbol, market_id, alias=None):
         self._watchers = {}
@@ -448,6 +449,8 @@ class Instrument(object):
         self._ticks = []      # list of tuple(timestamp, bid, ofr, volume)
         self._candles = {}    # list per timeframe
         self._buy_sells = {}  # list per timeframe
+
+        self._value_per_pip = 1.0
 
         self._wanted = []  # list of wanted timeframe before be ready (its only for initialization)
 
@@ -687,6 +690,10 @@ class Instrument(object):
         return self._price_limits[2]
 
     @property
+    def value_per_pip(self):
+        return self._value_per_pip
+
+    @property
     def leverage(self):
         """
         Account and instrument related leverage.
@@ -708,6 +715,10 @@ class Instrument(object):
     def set_price_limits(self, min_price, max_price, step_price):
         price_precision = max(0, decimal_place(step_price) if step_price > 0 else 0)
         self._price_limits = (min_price, max_price, step_price, price_precision)
+
+    @value_per_pip.setter
+    def value_per_pip(self, value_per_pip):
+        self._value_per_pip = value_per_pip
 
     #
     # ticks and candles
