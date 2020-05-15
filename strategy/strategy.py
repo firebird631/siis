@@ -2067,38 +2067,38 @@ class Strategy(Runnable):
         elif strategy_trader.instrument.has_margin and strategy_trader.instrument.has_position:
             trade = StrategyPositionTrade(timeframe)
 
-            if not trader.has_margin(strategy_trader.instrument.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
-                results['error'] = True
-                results['messages'].append("Not enought margin")
-
             if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
                 order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
             else:
                 order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+
+            if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
+                results['error'] = True
+                results['messages'].append("Not enought margin, need %s" % (trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
 
         elif strategy_trader.instrument.has_margin and strategy_trader.instrument.indivisible_position:
             trade = StrategyIndMarginTrade(timeframe)
 
-            if not trader.has_margin(strategy_trader.instrument.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
-                results['error'] = True
-                results['messages'].append("Not enought margin")
-
             if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
                 order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
             else:
                 order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+
+            if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
+                results['error'] = True
+                results['messages'].append("Not enought margin, need %s" % (trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
 
         elif strategy_trader.instrument.has_margin and not strategy_trader.instrument.indivisible_position and not strategy_trader.instrument.has_position:
             trade = StrategyMarginTrade(timeframe)
 
-            if not trader.has_margin(strategy_trader.instrument.market_id, strategy_trader.instrument.trade_quantity*quantity_rate, price):
-                results['error'] = True
-                results['messages'].append("Not enought margin")
-
             if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
                 order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
             else:
                 order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+
+            if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
+                results['error'] = True
+                results['messages'].append("Not enought margin, need %s" % (trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
 
         else:
             results['error'] = True

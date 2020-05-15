@@ -162,13 +162,31 @@ class BinanceFuturesTrader(Trader):
             return False
 
         # order type
-        if order.order_type == Order.ORDER_LIMIT:
+        if order.order_type == Order.ORDER_MARKET:
+            order_type = Client.ORDER_TYPE_MARKET
+
+        elif order.order_type == Order.ORDER_LIMIT:
             order_type = Client.ORDER_TYPE_LIMIT
+
         elif order.order_type == Order.ORDER_STOP:
             order_type = Client.ORDER_TYPE_STOP_MARKET
+
+        elif order.order_type == Order.ORDER_STOP_LIMIT:
+            order_type = Client.ORDER_TYPE_STOP
+
+        elif order.order_type == Order.ORDER_TAKE_PROFIT:
+            order_type = Client.ORDER_TYPE_TAKE_PROFIT_MARKET
+
+        elif order.order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
+            order_type = Client.ORDER_TYPE_TAKE_PROFIT
+
+        elif order.order_type == Order.ORDER_TRAILING_STOP_MARKET:
+            order_type = Client.ORDER_TRAILING_STOP_MARKET
+
         else:
-            # @todo others
-            order_type = Client.ORDER_TYPE_MARKET
+            error_logger.error("Trader %s refuse order because the order type is unsupported %s in order %s !" % (
+                self.name, symbol, order.ref_order_id))
+            return False
 
         symbol = order.symbol
         side = Client.SIDE_BUY if order.direction == Order.LONG else Client.SIDE_SELL
@@ -207,27 +225,37 @@ class BinanceFuturesTrader(Trader):
         if order.reduce_only:
             data['reduceOnly'] = True
 
-        # price type @todo let the default for now (last for limit, mark for stop)
-        # if order.price_type == Order.MARK_PRICE:
-        #     data['workingType'] = 'MARK_PRICE'
-        # elif order.price_type == Order.PRICE_LAST:
-        #     data['workingType'] = 'CONTRACT_PRICE'
+        # price type
+        if order.price_type == Order.PRICE_MARK:
+            data['workingType'] = 'MARK_PRICE'
+        elif order.price_type == Order.PRICE_LAST:
+            data['workingType'] = 'CONTRACT_PRICE'
 
         # limit order need timeInForce
         if order.order_type == Order.ORDER_LIMIT:
             data['price'] = market_or_instrument.format_price(order.price)
             data['timeInForce'] = time_in_force
+
         elif order.order_type == Order.ORDER_STOP:
             data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
+
         elif order.order_type == Order.ORDER_STOP_LIMIT:
             data['price'] = market_or_instrument.format_price(order.price)
             data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
             data['timeInForce'] = time_in_force
+
         elif order.order_type == Order.ORDER_TAKE_PROFIT:
             data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
+
         elif order.order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
             data['price'] = market_or_instrument.format_price(order.price)
             data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
+            data['timeInForce'] = time_in_force
+
+        elif order.order_type == Order.ORDER_TRAILING_STOP_MARKET:
+            # @todo
+            # data['activationPrice'] = market_or_instrument.format_price(order.trailing_price)
+            # data['callbackRate'] = market_or_instrument.format_price(order.trailing_distance)
             data['timeInForce'] = time_in_force
 
         data['newClientOrderId'] = order.ref_order_id

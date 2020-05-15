@@ -647,13 +647,11 @@ class BinanceFuturesWatcher(Watcher):
     def __on_user_data(self, data):
         """
         @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#web-socket-payloads
-        @todo Soon support of margin trading.
         """
         event_type = data.get('e', '')
 
         if event_type == "MARGIN_CALL":
             pass
-            # @todo
 
         elif event_type == "ACCOUNT_UPDATE":
             # balance and position updated
@@ -684,16 +682,13 @@ class BinanceFuturesWatcher(Watcher):
                     symbol = pos['s']
                     ref_order_id = ""
 
-                    if pos['ps'] == "LONG":
-                        direction = Order.LONG
-                    elif pos['ps'] == "SHORT":
-                        direction = Order.SHORT
-                    else:
-                        # could be BOTH for the sum of the position in case of hedging on the same instrument
-                        continue
+                    direction = Order.LONG if float(pos['pa']) > 0.0 else Order.SHORT
+                    # pos['ps'] == 'BOTH' else pos['ps'] == 'LONG' or pos['ps'] == 'SHORT'  in case of hedging enabled
 
                     total_unrealized_profit += float(pos['up'])
-                    total_isolated_margin_balance += float(pos['iw'])
+
+                    if pos['mt'] == 'isolated':  # else 'cross'
+                        total_isolated_margin_balance += float(pos['iw'])
 
                     operation_time = float(data['T'])
                     quantity = abs(float(pos['pa']))
@@ -718,18 +713,20 @@ class BinanceFuturesWatcher(Watcher):
                     }
 
                     # needed to know if opened or deleted position
-                    key = "%s%s" % (direction, symbol)
+                    key = "%s:%s" % (direction, symbol)
                     entry = self._last_positions.get(key)
 
-                    if not entry or entry == 0.0:
+                    if entry is None or entry == 0.0:
                         # not current quantity, but open order qty
                         self._last_positions[key] = quantity
                         self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (symbol, position_data, ref_order_id))
-                    elif quantity > 0:
+
+                    elif quantity != 0.0:
                         # current qty updated
                         self._last_positions[key] = quantity
                         self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, ref_order_id))
-                    else:
+
+                    elif quantity == 0.0:
                         # empty quantity no open order qty, position deleted
                         del self._last_positions[key]
                         self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (symbol, position_data, ref_order_id))
@@ -929,7 +926,12 @@ class BinanceFuturesWatcher(Watcher):
             elif order['x'] == 'EXPIRED' and order['X'] == 'EXPIRED':
                 order_id = str(order['i'])
 
-                self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
+                # binance send an expired when a STOP/TAKE_PROFIT is hitted, then it create a new market order with the same ID and CLID,
+                # and then the order is filled in market with the same id
+                # so that we cannot send order delete signal else the trader will think the order does not longer exists could not manage its auto remove
+
+                if order['o'] not in ('STOP_MARKET', 'STOP', 'TAKE_PROFIT_MARKET', 'TAKE_PROFIT', 'TRAILING_STOP_MARKET') or float(order['l']) > 0:
+                    self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
 
             elif order['x'] == 'RESTATED':
                 pass  # nothing to do (currently unused)

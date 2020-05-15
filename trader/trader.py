@@ -345,6 +345,18 @@ class Trader(Runnable):
 
         return False
 
+    def get_needed_margin(self, market_id, quantity, price):
+        """
+        Return computed required margin for a particular market, quantity and price.
+        """
+        with self._mutex:
+            market = self._markets.get(market_id)
+            margin = market.margin_cost(quantity, price)
+
+            return margin
+
+        return 0.0
+
     #
     # ordering
     #

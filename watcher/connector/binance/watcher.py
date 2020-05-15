@@ -619,7 +619,6 @@ class BinanceWatcher(Watcher):
     def __on_user_data(self, data):
         """
         @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#web-socket-payloads
-        @todo Soon support of margin trading.
         """
         event_type = data.get('e', '')
 

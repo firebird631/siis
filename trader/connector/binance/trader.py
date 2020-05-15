@@ -184,13 +184,21 @@ class BinanceTrader(Trader):
             return False
 
         # order type
-        if order.order_type == Order.ORDER_LIMIT:
+        if order.order_type == Order.ORDER_MARKET:
+            order_type = Client.ORDER_TYPE_MARKET
+
+        elif order.order_type == Order.ORDER_LIMIT:
             order_type = Client.ORDER_TYPE_LIMIT
+
         elif order.order_type == Order.ORDER_STOP:
             order_type = Client.ORDER_TYPE_STOP_LOSS
+
+        # @todo OCO, take profit market, take profit limit, stop loss limit
+
         else:
-            # @todo others
-            order_type = Client.ORDER_TYPE_MARKET
+            error_logger.error("Trader %s refuse order because the order type is unsupported %s in order %s !" % (
+                self.name, symbol, order.ref_order_id))
+            return False
 
         symbol = order.symbol
         side = Client.SIDE_BUY if order.direction == Order.LONG else Client.SIDE_SELL
@@ -228,14 +236,18 @@ class BinanceTrader(Trader):
         if order.order_type == Order.ORDER_LIMIT:
             data['price'] = market_or_instrument.format_price(order.price)
             data['timeInForce'] = time_in_force
+
         elif order.order_type == Order.ORDER_STOP:
             data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
+
         elif order.order_type == Order.ORDER_STOP_LIMIT:
             data['price'] = market_or_instrument.format_price(order.price)
             data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
             data['timeInForce'] = time_in_force
+
         elif order.order_type == Order.ORDER_TAKE_PROFIT:
             data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
+
         elif order.order_type == Order.ORDER_TAKE_PROFIT_LIMIT:
             data['price'] = market_or_instrument.format_price(order.price)
             data['stopPrice'] = market_or_instrument.format_price(order.stop_price)
