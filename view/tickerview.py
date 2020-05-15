@@ -25,7 +25,7 @@ class TickerView(TableView):
         if not self._trader_service:
             return 0
 
-        return(self._trader_service.get_traders())
+        return len(self._trader_service.get_traders())
 
     def refresh(self):
         if not self._trader_service:

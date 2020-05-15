@@ -15,19 +15,28 @@ logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
 
 
-def get_strategy_trader_state(strategy, market_id):
+def get_strategy_trader_state(strategy, market_id, report_mode=0):
     """
     Generate and return an array of all the actives trades :
         symbol: str market identifier
     """
-    results = []
+    results = {
+        'market-id': market_id,
+        'activity': False,
+        'bootstraping': False,
+        'processing': False,
+        'members': [],
+        'data': [],
+        'num-modes': 1
+    }
+
     trader = strategy.trader()
 
     with strategy._mutex:
         try:
-            for k, strategy_trader in strategy._strategy_traders.items():
-                with strategy_trader._mutex:
-                    pass
+            strategy_trader = strategy._strategy_traders.get(market_id)
+            with strategy_trader._mutex:
+                results = strategy_trader.report_state(report_mode)
 
         except Exception as e:
             error_logger.error(repr(e))

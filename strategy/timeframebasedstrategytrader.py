@@ -311,6 +311,19 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return result
 
+    def report_state(self, mode=0):
+        """
+        Collect the state of the strategy trader (instant) and return a dataset.
+        And add the per timeframe dataset.
+        """
+        result = super().report_state(mode)
+
+        if mode == 0:
+            for k, timeframe in self.timeframes.items():
+                result['data'] += timeframe.report_state()
+
+        return result
+
     #
     # helpers
     #

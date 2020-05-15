@@ -584,7 +584,7 @@ class StrategyTrader(object):
         pass
 
     #
-    # broker signals
+    # watcher signals
     #
 
     def on_watcher_connected(self):
@@ -916,7 +916,7 @@ class StrategyTrader(object):
         return self.apply_trade_context(trade, context)
 
     #
-    # signal data streaming
+    # signal data streaming and monitoring
     #
 
     def create_chart_streamer(self, timeframe):
@@ -945,6 +945,23 @@ class StrategyTrader(object):
         Process the call for the strategy trader. Must be overriden.
         """
         pass
+
+    def report_state(self, mode=0):
+        """
+        Collect the state of the strategy trader (instant) and return a dataset.
+        Default only return a basic dataset, it must be overrided per strategy.
+
+        @param mode integer Additional report context.
+        """
+        return {
+            'market-id': self.instrument.market_id,
+            'activity': self._activity,
+            'bootstraping': self._bootstraping == 2,
+            'processing': self._processing,
+            'members': [],
+            'data': [],
+            'num-modes': 1
+        }
 
     #
     # reporting

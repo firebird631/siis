@@ -45,7 +45,7 @@ class AlertView(TableView):
         if not self._strategy_service:
             return 0
 
-        return (self._strategy_service.get_traders())
+        return len(self._strategy_service.get_appliances())
 
     def receiver(self, signal):
         if not signal:

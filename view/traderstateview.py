@@ -3,6 +3,7 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Trader state view.
 
+import time
 import threading
 import hashlib
 
@@ -15,6 +16,9 @@ from terminal.terminal import Terminal, Color
 from terminal import charmap
 
 from view.tableview import TableView
+
+from strategy.helpers.traderstatedataset import get_strategy_trader_state
+
 
 import logging
 logger = logging.getLogger('siis.view.traderstate')
@@ -33,9 +37,6 @@ class TraderStateView(TableView):
     FAST_REFRESH_RATE = 10
     VERY_FAST_REFRESH_RATE = 1
 
-    #into the title, appname/market last-bid/last-ofr/last-spread
-    COLUMNS = ('Name', 'TF', charmap.ARROWUPDN)
-
     def __init__(self, service, strategy_service):
         super().__init__("traderstate", service)
 
@@ -45,6 +46,11 @@ class TraderStateView(TableView):
         self._signals_state = {}
 
         self._upd_freq = TraderStateView.REFRESH_RATE
+        self._report_mode = 0
+
+        self._reported_activity = False
+        self._reported_bootstraping = False
+        self._reported_processing = False
 
         # listen to its service
         self.service.add_listener(self)
@@ -53,7 +59,7 @@ class TraderStateView(TableView):
         if not self._strategy_service:
             return 0
 
-        return (self._strategy_service.get_traders())
+        return len(self._strategy_service.get_appliances())
 
     def on_key_pressed(self, key):
         super().on_key_pressed(key)
@@ -64,6 +70,14 @@ class TraderStateView(TableView):
             self.prev_instrument()
         elif key == 'KEY_RIGHT':
             self.next_instrument()
+        elif key == 'KEY_UP':
+            with self._mutex:
+                self._report_mode += 1
+                self._refresh = 0.0
+        elif key == 'KEY_DOWN':
+            with self._mutex:
+                self._report_mode = max(0, self._report_mode - 1)
+                self._refresh = 0.0
 
     def toggle_update_freq(self):
         if self._upd_freq == TraderStateView.REFRESH_RATE:
@@ -78,6 +92,12 @@ class TraderStateView(TableView):
             self._upd_freq = TraderStateView.REFRESH_RATE
             Terminal.inst().action("Change to default refresh rate", view="status")
 
+    def need_refresh(self):
+        if self._refresh < 0:
+            return False
+
+        return time.time() - self._refresh >= self._upd_freq
+
     def prev_instrument(self):
         if not self._strategy_service:
             return
@@ -90,12 +110,14 @@ class TraderStateView(TableView):
             if not instruments_ids:
                 with self._mutex:
                     self._market_id = None
+                    self._refresh = 0.0
 
                 return
 
             if self._market_id is None:
                 with self._mutex:
                     self._market_id = instruments_ids[0]
+                    self._refresh = 0.0
 
                 return
 
@@ -105,6 +127,8 @@ class TraderStateView(TableView):
                     self._market_id = instruments_ids[index-1]
                 else:
                     self._market_id = instruments_ids[-1]
+
+                self._refresh = 0.0
 
     def next_instrument(self):
         if not self._strategy_service:
@@ -118,12 +142,14 @@ class TraderStateView(TableView):
             if not instruments_ids:
                 with self._mutex:
                     self._market_id = None
+                    self._refresh = 0.0
 
                 return
 
             if self._market_id is None:
                 with self._mutex:
                     self._market_id = instruments_ids[0]
+                    self._refresh = 0.0
                 
                 return
 
@@ -133,6 +159,8 @@ class TraderStateView(TableView):
                     self._market_id = instruments_ids[index+1]
                 else:
                     self._market_id = instruments_ids[0]
+
+                self._refresh = 0.0
 
     def receiver(self, signal):
         if not signal:
@@ -145,12 +173,36 @@ class TraderStateView(TableView):
                     self._refresh = 0.0
 
     def trader_state_table(self, appliance, style='', offset=None, limit=None, col_ofs=None):
+        market_id = None
+        report_mode = 0
         data = []
 
+        with self._mutex:
+            market_id = self._market_id
+            report_mode = self._report_mode
+
+        if market_id:
+            strategy_trader_state = get_strategy_trader_state(appliance, market_id, report_mode)
+        else:
+            return [], [], (0, 0)
+
         states = []
-        # states = self._signals_state.get(appliance.identifier, [])
-        # columns, table, total_size = trader_state_table(appliance, *self.table_format(), summ=True)
-        total_size = (len(TraderStateView.COLUMNS), len(states))
+        columns = [m.capitalize()for m in strategy_trader_state.get('members', [])]
+        states = strategy_trader_state.get('data', [])
+        total_size = (len(columns), len(states))
+
+        if report_mode >= strategy_trader_state.get('num-modes', 1):
+            with self._mutex:
+                # refreh with mode
+                self._report_mode = strategy_trader_state.get('num-modes', 1) - 1
+                self._refresh = 0
+
+                return [], [], (0, 0)
+
+        # for title
+        self._reported_activity = strategy_trader_state.get('activity', False)
+        self._reported_bootstraping = strategy_trader_state.get('bootstraping', False)
+        self._reported_processing = strategy_trader_state.get('processing', False)
 
         if offset is None:
             offset = 0
@@ -163,13 +215,10 @@ class TraderStateView(TableView):
         states = states[offset:limit]
 
         for state in states:
-            pass
-        #     row = (
-        #     )
+            row = state
+            data.append(row[col_ofs:])
 
-        #     data.append(row[col_ofs:])
-
-        return TraderStateView.COLUMNS[col_ofs:], data, total_size
+        return columns[col_ofs:], data, total_size
 
     def refresh(self):
         if not self._strategy_service:
@@ -181,7 +230,13 @@ class TraderStateView(TableView):
                 appliance = appliances[self._item]
                 num = 0
 
+                market_id = ""
+                report_mode = 0
+
                 with self._mutex:
+                    market_id = self._market_id
+                    report_mode = self._report_mode
+
                     try:
                         columns, table, total_size = self.trader_state_table(appliance, *self.table_format())
                         self.table(columns, table, total_size)
@@ -191,8 +246,7 @@ class TraderStateView(TableView):
                         error_logger.error(str(traceback.format_exc()))
                         error_logger.error(str(e))
 
-                # @todo price...
-                self.set_title("Trader state for strategy %s - %s on %s" % (appliance.name, appliance.identifier, self._market_id))
+                self.set_title("Trader state for strategy %s - %s on %s - mode %s" % (appliance.name, appliance.identifier, market_id, report_mode))
             else:
                 self.set_title("Trader state - No selected market")
         else:

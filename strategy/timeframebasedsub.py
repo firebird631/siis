@@ -137,7 +137,7 @@ class TimeframeBasedSub(object):
         return self._last_closed
 
     #
-    # data streaming (@deprecated way)
+    # data streaming (@deprecated way) and monitoring
     #
 
     def setup_streamer(self, streamer):
@@ -145,3 +145,9 @@ class TimeframeBasedSub(object):
 
     def stream(self, streamer):
         pass
+
+    def report_state(self):
+        """
+        Return an tuple of tuples with the data value to report.
+        """
+        return tuple()
