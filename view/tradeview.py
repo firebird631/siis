@@ -6,7 +6,7 @@
 from terminal.terminal import Terminal
 from view.tableview import TableView
 
-from strategy.helpers.tables import trades_stats_table
+from strategy.helpers.activetradetable import trades_stats_table
 
 import logging
 error_logger = logging.getLogger('siis.view.trade')

@@ -3,11 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy helper to get dataset
 
-from datetime import datetime
-
-from terminal.terminal import Color
-from terminal import charmap
-
 from common.utils import timeframe_to_str
 
 import logging

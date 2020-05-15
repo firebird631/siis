@@ -149,7 +149,7 @@ class TraderStateView(TableView):
 
         states = []
         # states = self._signals_state.get(appliance.identifier, [])
-        # columns, table, total_size = agg_trades_stats_table(appliance, *self.table_format(), summ=True)
+        # columns, table, total_size = trader_state_table(appliance, *self.table_format(), summ=True)
         total_size = (len(TraderStateView.COLUMNS), len(states))
 
         if offset is None:

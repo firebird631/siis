@@ -7,7 +7,7 @@ from terminal.terminal import Terminal
 from view.tableview import TableView
 
 from common.signal import Signal
-from strategy.helpers.tables import closed_trades_stats_table
+from strategy.helpers.closedtradetable import closed_trades_stats_table
 
 import logging
 error_logger = logging.getLogger('siis.view.tradehistory')

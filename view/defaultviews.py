@@ -37,7 +37,7 @@ def setup_default_views(view_service, watcher_service, trader_service, strategy_
     trade_history = TradeHistoryView(view_service, strategy_service)
     view_service.add_view(trade_history)
 
-    # 'perf'
+    # # 'perf'
     from view.aggtradeview import AggTradeView
     agg_trade = AggTradeView(view_service, strategy_service)
     view_service.add_view(agg_trade)

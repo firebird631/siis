@@ -22,7 +22,7 @@ from common.signal import Signal
 
 from common.utils import timeframe_to_str
 
-from strategy.helprs.tables import trades_stats_table
+from strategy.helpers.activetradetable import trades_stats_table
 
 import logging
 logger = logging.getLogger('siis.notifier.discord')
