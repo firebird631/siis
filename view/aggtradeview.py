@@ -6,6 +6,8 @@
 from terminal.terminal import Terminal
 from view.tableview import TableView
 
+from strategy.helpers.tables import agg_trades_stats_table
+
 import logging
 error_logger = logging.getLogger('siis.view.aggtrade')
 
@@ -30,7 +32,7 @@ class AggTradeView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = appliance.agg_trades_stats_table(*self.table_format(), summ=True)
+                columns, table, total_size = agg_trades_stats_table(appliance, *self.table_format(), summ=True)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]

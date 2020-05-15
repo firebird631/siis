@@ -7,6 +7,7 @@ from terminal.terminal import Terminal
 from view.tableview import TableView
 
 from common.signal import Signal
+from strategy.helpers.tables import closed_trades_stats_table
 
 import logging
 error_logger = logging.getLogger('siis.view.tradehistory')
@@ -48,7 +49,7 @@ class TradeHistoryView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = appliance.closed_trades_stats_table(*self.table_format(),
+                columns, table, total_size = closed_trades_stats_table(appliance, *self.table_format(),
                         quantities=True, percents=self._percent, datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)

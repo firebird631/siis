@@ -22,6 +22,8 @@ from common.signal import Signal
 
 from common.utils import timeframe_to_str
 
+from strategy.helprs.tables import trades_stats_table
+
 import logging
 logger = logging.getLogger('siis.notifier.discord')
 error_logger = logging.getLogger('siis.error.notifier.discord')
@@ -231,19 +233,19 @@ class DiscordNotifier(Notifier):
     #             closed_trades_dst = self._discord_webhooks[strategy.identifier + '.closed-trades']
 
     #         if trades_dst:
-    #             columns, table, total_size = appl.trades_stats_table(*Terminal.inst().active_content().format(), quantities=True, percents=True)
+    #             columns, table, total_size = trades_stats_table(appl, *Terminal.inst().active_content().format(), quantities=True, percents=True)
     #             if table:
     #                 arr = self.format_table(table)
     #                 self.split_and_send(trades_dst, arr)
             
     #         if agg_trades_dst:
-    #             columns, table, total_size = appl.agg_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True)
+    #             columns, table, total_size = agg_trades_stats_table(appl, *Terminal.inst().active_content().format(), quantities=True)
     #             if table:
     #                 arr = self.format_table(table)
     #                 self.split_and_send(agg_trades_dst, arr)
 
     #         if closed_trades_dst:
-    #             columns, table, total_size = appl.closed_trades_stats_table(*Terminal.inst().active_content().format(), quantities=True, percents=True)
+    #             columns, table, total_size = closed_trades_stats_table(appl, *Terminal.inst().active_content().format(), quantities=True, percents=True)
     #             if table:
     #                 arr = self.format_table(table)
     #                 self.split_and_send(closed_trades_dst, arr)
