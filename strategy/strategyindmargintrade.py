@@ -574,13 +574,14 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
     def position_signal(self, signal_type, data, ref_order_id, instrument):
-        # how to manage it correctly because cumulated position on the same size wrong its local trade value
-        # if data.get('profit-loss'):
-        #     self._stats['unrealized-profit-loss'] = data['profit-loss']
-        # if data.get('profit-currency'):
-        #     self._stats['profit-loss-currency'] = data['profit-currency']
+        if signal_type == Signal.SIGNAL_POSITION_UPDATED:
+            # profit/loss update
+            if data.get('profit-loss'):
+                self._stats['unrealized-profit-loss'] = data['profit-loss']
+            if data.get('profit-currency'):
+                self._stats['profit-loss-currency'] = data['profit-currency']
 
-        if signal_type == Signal.SIGNAL_POSITION_DELETED:
+        elif signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position, have to cleanup any related trades in case of manual close, liquidation
             self.position_id = None
 

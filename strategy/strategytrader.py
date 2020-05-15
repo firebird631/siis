@@ -957,7 +957,6 @@ class StrategyTrader(object):
             'market-id': self.instrument.market_id,
             'activity': self._activity,
             'bootstraping': self._bootstraping == 2,
-            'processing': self._processing,
             'members': [],
             'data': [],
             'num-modes': 1

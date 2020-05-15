@@ -50,7 +50,6 @@ class TraderStateView(TableView):
 
         self._reported_activity = False
         self._reported_bootstraping = False
-        self._reported_processing = False
 
         # listen to its service
         self.service.add_listener(self)
@@ -186,8 +185,9 @@ class TraderStateView(TableView):
         else:
             return [], [], (0, 0)
 
+        members = strategy_trader_state.get('members', [])
         states = []
-        columns = [m.capitalize()for m in strategy_trader_state.get('members', [])]
+        columns = [m[1] for m in members]
         states = strategy_trader_state.get('data', [])
         total_size = (len(columns), len(states))
 
@@ -199,10 +199,15 @@ class TraderStateView(TableView):
 
                 return [], [], (0, 0)
 
+        for i, col in enumerate(members):
+            if col[0] == "direction":
+                columns[i] = charmap.ARROWUPDN
+            elif col[1] == "timeframe":
+                columns[i] = "TF"
+
         # for title
         self._reported_activity = strategy_trader_state.get('activity', False)
         self._reported_bootstraping = strategy_trader_state.get('bootstraping', False)
-        self._reported_processing = strategy_trader_state.get('processing', False)
 
         if offset is None:
             offset = 0
@@ -215,7 +220,18 @@ class TraderStateView(TableView):
         states = states[offset:limit]
 
         for state in states:
-            row = state
+            row = list(state)
+
+            for i, d in enumerate(row):
+                if members[i][0] == "direction":
+                    if d == "L" or str(d) == "1":
+                        row[i] = Color.colorize(charmap.ARROWUP, Color.GREEN)
+                    elif d == "S" or str(d) == "-1":
+                        row[i] = Color.colorize(charmap.ARROWDN, Color.RED)
+
+                elif members[i][0] == "datetime":
+                    row[i] = datetime.fromtimestamp(d).strftime(self._datetime_format) if (type(d) is float and d > 0) else ""
+
             data.append(row[col_ofs:])
 
         return columns[col_ofs:], data, total_size
@@ -233,9 +249,15 @@ class TraderStateView(TableView):
                 market_id = ""
                 report_mode = 0
 
+                reported_activity = False
+                reported_bootstraping = False
+
                 with self._mutex:
                     market_id = self._market_id
                     report_mode = self._report_mode
+                    
+                    reported_activity = self._reported_activity
+                    reported_bootstraping = self._reported_bootstraping
 
                     try:
                         columns, table, total_size = self.trader_state_table(appliance, *self.table_format())
@@ -246,7 +268,11 @@ class TraderStateView(TableView):
                         error_logger.error(str(traceback.format_exc()))
                         error_logger.error(str(e))
 
-                self.set_title("Trader state for strategy %s - %s on %s - mode %s" % (appliance.name, appliance.identifier, market_id, report_mode))
+                state = " - ".join((
+                    "active" if reported_activity else "disabled",
+                    "bootstraping" if reported_bootstraping else "computing"))
+
+                self.set_title("Trader state for strategy %s - %s on %s - mode %s - %s" % (appliance.name, appliance.identifier, market_id, report_mode, state))
             else:
                 self.set_title("Trader state - No selected market")
         else:
