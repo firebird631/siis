@@ -68,11 +68,11 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 cr = "0.0"
 
             if t['d'] == 'long' and aep > 0 and best > 0 and worst > 0:
-                bpct = (best - aep) / aep
-                wpct = (worst - aep) / aep
+                bpct = (best - aep) / aep - t['fees']
+                wpct = (worst - aep) / aep - t['fees']
             elif t['d'] == 'short' and aep > 0 and best > 0 and worst > 0:
-                bpct = (aep - best) / aep
-                wpct = (aep - worst) / aep
+                bpct = (aep - best) / aep - t['fees']
+                wpct = (aep - worst) / aep - t['fees']
             else:
                 bpct = 0
                 wpct = 0

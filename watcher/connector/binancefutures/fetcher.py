@@ -104,7 +104,7 @@ class BinanceFuturesFetcher(Fetcher):
         trades = []
         # get all trades and append them into a file
         try:
-            trades = self._connector.client.futures_aggregate_trades(market_id, start_str=int(from_date.timestamp() * 1000), end_str=int(to_date.timestamp() * 1000))
+            trades = self._connector.client.futures_aggregate_trade_iter(market_id, start_str=int(from_date.timestamp() * 1000), end_str=int(to_date.timestamp() * 1000))
         except Exception as e:
             logger.error("Fetcher %s cannot retrieve aggregated trades on market %s" % (self.name, market_id))
 

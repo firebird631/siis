@@ -2426,7 +2426,7 @@ class Client(object):
         """
         return self._request_futures_api('get', 'aggTrades', data=params)
 
-    def aggregate_trade_iter(self, symbol, start_str=None, last_id=None, end_str=None):
+    def futures_aggregate_trade_iter(self, symbol, start_str=None, last_id=None, end_str=None):
         """Iterate over aggregate trade data from (start_time or last_id) to
         the end of the history so far.
 

@@ -1073,15 +1073,19 @@ class StrategyTrader(object):
             # if not specified use default
             trade_quantity = self.instrument.trade_quantity
 
+        original_quantity = trade_quantity
+
+        if self.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
+            trade_quantity = self.instrument.adjust_quantity(trade_quantity / price)  # and adjusted to 0/max/step
+        else:
+            trade_quantity = self.instrument.adjust_quantity(trade_quantity)
+
         if trader.has_margin(self.instrument.market_id, trade_quantity, price):
-            if self.instruments.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-                quantity = self.instrument.adjust_quantity(trade_quantity / price)  # and adjusted to 0/max/step
-            else:
-                quantity = self.instrument.adjust_quantity(trade_quantity)
+            quantity = trade_quantity
         else:
             msg = "Not enought free margin %s, has %s but need %s" % (
                 self.instrument.quote, self.instrument.format_quantity(trader.account.margin_balance),
-                self.instrument.format_quantity(trade_quantity))
+                self.instrument.format_quantity(original_quantity))
 
             logger.warning(msg)
             Terminal.inst().notice(msg, view='status')

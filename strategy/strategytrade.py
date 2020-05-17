@@ -907,6 +907,18 @@ class StrategyTrade(object):
 
         return profit_loss
 
+    def estimate_exit_fees_rate(self, instrument):
+        """
+        Return the estimate fees rate for the exit order.
+        """
+        # count the exit fees related to limit order type
+        if self._stats['take-profit-order-type'] in (Order.ORDER_LIMIT, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT_LIMIT):
+            return instrument.maker_fee
+        elif self._stats['take-profit-order-type'] in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT):
+            return instrument.taker_fee
+
+        return 0.0
+
     #
     # extra
     #

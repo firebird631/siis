@@ -78,7 +78,8 @@ def get_all_active_trades(strategy):
                             'wt': trade.worst_price_timestamp(),
                             'label': trade.label,
                             'upnl': strategy_trader.instrument.format_price(trade.unrealized_profit_loss),
-                            'pnlcur': trade.profit_loss_currency
+                            'pnlcur': trade.profit_loss_currency,
+                            'fees': trade.entry_fees_rate() + trade.estimate_exit_fees_rate(strategy_trader.instrument)
                         })
         except Exception as e:
             error_logger.error(repr(e))
