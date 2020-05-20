@@ -49,6 +49,9 @@ class ATRSRIndicator(Indicator):
         self._tup = np.array([])
         self._tdn = np.array([])
 
+        # self._cur_up_len = 0
+        # self._cur_dn_len = 0
+
         self._last_atr = 0.0
 
     @property

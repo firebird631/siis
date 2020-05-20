@@ -82,14 +82,16 @@ class StrategyTrader(object):
         self._reporting = StrategyTrader.REPORTING_NONE
 
         self._stats = {
-            'perf': 0.0,     # initial
-            'worst': 0.0,    # worst trade lost
-            'best': 0.0,     # best trade profit
-            'failed': [],    # failed terminated trades
-            'success': [],   # success terminated trades
-            'roe': [],       # return to equity trades
-            'cont-win': 0,   # contigous win trades
-            'cont-loss': 0,  # contigous loss trades
+            'perf': 0.0,       # initial
+            'worst': 0.0,      # worst trade lost
+            'best': 0.0,       # best trade profit
+            'worst-sum': 0.0,  # sum of worst trade lost
+            'best-sum': 0.0,    # sum of best trade profit
+            'failed': [],      # failed terminated trades
+            'success': [],     # success terminated trades
+            'roe': [],         # return to equity trades
+            'cont-win': 0,     # contigous win trades
+            'cont-loss': 0,    # contigous loss trades
         }
 
     #
@@ -490,7 +492,9 @@ class StrategyTrader(object):
                         if profit_loss != 0.0:
                             self._stats['perf'] += profit_loss
                             self._stats['best'] = max(self._stats['best'], profit_loss)
+                            self._stats['best-sum'] += self._stats['best']
                             self._stats['worst'] = min(self._stats['worst'], profit_loss)
+                            self._stats['worst-sum'] += self._stats['worst']
 
                         if profit_loss <= 0.0:
                             self._stats['cont-loss'] += 1

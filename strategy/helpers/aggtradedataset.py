@@ -42,6 +42,9 @@ def get_agg_trades(strategy):
                     best = strategy_trader._stats['best']
                     worst = strategy_trader._stats['worst']
 
+                    best_sum = strategy_trader._stats['best-sum']
+                    worst_sum = strategy_trader._stats['worst-sum']
+
                     success = len(strategy_trader._stats['success'])
                     failed = len(strategy_trader._stats['failed'])
                     roe = len(strategy_trader._stats['roe'])
@@ -64,7 +67,9 @@ def get_agg_trades(strategy):
                         'worst': worst,
                         'success': success,
                         'failed': failed,
-                        'roe': roe
+                        'roe': roe,
+                        'best-sum': best_sum,
+                        'worst-sum': worst_sum,
                     })
         except Exception as e:
             error_logger.error(repr(e))

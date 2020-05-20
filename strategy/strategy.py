@@ -2161,7 +2161,7 @@ class Strategy(Runnable):
                 max_factor = 1
 
                 try:
-                    base_quantity = float(data.get('quantity', -1))
+                    quantity = float(data.get('quantity', -1))
                 except Exception:
                     results['error'] = True
                     results['messages'].append("Invalid quantity")
@@ -2185,7 +2185,7 @@ class Strategy(Runnable):
                     results['messages'].append("Modified trade quantity for %s to %s" % (strategy_trader.instrument.market_id, quantity))
 
                 if max_factor > 0 and strategy_trader.instrument.trade_max_factor != max_factor:
-                    strategy_trader.instrument.max_factor = max_factor
+                    strategy_trader.instrument.trade_max_factor = max_factor
                     results['messages'].append("Modified trade quantity max factor for %s to %s" % (strategy_trader.instrument.market_id, max_factor))
 
             else:

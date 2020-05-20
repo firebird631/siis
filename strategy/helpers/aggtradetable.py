@@ -23,7 +23,7 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
     """
     Returns a table of any aggreged active and closes trades.
     """
-    columns = ('Market', 'P/L(%)', 'Total(%)', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE')
+    columns = ('Market', 'P/L(%)', 'Total(%)', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE', 'Best Sum (%)', 'Worst Sum (%)', 'Best+Worst Sum (%)')
     total_size = (len(columns), 0)
     data = []
 
@@ -48,6 +48,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
         success_sum = 0
         failed_sum = 0
         roe_sum = 0
+        best_sum_g = 0.0
+        worst_sum_g = 0.0
 
         # total summ before offset:limit
         if summ:
@@ -59,6 +61,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
                 success_sum += t['success']
                 failed_sum += t['failed']
                 roe_sum += t['roe']
+                best_sum_g += t['best-sum']
+                worst_sum_g += t['worst-sum']
 
         agg_trades = agg_trades[offset:limit]
 
@@ -74,7 +78,10 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
                 "%.2f" % (t['worst']*100.0),
                 t['success'],
                 t['failed'],
-                t['roe']
+                t['roe'],
+                "%.2f" % (t['best-sum']*100.0),
+                "%.2f" % (t['worst-sum']*100.0),
+                "%.2f" % ((t['best-sum']+t['worst-sum'])*100.0),
             )
 
             data.append(row[col_ofs:])
@@ -95,7 +102,11 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
                 "%.2f" % (worst_sum*100.0),
                 success_sum,
                 failed_sum,
-                roe_sum)
+                roe_sum,
+                "%.2f" % (best_sum_g*100.0),
+                "%.2f" % (worst_sum_g*100.0),
+                "%.2f" % ((best_sum_g+worst_sum_g)*100.0),
+            )
 
             data.append(row[col_ofs:])
 

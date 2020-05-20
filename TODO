@@ -8,8 +8,52 @@
 
 #3 Monitor WebSocket avec asyncio compatible avec le nouveau protocol (V2)
 
-#24 Uniformiser l'order book (bitmex, binance) => avoir un object OrderBook facile à mettre à jour et à exploiter
-	- utiliser DepthCacheManager pour binance
+#24 Uniformiser l'order book (bitmex, binance, binancefutures, kraken)
+    - avoir un object OrderBook facile à mettre à jour et à exploiter
+    - utiliser DepthCacheManager pour binance et binancefutures
+
+#99 active alerts view
+
+#100 active regions view
+
+#101 command to manually copy trade a signal
+
+#102 trade_quantity in percent of account
+
+#103 interface web de scalp
+    -mais dans l'url alors il faut le nom de l'appliance
+
+#104 decouper les commande de strategy par fichier dans command/
+
+#105 terminer le webservice REST + WS, mise a dispo des commandes de strategy et de trader (prio pour trading) et puis WS pour suivis
+    - puis ensuite charting via data WS (need subscription)
+
+#106 amméliorer le process pour le démarrer du bot sur IG pour avoir la data initial pour les différentes timeframes plus facilement
+
+#107 Optimisation des trades :
+    - Le signal doit être annulé si le prix dépasse (long) celui de la réintégration de la BB (inverse pour short)
+    - prix de TP :
+        1) on a une MA20 50 100 ou 200 dans la bollinger, on prend la plus éloignée qui est dans la BB
+        2) si pas assez loin ou en dehors, on cherche la tenkan (si assez loin du prix)
+        3) on prend le précédent ATR le plus loin dans la BB ou le en cours si rien d'autre
+        4) fixed-pct ou fixed-distance si rien d'autre
+    - prix de SL :
+        1) current ATR si == bas de la bougie de break
+        2) precedent ATR en dessous de la open de la bougie de réintégration
+        3) fixed
+    - entrée :
+        1) vérifier qu'on est tjs dans la partie basse (inversement haute) de la bollinger (fait mais semble pas suffire)
+        2) vérifier le % min, limité par la bollinger opposés, qu'il soit suffisant
+        3) le corps de la bougie de confirmation doit être au moins N x epsilon
+    - sortie :
+        1) TP initial, on l'écarte tant que les bougies sont rouges
+        2) Si verte que à partir du price epsilon sinon on la compte comme rouge
+        3) On coupe si signal opposé
+
+
+#108 Move from siis.py for the command part the rest to command_handler
+
+#89 Finir les conversion des tools avec le model Tool (binarizer, fetcher, optimizer)
 
 
 #######
@@ -19,48 +63,44 @@
 #92 Charting client date time issue, pourtant les bonnes valeurs sont envoyées, à la réception c'est autre chose...
 
 #87 Problème sur le comptage de la quantité de sortie, et du prix moyen de sortie d'un trade
-	- En effet si la sortie est effectué par plusieurs ordres dans le cas du filled et exec-price, pas de problème,
-		tout s'ajoute, mais si on a que cumulative-filled et avg-price alors remplacer les valeurs comme sur
-		le trade d'entré va écraser les valeurs liées au trades de sorties précédents.
-		- Exemple un take-profit limit, mais mettons la quantité n'est pas fully-filled, et finalement intervient
-			pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier orde)
-	- Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
+    - En effet si la sortie est effectué par plusieurs ordres dans le cas du filled et exec-price, pas de problème,
+        tout s'ajoute, mais si on a que cumulative-filled et avg-price alors remplacer les valeurs comme sur
+        le trade d'entré va écraser les valeurs liées au trades de sorties précédents.
+        - Exemple un take-profit limit, mais mettons la quantité n'est pas fully-filled, et finalement intervient
+            pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier orde)
+    - Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
 
-#93 Command doit y avoir un prob avec self._word qui doit être parfois mal définit, donc la complétion initial du premier verbe déconne parfois
+#97 bug avec binancefutures en papermode, semble mal calculer le cout de la position, ou du realized profit/loss (délire complet) (voir #87 et #95)
 
 #95 Parfois on a un problème de quantité d'asset sur le paper-trader.
 
 #96 Valeur d'un pip pour les marchés BitMex => et corriger ainsi calcule uPnl.
+    - Enfin même question avec BinanceFutures, calculé fait sur une supposition, mais par contre reste le prob pour le uPnl
 
 
 ##########
 # URGENT #
 ##########
 
-#81 Imaginer un filtre de prix utilisé pour les SL/TP pour éviter qu'ils s'active sur une mêche pour rien, peut être attendre sur une close sinon ?
-
 #75 TD9 countdown a debug et tester
 
 #57 Vérification des trades au rechargement :
-	- Cas des positions indépendante (CFD, futur) : pas de soucis tant qu'on retrouve la position et les ordres
-	- Cas des crypto margin: si on rate un trade event, on va perdre le compte : reprendre l'historique des trades, ça devient l'usine à gérer
-	- Cas des crypto spot : pareil si on rate un trade event...
-	=> On pourrait depuis le watcher récupérer à la connexion tout les TRADES
-		- On le fait déjà en fait sur binance pour les asset non vide (nouvellement non vide (valeur fetched) ou précédemment non vide (valeur stocké en DB))
-			- pour binance.com c'est un peu lent et ça consomme du crédit
-			- pour bitmex.com on a get_historical_trades(...)
-			- pour ig.com pas de question à se poser on regarde l'état de la position, et éventuellement les ordres actifs qu'on a fetched
+    - Cas des positions indépendante (CFD, futur) : pas de soucis tant qu'on retrouve la position et les ordres
+    - Cas des crypto margin: si on rate un trade event, on va perdre le compte : reprendre l'historique des trades, ça devient l'usine à gérer
+    - Cas des crypto spot : pareil si on rate un trade event...
+    => On pourrait depuis le watcher récupérer à la connexion tout les TRADES
+        - On le fait déjà en fait sur binance pour les asset non vide (nouvellement non vide (valeur fetched) ou précédemment non vide (valeur stocké en DB))
+            - pour binance.com c'est un peu lent et ça consomme du crédit
+            - pour bitmex.com on a get_historical_trades(...)
+            - pour ig.com pas de question à se poser on regarde l'état de la position, et éventuellement les ordres actifs qu'on a fetched
 
 #63 Mode backup urgency :
-	- Instance démarré à coté pour fermé les trades en profit et se fermer une fois tous les trades fermé
+    - Instance démarré à coté pour fermé les trades en profit et se fermer une fois tous les trades fermé
 
 
 #############
 # REFLEXION #
 #############
-
-#89 Avoir une notion un model Tool, avoir une méthode pour avoir la liste des param obligatoire params(), une methode process(logger, options) et une methode cli_help()
-	-> Convertir binarizer, fetcher, optimizer et syncer avec ce modèle et avoir un paramètre --tool=
 
 #76 Découplage watcher/trader de la strategie avec communication asyncio interprocess pour éviter de relancer la partie watcher, et ainsi la laisser écouter le marché
 
@@ -70,28 +110,30 @@
 #######
 
 #43 Mécanisme d'abonnement/desabonnement a un flux pour les chart par instrument (nécessite un socket bidir et donc l'API)
-	- Déjà on ne passe les flux de chart qu'en mode debug ou profilage
-	- Et on notify les trade event par la stratégie, et on ne passe pas ainsi directement par le streamer au niveau strategy-trader
-		- Entrée, sortie, modification (SL/TP,operation)
-			-> Attention il risque de manquer une fermeture depuis l'extérieur
-				-> Donc comment notifier de ce qui revient sur les StrategyTrade correctement ?
+    - Déjà on ne passe les flux de chart qu'en mode debug ou profilage
+    - Et on notify les trade event par la stratégie, et on ne passe pas ainsi directement par le streamer au niveau strategy-trader
+        - Entrée, sortie, modification (SL/TP,operation)
+            -> Attention il risque de manquer une fermeture depuis l'extérieur
+                -> Donc comment notifier de ce qui revient sur les StrategyTrade correctement ?
 
 #60 Gérer la partie locked sur le paper trader en mode asset
-	- C'est à dire ne pas tout gérer en free, ce n'est pas super important au final car ça n'empêche pas le fonctionnement,
-		mais c'est pour être plus rigoureux.
+    - C'est à dire ne pas tout gérer en free, ce n'est pas super important au final car ça n'empêche pas le fonctionnement,
+        mais c'est pour être plus rigoureux.
 
 
 ########
 # LESS #
 ########
 
-#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, l'intérêt c'est d'avoir le trigger coté bot, pour ne pas bloquer de fond indéfiniment
+#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, l'intérêt c'est d'avoir le trigger coté bot, pour ne pas bloquer les fonds coté broker
 
-#38 Fetcher et (REST) Watcher Tiingo
+#38 Fetcher et (REST) Watcher Tiingo (est-ce vraiment utile aujourd'hui ?)
+
+#98 Fetcher, Watcher PyEX (mais c'est payant)
 
 #45 Pour le watcher AlphaVantage faire une liste cyclique avec priorité vers les marché qui n'ont pas été mis encore à jour
-	pour ainsi faire tourner si plus de 5 marché suivis a une ut de 1m
-	=> finalement avec Tiingo ou PyEx on devrait tout avoir donc pas besoin d'en faire trop sur AlphaVantage.
+    pour ainsi faire tourner si plus de 5 marché suivis a une ut de 1m
+    => finalement avec Tiingo ou PyEx on devrait tout avoir donc pas besoin d'en faire trop sur AlphaVantage.
 
 
 #########
@@ -99,6 +141,7 @@
 #########
 
 #
+
 
 #########################
 ## Idées de stratégies ##
@@ -112,7 +155,6 @@
 - Détection des patterns elliotists
 - Détection des harmonic patterns
 - Bollinger + triangle => pullback + count number of pullback => break
-- Stop : 5min 5% 15m 8% 1h 15% 4h 30%
 - Chande Kroll Stop @ref https://www.centralcharts.com/fr/forums/12-analyse-technique/1366-indicateur-chande-kroll-stop
 - Algo-G pour optimiser les paramètres
 - ML avec TensorFlow selon différent indicateurs ou encore selon des signaux prétraité (hilbert...)
