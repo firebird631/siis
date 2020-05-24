@@ -1,8 +1,9 @@
 {
+    "protocol": "https://",
     "host": "127.0.0.1",
-    "port": 8080,
+    "port": 6363,
     "allowdeny": "allowany",
     "list": null,
     "api-key": "e4f7d47e832e115df640ec3b1c95a417c2f26286",
-    "_comment": "replace api-key with your generated version, using bash: date --rfc-3339=ns | sha1sum | awk '{print $1}'"
+    "_comment": "changes the port and replace the api-key with your generated version, using bash: date --rfc-3339=ns | sha1sum | awk '{print $1}'"
 }

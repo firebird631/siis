@@ -1,24 +1,11 @@
-let getUrlParameter = function getUrlParameter(sParam) {
-    var sPageURL = window.location.search.substring(1),
-        sURLVariables = sPageURL.split('&'),
-        sParameterName,
-        i;
-
-    for (i = 0; i < sURLVariables.length; i++) {
-        sParameterName = sURLVariables[i].split('=');
-
-        if (sParameterName[0] === sParam) {
-            return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
-        }
-    }
-};
-
 $(window).ready(function() {
     let appliance = {
         'name': null,
+        'protocol': 'http://',
         'host': '127.0.0.1',
         'port': 6339,
-        'api-key': null
+        'api-key': null,
+        'auth-token': null
     }
 
     // how to input the api-key ?
@@ -33,6 +20,10 @@ $(window).ready(function() {
     if (searchParams.has('port')) {
         appliance['port'] = parseInt(searchParams.get('port'));
     }
+
+    function base_url() {
+        return appliance['protocol'] + appliance['host'] + ':' + appliance['port'];
+    };
 
     let broker = {
         'name': 'binancefutures.com',
@@ -362,6 +353,11 @@ $(window).ready(function() {
         factor.selectpicker({'width': '75px'});
     };
 
+    function retrieve_symbol(elt) {
+        let trader_id = $(elt.target).attr('trader-id');
+        return $('.markets[trader-id="' + trader_id + '"]').val();
+    }
+
     function add_long_short_actions(id, to) {
         let tv_btn = $('<button class="btn btn-secondary trading-view-action" name="trading-view-action"><span class="fa fa-link"></span>&nbsp;TV</button>');
         let long_btn = $('<button class="btn btn-success long-action" name="long-action">Long</button>');
@@ -379,16 +375,15 @@ $(window).ready(function() {
         to.append(chart_btn);
 
         long_btn.on('click', function(elt) {
-            alert("LONG !!");
+            on_order_long(elt);
         });
 
         short_btn.on('click', function(elt) {
-            alert("SHORT !!");
+            on_order_short(elt);
         });
 
         tv_btn.on('click', function(elt) {
-            // @todo market data
-            open_trading_view('BTCUSDT');
+            open_trading_view(elt);
         });
 
         chart_btn.on('click', function(elt) {
@@ -431,18 +426,20 @@ $(window).ready(function() {
     });
 
     function add_active_trade(appliance_id, market_id, trade) {
-
+        // @todo
     };
 
     function remove_active_trade(appliance_id, market_id, local_id) {
-
+        // @todo
     };
 
     function add_historical_trade(appliance_id, market_id, trade) {
-
+        // @todo
     };
 
-    function open_trading_view(symbol) {
+    function open_trading_view(elt) {
+        let symbol = retrieve_symbol(elt);
+
         if (broker['name'] in broker_to_tv) {
             if (symbol in symbol_to_tv) {
                 symbol = symbol_to_tv[symbol];
@@ -466,5 +463,101 @@ $(window).ready(function() {
             tpm.selectpicker('val', profile['take-profit']);
             slm.selectpicker('val', profile['stop-loss']);
         };
+    };
+
+    function on_order_long(elt) {
+        let symbol = retrieve_symbol(elt);
+        let endpoint = "trade/create";
+        let url = base_url() + '/' + endpoint;
+
+        if (symbol) {
+            let data = {}
+
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: JSON.stringify(data),
+                dataType: 'json',
+                contentType: 'application/json'
+            })
+            .done(function() {
+                alert( "second success" );
+            })
+            .fail(function() {
+                alert( "error" );
+            });
+        }
+    };
+
+    function on_order_short(elt) {
+        let symbol = retrieve_symbol(elt);
+        let endpoint = "trade/create";
+        let url = base_url() + '/' + endpoint;
+
+        if (symbol) {
+            let data = {}
+
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: JSON.stringify(data),
+                dataType: 'json',
+                contentType: 'application/json'
+            })
+            .done(function() {
+                alert( "second success" );
+            })
+            .fail(function() {
+                alert( "error" );
+            });
+        }
+    };
+
+    function on_change_entry_price(elt) {
+        let symbol = retrieve_symbol(elt);
+
+        // @todo
     }
+
+    function on_change_stop_loss_price(elt) {
+        let symbol = retrieve_symbol(elt);
+
+        // @todo
+    }
+
+    function on_change_take_profit_price(elt) {
+        let symbol = retrieve_symbol(elt);
+
+        // @todo
+    }
+
+    function setup_auth_data(data) {
+        data['auth-token'] = appliance['auth-token'];
+    }
+
+    function get_auth_token() {
+        let endpoint = "auth";
+        let url = base_url() + '/' + endpoint;
+
+        let data = {
+            'api-key': appliance['api-key'],
+        }
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: JSON.stringify(data),
+            dataType: 'json',
+            contentType: 'application/json'
+        })
+        .done(function(result) {
+            appliance['auth-token'] = result['auth-token'];
+        })
+        .fail(function() {
+            alert("Unable to obtain an auth-token !");
+        });
+    };
+
+    // get an initial auth-token
+    get_auth_token();
 });
