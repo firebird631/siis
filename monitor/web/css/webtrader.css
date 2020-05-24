@@ -1,0 +1,159 @@
+.btn-default {
+    border: 1px gray solid;
+}
+
+.backlog-menu {
+    margin-top: 10px;
+}
+
+.main-menu-btn ~ .main-menu-btn {
+    margin-left: 10px;
+}
+
+.badge {
+    font-size: 0.85rem;
+    padding: 6px;
+}
+
+.table.collapsed-table th, .table.collapsed-table td {
+    padding: 0.5rem;
+    vertical-align: middle;
+}
+
+#glass_pane{
+    width: 100%;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+    background-color: rgba(15, 15, 15, 0.5);
+    position: fixed;
+    display: block;
+}
+
+.img-thumb {
+    cursor: zoom-in;
+}
+
+footer.footer {
+    width: 100%;
+    height: 1.5em;
+    border-top: 1px solid #ddd;
+    margin-top: 15px;
+    padding: 5px;
+    position: absolute;
+    bottom: 0.5em;
+}
+
+div.main-content {
+    border-top: 1px solid #ddd;
+}
+
+table.content-table tr td {
+    vertical-align: middle;
+}
+
+table.content-table thead tr {
+    font-weight: bold;
+}
+
+div.content-inner {
+    height: calc(100vh - 5em - 4.5em - 3em - 6em - 3em);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+div.content-bar {
+    height: 4em;
+    margin-bottom: 0.5em;
+}
+
+table.content-table thead th {
+    background: blueviolet;
+    position: sticky;
+    top: -1px;
+}
+
+div.table-pager {
+    margin-top: 10px;
+}
+
+div.trader {
+    height: 235px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+div.markets {
+    width: 150px;
+    padding-right: 15px;
+}
+
+div.profiles {
+    width: 150px;
+}
+
+div.trade-list {
+    border-top: 2px solid gray;
+    height: 150px;
+    max-height: 150px;
+}
+
+div.trade-list-entries {
+    overflow-y: scroll;
+    height: 145px;
+    max-height: 145px;
+}
+
+input.stop-loss-price, input.take-profit-price, input.entry-price {
+    width: 135px;
+    margin-right: 15px;
+}
+
+div.trader-row {
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-bottom: 5px;
+}
+
+div.quantity-factor {
+    padding-left: 15px;
+}
+
+div.slider {
+    margin-left: 5px;
+    margin-right: 10px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+button.long-action {
+    margin-left: 15px;
+    margin-right: 15px;
+}
+
+button.short-action {
+    margin-right: 45px;
+}
+
+input[type="range"] {
+    width: 100%;
+}
+
+span.quantity-value {
+    margin-left: 10px;
+    margin-top: 5px;
+    width: 35px;
+}
+
+a.menu-btn {
+    width: 120px;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    border-right: none;
+    border-bottom-right-radius: 0px;
+    border-top-right-radius: 0px;
+}
+
+div.trade-list-menu {
+    border-right: 3px solid gray;
+}

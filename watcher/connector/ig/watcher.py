@@ -269,23 +269,32 @@ class IGWatcher(Watcher):
     # instruments
     #
 
-    def subscribe(self, market_id, timeframe, ohlc_depths=None, order_book_depth=None):
+    def subscribe(self, market_id, timeframes, ohlc_depths=None, order_book_depth=None):
         with self._mutex:
             if market_id in self.__matching_symbols:
-                # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only
-                # prefetch for the last of each except for 1m and 5m we assume we have a delay of 5 minutes
-                # from the manual prefetch script execution and assuming the higher timeframe are already up-to-date.
+                # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only fetch current
+                # plus a delta allowing the time to prefetch the data into the DB from another source
+
+                # but there is a problem with the 2h, 4h, 1d, 1w and 1m, because the data are aligned to the LSE timezone
+                # and siis assume all are UTC based. the error in W or M is only of 1h or 2h then its ok
+
+                # for the 2h and 4h they are generated from the 1h candles,
+                # so they are aligned to UTC, but the OHLC open time is still in LSE timezone
+
+                # we could manage a timeoffset for the stocks exchanges
+
                 if self._initial_fetch:
                     logger.info("%s prefetch for %s" % (self.name, market_id))
 
                     try:
-                        self.fetch_and_generate(market_id, Instrument.TF_1M, 5, Instrument.TF_3M)
-                        self.fetch_and_generate(market_id, Instrument.TF_5M, 5, Instrument.TF_15M)
-                        self.fetch_and_generate(market_id, Instrument.TF_30M, 5, Instrument.TF_2H)
-                        self.fetch_and_generate(market_id, Instrument.TF_4H, 1, None)  # fixed timestamp
-                        self.fetch_and_generate(market_id, Instrument.TF_1D, 1, None)  # fixed timestamp
-                        self.fetch_and_generate(market_id, Instrument.TF_1W, 1, None)  # fixed timestamp
-                        self.fetch_and_generate(market_id, Instrument.TF_1M, 1, None)  # fixed timestamp
+                        # sync to the last 30 mins of data
+                        # its 60 req/min max, but we cannot wait to long else there is a buffer overflow with the tickers
+                        self.fetch_and_generate(market_id, Instrument.TF_1M, 30, Instrument.TF_30M)  # 1m, 5m, 15m, 30m
+                        self.fetch_and_generate(market_id, Instrument.TF_3M, 10)
+                        self.fetch_and_generate(market_id, Instrument.TF_1H, 4, Instrument.TF_2H)  # 1h, 4h
+                        self.fetch_and_generate(market_id, Instrument.TF_1D, 1)
+                        self.fetch_and_generate(market_id, Instrument.TF_1W, 1)
+                        self.fetch_and_generate(market_id, Instrument.TF_1M, 1)
                     except:
                         # exceed of quota...
                         pass
@@ -293,15 +302,10 @@ class IGWatcher(Watcher):
                 self.insert_watched_instrument(market_id, [0])
 
                 # to know when market close but could be an hourly REST API call, but it consume one subscriber...
-                # @todo so maybe prefers REST call hourly ? but need bid/ofr properly defined at signals on trader.market and strategy.instrument !
                 self.subscribe_market(market_id)
 
                 # tick data
                 self.subscribe_tick(market_id)
-
-                # if self._initial_fetch:
-                #     logger.info("Watcher %s wait 8+1 seconds to limit to a fair API usage" % (self.name,))
-                #     time.sleep(9.0)  # 1 sec per query + 1 extra second
 
                 return True
 
@@ -1154,14 +1158,22 @@ class IGWatcher(Watcher):
         for price in prices:
             dt = datetime.strptime(price['snapshotTimeUTC'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
 
-            # fix for D,W,M snapshotTimeUTC, probaby because of the DST (then might be +1 or -1 hour)
+            # fix for D,W,M snapshotTimeUTC, because it is LSE aligne and shifted by the DST (then might be +1 or -1 hour)
             if timeframe in (Instrument.TF_1D, Instrument.TF_1W, Instrument.TF_1M):
-                if dt.hour == 23:
+                if dt.hour == 22:
+                    # is 22:00 on the previous day, add 2h
+                    dt = dt + timedelta(hours=2)
+                elif dt.hour == 23:
                     # is 23:00 on the previous day, add 1h
                     dt = dt + timedelta(hours=1)
                 elif dt.hour == 1:
                     # is 01:00 on the same day, sub 1h
                     dt = dt - timedelta(hours=1)
+                elif dt.hour == 2:
+                    # is 02:00 on the same day, sub 2h
+                    dt = dt - timedelta(hours=2)
+
+            # no solution for the 2H...
 
             elif timeframe == Instrument.TF_4H:
                 if dt.hour in (3, 7, 11, 15, 19, 23):

@@ -185,19 +185,17 @@ class TraderStateView(TableView):
         else:
             return [], [], (0, 0)
 
+        if report_mode >= strategy_trader_state.get('num-modes', 1):
+            with self._mutex:
+                # refreh with mode
+                self._report_mode = strategy_trader_state.get('num-modes', 1) - 1
+                strategy_trader_state = get_strategy_trader_state(appliance, market_id, report_mode)
+
         members = strategy_trader_state.get('members', [])
         states = []
         columns = [m[1] for m in members]
         states = strategy_trader_state.get('data', [])
         total_size = (len(columns), len(states))
-
-        if report_mode >= strategy_trader_state.get('num-modes', 1):
-            with self._mutex:
-                # refreh with mode
-                self._report_mode = strategy_trader_state.get('num-modes', 1) - 1
-                self._refresh = 0
-
-                return [], [], (0, 0)
 
         for i, col in enumerate(members):
             if col[0] == "direction":

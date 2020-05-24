@@ -185,10 +185,10 @@ class BitMexWatcher(Watcher):
                 if self._initial_fetch:
                     logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                    self.fetch_and_generate(market_id, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
-                    self.fetch_and_generate(market_id, Instrument.TF_5M, 6*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
-                    self.fetch_and_generate(market_id, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
-                    self.fetch_and_generate(market_id, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)
+                    self.fetch_and_generate(market_id, Instrument.TF_1M, timeframes.get(Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE) * 3, Instrument.TF_3M)
+                    self.fetch_and_generate(market_id, Instrument.TF_5M, timeframes.get(Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE) * 6, Instrument.TF_30M)
+                    self.fetch_and_generate(market_id, Instrument.TF_1H, timeframes.get(Instrument.TF_1H, self.DEFAULT_PREFETCH_SIZE) * 4, Instrument.TF_4H)
+                    self.fetch_and_generate(market_id, Instrument.TF_1D, timeframes.get(Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE) * 7, Instrument.TF_1W)
 
                     # debug only
                     # if market_id == "XBTUSD":

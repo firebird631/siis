@@ -122,12 +122,20 @@ class IGFetcher(Fetcher):
 
             # fix for D,W,M snapshotTimeUTC, probaby because of the DST (then might be +1 or -1 hour)
             if timeframe in (Instrument.TF_1D, Instrument.TF_1W, Instrument.TF_1M):
-                if dt.hour == 23:
+                if dt.hour == 22:
+                    # is 22:00 on the previous day, add 2h
+                    dt = dt + timedelta(hours=2)
+                elif dt.hour == 23:
                     # is 23:00 on the previous day, add 1h
                     dt = dt + timedelta(hours=1)
                 elif dt.hour == 1:
                     # is 01:00 on the same day, sub 1h
                     dt = dt - timedelta(hours=1)
+                elif dt.hour == 2:
+                    # is 02:00 on the same day, sub 2h
+                    dt = dt - timedelta(hours=2)
+
+            # no solution for the 2H...
 
             elif timeframe == Instrument.TF_4H:
                 if dt.hour in (3, 7, 11, 15, 19, 23):

@@ -221,8 +221,9 @@ class BinanceFuturesWatcher(Watcher):
     # instruments
     #
 
-    def subscribe(self, market_id, timeframe, ohlc_depths=None, order_book_depth=None):
+    def subscribe(self, market_id, timeframes, ohlc_depths=None, order_book_depth=None):
         result = False
+
         with self._mutex:
             try:
                 if market_id in self.__matching_symbols:
@@ -244,11 +245,16 @@ class BinanceFuturesWatcher(Watcher):
                     if self._initial_fetch:
                         logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                        self.fetch_and_generate(market_id, Instrument.TF_1M, 3*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_3M)
-                        self.fetch_and_generate(market_id, Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE, None)
-                        self.fetch_and_generate(market_id, Instrument.TF_15M, 2*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_30M)
-                        self.fetch_and_generate(market_id, Instrument.TF_1H, 4*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_4H)
-                        self.fetch_and_generate(market_id, Instrument.TF_1D, 7*self.DEFAULT_PREFETCH_SIZE, Instrument.TF_1W)               
+                        self.fetch_and_generate(market_id, Instrument.TF_1M, timeframes.get(Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE))
+                        self.fetch_and_generate(market_id, Instrument.TF_3M, timeframes.get(Instrument.TF_3M, self.DEFAULT_PREFETCH_SIZE))
+                        self.fetch_and_generate(market_id, Instrument.TF_5M, timeframes.get(Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE))
+                        self.fetch_and_generate(market_id, Instrument.TF_15M, timeframes.get(Instrument.TF_15M, self.DEFAULT_PREFETCH_SIZE))
+                        self.fetch_and_generate(market_id, Instrument.TF_30M, timeframes.get(Instrument.TF_30M, self.DEFAULT_PREFETCH_SIZE))
+                        self.fetch_and_generate(market_id, Instrument.TF_1H, timeframes.get(Instrument.TF_1H, self.DEFAULT_PREFETCH_SIZE))
+                        self.fetch_and_generate(market_id, Instrument.TF_2H, timeframes.get(Instrument.TF_2H, self.DEFAULT_PREFETCH_SIZE))
+                        self.fetch_and_generate(market_id, Instrument.TF_4H, timeframes.get(Instrument.TF_4H, self.DEFAULT_PREFETCH_SIZE))
+                        self.fetch_and_generate(market_id, Instrument.TF_1D, timeframes.get(Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE))
+                        self.fetch_and_generate(market_id, Instrument.TF_1W, timeframes.get(Instrument.TF_1W, self.DEFAULT_PREFETCH_SIZE))
 
                     # one more watched instrument
                     self.insert_watched_instrument(market_id, [0])

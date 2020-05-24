@@ -449,8 +449,7 @@ class CommandsHandler(object):
             # same word
             self._word += char
 
-        # if len(args) <= 1 and self._word and self._word[0] != ':':
-        if self._word and self._word[0] != ':':
+        if len(args) <= 1 and self._word and self._word[0] != ':':
             # command starts with a semicolumn
             self._word = ""
 

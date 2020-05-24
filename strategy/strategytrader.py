@@ -487,14 +487,17 @@ class StrategyTrader(object):
 
                         # realized profit/loss
                         profit_loss = trade.profit_loss - trade.entry_fees_rate() - trade.exit_fees_rate()
+                        
+                        best_pl = (trade.best_price() - trade.entry_price if trade.direction > 0 else trade.entry_price - trade.best_price()) / trade.entry_price
+                        worst_pl = (trade.worst_price() - trade.entry_price if trade.direction > 0 else trade.entry_price - trade.worst_price()) / trade.entry_price
 
                         # perf sommed here it means that its not done during partial closing
                         if profit_loss != 0.0:
                             self._stats['perf'] += profit_loss
                             self._stats['best'] = max(self._stats['best'], profit_loss)
-                            self._stats['best-sum'] += self._stats['best']
+                            self._stats['best-sum'] += best_pl
                             self._stats['worst'] = min(self._stats['worst'], profit_loss)
-                            self._stats['worst-sum'] += self._stats['worst']
+                            self._stats['worst-sum'] += worst_pl
 
                         if profit_loss <= 0.0:
                             self._stats['cont-loss'] += 1

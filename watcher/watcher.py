@@ -203,12 +203,12 @@ class Watcher(Runnable):
         """
         return self._watched_instruments
 
-    def subscribe(self, market_id, timeframe, ohlc_depths=None, order_book_depth=None):
+    def subscribe(self, market_id, timeframes, ohlc_depths=None, order_book_depth=None):
         """
         Subscribes for receiving data from price source for a market and a timeframe.
 
         @param market_id str Valid market identifier
-        @param timeframe int TF_xxx, 0 for tick/trade data
+        @param timeframes A tuple of tuple with timeframe, count
         """
         return False
 

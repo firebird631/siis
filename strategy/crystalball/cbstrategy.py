@@ -83,7 +83,7 @@ class CrystalBallStrategy(Strategy):
             try:
                 watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
                 if watcher:
-                    tfs = [(tf['timeframe'], tf['history']) for tf in self.timeframes_config.values() if tf['timeframe'] > 0]
+                    tfs = {tf['timeframe']: tf['history'] for tf in self.timeframes_config.values() if tf['timeframe'] > 0}
                     watcher.subscribe(instrument.symbol, tfs)
 
                     # query for most recent candles per timeframe

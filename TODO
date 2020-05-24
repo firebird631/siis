@@ -2,6 +2,18 @@
 # Some TODOs here #
 ###################
 
+
+###############
+# Discussions #
+###############
+
+IG on a 10k candle/mois on en a besoin de 47 à chaque démarrage pour se synchroniser,
+donc cela permet 21 démarrages par mois avec 10 symboles, ce qui est large même si on relance 1x ou 2 par semaine.
+Sinon il faut faire la synchro initiale depuis une autre source, mais laquelle ?
+
+Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon continuation
+
+
 ############
 # EN COURS #
 ############
