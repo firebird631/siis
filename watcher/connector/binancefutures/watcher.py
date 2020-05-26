@@ -642,7 +642,7 @@ class BinanceFuturesWatcher(Watcher):
 
             self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
 
-            if k['x'] and self._store_ohlc:
+            if self._store_ohlc and k['x']:
                 # write only consolidated candles. values are string its perfect
                 Database.inst().store_market_ohlc((
                     self.name, symbol, int(k['t']), tf,

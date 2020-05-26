@@ -1050,7 +1050,9 @@ class IGWatcher(Watcher):
             market.set_base(base_symbol, base_symbol, decimal_place(market.one_pip_means))
 
         quote_precision = base_precision  # most of the currencies have 2 decimals for usage
-        market.set_quote(instrument["currencies"][0]["code"], instrument["currencies"][0]['symbol'], quote_precision)
+
+        # previously it was code, now they change with name...
+        market.set_quote(instrument["currencies"][0]["name"], instrument["currencies"][0]['symbol'], quote_precision)
 
         if instrument.get('marginFactor') and market.is_open:
             if instrument.get('marginFactorUnit', '') == "PERCENTAGE":

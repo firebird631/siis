@@ -124,7 +124,7 @@ class StrategyPositionTrade(StrategyTrade):
     def modify_take_profit(self, trader, instrument, limit_price):
         if self.position_id:
             # if not accepted as modification do it as limit order
-            if trader.modify_position(self.position_id, instrument, take_profit_price=limit_price):
+            if trader.modify_position(self.position_id, instrument, stop_loss_price=self.sl, take_profit_price=limit_price):
                 self.tp = limit_price
                 self.position_limit = limit_price
                 return self.ACCEPTED
@@ -136,7 +136,7 @@ class StrategyPositionTrade(StrategyTrade):
     def modify_stop_loss(self, trader, instrument, stop_price):
         if self.position_id:
             # if not accepted as modification do it as stop order
-            if trader.modify_position(self.position_id, instrument, stop_loss_price=stop_price):
+            if trader.modify_position(self.position_id, instrument, stop_loss_price=stop_price, take_profit_price=self.tp):
                 self.sl = stop_price
                 self.position_stop = stop_price
                 return self.ACCEPTED
@@ -331,6 +331,9 @@ class StrategyPositionTrade(StrategyTrade):
             # retains the trade timestamp
             self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
+            # keep for close and for delta computation on update
+            self.position_quantity = last_qty
+
         elif signal_type == Signal.SIGNAL_POSITION_UPDATED:
             # update the unrealized profit-loss in currency
             if data.get('profit-loss'):
@@ -374,6 +377,9 @@ class StrategyPositionTrade(StrategyTrade):
                         self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
                     if last_qty >= self.oq:
                         self._entry_state = StrategyTrade.STATE_FILLED
+
+            # keep for close and for delta computation on update
+            self.position_quantity = last_qty
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position

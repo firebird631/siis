@@ -476,6 +476,7 @@ class IGService:
             # 'trailingStopDistance': None,
             # 'trailingStopIncrement': None
         }
+
         url_params = {
             'deal_id': deal_id
         }

@@ -409,7 +409,7 @@ class Watcher(Runnable):
                 ohlc._ofr_close = ofr
 
         # stored timeframes only
-        if ended_ohlc and (tf in self.STORED_TIMEFRAMES):
+        if self._store_ohlc and ended_ohlc and (tf in self.STORED_TIMEFRAMES):
             Database.inst().store_market_ohlc((
                 self.name, market_id, int(ended_ohlc.timestamp*1000), tf,
                 ended_ohlc.bid_open, ended_ohlc.bid_high, ended_ohlc.bid_low, ended_ohlc.bid_close,
@@ -430,7 +430,7 @@ class Watcher(Runnable):
             last_ohlc_by_timeframe[tf] = None
 
         # stored timeframes only
-        if ended_ohlc and (tf in self.STORED_TIMEFRAMES):
+        if self._store_ohlc and ended_ohlc and (tf in self.STORED_TIMEFRAMES):
             Database.inst().store_market_ohlc((
                 self.name, market_id, int(ended_ohlc.timestamp*1000), tf,
                 ended_ohlc.bid_open, ended_ohlc.bid_high, ended_ohlc.bid_low, ended_ohlc.bid_close,
@@ -533,7 +533,7 @@ class Watcher(Runnable):
             for generator in generators:              
                 candles = generator.generate_from_candles(last_ohlcs[generator.from_tf], False)
                 if candles:
-                    if self._store_ohlc:
+                    if 1: # self._store_ohlc: need to store initial-fetch to retrieve them from the strategy
                         for c in candles:
                             self.store_candle(market_id, generator.to_tf, c)
 

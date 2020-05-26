@@ -3,7 +3,7 @@ $(window).ready(function() {
         'name': null,
         'protocol': 'http://',
         'host': '127.0.0.1',
-        'port': 6339,
+        'port': 7575,
         'api-key': null,
         'auth-token': null
     }
@@ -558,6 +558,12 @@ $(window).ready(function() {
         });
     };
 
-    // get an initial auth-token
-    get_auth_token();
+    // global function to setup data and to get an initial auth-token
+    siis_connect = function(host, port, api_key) {
+        appliance['host'] = host;
+        appliance['port'] = port;
+        appliance['api-key'] = api_key;
+
+        get_auth_token();
+    }
 });

@@ -183,7 +183,7 @@ def application(argv):
                 elif arg == '--store-trade':
                     # store trade/quote/tick during wather process (watcher), default False
                     options['store-trade'] = True
-                elif arg == '--store-ohlc':
+                elif arg == '--store-ohlc' or arg == '--store-candle':
                     # store OHLCs during wather process (watcher), default False
                     options['store-ohlc'] = True
 

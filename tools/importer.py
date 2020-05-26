@@ -369,7 +369,7 @@ def error_exit(src, msg):
     sys.exit(-1)
 
 
-def adjust_from_date(broker_id, market_id, timeframe, from_date)
+def adjust_from_date(broker_id, market_id, timeframe, from_date):
     # from date is adjusted to the most recent to not overwrite ticks/trade/quote
     if timeframe <= Instrument.TF_TICK:
         # import from last entry, compute the from datetime
@@ -488,9 +488,9 @@ def do_importer(options):
                 # from filename try to detect the timeframe
                 parts = pathname.name.split('.')
                 if len(parts) > 0:
-                    for mt_tf, tf in MT4_TIMEFRAMES.items():
+                    for mt_tf in reversed(list(MT4_TIMEFRAMES.keys())):
                         if parts[0].endswith(mt_tf):
-                            detected_timeframe = tf
+                            detected_timeframe = MT4_TIMEFRAMES[mt_tf]
                             break
 
             elif row.count(',') == 8:
@@ -504,9 +504,9 @@ def do_importer(options):
                 # from filename try to detect the timeframe
                 parts = pathname.name.split('.')
                 if len(parts) > 0:
-                    for mt_tf, tf in MT4_TIMEFRAMES.items():
+                    for mt_tf in reversed(list(MT4_TIMEFRAMES.keys())):
                         if parts[0].endswith(mt_tf):
-                            detected_timeframe = tf
+                            detected_timeframe = MT4_TIMEFRAMES[mt_tf]
                             break
 
             # reset because first row is data
