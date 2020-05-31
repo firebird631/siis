@@ -8,6 +8,8 @@ $(window).ready(function() {
         'auth-token': null
     }
 
+    let ws = null;
+
     // how to input the api-key ?
 
     let searchParams = new URLSearchParams(window.location.search);
@@ -425,18 +427,6 @@ $(window).ready(function() {
         $(elt).append(trader_row6);
     });
 
-    function add_active_trade(appliance_id, market_id, trade) {
-        // @todo
-    };
-
-    function remove_active_trade(appliance_id, market_id, local_id) {
-        // @todo
-    };
-
-    function add_historical_trade(appliance_id, market_id, trade) {
-        // @todo
-    };
-
     function open_trading_view(elt) {
         let symbol = retrieve_symbol(elt);
 
@@ -531,6 +521,42 @@ $(window).ready(function() {
         // @todo
     }
 
+    //
+    // trade list
+    //
+
+    function add_active_trade(appliance_id, market_id, trade) {
+        // @todo
+    };
+
+    function update_active_trade(appliance_id, market_id, trade) {
+        // @todo
+    };
+
+    function remove_active_trade(appliance_id, market_id, local_id) {
+        // @todo
+    };
+
+    function add_historical_trade(appliance_id, market_id, trade) {
+        // @todo
+    };
+
+    $("#list_historical_trades").on('click', function(e) {
+        $("div.trade-list-entries ul").empty();
+
+        alert("todo!")
+    });
+
+    $("#list_active_trades").on('click', function(e) {
+        $("div.trade-list-entries ul").empty();
+
+        alert("todo!")
+    });
+
+    //
+    // session init
+    //
+
     function setup_auth_data(data) {
         data['auth-token'] = appliance['auth-token'];
     }
@@ -552,17 +578,44 @@ $(window).ready(function() {
         })
         .done(function(result) {
             appliance['auth-token'] = result['auth-token'];
+
+            if (appliance['ws-port'] != null) {
+                start_ws();
+            }
         })
         .fail(function() {
             alert("Unable to obtain an auth-token !");
         });
     };
 
+    function start_ws() {
+        if (ws != null) {
+            console.log("Close previous WS");
+            ws.close()
+            ws = null;
+        }
+
+        ws = new WebSocket("wss://" + appliance['host'] + ":" + appliance['ws-port'] + "?auth-token=" + appliance['auth-token']);
+
+        ws.onopen = function(event) {
+            console.log("WS opened");
+        };
+
+        ws.onclose = function(event) {
+            console.log("WS closed by peer !");
+        };
+
+        ws.onmessage = function (event) {
+            console.log(event.data);
+        }
+    }
+
     // global function to setup data and to get an initial auth-token
-    siis_connect = function(host, port, api_key) {
+    siis_connect = function(host, port, api_key, ws_port=6340) {
         appliance['host'] = host;
         appliance['port'] = port;
         appliance['api-key'] = api_key;
+        appliance['ws-port'] = ws_port;
 
         get_auth_token();
     }

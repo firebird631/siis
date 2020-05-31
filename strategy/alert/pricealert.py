@@ -6,6 +6,8 @@
 from .alert import Alert
 from instrument.instrument import Instrument
 
+from common.utils import direction_to_str
+
 import logging
 logger = logging.getLogger('siis.strategy.alert.price')
 
@@ -98,13 +100,37 @@ class PriceCrossAlert(Alert):
         return (self._expiry > 0 and timestamp >= self._expiry) or self._countdown == 0
 
     def str_info(self):
-        if self._dir >= 0:
+        if self._dir > 0:
             part = "if %s price goes above %s" % (self.price_src_to_str(), self._price)
-        elif self._dir <= 0:
+        elif self._dir < 0:
             part = "if %s price goes below %s" % (self.price_src_to_str(), self._price)
+        else:
+            part = "?"
 
         return "Price alert cross, %s, timeframe %s, expiry %s, cancelation %s" % (
             part, self.timeframe_to_str(), self.expiry_to_str(), self._cancelation)
+
+    def cancelation_str(self):
+        """
+        Dump a string with short alert cancelation str.
+        """
+        if self._dir > 0 and self._cancelation_price > 0.0:
+            return"if %s price > %s" % (self.price_src_to_str(), self._cancelation_price)
+        elif self._dir < 0 and self._cancelation_price > 0.0:
+            return "if %s price < %s" % (self.price_src_to_str(), self._cancelation_price)
+        else:
+            return "never"
+
+    def condition_str(self):
+        """
+        Dump a string with short alert condition str.
+        """
+        if self._dir > 0:
+            return"if %s price > %s" % (self.price_src_to_str(), self._price)
+        elif self._dir < 0:
+            return "if %s price < %s" % (self.price_src_to_str(), self._price)
+        else:
+            return ""
 
     #
     # dumps for notify/history
@@ -129,21 +155,30 @@ class PriceCrossAlert(Alert):
     def parameters(self):
         result = super().parameters()
 
-        # @todo
+        result['direction'] = direction_to_str(self._dir)
+        result['price'] = self._price
+        result['price-src'] = self.price_src_to_str()
+        result['cancelation-price'] = self._cancelation_price
 
         return result
 
     def dumps(self):
         result = super().dumps()
 
-        # @todo
+        result['direction'] = self._dir
+        result['price'] = self._price
+        result['price-src'] = self._price_src
+        result['cancelation-price'] = self._cancelation_price
 
         return result
 
     def loads(self, data):
         super().loads(data)
 
-        # @todo
+        self._dir = result['direction']
+        self._price = result['price']
+        self._price_src = result['price-src']
+        self._cancelation_price = result['cancelation-price']
 
     #
     # helpers

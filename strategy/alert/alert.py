@@ -221,6 +221,18 @@ class Alert(object):
         else:
             return "inf"
 
+    def condition_str(self):
+        """
+        Dump a string with alert condition details.
+        """
+        return ""
+
+    def cancelation_str(self):
+        """
+        Dump a string with alert cancelation details.
+        """
+        return ""
+
     #
     # dumps for notify/history
     #

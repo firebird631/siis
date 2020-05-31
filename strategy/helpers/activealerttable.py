@@ -1,0 +1,63 @@
+# @date 2020-05-30
+# @author Frederic SCHERMA
+# @license Copyright (c) 2020 Dream Overflow
+# Strategy display table formatter helpers for views or notifiers
+
+from datetime import datetime
+
+from terminal.terminal import Color
+from terminal import charmap
+
+from common.utils import timeframe_to_str
+
+from strategy.strategy import Strategy
+
+from strategy.helpers.activealertdataset import get_all_active_alerts
+
+import logging
+logger = logging.getLogger('siis.strategy')
+error_logger = logging.getLogger('siis.error.strategy')
+
+
+def actives_alerts_table(strategy, style='', offset=None, limit=None, col_ofs=None, datetime_format='%y-%m-%d %H:%M:%S'):
+    """
+    Returns a table of any active alerts.
+    """
+    COLUMNS = ('Market', '#', 'Label', 'TF', 'Created', 'Expiry', 'Countdown', 'Condition', 'Cancelation', 'Message')
+
+    columns = tuple(COLUMNS)
+    total_size = (len(columns), 0)
+    data = []
+
+    with strategy._mutex:
+        alerts = get_all_active_alerts(strategy)
+        total_size = (len(columns), len(alerts))
+
+        if offset is None:
+            offset = 0
+
+        if limit is None:
+            limit = len(alerts)
+
+        limit = offset + limit
+
+        alerts.sort(key=lambda x: -x['id'])
+        alerts = alerts[offset:limit]
+
+        for t in alerts:
+            row = [
+                t['mid'],
+                t['id'],
+                t['name'], 
+                t['tf'],
+                datetime.fromtimestamp(t['ts']).strftime(datetime_format) if t['ts'] > 0 else "?",
+                datetime.fromtimestamp(t['expiry']).strftime(datetime_format) if t['expiry'] > 0 else "never",
+                t['ctd'],
+                t['cond'],
+                t['cancel'],
+                t['msg'],
+            ]
+
+            data.append(row[col_ofs:])
+
+    return columns[col_ofs:], data, total_size
