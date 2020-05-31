@@ -9,6 +9,7 @@ from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet.error import ReactorAlreadyRunning
 
 from connector.binance.client import Client
+from monitor.service import MonitorService
 
 import logging
 logger = logging.getLogger('siis.connector.binance.ws')
@@ -554,11 +555,7 @@ class BinanceSocketManager(threading.Thread):
         self._user_listen_key = None
 
     def run(self):
-        try:
-            reactor.run(installSignalHandlers=False)
-        except ReactorAlreadyRunning:
-            # Ignore error about reactor already running
-            pass
+        MonitorService.use_reactor(installSignalHandlers=False)
 
     def close(self):
         """Close all connections

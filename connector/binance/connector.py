@@ -3,6 +3,8 @@
 # @license Copyright (c) 2018 Dream Overflow
 # HTTPS+WS connector for binance.com
 
+from monitor.service import MonitorService
+
 from connector.binance.client import Client
 from connector.binance.websockets import BinanceSocketManager
 
@@ -59,13 +61,7 @@ class Connector(object):
             self._ws.close()
             self._ws = None
 
-            # but might be more general with a ref counter
-            from twisted.internet import reactor
-            try:
-                reactor.stop()
-            except:
-                # if not running avoid exception
-                pass
+            MonitorService.release_reactor()
 
         if self._session:
             self._session = None

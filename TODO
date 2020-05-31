@@ -24,8 +24,6 @@ Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon cont
     - avoir un object OrderBook facile à mettre à jour et à exploiter
     - utiliser DepthCacheManager pour binance et binancefutures
 
-#99 active alerts view
-
 #100 active regions view
 
 #101 command to manually copy trade a signal
@@ -83,6 +81,8 @@ Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon cont
     - Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
 
 #97 bug avec binancefutures en papermode, semble mal calculer le cout de la position, ou du realized profit/loss (délire complet) (voir #87 et #95)
+
+#102 binancefutures quantité de SL et TP pas toujours ajusté après un changement de entry qty apres un trade signal
 
 #95 Parfois on a un problème de quantité d'asset sur le paper-trader.
 

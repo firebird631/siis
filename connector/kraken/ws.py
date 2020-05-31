@@ -29,6 +29,8 @@ from twisted.internet import reactor, ssl
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet.error import ReactorAlreadyRunning
 
+from monitor.service import MonitorService
+
 
 class KrakenClientProtocol(WebSocketClientProtocol):
 
@@ -188,11 +190,7 @@ class KrakenSocketManager(threading.Thread):
         del self._private_conns[conn_key]
 
     def run(self):
-        try:
-            reactor.run(installSignalHandlers=False)
-        except ReactorAlreadyRunning:
-            # Ignore error about reactor already running
-            pass
+        MonitorService.use_reactor(installSignalHandlers=False)
 
     def close(self):
         """Close all connections
@@ -227,7 +225,7 @@ class WssClient(KrakenSocketManager):
         try:
             self.close()
         finally:
-            pass  # reactor.stop()
+            MonitorService.release_reactor()
 
     def subscribe_public(self, pair, subscription, callback):
         id_ = "_".join([subscription['name'], pair[0]])

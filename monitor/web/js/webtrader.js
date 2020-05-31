@@ -1,9 +1,10 @@
 $(window).ready(function() {
     let appliance = {
         'name': null,
-        'protocol': 'http://',
-        'host': '127.0.0.1',
-        'port': 7575,
+        'protocol': 'http:',
+        'host': null,
+        'port': null,
+        'ws-port': null,
         'api-key': null,
         'auth-token': null
     }
@@ -22,9 +23,12 @@ $(window).ready(function() {
     if (searchParams.has('port')) {
         appliance['port'] = parseInt(searchParams.get('port'));
     }
+    if (searchParams.has('ws-port')) {
+        appliance['ws-port'] = parseInt(searchParams.get('ws-port'));
+    }
 
     function base_url() {
-        return appliance['protocol'] + appliance['host'] + ':' + appliance['port'];
+        return appliance['protocol'] + "//" + appliance['host'] + ':' + appliance['port'] + "/api/v1";
     };
 
     let broker = {
@@ -457,7 +461,7 @@ $(window).ready(function() {
 
     function on_order_long(elt) {
         let symbol = retrieve_symbol(elt);
-        let endpoint = "trade/create";
+        let endpoint = "trade";
         let url = base_url() + '/' + endpoint;
 
         if (symbol) {
@@ -481,7 +485,7 @@ $(window).ready(function() {
 
     function on_order_short(elt) {
         let symbol = retrieve_symbol(elt);
-        let endpoint = "trade/create";
+        let endpoint = "trade";
         let url = base_url() + '/' + endpoint;
 
         if (symbol) {
@@ -595,7 +599,7 @@ $(window).ready(function() {
             ws = null;
         }
 
-        ws = new WebSocket("wss://" + appliance['host'] + ":" + appliance['ws-port'] + "?auth-token=" + appliance['auth-token']);
+        ws = new WebSocket("ws://" + appliance['host'] + ":" + appliance['ws-port'] + "?auth-token=" + appliance['auth-token']);
 
         ws.onopen = function(event) {
             console.log("WS opened");
@@ -618,5 +622,11 @@ $(window).ready(function() {
         appliance['ws-port'] = ws_port;
 
         get_auth_token();
+    }
+
+    appliance['protocol'] = window.location.protocol;
+
+    simple_connect = function(api_key) {
+        siis_connect(window.location.hostname, parseInt(window.location.port), api_key, ws_port=parseInt(window.location.port)+1);
     }
 });

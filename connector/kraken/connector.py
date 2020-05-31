@@ -15,6 +15,8 @@ import hmac
 from datetime import datetime, timedelta
 from common.utils import UTC
 
+from monitor.service import MonitorService
+
 from .ws import WssClient
 
 import logging
@@ -101,13 +103,7 @@ class Connector(object):
             self._ws.stop()
             self._ws = None
 
-            # but might be more general with a ref counter
-            from twisted.internet import reactor
-            try:
-                reactor.stop()
-            except:
-                # if not running avoid exception
-                pass
+            MonitorService.release_reactor()
 
         if self._session:
             self._session = None

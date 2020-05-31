@@ -3,6 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # service worker for web monitoring
 
+import copy
 import json
 import time, datetime
 import tempfile, os, posix
@@ -13,11 +14,7 @@ import base64, hashlib
 
 import asyncio
 
-from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
-
-from twisted.python import log
 from twisted.internet import reactor
-
 from common.service import Service
 
 from monitor.streamable import Streamable
@@ -33,27 +30,6 @@ error_logger = logging.getLogger('siis.error.monitor')
 traceback_logger = logging.getLogger('siis.traceback.monitor')
 
 
-class ServerProtocol(WebSocketServerProtocol):
-
-    def onConnect(self, request):
-        logger.debug("Client connecting: {0}".format(request.peer))
-
-    def onOpen(self):
-        logger.debug("WebSocket connection open")
-
-    def onMessage(self, payload, isBinary):
-        if isBinary:
-            logger.info("Binary message received: {0} bytes".format(len(payload)))
-        else:
-            logger.info("Text message received: {0}".format(payload.decode('utf8')))
-
-        # echo back message verbatim
-        self.sendMessage(payload, isBinary)
-
-    def onClose(self, wasClean, code, reason):
-        logger.debug("WebSocket connection closed: {0}".format(reason))
-
-
 class MonitorService(Service):
     """
     Monitoring web service.
@@ -63,8 +39,11 @@ class MonitorService(Service):
     @todo streaming of the state and any signals that can be monitored + charting and appliances data
     """
 
-    MODE_FIFO = 0
-    MODE_HTTP_WEBSOCKET = 1
+    MODE_NONE = 0
+    MODE_FIFO = 1
+    MODE_HTTP_WEBSOCKET = 2
+
+    REACTOR = 0  # global twisted reactor ref counter
 
     def __init__(self, options):
         super().__init__("monitor", options)
@@ -80,22 +59,40 @@ class MonitorService(Service):
         self._content = collections.deque()
 
         self._thread = None
+        self._thread_ws = None
         self._running = False
+        self._running_ws = False
 
         self._strategy_service = None
         self._trader_service = None
         self._watcher_service = None
 
-        self._server = None
-        self._loop = None
+        self._http = None
+        self._ws = None
 
         # host, port, allowed host, order, deny... from config
-        self._mode = MonitorService.MODE_FIFO  # MODE_HTTP_WEBSOCKET
+        self._mode = None
+
+        if self._monitoring_config.get('mode', None) == "fifo":
+            self._mode = MonitorService.MODE_FIFO 
+        elif self._monitoring_config.get('mode', None) == "http+websocket":
+            self._mode = MonitorService.MODE_HTTP_WEBSOCKET 
 
         self._host = self._monitoring_config.get('host', '127.0.0.1')
         self._port = self._monitoring_config.get('port', '8080')
 
         # @todo allowdeny...
+        allowdeny = self._monitoring_config.get('allowdeny', "allowonly")
+
+        self._allowed_ips = None
+        self._denied_ips = None
+
+        if allowdeny == "allow":
+            self._allowed_ips = self._monitoring_config.get('list', [])
+        elif allowdeny == "any":
+            self._allowed_ips = None
+        elif allowdeny == "deny":
+            self._denied_ips = self._monitoring_config.get('list', [])
 
         # fifo
         self._tmpdir = None
@@ -109,13 +106,41 @@ class MonitorService(Service):
             return (self._filename, self._filename_read)
         elif self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
             return ("ws://%s:%i" % (self._host, self._port), "ws://%s:%i" % (self._host, self._port))
-
-        return ("", "")
+        else:
+            return ("", "")
 
     def setup(self, watcher_service, trader_service, strategy_service):
         self._watcher_service = watcher_service
         self._trader_service = trader_service
         self._strategy_service = strategy_service
+
+    #
+    # twisted reactor
+    #
+
+    @staticmethod
+    def use_reactor(installSignalHandlers=False):
+        if MonitorService.REACTOR == 0:
+            try:
+                reactor.run(installSignalHandlers=installSignalHandlers)
+                MonitorService.REACTOR += 1
+            except ReactorAlreadyRunning:
+                # Ignore error about reactor already running
+                pass
+            except Exception as e:
+                error_logger.error(repr(e))
+
+    @staticmethod
+    def release_reactor():
+        if MonitorService.REACTOR > 0:
+            MonitorService.REACTOR -= 1
+
+            if MonitorService.REACTOR == 0:
+                reactor.stop()
+
+    #
+    # processing
+    #
 
     def start(self):
         if self._monitoring:
@@ -157,27 +182,27 @@ class MonitorService(Service):
                     self._thread.start()
 
             elif self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
-                # logger.startLogging(sys.stdout)
+                from .http.httprestserver import HttpRestServer
+                from .http.httpwsserver import HttpWebSocketServer
 
-                self._factory = WebSocketServerFactory(u"ws://%s:%i" % (self._host, self._port))
-                self._factory.protocol = ServerProtocol
-                # self._factory.setProtocolOptions(maxConnections=2)
+                self._http = HttpRestServer(self._host, self._port)
+                self._ws = HttpWebSocketServer(self._host, self._port+1)
 
-                # self._loop = asyncio.get_event_loop()
-                # coro = self._loop.create_server(self._factory, self._host, self._port)
-                # self._server = self._loop.run_until_complete(coro)
-
-                # reactor.listenTCP(self._port, self._factory)
-                # if not reactor.running:
-                #     reactor.run()
+                HttpRestServer.ALLOWED_IPS = copy.copy(self._allowed_ips)
+                HttpRestServer.DENIED_IPS = copy.copy(self._denied_ips)
 
                 self._running = True
-                self._thread = threading.Thread(name="monitor", target=self.run_autobahn)
+                self._thread = threading.Thread(name="monitor", target=self.run_http)
                 self._thread.start()
+
+                self._running_ws = True
+                self._thread_ws = threading.Thread(name="monitor", target=self.run_ws)
+                self._thread_ws.start()
 
     def terminate(self):
         # remove any streamables
         self._running = False
+        self._running_ws = False
 
         if self._mode == MonitorService.MODE_FIFO:
             if self._thread:
@@ -215,8 +240,11 @@ class MonitorService(Service):
                 self._tmpdir = None
 
         elif self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
-            if self._loop:
-                self._loop.stop()
+            if self._ws:
+                self._ws.stop()
+
+            if self._http:
+                self._http.stop()
 
             if self._thread:
                 try:
@@ -226,12 +254,16 @@ class MonitorService(Service):
 
                 self._thread = None
 
-            if self._server:
-                self._server.close()
-                self._loop.close()
+            if self._thread_ws:
+                try:
+                    self._thread_ws.join()
+                except:
+                    pass
 
-            self._server = None
-            self._loop = None
+                self._thread_ws = None
+
+            self._http = None
+            self._ws = None
 
     def run_fifo(self):
         size = 32768
@@ -291,7 +323,9 @@ class MonitorService(Service):
             # but this will be replaced by an asyncio WS + REST API
             time.sleep(0.001)
 
-    def run_autobahn(self):
+    def run_ws(self):
+        self._ws.start()
+
         # async def push(self):
         #     count = 0
 
@@ -310,14 +344,21 @@ class MonitorService(Service):
         #         count += 1
         #         if count > 10:
         #             break
-        pass
+
+    def run_http(self):
+        self._http.start()
 
     def command(self, command_type, data):
         pass
 
     def push(self, stream_category, stream_group, stream_name, content):
-        if self._running:
-            self._content.append((stream_category, stream_group, stream_name, content))
+        if self._mode == MonitorService.MODE_FIFO:
+            if self._running:
+                self._content.append((stream_category, stream_group, stream_name, content))
+
+        elif self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
+            if self._running_ws:
+                self._ws.publish(stream_category, stream_group, stream_name, content)
 
     def on_rpc_message(self, msg):
         # retrieve the appliance
@@ -327,7 +368,7 @@ class MonitorService(Service):
 
         cat = msg.get('c', -1)
 
-        if cat == Streamable.STREAM_STRATEGY_CHART:
+        if cat == Rpc.STREAM_STRATEGY_CHART:
             appliance = msg.get('g')
             market_id = msg.get('s')
             timeframe = msg.get('v')
@@ -341,7 +382,7 @@ class MonitorService(Service):
                     'action': "unsubscribe"
                 })
 
-        elif cat == Streamable.STREAM_STRATEGY_INFO:
+        elif cat == Rpc.STREAM_STRATEGY_INFO:
             appliance = msg.get('g')
             market_id = msg.get('s')
             timeframe = msg.get('v')
@@ -356,3 +397,33 @@ class MonitorService(Service):
                     'type': "info",
                     'action': "unsubscribe"
                 })
+
+        elif cat == Rpc.STRATEGY_TRADE_EXIT_ALL:
+            pass
+
+        elif cat == Rpc.STRATEGY_TRADE_ENTRY:
+            pass
+
+        elif cat == Rpc.STRATEGY_TRADE_MODIFY:
+            pass
+
+        elif cat == Rpc.STRATEGY_TRADE_EXIT:
+            pass
+
+        elif cat == Rpc.STRATEGY_TRADE_INFO:
+            pass
+
+        elif cat == Rpc.STRATEGY_TRADE_ASSIGN:
+            pass
+
+        elif cat == Rpc.STRATEGY_TRADE_CLEAN:
+            pass
+
+        elif cat == Rpc.STRATEGY_TRADER_MODIFY:
+            pass
+
+        elif cat == Rpc.STRATEGY_TRADER_INFO:
+            pass
+
+        elif cat == Rpc.STRATEGY_TRADER_INFO:
+            pass
