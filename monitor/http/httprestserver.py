@@ -60,18 +60,71 @@ class AuthRestAPI(resource.Resource):
         return json.dumps({}).encode("utf-8")
 
 
-class StrategyTradeRestAPI(resource.Resource):
-    isLeaf = True
+class StrategyInfoRestAPI(resource.Resource):
+    isLeaf = False
+
+    def __init__(self, strategy_service, trader_service):
+        super().__init__()
+
+        self._strategy_service = strategy_service
+        self._trader_service = trader_service
 
     def render_GET(self, request):
         uri = request.uri.decode("utf-8").split('/')
-        return "<html>Hello, strat get world!</html>".encode("utf-8")
+
+        traders_names = self._trader_service.traders_names()
+        appliances_names = self._strategy_service.appliances_identifiers()
+
+        appliances = {}
+        markets = {}
+
+        for appliance in appliances_names:
+            appliances[appliance] = {
+                'name': appliance,
+            }
+
+            instruments_ids = self._strategy_service.appliance(appliance).instruments_ids()
+
+            for market_id in instruments_ids:
+                instr = self._strategy_service.appliance(appliance).instrument(market_id)
+
+                markets[market_id] = {
+                    'appliance': appliance,
+                    'market-id': market_id,
+                    'symbol': instr.symbol,
+                    'value-per-pip': instr.value_per_pip,
+                    'price-limits': instr._price_limits,
+                    'bid': instr.market_bid,
+                    'ofr': instr.market_ofr,
+                    'mid': instr.market_price,
+                    'spread': instr.market_spread,
+                }
+
+        result = {
+            'broker': {
+                'name': traders_names[0] if traders_names else None
+            },
+            'appliances': appliances,
+            'markets': markets,
+        }
+
+        # @todo
+
+        return json.dumps(result).encode("utf-8")
 
     def render_POST(self, request):
-        return "<html>Hello, strat post world!</html>".encode("utf-8")
+        result = {}
+
+        # @todo
+
+        return json.dumps(result).encode("utf-8")
 
     def render_DELETE(self, request):
-        return "<html>Hello, strat delete world!</html>".encode("utf-8")
+        result = {}
+
+        # @todo
+
+        return json.dumps(result).encode("utf-8")
 
 
 class InstrumentRestAPI(resource.Resource):
@@ -79,16 +132,28 @@ class InstrumentRestAPI(resource.Resource):
 
     def render_GET(self, request):
         uri = request.uri.decode("utf-8").split('/')
-        return "<html>Hello, instrument get world!</html>".encode("utf-8")
+        result = {}
+
+        # @todo
+
+        return json.dumps(result).encode("utf-8")
 
     def render_POST(self, request):
-        return "<html>Hello, instrument post world!</html>".encode("utf-8")
+        result = {}
+
+        # @todo
+
+        return json.dumps(result).encode("utf-8")
 
     def render_DELETE(self, request):
-        return "<html>Hello, instrument delete world!</html>".encode("utf-8")
+        result = {}
+
+        # @todo
+
+        return json.dumps(result).encode("utf-8")
 
 
-class TradeRestAPI(resource.Resource):
+class StrategyTradeRestAPI(resource.Resource):
     isLeaf = True
 
     def render_GET(self, request):
@@ -100,13 +165,25 @@ class TradeRestAPI(resource.Resource):
             except ValeurError:
                 return NoResource()
 
-        return "<html>Hello, trade get world!</html>".encode("utf-8")
+        result = {}
+
+        # @todo
+
+        return json.dumps(result).encode("utf-8")
 
     def render_POST(self, request):
-        return "<html>Hello, trade post world!</html>".encode("utf-8")
+        result = {}
+
+        # @todo
+
+        return json.dumps(result).encode("utf-8")
 
     def render_DELETE(self, request):
-        return "<html>Hello, trade delete world!</html>".encode("utf-8")
+        result = {}
+
+        # @todo
+
+        return json.dumps(result).encode("utf-8")
 
 
 class ActiveTradeRestAPI(resource.Resource):
@@ -114,13 +191,11 @@ class ActiveTradeRestAPI(resource.Resource):
 
     def render_GET(self, request):
         uri = request.uri.decode("utf-8").split('/')
-        return "<html>Hello, ActiveTradeRestAPI get world!</html>".encode("utf-8")
+        result = {}
 
-    def render_POST(self, request):
-        return "<html>Hello, ActiveTradeRestAPI post world!</html>".encode("utf-8")
+        # @todo
 
-    def render_DELETE(self, request):
-        return "<html>Hello, ActiveTradeRestAPI delete world!</html>".encode("utf-8")
+        return json.dumps(result).encode("utf-8")
 
 
 class HistoricalTradeRestAPI(resource.Resource):
@@ -128,14 +203,11 @@ class HistoricalTradeRestAPI(resource.Resource):
 
     def render_GET(self, request):
         uri = request.uri.split('/')
-        return "<html>Hello, HistoricalTradeRestAPI get world!</html>".encode("utf-8")
+        result = {}
 
-    def render_POST(self, request):
-        return "<html>Hello, HistoricalTradeRestAPI post world!</html>".encode("utf-8")
+        # @todo
 
-    def render_DELETE(self, request):
-        return "<html>Hello, HistoricalTradeRestAPI delete world!</html>".encode("utf-8")
-
+        return json.dumps(result).encode("utf-8")
 
 
 class AllowedIPOnlyFactory(server.Site):
@@ -155,16 +227,18 @@ class HttpRestServer(object):
     ALLOWED_IPS = None
     DENIED_IPS = None
 
-    def __init__(self, host, port):
-        self._site = None
+    def __init__(self, host, port, strategy_service, trader_service):
         self._listener = None
+
         self._host = host
         self._port = port
+
+        self._strategy_service = strategy_service
+        self._trader_service = trader_service
 
     def start(self):
         root = static.File("monitor/web")
         api = resource.Resource()
-
         root.putChild(b"api", api)
 
         api_v1 = resource.Resource()
@@ -174,7 +248,7 @@ class HttpRestServer(object):
         api_v1.putChild(b"auth", AuthRestAPI())
 
         # strategy
-        strategy_api = resource.Resource()
+        strategy_api = StrategyInfoRestAPI(self._strategy_service, self._trader_service)
         api_v1.putChild(b"strategy", strategy_api)
 
         instrument_api = InstrumentRestAPI()
@@ -197,16 +271,17 @@ class HttpRestServer(object):
         monitor_api = resource.Resource()
         api_v1.putChild(b"monitor", monitor_api)
 
-        # factory = server.Site(root)
         factory = AllowedIPOnlyFactory(root)
 
+        MonitorService.ref_reactor()
         self._listener = reactor.listenTCP(self._port, factory)
 
-        MonitorService.use_reactor(installSignalHandlers=False)
+        if self._listener:
+            MonitorService.set_reactor(installSignalHandlers=False)
 
     def stop(self):
         if self._listener:
             self._listener.stopListening()
             self._listener = None
 
-        MonitorService.release_reactor()
+            MonitorService.release_reactor()

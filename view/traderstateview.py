@@ -69,11 +69,15 @@ class TraderStateView(TableView):
             self.prev_instrument()
         elif key == 'KEY_RIGHT':
             self.next_instrument()
-        elif key == 'KEY_UP':
+
+    def on_char(self, char):
+        super().on_char(char)
+
+        if char == '+':
             with self._mutex:
                 self._report_mode += 1
                 self._refresh = 0.0
-        elif key == 'KEY_DOWN':
+        elif char == '-':
             with self._mutex:
                 self._report_mode = max(0, self._report_mode - 1)
                 self._refresh = 0.0

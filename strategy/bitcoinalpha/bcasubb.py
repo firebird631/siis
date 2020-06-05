@@ -296,7 +296,7 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
 
             streamer.member('end').update(ts)
 
-            # push per frame
-            streamer.push()
+            # publish per frame
+            streamer.publish()
 
         streamer.next_timestamp = self.next_timestamp

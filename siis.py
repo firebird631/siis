@@ -569,6 +569,10 @@ def application(argv):
                     # update the current type command
                     commands_handler.process_char(c, args)
 
+                    # only in normal mode
+                    if Terminal.inst().mode == Terminal.MODE_DEFAULT:
+                        view_service.on_char(c)
+
                 if key:
                     if key == 'KEY_ESCAPE':
                         # cancel command

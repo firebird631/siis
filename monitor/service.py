@@ -15,6 +15,7 @@ import base64, hashlib
 import asyncio
 
 from twisted.internet import reactor
+from twisted.internet.error import ReactorAlreadyRunning, ReactorNotRunning
 from common.service import Service
 
 from monitor.streamable import Streamable
@@ -118,25 +119,47 @@ class MonitorService(Service):
     # twisted reactor
     #
 
-    @staticmethod
-    def use_reactor(installSignalHandlers=False):
-        if MonitorService.REACTOR == 0:
+    @classmethod
+    def ref_reactor(cls):
+        cls.REACTOR += 1
+
+    @classmethod
+    def set_reactor(cls, installSignalHandlers=False):
+        if cls.REACTOR > 0 and not reactor.running:
             try:
                 reactor.run(installSignalHandlers=installSignalHandlers)
-                MonitorService.REACTOR += 1
             except ReactorAlreadyRunning:
                 # Ignore error about reactor already running
                 pass
             except Exception as e:
                 error_logger.error(repr(e))
+                return
 
-    @staticmethod
-    def release_reactor():
-        if MonitorService.REACTOR > 0:
-            MonitorService.REACTOR -= 1
+    @classmethod
+    def use_reactor(cls, installSignalHandlers=False):
+        if cls.REACTOR == 0 and not reactor.running:
+            try:
+                reactor.run(installSignalHandlers=installSignalHandlers)
+                cls.REACTOR += 1
+            except ReactorAlreadyRunning:
+                # Ignore error about reactor already running
+                cls.REACTOR += 1
+            except Exception as e:
+                error_logger.error(repr(e))
+                return
+        else:
+            cls.REACTOR += 1
 
-            if MonitorService.REACTOR == 0:
+    @classmethod
+    def release_reactor(cls):
+        if cls.REACTOR > 0:
+            cls.REACTOR -= 1
+
+        if cls.REACTOR == 0 and reactor.running:
+            try:
                 reactor.stop()
+            except ReactorNotRunning:
+                pass
 
     #
     # processing
@@ -185,18 +208,18 @@ class MonitorService(Service):
                 from .http.httprestserver import HttpRestServer
                 from .http.httpwsserver import HttpWebSocketServer
 
-                self._http = HttpRestServer(self._host, self._port)
+                self._http = HttpRestServer(self._host, self._port, self._strategy_service, self._trader_service)
                 self._ws = HttpWebSocketServer(self._host, self._port+1)
 
                 HttpRestServer.ALLOWED_IPS = copy.copy(self._allowed_ips)
                 HttpRestServer.DENIED_IPS = copy.copy(self._denied_ips)
 
                 self._running = True
-                self._thread = threading.Thread(name="monitor", target=self.run_http)
+                self._thread = threading.Thread(name="monitor-rest", target=self.run_http)
                 self._thread.start()
 
                 self._running_ws = True
-                self._thread_ws = threading.Thread(name="monitor", target=self.run_ws)
+                self._thread_ws = threading.Thread(name="monitor-ws", target=self.run_ws)
                 self._thread_ws.start()
 
     def terminate(self):
@@ -262,6 +285,8 @@ class MonitorService(Service):
 
                 self._thread_ws = None
 
+            self.release_reactor()
+
             self._http = None
             self._ws = None
 
@@ -326,32 +351,13 @@ class MonitorService(Service):
     def run_ws(self):
         self._ws.start()
 
-        # async def push(self):
-        #     count = 0
-
-        #     while self._content:
-        #         c = self._content.popleft()
-
-        #         # insert category, group and stream name
-        #         c[3]['c'] = c[0]
-        #         c[3]['g'] = c[1]
-        #         c[3]['s'] = c[2]
-
-        #         # write to fifo
-        #         await websocket.send((json.dumps(c[3]) + '\n').encode('utf8'))
-        #         # posix.write(self._fifo, (json.dumps(c[3]) + '\n').encode('utf8'))
-
-        #         count += 1
-        #         if count > 10:
-        #             break
-
     def run_http(self):
         self._http.start()
 
     def command(self, command_type, data):
         pass
 
-    def push(self, stream_category, stream_group, stream_name, content):
+    def publish(self, stream_category, stream_group, stream_name, content):
         if self._mode == MonitorService.MODE_FIFO:
             if self._running:
                 self._content.append((stream_category, stream_group, stream_name, content))
@@ -379,7 +385,7 @@ class MonitorService(Service):
                     'market-id': market_id,
                     'timeframe': timeframe,
                     'type': "chart",
-                    'action': "unsubscribe"
+                    'action': "unsubscribe" if msg.get('n', 'close') else "subscribe"
                 })
 
         elif cat == Rpc.STREAM_STRATEGY_INFO:
@@ -395,7 +401,7 @@ class MonitorService(Service):
                     'timeframe': None,
                     'subscriber-key': "",  # @todo
                     'type': "info",
-                    'action': "unsubscribe"
+                    'action': "unsubscribe" if msg.get('n', 'close') else "subscribe"
                 })
 
         elif cat == Rpc.STRATEGY_TRADE_EXIT_ALL:

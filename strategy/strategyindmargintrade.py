@@ -330,6 +330,25 @@ class StrategyIndMarginTrade(StrategyTrade):
     # signals
     #
 
+    def update_dirty(self, trader, instrument):
+        if self._dirty:
+            done = True
+
+            try:
+                if self.has_limit_order() and self.tp > 0.0:
+                    if self.modify_take_profit(trader, instrument, self.tp) <= 0:
+                        done = False
+
+                if self.has_stop_order() and self.sl > 0.0:
+                    if self.modify_stop_loss(trader, instrument, self.sl) <= 0:
+                        done = False
+            except Exception as e:
+                error_logger.error(str(e))
+
+            if done:
+                # clean dirty flag if all the order have been updated
+                self._dirty = False
+
     def order_signal(self, signal_type, data, ref_order_id, instrument):
         if signal_type == Signal.SIGNAL_ORDER_OPENED:
             # already get at the return of create_order

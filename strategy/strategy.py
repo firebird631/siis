@@ -232,7 +232,7 @@ class Strategy(Runnable):
         # once per second
         if now - self._last_call_ts >= 1.0:
             self._streamable.member('cpu-load').update(self._cpu_load)
-            self._streamable.push()
+            self._streamable.publish()
 
             with self._mutex:
                 for k, strategy_trader in self._strategy_traders.items():
@@ -1235,7 +1235,7 @@ class Strategy(Runnable):
                 strategy_trader = self._strategy_traders.get(trade[0])
                 data['trade-id'] = trade[1]
 
-                results = cmd_trade_exit(strategy_trader, data)
+                results = self.cmd_trade_exit(strategy_trader, data)
 
                 if results:
                     if results['error']:
@@ -1252,7 +1252,7 @@ class Strategy(Runnable):
             trades = []
 
             with self._mutex:
-                for strategy_trader in self._strategy_traders.items():
+                for market_id, strategy_trader in self._strategy_traders.items():
                     # if there is some trade, cancel or close them, else goes to the next trader
                     if strategy_trader.has_trades():
                         trades.extend([(strategy_trader.instrument.market_id, trade_id) for trade_id in strategy_trader.list_trades()])
@@ -1262,7 +1262,7 @@ class Strategy(Runnable):
                 strategy_trader = self._strategy_traders.get(trade[0])
                 data['trade-id'] = trade[1]
 
-                results = cmd_trade_exit(strategy_trader, data)
+                results = self.cmd_trade_exit(strategy_trader, data)
 
                 if results:
                     if results['error']:
@@ -1478,6 +1478,11 @@ class Strategy(Runnable):
         # need a valid price to compute the quantity
         price = limit_price or strategy_trader.instrument.open_exec_price(direction)
         trade = None
+
+        if price <= 0.0:
+            results['error'] = True
+            results['messages'].append("Not price found for %s" % (strategy_trader.instrument.market_id,))
+            return results
 
         if strategy_trader.instrument.has_spot and not margin_trade:
             # market support spot and margin option is not defined

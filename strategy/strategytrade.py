@@ -302,7 +302,7 @@ class StrategyTrade(object):
     @property
     def label(self):
         return self._label
-    
+
     @label.setter
     def label(self, label):
         self._label = label

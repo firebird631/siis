@@ -1,53 +1,46 @@
 $(window).ready(function() {
-    let appliance = {
-        'name': null,
+    window.server = {
         'protocol': 'http:',
         'host': null,
         'port': null,
         'ws-port': null,
         'api-key': null,
-        'auth-token': null
-    }
+        'auth-token': null,
+    };
 
-    let ws = null;
+    window.ws = null;
 
     // how to input the api-key ?
 
     let searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.has('appliance')) {
-        appliance['name'] = searchParams.get('appliance');
-    }
+
     if (searchParams.has('host')) {
-        appliance['host'] = searchParams.get('host');
+        server['host'] = searchParams.get('host');
     }
     if (searchParams.has('port')) {
-        appliance['port'] = parseInt(searchParams.get('port'));
+        server['port'] = parseInt(searchParams.get('port'));
     }
     if (searchParams.has('ws-port')) {
-        appliance['ws-port'] = parseInt(searchParams.get('ws-port'));
+        server['ws-port'] = parseInt(searchParams.get('ws-port'));
     }
 
-    function base_url() {
-        return appliance['protocol'] + "//" + appliance['host'] + ':' + appliance['port'] + "/api/v1";
+    window.broker = {
+        'name': 'binancefutures.com',
     };
 
-    let broker = {
-        'name': 'binancefutures.com',
-    }
-
     // help to find the related market on trading-view
-    let broker_to_tv = {
+    window.broker_to_tv = {
         'binance.com': ['BINANCE', ''],
         'binancefutures.com': ['BINANCE', 'PERP'],
         'ig.com': ['FXCM' , ''],
-    }
+    };
 
     // map a symbol to a market on trading-view for some specials case, like indices
-    let symbol_to_tv = {
+    window.symbol_to_tv = {
         // @todo fill DAX, SPX, DJI, NAS100, NAS500, EUROSTOCK, LSE, NIKKEY, HK30, HK50, CAC40, FTSE, BE30
-    }
+    };
 
-    let markets = {
+    window.markets = {
         'BTCUSDT': {
             'market-id': 'BTCUSDT',
             'symbol': 'BTCUSDT',
@@ -62,7 +55,10 @@ $(window).ready(function() {
         },
     };
 
-    let profiles = {
+    window.appliances = {};
+    window.actives_trades = {};
+
+    window.profiles = {
         'Scalp XS': {
             'take-profit': 'percent-0.15',
             'stop-loss': 'percent-0.15',
@@ -105,7 +101,7 @@ $(window).ready(function() {
         },
     };
 
-    let methods = {
+    window.methods = {
         'percent-0.05': {
             'label': '0.05%',
             'distance': 0.05,
@@ -208,7 +204,7 @@ $(window).ready(function() {
         }
     }
 
-    let entry_methods = {
+    window.entry_methods = {
         'market': {
             'label': 'Market',
             'type': 'market'
@@ -241,161 +237,6 @@ $(window).ready(function() {
 
     // @todo regular curr trades and trades history (later WS)
     // @todo chart view
-
-    function add_symbols(id, to) {
-        let select = $('<select class="markets" name="market-id"></select>');
-        select.attr('trader-id', id);
-
-        for (market in markets) {
-            select.append($('<option value="' + market +'">' + market + '</>'));
-        }
-
-        to.append(select);
-
-        select.selectpicker({'width': '150px'});
-    };
-
-    function add_profiles(id, to) {
-        let select = $('<select class="profiles" name="profile-id"></select>');
-        select.attr('trader-id', id);
-
-        for (profile in profiles) {
-            select.append($('<option value="' + profile +'">' + profile + '</>'));
-        }
-
-        to.append(select);
-
-        select.selectpicker({'width': '150px'});
-
-        select.on('change', function(e) {
-            on_change_profile(e);
-        });
-    };
-
-    function add_take_profit_price(id, to) {
-        let input = $('<input type="number" class="take-profit-price" name="take-profit-price" placeholder="Take-Profit">');
-        input.attr('trader-id', id);
-
-        to.append(input);
-    };
-
-    function add_take_profit_methods(id, to) {
-        let select = $('<select class="take-profit-method" name="take-profit-method"></select>');
-        select.attr('trader-id', id);
-
-        for (method in methods) {
-            select.append($('<option value="' + method +'">' + methods[method].label + '</>'));
-        }
-
-        to.append(select);
-
-        select.selectpicker({'width': '150px'});
-    };
-
-    function add_entry_price(id, to) {
-        let input = $('<input type="number" class="entry-price" name="entry-price" placeholder="Entry-Price">');
-        input.attr('trader-id', id);
-
-        to.append(input);
-    };
-
-    function add_entry_price_methods(id, to) {
-        let select = $('<select class="entry-price-method" name="entry-price-method"></select>');
-        select.attr('trader-id', id);
-
-        for (method in entry_methods) {
-            select.append($('<option value="' + method +'">' + entry_methods[method].label + '</>'));
-        }
-
-        to.append(select);
-
-        select.selectpicker({'width': '150px'});
-    };
-
-    function add_stop_loss_price(id, to) {
-        let input = $('<input type="number" class="stop-loss-price" name="stop-loss-price" placeholder="Stop-Loss">');
-        input.attr('trader-id', id);
-
-        to.append(input);
-    };
-
-    function add_stop_loss_methods(id, to) {
-        let select = $('<select class="stop-loss-method" name="stop-loss-method"></select>');
-        select.attr('trader-id', id);
-
-        for (method in methods) {
-            select.append($('<option value="' + method +'">' + methods[method].label + '</>'));
-        }
-
-        to.append(select);
-
-        select.selectpicker({'width': '150px'});
-    };
-
-    function add_quantity_slider(id, to) {
-        let slider = $('<input type="range" class="quantity" name="quantity">').css('width', '165px');
-        let factor = $('<select class="quantity-factor" name="quantity-factor"></select>');
-        let value = $('<span class="quantity-value" name="quantity-value">100%</span>');
-
-        slider.attr('trader-id', id);
-        factor.attr('trader-id', id);
-
-        for (let i = 1; i <= 5; ++i) {
-            factor.append($('<option value="' + i +'">x' + i + '</>'));
-        }
-
-        to.append(slider);
-        to.append(value);
-        to.append(factor);
-
-        slider.slider({
-            'min': 1,
-            'max': 4,
-            'step': 1,
-        }).on('change', function(elt) {
-            value.html($(this).val() * 25.0 + "%");
-        });
-
-        factor.selectpicker({'width': '75px'});
-    };
-
-    function retrieve_symbol(elt) {
-        let trader_id = $(elt.target).attr('trader-id');
-        return $('.markets[trader-id="' + trader_id + '"]').val();
-    }
-
-    function add_long_short_actions(id, to) {
-        let tv_btn = $('<button class="btn btn-secondary trading-view-action" name="trading-view-action"><span class="fa fa-link"></span>&nbsp;TV</button>');
-        let long_btn = $('<button class="btn btn-success long-action" name="long-action">Long</button>');
-        let short_btn = $('<button class="btn btn-danger short-action" name="short-action">Short</button>');
-        let chart_btn = $('<button class="btn btn-secondary siis-chart-action" name="siis-chart-action"><span class="fa fa-bar-chart"></span></button>');
-
-        long_btn.attr('trader-id', id);
-        short_btn.attr('trader-id', id);
-        tv_btn.attr('trader-id', id);
-        chart_btn.attr('trader-id', id);
-
-        to.append(tv_btn);
-        to.append(long_btn);
-        to.append(short_btn);
-        to.append(chart_btn);
-
-        long_btn.on('click', function(elt) {
-            on_order_long(elt);
-        });
-
-        short_btn.on('click', function(elt) {
-            on_order_short(elt);
-        });
-
-        tv_btn.on('click', function(elt) {
-            open_trading_view(elt);
-        });
-
-        chart_btn.on('click', function(elt) {
-            alert("TODO !:")
-        });
-    };
 
     $("div.trader").each(function(i, elt) {
         let trader_row1 = $('<div class="row trader-row1 trader-row"></div>');
@@ -431,119 +272,9 @@ $(window).ready(function() {
         $(elt).append(trader_row6);
     });
 
-    function open_trading_view(elt) {
-        let symbol = retrieve_symbol(elt);
-
-        if (broker['name'] in broker_to_tv) {
-            if (symbol in symbol_to_tv) {
-                symbol = symbol_to_tv[symbol];
-            }
-
-            window.open('https://fr.tradingview.com/chart?symbol=' + broker_to_tv[broker['name']][0] + '%3A' + symbol + broker_to_tv[broker['name']][1]);
-        }
-    };
-
-    function on_change_profile(elt) {
-        let value = $(elt.target).val();
-
-        if (value in profiles) {
-            let profile = profiles[value];
-            let trader_id = $(elt.target).attr('trader-id');
-
-            let tpm = $('.take-profit-method[trader-id="' + trader_id +'"]');
-            let epm = $('.entry-price-method[trader-id="' + trader_id +'"]');
-            let slm = $('.stop-loss-method[trader-id="' + trader_id +'"]');
-
-            tpm.selectpicker('val', profile['take-profit']);
-            slm.selectpicker('val', profile['stop-loss']);
-        };
-    };
-
-    function on_order_long(elt) {
-        let symbol = retrieve_symbol(elt);
-        let endpoint = "trade";
-        let url = base_url() + '/' + endpoint;
-
-        if (symbol) {
-            let data = {}
-
-            $.ajax({
-                type: "POST",
-                url: url,
-                data: JSON.stringify(data),
-                dataType: 'json',
-                contentType: 'application/json'
-            })
-            .done(function() {
-                alert( "second success" );
-            })
-            .fail(function() {
-                alert( "error" );
-            });
-        }
-    };
-
-    function on_order_short(elt) {
-        let symbol = retrieve_symbol(elt);
-        let endpoint = "trade";
-        let url = base_url() + '/' + endpoint;
-
-        if (symbol) {
-            let data = {}
-
-            $.ajax({
-                type: "POST",
-                url: url,
-                data: JSON.stringify(data),
-                dataType: 'json',
-                contentType: 'application/json'
-            })
-            .done(function() {
-                alert( "second success" );
-            })
-            .fail(function() {
-                alert( "error" );
-            });
-        }
-    };
-
-    function on_change_entry_price(elt) {
-        let symbol = retrieve_symbol(elt);
-
-        // @todo
-    }
-
-    function on_change_stop_loss_price(elt) {
-        let symbol = retrieve_symbol(elt);
-
-        // @todo
-    }
-
-    function on_change_take_profit_price(elt) {
-        let symbol = retrieve_symbol(elt);
-
-        // @todo
-    }
-
     //
     // trade list
     //
-
-    function add_active_trade(appliance_id, market_id, trade) {
-        // @todo
-    };
-
-    function update_active_trade(appliance_id, market_id, trade) {
-        // @todo
-    };
-
-    function remove_active_trade(appliance_id, market_id, local_id) {
-        // @todo
-    };
-
-    function add_historical_trade(appliance_id, market_id, trade) {
-        // @todo
-    };
 
     $("#list_historical_trades").on('click', function(e) {
         $("div.trade-list-entries ul").empty();
@@ -562,7 +293,7 @@ $(window).ready(function() {
     //
 
     function setup_auth_data(data) {
-        data['auth-token'] = appliance['auth-token'];
+        data['auth-token'] = server['auth-token'];
     }
 
     function get_auth_token() {
@@ -570,7 +301,7 @@ $(window).ready(function() {
         let url = base_url() + '/' + endpoint;
 
         let data = {
-            'api-key': appliance['api-key'],
+            'api-key': server['api-key'],
         }
 
         $.ajax({
@@ -581,10 +312,16 @@ $(window).ready(function() {
             contentType: 'application/json'
         })
         .done(function(result) {
-            appliance['auth-token'] = result['auth-token'];
+            server['auth-token'] = result['auth-token'];
 
-            if (appliance['ws-port'] != null) {
+            if (server['ws-port'] != null) {
                 start_ws();
+            }
+
+            fetch_strategy();
+
+            for (let appliance in appliances) {
+                fetch_trades(appliance);
             }
         })
         .fail(function() {
@@ -599,7 +336,7 @@ $(window).ready(function() {
             ws = null;
         }
 
-        ws = new WebSocket("ws://" + appliance['host'] + ":" + appliance['ws-port'] + "?auth-token=" + appliance['auth-token']);
+        ws = new WebSocket("ws://" + server['host'] + ":" + server['ws-port'] + "?auth-token=" + server['auth-token']);
 
         ws.onopen = function(event) {
             console.log("WS opened");
@@ -616,17 +353,393 @@ $(window).ready(function() {
 
     // global function to setup data and to get an initial auth-token
     siis_connect = function(host, port, api_key, ws_port=6340) {
-        appliance['host'] = host;
-        appliance['port'] = port;
-        appliance['api-key'] = api_key;
-        appliance['ws-port'] = ws_port;
+        server['host'] = host;
+        server['port'] = port;
+        server['api-key'] = api_key;
+        server['ws-port'] = ws_port;
 
         get_auth_token();
     }
 
-    appliance['protocol'] = window.location.protocol;
+    server['protocol'] = window.location.protocol;
 
     simple_connect = function(api_key) {
         siis_connect(window.location.hostname, parseInt(window.location.port), api_key, ws_port=parseInt(window.location.port)+1);
     }
 });
+
+//
+// global
+//
+
+function base_url() {
+    return server['protocol'] + "//" + server['host'] + ':' + server['port'] + "/api/v1";
+};
+
+function fetch_strategy() {
+    let endpoint = "strategy";
+    let url = base_url() + '/' + endpoint;
+
+    let params = {
+        'auth-token': server['auth-token'],
+    }
+
+    $.ajax({
+        type: "GET",
+        url: url,
+        data: params,
+        dataType: 'json',
+        contentType: 'application/json'
+    })
+    .done(function(result) {
+        markets = {};
+        appliances = {};
+        broker = {
+            'name': result['broker']
+        };
+
+        for (let appliance_id in result['appliances']) {
+            appliances[appliance_id] = {
+                'id': result['appliances']['id'],
+                'name': result['appliances']['name'],
+            };
+        }
+
+        console.log(result)
+
+        for (let market_id in result['markets']) {
+            let market = result['markets'][market_id];
+
+            markets[market_id] = {
+                'appliance': market['appliance'],
+                'market-id': market['market-id'],
+                'symbol': market['symbol'],
+                'market-id': market['market-id'],
+                'value-per-pip': market['value-per-pip'],
+                'price-limits': market['price-limits'],  // array 4 float
+                'bid': market['bid'],
+                'ofr': market['ofr'],
+                'mid': market['mid'],
+                'spread': market['spread'],
+            };
+        }
+    })
+    .fail(function() {
+        alert("Unable to obtains markets list info !");
+    });
+}
+
+function fetch_trades(appliance) {
+    let symbol = retrieve_symbol(elt);
+    let endpoint = "strategy/trade";
+    let url = base_url() + '/' + endpoint;
+
+    let params = {
+        'appliance': appliance,
+        'auth-token': server['auth-token'],
+    }
+
+    $.ajax({
+        type: "GET",
+        url: url,
+        data: params,
+        dataType: 'json',
+        contentType: 'application/json'
+    })
+    .done(function(result) {
+        actives_trades = {};
+
+        for (let i = 0; i < result.length; ++i) {
+            let trade = result[i];
+            
+            // actives_trades[trade_id] = {
+
+            // }
+        }
+    })
+    .fail(function() {
+        alert("Unable to obtains actives trades !");
+    });
+}
+
+//
+// traders functions
+//
+
+function add_symbols(id, to) {
+    let select = $('<select class="markets" name="market-id"></select>');
+    select.attr('trader-id', id);
+
+    for (market in markets) {
+        select.append($('<option value="' + market +'">' + market + '</>'));
+    }
+
+    to.append(select);
+
+    select.selectpicker({'width': '150px'});
+};
+
+function add_profiles(id, to) {
+    let select = $('<select class="profiles" name="profile-id"></select>');
+    select.attr('trader-id', id);
+
+    for (profile in profiles) {
+        select.append($('<option value="' + profile +'">' + profile + '</>'));
+    }
+
+    to.append(select);
+
+    select.selectpicker({'width': '150px'});
+
+    select.on('change', function(e) {
+        on_change_profile(e);
+    });
+};
+
+function add_take_profit_price(id, to) {
+    let input = $('<input type="number" class="take-profit-price" name="take-profit-price" placeholder="Take-Profit">');
+    input.attr('trader-id', id);
+
+    to.append(input);
+};
+
+function add_take_profit_methods(id, to) {
+    let select = $('<select class="take-profit-method" name="take-profit-method"></select>');
+    select.attr('trader-id', id);
+
+    for (method in methods) {
+        select.append($('<option value="' + method +'">' + methods[method].label + '</>'));
+    }
+
+    to.append(select);
+
+    select.selectpicker({'width': '150px'});
+};
+
+function add_entry_price(id, to) {
+    let input = $('<input type="number" class="entry-price" name="entry-price" placeholder="Entry-Price">');
+    input.attr('trader-id', id);
+
+    to.append(input);
+};
+
+function add_entry_price_methods(id, to) {
+    let select = $('<select class="entry-price-method" name="entry-price-method"></select>');
+    select.attr('trader-id', id);
+
+    for (method in entry_methods) {
+        select.append($('<option value="' + method +'">' + entry_methods[method].label + '</>'));
+    }
+
+    to.append(select);
+
+    select.selectpicker({'width': '150px'});
+};
+
+function add_stop_loss_price(id, to) {
+    let input = $('<input type="number" class="stop-loss-price" name="stop-loss-price" placeholder="Stop-Loss">');
+    input.attr('trader-id', id);
+
+    to.append(input);
+};
+
+function add_stop_loss_methods(id, to) {
+    let select = $('<select class="stop-loss-method" name="stop-loss-method"></select>');
+    select.attr('trader-id', id);
+
+    for (method in methods) {
+        select.append($('<option value="' + method +'">' + methods[method].label + '</>'));
+    }
+
+    to.append(select);
+
+    select.selectpicker({'width': '150px'});
+};
+
+function add_quantity_slider(id, to) {
+    let slider = $('<input type="range" class="quantity" name="quantity">').css('width', '165px');
+    let factor = $('<select class="quantity-factor" name="quantity-factor"></select>');
+    let value = $('<span class="quantity-value" name="quantity-value">100%</span>');
+
+    slider.attr('trader-id', id);
+    factor.attr('trader-id', id);
+
+    for (let i = 1; i <= 5; ++i) {
+        factor.append($('<option value="' + i +'">x' + i + '</>'));
+    }
+
+    to.append(slider);
+    to.append(value);
+    to.append(factor);
+
+    slider.slider({
+        'min': 1,
+        'max': 4,
+        'step': 1,
+    }).on('change', function(elt) {
+        value.html($(this).val() * 25.0 + "%");
+    });
+
+    factor.selectpicker({'width': '75px'});
+};
+
+function retrieve_symbol(elt) {
+    let trader_id = $(elt.target).attr('trader-id');
+    return $('.markets[trader-id="' + trader_id + '"]').val();
+}
+
+function add_long_short_actions(id, to) {
+    let tv_btn = $('<button class="btn btn-secondary trading-view-action" name="trading-view-action"><span class="fa fa-link"></span>&nbsp;TV</button>');
+    let long_btn = $('<button class="btn btn-success long-action" name="long-action">Long</button>');
+    let short_btn = $('<button class="btn btn-danger short-action" name="short-action">Short</button>');
+    let chart_btn = $('<button class="btn btn-secondary siis-chart-action" name="siis-chart-action"><span class="fa fa-bar-chart"></span></button>');
+
+    long_btn.attr('trader-id', id);
+    short_btn.attr('trader-id', id);
+    tv_btn.attr('trader-id', id);
+    chart_btn.attr('trader-id', id);
+
+    to.append(tv_btn);
+    to.append(long_btn);
+    to.append(short_btn);
+    to.append(chart_btn);
+
+    long_btn.on('click', function(elt) {
+        on_order_long(elt);
+    });
+
+    short_btn.on('click', function(elt) {
+        on_order_short(elt);
+    });
+
+    tv_btn.on('click', function(elt) {
+        open_trading_view(elt);
+    });
+
+    chart_btn.on('click', function(elt) {
+        alert("TODO !:")
+    });
+};
+
+function open_trading_view(elt) {
+    let symbol = retrieve_symbol(elt);
+
+    if (broker['name'] in broker_to_tv) {
+        if (symbol in symbol_to_tv) {
+            symbol = symbol_to_tv[symbol];
+        }
+
+        window.open('https://fr.tradingview.com/chart?symbol=' + broker_to_tv[broker['name']][0] + '%3A' + symbol + broker_to_tv[broker['name']][1]);
+    }
+};
+
+function on_change_profile(elt) {
+    let value = $(elt.target).val();
+
+    if (value in profiles) {
+        let profile = profiles[value];
+        let trader_id = $(elt.target).attr('trader-id');
+
+        let tpm = $('.take-profit-method[trader-id="' + trader_id +'"]');
+        let epm = $('.entry-price-method[trader-id="' + trader_id +'"]');
+        let slm = $('.stop-loss-method[trader-id="' + trader_id +'"]');
+
+        tpm.selectpicker('val', profile['take-profit']);
+        slm.selectpicker('val', profile['stop-loss']);
+    };
+};
+
+function on_change_entry_price(elt) {
+    let symbol = retrieve_symbol(elt);
+
+    // @todo
+}
+
+function on_change_stop_loss_price(elt) {
+    let symbol = retrieve_symbol(elt);
+
+    // @todo
+}
+
+function on_change_take_profit_price(elt) {
+    let symbol = retrieve_symbol(elt);
+
+    // @todo
+}
+
+function on_play_pause_market(elt) {
+    let symbol = retrieve_symbol(elt);
+
+    // @todo
+}
+
+//
+// trades list functions
+//
+
+function on_close_all_active_trade(elt) {
+    // @todo
+}
+
+function add_active_trade(appliance_id, market_id, trade) {
+    // @todo
+};
+
+function update_active_trade(appliance_id, market_id, trade) {
+    // @todo
+};
+
+function remove_active_trade(appliance_id, market_id, local_id) {
+    // @todo
+};
+
+function add_historical_trade(appliance_id, market_id, trade) {
+    // @todo
+};
+
+function on_close_active_trade(elt) {
+    // @todo
+}
+
+function on_reduce_active_trade_stop_loss(elt) {
+    // @todo
+}
+
+function on_increase_active_trade_stop_loss(elt) {
+    // @todo
+}
+
+function on_reduce_active_trade_take_profit(elt) {
+    // @todo
+}
+
+function on_increase_active_trade_take_profit(elt) {
+    // @todo
+}
+
+function on_modify_active_trade_take_profit(elt) {
+    // @todo
+}
+
+function on_modify_active_trade_take_profit(elt) {
+    // @todo
+}
+
+function on_add_active_trade_dynamic_stop_loss(elt) {
+    // @todo
+}
+
+//
+// alerts functions
+//
+
+// @todo add price cross alert
+// @todo remove alert
+
+//
+// region functions
+//
+
+// @todo add range region
+// @todo add trend region
+// @todo remove region

@@ -83,7 +83,7 @@ class Trader(Runnable):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_TRADER, "status", self.name)
 
     def stream(self):
-        self._streamable.push()
+        self._streamable.publish()
 
     @property
     def account(self):

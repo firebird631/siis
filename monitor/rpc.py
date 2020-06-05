@@ -7,6 +7,24 @@ import time
 
 
 class Rpc(object):
+    """
+    Serializer/deserializer for RPC command and streamable messages.
+
+    't': target
+    'c': command/category
+    'g': group name (appliance name, trader name)
+    'd': data
+    'T': timestamp
+    'n': name
+    'i': index for timeserie
+    't': data type
+    'b': data timestamp for timesterie
+    'o': data look'n'feel (glyph...)
+    """
+
+    #
+    # target
+    #
 
     TARGET_UNDEFINED = 0
     TARGET_SYSTEM = 1
@@ -14,9 +32,15 @@ class Rpc(object):
     TARGET_TRADER = 3
     TARGET_STRATEGY = 4
 
-    STREAM_STRATEGY_CHART = 3
-    STREAM_STRATEGY_INFO = 4
-    STREAM_STRATEGY_TRADE = 5
+    #
+    # command/category
+    #
+
+    STREAM_STRATEGY_CHART = 5
+    STREAM_STRATEGY_INFO = 6
+    STREAM_STRATEGY_TRADE = 7
+    STREAM_STRATEGY_ALERT = 8
+    STREAM_STRATEGY_SIGNAL = 9
 
     STRATEGY_TRADE_ENTRY = 100
     STRATEGY_TRADE_MODIFY = 101

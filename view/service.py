@@ -80,6 +80,15 @@ class ViewService(BaseService):
                 if view:
                     view.on_key_pressed(key)
 
+    def on_char(self, key):
+        # progagate to active view
+        if key:
+            vt = Terminal.inst().active_content()
+            if vt:
+                view = self._views.get(vt.name)
+                if view:
+                    view.on_char(key)
+
     def add_listener(self, base_service):
         with self._mutex:
             self._signals_handler.add_listener(base_service)

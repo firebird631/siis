@@ -91,6 +91,9 @@ class View(object):
         elif key == 'KEY_SNEXT':
             self.next_item()
 
+    def on_char(self, char):
+        pass
+
     def count_items(self):
         return 0
 

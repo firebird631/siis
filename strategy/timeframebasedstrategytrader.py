@@ -209,7 +209,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         # global data
         with self._mutex:
             if self._global_streamer:
-                self._global_streamer.push()
+                self._global_streamer.publish()
 
             # and per timeframe
             for tf, timeframe_streamer in self._timeframe_streamers.items():
@@ -221,7 +221,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         # timeframes list
         if self._global_streamer:
             self._global_streamer.member('tfs').update(list(self.timeframes.keys()))
-            self._global_streamer.push()
+            self._global_streamer.publish()
 
     def create_chart_streamer(self, sub):
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART, self.strategy.identifier, "%s:%i" % (self.instrument.market_id, sub.tf))
@@ -233,7 +233,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
     def stream_timeframe_data(self, streamer, sub):
         streamer.member('tf').update(sub.tf)
-        streamer.push()
+        streamer.publish()
 
         sub.stream(streamer)
 

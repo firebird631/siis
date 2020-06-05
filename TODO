@@ -11,14 +11,10 @@ IG on a 10k candle/mois on en a besoin de 47 à chaque démarrage pour se synchr
 donc cela permet 21 démarrages par mois avec 10 symboles, ce qui est large même si on relance 1x ou 2 par semaine.
 Sinon il faut faire la synchro initiale depuis une autre source, mais laquelle ?
 
-Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon continuation
-
 
 ############
 # EN COURS #
 ############
-
-#3 Monitor WebSocket avec asyncio compatible avec le nouveau protocol (V2)
 
 #24 Uniformiser l'order book (bitmex, binance, binancefutures, kraken)
     - avoir un object OrderBook facile à mettre à jour et à exploiter
@@ -28,15 +24,15 @@ Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon cont
 
 #101 command to manually copy trade a signal
 
-#102 trade_quantity in percent of account
+#102 trade_quantity in percent of account, ou plutôt en % de risque sur le compte
 
 #103 interface web de scalp
-    -mais dans l'url alors il faut le nom de l'appliance
+    - ajouter play/pause par market
+    - charting OHLC et ticks (streaming)
+    - charting de la performance de la strat (streaming)
+    - charting historique sur un trade passé
 
 #104 decouper les commande de strategy par fichier dans command/
-
-#105 terminer le webservice REST + WS, mise a dispo des commandes de strategy et de trader (prio pour trading) et puis WS pour suivis
-    - puis ensuite charting via data WS (need subscription)
 
 #106 amméliorer le process pour le démarrer du bot sur IG pour avoir la data initial pour les différentes timeframes plus facilement
 
@@ -55,10 +51,12 @@ Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon cont
         1) vérifier qu'on est tjs dans la partie basse (inversement haute) de la bollinger (fait mais semble pas suffire)
         2) vérifier le % min, limité par la bollinger opposés, qu'il soit suffisant
         3) le corps de la bougie de confirmation doit être au moins N x epsilon
+        4) valider une entré sur une HMA20 dépassée par la close de conf
+        5) Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon continuation
     - sortie :
         1) TP initial, on l'écarte tant que les bougies sont rouges
         2) Si verte que à partir du price epsilon sinon on la compte comme rouge
-        3) On coupe si signal opposé
+        3) On coupe si signal opposé sur la même timeframe
 
 
 #108 Move from siis.py for the command part the rest to command_handler
@@ -71,6 +69,7 @@ Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon cont
 #######
 
 #92 Charting client date time issue, pourtant les bonnes valeurs sont envoyées, à la réception c'est autre chose...
+    - Supprimer le client chart une fois la version web réalisée, donc ce bug ne devrait plus être
 
 #87 Problème sur le comptage de la quantité de sortie, et du prix moyen de sortie d'un trade
     - En effet si la sortie est effectué par plusieurs ordres dans le cas du filled et exec-price, pas de problème,
@@ -81,13 +80,12 @@ Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon cont
     - Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
 
 #97 bug avec binancefutures en papermode, semble mal calculer le cout de la position, ou du realized profit/loss (délire complet) (voir #87 et #95)
-
-#102 binancefutures quantité de SL et TP pas toujours ajusté après un changement de entry qty apres un trade signal
+    - probablement une question de contact-size, base-exchange-rate, value-per-pip ou one-pip-means
 
 #95 Parfois on a un problème de quantité d'asset sur le paper-trader.
 
 #96 Valeur d'un pip pour les marchés BitMex => et corriger ainsi calcule uPnl.
-    - Enfin même question avec BinanceFutures, calculé fait sur une supposition, mais par contre reste le prob pour le uPnl
+    - Enfin même question avec BinanceFutures, calcule fait sur une supposition, mais par contre reste le prob pour le uPnl
 
 
 ##########
@@ -114,19 +112,12 @@ Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon cont
 # REFLEXION #
 #############
 
-#76 Découplage watcher/trader de la strategie avec communication asyncio interprocess pour éviter de relancer la partie watcher, et ainsi la laisser écouter le marché
+
 
 
 #######
 # TOP #
 #######
-
-#43 Mécanisme d'abonnement/desabonnement a un flux pour les chart par instrument (nécessite un socket bidir et donc l'API)
-    - Déjà on ne passe les flux de chart qu'en mode debug ou profilage
-    - Et on notify les trade event par la stratégie, et on ne passe pas ainsi directement par le streamer au niveau strategy-trader
-        - Entrée, sortie, modification (SL/TP,operation)
-            -> Attention il risque de manquer une fermeture depuis l'extérieur
-                -> Donc comment notifier de ce qui revient sur les StrategyTrade correctement ?
 
 #60 Gérer la partie locked sur le paper trader en mode asset
     - C'est à dire ne pas tout gérer en free, ce n'est pas super important au final car ça n'empêche pas le fonctionnement,
