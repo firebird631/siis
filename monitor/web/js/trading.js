@@ -60,7 +60,7 @@ function on_order_long(elt) {
         let context = "pullback-5m";  // @todo
 
         let data = {
-            'command': 'entry',
+            'command': 'trade-entry',
             'appliance': market['appliance'],
             'market-id': market['market-id'],
             'direction': 1,
@@ -156,7 +156,7 @@ function on_order_short(elt) {
         let context = "pullback-5m";  // @todo
 
         let data = {
-            'command': 'entry',
+            'command': 'trade-entry',
             'appliance': market['appliance'],
             'market-id': market['market-id'],
             'direction': -1,
@@ -176,6 +176,36 @@ function on_order_short(elt) {
 
         $.ajax({
             type: "POST",
+            url: url,
+            data: JSON.stringify(data),
+            dataType: 'json',
+            contentType: 'application/json'
+        })
+        .done(function(data) {
+        })
+        .fail(function(data) {
+            alert(data);
+        });
+    }
+};
+
+function on_close_trade(elt) {
+    let symbol = retrieve_symbol(elt);
+    let trade_id = retrieve_trade_id(elt);
+    let endpoint = "strategy/trade";
+    let url = base_url() + '/' + endpoint;
+    let market = window.markets[symbol];
+
+    if (symbol && market && trader_id) {
+        let data = {
+            'appliance': market['appliance'],
+            'market-id': market['market-id'],
+            'trade-id': trade_id,
+            'action': "close"
+        };
+
+        $.ajax({
+            type: "DELETE",
             url: url,
             data: JSON.stringify(data),
             dataType: 'json',

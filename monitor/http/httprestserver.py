@@ -172,23 +172,33 @@ class StrategyTradeRestAPI(resource.Resource):
         return json.dumps(result).encode("utf-8")
 
     def render_POST(self, request):
-        result = {}
+        result = {
+            'messages': [],
+            'error': False
+        }
 
         content = json.loads(request.content.read().decode("utf-8"))
+        command = content.get('command', "")
 
-        # entry : long or short, modify : stop-loss or take-profit
-        # if content.
-
-        Strategy.COMMAND_TRADE_ENTRY        
-        Strategy.COMMAND_TRADE_MODIFY
+        if command == "trade-entry":
+            result = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
+        elif command == "trade-modify":
+            result = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, content)
+        else:
+            results['messages'].append("Missing command.")
+            results['error'] = True
 
         return json.dumps(result).encode("utf-8")
 
     def render_DELETE(self, request):
-        result = {}
+        result = {
+            'messages': [],
+            'error': False
+        }
 
-        Strategy.COMMAND_TRADE_EXIT
-        # @todo
+        content = json.loads(request.content.read().decode("utf-8"))
+
+        result = self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, content)
 
         return json.dumps(result).encode("utf-8")
 

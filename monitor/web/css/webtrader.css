@@ -157,3 +157,11 @@ a.menu-btn {
 div.trade-list-menu {
     border-right: 3px solid gray;
 }
+
+#notifications {
+    display: block;
+    position: absolute;
+    right: 50px;
+    top: 50px;
+    width: 300px;
+}

@@ -32,12 +32,12 @@ $(window).ready(function() {
     window.broker_to_tv = {
         'binance.com': ['BINANCE', ''],
         'binancefutures.com': ['BINANCE', 'PERP'],
-        'ig.com': ['FXCM' , ''],
+        'ig.com': ['OANDA' , ''],
     };
 
     // map a symbol to a market on trading-view for some specials case, like indices
     window.symbol_to_tv = {
-        // @todo fill DAX, SPX, DJI, NAS100, NAS500, EUROSTOCK, LSE, NIKKEY, HK30, HK50, CAC40, FTSE, BE30
+        // @todo fill DAX, SPX, DJI, NAS100, NAS500, EUROSTOCK, LSE, NIKKEY, HK30, HK50, CAC40, FTSE, BE30 and how to map exactly ?
     };
 
     window.markets = {
@@ -653,6 +653,11 @@ function retrieve_quantity_factor(trader_id) {
     return parseInt($('select.quantity-factor[trader-id="' + trader_id + '"]').val());
 }
 
+function retrieve_trade_id(elt) {
+    let trade_id = $(elt.target).attr('active-trade-id');
+    return trade_id ? parseInt(trade_id) : -1;
+}
+
 function add_long_short_actions(id, to) {
     let tv_btn = $('<button class="btn btn-secondary trading-view-action" name="trading-view-action"><span class="fa fa-link"></span>&nbsp;TV</button>');
     let long_btn = $('<button class="btn btn-success long-action" name="long-action">Long</button>');
@@ -838,18 +843,3 @@ function on_modify_active_trade_take_profit(elt) {
 function on_add_active_trade_dynamic_stop_loss(elt) {
     // @todo
 }
-
-//
-// alerts functions
-//
-
-// @todo add price cross alert
-// @todo remove alert
-
-//
-// region functions
-//
-
-// @todo add range region
-// @todo add trend region
-// @todo remove region

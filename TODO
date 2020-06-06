@@ -26,11 +26,16 @@ Sinon il faut faire la synchro initiale depuis une autre source, mais laquelle ?
 
 #102 trade_quantity in percent of account, ou plutôt en % de risque sur le compte
 
-#103 interface web de scalp
+#103 WebTrader
     - ajouter play/pause par market
     - charting OHLC et ticks (streaming)
     - charting de la performance de la strat (streaming)
     - charting historique sur un trade passé
+    - récupérer en plus pour chaque appliance les timeframes supportées et les contextes
+        - afficher les contextes dans les profils
+            - que faire pour les timeframe si pas de profil sélectionné ?
+    - mise-à-jour des trades actifs (WS)
+    - mise-à-jour des trades historiques (WS)
 
 #104 decouper les commande de strategy par fichier dans command/
 
