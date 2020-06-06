@@ -174,13 +174,20 @@ class StrategyTradeRestAPI(resource.Resource):
     def render_POST(self, request):
         result = {}
 
-        # @todo
+        content = json.loads(request.content.read().decode("utf-8"))
+
+        # entry : long or short, modify : stop-loss or take-profit
+        # if content.
+
+        Strategy.COMMAND_TRADE_ENTRY        
+        Strategy.COMMAND_TRADE_MODIFY
 
         return json.dumps(result).encode("utf-8")
 
     def render_DELETE(self, request):
         result = {}
 
+        Strategy.COMMAND_TRADE_EXIT
         # @todo
 
         return json.dumps(result).encode("utf-8")

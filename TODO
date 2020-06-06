@@ -87,6 +87,9 @@ Sinon il faut faire la synchro initiale depuis une autre source, mais laquelle ?
 #96 Valeur d'un pip pour les marchés BitMex => et corriger ainsi calcule uPnl.
     - Enfin même question avec BinanceFutures, calcule fait sur une supposition, mais par contre reste le prob pour le uPnl
 
+#109 Freeze si pas l'option --initial-fetch avec binancefutures :
+    - Est-ce que le fait qu'il n'est pas d'historique pour certaines timeframe le fasse planter ?
+
 
 ##########
 # URGENT #

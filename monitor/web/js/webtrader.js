@@ -47,12 +47,6 @@ $(window).ready(function() {
             'one-pip-means': 1.0,
             'value-per-pip': 1.0,
         },
-        'ETHUSDT': {
-
-        },
-        'BNBUSDT': {
-
-        },
     };
 
     window.appliances = {};
@@ -102,6 +96,11 @@ $(window).ready(function() {
     };
 
     window.methods = {
+        'price': {
+            'label': 'Price',
+            'distance': 0.0,
+            'type': 'price',
+        },
         'percent-0.05': {
             'label': '0.05%',
             'distance': 0.05,
@@ -205,13 +204,25 @@ $(window).ready(function() {
     }
 
     window.entry_methods = {
-        'market': {
-            'label': 'Market',
-            'type': 'market'
+        'limit': {
+            'label': 'Limit',
+            'type': 'limit'
         },
+        // 'market': {
+        //     'label': 'Trigger',
+        //     'type': 'trigger'
+        // },
         'last': {
             'label': 'Last',
-            'type': 'last'
+            'type': 'market'
+        },
+        'best1': {
+            'label': 'Best 1',
+            'type': 'best1'
+        },
+        'best2': {
+            'label': 'Best 2',
+            'type': 'best2'
         },
         'bid1': {
             'label': 'Bid 1',
@@ -514,6 +525,10 @@ function add_take_profit_methods(id, to) {
     to.append(select);
 
     select.selectpicker({'width': '150px'});
+
+    select.on('change', function(e) {
+        on_change_take_profit_method(e);
+    });
 };
 
 function add_entry_price(id, to) {
@@ -534,6 +549,12 @@ function add_entry_price_methods(id, to) {
     to.append(select);
 
     select.selectpicker({'width': '150px'});
+
+    select.on('change', function(e) {
+        on_change_entry_method(e);
+    });
+
+    select.selectpicker("val", "limit");
 };
 
 function add_stop_loss_price(id, to) {
@@ -554,6 +575,10 @@ function add_stop_loss_methods(id, to) {
     to.append(select);
 
     select.selectpicker({'width': '150px'});
+
+    select.on('change', function(e) {
+        on_change_stop_loss_method(e);
+    });
 };
 
 function add_quantity_slider(id, to) {
@@ -573,11 +598,12 @@ function add_quantity_slider(id, to) {
     to.append(factor);
 
     slider.slider({
-        'min': 1,
-        'max': 4,
-        'step': 1,
+        'min': 0,
+        'max': 100,
+        'step': 5,
+        'value': 100,
     }).on('change', function(elt) {
-        value.html($(this).val() * 25.0 + "%");
+        value.html($(this).val() + "%");
     });
 
     factor.selectpicker({'width': '75px'});
@@ -586,6 +612,45 @@ function add_quantity_slider(id, to) {
 function retrieve_symbol(elt) {
     let trader_id = $(elt.target).attr('trader-id');
     return $('.markets[trader-id="' + trader_id + '"]').val();
+}
+
+function retrieve_trader_id(elt) {
+    return $(elt.target).attr('trader-id');
+}
+
+function retrieve_stop_loss_price(trader_id) {
+    let val = $('input.stop-loss-price[trader-id="' + trader_id + '"]').val();
+    return val ? parseFloat(val) : 0.0;
+}
+
+function retrieve_take_profit_price(trader_id) {
+    let val =$('input.take-profit-price[trader-id="' + trader_id + '"]').val();
+    return val ? parseFloat(val) : 0.0;
+}
+
+function retrieve_stop_loss_method(trader_id) {
+    return $('select.stop-loss-method[trader-id="' + trader_id + '"]').val();
+}
+
+function retrieve_take_profit_method(trader_id) {
+    return $('select.take-profit-method[trader-id="' + trader_id + '"]').val();
+}
+
+function retrieve_entry_method(trader_id) {
+    return $('select.entry-price-method[trader-id="' + trader_id + '"]').val();
+}
+
+function retrieve_entry_price(trader_id) {
+    let val = $('input.entry-price[trader-id="' + trader_id + '"]').val();
+    return val ? parseFloat(val) : 0.0;
+}
+
+function retrieve_quantity_rate(trader_id) {
+    return parseFloat($('input.quantity[trader-id="' + trader_id + '"]').val());
+}
+
+function retrieve_quantity_factor(trader_id) {
+    return parseInt($('select.quantity-factor[trader-id="' + trader_id + '"]').val());
 }
 
 function add_long_short_actions(id, to) {
@@ -649,16 +714,61 @@ function on_change_profile(elt) {
     };
 };
 
+function on_change_entry_method(elt) {
+    let symbol = retrieve_symbol(elt);
+    let trader_id = retrieve_trader_id(elt);
+
+    let entry_method = retrieve_entry_method(trader_id);
+
+    if (entry_method == "limit") {
+        let ep = $('input.entry-price[trader-id="' + trader_id +'"]');
+        ep.prop("disabled", false);
+    } else {
+        let ep = $('input.entry-price[trader-id="' + trader_id +'"]');
+        ep.prop("disabled", true);
+    }
+}
+
 function on_change_entry_price(elt) {
     let symbol = retrieve_symbol(elt);
 
     // @todo
 }
 
+function on_change_stop_loss_method(elt) {
+    let symbol = retrieve_symbol(elt);
+    let trader_id = retrieve_trader_id(elt);
+
+    let entry_method = retrieve_stop_loss_method(trader_id);
+
+    if (entry_method == "price") {
+        let ep = $('input.stop-loss-price[trader-id="' + trader_id +'"]');
+        ep.prop("disabled", false);
+    } else {
+        let ep = $('input.stop-loss-price[trader-id="' + trader_id +'"]');
+        ep.prop("disabled", true);
+    }
+}
+
 function on_change_stop_loss_price(elt) {
     let symbol = retrieve_symbol(elt);
 
     // @todo
+}
+
+function on_change_take_profit_method(elt) {
+    let symbol = retrieve_symbol(elt);
+    let trader_id = retrieve_trader_id(elt);
+
+    let entry_method = retrieve_take_profit_method(trader_id);
+
+    if (entry_method == "price") {
+        let ep = $('input.take-profit-price[trader-id="' + trader_id +'"]');
+        ep.prop("disabled", false);
+    } else {
+        let ep = $('input.take-profit-price[trader-id="' + trader_id +'"]');
+        ep.prop("disabled", true);
+    }
 }
 
 function on_change_take_profit_price(elt) {
