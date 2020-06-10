@@ -5,13 +5,13 @@
 	"audio-device": "pulse",
 	"alerts": {
 		"default": ["/usr/share/sounds/info.wav", 2, "contact-new"],
-                "notify": ["/usr/share/sounds/phone.wav", 2, "contact-new"],
-                "warning": ["/usr/share/sounds/error.wav", 5, "dialog-error"],
-                "critical": ["/usr/share/sounds/logout.wav", 2, "dialog-error"],
-                "network-online": ["/usr/share/sounds/info.wav", 3, "contact-new"],
-                "network-offline": ["/usr/share/sounds/error.wav", 3, "network-offline"],
-                "signal-new": ["/usr/share/sounds/info.wav", 2, "emblem-new"],
-                "trade-win": ["/usr/share/sounds/info.wav", 2, "emblem-default"],
-                "trade-lost": ["/usr/share/sounds/info.wav", 2, "dialog-error"]
+		"notify": ["/usr/share/sounds/phone.wav", 2, "contact-new"],
+		"warning": ["/usr/share/sounds/error.wav", 5, "dialog-error"],
+		"critical": ["/usr/share/sounds/logout.wav", 2, "dialog-error"],
+		"network-online": ["/usr/share/sounds/info.wav", 3, "contact-new"],
+		"network-offline": ["/usr/share/sounds/error.wav", 3, "network-offline"],
+		"signal-new": ["/usr/share/sounds/info.wav", 2, "emblem-new"],
+		"trade-win": ["/usr/share/sounds/info.wav", 2, "emblem-default"],
+		"trade-lost": ["/usr/share/sounds/info.wav", 2, "dialog-error"]
 	}
 }

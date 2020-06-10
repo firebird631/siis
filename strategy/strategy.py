@@ -2392,7 +2392,6 @@ class Strategy(Runnable):
             elif not isinstance(param[key], (int, float)):
                 param[key] = None
 
-        # regulars parameters (@todo lets see maybe not all)
         parameters.setdefault('reversal', True)
         parameters.setdefault('market-type', 0)
         parameters.setdefault('max-trades', 1)
@@ -2415,6 +2414,15 @@ class Strategy(Runnable):
         parameters.setdefault('markets', {})
 
         # for each timeframes
+        removed_timeframes = []
+
+        for k, timeframe in parameters['timeframes'].items():
+            if timeframe is None:
+                removed_timeframes.append(k)
+
+        for rtf in removed_timeframes:
+            del parameters['timeframes'][rtf]
+
         for k, timeframe in parameters['timeframes'].items():
             timeframe.setdefault('depth', 0)
             timeframe.setdefault('history', 0)

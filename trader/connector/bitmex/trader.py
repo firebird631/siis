@@ -25,8 +25,8 @@ from connector.bitmex.connector import Connector
 
 import logging
 logger = logging.getLogger('siis.trader.bitmex')
-error_logger = logging.getLogger('siis.error.bitmex')
-order_logger = logging.getLogger('siis.order.bitmex')
+error_logger = logging.getLogger('siis.error.trader.bitmex')
+order_logger = logging.getLogger('siis.order.trader.bitmex')
 
 
 class BitMexTrader(Trader):

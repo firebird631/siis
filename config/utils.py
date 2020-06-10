@@ -15,6 +15,9 @@ error_logger = logging.getLogger('siis.error.config')
 
 def merge_parameters(default, user):
     def merge(a, b):
+        if a is not None and b is None:
+            return None
+
         if isinstance(a, dict) and isinstance(b, dict):
             d = dict(a)
             d.update({k: merge(a.get(k, None), b[k]) for k in b})

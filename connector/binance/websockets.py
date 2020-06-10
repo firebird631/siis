@@ -107,7 +107,9 @@ class BinanceSocketManager(threading.Thread):
         factory.reconnect = True
         context_factory = ssl.ClientContextFactory()
 
+        # self._conns[path] = reactor.connectSSL(factory_url, 443 if self._future else 9443, factory, context_factory, 5.0)
         self._conns[path] = connectWS(factory, context_factory)
+
         return path
 
     def start_depth_socket(self, symbol, callback, depth=None):

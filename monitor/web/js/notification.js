@@ -1,9 +1,7 @@
 function notify(notification) {
-    // @todo
-
-    let when = 'now';
-    let message = "blablabla";
-    let title = "SiiS";
+    let when = notification['timestamp'] || 'now';
+    let message = notification['message'] || "";
+    let title = notification['title'] || "SiiS";
 
     let notif = $('<div class="toast" role="alert" aria-live="polite" aria-atomic="true" data-delay="2000">' +
         '<div class="toast-header">' +

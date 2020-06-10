@@ -119,6 +119,7 @@ def application(argv):
         'reports-path': './user/reports',
         'markets-path': './user/markets',
         'log-name': 'siis.log',
+        'monitor': False,
     }
 
     # create initial siis data structure if necessary
@@ -173,6 +174,10 @@ def application(argv):
                     options['zip'] = True
                 elif arg == '--update':
                     options['update'] = True
+
+                elif arg == '--monitor':
+                    # use the importer
+                    options['monitor'] = True
 
                 elif arg == '--install-market':
                     # fetcher option
@@ -407,23 +412,39 @@ def application(argv):
     # application
     #
 
-    watchdog_service = WatchdogService(options)
-    watchdog_service.start(options)
-
     # application services
-    view_service = None
-    notifier_service = None
-    watcher_service = None
-    trader_service = None
-    strategy_service = None
+
+    watchdog_service = WatchdogService(options)  
+    monitor_service = MonitorService(options)
+    view_service = ViewService(options)
+    notifier_service = NotifierService(options)
+    watcher_service = WatcherService(options)
+    trader_service = TraderService(watcher_service, monitor_service, options)
+    strategy_service = StrategyService(watcher_service, trader_service, monitor_service, options)
 
     # monitoring service
-    Terminal.inst().info("Starting monitor service...")
-    monitor_service = MonitorService(options)
+    Terminal.inst().info("Starting watchdog service...")
+    try:
+        watchdog_service.start(options)
+    except Exception as e:
+        Terminal.inst().error(str(e))
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+        sys.exit(-1)
+
+    # monitoring service
+    if options['monitor']:
+        Terminal.inst().info("Starting monitor service...")
+        try:
+            monitor_service.setup(watcher_service, trader_service, strategy_service)
+            monitor_service.start()
+            watchdog_service.add_service(monitor_service)
+        except Exception as e:
+            Terminal.inst().error(str(e))
+            terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+            sys.exit(-1)
 
     # notifier service
     try:
-        notifier_service = NotifierService(options)
         notifier_service.start(options)
     except Exception as e:
         Terminal.inst().error(str(e))
@@ -432,7 +453,6 @@ def application(argv):
 
     # view service
     try:
-        view_service = ViewService(options)
         watchdog_service.add_service(view_service)
     except Exception as e:
         Terminal.inst().error(str(e))
@@ -449,9 +469,8 @@ def application(argv):
         sys.exit(-1)
 
     # watcher service
-    Terminal.inst().info("Starting watcher's service...")
+    Terminal.inst().info("Starting watcher service...")
     try:
-        watcher_service = WatcherService(options)
         watcher_service.start(options)
         watchdog_service.add_service(watcher_service)
     except Exception as e:
@@ -460,9 +479,8 @@ def application(argv):
         sys.exit(-1)
 
     # trader service
-    Terminal.inst().info("Starting trader's service...")
+    Terminal.inst().info("Starting trader service...")
     try:
-        trader_service = TraderService(watcher_service, monitor_service, options)
         trader_service.start(options)
         watchdog_service.add_service(trader_service)
     except Exception as e:
@@ -480,9 +498,8 @@ def application(argv):
     watcher_service.add_listener(trader_service)
 
     # strategy service
-    Terminal.inst().info("Starting strategy's service...")
+    Terminal.inst().info("Starting strategy service...")
     try:
-        strategy_service = StrategyService(watcher_service, trader_service, monitor_service, options)
         strategy_service.start(options)
         watchdog_service.add_service(strategy_service)
     except Exception as e:
@@ -517,15 +534,15 @@ def application(argv):
     register_region_commands(commands_handler, strategy_service)
     register_alert_commands(commands_handler, strategy_service)
 
-    # setup and start the monitor service
-    monitor_service.setup(watcher_service, trader_service, strategy_service)
-    try:
-        monitor_service.start()
-        watchdog_service.add_service(monitor_service)
-    except Exception as e:
-        Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
-        sys.exit(-1)
+    # # setup and start the monitor service
+    # monitor_service.setup(watcher_service, trader_service, strategy_service)
+    # try:
+    #     monitor_service.start()
+    #     watchdog_service.add_service(monitor_service)
+    # except Exception as e:
+    #     Terminal.inst().error(str(e))
+    #     terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+    #     sys.exit(-1)
 
     Terminal.inst().message("Running main loop...")
 

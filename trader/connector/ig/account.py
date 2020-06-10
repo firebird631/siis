@@ -10,6 +10,10 @@ import time
 from trader.account import Account
 from terminal.terminal import Terminal
 
+import logging
+logger = logging.getLogger('siis.trader.ig.account')
+error_logger = logging.getLogger('siis.error.trader.ig.account')
+
 
 class IGAccount(Account):
     """
@@ -39,7 +43,11 @@ class IGAccount(Account):
         # initial update and then one per min, the live updated are done by signal and WS
         if time.time() - self._last_update >= IGAccount.UPDATE_TIMEOUT:
             # cause a REST API query
-            account = connector.funds()
+            try:
+                account = connector.funds()
+            except Exception as e:
+                error_logger.error(e)
+                return
 
             self._name = account.get('accountName')
             self._username = self._email = connector.username

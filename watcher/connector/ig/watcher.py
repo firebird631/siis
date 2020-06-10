@@ -272,7 +272,7 @@ class IGWatcher(Watcher):
     def subscribe(self, market_id, timeframes, ohlc_depths=None, order_book_depth=None):
         with self._mutex:
             if market_id in self.__matching_symbols:
-                # fetch from 1m to 1w, we have a problem of the 10k candle limit per weekend, then we only fetch current
+                # fetch from 1m to 1w, we have a problem of the 10k candle limit per week, then we only fetch current
                 # plus a delta allowing the time to prefetch the data into the DB from another source
 
                 # but there is a problem with the 2h, 4h, 1d, 1w and 1m, because the data are aligned to the LSE timezone
@@ -289,12 +289,20 @@ class IGWatcher(Watcher):
                     try:
                         # sync to the last 30 mins of data
                         # its 60 req/min max, but we cannot wait to long else there is a buffer overflow with the tickers
-                        self.fetch_and_generate(market_id, Instrument.TF_1M, 30, Instrument.TF_30M)  # 1m, 5m, 15m, 30m
-                        self.fetch_and_generate(market_id, Instrument.TF_3M, 10)
-                        self.fetch_and_generate(market_id, Instrument.TF_1H, 4, Instrument.TF_2H)  # 1h, 4h
-                        self.fetch_and_generate(market_id, Instrument.TF_1D, 1)
+                        self.fetch_and_generate(market_id, Instrument.TF_1M, 120)
+                        self.fetch_and_generate(market_id, Instrument.TF_5M, 120)
+                        self.fetch_and_generate(market_id, Instrument.TF_15M, 120)
+                        self.fetch_and_generate(market_id, Instrument.TF_30M, 120)
+                        self.fetch_and_generate(market_id, Instrument.TF_1H, 120, Instrument.TF_4H)
+                        self.fetch_and_generate(market_id, Instrument.TF_1D, 7)
                         self.fetch_and_generate(market_id, Instrument.TF_1W, 1)
-                        self.fetch_and_generate(market_id, Instrument.TF_1M, 1)
+
+                        # self.fetch_and_generate(market_id, Instrument.TF_1M, 30, Instrument.TF_30M)  # 1m, 5m, 15m, 30m
+                        # self.fetch_and_generate(market_id, Instrument.TF_3M, 10)
+                        # self.fetch_and_generate(market_id, Instrument.TF_1H, 4, Instrument.TF_2H)  # 1h, 4h
+                        # self.fetch_and_generate(market_id, Instrument.TF_1D, 1)
+                        # self.fetch_and_generate(market_id, Instrument.TF_1W, 1)
+                        # self.fetch_and_generate(market_id, Instrument.TF_1M, 1)
                     except:
                         # exceed of quota...
                         pass

@@ -25,9 +25,9 @@ from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.trader.ig')
-error_logger = logging.getLogger('siis.error.ig')
-order_logger = logging.getLogger('siis.order.ig')
-traceback_logger = logging.getLogger('siis.traceback.ig')
+error_logger = logging.getLogger('siis.error.trader.ig')
+order_logger = logging.getLogger('siis.order.trader.ig')
+traceback_logger = logging.getLogger('siis.traceback.trader.ig')
 
 
 class IGTrader(Trader):
