@@ -277,6 +277,7 @@ class Client(object):
 
         :raises: BinanceRequestException, BinanceAPIException
 
+        @deprecated
         """
 
         products = self._request_website('get', 'exchange/public/product')

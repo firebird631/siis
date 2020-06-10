@@ -114,7 +114,7 @@ class BinanceWatcher(Watcher):
                         # get all products symbols
                         self._available_instruments = set()
 
-                        instruments = self._connector.client.get_products().get('data', [])
+                        instruments = self._connector.client.get_exchange_info().get('symbols', [])
                         configured_symbols = self.configured_symbols()
                         matching_symbols = self.matching_symbols_set(configured_symbols, [instrument['symbol'] for instrument in instruments])
 

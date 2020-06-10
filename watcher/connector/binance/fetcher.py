@@ -68,7 +68,7 @@ class BinanceFetcher(Fetcher):
                 # get all products symbols
                 self._available_instruments = set()
 
-                instruments = self._connector.client.get_products().get('data', [])
+                instruments = self._connector.client.get_exchange_info().get('symbols', [])
 
                 for instrument in instruments:
                     self._available_instruments.add(instrument['symbol'])
