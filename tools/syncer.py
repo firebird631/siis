@@ -76,10 +76,12 @@ class Syncer(Tool):
         markets = options['market'].split(',')
 
         watcher = self._watcher_service.create_watcher(options, options['broker'], markets)
-        if watcher:
+        if watcher:           
             watcher.initial_fetch = options.get('initial-fetch', False)
 
             watcher.connect()
+
+            markets = watcher.matching_symbols_set(markets, watcher.available_instruments())
 
             for market_id in markets:
                 watcher._watched_instruments.add(market_id)

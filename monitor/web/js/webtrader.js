@@ -56,42 +56,62 @@ $(window).ready(function() {
         'Scalp XS': {
             'take-profit': 'percent-0.15',
             'stop-loss': 'percent-0.15',
+            'context': null,
+            'timeframe': null
         },
         'Scalp SM': {
             'take-profit': 'percent-0.45',
             'stop-loss': 'percent-0.45',
+            'context': null,
+            'timeframe': null
         },
         'Scalp MD': {
             'take-profit': 'percent-0.75',
             'stop-loss': 'percent-0.75',
+            'context': null,
+            'timeframe': null
         },
         'Scalp LG': {
             'take-profit': 'percent-1.0',
             'stop-loss':'percent-1.0',
+            'context': null,
+            'timeframe': null
         },
         'Scalp XL': {
             'take-profit':'percent-1.5',
             'stop-loss':'percent-1.0',
+            'context': null,
+            'timeframe': null
         },
         'FX Scalp XS': {
             'take-profit': 'pip-3',
             'stop-loss': 'pip-3',
+            'context': null,
+            'timeframe': null
         },
         'FX Scalp SM': {
             'take-profit': 'pip-7',
             'stop-loss': 'pip-5',
+            'context': null,
+            'timeframe': null
         },
         'FX Scalp MD': {
             'take-profit': 'pip-12',
             'stop-loss': 'pip-6',
+            'context': null,
+            'timeframe': null
         },
         'FX Scalp LG': {
             'take-profit': 'pip-12',
             'stop-loss': 'pip-8',
+            'context': null,
+            'timeframe': null
         },
         'FX Scalp XL': {
             'take-profit': 'pip-30',
             'stop-loss': 'pip-15',
+            'context': null,
+            'timeframe': null
         },
     };
 
@@ -249,40 +269,6 @@ $(window).ready(function() {
     // @todo regular curr trades and trades history (later WS)
     // @todo chart view
 
-    $("div.trader").each(function(i, elt) {
-        let trader_row1 = $('<div class="row trader-row1 trader-row"></div>');
-        let trader_row2 = $('<div class="row trader-row2 trader-row"></div>');
-        let trader_row3 = $('<div class="row trader-row3 trader-row"></div>');
-        let trader_row4 = $('<div class="row trader-row4 trader-row"></div>');
-        let trader_row5 = $('<div class="row trader-row5 trader-row"></div>');
-        let trader_row6 = $('<div class="row trader-row6 trader-row"></div>');
-
-        let id = "trader_" + i;
-
-        add_symbols(id, trader_row1);
-        add_profiles(id, trader_row1);
-
-        add_take_profit_price(id, trader_row2);
-        add_take_profit_methods(id, trader_row2);
-
-        add_entry_price(id, trader_row3);
-        add_entry_price_methods(id, trader_row3);
-
-        add_stop_loss_price(id, trader_row4);
-        add_stop_loss_methods(id, trader_row4);
-
-        add_quantity_slider(id, trader_row5);
-
-        add_long_short_actions(id, trader_row6);
-
-        $(elt).append(trader_row1);
-        $(elt).append(trader_row2);
-        $(elt).append(trader_row3);
-        $(elt).append(trader_row4);
-        $(elt).append(trader_row5);
-        $(elt).append(trader_row6);
-    });
-
     //
     // trade list
     //
@@ -383,6 +369,42 @@ $(window).ready(function() {
 // global
 //
 
+function setup_traders() {
+    $("div.trader").each(function(i, elt) {
+        let trader_row1 = $('<div class="row trader-row1 trader-row"></div>');
+        let trader_row2 = $('<div class="row trader-row2 trader-row"></div>');
+        let trader_row3 = $('<div class="row trader-row3 trader-row"></div>');
+        let trader_row4 = $('<div class="row trader-row4 trader-row"></div>');
+        let trader_row5 = $('<div class="row trader-row5 trader-row"></div>');
+        let trader_row6 = $('<div class="row trader-row6 trader-row"></div>');
+
+        let id = "trader_" + i;
+
+        add_symbols(id, trader_row1);
+        add_profiles(id, trader_row1);
+
+        add_take_profit_price(id, trader_row2);
+        add_take_profit_methods(id, trader_row2);
+
+        add_entry_price(id, trader_row3);
+        add_entry_price_methods(id, trader_row3);
+
+        add_stop_loss_price(id, trader_row4);
+        add_stop_loss_methods(id, trader_row4);
+
+        add_quantity_slider(id, trader_row5);
+
+        add_long_short_actions(id, trader_row6);
+
+        $(elt).append(trader_row1);
+        $(elt).append(trader_row2);
+        $(elt).append(trader_row3);
+        $(elt).append(trader_row4);
+        $(elt).append(trader_row5);
+        $(elt).append(trader_row6);
+    });
+}
+
 function base_url() {
     return server['protocol'] + "//" + server['host'] + ':' + server['port'] + "/api/v1";
 };
@@ -403,25 +425,24 @@ function fetch_strategy() {
         contentType: 'application/json'
     })
     .done(function(result) {
-        markets = {};
-        appliances = {};
-        broker = {
+        // window.profiles = {}; @todo
+        window.markets = {};
+        window.appliances = {};
+        window.broker = {
             'name': result['broker']
         };
 
         for (let appliance_id in result['appliances']) {
-            appliances[appliance_id] = {
+            window.appliances[appliance_id] = {
                 'id': result['appliances']['id'],
                 'name': result['appliances']['name'],
             };
         }
 
-        console.log(result)
-
         for (let market_id in result['markets']) {
             let market = result['markets'][market_id];
 
-            markets[market_id] = {
+            window.markets[market_id] = {
                 'appliance': market['appliance'],
                 'market-id': market['market-id'],
                 'symbol': market['symbol'],
@@ -434,6 +455,16 @@ function fetch_strategy() {
                 'spread': market['spread'],
             };
         }
+
+        for (let profile_id in result['profiles']) {
+            let profile = result['profiles'][profile_id];
+
+            window.profiles[profile_id] = {
+                // @todo
+            }
+        }
+
+        setup_traders();
     })
     .fail(function() {
         alert("Unable to obtains markets list info !");
@@ -458,12 +489,12 @@ function fetch_trades(appliance) {
         contentType: 'application/json'
     })
     .done(function(result) {
-        actives_trades = {};
+        window.actives_trades = {};
 
         for (let i = 0; i < result.length; ++i) {
             let trade = result[i];
             
-            // actives_trades[trade_id] = {
+            // window.actives_trades[trade_id] = {
 
             // }
         }
@@ -616,6 +647,10 @@ function retrieve_symbol(elt) {
 
 function retrieve_trader_id(elt) {
     return $(elt.target).attr('trader-id');
+}
+
+function retrieve_profile(trader_id) {
+    return $('select.profiles[trader-id="' + trader_id + '"]').val();
 }
 
 function retrieve_stop_loss_price(trader_id) {

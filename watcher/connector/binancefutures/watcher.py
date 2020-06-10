@@ -413,7 +413,7 @@ class BinanceFuturesWatcher(Watcher):
                 market.base_exchange_rate = 1.0
 
             market.contract_size = 1.0
-            market.value_per_pip = math.pow(10.0, math.ceil(math.log10(mid_price) - 4))
+            # market.value_per_pip = math.pow(10.0, math.ceil(math.log10(mid_price) - 4))
 
             # volume 24h
             # in ticker/24hr but cost is 40 for any symbols then wait it at all-tickers WS event
@@ -496,7 +496,7 @@ class BinanceFuturesWatcher(Watcher):
         ofr = float(data['a'])  # A for qty
 
         base_exchange_rate = 1.0
-        value_per_pip = math.pow(10.0, math.ceil(math.log10((bid + ofr) * 0.5) - 4))
+        # value_per_pip = math.pow(10.0, math.ceil(math.log10((bid + ofr) * 0.5) - 4))
 
         # if market.quote != self.BASE_QUOTE:
         #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
@@ -508,7 +508,8 @@ class BinanceFuturesWatcher(Watcher):
         # else:
         #     base_exchange_rate = 1.0
 
-        market_data = (symbol, True, None, bid, ofr, base_exchange_rate, None, value_per_pip, None, None)
+        # market_data = (symbol, True, None, bid, ofr, base_exchange_rate, None, value_per_pip, None, None)
+        market_data = (symbol, True, None, bid, ofr, base_exchange_rate, None, None, None, None)
         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_depth_data(self, data):

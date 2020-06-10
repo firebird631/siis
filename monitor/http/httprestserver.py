@@ -21,6 +21,14 @@ from twisted.web.client import getPage
 
 from zope.interface import Interface, Attribute, implementer
 
+from strategy.strategy import Strategy
+
+import logging
+logger = logging.getLogger('siis.monitor.httpserver')
+error_logger = logging.getLogger('siis.error.monitor.httpserver')
+traceback_logger = logging.getLogger('siis.traceback.monitor.httpserver')
+
+
 
 class IAuthToken(Interface):
     value = Attribute("An str containing the auth-token.")
@@ -130,6 +138,12 @@ class StrategyInfoRestAPI(resource.Resource):
 class InstrumentRestAPI(resource.Resource):
     isLeaf = True
 
+    def __init__(self, strategy_service, trader_service):
+        super().__init__()
+
+        self._strategy_service = strategy_service
+        self._trader_service = trader_service
+
     def render_GET(self, request):
         uri = request.uri.decode("utf-8").split('/')
         result = {}
@@ -156,6 +170,12 @@ class InstrumentRestAPI(resource.Resource):
 class StrategyTradeRestAPI(resource.Resource):
     isLeaf = True
 
+    def __init__(self, strategy_service, trader_service):
+        super().__init__()
+
+        self._strategy_service = strategy_service
+        self._trader_service = trader_service
+
     def render_GET(self, request):
         uri = request.uri.decode("utf-8").split('/')
 
@@ -177,16 +197,19 @@ class StrategyTradeRestAPI(resource.Resource):
             'error': False
         }
 
-        content = json.loads(request.content.read().decode("utf-8"))
-        command = content.get('command', "")
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
+            command = content.get('command', "")
 
-        if command == "trade-entry":
-            result = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
-        elif command == "trade-modify":
-            result = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, content)
-        else:
-            results['messages'].append("Missing command.")
-            results['error'] = True
+            if command == "trade-entry":
+                result = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
+            elif command == "trade-modify":
+                result = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, content)
+            else:
+                results['messages'].append("Missing command.")
+                results['error'] = True
+        except Exception as e:
+            logger.debug(e)
 
         return json.dumps(result).encode("utf-8")
 
@@ -206,6 +229,12 @@ class StrategyTradeRestAPI(resource.Resource):
 class ActiveTradeRestAPI(resource.Resource):
     isLeaf = True
 
+    def __init__(self, strategy_service, trader_service):
+        super().__init__()
+
+        self._strategy_service = strategy_service
+        self._trader_service = trader_service
+
     def render_GET(self, request):
         uri = request.uri.decode("utf-8").split('/')
         result = {}
@@ -217,6 +246,12 @@ class ActiveTradeRestAPI(resource.Resource):
 
 class HistoricalTradeRestAPI(resource.Resource):
     isLeaf = True
+
+    def __init__(self, strategy_service, trader_service):
+        super().__init__()
+
+        self._strategy_service = strategy_service
+        self._trader_service = trader_service
 
     def render_GET(self, request):
         uri = request.uri.split('/')
@@ -268,16 +303,16 @@ class HttpRestServer(object):
         strategy_api = StrategyInfoRestAPI(self._strategy_service, self._trader_service)
         api_v1.putChild(b"strategy", strategy_api)
 
-        instrument_api = InstrumentRestAPI()
+        instrument_api = InstrumentRestAPI(self._strategy_service, self._trader_service)
         strategy_api.putChild(b"instrument", instrument_api)
 
-        trade_api = StrategyTradeRestAPI()
+        trade_api = StrategyTradeRestAPI(self._strategy_service, self._trader_service)
         strategy_api.putChild(b"trade", trade_api)
 
-        active_trade_api = ActiveTradeRestAPI()
+        active_trade_api = ActiveTradeRestAPI(self._strategy_service, self._trader_service)
         strategy_api.putChild(b"active", active_trade_api)
 
-        historical_trade_api = HistoricalTradeRestAPI()
+        historical_trade_api = HistoricalTradeRestAPI(self._strategy_service, self._trader_service)
         strategy_api.putChild(b"historical", historical_trade_api)
 
         # trader
