@@ -120,6 +120,7 @@ def application(argv):
         'markets-path': './user/markets',
         'log-name': 'siis.log',
         'monitor': False,
+        'monitor-port': None,
     }
 
     # create initial siis data structure if necessary
@@ -178,6 +179,9 @@ def application(argv):
                 elif arg == '--monitor':
                     # use the importer
                     options['monitor'] = True
+                elif arg.startswith('--monitor-port='):
+                    # overrided monitor HTTP port (+1 for WS port)
+                    options['monitor-port'] = int(arg.split('=')[1])
 
                 elif arg == '--install-market':
                     # fetcher option

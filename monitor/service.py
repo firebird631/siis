@@ -79,10 +79,11 @@ class MonitorService(Service):
         elif self._monitoring_config.get('mode', None) == "http+websocket":
             self._mode = MonitorService.MODE_HTTP_WEBSOCKET 
 
+        # port can be overrided by command line --monitor-port= arg
         self._host = self._monitoring_config.get('host', '127.0.0.1')
-        self._port = self._monitoring_config.get('port', '8080')
+        self._port = options.get('monitor-port', self._monitoring_config.get('port', '8080'))
 
-        # @todo allowdeny...
+        # allow deny rules
         allowdeny = self._monitoring_config.get('allowdeny', "allowonly")
 
         self._allowed_ips = None

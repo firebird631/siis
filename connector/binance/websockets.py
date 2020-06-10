@@ -94,7 +94,7 @@ class BinanceSocketManager(threading.Thread):
         self._user_timeout = user_timeout
 
         self._future = futures
-        self._url = BinanceSocketManager.FUTURES_STREAM_URL if futures else BinanceSocketManager.FUTURES_STREAM_URL
+        self._url = BinanceSocketManager.FUTURES_STREAM_URL if futures else BinanceSocketManager.STREAM_URL
 
     def _start_socket(self, path, callback, prefix='ws/'):
         if path in self._conns:
