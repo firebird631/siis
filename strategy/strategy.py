@@ -400,20 +400,17 @@ class Strategy(Runnable):
 
                         instrument.leverage = mapped_instrument.get('leverage', 1.0)
 
-                        # if self.service.backtesting:
-                        #     # no have udpate of this value, to implication to have it
-                        #     # instrument.base_exchange_rate = 1.0
-                        #     # instrument.contract_size = 1.0
-                        #     # instrument.value_per_pip = 1.0
-
                         market = self._trader.market(symbol)
                         if market:
-                            # synchronize initial market data into the instrument, only works in live
+                            # synchronize initial market data into the instrument
                             instrument.trade = market.trade
                             instrument.orders = market.orders
                             instrument.hedging = market.hedging
                             instrument.tradeable = market.is_open
                             instrument.expiry = market.expiry
+
+                            instruments.value_per_pip = market.value_per_pip
+                            instruments.one_pip_means = market.one_pip_means
 
                             instrument.set_base(market.base)
                             instrument.set_quote(market.quote)
@@ -528,6 +525,10 @@ class Strategy(Runnable):
 
         return None
 
+    #
+    # symbols/instruments accessors
+    #
+
     def symbols_ids(self):
         """
         Returns the complete list containing market-ids, theirs alias and theirs related symbol name.
@@ -611,6 +612,50 @@ class Strategy(Runnable):
 
         return None
 
+    #
+    # strategy-trader profiles/context
+    #
+
+    def contexts_ids(self, market_id):
+        contexts_ids = []
+
+        if not market_id:
+            return []
+
+        strategy_trader = self._strategy_traders.get(market_id)
+        if not strategy_trader:
+            return []
+
+        with strategy_trader._mutex:
+            try:
+                contexts_ids = strategy_trader.contexts_ids()              
+            except Exception as e:
+                error_logger.error(repr(e))
+
+        return contexts_ids
+
+    def dumps_context(self, market_id, context_id):
+        context = None
+
+        if not market_id or not context_id:
+            return None
+
+        strategy_trader = self._strategy_traders.get(market_id)
+        if not strategy_trader:
+            return None
+
+        with strategy_trader._mutex:
+            try:
+                context = strategy_trader.dumps_context(context_id)
+            except Exception as e:
+                error_logger.error(repr(e))
+
+        return context
+
+    #
+    # feeder for backtesting
+    #
+
     def feeder(self, market_id):
         return self._feeders.get(market_id)
 
@@ -623,6 +668,10 @@ class Strategy(Runnable):
                 raise ValueError("Already defined feeder %s for strategy %s !" % (self.name, feeder.market_id))
 
             self._feeders[feeder.market_id] = feeder
+
+    #
+    # processing
+    #
 
     @property
     def base_timeframe(self):
@@ -1054,6 +1103,10 @@ class Strategy(Runnable):
                     # process complete
                     strategy_trader._processing = False
 
+    #
+    # backtesting
+    #
+
     def setup_backtest(self, from_date, to_date, base_timeframe=Instrument.TF_TICK):
         """
         Override this method to implement your backtesting strategy data set of instrument and feeders.
@@ -1118,10 +1171,15 @@ class Strategy(Runnable):
         # last done timestamp, to manage progression
         self._last_done_ts = timestamp
 
+
     def reset(self):
         # backtesting only, the last processed timestamp
         self._last_done_ts = 0
         self._timestamp = 0
+
+    #
+    # setup and processing state and condition
+    #
 
     def ready(self):
         """
@@ -1175,6 +1233,10 @@ class Strategy(Runnable):
             return 0
 
         return self._last_done_ts
+
+    #
+    # live setup
+    #
 
     def setup_live(self):
         """

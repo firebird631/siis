@@ -11,6 +11,8 @@ IG on a 10k candle/mois on en a besoin de 47 à chaque démarrage pour se synchr
 donc cela permet 21 démarrages par mois avec 10 symboles, ce qui est large même si on relance 1x ou 2 par semaine.
 Sinon il faut faire la synchro initiale depuis une autre source, mais laquelle ?
 
+Distance et timeout-distance si en DIST doivent être supporté par distance_type et timeout_distance_type dans les methode de SL/TP et dynamiques.
+
 
 ############
 # EN COURS #

@@ -52,62 +52,72 @@ $(window).ready(function() {
     window.appliances = {};
     window.actives_trades = {};
 
-    window.profiles = {
-        'Scalp XS': {
+    window.default_profiles = {
+        'scalp-xs': {
+            'label': 'Scalp XS',
             'take-profit': 'percent-0.15',
             'stop-loss': 'percent-0.15',
             'context': null,
             'timeframe': null
         },
-        'Scalp SM': {
+        'scalp-sm': {
+            'label': 'Scalp SM',
             'take-profit': 'percent-0.45',
             'stop-loss': 'percent-0.45',
             'context': null,
             'timeframe': null
         },
-        'Scalp MD': {
+        'scalp-md': {
+            'label': 'Scalp MD',
             'take-profit': 'percent-0.75',
             'stop-loss': 'percent-0.75',
             'context': null,
             'timeframe': null
         },
-        'Scalp LG': {
+        'scalp-lg': {
+            'label': 'Scalp LG',
             'take-profit': 'percent-1.0',
             'stop-loss':'percent-1.0',
             'context': null,
             'timeframe': null
         },
-        'Scalp XL': {
+        'scalp-xl': {
+            'label': 'Scalp XL',
             'take-profit':'percent-1.5',
             'stop-loss':'percent-1.0',
             'context': null,
             'timeframe': null
         },
-        'FX Scalp XS': {
+        'fx-scalp-xs': {
+            'label': 'FX Scalp XS',
             'take-profit': 'pip-3',
             'stop-loss': 'pip-3',
             'context': null,
             'timeframe': null
         },
-        'FX Scalp SM': {
+        'fx-scalp-sm': {
+            'label': 'FX Scalp SM',
             'take-profit': 'pip-7',
             'stop-loss': 'pip-5',
             'context': null,
             'timeframe': null
         },
-        'FX Scalp MD': {
+        'fx-scalp-md': {
+            'label': 'FX Scalp MD',
             'take-profit': 'pip-12',
             'stop-loss': 'pip-6',
             'context': null,
             'timeframe': null
         },
-        'FX Scalp LG': {
+        'fx-scalp-lg': {
+            'label': 'FX Scalp LG',
             'take-profit': 'pip-12',
             'stop-loss': 'pip-8',
             'context': null,
             'timeframe': null
         },
-        'FX Scalp XL': {
+        'fx-Scalp-xl': {
+            'label': 'FX Scalp XL',
             'take-profit': 'pip-30',
             'stop-loss': 'pip-15',
             'context': null,
@@ -220,6 +230,11 @@ $(window).ready(function() {
             'label': '30pips',
             'distance': 30,
             'type': 'pip',
+        },
+        'strategy': {
+            'label': 'Strategy',
+            'distance': 0.0,
+            'type': 'percent'
         }
     }
 
@@ -228,10 +243,6 @@ $(window).ready(function() {
             'label': 'Limit',
             'type': 'limit'
         },
-        // 'market': {
-        //     'label': 'Trigger',
-        //     'type': 'trigger'
-        // },
         'last': {
             'label': 'Last',
             'type': 'market'
@@ -260,6 +271,10 @@ $(window).ready(function() {
             'label': 'Ask 2',
             'type': 'ask2'
         },
+        'strategy': {
+            'label': 'strategy',
+            'type': 'strategy'
+        }
     }
 
     // @todo fetch markets
@@ -379,9 +394,18 @@ function setup_traders() {
         let trader_row6 = $('<div class="row trader-row6 trader-row"></div>');
 
         let id = "trader_" + i;
+        let market = null;
+        let profiles = window.default_profiles;
+
+        if (Object.keys(window.markets).length > 0) {
+            let first_market_id = Object.keys(window.markets)[0];
+
+            market = window.markets[first_market_id];
+            profiles = market['profiles'];
+        }
 
         add_symbols(id, trader_row1);
-        add_profiles(id, trader_row1);
+        add_profiles(id, trader_row1, profiles);
 
         add_take_profit_price(id, trader_row2);
         add_take_profit_methods(id, trader_row2);
@@ -425,7 +449,6 @@ function fetch_strategy() {
         contentType: 'application/json'
     })
     .done(function(result) {
-        // window.profiles = {}; @todo
         window.markets = {};
         window.appliances = {};
         window.broker = {
@@ -453,14 +476,20 @@ function fetch_strategy() {
                 'ofr': market['ofr'],
                 'mid': market['mid'],
                 'spread': market['spread'],
+                'profiles': {}
             };
-        }
 
-        for (let profile_id in result['profiles']) {
-            let profile = result['profiles'][profile_id];
+            // @todo
+            for (let profile_id in market['profiles']) {
+                let profile = market['profiles'][profile_id];
 
-            window.profiles[profile_id] = {
-                // @todo
+                // window.markets[market_id].profiles[profile_id] = {
+                // }                
+            }
+
+            // append the default profiles
+            for (let def_profile_id in window.default_profiles) {
+                window.markets[market_id].profiles[def_profile_id] = window.default_profiles[def_profile_id];
             }
         }
 
@@ -521,12 +550,12 @@ function add_symbols(id, to) {
     select.selectpicker({'width': '150px'});
 };
 
-function add_profiles(id, to) {
+function add_profiles(id, to, profiles) {
     let select = $('<select class="profiles" name="profile-id"></select>');
     select.attr('trader-id', id);
 
-    for (profile in profiles) {
-        select.append($('<option value="' + profile +'">' + profile + '</>'));
+    for (profile_id in profiles) {
+        select.append($('<option value="' + profile_id +'">' + profiles[profile_id].label + '</>'));
     }
 
     to.append(select);
@@ -740,9 +769,10 @@ function open_trading_view(elt) {
 
 function on_change_profile(elt) {
     let value = $(elt.target).val();
+    let market = window.markets[retrieve_symbol(elt)];
 
-    if (value in profiles) {
-        let profile = profiles[value];
+    if (value in market.profiles) {
+        let profile = market.profiles[value];
         let trader_id = $(elt.target).attr('trader-id');
 
         let tpm = $('.take-profit-method[trader-id="' + trader_id +'"]');

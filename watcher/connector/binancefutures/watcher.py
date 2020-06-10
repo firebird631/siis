@@ -348,6 +348,7 @@ class BinanceFuturesWatcher(Watcher):
             market.contract_size = 1.0
             market.lot_size = 1.0
             market.margin_factor = 1.0
+            market.base_exchange_rate = 1.0  # any pairs quotes in USDT
 
             size_limits = ["1.0", "0.0", "1.0"]
             notional_limits = ["0.0", "0.0", "0.0"]
@@ -401,19 +402,6 @@ class BinanceFuturesWatcher(Watcher):
             market.ofr = float(ticker['askPrice'])
 
             mid_price = (market.bid * market.ofr) * 0.5
-
-            if quote_asset != self.BASE_QUOTE:
-                if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
-                    market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
-                elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
-                    market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
-                else:
-                    market.base_exchange_rate = 1.0
-            else:
-                market.base_exchange_rate = 1.0
-
-            market.contract_size = 1.0
-            # market.value_per_pip = math.pow(10.0, math.ceil(math.log10(mid_price) - 4))
 
             # volume 24h
             # in ticker/24hr but cost is 40 for any symbols then wait it at all-tickers WS event
@@ -495,21 +483,7 @@ class BinanceFuturesWatcher(Watcher):
         bid = float(data['b'])  # B for qty
         ofr = float(data['a'])  # A for qty
 
-        base_exchange_rate = 1.0
-        # value_per_pip = math.pow(10.0, math.ceil(math.log10((bid + ofr) * 0.5) - 4))
-
-        # if market.quote != self.BASE_QUOTE:
-        #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
-        #         base_exchange_rate = float(self._tickers_data.get(market.quote+self.BASE_QUOTE, {'price', '1.0'})['price'])
-        #     elif self._tickers_data.get(self.BASE_QUOTE+market.quote):
-        #         base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+market.quote, {'price', '1.0'})['price'])
-        #     else:
-        #         base_exchange_rate = 1.0
-        # else:
-        #     base_exchange_rate = 1.0
-
-        # market_data = (symbol, True, None, bid, ofr, base_exchange_rate, None, value_per_pip, None, None)
-        market_data = (symbol, True, None, bid, ofr, base_exchange_rate, None, None, None, None)
+        market_data = (symbol, True, None, bid, ofr, None, None, None, None, None)
         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_depth_data(self, data):

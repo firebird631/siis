@@ -7,7 +7,7 @@ function on_order_long(elt) {
 
     if (symbol && market) {
         // how to retrieve the context name; timeframe and expiry ?
-        let profile = window.profiles[retrieve_profile(trader_id)];
+        let profile = market.profiles[retrieve_profile(trader_id)];
 
         let limit_price = 0.0;
         let trigger_price = 0.0;
@@ -110,7 +110,7 @@ function on_order_short(elt) {
 
     if (symbol && market) {
         // how to retrieve the context name; timeframe and expiry ?
-        let profile = window.profiles[retrieve_profile(trader_id)];
+        let profile = market.profiles[retrieve_profile(trader_id)];
 
         let limit_price = 0.0;
         let trigger_price = 0.0;

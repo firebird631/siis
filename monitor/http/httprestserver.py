@@ -29,7 +29,6 @@ error_logger = logging.getLogger('siis.error.monitor.httpserver')
 traceback_logger = logging.getLogger('siis.traceback.monitor.httpserver')
 
 
-
 class IAuthToken(Interface):
     value = Attribute("An str containing the auth-token.")
 
@@ -88,13 +87,14 @@ class StrategyInfoRestAPI(resource.Resource):
 
         for appliance in appliances_names:
             appliances[appliance] = {
-                'name': appliance,
+                'name': appliance
             }
 
             instruments_ids = self._strategy_service.appliance(appliance).instruments_ids()
 
             for market_id in instruments_ids:
                 instr = self._strategy_service.appliance(appliance).instrument(market_id)
+                profiles = {}
 
                 markets[market_id] = {
                     'appliance': appliance,
@@ -106,7 +106,32 @@ class StrategyInfoRestAPI(resource.Resource):
                     'ofr': instr.market_ofr,
                     'mid': instr.market_price,
                     'spread': instr.market_spread,
+                    'profiles': profiles
                 }
+
+                contexts_ids = self._strategy_service.appliance(appliance).contexts_ids(market_id)
+
+                for context_id in contexts_ids:
+                    context = self._strategy_service.appliance(appliance).dumps_context(market_id, context_id)
+
+                    profiles[context_id] = {
+                        'appliance': appliance,
+                        'profile-id': context_id,
+                        'entry': {
+                            'timeframe': context['entry']['timeframe'],
+                            'type': context['entry']['type'],
+                        },
+                        'take-profit': {
+                            'timeframe': context['take-profit']['timeframe'],
+                            'distance': context['take-profit']['distance'],
+                            'distance-mode': context['take-profit']['distance-type'],
+                        },
+                        'stop-loss': {
+                            'timeframe': context['stop-loss']['timeframe'],
+                            'distance': context['stop-loss']['distance'],
+                            'distance-mode': context['stop-loss']['distance-type'],
+                        }
+                    }
 
         result = {
             'broker': {
@@ -115,8 +140,6 @@ class StrategyInfoRestAPI(resource.Resource):
             'appliances': appliances,
             'markets': markets,
         }
-
-        # @todo
 
         return json.dumps(result).encode("utf-8")
 

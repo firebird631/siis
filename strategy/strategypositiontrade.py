@@ -325,7 +325,7 @@ class StrategyPositionTrade(StrategyTrade):
 
                 if last_qty < self.oq:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                if last_qty >= self.oq:
+                elif last_qty >= self.oq:
                     self._entry_state = StrategyTrade.STATE_FILLED
 
             # retains the trade timestamp
@@ -363,7 +363,7 @@ class StrategyPositionTrade(StrategyTrade):
 
                     if last_qty > 0.0:
                         self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                    if last_qty <= 0.0:
+                    elif last_qty <= 0.0:
                         self._exit_state = StrategyTrade.STATE_FILLED
 
                 elif last_qty > self.position_quantity:
@@ -375,7 +375,7 @@ class StrategyPositionTrade(StrategyTrade):
 
                     if last_qty < self.oq:
                         self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                    if last_qty >= self.oq:
+                    elif last_qty >= self.oq:
                         self._entry_state = StrategyTrade.STATE_FILLED
 
             # keep for close and for delta computation on update
@@ -471,6 +471,7 @@ class StrategyPositionTrade(StrategyTrade):
                 self.pl = (self.axp - self.aep) / self.aep
             elif self.aep > 0 and instrument.close_exec_price(1) > 0:
                 self.pl = (instrument.close_exec_price(1) - self.aep) / self.aep
+
         elif self.direction < 0:
             if self.aep > 0 and self.axp > 0:
                 self.pl = (self.aep - self.axp) / self.aep

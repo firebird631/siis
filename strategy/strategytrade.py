@@ -598,6 +598,7 @@ class StrategyTrade(object):
             # entry and exit are completed
             return 'closed'
         elif self._entry_state == StrategyTrade.STATE_CANCELED and self.e <= 0: 
+            # not entry quantity and entry order canceled
             return 'canceled'
         elif self._entry_state == StrategyTrade.STATE_FILLED:
             # entry order completed

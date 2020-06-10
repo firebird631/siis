@@ -922,6 +922,20 @@ class StrategyTrader(object):
 
         return self.apply_trade_context(trade, context)
 
+    def contexts_ids(self):
+        """
+        Returns the list of context ids.
+        Must be overrided.
+        """
+        return []
+
+    def dumps_context(self, context_id):
+        """
+        Returns a dict with the normalized contexts details or None if don't exists.
+        Must be overrided.
+        """
+        return None
+
     #
     # signal data streaming and monitoring
     #
