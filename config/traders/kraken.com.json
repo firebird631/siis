@@ -1,4 +1,5 @@
 {
     "status": "load",
-    "classpath": "trader.connector.kraken.trader.KrakenTrader"
+    "classpath": "trader.connector.kraken.trader.KrakenTrader",
+    "symbols": []
 }

@@ -1,4 +1,5 @@
 {
     "status": "load",
-    "classpath": "trader.connector.papertrader.trader.PaperTrader"
+    "classpath": "trader.connector.papertrader.trader.PaperTrader",
+    "symbols": []
 }

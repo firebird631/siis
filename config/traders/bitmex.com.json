@@ -1,4 +1,5 @@
 {
     "status": "load",
-    "classpath": "trader.connector.bitmex.trader.BitMexTrader"
+    "classpath": "trader.connector.bitmex.trader.BitMexTrader",
+    "symbols": []
 }

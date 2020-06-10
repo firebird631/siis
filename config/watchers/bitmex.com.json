@@ -2,5 +2,5 @@
     "status": "load",
     "classpath": "watcher.connector.bitmex.watcher.BitMexWatcher",
     "symbols": [],
-    "_symbols": ["XBTUSD", "ETHUSD"]
+    "_symbols": ["*USD", "*XBT"]
 }

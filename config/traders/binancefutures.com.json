@@ -1,4 +1,5 @@
 {
     "status": "load",
-    "classpath": "trader.connector.binancefutures.trader.BinanceFuturesTrader"
+    "classpath": "trader.connector.binancefutures.trader.BinanceFuturesTrader",
+    "symbols": []
 }

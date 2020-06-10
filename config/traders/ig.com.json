@@ -1,4 +1,5 @@
 {
     "status": "load",
-    "classpath": "trader.connector.ig.trader.IGTrader"
+    "classpath": "trader.connector.ig.trader.IGTrader",
+    "symbols": []
 }
