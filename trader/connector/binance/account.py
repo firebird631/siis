@@ -11,7 +11,8 @@ import time
 from trader.account import Account
 
 import logging
-logger = logging.getLogger('siis.trader.binance')
+logger = logging.getLogger('siis.trader.account.binance')
+error_logger = logging.getLogger('siis.error.trader.account.binance')
 
 
 class BinanceAccount(Account):

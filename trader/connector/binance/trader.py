@@ -438,6 +438,7 @@ class BinanceTrader(Trader):
 
             except Exception as e:
                 error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
     #
     # protected
@@ -701,6 +702,9 @@ class BinanceTrader(Trader):
                     buy_or_sell = trade['isBuyer']
                     trade_qty = float(trade['qty'])
                     timestamp = float(trade['time']) * 0.001
+
+                    if not trade['price']:
+                        continue
 
                     # base price always expressed in the same quote, time in seconds
                     price = float(trade['price']) * trade.get('quote-price', 1.0)
