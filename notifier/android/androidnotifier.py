@@ -19,8 +19,6 @@ from notifier.android.androidpush import send_to_android
 
 from common.signal import Signal
 
-from common.utils import timeframe_to_str
-
 import logging
 logger = logging.getLogger('siis.notifier.android')
 error_logger = logging.getLogger('siis.error.notifier.android')
@@ -104,8 +102,6 @@ class AndroidNotifier(Notifier):
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
             label = "Signal %s %s on %s" % (action, signal.data['direction'], signal.data['symbol'],)
 
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-
             message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
                 signal.data['symbol'],
                 signal.data['order-price'],
@@ -150,8 +146,6 @@ class AndroidNotifier(Notifier):
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
             label = "Alert %s %s on %s" % (signal.data['name'], signal.data['reason'], signal.data['symbol'],)
 
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-
             message = "%s %s@%s (%s) %s at %s - #%s in %s" % (
                 signal.data['name'],
                 signal.data['symbol'],
@@ -162,8 +156,8 @@ class AndroidNotifier(Notifier):
                 signal.data['id'],
                 signal.data['timeframe'])
 
-            if signal.data.get('user') is not None:
-                message += " (%s)" % signal.data['user']
+            if signal.data.get('message') is not None:
+                message += " (%s)" % signal.data['message']
 
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return

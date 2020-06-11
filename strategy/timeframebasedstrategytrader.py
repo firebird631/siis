@@ -15,7 +15,8 @@ from instrument.instrument import Instrument, Candle
 from instrument.candlegenerator import CandleGenerator
 from common.utils import timeframe_from_str
 
-from monitor.streamable import Streamable, StreamMemberInt, StreamMemberFloatTuple, StreamMemberTradeList, StreamMemberFloatScatter
+from monitor.streamable import Streamable, StreamMemberInt, StreamMemberFloatTuple, StreamMemberFloatScatter, \
+                               StreamMemberTradeEntry, StreamMemberTradeUpdate, StreamMemberTradeExit
 
 import logging
 logger = logging.getLogger('siis.strategy.trader')
@@ -196,14 +197,17 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
     def setup_streaming(self):
         self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO, self.strategy.identifier, self.instrument.market_id)
-        self._global_streamer.add_member(StreamMemberFloatTuple('tfs'))
-        self._global_streamer.add_member(StreamMemberTradeList('trades'))
+        self._global_streamer.add_member(StreamMemberFloatTuple('tfs'))  # @deprecated
+
+        self._global_streamer.add_member(StreamMemberTradeEntry('trade-entry'))
+        self._global_streamer.add_member(StreamMemberTradeUpdate('trade-update'))
+        self._global_streamer.add_member(StreamMemberTradeExit('trade-exit'))
 
         # merged on the price
-        self._global_streamer.add_member(StreamMemberFloatScatter('buy-entry', 0, 'g^'))
-        self._global_streamer.add_member(StreamMemberFloatScatter('sell-entry', 0, 'r^'))
-        self._global_streamer.add_member(StreamMemberFloatScatter('buy-exit', 0, 'r^'))
-        self._global_streamer.add_member(StreamMemberFloatScatter('sell-exit', 0, 'g^'))
+        self._global_streamer.add_member(StreamMemberFloatScatter('buy-entry', 0, 'g^'))  # @deprecated
+        self._global_streamer.add_member(StreamMemberFloatScatter('sell-entry', 0, 'r^'))  # @deprecated
+        self._global_streamer.add_member(StreamMemberFloatScatter('buy-exit', 0, 'r^'))  # @deprecated
+        self._global_streamer.add_member(StreamMemberFloatScatter('sell-exit', 0, 'g^'))  # @deprecated
 
     def stream(self):
         # global data

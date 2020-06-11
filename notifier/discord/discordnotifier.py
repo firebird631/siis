@@ -20,8 +20,6 @@ from notifier.discord.webhooks import send_to_discord
 
 from common.signal import Signal
 
-from common.utils import timeframe_to_str
-
 from strategy.helpers.activetradetable import trades_stats_table
 
 import logging
@@ -111,8 +109,6 @@ class DiscordNotifier(Notifier):
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
             label = "Signal %s %s on %s" % (action, signal.data['direction'], signal.data['symbol'],)
 
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-
             message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
                 signal.data['symbol'],
                 signal.data['order-price'],
@@ -154,8 +150,6 @@ class DiscordNotifier(Notifier):
 
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
             label = "Alert %s %s on %s" % (signal.data['name'], signal.data['reason'], signal.data['symbol'],)
-
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
             message = "%s %s@%s (%s) %s at %s - #%s in %s" % (
                 signal.data['name'],

@@ -4,13 +4,11 @@ $(window).ready(function() {
         'host': null,
         'port': null,
         'ws-port': null,
-        'api-key': null,
         'auth-token': null,
+        'ws-auth-token': null,
     };
 
     window.ws = null;
-
-    // how to input the api-key ?
 
     let searchParams = new URLSearchParams(window.location.search);
 
@@ -181,6 +179,31 @@ $(window).ready(function() {
             'distance': 1.5,
             'type': 'percent',
         },
+        'percent-2.0': {
+            'label': '2.0%',
+            'distance': 2.0,
+            'type': 'percent',
+        },
+        'percent-3.0': {
+            'label': '2.0%',
+            'distance': 2.0,
+            'type': 'percent',
+        },
+        'percent-4.0': {
+            'label': '4.0%',
+            'distance': 4.0,
+            'type': 'percent',
+        },
+        'percent-5.0': {
+            'label': '5.0%',
+            'distance': 5.0,
+            'type': 'percent',
+        },
+        'percent-10.0': {
+            'label': '10.0%',
+            'distance': 10.0,
+            'type': 'percent',
+        },
         'pip-3': {
             'label': '3pips',
             'distance': 3,
@@ -229,6 +252,21 @@ $(window).ready(function() {
         'pip-30': {
             'label': '30pips',
             'distance': 30,
+            'type': 'pip',
+        },
+        'pip-50': {
+            'label': '50pips',
+            'distance': 50,
+            'type': 'pip',
+        },
+        'pip-75': {
+            'label': '75pips',
+            'distance': 75,
+            'type': 'pip',
+        },
+        'pip-1000': {
+            'label': '100pips',
+            'distance': 100,
             'type': 'pip',
         },
         'strategy': {
@@ -300,6 +338,34 @@ $(window).ready(function() {
         alert("todo!")
     });
 
+    $("#options_layer").on('click', function(e) {
+        $("div.trade-list-entries ul").empty();
+
+        alert("todo!")
+    });
+
+    $('#authentification').modal({'show': true, 'backdrop': false});
+
+    $('#authentification').on('shown.bs.modal', function () {
+        $('#identifier').focus();
+    })  
+
+    $('#connect').on('click', function(e) {
+        authenticate();
+    });
+
+    $('#identifier').keypress(function(e) {
+        if (e.which == '13') {
+            authenticate();
+        }
+    });
+
+    $('#password').keypress(function(e) {
+        if (e.which == '13') {
+            authenticate();
+        }
+    });
+
     //
     // session init
     //
@@ -308,13 +374,57 @@ $(window).ready(function() {
         data['auth-token'] = server['auth-token'];
     }
 
-    function get_auth_token() {
+    function get_auth_token(api_key) {
         let endpoint = "auth";
         let url = base_url() + '/' + endpoint;
 
         let data = {
-            'api-key': server['api-key'],
+            'api-key': api_key
         }
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: JSON.stringify(data),
+            dataType: 'json',
+            contentType: 'application/json'
+        })
+        .done(function(result) {
+            if (result['error'] || !result['auth-token']) {
+                notify({'message': "Rejected authentication", 'type': 'error'});
+                return;
+            }
+
+            server['auth-token'] = result['auth-token'];
+            server['ws-auth-token'] = result['ws-auth-token'];
+
+            if (server['ws-port'] != null) {
+                start_ws();
+            }
+
+            fetch_strategy();
+
+            for (let appliance in appliances) {
+                fetch_trades(appliance);
+            }
+
+            $('#authentification').modal('hide');
+        })
+        .fail(function() {
+            alert("Unable to obtain an auth-token !");
+        });
+    };
+
+    function login(identifier, password) {
+        let endpoint = "auth";
+        let url = base_url() + '/' + endpoint;
+
+        let data = {
+            'identifier': identifier,
+            'password': password
+        }
+
+        let res = 0;
 
         $.ajax({
             type: "POST",
@@ -335,11 +445,14 @@ $(window).ready(function() {
             for (let appliance in appliances) {
                 fetch_trades(appliance);
             }
+
+            $('#authentification').modal('hide');
         })
         .fail(function() {
             alert("Unable to obtain an auth-token !");
         });
     };
+
 
     function start_ws() {
         if (ws != null) {
@@ -348,7 +461,9 @@ $(window).ready(function() {
             ws = null;
         }
 
-        ws = new WebSocket("ws://" + server['host'] + ":" + server['ws-port'] + "?auth-token=" + server['auth-token']);
+        ws = new WebSocket("ws://" + server['host'] + ":" + server['ws-port'] +
+                "?ws-auth-token=" + server['ws-auth-token'] +
+                '&auth-token=' + server['auth-token']);
 
         ws.onopen = function(event) {
             console.log("WS opened");
@@ -359,30 +474,50 @@ $(window).ready(function() {
         };
 
         ws.onmessage = function (event) {
-            console.log(event.data);
+            on_ws_message(JSON.parse(event.data));
         }
     }
 
     // global function to setup data and to get an initial auth-token
-    siis_connect = function(host, port, api_key, ws_port=6340) {
+    siis_connect = function(api_key, host, port, ws_port=6340) {
         server['host'] = host;
         server['port'] = port;
-        server['api-key'] = api_key;
         server['ws-port'] = ws_port;
 
-        get_auth_token();
+        return get_auth_token(api_key);
+    }
+
+    siis_login = function(identifier, password, host, port, ws_port=6340) {
+        server['host'] = host;
+        server['port'] = port;
+        server['ws-port'] = ws_port;
+
+        return login(identifier, password);
     }
 
     server['protocol'] = window.location.protocol;
 
     simple_connect = function(api_key) {
-        siis_connect(window.location.hostname, parseInt(window.location.port), api_key, ws_port=parseInt(window.location.port)+1);
+        return siis_connect(api_key, window.location.hostname, parseInt(window.location.port), ws_port=parseInt(window.location.port)+1);
     }
 });
 
 //
 // global
 //
+
+function authenticate() {
+    let identifier = $('#identifier').val();
+    let password = $('#password').val();
+
+    if (identifier && password) {
+        // by login and password
+        siis_login(identifier, password, window.location.hostname, parseInt(window.location.port), ws_port=parseInt(window.location.port)+1);
+    } else if (identifier) {
+        // by API key
+        siis_connect(identifier, window.location.hostname, parseInt(window.location.port), ws_port=parseInt(window.location.port)+1);
+    }
+}
 
 function setup_traders() {
     $("div.trader").each(function(i, elt) {
@@ -396,15 +531,20 @@ function setup_traders() {
         let id = "trader_" + i;
         let market = null;
         let profiles = window.default_profiles;
+        let market_id = null;
 
-        if (Object.keys(window.markets).length > 0) {
-            let first_market_id = Object.keys(window.markets)[0];
+        if (i < Object.keys(window.markets).length) {
+            market_id = Object.keys(window.markets)[i];
+        } else if (Object.keys(window.markets).length > 0) {
+            market_id = Object.keys(window.markets)[0];
+        }
 
-            market = window.markets[first_market_id];
+        if (market_id != null) {
+            market = window.markets[market_id];
             profiles = market['profiles'];
         }
 
-        add_symbols(id, trader_row1);
+        let symbol_select = add_symbols(id, trader_row1);
         add_profiles(id, trader_row1, profiles);
 
         add_take_profit_price(id, trader_row2);
@@ -426,6 +566,8 @@ function setup_traders() {
         $(elt).append(trader_row4);
         $(elt).append(trader_row5);
         $(elt).append(trader_row6);
+
+        symbol_select.selectpicker('val', market_id);
     });
 }
 
@@ -437,14 +579,12 @@ function fetch_strategy() {
     let endpoint = "strategy";
     let url = base_url() + '/' + endpoint;
 
-    let params = {
-        'auth-token': server['auth-token'],
-    }
-
     $.ajax({
         type: "GET",
         url: url,
-        data: params,
+        headers: {
+            'Authorization': "Bearer " + server['auth-token'],
+        },
         dataType: 'json',
         contentType: 'application/json'
     })
@@ -507,13 +647,15 @@ function fetch_trades(appliance) {
 
     let params = {
         'appliance': appliance,
-        'auth-token': server['auth-token'],
     }
 
     $.ajax({
         type: "GET",
         url: url,
         data: params,
+        headers: {
+            'Authorization': "Bearer " + server['auth-token'],
+        },
         dataType: 'json',
         contentType: 'application/json'
     })
@@ -533,6 +675,21 @@ function fetch_trades(appliance) {
     });
 }
 
+function timestamp_to_time_str(timestamp) {
+    let datetime = new Date(timestamp);
+    return datetime.toLocaleTimeString("en-US");
+}
+
+function timestamp_to_date_str(timestamp) {
+    let datetime = new Date(timestamp);
+    return datetime.toLocaleDateString("en-US");
+}
+
+function timestamp_to_datetime_str(timestamp) {
+    let datetime = new Date(timestamp);
+    return datetime.toLocaleDateString("en-US") + " " + datetime.toLocaleTimeString("en-US");
+}
+
 //
 // traders functions
 //
@@ -547,7 +704,9 @@ function add_symbols(id, to) {
 
     to.append(select);
 
-    select.selectpicker({'width': '150px'});
+    select.selectpicker({'width': '165px'});
+
+    return select;
 };
 
 function add_profiles(id, to, profiles) {
@@ -560,7 +719,7 @@ function add_profiles(id, to, profiles) {
 
     to.append(select);
 
-    select.selectpicker({'width': '150px'});
+    select.selectpicker({'width': '170px'});
 
     select.on('change', function(e) {
         on_change_profile(e);
@@ -584,7 +743,7 @@ function add_take_profit_methods(id, to) {
 
     to.append(select);
 
-    select.selectpicker({'width': '150px'});
+    select.selectpicker({'width': '170px'});
 
     select.on('change', function(e) {
         on_change_take_profit_method(e);
@@ -608,7 +767,7 @@ function add_entry_price_methods(id, to) {
 
     to.append(select);
 
-    select.selectpicker({'width': '150px'});
+    select.selectpicker({'width': '170px'});
 
     select.on('change', function(e) {
         on_change_entry_method(e);
@@ -634,7 +793,7 @@ function add_stop_loss_methods(id, to) {
 
     to.append(select);
 
-    select.selectpicker({'width': '150px'});
+    select.selectpicker({'width': '170px'});
 
     select.on('change', function(e) {
         on_change_stop_loss_method(e);
@@ -642,7 +801,7 @@ function add_stop_loss_methods(id, to) {
 };
 
 function add_quantity_slider(id, to) {
-    let slider = $('<input type="range" class="quantity" name="quantity">').css('width', '165px');
+    let slider = $('<input type="range" class="quantity" name="quantity">').css('width', '200px');
     let factor = $('<select class="quantity-factor" name="quantity-factor"></select>');
     let value = $('<span class="quantity-value" name="quantity-value">100%</span>');
 
@@ -726,16 +885,19 @@ function add_long_short_actions(id, to) {
     let tv_btn = $('<button class="btn btn-secondary trading-view-action" name="trading-view-action"><span class="fa fa-link"></span>&nbsp;TV</button>');
     let long_btn = $('<button class="btn btn-success long-action" name="long-action">Long</button>');
     let short_btn = $('<button class="btn btn-danger short-action" name="short-action">Short</button>');
+    let auto_btn = $('<button class="btn btn-secondary siis-chart-auto" name="siis-chart-auto"><span class="fa fa-play"></span></button>');
     let chart_btn = $('<button class="btn btn-secondary siis-chart-action" name="siis-chart-action"><span class="fa fa-bar-chart"></span></button>');
 
     long_btn.attr('trader-id', id);
     short_btn.attr('trader-id', id);
     tv_btn.attr('trader-id', id);
+    auto_btn.attr('trader-id', id);
     chart_btn.attr('trader-id', id);
 
     to.append(tv_btn);
     to.append(long_btn);
     to.append(short_btn);
+    to.append(auto_btn);
     to.append(chart_btn);
 
     long_btn.on('click', function(elt) {
@@ -750,10 +912,20 @@ function add_long_short_actions(id, to) {
         open_trading_view(elt);
     });
 
+    auto_btn.on('click', function(elt) {
+        toggle_auto(elt);
+    });
+
     chart_btn.on('click', function(elt) {
         alert("TODO !:")
     });
 };
+
+function toggle_auto(elt) {
+    let symbol = retrieve_symbol(elt);
+
+    // @todo
+}
 
 function open_trading_view(elt) {
     let symbol = retrieve_symbol(elt);

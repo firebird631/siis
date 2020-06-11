@@ -12,8 +12,6 @@ import traceback
 import collections
 import base64, hashlib
 
-import asyncio
-
 from twisted.internet import reactor
 from twisted.internet.error import ReactorAlreadyRunning, ReactorNotRunning
 from common.service import Service
@@ -34,10 +32,7 @@ traceback_logger = logging.getLogger('siis.traceback.monitor')
 class MonitorService(Service):
     """
     Monitoring web service.
-    @todo REST HTTP(S) server + WS server.
-    @todo receive REST external commands
-    @todo streaming throught WS server + streaming API for any sort of data
-    @todo streaming of the state and any signals that can be monitored + charting and appliances data
+    @todo remove deprecated FIFO method
     """
 
     MODE_NONE = 0
@@ -86,6 +81,9 @@ class MonitorService(Service):
         if options.get('monitor-port'):
             self._port = options['monitor-port']
 
+        self.__api_key = self._monitoring_config.get('api-key', "")
+        self.__api_secret = self._monitoring_config.get('api-secret', "")
+
         # allow deny rules
         allowdeny = self._monitoring_config.get('allowdeny', "allowonly")
 
@@ -98,6 +96,8 @@ class MonitorService(Service):
             self._allowed_ips = None
         elif allowdeny == "deny":
             self._denied_ips = self._monitoring_config.get('list', [])
+
+        self._client_ws_auth_token = {}
 
         # fifo
         self._tmpdir = None
@@ -212,8 +212,8 @@ class MonitorService(Service):
                 from .http.httprestserver import HttpRestServer
                 from .http.httpwsserver import HttpWebSocketServer
 
-                self._http = HttpRestServer(self._host, self._port, self._strategy_service, self._trader_service)
-                self._ws = HttpWebSocketServer(self._host, self._port+1)
+                self._http = HttpRestServer(self._host, self._port, self.__api_key, self.__api_secret, self, self._strategy_service, self._trader_service)
+                self._ws = HttpWebSocketServer(self._host, self._port+1, self)
 
                 HttpRestServer.ALLOWED_IPS = copy.copy(self._allowed_ips)
                 HttpRestServer.DENIED_IPS = copy.copy(self._denied_ips)
@@ -360,6 +360,16 @@ class MonitorService(Service):
 
     def command(self, command_type, data):
         pass
+
+    def register_ws_auth_token(self, auth_token, ws_auth_token):
+        self._client_ws_auth_token[auth_token] = ws_auth_token
+
+    def is_ws_auth_token(self, auth_token, ws_auth_token):
+        return self._client_ws_auth_token.get(auth_token, "") == ws_auth_token
+
+    def unregister_ws_auth_token(self, auth_token):
+        if auth_token in self._client_ws_auth_token:
+            del (self._client_ws_auth_token[auth_token])
 
     def publish(self, stream_category, stream_group, stream_name, content):
         if self._mode == MonitorService.MODE_FIFO:

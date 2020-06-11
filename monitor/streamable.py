@@ -220,6 +220,7 @@ class StreamMemberFloatSerie(StreamMember):
 
         self._index = index
         self._base = 0.0
+        self._timestamp = 0.0
         self._value = 0.0
 
     def update(self, value, timestamp):
@@ -243,6 +244,7 @@ class StreamMemberFloatBarSerie(StreamMember):
 
         self._index = index
         self._base = 0.0
+        self._timestamp = 0.0
         self._value = 0.0
 
     def update(self, value, timestamp):
@@ -274,43 +276,67 @@ class StreamMemberStrList(StreamMember):
         return {'n': self._name, 't': self._type, 'v': self._value}
 
 
-class StreamMemberTradeList(StreamMember):
+class StreamMemberTradeEntry(StreamMember):
     """
-    Specialization for a list of trades.
-    @todo could have a trade it for interaction
-    @todo could inform if order is in progress (buy, sell, stop, limit)...
-    @todo entry,update,exit detail
+    Specialization for a trade entry.
     """
 
-    TYPE_TRADE_LIST = "tl"
+    TYPE_TRADE_ENTRY = "to"
 
     def __init__(self, name):
-        super().__init__(name, StreamMemberTradeList.TYPE_TRADE_LIST)
+        super().__init__(name, StreamMemberTradeEntry.TYPE_TRADE_ENTRY)
 
-        self._trades = []
+        self._timestamp = 0.0
+        self._trade = {}
 
-    def update(self, trades):
-        self._trades = []
-
-        for trade in trades:
-            self._trades.append({
-                't': trade.trade_type,
-                'os': trade.entry_state,
-                'es': trade.exit_state,
-                'u': trade.timeframe,
-                'p': trade.aep,
-                'd': trade.dir,
-                'q': trade.q,  # order qty
-                'e': trade.e,  # filled entry qty
-                'x': trade.x,  # filled exit qty
-                'sl': trade.sl,
-                'tp': trade.tp
-            })
-
+    def update(self, strategy_trader, trade, timestamp):
+        self._trade = trade.dumps_notify_entry(timestamp, strategy_trader)
         self._updated = True
 
     def content(self):
-        return {'n': self._name, 't': self._type, 'v': self._trades}
+        return {'n': self._name, 't': self._type, 'v': self._trade, 'b': self._timestamp}
+
+
+class StreamMemberTradeUpdate(StreamMember):
+    """
+    Specialization for a trade update.
+    """
+
+    TYPE_TRADE_UPDATE = "tu"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberTradeUpdate.TYPE_TRADE_UPDATE)
+
+        self._timestamp = 0.0
+        self._trade = {}
+
+    def update(self, strategy_trader, trade, timestamp):
+        self._trade = trade.dumps_notify_update(timestamp, strategy_trader)
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._trade, 'b': self._timestamp}
+
+
+class StreamMemberTradeExit(StreamMember):
+    """
+    Specialization for a trade exit.
+    """
+
+    TYPE_TRADE_EXIT = "tx"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberTradeExit.TYPE_TRADE_EXIT)
+
+        self._timestamp = 0.0
+        self._trade = {}
+
+    def update(self, strategy_trader, trade, timestamp):
+        self._trade = trade.dumps_notify_exit(timestamp, strategy_trader)
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._trade, 'b': self._timestamp}
 
 
 class StreamMemberSerie(StreamMember):
@@ -323,6 +349,7 @@ class StreamMemberSerie(StreamMember):
     def __init__(self, name):
         super().__init__(name, StreamMemberSerie.TYPE_SERIE)
 
+        self._timestamp = 0.0
         self._value = 0.0
 
     def update(self, timestamp):
@@ -345,6 +372,7 @@ class StreamMemberFloatScatter(StreamMember):
 
         self._index = index
         self._base = 0.0
+        self._timestamp = 0.0
         self._value = 0.0
         self._glyph = glyph
 
@@ -368,6 +396,7 @@ class StreamMemberOhlcSerie(StreamMember):
         super().__init__(name, StreamMemberOhlcSerie.TYPE_OHLC_SERIE)
 
         self._index = 0
+        self._timestamp = 0.0
         self._value = (0.0, 0.0, 0.0, 0.0)
 
     def update(self, v, timestamp):

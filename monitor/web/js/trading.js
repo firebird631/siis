@@ -88,15 +88,19 @@ function on_order_long(elt) {
         $.ajax({
             type: "POST",
             url: url,
+            headers: {
+                'Authorization': "Bearer " + server['auth-token'],
+            },
             data: JSON.stringify(data),
             dataType: 'json',
             contentType: 'application/json'
         })
         .done(function(data) {
-            console.log(data);
+            // console.log(data);
+            notify({'message': "Success", 'title': 'Order Long', 'type': 'success'});
         })
         .fail(function(data) {
-            alert(data);
+            notify({'message': data.reason, 'title': 'Order Long', 'type': 'error'});
         });
     }
 };
@@ -191,14 +195,18 @@ function on_order_short(elt) {
         $.ajax({
             type: "POST",
             url: url,
+            headers: {
+                'Authorization': "Bearer " + server['auth-token'],
+            },
             data: JSON.stringify(data),
             dataType: 'json',
             contentType: 'application/json'
         })
         .done(function(data) {
+            notify({'message': "Success", 'title': 'Order Long', 'type': 'success'});
         })
         .fail(function(data) {
-            alert(data);
+            notify({'message': data.reason, 'title': 'Order Long', 'type': 'error'});
         });
     }
 };
@@ -226,9 +234,22 @@ function on_close_trade(elt) {
             contentType: 'application/json'
         })
         .done(function(data) {
+            notify({'message': "Success", 'title': 'Order Close', 'type': 'success'});
         })
         .fail(function(data) {
-            alert(data);
+            notify({'message': data.reason, 'title': 'Order Close', 'type': 'error'});
         });
     }
+};
+
+let on_trade_entry_message = function(appliance, market_id, trade_id, timestamp, value) {
+
+};
+
+let on_trade_update_message = function(appliance, market_id, trade_id, timestamp, value) {
+
+};
+
+let on_trade_exit_message = function(appliance, market_id, trade_id, timestamp, value) {
+
 };

@@ -27,8 +27,6 @@ from common.signal import Signal
 
 from terminal.terminal import Terminal
 
-from common.utils import timeframe_to_str
-
 import logging
 logger = logging.getLogger('siis.notifier.desktop')
 error_logger = logging.getLogger('siis.error.notifier.desktop')
@@ -170,7 +168,7 @@ class DesktopNotifier(Notifier):
                 signal.data['direction'],
                 ldatetime,
                 signal.data['id'],
-                timeframe_to_str(signal.data['timeframe']))
+                signal.data['timeframe'])
 
             if signal.data.get('stop-loss-price'):
                 message += " SL@%s" % (signal.data['stop-loss-price'],)
@@ -207,7 +205,7 @@ class DesktopNotifier(Notifier):
                 signal.data['reason'],
                 ldatetime,
                 signal.data['id'],
-                timeframe_to_str(signal.data['timeframe']))
+                signal.data['timeframe'])
 
             if signal.data['message'] is not None:
                 message += " (%s)" % signal.data['message']

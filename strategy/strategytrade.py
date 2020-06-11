@@ -1063,3 +1063,7 @@ class StrategyTrade(object):
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason'])
             }
         }
+
+    def dumps_notify_update(self, timestamp, strategy_trader):
+        # @todo
+        return {}

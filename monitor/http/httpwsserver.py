@@ -14,11 +14,13 @@ import base64, hashlib
 import asyncio
 
 from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
+from autobahn.websocket.types import ConnectionDeny
 
 from twisted.python import log
 from twisted.internet import reactor, ssl
 
 from monitor.service import MonitorService
+from monitor.http.httprestserver import HttpRestServer, check_ws_auth_token
 
 import logging
 logger = logging.getLogger('siis.monitor.httpwsserver')
@@ -28,10 +30,15 @@ traceback_logger = logging.getLogger('siis.traceback.monitor.httpwsserver')
 
 class ServerProtocol(WebSocketServerProtocol):
     connections = list()
+    monitor_service = None
 
     def onConnect(self, request):
         logger.debug("Client connecting: {0}".format(request.peer))
-        self.connections.append(self)
+
+        if not check_ws_auth_token(ServerProtocol.monitor_service, request):
+            raise ConnectionDeny(4000, reason="Invalid auth")
+        else:
+            self.connections.append(self)
 
     def onOpen(self):
         logger.debug("WebSocket connection open")
@@ -56,24 +63,40 @@ class ServerProtocol(WebSocketServerProtocol):
             reactor.callFromThread(cls.sendClose, c, payload)
 
 
+class AllowedIPOnlyFactory(WebSocketServerFactory):
+
+    def buildProtocol(self, addr):
+        if HttpRestServer.DENIED_IPS and addr.host in HttpRestServer.DENIED_IPS:
+            return None
+
+        if HttpRestServer.ALLOWED_IPS and addr.host in HttpRestServer.ALLOWED_IPS:
+            return super().buildProtocol(addr)
+
+        return None
+
+
 class HttpWebSocketServer(object):
 
-    def __init__(self, host, port):
-        self._server = None
+    def __init__(self, host, port, monitor_service):
         self._listener = None
 
         self._host = host
         self._port = port
 
+        self._monitor_service = monitor_service
+
         self._mutex = threading.RLock()
 
     def start(self):
-        factory = WebSocketServerFactory("ws://%s:%i" % (self._host, self._port))
+        # factory = WebSocketServerFactory("ws://%s:%i" % (self._host, self._port))
+        factory = AllowedIPOnlyFactory("ws://%s:%i" % (self._host, self._port))
         factory.protocol = ServerProtocol
+        factory.protocol.monitor_service = self._monitor_service
         factory.setProtocolOptions(maxConnections=5)
 
         MonitorService.ref_reactor()
         self._listener = reactor.listenTCP(self._port, factory)
+        # self._listener = reactor.listenSSL(self._port, factory, contextFactory)
 
         if self._listener:
             MonitorService.set_reactor(installSignalHandlers=False)

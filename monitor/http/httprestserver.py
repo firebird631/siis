@@ -8,6 +8,8 @@ import time, datetime
 import tempfile, os, posix
 import threading
 import traceback
+import base64
+import uuid
 
 from monitor.service import MonitorService
 
@@ -46,25 +48,95 @@ registerAdapter(AuthToken, Session, IAuthToken)
 class AuthRestAPI(resource.Resource):
     isLeaf = True
 
+    def __init__(self, monitor_service, api_key, api_secret):
+        super().__init__()
+
+        self.__api_key = api_key
+        self.__api_secret = api_secret
+
+        self._monitor_service = monitor_service
+
     def render_GET(self, request):
-        
+        # https://gist.github.com/Hornswoggles/2ef7177aa8eb614d674ea9b9bf1be819
+        # https://pyjwt.readthedocs.io/en/latest/
+        # https://opensource.com/article/20/3/treq-python
         return json.dumps({}).encode("utf-8")
 
     def render_POST(self, request):
-        api_key = request.args.get('api-key')
-        auth_token = '123456789'  # @todo
+        content = json.loads(request.content.read().decode("utf-8"))
+
+        api_key = content.get('api-key')
+
+        if api_key == self.__api_key:
+            # @todo use a JWT
+            auth_token = base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace('/', '_').replace('+', '0')
+            ws_auth_token = base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace('/', '_').replace('+', '0')
+
+            self._monitor_service.register_ws_auth_token(auth_token, ws_auth_token)
+        else:
+            return json.dumps({
+                'error': False,
+                'message': "invalid-auth",
+                'auth-token': None,
+                'ws-auth-token': None,
+            }).encode("utf-8")
 
         s_auth_token = IAuthToken(request.getSession())
         s_auth_token.value = auth_token
 
+        request.setHeader('Authorization', 'Bearer ' + auth_token)
+
         return json.dumps({
-            'auth-token': auth_token
+            'error': False,
+            'auth-token': auth_token,
+            'ws-auth-token': ws_auth_token,
         }).encode("utf-8")
 
     def render_DELETE(self, request):
         request.getSession().expired()
 
         return json.dumps({}).encode("utf-8")
+
+
+def check_auth_token(request):
+    s_auth_token = IAuthToken(request.getSession())
+
+    # from header (best)
+    bearer = request.getHeader('Authorization')
+    if bearer:
+        bearer = bearer.split(' ')
+    
+        if bearer[0] == "Bearer" and bearer[1] == s_auth_token.value:
+            return True
+
+    # or from args (not safe)
+    auth_token = request.args.get(b'auth-token', [b""])[0].decode("utf-8")
+    if auth_token:
+        if auth_token == s_auth_token.value:
+            return True
+
+    # or from body (intermediate)
+    content = json.loads(request.content.read().decode("utf-8"))
+    auth_token = content.get('auth-token')
+    if auth_token:
+        if auth_token == s_auth_token.value:
+            return True
+
+    return False
+
+
+def check_ws_auth_token(monitor_service, request):
+    auth_token = request.params.get('auth-token', [""])[0]
+    ws_auth_token = request.params.get('ws-auth-token', [""])[0]
+
+    result = False
+
+    if auth_token and ws_auth_token:
+        result = monitor_service.is_ws_auth_token(auth_token, ws_auth_token)
+
+    monitor_service.unregister_ws_auth_token(auth_token)
+
+    return result
 
 
 class StrategyInfoRestAPI(resource.Resource):
@@ -77,6 +149,9 @@ class StrategyInfoRestAPI(resource.Resource):
         self._trader_service = trader_service
 
     def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
         uri = request.uri.decode("utf-8").split('/')
 
         traders_names = self._trader_service.traders_names()
@@ -144,16 +219,22 @@ class StrategyInfoRestAPI(resource.Resource):
         return json.dumps(result).encode("utf-8")
 
     def render_POST(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
         result = {}
 
-        # @todo
+        # @todo to add dynamically a new instrument
 
         return json.dumps(result).encode("utf-8")
 
     def render_DELETE(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
         result = {}
 
-        # @todo
+        # @todo to remove dynamically an instrument
 
         return json.dumps(result).encode("utf-8")
 
@@ -168,6 +249,9 @@ class InstrumentRestAPI(resource.Resource):
         self._trader_service = trader_service
 
     def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
         uri = request.uri.decode("utf-8").split('/')
         result = {}
 
@@ -176,6 +260,9 @@ class InstrumentRestAPI(resource.Resource):
         return json.dumps(result).encode("utf-8")
 
     def render_POST(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
         result = {}
 
         # @todo
@@ -183,6 +270,9 @@ class InstrumentRestAPI(resource.Resource):
         return json.dumps(result).encode("utf-8")
 
     def render_DELETE(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
         result = {}
 
         # @todo
@@ -200,6 +290,9 @@ class StrategyTradeRestAPI(resource.Resource):
         self._trader_service = trader_service
 
     def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
         uri = request.uri.decode("utf-8").split('/')
 
         if uri[-1] != 'trade':
@@ -215,6 +308,9 @@ class StrategyTradeRestAPI(resource.Resource):
         return json.dumps(result).encode("utf-8")
 
     def render_POST(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
         result = {
             'messages': [],
             'error': False
@@ -237,6 +333,9 @@ class StrategyTradeRestAPI(resource.Resource):
         return json.dumps(result).encode("utf-8")
 
     def render_DELETE(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
         result = {
             'messages': [],
             'error': False
@@ -259,6 +358,9 @@ class ActiveTradeRestAPI(resource.Resource):
         self._trader_service = trader_service
 
     def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': 'invalid-auth-token'}).encode("utf-8")
+
         uri = request.uri.decode("utf-8").split('/')
         result = {}
 
@@ -277,10 +379,39 @@ class HistoricalTradeRestAPI(resource.Resource):
         self._trader_service = trader_service
 
     def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
         uri = request.uri.split('/')
         result = {}
 
         # @todo
+
+        return json.dumps(result).encode("utf-8")
+
+
+class Charting(resource.Resource):
+    isLeaf = True
+
+    def __init__(self, strategy_service, trader_service):
+        super().__init__()
+
+        self._strategy_service = strategy_service
+        self._trader_service = trader_service
+
+    def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+
+        uri = request.uri.split('/')
+        result = {}
+
+        template = open("monitor/web/charting.html", "rb")
+
+        # @todo replace template part
+        result = ""
+
+        close(template)
 
         return json.dumps(result).encode("utf-8")
 
@@ -302,12 +433,16 @@ class HttpRestServer(object):
     ALLOWED_IPS = None
     DENIED_IPS = None
 
-    def __init__(self, host, port, strategy_service, trader_service):
+    def __init__(self, host, port, api_key, api_secret, monitor_service, strategy_service, trader_service):
         self._listener = None
 
         self._host = host
         self._port = port
 
+        self.__api_key = api_key
+        self.__api_secret = api_secret
+
+        self._monitor_service = monitor_service
         self._strategy_service = strategy_service
         self._trader_service = trader_service
 
@@ -320,7 +455,7 @@ class HttpRestServer(object):
         api.putChild(b"v1", api_v1)
 
         # auth
-        api_v1.putChild(b"auth", AuthRestAPI())
+        api_v1.putChild(b"auth", AuthRestAPI(self._monitor_service, self.__api_key, self.__api_secret))
 
         # strategy
         strategy_api = StrategyInfoRestAPI(self._strategy_service, self._trader_service)
@@ -345,6 +480,9 @@ class HttpRestServer(object):
         # monitor
         monitor_api = resource.Resource()
         api_v1.putChild(b"monitor", monitor_api)
+
+        # charting
+        root.putChild(b"chart", Charting(self._strategy_service, self._trader_service))
 
         factory = AllowedIPOnlyFactory(root)
 
