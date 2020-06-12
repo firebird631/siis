@@ -28,6 +28,11 @@ class Watcher(Runnable):
     Watcher base class.
     """
 
+    COMMAND_INFO = 1
+
+    COMMAND_SUBSCRIBE = 2
+    COMMAND_UNSUBSCRIBE = 3
+
     UPDATE_MARKET_INFO_DELAY = 4*60*60  # 4h between each market data info fetch
 
     WATCHER_UNDEFINED = 0
@@ -276,11 +281,8 @@ class Watcher(Runnable):
         return self._service
 
     def command(self, command_type, data):
-        """
-        Some parts are mutexed some others are not.
-        @todo some command are only display, so could be moved to a displayer, and command could only return an object
-        """
-        pass
+        # @todo info, subscribe, unsubscribe commands
+        return None
 
     def pong(self, timestamp, pid, watchdog_service, msg):
         if msg:

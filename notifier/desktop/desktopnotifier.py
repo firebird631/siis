@@ -229,6 +229,7 @@ class DesktopNotifier(Notifier):
                 n.show()
 
     def command(self, command_type, data):
+        # @todo results
         if command_type == self.COMMAND_TOGGLE and data and data.get("value", "") == "popup":
             self._popups = not self._popups
             Terminal.inst().action("desktop notifier popups are now %s" % ("actives" if self._popups else "disabled",), view='status')
@@ -237,6 +238,8 @@ class DesktopNotifier(Notifier):
             Terminal.inst().action("desktop notifier audio alertes are now %s" % ("actives" if self._audible else "disabled",), view='status')
         elif command_type == self.COMMAND_INFO:
             Terminal.inst().info("desktop notifier is %s" % ("active" if self._playpause else "disabled",), view='content')
+
+        return None
 
     def receiver(self, signal):
         if not self._playpause or self._backtesting or not signal:

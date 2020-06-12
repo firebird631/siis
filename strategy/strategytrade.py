@@ -1009,6 +1009,7 @@ class StrategyTrade(object):
             'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
             'take-profit-price': strategy_trader.instrument.format_price(self.tp),
             'avg-entry-price': strategy_trader.instrument.format_price(self.aep),
+            'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
             'entry-open-time': self.dump_timestamp(self.eot),
             'stats': {
                 'entry-order-type': order_type_to_str(self._stats['entry-order-type']),

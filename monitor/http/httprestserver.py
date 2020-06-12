@@ -76,7 +76,7 @@ class AuthRestAPI(resource.Resource):
         else:
             return json.dumps({
                 'error': False,
-                'message': "invalid-auth",
+                'messages': ["invalid-auth"],
                 'auth-token': None,
                 'ws-auth-token': None,
             }).encode("utf-8")
@@ -150,7 +150,7 @@ class StrategyInfoRestAPI(resource.Resource):
 
     def render_GET(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
         uri = request.uri.decode("utf-8").split('/')
 
@@ -208,7 +208,7 @@ class StrategyInfoRestAPI(resource.Resource):
                         }
                     }
 
-        result = {
+        results = {
             'broker': {
                 'name': traders_names[0] if traders_names else None
             },
@@ -216,27 +216,27 @@ class StrategyInfoRestAPI(resource.Resource):
             'markets': markets,
         }
 
-        return json.dumps(result).encode("utf-8")
+        return json.dumps(results).encode("utf-8")
 
     def render_POST(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        result = {}
+        results = {}
 
         # @todo to add dynamically a new instrument
 
-        return json.dumps(result).encode("utf-8")
+        return json.dumps(results).encode("utf-8")
 
     def render_DELETE(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        result = {}
+        results = {}
 
         # @todo to remove dynamically an instrument
 
-        return json.dumps(result).encode("utf-8")
+        return json.dumps(results).encode("utf-8")
 
 
 class InstrumentRestAPI(resource.Resource):
@@ -250,34 +250,34 @@ class InstrumentRestAPI(resource.Resource):
 
     def render_GET(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
         uri = request.uri.decode("utf-8").split('/')
-        result = {}
+        results = {}
 
         # @todo
 
-        return json.dumps(result).encode("utf-8")
+        return json.dumps(results).encode("utf-8")
 
     def render_POST(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        result = {}
+        results = {}
 
         # @todo
 
-        return json.dumps(result).encode("utf-8")
+        return json.dumps(results).encode("utf-8")
 
     def render_DELETE(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        result = {}
+        results = {}
 
         # @todo
 
-        return json.dumps(result).encode("utf-8")
+        return json.dumps(results).encode("utf-8")
 
 
 class StrategyTradeRestAPI(resource.Resource):
@@ -291,7 +291,7 @@ class StrategyTradeRestAPI(resource.Resource):
 
     def render_GET(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
         uri = request.uri.decode("utf-8").split('/')
 
@@ -301,17 +301,17 @@ class StrategyTradeRestAPI(resource.Resource):
             except ValeurError:
                 return NoResource()
 
-        result = {}
+        results = {}
 
         # @todo
 
-        return json.dumps(result).encode("utf-8")
+        return json.dumps(results).encode("utf-8")
 
     def render_POST(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        result = {
+        results = {
             'messages': [],
             'error': False
         }
@@ -321,31 +321,31 @@ class StrategyTradeRestAPI(resource.Resource):
             command = content.get('command', "")
 
             if command == "trade-entry":
-                result = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
+                results = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
             elif command == "trade-modify":
-                result = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, content)
+                results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, content)
             else:
                 results['messages'].append("Missing command.")
                 results['error'] = True
         except Exception as e:
             logger.debug(e)
 
-        return json.dumps(result).encode("utf-8")
+        return json.dumps(results).encode("utf-8")
 
     def render_DELETE(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        result = {
+        results = {
             'messages': [],
             'error': False
         }
 
         content = json.loads(request.content.read().decode("utf-8"))
 
-        result = self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, content)
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, content)
 
-        return json.dumps(result).encode("utf-8")
+        return json.dumps(results).encode("utf-8")
 
 
 class ActiveTradeRestAPI(resource.Resource):
@@ -359,7 +359,7 @@ class ActiveTradeRestAPI(resource.Resource):
 
     def render_GET(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
         uri = request.uri.decode("utf-8").split('/')
         result = {}
@@ -380,7 +380,7 @@ class HistoricalTradeRestAPI(resource.Resource):
 
     def render_GET(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
         uri = request.uri.split('/')
         result = {}
@@ -401,7 +401,7 @@ class Charting(resource.Resource):
 
     def render_GET(self, request):
         if not check_auth_token(request):
-            return json.dumps({'error': True, 'message': 'invalid-auth-token'}).encode("utf-8")
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
         uri = request.uri.split('/')
         result = {}

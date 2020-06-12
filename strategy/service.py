@@ -472,6 +472,8 @@ class StrategyService(Service):
             self._signals_handler.notify(signal)
 
     def command(self, command_type, data):
+        results = None
+
         if command_type == Strategy.COMMAND_INFO or command_type == Strategy.COMMAND_TRADE_EXIT_ALL:
             # any or specific commands
             appliance_identifier = data.get('appliance')
@@ -480,11 +482,13 @@ class StrategyService(Service):
                 # for a specific appliance
                 appliance = self._appliances.get(appliance_identifier)
                 if appliance:
-                    appliance.command(command_type, data)
+                    results = appliance.command(command_type, data)
             else:
-                # or any
+                # or any, with an array of results
+                results = []
+
                 for k, appliance in self._appliances.items():
-                    appliance.command(command_type, data)
+                    results.append(appliance.command(command_type, data))
         else:
             # specific commands
             appliance_identifier = data.get('appliance')
@@ -494,7 +498,9 @@ class StrategyService(Service):
                 appliance = self._appliances.get(appliance_identifier)
 
             if appliance:
-                appliance.command(command_type, data)
+                results = appliance.command(command_type, data)
+
+        return results
 
     def __gen_command_key(self):
         with self._mutex:

@@ -49,6 +49,7 @@ $(window).ready(function() {
 
     window.appliances = {};
     window.actives_trades = {};
+    window.historical_trades = {};
 
     window.default_profiles = {
         'scalp-xs': {
@@ -327,27 +328,45 @@ $(window).ready(function() {
     //
 
     $("#list_historical_trades").on('click', function(e) {
-        $("div.trade-list-entries ul").empty();
+        $("div.active-trade-list-entries").hide();
+        $("div.options-list-entries").hide();
+        $("div.historical-trade-list-entries").show();
 
-        alert("todo!")
+        $('#list_active_trades').css('background', 'initial');
+        $('#list_historical_trades').css('background', 'chocolate');
+        $('#options_layer').css('background', 'initial');
     });
 
     $("#list_active_trades").on('click', function(e) {
-        $("div.trade-list-entries ul").empty();
+        $("div.historical-trade-list-entries").hide();
+        $("div.options-list-entries").hide();
+        $("div.active-trade-list-entries").show();
 
-        alert("todo!")
+        $('#list_active_trades').css('background', 'chocolate');
+        $('#list_historical_trades').css('background', 'initial');
+        $('#options_layer').css('background', 'initial');
     });
 
     $("#options_layer").on('click', function(e) {
-        $("div.trade-list-entries ul").empty();
+        $("div.historical-trade-list-entries").hide();
+        $("div.active-trade-list-entries").hide();
+        $("div.options-list-entries").show();
 
-        alert("todo!")
+        $('#list_active_trades').css('background', 'initial');
+        $('#list_historical_trades').css('background', 'initial');
+        $('#options_layer').css('background', 'chocolate');
     });
 
     $('#authentification').modal({'show': true, 'backdrop': false});
+    $('#list_active_trades').css('background', 'chocolate');
 
     $('#authentification').on('shown.bs.modal', function () {
         $('#identifier').focus();
+        let identifier = getCookie('identifier');
+
+        if (identifier) {
+            $('#identifier').val(identifier);
+        }
     })  
 
     $('#connect').on('click', function(e) {
@@ -409,9 +428,17 @@ $(window).ready(function() {
             }
 
             $('#authentification').modal('hide');
+
+            $("div.active-trade-list-entries ul").empty();
+            $("div.historical-trade-list-entries ul").empty();
+
+            notify({'message': "Connected", 'type': 'success'});
+
+            // store api-key into a cookie
+            setCookie('identifier', api_key, 15);
         })
         .fail(function() {
-            alert("Unable to obtain an auth-token !");
+            notify({'message': "Unable to obtain an auth-token !", 'type': 'error'});
         });
     };
 
@@ -447,6 +474,9 @@ $(window).ready(function() {
             }
 
             $('#authentification').modal('hide');
+
+            // store identifier into a cookie
+            setCookie('identifier', identifier, 15);
         })
         .fail(function() {
             alert("Unable to obtain an auth-token !");
@@ -506,6 +536,29 @@ $(window).ready(function() {
 // global
 //
 
+function setCookie(cname, cvalue, exdays) {
+    let d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    let expires = "expires="+ d.toUTCString();
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+}
+
+function getCookie(cname) {
+    let name = cname + "=";
+    let decodedCookie = decodeURIComponent(document.cookie);
+    let ca = decodedCookie.split(';');
+    for(let i = 0; i <ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) == ' ') {
+            c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+    return "";
+}
+
 function authenticate() {
     let identifier = $('#identifier').val();
     let password = $('#password').val();
@@ -545,7 +598,7 @@ function setup_traders() {
         }
 
         let symbol_select = add_symbols(id, trader_row1);
-        add_profiles(id, trader_row1, profiles);
+        let profile_select = add_profiles(id, trader_row1, profiles);
 
         add_take_profit_price(id, trader_row2);
         add_take_profit_methods(id, trader_row2);
@@ -568,6 +621,7 @@ function setup_traders() {
         $(elt).append(trader_row6);
 
         symbol_select.selectpicker('val', market_id);
+        profile_select.selectpicker('change', 'scalp-xs').change();
     });
 }
 
@@ -677,17 +731,17 @@ function fetch_trades(appliance) {
 
 function timestamp_to_time_str(timestamp) {
     let datetime = new Date(timestamp);
-    return datetime.toLocaleTimeString("en-US");
+    return datetime.toLocaleTimeString("en-GB");
 }
 
 function timestamp_to_date_str(timestamp) {
     let datetime = new Date(timestamp);
-    return datetime.toLocaleDateString("en-US");
+    return datetime.toLocaleDateString("en-GB");
 }
 
 function timestamp_to_datetime_str(timestamp) {
     let datetime = new Date(timestamp);
-    return datetime.toLocaleDateString("en-US") + " " + datetime.toLocaleTimeString("en-US");
+    return datetime.toLocaleDateString("en-GB") + " " + datetime.toLocaleTimeString("fr-FR");
 }
 
 //
@@ -724,6 +778,8 @@ function add_profiles(id, to, profiles) {
     select.on('change', function(e) {
         on_change_profile(e);
     });
+
+    return select;
 };
 
 function add_take_profit_price(id, to) {
@@ -1022,61 +1078,5 @@ function on_change_take_profit_price(elt) {
 function on_play_pause_market(elt) {
     let symbol = retrieve_symbol(elt);
 
-    // @todo
-}
-
-//
-// trades list functions
-//
-
-function on_close_all_active_trade(elt) {
-    // @todo
-}
-
-function add_active_trade(appliance_id, market_id, trade) {
-    // @todo
-};
-
-function update_active_trade(appliance_id, market_id, trade) {
-    // @todo
-};
-
-function remove_active_trade(appliance_id, market_id, local_id) {
-    // @todo
-};
-
-function add_historical_trade(appliance_id, market_id, trade) {
-    // @todo
-};
-
-function on_close_active_trade(elt) {
-    // @todo
-}
-
-function on_reduce_active_trade_stop_loss(elt) {
-    // @todo
-}
-
-function on_increase_active_trade_stop_loss(elt) {
-    // @todo
-}
-
-function on_reduce_active_trade_take_profit(elt) {
-    // @todo
-}
-
-function on_increase_active_trade_take_profit(elt) {
-    // @todo
-}
-
-function on_modify_active_trade_take_profit(elt) {
-    // @todo
-}
-
-function on_modify_active_trade_take_profit(elt) {
-    // @todo
-}
-
-function on_add_active_trade_dynamic_stop_loss(elt) {
     // @todo
 }

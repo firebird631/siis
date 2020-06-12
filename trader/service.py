@@ -169,8 +169,37 @@ class TraderService(Service):
             self._signals_handler.notify(signal)
 
     def command(self, command_type, data):
-        for k, trader in self._traders.items():
-            trader.command(command_type, data)
+        results = None
+
+        if command_type == Trader.COMMAND_INFO:
+            # any or specific commands
+            trader_name = data.get('trader')
+
+            if trader_name:
+                # for a specific trader
+                trader = self._traders.get(trader_name)
+                if trader:
+                    results = trader.command(command_type, data)
+            else:
+                # or any, with an array of results
+                results = []
+
+                for k, trader in self._traders.items():
+                    results.append(trader.command(command_type, data))
+        else:
+            # specific commands
+            trader_name = data.get('trader')
+            trader = None
+
+            if trader_name:
+                trader = self._traders.get(trader_name)
+
+            if trader:
+                results = trader.command(command_type, data)
+
+        return results
+
+
 
     def receiver(self, signal):
         pass

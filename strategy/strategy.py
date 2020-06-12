@@ -409,8 +409,8 @@ class Strategy(Runnable):
                             instrument.tradeable = market.is_open
                             instrument.expiry = market.expiry
 
-                            instruments.value_per_pip = market.value_per_pip
-                            instruments.one_pip_means = market.one_pip_means
+                            instrument.value_per_pip = market.value_per_pip
+                            instrument.one_pip_means = market.one_pip_means
 
                             instrument.set_base(market.base)
                             instrument.set_quote(market.quote)
@@ -1266,16 +1266,20 @@ class Strategy(Runnable):
             Terminal.inst().notice("Trade %s for strategy %s - %s" % (label, self.name, self.identifier), view='content')
 
             # retrieve the trade and apply the modification
-            results = func(strategy_trader, data)
+            result = func(strategy_trader, data)
 
-            if results:
-                if results['error']:
-                    Terminal.inst().info(results['messages'][0], view='status')
+            if result:
+                if result['error']:
+                    Terminal.inst().info(result['messages'][0], view='status')
                 else:
                     Terminal.inst().info("Done", view='status')
 
-                for message in results['messages']:
+                for message in result['messages']:
                     Terminal.inst().message(message, view='content')
+
+                return result
+
+        return None
 
     def exit_all_trade_command(self, data):
         # manually trade modify a trade or any trades (add/remove an operation)
@@ -1292,21 +1296,28 @@ class Strategy(Runnable):
             if strategy_trader.has_trades():
                 trades.extend([(strategy_trader.instrument.market_id, trade_id) for trade_id in strategy_trader.list_trades()])
 
+            # multi command
+            results = []
+
             for trade in trades:
                 # retrieve the trade and apply the modification
                 strategy_trader = self._strategy_traders.get(trade[0])
                 data['trade-id'] = trade[1]
 
-                results = self.cmd_trade_exit(strategy_trader, data)
+                result = self.cmd_trade_exit(strategy_trader, data)
 
-                if results:
-                    if results['error']:
-                        Terminal.inst().info(results['messages'][0], view='status')
+                if result:
+                    if result['error']:
+                        Terminal.inst().info(result['messages'][0], view='status')
                     else:
                         Terminal.inst().info("Done", view='status')
 
-                    for message in results['messages']:
+                    for message in result['messages']:
                         Terminal.inst().message(message, view='content')
+
+                results.append(result)
+
+            return results
         else:
             Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (self.name, self.identifier), view='content')
 
@@ -1319,21 +1330,28 @@ class Strategy(Runnable):
                     if strategy_trader.has_trades():
                         trades.extend([(strategy_trader.instrument.market_id, trade_id) for trade_id in strategy_trader.list_trades()])
 
+            # multi command
+            results = []
+
             for trade in trades:
                 # retrieve the trade and apply the modification
                 strategy_trader = self._strategy_traders.get(trade[0])
                 data['trade-id'] = trade[1]
 
-                results = self.cmd_trade_exit(strategy_trader, data)
+                result = self.cmd_trade_exit(strategy_trader, data)
 
-                if results:
-                    if results['error']:
-                        Terminal.inst().info(results['messages'][0], view='status')
+                if result:
+                    if result['error']:
+                        Terminal.inst().info(result['messages'][0], view='status')
                     else:
                         Terminal.inst().info("Done", view='status')
 
-                    for message in results['messages']:
+                    for message in result['messages']:
                         Terminal.inst().message(message, view='content')
+
+                results.append(result)
+
+            return results
 
     def strategy_trader_command(self, label, data, func):
         # manually trade modify a trade (add/remove an operation)
@@ -1344,49 +1362,54 @@ class Strategy(Runnable):
             Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, market_id), view='content')
 
             # retrieve the trade and apply the modification
-            results = func(strategy_trader, data)
+            result = func(strategy_trader, data)
 
-            if results:
-                if results['error']:
-                    Terminal.inst().info(results['messages'][0], view='status')
+            if result:
+                if result['error']:
+                    Terminal.inst().info(result['messages'][0], view='status')
                 else:
                     Terminal.inst().info("Done", view='status')
 
-                for message in results['messages']:
+                for message in result['messages']:
                     Terminal.inst().message(message, view='content')
+
+            return result
+
+        return None
 
     def command(self, command_type, data):
         """
-        Some parts are mutexed some others are not.
-        @todo some command are only display, so could be moved to a displayer, and command could only return an object
+        Apply a command to the appliance and return a results dict or an array of dict or None.
         """
         if command_type == Strategy.COMMAND_INFO:
-            self.cmd_trader_info(data)
+            return self.cmd_trader_info(data)
 
         elif command_type == Strategy.COMMAND_TRADE_EXIT_ALL:
-            self.exit_all_trade_command(data)
+            return self.exit_all_trade_command(data)
 
         elif command_type == Strategy.COMMAND_TRADE_ENTRY:
-            self.trade_command("entry", data, self.cmd_trade_entry)
+            return self.trade_command("entry", data, self.cmd_trade_entry)
         elif command_type == Strategy.COMMAND_TRADE_EXIT:
-            self.trade_command("exit", data, self.cmd_trade_exit)
+            return self.trade_command("exit", data, self.cmd_trade_exit)
         elif command_type == Strategy.COMMAND_TRADE_CLEAN:
-            self.trade_command("clean", data, self.cmd_trade_clean)
+            return self.trade_command("clean", data, self.cmd_trade_clean)
         elif command_type == Strategy.COMMAND_TRADE_MODIFY:
-            self.trade_command("modify", data, self.cmd_trade_modify)
+            return self.trade_command("modify", data, self.cmd_trade_modify)
         elif command_type == Strategy.COMMAND_TRADE_INFO:
-            self.trade_command("info", data, self.cmd_trade_info)
+            return self.trade_command("info", data, self.cmd_trade_info)
         elif command_type == Strategy.COMMAND_TRADE_ASSIGN:
-            self.trade_command("assign", data, self.cmd_trade_assign)
+            return self.trade_command("assign", data, self.cmd_trade_assign)
 
         elif command_type == Strategy.COMMAND_TRADER_MODIFY:
-            self.strategy_trader_command("info", data, self.cmd_strategy_trader_modify)
+            return self.strategy_trader_command("info", data, self.cmd_strategy_trader_modify)
         elif command_type == Strategy.COMMAND_TRADER_INFO:
-            self.strategy_trader_command("info", data, self.cmd_strategy_trader_info)
+            return self.strategy_trader_command("info", data, self.cmd_strategy_trader_info)
         elif command_type == Strategy.COMMAND_TRADER_CHART:
-            self.strategy_trader_command("chart", data, self.cmd_strategy_trader_chart)
+            return self.strategy_trader_command("chart", data, self.cmd_strategy_trader_chart)
         elif command_type == Strategy.COMMAND_TRADER_STREAM:
-            self.strategy_trader_command("stream", data, self.cmd_strategy_trader_stream)
+            return self.strategy_trader_command("stream", data, self.cmd_strategy_trader_stream)
+
+        return None
 
     #
     # signals/slots
@@ -1624,9 +1647,9 @@ class Strategy(Runnable):
 
         elif stop_loss_price_mode == "pip":
             if direction > 0:
-                stop_loss = strategy_trader.instrument.adjust_price(order_price - stop_loss * strategy_trader.instruments.value_per_pip)
+                stop_loss = strategy_trader.instrument.adjust_price(order_price - stop_loss * strategy_trader.instrument.value_per_pip)
             elif direction < 0:
-                stop_loss = strategy_trader.instrument.adjust_price(order_price + stop_loss * strategy_trader.instruments.value_per_pip)
+                stop_loss = strategy_trader.instrument.adjust_price(order_price + stop_loss * strategy_trader.instrument.value_per_pip)
 
         if take_profit_price_mode == "percent":
             if direction > 0:
@@ -1636,9 +1659,9 @@ class Strategy(Runnable):
 
         elif take_profit_price_mode == "pip":
             if direction > 0:
-                take_profit = strategy_trader.instrument.adjust_price(order_price + take_profit * strategy_trader.instruments.value_per_pip)
+                take_profit = strategy_trader.instrument.adjust_price(order_price + take_profit * strategy_trader.instrument.value_per_pip)
             elif direction < 0:
-                take_profit = strategy_trader.instrument.adjust_price(order_price - take_profit * strategy_trader.instruments.value_per_pip)
+                take_profit = strategy_trader.instrument.adjust_price(order_price - take_profit * strategy_trader.instrument.value_per_pip)
 
         #
         # check stop-loss and take-profit and reject if not consistent

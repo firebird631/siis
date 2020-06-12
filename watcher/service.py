@@ -170,8 +170,35 @@ class WatcherService(Service):
         return self._backtesting
 
     def command(self, command_type, data):
-        for k, watcher in self._watchers.items():
-            watcher.command(command_type, data)
+        results = None
+
+        if command_type == Watcher.COMMAND_INFO:
+            # any or specific commands
+            watcher_name = data.get('watcher')
+
+            if watcher_name:
+                # for a specific watcher
+                watcher = self._watchers.get(watcher_name)
+                if watcher:
+                    results = watcher.command(command_type, data)
+            else:
+                # or any, with an array of results
+                results = []
+
+                for k, watcher in self._watchers.items():
+                    results.append(watcher.command(command_type, data))
+        else:
+            # specific commands
+            watcher_name = data.get('watcher')
+            watcher = None
+
+            if watcher_name:
+                watcher = self._watchers.get(watcher_name)
+
+            if watcher:
+                results = watcher.command(command_type, data)
+
+        return results
 
     def ping(self, timeout):
         if self._mutex.acquire(timeout=timeout):

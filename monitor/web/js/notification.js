@@ -10,7 +10,7 @@ function notify(notification) {
     if (type == 'alert' || type == 'error') {
         bg_color = '#d62c1a';
     } else if (type == 'success' || type == 'ok') {
-        bg_color = '##00bc8c';
+        bg_color = '#00bc8c';
     } else if (type == 'info' || type == 'message') {
         bg_color = '#217dbb';
     }

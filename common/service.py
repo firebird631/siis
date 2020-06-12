@@ -52,7 +52,7 @@ class Service(BaseService):
             self._signals_handler.remove_listener(base_service)
 
     def command(self, command_type, data):
-        pass
+        return None
 
     def receiver(self, signal):
         pass

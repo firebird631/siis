@@ -72,7 +72,7 @@ class Runnable(object):
         return True
 
     def command(self, command, data):
-        pass
+        return None
 
     def pre_run(self):
         pass

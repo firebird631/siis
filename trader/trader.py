@@ -36,6 +36,8 @@ class Trader(Runnable):
 
     @todo Not as central ressource, only for intial or informational, strategy must have theirs local proxy methods/data.
     @todo Create sell order for COMMAND_SELL_ALL_ASSET.
+    @todo Move table/dataset like as strategy
+    @todo Move command to specific files like as strategy will be
     """
 
     MAX_SIGNALS = 1000                        # max signals queue size before ignore some market data updates
@@ -290,15 +292,17 @@ class Trader(Runnable):
         Some parts are mutexed some others are not.
         """
         if command_type == Trader.COMMAND_INFO:
-            self.cmd_trader_info(data)
+            return self.cmd_trader_info(data)
         elif command_type == Trader.COMMAND_CLOSE_MARKET:
-            self.cmd_close_market(data)
+            return self.cmd_close_market(data)
         elif command_type == Trader.COMMAND_CLOSE_ALL_MARKET:
-            self.cmd_close_all_market(data)
+            return self.cmd_close_all_market(data)
         elif command_type == Trader.COMMAND_CANCEL_ALL_ORDER:
-            self.cmd_cancel_all_order(data)
+            return self.cmd_cancel_all_order(data)
         elif command_type == Trader.COMMAND_SELL_ALL_ASSET:
-            self.cmd_sell_all_asset(data)
+            return self.cmd_sell_all_asset(data)
+
+        return None
 
     def ping(self, timeout):
         self._ping = (0, None, True)

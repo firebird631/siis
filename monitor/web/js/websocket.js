@@ -31,6 +31,8 @@ function read_value(data) {
         return read_trade_update(data);
     } else if (data.t == "tx") {
         return read_trade_exit(data);
+    } else if (data.t == "ht") {
+        return read_trade_history(data);
     } else if (data.t == "se") {
         return read_serie(data);
     } else if (data.t == "fsc") {
@@ -104,26 +106,33 @@ function on_ws_message(data) {
     let component = data.g;
 
     if (data.c == STREAM_GENERAL) {
-        //  global status
+        // global status
+        // nothing for now
 
     } else if (data.c == STREAM_TRADER) {
         // strategy trader status
-        // @todo 'cpu-load'
+        // nothing for now
 
     } else if (data.c == STREAM_STRATEGY) {
         // strategy info
         let appliance = data.g;
         let symbol = data.s;
 
+        // @todo
+
     } else if (data.c == STREAM_STRATEGY_CHART) {
         // strategy trader chart data
         let appliance = data.g;
         let symbol = data.s;
 
+        // @todo
+
     } else if (data.c == STREAM_STRATEGY_INFO) {
         // strategy trader performance
         let appliance = data.g;
         let symbol = data.s;
+
+        // @todo
 
     } else if (data.c == STREAM_STRATEGY_TRADE) {
         // strategy trader trade
@@ -132,11 +141,14 @@ function on_ws_message(data) {
 
         let value = read_value(data);
         if (value && data.t == 'to') {
-            on_trade_entry_message(appliance, market_id, trade_id, data.b*1000, value);
+            // active trade insert
+            on_active_trade_entry_message(appliance, market_id, trade_id, data.b*1000, value);
         } else if (value && data.t == 'tu') {
-            on_trade_update_message(appliance, market_id, trade_id, data.b*1000, value);
+            // active trade update
+            on_active_trade_update_message(appliance, market_id, trade_id, data.b*1000, value);
         } else if (value && data.t == 'tx') {
-            on_trade_exit_message(appliance, market_id, trade_id, data.b*1000, value);
+            // active trade delete
+            on_active_trade_exit_message(appliance, market_id, trade_id, data.b*1000, value);
         }
 
     } else if (data.c == STREAM_STRATEGY_ALERT) {
@@ -144,10 +156,13 @@ function on_ws_message(data) {
         let appliance = data.g;
         let symbol = data.s;
 
+        // @todo notify and log
+
     } else if (data.c == STREAM_STRATEGY_SIGNAL) {
         // strategy trader signal
         let appliance = data.g;
         let symbol = data.s;
 
+        // @todo notify and log
     }
 }

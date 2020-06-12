@@ -54,11 +54,11 @@
       <div class="modal-body">
         <form>
             <div class="form-group">
-                <label for="recipient-name" class="col-form-label">Identifier or API key:</label>
+                <label for="recipient-name" class="col-form-label">Identifier :</label>
                 <input autocomplete="off" type="text" class="form-control" id="identifier" name="identifier">
             </div>
             <div class="form-group">
-                <label for="recipient-name" class="col-form-label">Password or empty:</label>
+                <label for="recipient-name" class="col-form-label">Password :</label>
                 <input autocomplete="off" type="text" class="form-control" id="password" name="password">
             </div>
         </form>
@@ -104,9 +104,49 @@
             </p>
         </div>
         <div class="trade-list-context" style="padding-right: 0px;">
-            <div class="trade-list-entries">
-                <ul>
-                </ul>
+            <div class="active-trade-list-entries">
+                <table style="width: 100%;">
+                  <thead style="width: 100%;">
+                    <tr>
+                      <th>Symbol</th>
+                      <th style="width: 30px;"><span class="fa fa-arrows-v" style="padding-left: 4px;"></span></th>
+                      <th>Date</th>
+                      <th>Entry</th>
+                      <th>Quantity</th>
+                      <th>UPNL</th>
+                      <th style="width: 45px;">Fees</th>
+                      <th>Stop-Loss</th>
+                      <th>Take-Profit</th>
+                      <th style="width: 30px;"><span class="fa fa-close"></span></th>
+                      <th style="width: 30px;"><span class="fa fa-random"></span></th>
+                      <th style="width: 30px;"><span class="fa fa-info"></span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  </tbody>
+                </table>
+            </div>
+            <div class="historical-trade-list-entries">
+                <table style="width: 100%;">
+                  <thead style="width: 100%;">
+                      <th>Symbol</th>
+                      <th style="width: 30px;"><span class="fa fa-arrows-v" style="padding-left: 4px;"></span></th>
+                      <th>Entry Date</th>
+                      <th>Entry</th>
+                      <th>Quantity</th>
+                      <th>Exit Date</th>
+                      <th>Exit</th>
+                      <th>PNL</th>
+                      <th style="width: 45px;">Fees</th>
+                      <th>Stop-Loss</th>
+                      <th>Take-Profit</th>
+                      <th style="width: 30px;"><span class="fa fa-info"></span></th>
+                  </thead>
+                  <tbody>
+                  </tbody>
+                </table>
+            </div>
+            <div class="options-list-entries">
             </div>
         </div>
     </div>

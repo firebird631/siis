@@ -358,9 +358,6 @@ class MonitorService(Service):
     def run_http(self):
         self._http.start()
 
-    def command(self, command_type, data):
-        pass
-
     def register_ws_auth_token(self, auth_token, ws_auth_token):
         self._client_ws_auth_token[auth_token] = ws_auth_token
 

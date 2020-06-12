@@ -191,9 +191,6 @@ class AndroidNotifier(Notifier):
                 except:
                     pass
 
-    def command(self, command_type, data):
-        pass
-
     def receiver(self, signal):
         if not self._playpause or self._backtesting or not signal:
             return
