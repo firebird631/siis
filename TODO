@@ -29,15 +29,16 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 #102 trade_quantity in percent of account, ou plutôt en % de risque sur le compte
 
 #103 WebTrader
-    - ajouter play/pause par market
+    - gérer play/pause par market
     - charting OHLC et ticks (streaming)
     - charting de la performance de la strat (streaming)
-    - charting historique sur un trade passé
-    - récupérer en plus pour chaque appliance les timeframes supportées et les contextes
-        - afficher les contextes dans les profils
-            - que faire pour les timeframe si pas de profil sélectionné ?
+    - goto charting historique sur un trade passé
     - mise-à-jour des trades actifs (WS)
-    - mise-à-jour des trades historiques (WS)
+    - ajout des trades historiques (WS)
+    - close trade
+    - reverse trade
+    - details trade avec modal
+    - modify SL/TP active trade
 
 #104 decouper les commande de strategy par fichier dans command/
 
@@ -65,7 +66,6 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
         2) Si verte que à partir du price epsilon sinon on la compte comme rouge
         3) On coupe si signal opposé sur la même timeframe
 
-
 #108 Move from siis.py for the command part the rest to command_handler
 
 #89 Finir les conversion des tools avec le model Tool (binarizer, fetcher, optimizer)
@@ -85,9 +85,6 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
         - Exemple un take-profit limit, mais mettons la quantité n'est pas fully-filled, et finalement intervient
             pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier orde)
     - Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
-
-#97 bug avec binancefutures en papermode, semble mal calculer le cout de la position, ou du realized profit/loss (délire complet) (voir #87 et #95)
-    - probablement une question de contact-size, base-exchange-rate, value-per-pip ou one-pip-means
 
 #95 Parfois on a un problème de quantité d'asset sur le paper-trader.
 
@@ -122,7 +119,7 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 # REFLEXION #
 #############
 
-
+#111 Connecteur rapidapi-yahoo-finance pour récupérer stock, indices, forex quotes, et pouvoir le mapper à un autre broker example (ig.com)
 
 
 #######
@@ -132,6 +129,9 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 #60 Gérer la partie locked sur le paper trader en mode asset
     - C'est à dire ne pas tout gérer en free, ce n'est pas super important au final car ça n'empêche pas le fonctionnement,
         mais c'est pour être plus rigoureux.
+
+#110 Ajouter un fetcher rapidapi-morningstar pour récupérer les actions et indices intraday, D, W, M.
+    - Faire un mapping pour que cela puisse être utilisé depuis le watcher IG pour le prefetching
 
 
 ########

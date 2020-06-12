@@ -252,17 +252,27 @@ function on_details_trade(elt) {
     alert("todo!");
 }
 
+function on_reverse_trade(elt) {
+    alert("todo!");
+}
+
+
 let on_active_trade_entry_message = function(appliance, market_id, trade_id, timestamp, value) {
-    // @todo insert into active trades
+    // insert into active trades
+    add_active_trade(appliance, market_id, value);
 };
 
 let on_active_trade_update_message = function(appliance, market_id, trade_id, timestamp, value) {
-    // @todo update into active trades
+    // update into active trades
+    update_active_trade(appliance, market_id, value);
 };
 
 let on_active_trade_exit_message = function(appliance, market_id, trade_id, timestamp, value) {
-    // @todo remove from active trades
-    // @todo insert to historical trades
+    // remove from active trades
+    remove_active_trade(appliance, market_id, trade_id);
+
+    // insert to historical trades
+    add_historical_trade(appliance, market_id, value);
 };
 
 //
@@ -338,6 +348,7 @@ function add_active_trade(appliance_id, market_id, trade) {
     // actions
     trade_close.on('click', on_close_trade);
     trade_details.on('click', on_details_trade);
+    trade_reverse.on('click', on_reverse_trade);
 
     window.actives_trades[key] = trade;
 };
@@ -367,19 +378,21 @@ function update_active_trade(appliance_id, market_id, trade) {
 
 function remove_active_trade(appliance_id, market_id, trade_id) {
     let key = appliance_id + ':' + market_id + ':' + trade_id;
+    let container = $('div.active-trade-list-entries tbody');
 
-    $('tr.active-trade [trade-key=' + key + ']').remove();
+    container.find('tr.active-trade [trade-key=' + key + ']').remove();
     delete window.actives_trades[key];
 };
 
 function add_historical_trade(appliance_id, market_id, trade) {
-    // @todo
     let trade_elt = $('<tr class="historical-trade">blablabl</tr>');
     trade_elt.attr('appliance', appliance_id);
     trade_elt.attr('market', market_id);
     trade_elt.attr('trade', trade.id);
 
     let key = appliance_id + ':' + market_id + ':' + trade.id;
+
+    // @todo
 
     $('div.historical-trade-list-entries tbody').append(trade_elt);
 

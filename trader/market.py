@@ -632,12 +632,9 @@ class Market(object):
 
         if self.step_size > 0:
             precision = self._size_limits[3]
-            return max(round(self.step_size * round(quantity / self.step_size), precision), self.min_size)
-
-        # if self.step_size > 0.0:
-        #     precision = -int(math.log10(self.step_size))
-        #     # return max(round(int(quantity / self.step_size) * self.step_size, precision), self.min_size)
-        #     return max(round(self.step_size * round(quantity / self.step_size), precision), self.min_size)
+            # return max(round(int(quantity / self.step_size) * self.step_size, precision), self.min_size)
+            # return max(round(self.step_size * round(quantity / self.step_size), precision), self.min_size)
+            return max(round(self.step_size * math.floor(quantity / self.step_size), precision), self.min_size)
 
         return quantity
 

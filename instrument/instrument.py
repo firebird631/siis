@@ -3,6 +3,8 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Instrument symbol
 
+import math
+
 from datetime import datetime, timedelta
 from common.utils import UTC, timeframe_to_str, truncate, decimal_place
 
@@ -1427,7 +1429,8 @@ class Instrument(object):
 
         if self.step_size > 0:
             precision = self._size_limits[3]
-            return max(round(self.step_size * round(quantity / self.step_size), precision), self.min_size)
+            # return max(round(self.step_size * round(quantity / self.step_size), precision), self.min_size)
+            return max(round(self.step_size * math.floor(quantity / self.step_size), precision), self.min_size)
 
         return quantity
 
