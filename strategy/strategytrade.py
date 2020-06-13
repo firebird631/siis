@@ -987,7 +987,7 @@ class StrategyTrade(object):
 
     def dumps_notify_entry(self, timestamp, strategy_trader):
         """
-        Dumps to dict for notify/history.
+        Dumps to dict for stream/notify/history.
         """
         return {
             'version': self.version(),
@@ -1013,12 +1013,13 @@ class StrategyTrade(object):
             'entry-open-time': self.dump_timestamp(self.eot),
             'stats': {
                 'entry-order-type': order_type_to_str(self._stats['entry-order-type']),
+                'close-exec-price': strategy_trader.instrument.format_price(strategy_trader.instrument.close_exec_price(self.dir)),
             }
         }
 
     def dumps_notify_exit(self, timestamp, strategy_trader):
         """
-        Dumps to dict for notify/history.
+        Dumps to dict for stream/notify/history.
         """
         return {
             'version': self.version(),
@@ -1061,10 +1062,57 @@ class StrategyTrade(object):
                 'profit-loss': self._stats['unrealized-profit-loss'],
                 'entry-fees': self._stats['entry-fees'],
                 'exit-fees': self._stats['exit-fees'],
-                'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason'])
+                'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
+                'close-exec-price': strategy_trader.instrument.format_price(strategy_trader.instrument.close_exec_price(self.dir)),
             }
         }
 
     def dumps_notify_update(self, timestamp, strategy_trader):
-        # @todo
-        return {}
+        """
+        Dumps to dict for stream/notify/history.
+        """
+        return {
+            'version': self.version(),
+            'trade': self.trade_type_to_str(),
+            'id': self.id,
+            'app-name': strategy_trader.strategy.name,
+            'app-id': strategy_trader.strategy.identifier,
+            'timestamp': timestamp,
+            'symbol': strategy_trader.instrument.market_id,
+            'way': "update",
+            'entry-timeout': timeframe_to_str(self._entry_timeout),
+            'expiry': self._expiry,
+            'timeframe': timeframe_to_str(self._timeframe),
+            'is-user-trade': self._user_trade,
+            'label': self._label,
+            'direction': self.direction_to_str(),
+            'order-price': strategy_trader.instrument.format_price(self.op),
+            'order-qty': strategy_trader.instrument.format_quantity(self.oq),
+            'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
+            'take-profit-price': strategy_trader.instrument.format_price(self.tp),
+            'avg-entry-price': strategy_trader.instrument.format_price(self.aep),
+            'avg-exit-price': strategy_trader.instrument.format_price(self.axp),
+            'entry-open-time': self.dump_timestamp(self.eot),
+            'exit-open-time': self.dump_timestamp(self.xot),
+            'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
+            'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
+            'profit-loss-pct': round(self.estimate_profit_loss(strategy_trader.instrument) * 100.0, 2),
+            'num-exit-trades': len(self.exit_trades),
+            'stats': {
+                'best-price': strategy_trader.instrument.format_price(self._stats['best-price']),
+                'best-datetime': self.dump_timestamp(self._stats['best-timestamp']),
+                'worst-price': strategy_trader.instrument.format_price(self._stats['worst-price']),
+                'worst-datetime': self.dump_timestamp(self._stats['worst-timestamp']),
+                'entry-order-type': order_type_to_str(self._stats['entry-order-type']),
+                'first-realized-entry-datetime': self.dump_timestamp(self._stats['first-realized-entry-timestamp']),
+                'first-realized-exit-datetime': self.dump_timestamp(self._stats['first-realized-exit-timestamp']),
+                'last-realized-entry-datetime': self.dump_timestamp(self._stats['last-realized-entry-timestamp']),
+                'last-realized-exit-datetime': self.dump_timestamp(self._stats['last-realized-exit-timestamp']),
+                'profit-loss-currency': self._stats['profit-loss-currency'],
+                'profit-loss': self._stats['unrealized-profit-loss'],
+                'entry-fees': self._stats['entry-fees'],
+                'exit-fees': self._stats['exit-fees'],
+                'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
+                'close-exec-price': strategy_trader.instrument.format_price(strategy_trader.instrument.close_exec_price(self.dir)),
+            }        
+        }

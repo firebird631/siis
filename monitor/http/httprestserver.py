@@ -45,6 +45,10 @@ class AuthToken(object):
 registerAdapter(AuthToken, Session, IAuthToken)
 
 
+class ShortSession(Session):
+    sessionTimeout = 60*60*24*7  # 1w session
+
+
 class AuthRestAPI(resource.Resource):
     isLeaf = True
 
@@ -177,6 +181,8 @@ class StrategyInfoRestAPI(resource.Resource):
                     'symbol': instr.symbol,
                     'value-per-pip': instr.value_per_pip,
                     'price-limits': instr._price_limits,
+                    'notional-limits': instr._notional_limits,
+                    'size-limits': instr._size_limits,
                     'bid': instr.market_bid,
                     'ofr': instr.market_ofr,
                     'mid': instr.market_price,
@@ -290,20 +296,36 @@ class StrategyTradeRestAPI(resource.Resource):
         self._trader_service = trader_service
 
     def render_GET(self, request):
+        # list active trade or trade specific
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
         uri = request.uri.decode("utf-8").split('/')
+        trade_id = -1
 
-        if uri[-1] != 'trade':
-            try:
-                trade_id = int(uri[-1])
-            except ValeurError:
-                return NoResource()
+        # if not request.path.endswith('/trade'):
+        #     try:
+        #         trade_id = int(uri[-1])
+        #     except ValeurError:
+        #         return NoResource()
 
-        results = {}
+        results = {
+            'error': False,
+            'messages': [],
+            'data': None
+        }
 
-        # @todo
+        appliance = request.args.get(b'appliance', [b""])[0].decode("utf-8")
+
+        if not appliance:
+            return NoResource()
+
+        if trade_id > 0:
+            # @todo
+            results['data'] = None
+        else:
+            # current active trade list
+            results['data'] = self._strategy_service.appliance(appliance).dumps_trades_update()
 
         return json.dumps(results).encode("utf-8")
 
@@ -485,6 +507,7 @@ class HttpRestServer(object):
         root.putChild(b"chart", Charting(self._strategy_service, self._trader_service))
 
         factory = AllowedIPOnlyFactory(root)
+        factory.sessionFactory = ShortSession
 
         MonitorService.ref_reactor()
         self._listener = reactor.listenTCP(self._port, factory)

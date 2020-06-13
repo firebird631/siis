@@ -506,10 +506,6 @@ class StrategyAssetTrade(StrategyTrade):
                     # probably need to update exit orders
                     self._dirty = True
 
-                if filled > 0 and self.e == 0:
-                    # initial fill we count the commission fee
-                    self._stats['entry-fees'] = instrument.maker_commission if data.get('maker', False) else instrument.taker_commission
-
                 if self.e >= self.oq:
                     self._entry_state = StrategyTrade.STATE_FILLED
                 else:
@@ -537,6 +533,9 @@ class StrategyAssetTrade(StrategyTrade):
                 #
 
                 if data.get('fully-filled'):
+                    # fully filled, this is ok with single order asset trade, but will need a compute with multi-order
+                    self._entry_state = StrategyTrade.STATE_FILLED
+
                     self.entry_oid = None
                     self.entry_ref_oid = None
 
@@ -597,7 +596,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                 # realized fees
                 self._stats['exit-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
-                
+
                 # retains the trade timestamp
                 if not self._stats['first-realized-exit-timestamp']:
                     self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
@@ -609,6 +608,9 @@ class StrategyAssetTrade(StrategyTrade):
                 #
 
                 if data.get('fully-filled'):
+                    # fully filled, this is ok with single order asset trade, but will need a compute with multi-order
+                    self._exit_state = StrategyTrade.STATE_FILLED
+
                     if data['id'] == self.limit_oid:
                         self.limit_oid = None
                         self.limit_ref_oid = None

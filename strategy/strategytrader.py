@@ -77,6 +77,7 @@ class StrategyTrader(object):
         self._next_alert_id= 1
 
         self._global_streamer = None
+        self._trade_streamer = None
         self._timeframe_streamers = {}
 
         self._reporting = StrategyTrader.REPORTING_NONE
@@ -357,6 +358,19 @@ class StrategyTrader(object):
 
         return results
 
+    def dumps_trades_update(self):
+        """
+        Dumps the update notify state of each existings trades.
+        """
+        results = []
+
+        with self._mutex:
+            with self._trade_mutex:
+                for trade in self.trades:
+                    results.append(trade.dumps_notify_update(self.strategy.timestamp, self))
+
+        return results
+
     def update_trades(self, timestamp):
         """
         Update managed trades per instruments and delete terminated trades.
@@ -393,6 +407,9 @@ class StrategyTrader(object):
                 if trade.is_active():
                     # for statistics usage
                     trade.update_stats(self.instrument.close_exec_price(trade.direction), timestamp)
+
+                    # update data stream
+                    self.notify_trade_update(timestamp, trade)
 
                 #
                 # asset trade
@@ -1165,40 +1182,59 @@ class StrategyTrader(object):
 
     def notify_signal(self, timestamp, signal):
         if signal:
+            # system notification
             self.strategy.notify_signal(timestamp, signal, self)
 
-            # want it on the streaming but would be deprecated
+            # @deprecated
             if self._global_streamer:
                 self._global_streamer.member('buy-entry' if signal.direction > 0 else 'sell-entry').update(signal.price, timestamp)
 
+            # @todo stream
+
     def notify_trade_entry(self, timestamp, trade):
         if trade:
+            # system notification
             self.strategy.notify_trade_entry(timestamp, trade, self)
 
-            # want it on the streaming but would be deprecated
+            # @deprecated
             if self._global_streamer:
                 self._global_streamer.member('buy-entry' if trade.direction > 0 else 'sell-entry').update(trade.order_price, timestamp)
+
+            if self._trade_streamer:
+                self._trade_streamer.member('trade-entry').update(self, trade, timestamp)
 
             # for reporting if specified
             if self._reporting == self.REPORTING_VERBOSE:
                 self.report(trade, True)
 
+    def notify_trade_update(self, timestamp, trade):
+        if trade:
+            # system notification
+            # will flood, maybee will distinct a trade amend from update
+            # self.strategy.notify_trade_update(timestamp, trade, self)
+
+            if self._trade_streamer:
+                self._trade_streamer.member('trade-update').update(self, trade, timestamp)
+
     def notify_trade_exit(self, timestamp, trade):
         if trade:
+            # system notification
             self.strategy.notify_trade_exit(timestamp, trade, self)
 
-            # want it on the streaming but would be deprecated
+            # @deprecated
             if self._global_streamer:
                 self._global_streamer.member('buy-exit' if trade.direction > 0 else 'sell-exit').update(trade.exit_price, timestamp)
+                
+            if self._trade_streamer:
+                self._trade_streamer.member('trade-exit').update(self, trade, timestamp)
 
             # for reporting if specified
             if self._reporting == self.REPORTING_VERBOSE:
                 self.report(trade, False)
 
-    def notify_trade_update(self, timestamp, trade):
-        if trade:
-            self.strategy.notify_trade_update(timestamp, trade, self)
-
     def notify_alert(self, timestamp, alert, result):
         if alert and result:
+            # system notification
             self.strategy.notify_alert(timestamp, alert, result, self)
+
+            # @todo stream

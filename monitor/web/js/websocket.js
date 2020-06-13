@@ -142,13 +142,13 @@ function on_ws_message(data) {
         let value = read_value(data);
         if (value && data.t == 'to') {
             // active trade insert
-            on_active_trade_entry_message(appliance, market_id, trade_id, data.b*1000, value);
+            on_active_trade_entry_message(appliance, data.s, value.id, data.b*1000, value);
         } else if (value && data.t == 'tu') {
             // active trade update
-            on_active_trade_update_message(appliance, market_id, trade_id, data.b*1000, value);
+            on_active_trade_update_message(appliance, data.s, value.id, data.b*1000, value);
         } else if (value && data.t == 'tx') {
             // active trade delete
-            on_active_trade_exit_message(appliance, market_id, trade_id, data.b*1000, value);
+            on_active_trade_exit_message(appliance, data.s, value.id, data.b*1000, value);
         }
 
     } else if (data.c == STREAM_STRATEGY_ALERT) {

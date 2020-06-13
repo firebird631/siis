@@ -1506,6 +1506,21 @@ class Strategy(Runnable):
     # trade commands (@todo to be moved to decicated command/file.py)
     #
 
+    def dumps_trades_update(self):
+        """
+        Dumps any trades of any strategy traders.
+        """
+        trades = []
+
+        with self._mutex:
+            for k, strategy_trader in self._strategy_traders.items():
+                try:
+                    trades += strategy_trader.dumps_trades_update()
+                except Exception as e:
+                    error_logger.error(repr(e))
+
+        return trades
+
     def cmd_trade_entry(self, strategy_trader, data):
         """
         Create a new trade according data on given strategy_trader.
@@ -1726,6 +1741,9 @@ class Strategy(Runnable):
 
             if trade.open(trader, strategy_trader.instrument, direction, order_type, order_price, order_quantity,
                           take_profit, stop_loss, leverage=leverage, hedging=hedging):
+
+                # notifications and stream
+                strategy_trader.notify_trade_entry(self.timestamp, trade)
 
                 # add a success result message
                 results['messages'].append("Created trade %i on %s:%s" % (trade.id, self.identifier, strategy_trader.instrument.market_id))

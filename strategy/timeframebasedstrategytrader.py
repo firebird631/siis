@@ -199,21 +199,26 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO, self.strategy.identifier, self.instrument.market_id)
         self._global_streamer.add_member(StreamMemberFloatTuple('tfs'))  # @deprecated
 
-        self._global_streamer.add_member(StreamMemberTradeEntry('trade-entry'))
-        self._global_streamer.add_member(StreamMemberTradeUpdate('trade-update'))
-        self._global_streamer.add_member(StreamMemberTradeExit('trade-exit'))
-
-        # merged on the price
+        # merged on the price @deprecated
         self._global_streamer.add_member(StreamMemberFloatScatter('buy-entry', 0, 'g^'))  # @deprecated
         self._global_streamer.add_member(StreamMemberFloatScatter('sell-entry', 0, 'r^'))  # @deprecated
         self._global_streamer.add_member(StreamMemberFloatScatter('buy-exit', 0, 'r^'))  # @deprecated
         self._global_streamer.add_member(StreamMemberFloatScatter('sell-exit', 0, 'g^'))  # @deprecated
+
+        # trade stream
+        self._trade_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
+        self._trade_streamer.add_member(StreamMemberTradeEntry('trade-entry'))
+        self._trade_streamer.add_member(StreamMemberTradeUpdate('trade-update'))
+        self._trade_streamer.add_member(StreamMemberTradeExit('trade-exit'))
 
     def stream(self):
         # global data
         with self._mutex:
             if self._global_streamer:
                 self._global_streamer.publish()
+
+            if self._trade_streamer:
+                self._trade_streamer.publish()
 
             # and per timeframe
             for tf, timeframe_streamer in self._timeframe_streamers.items():
@@ -222,7 +227,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                     self.stream_timeframe_data(timeframe_streamer, data)
 
     def stream_call(self):
-        # timeframes list
+        # timeframes list @deprecated
         if self._global_streamer:
             self._global_streamer.member('tfs').update(list(self.timeframes.keys()))
             self._global_streamer.publish()

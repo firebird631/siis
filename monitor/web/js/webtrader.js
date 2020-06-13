@@ -185,9 +185,14 @@ $(window).ready(function() {
             'distance': 2.0,
             'type': 'percent',
         },
+        'percent-2.5': {
+            'label': '2.5%',
+            'distance': 2.5,
+            'type': 'percent',
+        },
         'percent-3.0': {
-            'label': '2.0%',
-            'distance': 2.0,
+            'label': '3.0%',
+            'distance': 3.0,
             'type': 'percent',
         },
         'percent-4.0': {
@@ -250,9 +255,19 @@ $(window).ready(function() {
             'distance': 20,
             'type': 'pip',
         },
+            'pip-25': {
+            'label': '25pips',
+            'distance': 25,
+            'type': 'pip',
+        },
         'pip-30': {
             'label': '30pips',
             'distance': 30,
+            'type': 'pip',
+        },
+        'pip-40': {
+            'label': '40pips',
+            'distance': 40,
             'type': 'pip',
         },
         'pip-50': {
@@ -423,10 +438,6 @@ $(window).ready(function() {
 
             fetch_strategy();
 
-            for (let appliance in appliances) {
-                fetch_trades(appliance);
-            }
-
             $('#authentification').modal('hide');
 
             $("div.active-trade-list-entries ul").empty();
@@ -468,10 +479,6 @@ $(window).ready(function() {
             }
 
             fetch_strategy();
-
-            for (let appliance in appliances) {
-                fetch_trades(appliance);
-            }
 
             $('#authentification').modal('hide');
 
@@ -666,6 +673,8 @@ function fetch_strategy() {
                 'market-id': market['market-id'],
                 'value-per-pip': market['value-per-pip'],
                 'price-limits': market['price-limits'],  // array 4 float
+                'notional-limits': market['notional-limits'],  // array 4 float
+                'size-limits': market['size-limits'],  // array 4 float
                 'bid': market['bid'],
                 'ofr': market['ofr'],
                 'mid': market['mid'],
@@ -688,6 +697,10 @@ function fetch_strategy() {
         }
 
         setup_traders();
+
+        for (let appliance in window.appliances) {
+            fetch_trades(appliance);
+        }
     })
     .fail(function() {
         alert("Unable to obtains markets list info !");
@@ -695,13 +708,13 @@ function fetch_strategy() {
 }
 
 function fetch_trades(appliance) {
-    let symbol = retrieve_symbol(elt);
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
 
     let params = {
         'appliance': appliance,
     }
+    console.log(params)
 
     $.ajax({
         type: "GET",
@@ -715,13 +728,16 @@ function fetch_trades(appliance) {
     })
     .done(function(result) {
         window.actives_trades = {};
+        console.log(result)
 
-        for (let i = 0; i < result.length; ++i) {
-            let trade = result[i];
-            
-            // window.actives_trades[trade_id] = {
+        let trades = result['data'];
 
-            // }
+        for (let i = 0; i < trades.length; ++i) {
+            let trade = trades[i];
+            window.actives_trades[trade.id] = trade;
+
+            // initial add
+            add_active_trade(appliance, trade.symbol, trade);
         }
     })
     .fail(function() {
@@ -887,6 +903,15 @@ function add_quantity_slider(id, to) {
 function retrieve_symbol(elt) {
     let trader_id = $(elt.target).attr('trader-id');
     return $('.markets[trader-id="' + trader_id + '"]').val();
+}
+
+function retrieve_trade_key(elt) {
+    let tr = $(elt.target).parent().parent();
+    if (tr.length) {
+        return tr.attr('trade-key');
+    }
+
+    return "";
 }
 
 function retrieve_trader_id(elt) {
