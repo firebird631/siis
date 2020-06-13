@@ -261,7 +261,7 @@ class InstrumentRestAPI(resource.Resource):
         uri = request.uri.decode("utf-8").split('/')
         results = {}
 
-        # @todo
+        # @todo get state info
 
         return json.dumps(results).encode("utf-8")
 
@@ -269,9 +269,9 @@ class InstrumentRestAPI(resource.Resource):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        results = {}
+        # @todo toggle play/pause
 
-        # @todo
+        results = {}
 
         return json.dumps(results).encode("utf-8")
 
@@ -281,7 +281,7 @@ class InstrumentRestAPI(resource.Resource):
 
         results = {}
 
-        # @todo
+        # @todo remove an instrument and watcher subscription
 
         return json.dumps(results).encode("utf-8")
 
@@ -300,14 +300,7 @@ class StrategyTradeRestAPI(resource.Resource):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        uri = request.uri.decode("utf-8").split('/')
         trade_id = -1
-
-        # if not request.path.endswith('/trade'):
-        #     try:
-        #         trade_id = int(uri[-1])
-        #     except ValeurError:
-        #         return NoResource()
 
         results = {
             'error': False,
@@ -315,10 +308,16 @@ class StrategyTradeRestAPI(resource.Resource):
             'data': None
         }
 
-        appliance = request.args.get(b'appliance', [b""])[0].decode("utf-8")
+        if b'appliance' not in request.args:
+            return NoResource("Missing appliance identifier")
 
-        if not appliance:
-            return NoResource()
+        appliance = request.args[b'appliance'][0].decode("utf-8")
+
+        if b'trade' in request.args:
+            try:
+                trade_id = int(request.args[b'trade'][0].decode("utf-8"))
+            except ValueError:
+                return NoResource("Incorrect trade value")
 
         if trade_id > 0:
             # @todo
@@ -370,27 +369,6 @@ class StrategyTradeRestAPI(resource.Resource):
         return json.dumps(results).encode("utf-8")
 
 
-class ActiveTradeRestAPI(resource.Resource):
-    isLeaf = True
-
-    def __init__(self, strategy_service, trader_service):
-        super().__init__()
-
-        self._strategy_service = strategy_service
-        self._trader_service = trader_service
-
-    def render_GET(self, request):
-        if not check_auth_token(request):
-            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
-
-        uri = request.uri.decode("utf-8").split('/')
-        result = {}
-
-        # @todo
-
-        return json.dumps(result).encode("utf-8")
-
-
 class HistoricalTradeRestAPI(resource.Resource):
     isLeaf = True
 
@@ -404,10 +382,23 @@ class HistoricalTradeRestAPI(resource.Resource):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        uri = request.uri.split('/')
-        result = {}
+        results = {
+            'error': False,
+            'messages': [],
+            'data': None
+        }
 
-        # @todo
+        appliance = request.args.get(b'appliance', [b""])[0].decode("utf-8")
+
+        if not appliance:
+            return NoResource()
+
+        if trade_id > 0:
+            # @todo
+            results['data'] = None
+        else:
+            # current active trade list
+            results['data'] = self._strategy_service.appliance(appliance).dumps_trades_history()
 
         return json.dumps(result).encode("utf-8")
 
@@ -488,9 +479,6 @@ class HttpRestServer(object):
 
         trade_api = StrategyTradeRestAPI(self._strategy_service, self._trader_service)
         strategy_api.putChild(b"trade", trade_api)
-
-        active_trade_api = ActiveTradeRestAPI(self._strategy_service, self._trader_service)
-        strategy_api.putChild(b"active", active_trade_api)
 
         historical_trade_api = HistoricalTradeRestAPI(self._strategy_service, self._trader_service)
         strategy_api.putChild(b"historical", historical_trade_api)

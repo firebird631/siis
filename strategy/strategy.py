@@ -1503,12 +1503,12 @@ class Strategy(Runnable):
             strategy_trader.order_signal(signal_type, data)
 
     #
-    # trade commands (@todo to be moved to decicated command/file.py)
+    # helpers
     #
 
     def dumps_trades_update(self):
         """
-        Dumps any trades of any strategy traders.
+        Dumps trade update notify of any trades of any strategy traders.
         """
         trades = []
 
@@ -1520,6 +1520,25 @@ class Strategy(Runnable):
                     error_logger.error(repr(e))
 
         return trades
+
+    def dumps_trades_history(self):
+        """
+        Dumps trade records of any historical trades of any strategy traders.
+        """
+        trades = []
+
+        with self._mutex:
+            for k, strategy_trader in self._strategy_traders.items():
+                try:
+                    trades += strategy_trader.dumps_trades_history()
+                except Exception as e:
+                    error_logger.error(repr(e))
+
+        return trades
+
+    #
+    # trade commands (@todo to be moved to decicated command/file.py)
+    #
 
     def cmd_trade_entry(self, strategy_trader, data):
         """

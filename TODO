@@ -33,12 +33,13 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
     - charting OHLC et ticks (streaming)
     - charting de la performance de la strat (streaming)
     - goto charting historique sur un trade passé
-    - mise-à-jour des trades actifs (WS)
-    - ajout des trades historiques (WS)
-    - close trade
+    - récupération des trades historiques à la connexion
     - reverse trade
     - details trade avec modal
-    - modify SL/TP active trade
+    - modify SL/TP active trade (en cours) + DSL
+    - session expiry message to renew
+    - alerts list
+    - signals list
 
 #104 decouper les commande de strategy par fichier dans command/
 

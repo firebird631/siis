@@ -331,45 +331,16 @@ $(window).ready(function() {
         }
     }
 
-    // @todo fetch markets
-    // @todo fetch details
-    // @todo fetch options
-
-    // @todo regular curr trades and trades history (later WS)
-    // @todo chart view
-
     //
     // trade list
     //
 
-    $("#list_historical_trades").on('click', function(e) {
-        $("div.active-trade-list-entries").hide();
-        $("div.options-list-entries").hide();
-        $("div.historical-trade-list-entries").show();
+    $("a.menu-btn").on('click', function(e) {
+        $("div.list-entries").hide();
+        $('div.' + $(this).attr('view')).show();
 
-        $('#list_active_trades').css('background', 'initial');
-        $('#list_historical_trades').css('background', 'chocolate');
-        $('#options_layer').css('background', 'initial');
-    });
-
-    $("#list_active_trades").on('click', function(e) {
-        $("div.historical-trade-list-entries").hide();
-        $("div.options-list-entries").hide();
-        $("div.active-trade-list-entries").show();
-
-        $('#list_active_trades').css('background', 'chocolate');
-        $('#list_historical_trades').css('background', 'initial');
-        $('#options_layer').css('background', 'initial');
-    });
-
-    $("#options_layer").on('click', function(e) {
-        $("div.historical-trade-list-entries").hide();
-        $("div.active-trade-list-entries").hide();
-        $("div.options-list-entries").show();
-
-        $('#list_active_trades').css('background', 'initial');
-        $('#list_historical_trades').css('background', 'initial');
-        $('#options_layer').css('background', 'chocolate');
+        $('a.menu-btn').css('background', 'initial');
+        $(this).css('background', 'chocolate');
     });
 
     $('#authentification').modal({'show': true, 'backdrop': false});
@@ -398,6 +369,22 @@ $(window).ready(function() {
         if (e.which == '13') {
             authenticate();
         }
+    });
+
+    $('#apply_modify_trade_stop_loss').on('click', function(e) {
+        on_apply_modify_active_trade_stop_loss();
+
+        $('#apply_modify_trade_stop_loss').modal('hide');
+    });
+
+    $('#apply_modify_trade_take_profit').on('click', function(e) {
+        on_apply_modify_active_trade_take_profit();
+
+        $('#apply_modify_trade_take_profit').modal('hide');
+    });
+
+    $('#apply_trade_add_dynamic_stop_loss').on('click', function(e) {
+        on_add_active_trade_dynamic_stop_loss();
     });
 
     //
@@ -714,7 +701,6 @@ function fetch_trades(appliance) {
     let params = {
         'appliance': appliance,
     }
-    console.log(params)
 
     $.ajax({
         type: "GET",
@@ -728,7 +714,6 @@ function fetch_trades(appliance) {
     })
     .done(function(result) {
         window.actives_trades = {};
-        console.log(result)
 
         let trades = result['data'];
 
@@ -1005,7 +990,39 @@ function add_long_short_actions(id, to) {
 function toggle_auto(elt) {
     let symbol = retrieve_symbol(elt);
 
-    // @todo
+    let endpoint = "strategy/trader";
+    let url = base_url() + '/' + endpoint;
+
+    let market = window.markets[symbol];
+
+    let data = {
+        'appliance': market['appliance'],
+        'market-id': market['market-id'],
+        'activity': 'toggle',
+    }
+
+    $.ajax({
+        type: "POST",
+        url: url,
+        data: JSON.stringify(data),
+        dataType: 'json',
+        contentType: 'application/json'
+    })
+    .done(function(result) {
+        if (result['error'] || !result['auth-token']) {
+            notify({'message': "Rejected authentication", 'type': 'error'});
+            return;
+        }
+
+        $(elt).removeClass('fa-play')
+            .removeClass('fa-pause')
+            .addClass(result['activity'] ? 'fa-play' : 'fa-pause');
+
+        notify({'message': "Toggle auto-trade", 'type': 'success'});
+    })
+    .fail(function() {
+        notify({'message': "Unable toggle auto-trade status !", 'type': 'error'});
+    });
 }
 
 function open_trading_view(elt) {
@@ -1095,12 +1112,6 @@ function on_change_take_profit_method(elt) {
 }
 
 function on_change_take_profit_price(elt) {
-    let symbol = retrieve_symbol(elt);
-
-    // @todo
-}
-
-function on_play_pause_market(elt) {
     let symbol = retrieve_symbol(elt);
 
     // @todo

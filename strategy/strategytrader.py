@@ -87,7 +87,7 @@ class StrategyTrader(object):
             'worst': 0.0,      # worst trade lost
             'best': 0.0,       # best trade profit
             'worst-sum': 0.0,  # sum of worst trade lost
-            'best-sum': 0.0,    # sum of best trade profit
+            'best-sum': 0.0,   # sum of best trade profit
             'failed': [],      # failed terminated trades
             'success': [],     # success terminated trades
             'roe': [],         # return to equity trades
@@ -368,6 +368,20 @@ class StrategyTrader(object):
             with self._trade_mutex:
                 for trade in self.trades:
                     results.append(trade.dumps_notify_update(self.strategy.timestamp, self))
+
+        return results
+
+    def dumps_trades_history(self):
+        """
+        Dumps the historical record of each historical trades.
+        """
+        results = []
+
+        with self._mutex:
+            results += self._stats['success']
+            results += self._stats['failed']
+
+            results = sorted(results, key=lambda trade: (trade['eot'], trade['id']), reverse=True)
 
         return results
 

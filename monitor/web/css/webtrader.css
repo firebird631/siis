@@ -162,11 +162,22 @@ span.quantity-value {
 a.menu-btn {
     width: 90%;
     margin-left: 10%;
-    margin-top: 10px;
-    margin-bottom: 5px;
+    margin-top: 0px;
+    margin-bottom: 0px;
     border-right: none;
     border-bottom-right-radius: 0px;
     border-top-right-radius: 0px;
+    height: 27px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+a.menu-btn:nth-of-type(1) {
+    border-top: 1px solid gray;
+}
+
+a.menu-btn {
+    border-top: none;
 }
 
 div.trade-list-menu {
@@ -176,8 +187,13 @@ div.trade-list-menu {
 
 div.trade-list-context {
     width: 90%;
-    padding-left: 15px;
-    padding-top: 7px;
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-top: 5px;
+}
+
+div.list-entries > table > tbody > tr:nth-child(odd) {
+    background-color: #2b2b2b;
 }
 
 #notifications {
@@ -196,6 +212,18 @@ div.historical-trade-list-entries {
     display: none;
 }
 
+div.signal-list-entries {
+    display: none;
+}
+
+div.alert-list-entries {
+    display: none;
+}
+
+div.active-alert-list-entries {
+    display: none;
+}
+
 div.options-list-entries {
     display: none;
 }
@@ -206,4 +234,9 @@ span.trade-long {
 
 span.trade-short {
     color: red;
+}
+
+button.trade-modify-take-profit, button.trade-modify-stop-loss {
+    padding: 4px;
+    margin-left: 3px;
 }
