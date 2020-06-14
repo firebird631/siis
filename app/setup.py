@@ -48,9 +48,6 @@ def install(options):
     if not config_path.joinpath("profiles").exists():
         config_path.joinpath("profiles").mkdir(parents=True)
 
-    if not config_path.joinpath("appliances").exists():
-        config_path.joinpath("appliances").mkdir(parents=True)
-
     if not config_path.joinpath("watchers").exists():
         config_path.joinpath("watchers").mkdir(parents=True)
 

@@ -62,14 +62,14 @@ class Account(object):
         # copy options
         self._leverage = [1, 200]    # min/max leverage
 
-        # global bet should be par instrument/appliance
+        # global bet should be par instrument
         self._default_stop_loss_rate = 0.5    # never goes deeper than 50%
         self._default_take_profit_rate = 0.5  # when no take profit assume at 50%
         self._default_risk_ratio = 2.0        # mean take profit -2x the stop loss
 
         self._guaranteed_stop = False
 
-        trader_config = parent.service.trader_config(self._parent.name)
+        trader_config = parent.service.trader_config()
         if trader_config:
             self._guaranteed_stop = trader_config.get('guaranteed-stop', False)
 

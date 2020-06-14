@@ -45,7 +45,7 @@ class AlertView(TableView):
         if not self._strategy_service:
             return 0
 
-        return len(self._strategy_service.get_appliances())
+        return 1
 
     def receiver(self, signal):
         if not signal:
@@ -66,10 +66,10 @@ class AlertView(TableView):
 
                         self._refresh = 0.0
 
-    def alerts_table(self, appliance, style='', offset=None, limit=None, col_ofs=None):
+    def alerts_table(self, strategy, style='', offset=None, limit=None, col_ofs=None):
         data = []
 
-        alerts = self._alerts_list.get(appliance.identifier, [])
+        alerts = self._alerts_list.get(strategy.identifier, [])
         total_size = (len(AlertView.COLUMNS), len(alerts))
 
         if offset is None:
@@ -116,14 +116,13 @@ class AlertView(TableView):
         if not self._strategy_service:
             return
 
-        appliances = self._strategy_service.get_appliances()
-        if len(appliances) > 0 and -1 < self._item < len(appliances):
-            appliance = appliances[self._item]
+        strategy = self._strategy_service.strategy()
+        if strategy:
             num = 0
 
             with self._mutex:
                 try:
-                    columns, table, total_size = self.alerts_table(appliance, *self.table_format())
+                    columns, table, total_size = self.alerts_table(strategy, *self.table_format())
                     self.table(columns, table, total_size)
                     num = total_size[1]
                 except Exception as e:
@@ -131,6 +130,6 @@ class AlertView(TableView):
                     error_logger.error(str(traceback.format_exc()))
                     error_logger.error(str(e))
 
-            self.set_title("Alert list (%i) for strategy %s - %s" % (num, appliance.name, appliance.identifier))
+            self.set_title("Alert list (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
         else:
             self.set_title("Alert list - No configured strategy")

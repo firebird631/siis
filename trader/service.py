@@ -21,16 +21,13 @@ from trader.traderexception import TraderServiceException
 
 class TraderService(Service):
     """
-    Trade service is responsible of build, initialize, load configuration, start/stop traders.
-
-    @note It os more safe to limit at 1 trader per running instance.
-    @todo Could limit to a single trader.
+    Trader service is responsible of build, initialize, load configuration, start/stop the trader.
     """
 
     def __init__(self, watcher_service, monitor_service, options):
         super().__init__("trader", options)
 
-        self._traders = {}
+        self._trader = None
         
         self._keys_map_to_trader = {}
         self._next_trader_key = 1
@@ -52,8 +49,8 @@ class TraderService(Service):
         self._profile = options.get('profile', 'default')
         self._profile_config = utils.load_config(options, "profiles/%s" % self._profile)
 
-        # traders config
-        self._traders_config = self._init_traders_config(options)
+        # trader config
+        self._trader_config = self._init_trader_config(options)
 
         # backtesting options
         self._backtesting = options.get('backtesting', False)
@@ -79,85 +76,88 @@ class TraderService(Service):
         return self._report_path
 
     def start(self, options):
-        # no traders in watcher only
+        # no trader in watcher only
         if self._watcher_only:
             return
 
-        for k, trader in self._traders_config.items():
-            if k == "default":
-                continue
+        trader_config = self._trader_config
 
-            if self._traders.get(k) is not None:
-                Terminal.inst().error("Trader %s already started" % k)
-                continue
+        if not trader_config:
+            Terminal.inst().error("Missing trader config")
+            return
 
-            profile_trader_config = self.profile(k)
-            if not profile_trader_config:
-                # ignore trader missing from the profile
-                continue
+        if self._trader is not None:
+            Terminal.inst().error("Trader %s already started" % self._trader.name)
+            return
 
-            if trader.get("status") is not None and trader.get("status") == "load":
-                # retrieve the classname and instanciate it
-                parts = trader.get('classpath').split('.')
+        profile_trader_config = self.profile()
+        if not profile_trader_config:
+            # ignore trader missing from the profile
+            return
 
-                module = __import__('.'.join(parts[:-1]), None, locals(), [parts[-1],], 0)
-                Clazz = getattr(module, parts[-1])
+        if trader_config.get("status") is not None and trader_config.get("status") == "load":
+            # retrieve the classname and instanciate it
+            parts = trader_config.get('classpath').split('.')
 
-                # backtesting always create paper traders
-                if self.backtesting or self._paper_mode:
-                    inst_trader = PaperTrader(self, k)
-                    paper_mode = trader.get('paper-mode', None)
+            module = __import__('.'.join(parts[:-1]), None, locals(), [parts[-1],], 0)
+            Clazz = getattr(module, parts[-1])
 
-                    if paper_mode:
-                        inst_trader.account.set_currency(paper_mode.get('currency', 'USD'), paper_mode.get('currency-symbol', '$'))
-                        inst_trader.account.set_alt_currency(paper_mode.get('alt-currency', 'USD'), paper_mode.get('alt-currency-symbol', '$'))
+            # backtesting always create paper traders
+            if self.backtesting or self._paper_mode:
+                inst_trader = PaperTrader(self, profile_trader_config['name'])
+                paper_mode = trader_config.get('paper-mode', None)
 
-                        # initial fund or asset
-                        if paper_mode.get('type', 'margin') == 'margin':
-                            inst_trader.account.account_type = inst_trader.account.TYPE_MARGIN
-                            inst_trader.account.initial(paper_mode.get('initial', 1000.0), inst_trader.account.currency, inst_trader.account.currency_display)
+                if paper_mode:
+                    inst_trader.account.set_currency(paper_mode.get('currency', 'USD'), paper_mode.get('currency-symbol', '$'))
+                    inst_trader.account.set_alt_currency(paper_mode.get('alt-currency', 'USD'), paper_mode.get('alt-currency-symbol', '$'))
 
-                        elif paper_mode.get('type', 'margin') == 'asset':
-                            inst_trader.account.account_type = inst_trader.account.TYPE_ASSET
+                    # initial fund or asset
+                    if paper_mode.get('type', 'margin') == 'margin':
+                        inst_trader.account.account_type = inst_trader.account.TYPE_MARGIN
+                        inst_trader.account.initial(paper_mode.get('initial', 1000.0), inst_trader.account.currency, inst_trader.account.currency_display)
 
-                            assets = paper_mode.get('assets', [{
-                                'base': inst_trader.account.currency,
-                                'quote': inst_trader.account.alt_currency,
-                                'initial': 1000.0,
-                                'precision': 8
-                            }])
+                    elif paper_mode.get('type', 'margin') == 'asset':
+                        inst_trader.account.account_type = inst_trader.account.TYPE_ASSET
 
-                            for asset in assets:
-                                if asset.get('base') and asset.get('quote') and asset.get('initial'):
-                                    inst_trader.create_asset(asset['base'], asset['initial'], paper_mode.get('price', 0.0), asset['quote'], asset.get('precision', 8))
+                        assets = paper_mode.get('assets', [{
+                            'base': inst_trader.account.currency,
+                            'quote': inst_trader.account.alt_currency,
+                            'initial': 1000.0,
+                            'precision': 8
+                        }])
 
-                    if self.backtesting:
-                        # no auto-update -> no thread : avoid time deviation
-                        self._traders[k] = inst_trader
+                        for asset in assets:
+                            if asset.get('base') and asset.get('quote') and asset.get('initial'):
+                                inst_trader.create_asset(asset['base'], asset['initial'], paper_mode.get('price', 0.0), asset['quote'], asset.get('precision', 8))
 
-                    elif self._paper_mode:
-                        # live but in paper-mode -> thread
-                        if inst_trader.start():
-                            self._traders[k] = inst_trader
-                else:
-                    # live with real trader
-                    inst_trader = Clazz(self)
+                if self.backtesting:
+                    # no auto-update -> no thread : avoid time deviation
+                    self._trader = inst_trader
 
+                elif self._paper_mode:
+                    # live but in paper-mode -> thread
                     if inst_trader.start():
-                        self._traders[k] = inst_trader
+                        self._trader = inst_trader
+            else:
+                # live with real trader
+                inst_trader = Clazz(self)
+
+                if inst_trader.start():
+                    self._trader = inst_trader
 
     def terminate(self):
-        for k, trader in self._traders.items():
+        if self._trader:
+            trader = self._trader
+
             # stop workers
             if trader.running:
                 trader.stop()
 
-        for k, trader in self._traders.items():
             # join them
             if trader.thread.is_alive():
                 trader.thread.join()
 
-        self._traders = {}
+            self._trader = None
 
     def notify(self, signal_type, source_name, signal_data):
         if signal_data is None:
@@ -171,47 +171,20 @@ class TraderService(Service):
     def command(self, command_type, data):
         results = None
 
-        if command_type == Trader.COMMAND_INFO:
-            # any or specific commands
-            trader_name = data.get('trader')
-
-            if trader_name:
-                # for a specific trader
-                trader = self._traders.get(trader_name)
-                if trader:
-                    results = trader.command(command_type, data)
-            else:
-                # or any, with an array of results
-                results = []
-
-                for k, trader in self._traders.items():
-                    results.append(trader.command(command_type, data))
-        else:
-            # specific commands
-            trader_name = data.get('trader')
-            trader = None
-
-            if trader_name:
-                trader = self._traders.get(trader_name)
-
-            if trader:
-                results = trader.command(command_type, data)
+        trader = self._trader
+        if trader:
+            results = trader.command(command_type, data)
 
         return results
-
-
 
     def receiver(self, signal):
         pass
 
-    def trader(self, name):
-        return self._traders.get(name)
+    def trader(self):
+        return self._trader
 
-    def traders_names(self):
-        return [trader.name for k, trader in self._traders.items()]
-
-    def get_traders(self):
-        return list(self._traders.values())
+    def trader_name(self):
+        return self._trader.name if self._trader else None
 
     def gen_key(self):
         nkey = -1
@@ -232,8 +205,9 @@ class TraderService(Service):
 
     def ping(self, timeout):
         if self._mutex.acquire(timeout=timeout):
-            for k, trader, in self._traders.items():
-                trader.ping(timeout)
+            # if no deadlock lock for service ping trader
+            if self._trader:
+                self._trader.ping(timeout)
 
             self._mutex.release()
         else:
@@ -242,9 +216,9 @@ class TraderService(Service):
     def watchdog(self, watchdog_service, timeout):
         # try to acquire, see for deadlock
         if self._mutex.acquire(timeout=timeout):
-            # if no deadlock lock for service ping traders
-            for k, trader, in self._traders.items():
-                trader.watchdog(watchdog_service, timeout)
+            # if no deadlock lock for service ping trader
+            if self._trader:
+                self._trader.watchdog(watchdog_service, timeout)
 
             self._mutex.release()
         else:
@@ -257,35 +231,33 @@ class TraderService(Service):
     def identity(self, name):
         return self._identities_config.get(name, {}).get(self._identity)
 
-    def trader_config(self, name):
+    def trader_config(self):
         """
-        Get the configurations for a trader as dict.
+        Get the trader configuration as dict.
         """
-        return self._traders_config.get(name, {})
+        return self._trader_config
 
-    def _init_traders_config(self, options):
-        """
-        Get the profile configuration for a specific trader name.
-        """
-        traders_profile = self._profile_config.get('traders', {})
-
-        traders_config = {}
-
-        for k, profile_trader_config in traders_profile.items():
-            user_trader_config = utils.load_config(options, 'traders/' + k)
-            if user_trader_config:
-                if 'paper-mode' in profile_trader_config:
-                    # paper-mode from profile overrides
-                    user_trader_config['paper-mode'] = profile_trader_config['paper-mode']
-
-                # keep overrided
-                traders_config[k] = user_trader_config
-
-        return traders_config
-
-    def profile(self, name):
+    def _init_trader_config(self, options):
         """
         Get the profile configuration for a specific trader name.
         """
-        profile = self._profile_config.get('traders', {})
-        return profile.get(name, {})
+        profile_trader_config = self._profile_config.get('trader')
+
+        trader_config = {}
+
+        user_trader_config = utils.load_config(options, 'traders/' + profile_trader_config.get('name', "default.json"))
+        if user_trader_config:
+            if 'paper-mode' in profile_trader_config:
+                # paper-mode from profile overrides
+                user_trader_config['paper-mode'] = profile_trader_config['paper-mode']
+
+            # keep overrided
+            trader_config = user_trader_config
+
+        return trader_config
+
+    def profile(self):
+        """
+        Get the profile configuration for the trader.
+        """
+        return self._profile_config.get('trader')

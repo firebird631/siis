@@ -17,36 +17,36 @@ class StrategyServiceException(ServiceException):
 
 class StrategyException(StrategyServiceException):
 
-    def __init__(self, strategy_name, appliance_identifier, message):
+    def __init__(self, strategy_name, strategy_identifier, message):
         super().__init__(message)
 
         self.strategy_name = strategy_name
-        self.appliance_identifier = appliance_identifier
+        self.strategy_identifier = strategy_identifier
 
     def __str__(self):
         return 'StrategyException (%s:%s) : %s' % (
-            self.strategy_name, self.appliance_identifier, self.message)
+            self.strategy_name, self.strategy_identifier, self.message)
 
 
 class StrategyTraderException(StrategyException):
 
-    def __init__(self, strategy_name, appliance_identifier, instrument_id, message):
-        super().__init__(strategy_name, appliance_identifier, message)
+    def __init__(self, strategy_name, strategy_identifier, instrument_id, message):
+        super().__init__(strategy_name, strategy_identifier, message)
 
         self.instrument_id = instrument_id
 
     def __str__(self):
         return 'StrategyTraderException (%s:%s:%s) : %s' % (
-            self.strategy_name, self.appliance_identifier, self.instrument_id, self.message)
+            self.strategy_name, self.strategy_identifier, self.instrument_id, self.message)
 
 
 class StrategySubTraderException(StrategyTraderException):
 
-    def __init__(self, name, appliance_identifier, instrument_id, sub_id, message):
-        super().__init__(strategy_name, appliance_identifier, instrument_id, message)
+    def __init__(self, name, strategy_identifier, instrument_id, sub_id, message):
+        super().__init__(strategy_name, strategy_identifier, instrument_id, message)
 
         self.instrument_id = instrument_id
 
     def __str__(self):
         return 'StrategySubTraderException (%s:%s:%s:%s) : %s' % (
-            self.strategy_name, self.appliance_identifier, self.instrument_id, self.instrument_id, self.message)
+            self.strategy_name, self.strategy_identifier, self.instrument_id, self.instrument_id, self.message)

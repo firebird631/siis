@@ -18,7 +18,7 @@ from instrument.instrument import Instrument
 class RangeRegionCommand(Command):
 
     SUMMARY = "to manually add a range region on a strategy"
-    HELP = (":range-region <appliance-id> <market-id> <low> <high>",
+    HELP = (":range-region <market-id> <low> <high>",
             "optional parameters:",
             "- C@<price> : cancelation price",
             "- @<timestamp|duration> : expiry",
@@ -35,7 +35,6 @@ class RangeRegionCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        appliance = None
         market_id = None
         timeframe = -1
 
@@ -50,17 +49,17 @@ class RangeRegionCommand(Command):
         high = 0.0
         cancelation = 0.0
 
-        # ie ":RR _ EURUSD 1.12 1.15"
-        if len(args) < 4:
+        # ie ":RR EURUSD 1.12 1.15"
+        if len(args) < 3:
             return False, "Missing parameters"
 
         try:
-            appliance, market_id = args[0], args[1]
+            market_id = args[0]
 
-            low = float(args[2])
-            high = float(args[3])
+            low = float(args[1])
+            high = float(args[2])
 
-            for value in args[4:]:
+            for value in args[3:]:
                 if value.startswith("'"):
                     timeframe = timeframe_from_str(value[1:])
                 elif value.startswith('C@'):
@@ -87,7 +86,6 @@ class RangeRegionCommand(Command):
             return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
-            'appliance': appliance,
             'market-id': market_id,
             'action': action,
             'region': reg,
@@ -105,12 +103,9 @@ class RangeRegionCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
-
-        elif len(args) <= 2:
-            appliance = self._strategy_service.appliance(args[0])
-            if appliance:
-                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -118,7 +113,7 @@ class RangeRegionCommand(Command):
 class TrendRegionCommand(Command):
 
     SUMMARY = "to manually add a trend region on a strategy"
-    HELP = (":trend-region <appliance-id> <market-id> <low-a> <high-a> <low-b> <high-b>",
+    HELP = (":trend-region <market-id> <low-a> <high-a> <low-b> <high-b>",
             "optional parameters:",
             "- C@<price> : cancelation price",
             "- @<timestamp|duration> : expiry",
@@ -135,7 +130,6 @@ class TrendRegionCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        appliance = None
         market_id = None
         timeframe = -1
 
@@ -152,20 +146,20 @@ class TrendRegionCommand(Command):
         high_b = 0.0
         cancelation = 0.0
 
-        # ie ":TR _ EURUSD 4 1.12 1.15 1.15 1.2"
-        if len(args) < 7:
+        # ie ":TR EURUSD 4 1.12 1.15 1.15 1.2"
+        if len(args) < 6:
             return False, "Missing parameters"
 
         try:
-            appliance, market_id = args[0], args[1]
+            market_id = args[0]
 
-            low_a = float(args[2])
-            high_a = float(args[3])
+            low_a = float(args[1])
+            high_a = float(args[2])
 
-            low_b = float(args[4])
-            high_b = float(args[5])
+            low_b = float(args[3])
+            high_b = float(args[4])
 
-            for value in args[6:]:
+            for value in args[5:]:
                 if value.startswith("'"):
                     timeframe = timeframe_from_str(value[1:])
                 elif value.startswith('C@'):
@@ -192,7 +186,6 @@ class TrendRegionCommand(Command):
             return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
-            'appliance': appliance,
             'market-id': market_id,
             'action': action,
             'region': reg,
@@ -212,12 +205,9 @@ class TrendRegionCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
-
-        elif len(args) <= 2:
-            appliance = self._strategy_service.appliance(args[0])
-            if appliance:
-                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -235,25 +225,23 @@ class RemoveRegionCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        appliance = None
         market_id = None
 
         action = 'del-region'
         region_id = None        
 
-        # ie ":rmregion _ EURUSD 1"
-        if len(args) < 3:
+        # ie ":rmregion EURUSD 1"
+        if len(args) < 2:
             return False, "Missing parameters"
 
         try:
-            appliance, market_id = args[0], args[1]
+            market_id = args[0]
 
-            region_id = int(args[2])   
+            region_id = int(args[1])   
         except Exception:
             return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
-            'appliance': appliance,
             'market-id': market_id,
             'action': action,
             'region-id': region_id
@@ -263,12 +251,9 @@ class RemoveRegionCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
-
-        elif len(args) <= 2:
-            appliance = self._strategy_service.appliance(args[0])
-            if appliance:
-                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -286,16 +271,15 @@ class RegionInfoCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        appliance = None
         market_id = None
         region_id = None
 
-        if len(args) >= 2:
+        if len(args) >= 1:
             try:
-                appliance, market_id = args[0], args[1]
+                market_id = args[0]
 
-                if len(args) >= 3:
-                    region_id = int(args[2])
+                if len(args) >= 2:
+                    region_id = int(args[1])
                 else:
                     region_id = -1
 
@@ -303,7 +287,6 @@ class RegionInfoCommand(Command):
                 return False, "Invalid parameters"
 
             self._strategy_service.command(Strategy.COMMAND_TRADER_INFO, {
-                'appliance': appliance,
                 'market-id': market_id,
                 'detail': 'region',
                 'region-id': region_id
@@ -317,12 +300,9 @@ class RegionInfoCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
-
-        elif len(args) <= 2:
-            appliance = self._strategy_service.appliance(args[0])
-            if appliance:
-                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 

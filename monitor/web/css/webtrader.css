@@ -228,6 +228,10 @@ div.options-list-entries {
     display: none;
 }
 
+div.performance-list-entries {
+    display: none;
+}
+
 span.trade-long {
     color: green;
 }

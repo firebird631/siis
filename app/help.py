@@ -87,7 +87,7 @@ def display_cli_help():
     Terminal.inst().message("")
     Terminal.inst().message("  --help display command line help.")
     Terminal.inst().message("  --version display the version number.")
-    Terminal.inst().message("  --profile=<profile> Use a specific profile of appliance else default loads any.")
+    Terminal.inst().message("  --profile=<profile> Profile to instanciate.")
     Terminal.inst().message("  --paper-mode instanciate paper mode trader and simulate as best as possible.")
     Terminal.inst().message("  --backtest process a backtesting, uses paper mode traders and data history avalaible in the database.")
     Terminal.inst().message("  --timestep=<seconds> Timestep in seconds to increment the backesting.")

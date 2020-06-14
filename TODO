@@ -38,8 +38,12 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
     - details trade avec modal
     - modify SL/TP active trade (en cours) + DSL
     - session expiry message to renew
-    - alerts list
-    - signals list
+    - alerts list + WS + REST create, delete, prefetch
+    - signals list + WS
+    - performance tab, locally computed
+    - ticker WS
+
+#111 mode trade by strategy : selon context choisit, gérer comme si c'était un signal et avoir ce mode depuis le manuel
 
 #104 decouper les commande de strategy par fichier dans command/
 

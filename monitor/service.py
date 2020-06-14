@@ -378,7 +378,7 @@ class MonitorService(Service):
                 self._ws.publish(stream_category, stream_group, stream_name, content)
 
     def on_rpc_message(self, msg):
-        # retrieve the appliance
+        # retrieve the strategy
         # @todo using Rpc model and update on the client side
         # rpc = Rpc()
         # rpc.loads(msg)
@@ -386,13 +386,12 @@ class MonitorService(Service):
         cat = msg.get('c', -1)
 
         if cat == Rpc.STREAM_STRATEGY_CHART:
-            appliance = msg.get('g')
+            group = msg.get('g')
             market_id = msg.get('s')
             timeframe = msg.get('v')
 
-            if appliance and market_id:
+            if group and market_id:
                 self._strategy_service.command(Strategy.COMMAND_TRADER_STREAM, {
-                    'appliance': appliance,
                     'market-id': market_id,
                     'timeframe': timeframe,
                     'type': "chart",
@@ -400,14 +399,13 @@ class MonitorService(Service):
                 })
 
         elif cat == Rpc.STREAM_STRATEGY_INFO:
-            appliance = msg.get('g')
+            group = msg.get('g')
             market_id = msg.get('s')
             timeframe = msg.get('v')
             # sub_key = msg.get('v')[1]
 
-            if appliance and market_id:
+            if group and market_id:
                 self._strategy_service.command(Strategy.COMMAND_TRADER_STREAM, {
-                    'appliance': appliance,
                     'market-id': market_id,
                     'timeframe': None,
                     'subscriber-key': "",  # @todo

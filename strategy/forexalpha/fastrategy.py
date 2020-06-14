@@ -72,7 +72,7 @@ class ForexAlphaStrategy(Strategy):
         super().setup_live()
 
         # pre-feed in live mode only
-        Terminal.inst().info("In appliance %s retrieves last data history..." % self.name, view='status')
+        Terminal.inst().info("In strategy %s retrieves last data history..." % self.name, view='status')
 
         now = datetime.now()
 

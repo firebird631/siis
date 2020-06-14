@@ -19,7 +19,7 @@ from strategy.alert.alert import Alert
 class PriceCrossAlertCommand(Command):
 
     SUMMARY = "to manually add a price-cross alert on a strategy"
-    HELP = (":price-cross-alert <appliance-id> <market-id> <price>",
+    HELP = (":price-cross-alert <market-id> <price>",
             "optional parameters:",
             "- C@<price> : cancelation price",
             "- @<timestamp|duration> : expiry",
@@ -34,7 +34,6 @@ class PriceCrossAlertCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        appliance = None
         market_id = None
         timeframe = -1
 
@@ -49,14 +48,14 @@ class PriceCrossAlertCommand(Command):
         cancelation = 0.0
         price_src = Alert.PRICE_SRC_BID
 
-        # ie ":PCA _ EURUSD bid >1.12"
-        if len(args) < 3:
+        # ie ":PCA EURUSD bid >1.12"
+        if len(args) < 2:
             return False, "Missing parameters"
 
         try:
-            appliance, market_id = args[0], args[1]
+            market_id = args[0]
 
-            for value in args[2:]:
+            for value in args[1:]:
                 if value.startswith('>'):
                     direction = 1
                     price = float(value[1:])
@@ -91,7 +90,6 @@ class PriceCrossAlertCommand(Command):
             return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
-            'appliance': appliance,
             'market-id': market_id,
             'action': action,
             'alert': alert,
@@ -109,12 +107,9 @@ class PriceCrossAlertCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
-
-        elif len(args) <= 2:
-            appliance = self._strategy_service.appliance(args[0])
-            if appliance:
-                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -132,25 +127,23 @@ class RemoveAlertCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        appliance = None
         market_id = None
 
         action = 'del-alert'
         alert_id = None        
 
-        # ie ":rmalert _ EURUSD 1"
-        if len(args) < 3:
+        # ie ":rmalert EURUSD 1"
+        if len(args) < 2:
             return False, "Missing parameters"
 
         try:
-            appliance, market_id = args[0], args[1]
+            market_id = args[0]
 
-            alert_id = int(args[2])   
+            alert_id = int(args[1])   
         except Exception:
             return False, "Invalid parameters"
 
         self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
-            'appliance': appliance,
             'market-id': market_id,
             'action': action,
             'alert-id': alert_id
@@ -160,12 +153,9 @@ class RemoveAlertCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
-
-        elif len(args) <= 2:
-            appliance = self._strategy_service.appliance(args[0])
-            if appliance:
-                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 
@@ -183,16 +173,15 @@ class AlertInfoCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        appliance = None
         market_id = None
         alert_id = None
 
-        if len(args) >= 2:
+        if len(args) >= 1:
             try:
-                appliance, market_id = args[0], args[1]
+                market_id = args[0]
 
-                if len(args) >= 3:
-                    alert_id = int(args[2])
+                if len(args) >= 2:
+                    alert_id = int(args[1])
                 else:
                     alert_id = -1
 
@@ -200,7 +189,6 @@ class AlertInfoCommand(Command):
                 return False, "Invalid parameters"
 
             self._strategy_service.command(Strategy.COMMAND_TRADER_INFO, {
-                'appliance': appliance,
                 'market-id': market_id,
                 'detail': 'alert',
                 'alert-id': alert_id
@@ -214,12 +202,9 @@ class AlertInfoCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, self._strategy_service.appliances_identifiers(), args, tab_pos, direction)
-
-        elif len(args) <= 2:
-            appliance = self._strategy_service.appliance(args[0])
-            if appliance:
-                return self.iterate(1, appliance.symbols_ids(), args, tab_pos, direction)
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
 
         return args, 0
 

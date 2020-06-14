@@ -12,7 +12,7 @@ class Rpc(object):
 
     't': target
     'c': command/category
-    'g': group name (appliance name, trader name)
+    'g': group name (strategy name, trader name...)
     'd': data
     'T': timestamp
     'n': name

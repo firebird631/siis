@@ -47,11 +47,32 @@ $(window).ready(function() {
         },
     };
 
-    window.appliances = {};
+    window.tickers = {
+        // bid
+        // ofr
+        // vol24 base
+        // vol24 quote
+    };
+
+    window.strategy = {};
     window.actives_trades = {};
     window.historical_trades = {};
 
     window.default_profiles = {
+        'price': {
+            'label': 'Price',
+            'take-profit': 'price',
+            'stop-loss': 'price',
+            'context': null,
+            'timeframe': null
+        },
+        'strategy': {
+            'label': 'Strategy',
+            'take-profit': 'strategy',
+            'stop-loss': 'strategy',
+            'context': null,
+            'timeframe': null
+        },
         'scalp-xs': {
             'label': 'Scalp XS',
             'take-profit': 'percent-0.15',
@@ -255,7 +276,7 @@ $(window).ready(function() {
             'distance': 20,
             'type': 'pip',
         },
-            'pip-25': {
+        'pip-25': {
             'label': '25pips',
             'distance': 25,
             'type': 'pip',
@@ -285,7 +306,7 @@ $(window).ready(function() {
             'distance': 100,
             'type': 'pip',
         },
-        'strategy': {
+        'Strategy': {
             'label': 'Strategy',
             'distance': 0.0,
             'type': 'percent'
@@ -595,13 +616,13 @@ function setup_traders() {
         let profile_select = add_profiles(id, trader_row1, profiles);
 
         add_take_profit_price(id, trader_row2);
-        add_take_profit_methods(id, trader_row2);
+        let take_profit_select = add_take_profit_methods(id, trader_row2);
 
         add_entry_price(id, trader_row3);
         add_entry_price_methods(id, trader_row3);
 
         add_stop_loss_price(id, trader_row4);
-        add_stop_loss_methods(id, trader_row4);
+        let stop_loss_select = add_stop_loss_methods(id, trader_row4);
 
         add_quantity_slider(id, trader_row5);
 
@@ -614,8 +635,10 @@ function setup_traders() {
         $(elt).append(trader_row5);
         $(elt).append(trader_row6);
 
-        symbol_select.selectpicker('val', market_id);
+        symbol_select.selectpicker('change', market_id).change();
         profile_select.selectpicker('change', 'scalp-xs').change();
+        stop_loss_select.selectpicker('change', stop_loss_select.val()).change();
+        take_profit_select.selectpicker('change', take_profit_select.val()).change();
     });
 }
 
@@ -638,23 +661,20 @@ function fetch_strategy() {
     })
     .done(function(result) {
         window.markets = {};
-        window.appliances = {};
+        window.strategy = {};
         window.broker = {
             'name': result['broker']
         };
 
-        for (let appliance_id in result['appliances']) {
-            window.appliances[appliance_id] = {
-                'id': result['appliances']['id'],
-                'name': result['appliances']['name'],
-            };
-        }
+        window.strategy = {
+            'name': result['strategy']
+        };
 
         for (let market_id in result['markets']) {
             let market = result['markets'][market_id];
 
             window.markets[market_id] = {
-                'appliance': market['appliance'],
+                'strategy': market['strategy'],
                 'market-id': market['market-id'],
                 'symbol': market['symbol'],
                 'market-id': market['market-id'],
@@ -684,23 +704,18 @@ function fetch_strategy() {
         }
 
         setup_traders();
-
-        for (let appliance in window.appliances) {
-            fetch_trades(appliance);
-        }
+        fetch_trades();
     })
     .fail(function() {
         alert("Unable to obtains markets list info !");
     });
 }
 
-function fetch_trades(appliance) {
+function fetch_trades() {
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
 
-    let params = {
-        'appliance': appliance,
-    }
+    let params = {}
 
     $.ajax({
         type: "GET",
@@ -722,7 +737,7 @@ function fetch_trades(appliance) {
             window.actives_trades[trade.id] = trade;
 
             // initial add
-            add_active_trade(appliance, trade.symbol, trade);
+            add_active_trade(trade.symbol, trade);
         }
     })
     .fail(function() {
@@ -805,6 +820,8 @@ function add_take_profit_methods(id, to) {
     select.on('change', function(e) {
         on_change_take_profit_method(e);
     });
+
+    return select;
 };
 
 function add_entry_price(id, to) {
@@ -831,6 +848,8 @@ function add_entry_price_methods(id, to) {
     });
 
     select.selectpicker("val", "limit");
+
+    return select;
 };
 
 function add_stop_loss_price(id, to) {
@@ -855,6 +874,8 @@ function add_stop_loss_methods(id, to) {
     select.on('change', function(e) {
         on_change_stop_loss_method(e);
     });
+
+    return select;
 };
 
 function add_quantity_slider(id, to) {
@@ -996,7 +1017,6 @@ function toggle_auto(elt) {
     let market = window.markets[symbol];
 
     let data = {
-        'appliance': market['appliance'],
         'market-id': market['market-id'],
         'activity': 'toggle',
     }
@@ -1049,8 +1069,8 @@ function on_change_profile(elt) {
         let epm = $('.entry-price-method[trader-id="' + trader_id +'"]');
         let slm = $('.stop-loss-method[trader-id="' + trader_id +'"]');
 
-        tpm.selectpicker('val', profile['take-profit']);
-        slm.selectpicker('val', profile['stop-loss']);
+        tpm.selectpicker('val', profile['take-profit']).change();
+        slm.selectpicker('val', profile['stop-loss']).change();
     };
 };
 

@@ -23,15 +23,14 @@ class AccountView(TableView):
         if not self._trader_service:
             return 0
 
-        return len(self._trader_service.get_traders())
+        return 1
 
     def refresh(self):
         if not self._trader_service:
             return
 
-        traders = self._trader_service.get_traders()
-        if len(traders) > 0 and -1 < self._item < len(traders):
-            trader = traders[self._item]
+        trader = self._trader_service.trader()
+        if trader:
             num = 0
 
             try:

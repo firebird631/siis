@@ -58,7 +58,7 @@ class TraderStateView(TableView):
         if not self._strategy_service:
             return 0
 
-        return len(self._strategy_service.get_appliances())
+        return 1
 
     def on_key_pressed(self, key):
         super().on_key_pressed(key)
@@ -105,10 +105,9 @@ class TraderStateView(TableView):
         if not self._strategy_service:
             return
 
-        appliances = self._strategy_service.get_appliances()
-        if len(appliances) > 0 and -1 < self._item < len(appliances):
-            appliance = appliances[self._item]
-            instruments_ids = appliance.instruments_ids()
+        strategy = self._strategy_service.strategy()
+        if strategy:
+            instruments_ids = strategy.instruments_ids()
 
             if not instruments_ids:
                 with self._mutex:
@@ -137,10 +136,9 @@ class TraderStateView(TableView):
         if not self._strategy_service:
             return
 
-        appliances = self._strategy_service.get_appliances()
-        if len(appliances) > 0 and -1 < self._item < len(appliances):
-            appliance = appliances[self._item]
-            instruments_ids = appliance.instruments_ids()
+        strategy = self._strategy_service.strategy()
+        if strategy:
+            instruments_ids = strategy.instruments_ids()
 
             if not instruments_ids:
                 with self._mutex:
@@ -175,7 +173,7 @@ class TraderStateView(TableView):
                     # force refresh on signal
                     self._refresh = 0.0
 
-    def trader_state_table(self, appliance, style='', offset=None, limit=None, col_ofs=None):
+    def trader_state_table(self, strategy, style='', offset=None, limit=None, col_ofs=None):
         market_id = None
         report_mode = 0
         data = []
@@ -185,7 +183,7 @@ class TraderStateView(TableView):
             report_mode = self._report_mode
 
         if market_id:
-            strategy_trader_state = get_strategy_trader_state(appliance, market_id, report_mode)
+            strategy_trader_state = get_strategy_trader_state(strategy, market_id, report_mode)
         else:
             return [], [], (0, 0)
 
@@ -193,7 +191,7 @@ class TraderStateView(TableView):
             with self._mutex:
                 # refreh with mode
                 self._report_mode = strategy_trader_state.get('num-modes', 1) - 1
-                strategy_trader_state = get_strategy_trader_state(appliance, market_id, report_mode)
+                strategy_trader_state = get_strategy_trader_state(strategy, market_id, report_mode)
 
         members = strategy_trader_state.get('members', [])
         states = []
@@ -242,10 +240,9 @@ class TraderStateView(TableView):
         if not self._strategy_service:
             return
 
-        appliances = self._strategy_service.get_appliances()
-        if len(appliances) > 0 and -1 < self._item < len(appliances):
+        strategy = self._strategy_service.strategy()
+        if strategy:
             if self._market_id:
-                appliance = appliances[self._item]
                 num = 0
 
                 market_id = ""
@@ -262,7 +259,7 @@ class TraderStateView(TableView):
                     reported_bootstraping = self._reported_bootstraping
 
                     try:
-                        columns, table, total_size = self.trader_state_table(appliance, *self.table_format())
+                        columns, table, total_size = self.trader_state_table(strategy, *self.table_format())
                         self.table(columns, table, total_size)
                         num = total_size[1]
                     except Exception as e:
@@ -274,7 +271,7 @@ class TraderStateView(TableView):
                     "active" if reported_activity else "disabled",
                     "bootstraping" if reported_bootstraping else "computing"))
 
-                self.set_title("Trader state for strategy %s - %s on %s - mode %s - %s" % (appliance.name, appliance.identifier, market_id, report_mode, state))
+                self.set_title("Trader state for strategy %s - %s on %s - mode %s - %s" % (strategy.name, strategy.identifier, market_id, report_mode, state))
             else:
                 self.set_title("Trader state - No selected market")
         else:

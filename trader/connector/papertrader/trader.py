@@ -48,7 +48,7 @@ class PaperTrader(Trader):
         self._watcher = None  # in backtesting refers to a dummy watcher
         self._unlimited = False
 
-        trader_config = service.trader_config(name)
+        trader_config = service.trader_config()
         paper_mode = trader_config.get('paper-mode')
         if paper_mode:
             self._unlimited = paper_mode.get("unlimited", False)
@@ -183,7 +183,7 @@ class PaperTrader(Trader):
 
     def update(self):
         """
-        This update its called synchronously by appliance update during the backtesting or threaded in live mode.
+        This update its called synchronously by strategy update during the backtesting or threaded in live mode.
         """
         super().update()
 

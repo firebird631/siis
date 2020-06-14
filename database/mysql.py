@@ -121,12 +121,12 @@ class MySql(Database):
             CREATE TABLE IF NOT EXISTS user_trade(
                 id SERIAL PRIMARY KEY,
                 broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
-                appliance_id VARCHAR(255) NOT NULL,
+                strategy_id VARCHAR(255) NOT NULL,
                 trade_id INTEGER NOT NULL,
                 trade_type INTEGER NOT NULL,
                 data TEXT NOT NULL DEFAULT '{}',
                 operations TEXT NOT NULL DEFAULT '{}',
-                UNIQUE KEY(broker_id, account_id, market_id, appliance_id, trade_id)) ENGINE=InnoDB""")
+                UNIQUE KEY(broker_id, account_id, market_id, strategy_id, trade_id)) ENGINE=InnoDB""")
 
         # trader table
         cursor.execute("SHOW TABLES LIKE 'user_trader'")
@@ -137,12 +137,12 @@ class MySql(Database):
             CREATE TABLE IF NOT EXISTS user_trader(
                 id SERIAL PRIMARY KEY,
                 broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
-                appliance_id VARCHAR(255) NOT NULL,
+                strategy_id VARCHAR(255) NOT NULL,
                 activity INTEGER NOT NULL DEFAULT 1,
                 data TEXT NOT NULL DEFAULT '{}',
                 regions TEXT NOT NULL DEFAULT '[]',
                 alerts TEXT NOT NULL DEFAULT '[]',
-                UNIQUE KEY(broker_id, account_id, market_id, appliance_id)) ENGINE=InnoDB""")
+                UNIQUE KEY(broker_id, account_id, market_id, strategy_id)) ENGINE=InnoDB""")
 
         self._db.commit()
 
@@ -471,7 +471,7 @@ class MySql(Database):
                 cursor = self._db.cursor()
 
                 query = ' '.join((
-                    "INSERT INTO user_trade(broker_id, account_id, market_id, appliance_id, trade_id, trade_type, data, operations) VALUES",
+                    "INSERT INTO user_trade(broker_id, account_id, market_id, strategy_id, trade_id, trade_type, data, operations) VALUES",
                     ','.join(["('%s', '%s', '%s', '%s', %i, %i, '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], ut[5],
                         json.dumps(ut[6]).replace("'", "''"), json.dumps(ut[7]).replace("'", "''")) for ut in uti]),
                     "ON DUPLICATE KEY UPDATE trade_type = VALUES(trade_type), data = VALUES(data), operations = VALUES(operations)"
@@ -501,7 +501,7 @@ class MySql(Database):
 
                 for ut in uts:
                     cursor.execute("""SELECT market_id, trade_id, trade_type, data, operations FROM user_trade WHERE
-                        broker_id = '%s' AND account_id = '%s' AND appliance_id = '%s'""" % (ut[2], ut[3], ut[4]))
+                        broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s'""" % (ut[2], ut[3], ut[4]))
 
                     rows = cursor.fetchall()
 
@@ -534,7 +534,7 @@ class MySql(Database):
                 # and cleanup
                 for ut in utd:
                     cursor.execute("""DELETE FROM user_trade WHERE
-                        broker_id = '%s' AND account_id = '%s' AND appliance_id = '%s'""" % (ut[0], ut[1], ut[2]))
+                        broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s'""" % (ut[0], ut[1], ut[2]))
 
                 self._db.commit()
             except Exception as e:
@@ -557,7 +557,7 @@ class MySql(Database):
                 cursor = self._db.cursor()
 
                 query = ' '.join((
-                    "INSERT INTO user_trader(broker_id, account_id, market_id, appliance_id, activity, data, regions, alerts) VALUES",
+                    "INSERT INTO user_trader(broker_id, account_id, market_id, strategy_id, activity, data, regions, alerts) VALUES",
                     ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
                             json.dumps(ut[5]).replace("'", "''"),
                             json.dumps(ut[6]).replace("'", "''"),
@@ -589,7 +589,7 @@ class MySql(Database):
 
                 for ut in uts:
                     cursor.execute("""SELECT market_id, activity, data, regions, alerts FROM user_trader WHERE
-                        broker_id = '%s' AND account_id = '%s' AND appliance_id = '%s'""" % (ut[2], ut[3], ut[4]))
+                        broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s'""" % (ut[2], ut[3], ut[4]))
 
                     rows = cursor.fetchall()
 

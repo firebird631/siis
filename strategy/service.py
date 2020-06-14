@@ -27,13 +27,15 @@ error_logger = logging.getLogger('siis.strategy.service')
 
 
 class StrategyService(Service):
+    """
+    Strategy service is responsible of build, initialize, load configuration, start/stop the strategy.
+    """
 
     def __init__(self, watcher_service, trader_service, monitor_service, options):
         super().__init__("strategy", options)
 
         self._strategies = {}
         self._indicators = {}
-        self._appliances = {}
         self._tradeops = {}
         self._regions = {}
         self._alerts = {}
@@ -62,6 +64,8 @@ class StrategyService(Service):
         self._timeframe = options.get('timeframe', 0.0)
 
         self._timestamp = 0  # in backtesting current processed timestamp
+
+        self._strategy = None
 
         # cannot be more recent than now
         from common.utils import UTC
@@ -121,10 +125,10 @@ class StrategyService(Service):
 
     def set_activity(self, status):
         """
-        Enable/disable execution of orders for all appliances.
+        Enable/disable execution of orders on strategy
         """
-        for k, appliance in self._appliances.items():
-            appliance.set_activity(status)
+        if self._strategy:
+            self._strategy.set_activity(status)
 
     def start(self, options):
         # indicators
@@ -200,52 +204,40 @@ class StrategyService(Service):
 
                 self._strategies[k] = Clazz
 
-        # no appliance in watcher only
         if self._watcher_only:
             return
 
-        # and finally appliances
-        for k in self._profile_config.get('appliances', []):
-            appl = utils.load_config(options, "appliances/%s" % k)
+        # and finally strategy
+        strategy_profile = self._profile_config.get('strategy')
+        if strategy_profile['name'] == "default":
+            return
 
-            if k == "default":
-                continue
+        if self._strategy is not None:
+            Terminal.inst().error("Strategy %s already started" % self._strategy.name)
+            return
 
-            if self._appliances.get(k) is not None:
-                error_logger.error("Strategy appliance %s already started. Ignored !" % k)
-                continue
+        # overrided strategy parameters
+        parameters = strategy_profile.get('parameters', {})
 
-            if appl.get("status") is not None and appl.get("status") == "enabled":
-                # retrieve the classname and instanciate it
-                strategy = appl.get('strategy')
+        if not strategy_profile or not strategy_profile.get('name'):
+            error_logger.error("Invalid strategy configuration for strategy %s. Ignored !" % strategy_profile['name'])
 
-                # overrided strategy parameters
-                parameters = strategy.get('parameters', {})
+        Clazz = self._strategies.get(strategy_profile['name'])
+        if not Clazz:
+            error_logger.error("Unknown strategy name %s. Ignored !" % strategy_profile['name'])
+            return
 
-                if not strategy or not strategy.get('name'):
-                    error_logger.error("Invalid strategy configuration for appliance %s. Ignored !" % k)
+        strategy_inst = Clazz(self, self.watcher_service, self.trader_service, self._profile_config, parameters)
+        strategy_inst.set_identifier(strategy_profile.get('id', strategy_profile['name']))
 
-                Clazz = self._strategies.get(strategy['name'])
-                if not Clazz:
-                    error_logger.error("Unknown strategy name %s for appliance %s. Ignored !" % (strategy['name'], k))
-                    continue
-
-                appl_inst = Clazz(self, self.watcher_service, self.trader_service, appl, parameters)
-                appl_inst.set_identifier(k)
-
-                if appl_inst.start():
-                    self._appliances[k] = appl_inst
-                else:
-                    error_logger.error("Unable to start strategy name %s for appliance %s. Ignored !" % (strategy['name'], k))
-                    continue
+        if strategy_inst.start():
+            self._strategy = strategy_inst
+        else:
+            error_logger.error("Unable to start strategy name %s. Ignored !" % strategy_profile['name'])
+            return
 
         # start the worker pool
-        if self._backtesting:
-            # only if there is more than 1 appliance
-            if len(self._appliances) > 1:
-                self._worker_pool.start()
-        else:
-            self._worker_pool.start()
+        self._worker_pool.start()
 
     def terminate(self):
         if self._timestep_thread and self._timestep_thread.is_alive():
@@ -254,27 +246,22 @@ class StrategyService(Service):
             self._timestep_thread.join()
             self._timestep_thread = None
 
-        for k, appl in self._appliances.items():
-            if not appl:
-                continue
+        if self._strategy:
+            strategy = self._strategy
 
             # stop all workers
-            if appl.running:
-                appl.stop()
-
-        for k, appl in self._appliances.items():
-            if not appl:
-                continue
+            if strategy.running:
+                strategy.stop()
 
             # join them
-            if appl.thread.is_alive():
-                appl.thread.join()
+            if strategy.thread.is_alive():
+                strategy.thread.join()
 
             # and save state to database
-            if not self.backtesting and (appl.trader() and not appl.trader().paper_mode):
+            if not self.backtesting and (strategy.trader() and not strategy.trader().paper_mode):
                 try:
-                    appl.terminate()
-                    appl.save()
+                    strategy.terminate()
+                    strategy.save()
                 except Exception as e:
                     error_logger.error(repr(e))
                     error_logger.error(traceback.format_exc())
@@ -282,31 +269,27 @@ class StrategyService(Service):
         # terminate the worker pool
         self._worker_pool.stop()
 
-        self._appliances = {}
+        self._strategy = None
+
         self._strategies = {}
         self._indicators = {}
+        self._regions = {}
+        self._alerts = {}
 
     def sync(self):
         # start backtesting
         if self._backtesting and not self._backtest:
             go_ready = True
 
-            self._mutex.acquire()
             self._backtest_progress = 0
 
-            for k, appl, in self._appliances.items():
-                self._mutex.release()
-                if not appl.running or not appl.ready():
+            if self._strategy:
+                strategy = self._strategy
+                if not strategy.running or not strategy.ready():
                     go_ready = False
-                    self._mutex.acquire()
-                    break
-                else:
-                    self._mutex.acquire()
-
-            self._mutex.release()
 
             if go_ready:
-                # start the time thread once all appliance get theirs data and are ready
+                # start the time thread once the strategy instance get its data and are ready
                 class TimeStepThread(threading.Thread):
 
                     def __init__(self, service, s, e, ts, base_tf=0.0, tf=0.0):
@@ -333,28 +316,18 @@ class StrategyService(Service):
 
                         Terminal.inst().info("Backtesting started...", view='status')
 
-                        appliances = self.service._appliances.values()
-                        traders = []
-                        wait = False
-
-                        appl = None
-
-                        # get the list of used traders, to sync them after each pass
-                        for appl in appliances:
-                            if appl.trader() and appl.trader() not in traders:
-                                traders.append(appl.trader())
+                        strategy = self.service.strategy()
+                        trader = strategy.trader() if strategy else None
+                        wait = False                      
 
                         self.begin_ts = time.time()   # bench
 
-                        if len(appliances) == 1:
-                            # a single appliance, don't need to parellelize, and to sync, python sync suxx a lot, avoid the overload in most of the
-                            # backtesting usage
+                        if strategy and trader:
                             while self.c < self.e + self.ts:
                                 # now sync the trader base time
-                                for trader in traders:
-                                    trader.set_timestamp(self.c)
+                                trader.set_timestamp(self.c)
 
-                                appl.backtest_update(self.c, self.e)
+                                strategy.backtest_update(self.c, self.e)
 
                                 if self.tf > 0:
                                     # wait factor of time step, so 1 mean realtime simulation, 0 mean as fast as possible
@@ -363,58 +336,14 @@ class StrategyService(Service):
                                 self.c += self.ts  # add one time step
                                 self.service._timestamp = self.c
 
-                                # one more step then we can update traders (limits orders, P/L update...)
-                                for trader in traders:
-                                    trader.update()
+                                # one more step then we can update trader (limits orders, P/L update...)
+                                trader.update()
 
-                                    if trader._ping:
-                                        trader.pong(time.time(), trader._ping[0], trader._ping[1], trader._ping[2])
-                                        trader._ping = None
+                                if trader._ping:
+                                    trader.pong(time.time(), trader._ping[0], trader._ping[1], trader._ping[2])
+                                    trader._ping = None
 
                                 time.sleep(0.000001)  # yield
-
-                                if self.abort:
-                                    break
-                        else:
-                            # multiple appliances, parallelise them
-                            while self.c < self.e + self.ts:
-                                if not wait:
-                                    # now sync the trader base time
-                                    for trader in traders:
-                                        # @todo it could be better if we add two step, one update the market and then the strategy computation
-                                        # to avoid to update multiple time the same market and potentially with different ut... but not really an issue
-                                        trader.set_timestamp(self.c)
-
-                                    # query async update per appliance
-                                    for appl in appliances:
-                                        appl.query_backtest_update(self.c, self.e)
-
-                                # @todo could use a semaphore or condition counter
-                                wait = False
-                                for appl in appliances:
-                                    # appl.backtest_update(self.c, self.e)
-                                    # wait all appliance did theirs jobs
-                                    if appl._last_done_ts < self.c:
-                                        wait = True
-                                        break
-
-                                if not wait:
-                                    if self.tf > 0:
-                                        # wait factor of time step, so 1 mean realtime simulation, 0 mean as fast as possible
-                                        time.sleep((1/self.tf)*self.ts)
-
-                                    self.c += self.ts  # add one time step
-                                    self.service._timestamp = self.c
-
-                                    # one more step then we can update traders (limits orders, P/L update...)
-                                    for trader in traders:
-                                        trader.update()
-
-                                        if trader._ping:
-                                            trader.pong(time.time(), trader._ping[0], trader._ping[1], trader._ping[2])
-                                            trader._ping = None
-
-                                time.sleep(0)  # yield
 
                                 if self.abort:
                                     break
@@ -431,15 +360,9 @@ class StrategyService(Service):
         if self._backtesting and self._backtest and self._backtest_progress < 100.0:
             progress = 0
 
-            self._mutex.acquire()
-            for k, appl, in self._appliances.items():
-                if appl.running:
-                    progress += appl.progress()
-
-            if self._appliances:
-                progress /= float(len(self._appliances))
-
-            self._mutex.release()
+            strategy = self._strategy
+            if strategy and strategy.running:
+                progress += strategy.progress()
 
             total = self._end_ts - self._start_ts
             remaining = self._end_ts - progress
@@ -474,31 +397,10 @@ class StrategyService(Service):
     def command(self, command_type, data):
         results = None
 
-        if command_type == Strategy.COMMAND_INFO or command_type == Strategy.COMMAND_TRADE_EXIT_ALL:
-            # any or specific commands
-            appliance_identifier = data.get('appliance')
+        strategy = self._strategy
 
-            if appliance_identifier:
-                # for a specific appliance
-                appliance = self._appliances.get(appliance_identifier)
-                if appliance:
-                    results = appliance.command(command_type, data)
-            else:
-                # or any, with an array of results
-                results = []
-
-                for k, appliance in self._appliances.items():
-                    results.append(appliance.command(command_type, data))
-        else:
-            # specific commands
-            appliance_identifier = data.get('appliance')
-            appliance = None
-
-            if appliance_identifier:
-                appliance = self._appliances.get(appliance_identifier)
-
-            if appliance:
-                results = appliance.command(command_type, data)
+        if strategy:
+            results = strategy.command(command_type, data)
 
         return results
 
@@ -518,21 +420,17 @@ class StrategyService(Service):
         """Return a specific indicator model by its name"""
         return self._indicators.get(name)
 
-    def strategy(self, name):
-        """Return a specific strategy model by its name"""
-        return self._strategies.get(name)
+    def strategy(self):
+        """Return the instancied strategy"""
+        return self._strategy
 
-    def appliance(self, name):
-        """Return a specific appliance instance by its name"""
-        return self._appliances.get(name)
+    def strategy_name(self):
+        """Returns the name of the loaded strategy"""
+        return self._strategy.name if self._strategy else None
 
-    def get_appliances(self):
-        """Returns a list of the appliances instances"""
-        return list(self._appliances.values())
-
-    def appliances_identifiers(self):
-        """Returns a list of the identifiers of the loaded appliances"""
-        return [app.identifier for k, app in self._appliances.items()]
+    def strategy_identifier(self):
+        """Returns the identifier of the loaded strategy"""
+        return self._strategy.identifier if self._strategy else None
 
     @property
     def timestamp(self):
@@ -561,31 +459,12 @@ class StrategyService(Service):
 
     @property
     def report_path(self):
-        """Base path where to store appliances reports"""
+        """Base path where to store strategy reports"""
         return self._report_path
 
-    def profile_has_appliance(self, name):
-        """Check if an appliance is allowed for the current loaded profile"""
-        appliances = self._profile_config.get('appliances', [])
-
-        for app_name in appliances:
-            if app_name.startswith('!'):
-                if app_name[1:] == name:
-                    # ignored
-                    return False
-
-            if app_name == '*':
-                # any except ignored
-                return True
-
-            if app_name == name:
-                return True
-
-        return False
-
-    def strategy_config(self, name):
-        """Get the configurations for a strategy as dict"""
-        return self._strategies_config.get(name, {})
+    def strategy_config(self):
+        """Get the strategy configurations as dict"""
+        return self._strategies_config
 
     def indicator_config(self, name):
         """Get the configurations for an indicator as dict"""
@@ -597,8 +476,9 @@ class StrategyService(Service):
 
     def ping(self, timeout):
         if self._mutex.acquire(timeout=timeout):
-            for k, appl, in self._appliances.items():
-                appl.ping(timeout)
+            strategy = self._strategy
+            if strategy:
+                strategy.ping(timeout)
 
             self._worker_pool.ping(timeout)
 
@@ -609,9 +489,10 @@ class StrategyService(Service):
     def watchdog(self, watchdog_service, timeout):
         # try to acquire, see for deadlock
         if self._mutex.acquire(timeout=timeout):
-            # if no deadlock lock for service ping appliances
-            for k, appl, in self._appliances.items():
-                appl.watchdog(watchdog_service, timeout)
+            # if no deadlock lock for service ping strategy
+            strategy = self._strategy
+            if strategy:
+                strategy.watchdog(watchdog_service, timeout)
 
             # and workers
             self._worker_pool.watchdog(watchdog_service, timeout)

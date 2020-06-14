@@ -115,52 +115,52 @@ function on_ws_message(data) {
 
     } else if (data.c == STREAM_STRATEGY) {
         // strategy info
-        let appliance = data.g;
+        let strategy = data.g;
         let symbol = data.s;
 
         // @todo
 
     } else if (data.c == STREAM_STRATEGY_CHART) {
         // strategy trader chart data
-        let appliance = data.g;
+        let strategy = data.g;
         let symbol = data.s;
 
         // @todo
 
     } else if (data.c == STREAM_STRATEGY_INFO) {
         // strategy trader performance
-        let appliance = data.g;
+        let strategy = data.g;
         let symbol = data.s;
 
         // @todo
 
     } else if (data.c == STREAM_STRATEGY_TRADE) {
         // strategy trader trade
-        let appliance = data.g;
+        let strategy = data.g;
         let symbol = data.s;
 
         let value = read_value(data);
         if (value && data.t == 'to') {
             // active trade insert
-            on_active_trade_entry_message(appliance, data.s, value.id, data.b*1000, value);
+            on_active_trade_entry_message(data.s, value.id, data.b*1000, value);
         } else if (value && data.t == 'tu') {
             // active trade update
-            on_active_trade_update_message(appliance, data.s, value.id, data.b*1000, value);
+            on_active_trade_update_message(data.s, value.id, data.b*1000, value);
         } else if (value && data.t == 'tx') {
             // active trade delete
-            on_active_trade_exit_message(appliance, data.s, value.id, data.b*1000, value);
+            on_active_trade_exit_message(data.s, value.id, data.b*1000, value);
         }
 
     } else if (data.c == STREAM_STRATEGY_ALERT) {
         // strategy trader alert
-        let appliance = data.g;
+        let strategy = data.g;
         let symbol = data.s;
 
         // @todo notify and log
 
     } else if (data.c == STREAM_STRATEGY_SIGNAL) {
         // strategy trader signal
-        let appliance = data.g;
+        let strategy = data.g;
         let symbol = data.s;
 
         // @todo notify and log

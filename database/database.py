@@ -495,7 +495,7 @@ class Database(object):
             str broker_id (not empty)
             str account_id (not empty)
             str market_id (not empty)
-            str appliance_id (not empty)
+            str strategy_id (not empty)
             integer trade_id (not empty)
             integer trade_type (not empty)
             dict data (to be json encoded)
@@ -510,23 +510,23 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def load_user_trades(self, service, appliance, broker_id, account_id, appliance_id):
+    def load_user_trades(self, service, strategy, broker_id, account_id, strategy_id):
         """
-        Load all user trades data and options for a specific appliance_id / broker_id / account_id
+        Load all user trades data and options for a specific strategy_id / broker_id / account_id
         @param service to be notified once done
         """
         with self._mutex:
-            self._pending_user_trade_select.append((service, appliance, broker_id, account_id, appliance_id))
+            self._pending_user_trade_select.append((service, strategy, broker_id, account_id, strategy_id))
 
         with self._condition:
             self._condition.notify()
 
-    def clear_user_trades(self, broker_id, account_id, appliance_id):
+    def clear_user_trades(self, broker_id, account_id, strategy_id):
         """
-        Delete all user trades data and options for a specific appliance_id / broker_id / account_id
+        Delete all user trades data and options for a specific strategy_id / broker_id / account_id
         """
         with self._mutex:
-            self._pending_user_trade_delete.append((broker_id, account_id, appliance_id))
+            self._pending_user_trade_delete.append((broker_id, account_id, strategy_id))
 
         with self._condition:
             self._condition.notify()
@@ -537,7 +537,7 @@ class Database(object):
             str broker_id (not empty)
             str account_id (not empty)
             str market_id (not empty)
-            str appliance_id (not empty)
+            str strategy_id (not empty)
             integer activity (not null)
             dict data (to be json encoded)
             dict regions (to be json encoded)
@@ -552,13 +552,13 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def load_user_traders(self, service, appliance, broker_id, account_id, appliance_id):
+    def load_user_traders(self, service, strategy, broker_id, account_id, strategy_id):
         """
-        Load all user traders data and options for a specific appliance_id / broker_id / account_id
+        Load all user traders data and options for a specific strategy_id / broker_id / account_id
         @param service to be notified once done
         """
         with self._mutex:
-            self._pending_user_trader_select.append((service, appliance, broker_id, account_id, appliance_id))
+            self._pending_user_trader_select.append((service, strategy, broker_id, account_id, strategy_id))
 
         with self._condition:
             self._condition.notify()

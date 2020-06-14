@@ -261,7 +261,7 @@ class WatcherService(Service):
         """
         watchers_profile = self._profile_config.get('watchers', {})
 
-        # @todo could rebuild the list of symbols according to what is found in appliances
+        # @todo could rebuild the list of symbols according to what is found in strategy
         watchers_config = {}
 
         for k, profile_watcher_config in watchers_profile.items():

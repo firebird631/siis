@@ -254,7 +254,7 @@ def application(argv):
                     options['watcher-only'] = True              
 
                 elif arg.startswith('--profile='):
-                    # appliances profile name
+                    # profile name
                     options['profile'] = arg.split('=')[1]
 
                 elif arg == '--version':

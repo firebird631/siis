@@ -40,15 +40,10 @@ error_logger = logging.getLogger('siis.error.strategy')
 
 class Strategy(Runnable):
     """
-    Strategy/appliance base class.
-
-    A strategy is the implementation, an the appliance is an instance of a strategy.
-    Then when speaking of appliance it always refers to a contextual instance of a strategy,
-    and when speaking of strategy it refers to the algorithm, the model, the implementation.
+    Strategy base class.
 
     @todo Move Each COMMAND_ to command/ and have a registry
     @todo Add possibility to insert/delete a strategy trader during runtime only in live mode.
-    @todo Alert info details
 
     @note In backtesting the method backtest_update don't mutex the strategy_traders list because
         in that case the dict never changes.
@@ -57,7 +52,7 @@ class Strategy(Runnable):
     MAX_SIGNALS = 2000   # max size of the signals messages queue before ignore some market data (tick, ohlc)
 
     COMMAND_INFO = 1
-    COMMAND_TRADE_EXIT_ALL = 2  # close any trade for any market of the appliance or only for a specific market-id
+    COMMAND_TRADE_EXIT_ALL = 2  # close any trade for any market or only for a specific market-id
 
     COMMAND_TRADE_ENTRY = 10    # manually create a new trade
     COMMAND_TRADE_MODIFY = 11   # modify an existing trade
@@ -110,14 +105,13 @@ class Strategy(Runnable):
             if trader_conf.get('name'):
                 self._trader_conf = trader_conf
 
-        for watcher_conf in options.get('watcher', []):
-            if watcher_conf.get('name'):
-                self._watchers_conf[watcher_conf['name']] = watcher_conf
+        for k, watcher_conf in options.get('watchers', {}).items():
+            self._watchers_conf[k] = watcher_conf
 
-                # retrieve the watcher instance
-                watcher = self._watcher_service.watcher(watcher_conf['name'])
-                if watcher is None:
-                    logger.error("Watcher %s not found during strategy __init__" % watcher_conf['name'])
+            # retrieve the watcher instance
+            watcher = self._watcher_service.watcher(k)
+            if watcher is None:
+                logger.error("Watcher %s not found during strategy __init__" % k)
 
         self.setup_streaming()
 
@@ -139,11 +133,11 @@ class Strategy(Runnable):
 
     @property
     def identifier(self):
-        """Unique appliance identifier"""
+        """Unique strategy identifier"""
         return self._identifier
 
     def set_identifier(self, identifier):
-        """Unique appliance identifier"""
+        """Unique strategy identifier"""
         self._identifier = identifier
 
     @property
@@ -293,14 +287,14 @@ class Strategy(Runnable):
         return True
 
     def pre_run(self):
-        Terminal.inst().message("Running appliance %s - %s..." % (self._name, self._identifier), view='content')
+        Terminal.inst().message("Running strategy %s - %s..." % (self._name, self._identifier), view='content')
 
         # watcher can be already ready in some cases, try it now
         if self.check_watchers() and not self._preset:
             self.preset()
 
     def post_run(self):
-        Terminal.inst().message("Joining appliance %s - %s..." % (self._name, self._identifier), view='content')
+        Terminal.inst().message("Joining strategy %s - %s..." % (self._name, self._identifier), view='content')
 
     def post_update(self):
         # load of the strategy
@@ -308,7 +302,7 @@ class Strategy(Runnable):
 
         # strategy must consume its signal else there is first a warning, and then some market data could be ignored
         if len(self._signals) > Strategy.MAX_SIGNALS:
-            Terminal.inst().warning("Appliance %s has more than %s waiting signals, some market data could be ignored !" % (
+            Terminal.inst().warning("Strategy %s has more than %s waiting signals, some market data could be ignored !" % (
                 self.name, Strategy.MAX_SIGNALS), view='debug')
 
         # stream call
@@ -322,7 +316,7 @@ class Strategy(Runnable):
             self._condition.notify()
             self._condition.release()
         else:
-            Terminal.inst().action("Unable to join appliance %s - %s for %s seconds" % (self._name, self._identifier, timeout,), view='content')
+            Terminal.inst().action("Unable to join strategy %s - %s for %s seconds" % (self._name, self._identifier, timeout,), view='content')
 
     def watchdog(self, watchdog_service, timeout):
         if self._condition.acquire(timeout=timeout):
@@ -335,8 +329,8 @@ class Strategy(Runnable):
 
     def pong(self, timestamp, pid, watchdog_service, msg):
         if msg:
-            # display appliance activity
-            Terminal.inst().action("Appliance worker %s - %s is alive %s" % (self._name, self._identifier, msg), view='content')
+            # display strategy activity
+            Terminal.inst().action("Strategy worker %s - %s is alive %s" % (self._name, self._identifier, msg), view='content')
 
         if watchdog_service:
             watchdog_service.service_pong(pid, timestamp, msg)
@@ -360,7 +354,7 @@ class Strategy(Runnable):
             return
 
         # get the related trader
-        self._trader = self.trader_service.trader(self._trader_conf['name'])
+        self._trader = self.trader_service.trader()
 
         for watcher_name, watcher_conf in self._watchers_conf.items():
             # retrieve the watcher instance
@@ -705,7 +699,7 @@ class Strategy(Runnable):
                     if market and strategy_trader:
                         # in backtesting mode set the market object to the paper trader directly because there is no watcher
                         if self.service.backtesting:
-                            trader = self.trader_service.trader(self._trader_conf['name'])
+                            trader = self.trader_service.trader()
                             if trader:
                                 trader.set_market(market)
 
@@ -1244,7 +1238,7 @@ class Strategy(Runnable):
         Do it here dataset preload and other stuff before update be called.
         """
 
-        # load the strategy-traders and traders for this appliance/account
+        # load the strategy-traders and traders for this strategy/account
         trader = self.trader()
 
         Database.inst().load_user_trades(self.service, self, trader.name,
@@ -1379,7 +1373,7 @@ class Strategy(Runnable):
 
     def command(self, command_type, data):
         """
-        Apply a command to the appliance and return a results dict or an array of dict or None.
+        Apply a command to the strategy and return a results dict or an array of dict or None.
         """
         if command_type == Strategy.COMMAND_INFO:
             return self.cmd_trader_info(data)
@@ -2402,17 +2396,17 @@ class Strategy(Runnable):
         return results
 
     def cmd_trader_info(self, data):
-        # info on the appliance
+        # info on the strategy
         if 'market-id' in data:
             with self._mutex:
                 strategy_trader = self._strategy_traders.get(data['market-id'])
                 if strategy_trader:
-                    Terminal.inst().message("Market %s of appliance %s identified by \\2%s\\0 is %s. Trade quantity is %s x%s" % (
+                    Terminal.inst().message("Market %s of strategy %s identified by \\2%s\\0 is %s. Trade quantity is %s x%s" % (
                         data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused",
                             strategy_trader.instrument.trade_quantity, strategy_trader.instrument.trade_max_factor),
                             view='content')
         else:
-            Terminal.inst().message("Appliances %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')
+            Terminal.inst().message("Strategy %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')
 
             enabled = []
             disabled = []

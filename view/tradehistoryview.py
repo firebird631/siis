@@ -43,13 +43,12 @@ class TradeHistoryView(TableView):
         if not self._strategy_service:
             return
 
-        appliances = self._strategy_service.get_appliances()
-        if len(appliances) > 0 and -1 < self._item < len(appliances):
-            appliance = appliances[self._item]
+        strategy = self._strategy_service.strategy()
+        if strategy:
             num = 0
 
             try:
-                columns, table, total_size = closed_trades_stats_table(appliance, *self.table_format(),
+                columns, table, total_size = closed_trades_stats_table(strategy, *self.table_format(),
                         quantities=True, percents=self._percent, datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)
@@ -57,6 +56,6 @@ class TradeHistoryView(TableView):
             except Exception as e:
                 error_logger.error(str(e))
 
-            self.set_title("Trade history (%i) for strategy %s - %s" % (num, appliance.name, appliance.identifier))
+            self.set_title("Trade history (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
         else:
             self.set_title("Trade history - No configured strategy")

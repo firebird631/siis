@@ -62,7 +62,6 @@ function on_order_long(elt) {
 
         let data = {
             'command': 'trade-entry',
-            'appliance': market['appliance'],
             'market-id': market['market-id'],
             'direction': 1,
             'limit-price': limit_price,
@@ -171,7 +170,6 @@ function on_order_short(elt) {
 
         let data = {
             'command': 'trade-entry',
-            'appliance': market['appliance'],
             'market-id': market['market-id'],
             'direction': -1,
             'limit-price': limit_price,
@@ -219,13 +217,12 @@ function on_close_trade(elt) {
     let key = retrieve_trade_key(elt);
 
     let parts = key.split(':');
-    if (parts.length != 3) {
+    if (parts.length != 2) {
         return false;
     }
 
-    let appliance = parts[0];
-    let symbol = parts[1];
-    let trade_id = parseInt(parts[2]);
+    let symbol = parts[0];
+    let trade_id = parseInt(parts[1]);
 
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
@@ -234,7 +231,6 @@ function on_close_trade(elt) {
 
     if (symbol && market && trade_id) {
         let data = {
-            'appliance': market['appliance'],
             'market-id': market['market-id'],
             'trade-id': trade_id,
             'action': "close"
@@ -265,22 +261,22 @@ function on_reverse_trade(elt) {
     notify({'message': "todo!", 'type': "error"});
 }
 
-let on_active_trade_entry_message = function(appliance, market_id, trade_id, timestamp, value) {
+let on_active_trade_entry_message = function(market_id, trade_id, timestamp, value) {
     // insert into active trades
-    add_active_trade(appliance, market_id, value);
+    add_active_trade(market_id, value);
 };
 
-let on_active_trade_update_message = function(appliance, market_id, trade_id, timestamp, value) {
+let on_active_trade_update_message = function(market_id, trade_id, timestamp, value) {
     // update into active trades
-    update_active_trade(appliance, market_id, value);
+    update_active_trade(market_id, value);
 };
 
-let on_active_trade_exit_message = function(appliance, market_id, trade_id, timestamp, value) {
+let on_active_trade_exit_message = function(market_id, trade_id, timestamp, value) {
     // remove from active trades
-    remove_active_trade(appliance, market_id, trade_id);
+    remove_active_trade(market_id, trade_id);
 
     // insert to historical trades
-    add_historical_trade(appliance, market_id, value);
+    add_historical_trade(market_id, value);
 };
 
 //
@@ -309,9 +305,9 @@ function compute_price_pct(price, close, direction) {
     return 0.0;
 }
 
-function add_active_trade(appliance_id, market_id, trade) {
+function add_active_trade(market_id, trade) {
     let trade_elt = $('<tr class="active-trade"></tr>');
-    let key = appliance_id + ':' + market_id + ':' + trade.id;
+    let key = market_id + ':' + trade.id;
     trade_elt.attr('trade-key', key);
 
     let trade_id = $('<span class="trade-id"></span>').text(trade.id);
@@ -404,8 +400,8 @@ function add_active_trade(appliance_id, market_id, trade) {
     window.actives_trades[key] = trade;
 };
 
-function update_active_trade(appliance_id, market_id, trade) {
-    let key = appliance_id + ':' + market_id + ':' + trade.id;
+function update_active_trade(market_id, trade) {
+    let key = market_id + ':' + trade.id;
     let container = $('div.active-trade-list-entries tbody');
     let trade_elt = container.find('tr.active-trade[trade-key="' + key + '"]')
 
@@ -455,8 +451,8 @@ function update_active_trade(appliance_id, market_id, trade) {
     window.history[key] = trade;
 };
 
-function remove_active_trade(appliance_id, market_id, trade_id) {
-    let key = appliance_id + ':' + market_id + ':' + trade_id;
+function remove_active_trade(market_id, trade_id) {
+    let key = market_id + ':' + trade_id;
     let container = $('div.active-trade-list-entries tbody');
 
     container.find('tr.active-trade[trade-key="' + key + '"]').remove();
@@ -472,9 +468,9 @@ function format_quote_price(symbol, price) {
     return 0.0;
 }
 
-function add_historical_trade(appliance_id, market_id, trade) {
+function add_historical_trade(market_id, trade) {
     let trade_elt = $('<tr class="historical-trade"></tr>');
-    let key = appliance_id + ':' + market_id + ':' + trade.id;
+    let key = market_id + ':' + trade.id;
     trade_elt.attr('trade-key', key);
 
     let trade_id = $('<span class="trade-id"></span>').text(trade.id);
@@ -556,18 +552,15 @@ function on_modify_active_trade_take_profit(elt) {
 }
 
 function on_apply_modify_active_trade_take_profit() {
-    alert("todo tp");
-
     let key = $('#modify_trade_take_profit').attr('trade-key', key);
 
     let parts = key.split(':');
-    if (parts.length != 3) {
+    if (parts.length != 2) {
         return false;
     }
 
-    let appliance = parts[0];
-    let symbol = parts[1];
-    let trade_id = parseInt(parts[2]);
+    let symbol = parts[0];
+    let trade_id = parseInt(parts[1]);
 
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
@@ -576,7 +569,6 @@ function on_apply_modify_active_trade_take_profit() {
 
     if (symbol && market && trade_id) {
         let data = {
-            'appliance': market['appliance'],
             'market-id': market['market-id'],
             'trade-id': trade_id,
             'action': "modify",

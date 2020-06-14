@@ -45,7 +45,7 @@ class SignalView(TableView):
         if not self._strategy_service:
             return 0
 
-        return len(self._strategy_service.get_appliances())
+        return 1
 
     def receiver(self, signal):
         if not signal:
@@ -66,10 +66,10 @@ class SignalView(TableView):
 
                         self._refresh = 0.0
 
-    def signals_table(self, appliance, style='', offset=None, limit=None, col_ofs=None):
+    def signals_table(self, strategy, style='', offset=None, limit=None, col_ofs=None):
         data = []
 
-        signals = self._signals_list.get(appliance.identifier, [])
+        signals = self._signals_list.get(strategy.identifier, [])
         total_size = (len(SignalView.COLUMNS), len(signals))
 
         if offset is None:
@@ -143,14 +143,13 @@ class SignalView(TableView):
         if not self._strategy_service:
             return
 
-        appliances = self._strategy_service.get_appliances()
-        if len(appliances) > 0 and -1 < self._item < len(appliances):
-            appliance = appliances[self._item]
+        strategy = self._strategy_service.strategy()
+        if strategy:
             num = 0
 
             with self._mutex:
                 try:
-                    columns, table, total_size = self.signals_table(appliance, *self.table_format())
+                    columns, table, total_size = self.signals_table(strategy, *self.table_format())
                     self.table(columns, table, total_size)
                     num = total_size[1]
                 except Exception as e:
@@ -158,6 +157,6 @@ class SignalView(TableView):
                     error_logger.error(str(traceback.format_exc()))
                     error_logger.error(str(e))
 
-            self.set_title("Signal list (%i) for strategy %s - %s" % (num, appliance.name, appliance.identifier))
+            self.set_title("Signal list (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
         else:
             self.set_title("Signal list - No configured strategy")

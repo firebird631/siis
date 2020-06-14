@@ -27,7 +27,7 @@ class View(object):
         self._id = _id
         self._service = service
         self._mutex = threading.RLock()  # reentrant locker
-        self._item = 0  # in case of multiple item like more than a single appliance or trader
+        self._item = 0  # in case of multiple item like more than a single strategy or trader
         self._refresh = 0
         self._percent = False  # display percent for tables
         self._group = False    # group by (depending of the view)

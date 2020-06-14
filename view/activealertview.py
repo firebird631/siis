@@ -42,7 +42,7 @@ class ActiveAlertView(TableView):
         if not self._strategy_service:
             return 0
 
-        return len(self._strategy_service.get_appliances())
+        return 1
 
     def receiver(self, signal):
         if not signal:
@@ -58,14 +58,13 @@ class ActiveAlertView(TableView):
         if not self._strategy_service:
             return
 
-        appliances = self._strategy_service.get_appliances()
-        if len(appliances) > 0 and -1 < self._item < len(appliances):
-            appliance = appliances[self._item]
+        strategy = self._strategy_service.strategy()
+        if strategy:
             num = 0
 
             with self._mutex:
                 try:
-                    columns, table, total_size = actives_alerts_table(appliance, *self.table_format(), datetime_format=self._datetime_format)
+                    columns, table, total_size = actives_alerts_table(strategy, *self.table_format(), datetime_format=self._datetime_format)
 
                     for row in table:
                         # colorize by market-id
@@ -79,6 +78,6 @@ class ActiveAlertView(TableView):
                     error_logger.error(str(traceback.format_exc()))
                     error_logger.error(str(e))
 
-            self.set_title("Actives alerts list (%i) for strategy %s - %s" % (num, appliance.name, appliance.identifier))
+            self.set_title("Actives alerts list (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
         else:
             self.set_title("Actrives alerts list - No configured strategy")

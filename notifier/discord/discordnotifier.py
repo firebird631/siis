@@ -211,9 +211,6 @@ class DiscordNotifier(Notifier):
         return arr
 
     # def send_tables(self):
-    #     for strategy in self.strategy_service.get_appliances():
-    #         dst = None
-
     #         if strategy.identifier + '.trades' in self._discord_webhooks:
     #             trades_dst = self._discord_webhooks[strategy.identifier + '.trades']
 

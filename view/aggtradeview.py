@@ -26,19 +26,18 @@ class AggTradeView(TableView):
         if not self._strategy_service:
             return
 
-        appliances = self._strategy_service.get_appliances()
-        if len(appliances) > 0 and -1 < self._item < len(appliances):
-            appliance = appliances[self._item]
+        strategy = self._strategy_service.strategy()
+        if strategy:
             num = 0
 
             try:
-                columns, table, total_size = agg_trades_stats_table(appliance, *self.table_format(), summ=True)
+                columns, table, total_size = agg_trades_stats_table(strategy, *self.table_format(), summ=True)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
                 error_logger.error(str(e))
 
-            self.set_title("Perf per market trades (%i) for strategy %s - %s" % (num, appliance.name, appliance.identifier))
+            self.set_title("Perf per market trades (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
         else:
             self.set_title("Perf per market trades - No configured strategy")

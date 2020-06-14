@@ -1,7 +1,7 @@
 # @date 2018-09-08
 # @author Frederic SCHERMA
 # @license Copyright (c) 2018 Dream Overflow
-# Strategy appliance worker pool.
+# Strategy worker pool.
 
 import traceback
 import threading

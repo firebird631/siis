@@ -158,67 +158,65 @@ class StrategyInfoRestAPI(resource.Resource):
 
         uri = request.uri.decode("utf-8").split('/')
 
-        traders_names = self._trader_service.traders_names()
-        appliances_names = self._strategy_service.appliances_identifiers()
+        trader_name = self._trader_service.trader_name()
+        strategy_name = self._strategy_service.strategy_name()
+        strategy_id = self._strategy_service.strategy_identifier()
 
-        appliances = {}
         markets = {}
 
-        for appliance in appliances_names:
-            appliances[appliance] = {
-                'name': appliance
+        instruments_ids = self._strategy_service.strategy().instruments_ids()
+
+        for market_id in instruments_ids:
+            instr = self._strategy_service.strategy().instrument(market_id)
+            profiles = {}
+
+            markets[market_id] = {
+                'strategy': strategy_name,
+                'market-id': market_id,
+                'symbol': instr.symbol,
+                'value-per-pip': instr.value_per_pip,
+                'price-limits': instr._price_limits,
+                'notional-limits': instr._notional_limits,
+                'size-limits': instr._size_limits,
+                'bid': instr.market_bid,
+                'ofr': instr.market_ofr,
+                'mid': instr.market_price,
+                'spread': instr.market_spread,
+                'profiles': profiles
             }
 
-            instruments_ids = self._strategy_service.appliance(appliance).instruments_ids()
+            contexts_ids = self._strategy_service.strategy().contexts_ids(market_id)
 
-            for market_id in instruments_ids:
-                instr = self._strategy_service.appliance(appliance).instrument(market_id)
-                profiles = {}
+            for context_id in contexts_ids:
+                context = self._strategy_service.strategy().dumps_context(market_id, context_id)
 
-                markets[market_id] = {
-                    'appliance': appliance,
-                    'market-id': market_id,
-                    'symbol': instr.symbol,
-                    'value-per-pip': instr.value_per_pip,
-                    'price-limits': instr._price_limits,
-                    'notional-limits': instr._notional_limits,
-                    'size-limits': instr._size_limits,
-                    'bid': instr.market_bid,
-                    'ofr': instr.market_ofr,
-                    'mid': instr.market_price,
-                    'spread': instr.market_spread,
-                    'profiles': profiles
-                }
-
-                contexts_ids = self._strategy_service.appliance(appliance).contexts_ids(market_id)
-
-                for context_id in contexts_ids:
-                    context = self._strategy_service.appliance(appliance).dumps_context(market_id, context_id)
-
-                    profiles[context_id] = {
-                        'appliance': appliance,
-                        'profile-id': context_id,
-                        'entry': {
-                            'timeframe': context['entry']['timeframe'],
-                            'type': context['entry']['type'],
-                        },
-                        'take-profit': {
-                            'timeframe': context['take-profit']['timeframe'],
-                            'distance': context['take-profit']['distance'],
-                            'distance-mode': context['take-profit']['distance-type'],
-                        },
-                        'stop-loss': {
-                            'timeframe': context['stop-loss']['timeframe'],
-                            'distance': context['stop-loss']['distance'],
-                            'distance-mode': context['stop-loss']['distance-type'],
-                        }
+                profiles[context_id] = {
+                    'strategy': strategy_name,
+                    'profile-id': context_id,
+                    'entry': {
+                        'timeframe': context['entry']['timeframe'],
+                        'type': context['entry']['type'],
+                    },
+                    'take-profit': {
+                        'timeframe': context['take-profit']['timeframe'],
+                        'distance': context['take-profit']['distance'],
+                        'distance-mode': context['take-profit']['distance-type'],
+                    },
+                    'stop-loss': {
+                        'timeframe': context['stop-loss']['timeframe'],
+                        'distance': context['stop-loss']['distance'],
+                        'distance-mode': context['stop-loss']['distance-type'],
                     }
+                }
 
         results = {
             'broker': {
-                'name': traders_names[0] if traders_names else None
+                'name': trader_name
             },
-            'appliances': appliances,
+            'strategy': {
+                'name': strategy_name,
+                'id': strategy_id,
+            },
             'markets': markets,
         }
 
@@ -308,11 +306,6 @@ class StrategyTradeRestAPI(resource.Resource):
             'data': None
         }
 
-        if b'appliance' not in request.args:
-            return NoResource("Missing appliance identifier")
-
-        appliance = request.args[b'appliance'][0].decode("utf-8")
-
         if b'trade' in request.args:
             try:
                 trade_id = int(request.args[b'trade'][0].decode("utf-8"))
@@ -324,7 +317,7 @@ class StrategyTradeRestAPI(resource.Resource):
             results['data'] = None
         else:
             # current active trade list
-            results['data'] = self._strategy_service.appliance(appliance).dumps_trades_update()
+            results['data'] = self._strategy_service.strategy().dumps_trades_update()
 
         return json.dumps(results).encode("utf-8")
 
@@ -388,17 +381,12 @@ class HistoricalTradeRestAPI(resource.Resource):
             'data': None
         }
 
-        appliance = request.args.get(b'appliance', [b""])[0].decode("utf-8")
-
-        if not appliance:
-            return NoResource()
-
         if trade_id > 0:
             # @todo
             results['data'] = None
         else:
             # current active trade list
-            results['data'] = self._strategy_service.appliance(appliance).dumps_trades_history()
+            results['data'] = self._strategy_service.strategy().dumps_trades_history()
 
         return json.dumps(result).encode("utf-8")
 
