@@ -1148,6 +1148,10 @@ class IGWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
+        # query must be done in London timezone
+        from_date = from_date.astimezone(pytz.timezone('Europe/London'))
+        to_date = to_date.astimezone(pytz.timezone('Europe/London'))
+
         try:
             if n_last:
                 data = self._connector.history_last_n(market_id, timeframe, n_last)
@@ -1160,6 +1164,7 @@ class IGWatcher(Watcher):
             data = {}
 
         prices = data.get('prices', [])
+        logger.debug("%s %s" % (timeframe, len(prices)))
 
         # get local timezone, assume its the same of the account, or overrided by account detail
         tzname = self._tzname or time.tzname[0]
