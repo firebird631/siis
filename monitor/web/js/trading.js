@@ -423,7 +423,7 @@ function update_active_trade(market_id, trade) {
 
     let trade_percent = $('<span class="trade-percent"></span>').text(trade['profit-loss-pct'] +'%');   
     let trade_upnl = $('<span class="trade-upnl"></span>').text(format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
-    let trade_fees = $('<span class="trade-fees"></span>').text(trade.stats['entry-fees'] + trade.stats['exit-fees']);
+    let trade_fees = $('<span class="trade-fees"></span>').text(format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']));
 
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);  // + UP/DN buttons
     trade_stop_loss.attr('data-toggle', "tooltip");

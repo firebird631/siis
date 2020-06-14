@@ -18,6 +18,10 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 # EN COURS #
 ############
 
+#112 Dans local reste 29 strategies a convertir vers le nouveau format (probablement certaines a supprimer)
+
+#113 Dans siis-lab reste 18 strategies a convertir vers le nouveau format (probablement certaines a supprimer)
+
 #24 Uniformiser l'order book (bitmex, binance, binancefutures, kraken)
     - avoir un object OrderBook facile à mettre à jour et à exploiter
     - utiliser DepthCacheManager pour binance et binancefutures
