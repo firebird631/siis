@@ -76,7 +76,7 @@ function on_order_long(elt) {
             'leverage': leverage
         };
 
-        if (context) {
+        if (context && profile && ('strategy' in profile)) {
             data['context'] = context;
         } else if (timeframe) {
             data['timeframe'] = timeframe;
@@ -182,11 +182,9 @@ function on_order_short(elt) {
             'leverage': leverage
         };
 
-        if (context) {
+        if (context && profile && ('strategy' in profile)) {
             data['context'] = context;
-        }
-
-        if (timeframe) {
+        } else if (timeframe) {
             data['timeframe'] = timeframe;
         }
 

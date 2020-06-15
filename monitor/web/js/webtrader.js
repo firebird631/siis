@@ -733,6 +733,7 @@ function fetch_strategy() {
                 }
 
                 window.markets[market_id].profiles[profile_id] = {
+                    'strategy': profile['strategy'],
                     'label': profile['profile-id'],
                     'entry': profile['profile-id'],
                     'take-profit': take_profit_method,

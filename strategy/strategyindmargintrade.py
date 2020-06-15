@@ -575,6 +575,8 @@ class StrategyIndMarginTrade(StrategyTrade):
                 if self.x >= self.e or data.get('fully-filled', False):
                     # bitmex does not send ORDER_DELETED signal, cleanup here
                     # we have a fully-filled status with binancefutures
+                    self._exit_state = StrategyTrade.STATE_FILLED
+
                     if data['id'] == self.limit_oid:
                         self.limit_oid = None
                         self.limit_ref_oid = None

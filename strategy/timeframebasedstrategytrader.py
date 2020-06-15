@@ -212,8 +212,8 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     def stream(self):
         # global data
         with self._mutex:
-            if self._global_streamer:
-                self._global_streamer.publish()
+            # if self._global_streamer:
+            #     self._global_streamer.publish()
 
             # and per timeframe
             for tf, timeframe_streamer in self._timeframe_streamers.items():

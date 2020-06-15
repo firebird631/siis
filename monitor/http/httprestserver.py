@@ -45,7 +45,7 @@ class AuthToken(object):
 registerAdapter(AuthToken, Session, IAuthToken)
 
 
-class ShortSession(Session):
+class LongSession(Session):
     sessionTimeout = 60*60*24*7  # 1w session
 
 
@@ -483,7 +483,7 @@ class HttpRestServer(object):
         root.putChild(b"chart", Charting(self._strategy_service, self._trader_service))
 
         factory = AllowedIPOnlyFactory(root)
-        factory.sessionFactory = ShortSession
+        factory.sessionFactory = LongSession
 
         MonitorService.ref_reactor()
         self._listener = reactor.listenTCP(self._port, factory)
