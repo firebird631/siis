@@ -35,7 +35,22 @@ $(window).ready(function() {
 
     // map a symbol to a market on trading-view for some specials case, like indices
     window.symbol_to_tv = {
-        // @todo fill DAX, SPX, DJI, NAS100, NAS500, EUROSTOCK, LSE, NIKKEY, HK30, HK50, CAC40, FTSE, BE30 and how to map exactly ?
+        'IX.D.DAX.IFMM.IP': ['OANDA', 'DE30EUR'],
+        'IX.D.DOW.IFE.IP': ['OANDA', 'US30USD'],
+        'IX.D.NASDAQ.IFE.IP': ['OANDA', 'NAS100USD'],
+        'IX.D.SPTRD.IFE.IP': ['OANDA', 'SPX500USD'],
+
+        'S.D.USDCHF.MINI.IP': ['OANDA', 'USDCHF'],
+        'CS.D.USDJPY.MINI.IP': ['OANDA', 'USDJPY'],
+        'CS.D.AUDNZD.MINI.IP': ['OANDA', 'AUDNZD'],
+        'CS.D.EURCAD.MINI.IP': ['OANDA', 'EURCAD'],
+        'CS.D.EURCHF.MINI.IP': ['OANDA', 'EURCHF'],
+        'CS.D.EURGBP.MINI.IP': ['OANDA', 'EURGBP'],
+        'CS.D.EURJPY.MINI.IP': ['OANDA', 'EURJPY'],
+        'CS.D.EURUSD.MINI.IP': ['OANDA', 'EURUSD'],
+        'CS.D.GBPUSD.MINI.IP': ['OANDA', 'GBPUSD'],
+
+        'CS.D.CFEGOLD.CFE.IP': ['OANDA', 'XAUUSD'],
     };
 
     window.markets = {
@@ -63,13 +78,6 @@ $(window).ready(function() {
             'label': 'Price',
             'take-profit': 'price',
             'stop-loss': 'price',
-            'context': null,
-            'timeframe': null
-        },
-        'strategy': {
-            'label': 'Strategy',
-            'take-profit': 'strategy',
-            'stop-loss': 'strategy',
             'context': null,
             'timeframe': null
         },
@@ -181,8 +189,8 @@ $(window).ready(function() {
             'distance': 0.45,
             'type': 'percent',
         },
-        'percent-0.5': {
-            'label': '0.5%',
+        'percent-0.50': {
+            'label': '0.50%',
             'distance': 0.5,
             'type': 'percent',
         },
@@ -191,59 +199,49 @@ $(window).ready(function() {
             'distance': 0.75,
             'type': 'percent',
         },
-        'percent-1.0': {
-            'label': '1.0%',
+        'percent-1.00': {
+            'label': '1.00%',
             'distance': 1.0,
             'type': 'percent',
         },
-        'percent-1.5': {
-            'label': '1.5%',
+        'percent-1.50': {
+            'label': '1.50%',
             'distance': 1.5,
             'type': 'percent',
         },
-        'percent-2.0': {
-            'label': '2.0%',
+        'percent-2.00': {
+            'label': '2.00%',
             'distance': 2.0,
             'type': 'percent',
         },
-        'percent-2.5': {
-            'label': '2.5%',
+        'percent-2.50': {
+            'label': '2.50%',
             'distance': 2.5,
             'type': 'percent',
         },
-        'percent-3.0': {
-            'label': '3.0%',
+        'percent-3.00': {
+            'label': '3.00%',
             'distance': 3.0,
             'type': 'percent',
         },
-        'percent-4.0': {
-            'label': '4.0%',
+        'percent-4.00': {
+            'label': '4.00%',
             'distance': 4.0,
             'type': 'percent',
         },
-        'percent-5.0': {
-            'label': '5.0%',
+        'percent-5.00': {
+            'label': '5.00%',
             'distance': 5.0,
             'type': 'percent',
         },
-        'percent-10.0': {
-            'label': '10.0%',
+        'percent-10.00': {
+            'label': '10.00%',
             'distance': 10.0,
             'type': 'percent',
-        },
-        'pip-3': {
-            'label': '3pips',
-            'distance': 3,
-            'type': 'pip',
         },
         'pip-5': {
             'label': '5pips',
             'distance': 5,
-            'type': 'pip',
-        },
-        'pip-6': {
-            'label': '6pips',
-            'distance': 6,
             'type': 'pip',
         },
         'pip-7': {
@@ -259,11 +257,6 @@ $(window).ready(function() {
         'pip-10': {
             'label': '10pips',
             'distance': 10,
-            'type': 'pip',
-        },
-        'pip-12': {
-            'label': '12pips',
-            'distance': 12,
             'type': 'pip',
         },
         'pip-15': {
@@ -301,16 +294,11 @@ $(window).ready(function() {
             'distance': 75,
             'type': 'pip',
         },
-        'pip-1000': {
+        'pip-100': {
             'label': '100pips',
             'distance': 100,
             'type': 'pip',
         },
-        'Strategy': {
-            'label': 'Strategy',
-            'distance': 0.0,
-            'type': 'percent'
-        }
     }
 
     window.entry_methods = {
@@ -346,10 +334,6 @@ $(window).ready(function() {
             'label': 'Ask 2',
             'type': 'ask2'
         },
-        'strategy': {
-            'label': 'strategy',
-            'type': 'strategy'
-        }
     }
 
     //
@@ -662,9 +646,7 @@ function fetch_strategy() {
     .done(function(result) {
         window.markets = {};
         window.strategy = {};
-        window.broker = {
-            'name': result['broker']
-        };
+        window.broker = result['broker'];
 
         window.strategy = {
             'name': result['strategy']
@@ -689,17 +671,73 @@ function fetch_strategy() {
                 'profiles': {}
             };
 
-            // @todo
-            for (let profile_id in market['profiles']) {
-                let profile = market['profiles'][profile_id];
-
-                // window.markets[market_id].profiles[profile_id] = {
-                // }                
-            }
-
             // append the default profiles
             for (let def_profile_id in window.default_profiles) {
                 window.markets[market_id].profiles[def_profile_id] = window.default_profiles[def_profile_id];
+            }
+
+            // and the strategy profiles
+            for (let profile_id in market['profiles']) {
+                let profile = market['profiles'][profile_id];
+                let take_profit_method = null;
+                let stop_loss_method = null;
+
+                if (profile['take-profit']) {
+                    take_profit_method = "";
+
+                    if (profile['take-profit']['distance-type'] == 'percent') {
+                        take_profit_method = 'percent-' + profile['take-profit']['distance'].toFixed(2);
+                    } else {
+                        take_profit_method = 'pip-' + profile['take-profit']['distance'];
+                    }
+
+                    if (!(take_profit_method in window.methods)) {
+                        let label = ""
+
+                        if (profile['take-profit']['distance-type'] == 'percent') {
+                            label = profile['take-profit']['distance'].toFixed(2) + '%';
+                        } else {
+                            label = profile['take-profit']['distance'] + 'pips';
+                        }
+
+                        window.methods[take_profit_method] = {
+                            'label': label,
+                            'distance': profile['take-profit']['distance'],
+                            'type': profile['take-profit']['distance-type']
+                        };
+                    }
+                }
+
+                if (profile['stop-loss']) {
+                    if (profile['stop-loss']['distance-type'] == 'percent') {
+                        stop_loss_method = 'percent-' + profile['stop-loss']['distance'].toFixed(2);
+                    } else {
+                        stop_loss_method = 'pip-' + profile['stop-loss']['distance'];
+                    }
+
+                    if (!(stop_loss_method in window.methods)) {
+                        let label = "";
+
+                        if (profile['stop-loss']['distance-type'] == 'percent') {
+                            label = profile['stop-loss']['distance'].toFixed(2) + '%';
+                        } else {
+                            label = profile['stop-loss']['distance'] + 'pips';
+                        }
+
+                        window.methods[stop_loss_method] = {
+                            'label': label,
+                            'distance': profile['stop-loss']['distance'],
+                            'type': profile['stop-loss']['distance-type']
+                        };
+                    }
+                }
+
+                window.markets[market_id].profiles[profile_id] = {
+                    'label': profile['profile-id'],
+                    'entry': profile['profile-id'],
+                    'take-profit': take_profit_method,
+                    'stop-loss': stop_loss_method
+                };
             }
         }
 
@@ -774,7 +812,7 @@ function add_symbols(id, to) {
 
     to.append(select);
 
-    select.selectpicker({'width': '165px'});
+    select.selectpicker({'width': '165px', 'size': '10'});
 
     return select;
 };
@@ -789,7 +827,7 @@ function add_profiles(id, to, profiles) {
 
     to.append(select);
 
-    select.selectpicker({'width': '170px'});
+    select.selectpicker({'width': '170px', 'size': '10'});
 
     select.on('change', function(e) {
         on_change_profile(e);
@@ -815,7 +853,7 @@ function add_take_profit_methods(id, to) {
 
     to.append(select);
 
-    select.selectpicker({'width': '170px'});
+    select.selectpicker({'width': '170px', 'size': '10'});
 
     select.on('change', function(e) {
         on_change_take_profit_method(e);
@@ -841,7 +879,7 @@ function add_entry_price_methods(id, to) {
 
     to.append(select);
 
-    select.selectpicker({'width': '170px'});
+    select.selectpicker({'width': '170px', 'size': '10'});
 
     select.on('change', function(e) {
         on_change_entry_method(e);
@@ -869,7 +907,7 @@ function add_stop_loss_methods(id, to) {
 
     to.append(select);
 
-    select.selectpicker({'width': '170px'});
+    select.selectpicker({'width': '170px', 'size': '10'});
 
     select.on('change', function(e) {
         on_change_stop_loss_method(e);
@@ -903,7 +941,7 @@ function add_quantity_slider(id, to) {
         value.html($(this).val() + "%");
     });
 
-    factor.selectpicker({'width': '75px'});
+    factor.selectpicker({'width': '75px', 'size': '10'});
 };
 
 function retrieve_symbol(elt) {
@@ -1048,12 +1086,18 @@ function toggle_auto(elt) {
 function open_trading_view(elt) {
     let symbol = retrieve_symbol(elt);
 
-    if (broker['name'] in broker_to_tv) {
-        if (symbol in symbol_to_tv) {
-            symbol = symbol_to_tv[symbol];
-        }
+    if (window.broker['name'] in window.broker_to_tv) {
+        if (symbol in window.symbol_to_tv) {
+            // mapped symbol
+            let stv = window.symbol_to_tv[symbol];
 
-        window.open('https://fr.tradingview.com/chart?symbol=' + broker_to_tv[broker['name']][0] + '%3A' + symbol + broker_to_tv[broker['name']][1]);
+            window.open('https://fr.tradingview.com/chart?symbol=' + stv[0] + '%3A' + stv[1]);
+        } else {
+            // direct mapping with suffix
+            let btv = window.broker_to_tv[window.broker['name']];
+
+            window.open('https://fr.tradingview.com/chart?symbol=' + btv[0] + '%3A' + symbol + btv[1]);
+        }
     }
 };
 
@@ -1092,7 +1136,7 @@ function on_change_entry_method(elt) {
 function on_change_entry_price(elt) {
     let symbol = retrieve_symbol(elt);
 
-    // @todo
+    // @todo change entry price in case of limit or trigger(limit) order
 }
 
 function on_change_stop_loss_method(elt) {

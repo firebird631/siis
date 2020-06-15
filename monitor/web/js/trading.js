@@ -6,8 +6,8 @@ function on_order_long(elt) {
     let market = window.markets[symbol];
 
     if (symbol && market) {
-        // how to retrieve the context name; timeframe and expiry ?
-        let profile = market.profiles[retrieve_profile(trader_id)];
+        let profile_name = retrieve_profile(trader_id);
+        let profile = market.profiles[profile_name];
 
         let limit_price = 0.0;
         let trigger_price = 0.0;
@@ -55,10 +55,10 @@ function on_order_long(elt) {
 
         quantity_rate = retrieve_quantity_rate(trader_id) * 0.01 * retrieve_quantity_factor(trader_id);
 
-        let timeframe = profile['timeframe'];
+        let timeframe = profile ? profile['timeframe'] : null;
         let entry_timeout = null;  // @todo
         let leverage = 1;
-        let context = profile['context'];
+        let context = profile_name;
 
         let data = {
             'command': 'trade-entry',
@@ -78,9 +78,7 @@ function on_order_long(elt) {
 
         if (context) {
             data['context'] = context;
-        }
-
-        if (timeframe) {
+        } else if (timeframe) {
             data['timeframe'] = timeframe;
         }
 
@@ -114,8 +112,8 @@ function on_order_short(elt) {
     let market = window.markets[symbol];
 
     if (symbol && market) {
-        // how to retrieve the context name; timeframe and expiry ?
-        let profile = market.profiles[retrieve_profile(trader_id)];
+        let profile_name = retrieve_profile(trader_id);
+        let profile = market.profiles[profile_name];
 
         let limit_price = 0.0;
         let trigger_price = 0.0;
@@ -163,10 +161,10 @@ function on_order_short(elt) {
 
         quantity_rate = retrieve_quantity_rate(trader_id) * 0.01 * retrieve_quantity_factor(trader_id);
 
-        let timeframe = profile['timeframe'];
+        let timeframe = profile ? profile['timeframe'] : null;
         let entry_timeout = null;  // @todo
         let leverage = 1;
-        let context = profile['context'];
+        let context = profile_name;
 
         let data = {
             'command': 'trade-entry',

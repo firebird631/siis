@@ -183,7 +183,7 @@ class Connector(object):
         }
 
         prev_last_ts = ""
-        last_datetime = str(int(from_date.timestamp() * 1000000000))
+        last_datetime = str(int(from_date.timestamp() * 1000000000)) if from_date else "0"
         to_ts = to_date.timestamp()
         retry_count = 0
 
@@ -249,7 +249,7 @@ class Connector(object):
             'interval': interval,
         }
 
-        last_datetime = from_date.timestamp() - 1.0  # minus 1 sec else will not have from current
+        last_datetime = from_date.timestamp() - 1.0 if from_date else 0.0  # minus 1 sec else will not have from current
         to_ts = to_date.timestamp()
         retry_count = 0
 

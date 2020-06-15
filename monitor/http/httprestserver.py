@@ -200,12 +200,12 @@ class StrategyInfoRestAPI(resource.Resource):
                     'take-profit': {
                         'timeframe': context['take-profit']['timeframe'],
                         'distance': context['take-profit']['distance'],
-                        'distance-mode': context['take-profit']['distance-type'],
+                        'distance-type': context['take-profit']['distance-type'],
                     },
                     'stop-loss': {
                         'timeframe': context['stop-loss']['timeframe'],
                         'distance': context['stop-loss']['distance'],
-                        'distance-mode': context['stop-loss']['distance-type'],
+                        'distance-type': context['stop-loss']['distance-type'],
                     }
                 }
 
