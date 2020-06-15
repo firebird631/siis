@@ -305,6 +305,51 @@ function compute_price_pct(price, close, direction) {
     return 0.0;
 }
 
+function normalized_profit_loss_distance(entry, close, stop_loss_rate, take_profit_rate, direction) {
+    // -1 .. 0 .. 1 distance
+    if (typeof(entry) === "string") {
+        entry = parseFloat(entry);
+    }
+
+    if (typeof(close) === "string") {
+        close = parseFloat(close);
+    }
+
+    if (typeof(stop_loss_rate) === "string") {
+        stop_loss_rate = parseFloat(stop_loss_rate);
+    }
+
+    if (typeof(take_profit_rate) === "string") {
+        take_profit_rate = parseFloat(take_profit_rate);
+    }
+
+    if (direction > 0) {
+        // current pnl rate
+        let pnl_rate = (close - entry) / entry;
+
+        if (pnl_rate > 0.0) {
+            return Math.min(1.0, 1.0 - (take_profit_rate - pnl_rate) / take_profit_rate);
+        } else if (pnl_rate < 0.0) {
+            return Math.max(-1.0, (stop_loss_rate - pnl_rate) / stop_loss_rate - 1.0);
+        } else {
+            return 0.0
+        }
+    } else if (direction < 0) {
+        // current pnl rate
+        let pnl_rate = (entry - close) / entry;
+
+        if (pnl_rate > 0.0) {
+            return Math.min(1.0, 1.0 - (take_profit_rate - pnl_rate) / take_profit_rate);
+        } else if (pnl_rate < 0.0) {
+            return Math.max(-1.0, (stop_loss_rate - pnl_rate) / stop_loss_rate - 1.0);
+        } else {
+            return 0.0
+        }
+    }
+
+    return 0.0;    
+}
+
 function add_active_trade(market_id, trade) {
     let trade_elt = $('<tr class="active-trade"></tr>');
     let key = market_id + ':' + trade.id;
@@ -407,6 +452,7 @@ function update_active_trade(market_id, trade) {
 
     let trade_order = $('<span class="trade-order"></span>').text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
 
+    // entry
     let trade_entry = $('<span class="trade-entry"></span>').text(trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
     trade_entry.attr('data-toggle', "tooltip");
     trade_entry.attr('data-placement', "top");
@@ -414,6 +460,7 @@ function update_active_trade(market_id, trade) {
     let entry_price_rate = compute_price_pct(trade['avg-entry-price'], trade.stats['close-exec-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
     trade_entry.attr('title', (entry_price_rate * 100).toFixed(2) + '%');
 
+    // exit
     let trade_exit = $('<span class="trade-exit"></span>').text(trade['avg-exit-price'] + ' (' + trade['filled-exit-qty'] + ')');
     trade_exit.attr('data-toggle', "tooltip");
     trade_exit.attr('data-placement', "top");
@@ -421,10 +468,14 @@ function update_active_trade(market_id, trade) {
     let exit_price_rate = compute_price_pct(trade['avg-exit-price'], trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
     trade_exit.attr('title', (exit_price_rate * 100).toFixed(2) + '%');
 
+    // pnl
     let trade_percent = $('<span class="trade-percent"></span>').text(trade['profit-loss-pct'] +'%');   
     let trade_upnl = $('<span class="trade-upnl"></span>').text(format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
+
+    // fees
     let trade_fees = $('<span class="trade-fees"></span>').text(format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']));
 
+    // stop-loss
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);  // + UP/DN buttons
     trade_stop_loss.attr('data-toggle', "tooltip");
     trade_stop_loss.attr('data-placement', "top");
@@ -432,6 +483,7 @@ function update_active_trade(market_id, trade) {
     let stop_loss_price_rate = compute_price_pct(trade['stop-loss-price'], trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
     trade_stop_loss.attr('title', (stop_loss_price_rate * 100).toFixed(2) + '%');
 
+    // take-profit
     let trade_take_profit = $('<span class="trade-take-profit"></span>').text(trade['take-profit-price']);  // + UP/DN buttons
     trade_take_profit.attr('data-toggle', "tooltip");
     trade_take_profit.attr('data-placement', "top");
@@ -439,6 +491,33 @@ function update_active_trade(market_id, trade) {
     let take_profit_price_rate = compute_price_pct(trade['take-profit-price'], trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
     trade_take_profit.attr('title', (take_profit_price_rate * 100).toFixed(2) + '%');
 
+    // colorized upnl % background
+    let upnl_bg_color = 'initial';
+    let upnl_border_color = 'initial';
+    let upnl_color = 'white';
+
+    let upnl_bg = normalized_profit_loss_distance(
+            trade['avg-entry-price'],
+            trade.stats['close-exec-price'],
+            stop_loss_price_rate,
+            take_profit_price_rate,
+            trade.direction == "long" ? 1 : -1);
+
+    if (upnl_bg < 0.0) {
+        upnl_bg_color = 'rgba(255, 0, 0, ' + (-upnl_bg * 0.9).toFixed(1) + ')';
+        upnl_border_color = 'rgba(255, 0, 0, 0)';
+    } else if (upnl_bg > 0.0) {
+        upnl_bg_color = 'rgba(0, 255, 0, ' + (upnl_bg * 0.9).toFixed(1) + ')';
+        upnl_border_color = 'rgba(0, 255, 0, 0)';
+    }
+
+    trade_percent.css('background', upnl_bg_color)
+        .css('color', upnl_color)
+        .css('border', 'solid 1px ' + upnl_border_color)
+        .css('border-radius', '3px')
+        .css('width', '100%');
+
+    // update
     trade_elt.find('span.trade-order').replaceWith(trade_order);
     trade_elt.find('span.trade-entry').replaceWith(trade_entry);
     trade_elt.find('span.trade-exit').replaceWith(trade_exit);

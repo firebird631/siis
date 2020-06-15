@@ -326,6 +326,7 @@ class BinanceFuturesTrader(Trader):
 
         reason = None
         result = None
+        code = 0
 
         try:
             result = self._watcher.connector.client.futures_cancel_order(**data)
@@ -333,17 +334,26 @@ class BinanceFuturesTrader(Trader):
             reason = str(e)
         except BinanceAPIException as e:
             reason = str(e)
+            code = e.code
         except BinanceOrderException as e:
             reason = str(e)
 
         if reason:
             error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol, reason))
+
+            if code == -2011:  # not exists assume its already canceled
+                return True
+
             return False
 
         if result:
             if result.get('status', "") == Client.ORDER_STATUS_REJECTED:
                 error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol, reason))
                 order_logger.error(result)
+
+                if code == -2011:  # not exists assume its already canceled
+                    return True
+
                 return False
 
             order_logger.info(result)

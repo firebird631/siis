@@ -217,23 +217,6 @@ class Strategy(Runnable):
     def stream(self):
         pass
 
-    def stream_call(self):
-        """
-        Process the call for each strategy instrument.
-        """
-        now = time.time()
-
-        # once per second
-        if now - self._last_call_ts >= 1.0:
-            self._streamable.member('cpu-load').update(self._cpu_load)
-            self._streamable.publish()
-
-            with self._mutex:
-                for k, strategy_trader in self._strategy_traders.items():
-                    strategy_trader.stream_call()
-
-            self._last_call_ts = now
-
     def subscribe_stream(self, market_id, timeframe):
         """
         Override to create a specific streamer.
@@ -308,7 +291,6 @@ class Strategy(Runnable):
         # stream call
         with self._mutex:
             self.stream()
-            self.stream_call()
 
     def ping(self, timeout):
         if self._condition.acquire(timeout=timeout):

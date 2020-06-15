@@ -18,7 +18,7 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 # EN COURS #
 ############
 
-#112 Dans local reste 29 strategies a convertir vers le nouveau format (probablement certaines a supprimer)
+#112 Dans local reste 27 strategies a convertir vers le nouveau format (probablement certaines a supprimer)
 
 #113 Dans siis-lab reste 18 strategies a convertir vers le nouveau format (probablement certaines a supprimer)
 
@@ -34,10 +34,11 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 
 #103 WebTrader
     - gérer play/pause par market
+    - context de trading
     - charting OHLC et ticks (streaming)
     - charting de la performance de la strat (streaming)
     - goto charting historique sur un trade passé
-    - récupération des trades historiques à la connexion
+    - récupération des trades historiques à la connexion (ou reformater le format de rapport avec les dumps, donc revoir la table cli)
     - reverse trade
     - details trade avec modal
     - modify SL/TP active trade (en cours) + DSL
@@ -46,12 +47,12 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
     - signals list + WS
     - performance tab, locally computed
     - ticker WS
+    - background-color du % UPNL green / red avec opacity selon distance au SL/TP
+    - streamer et afficher balance, margin du compte
 
 #111 mode trade by strategy : selon context choisit, gérer comme si c'était un signal et avoir ce mode depuis le manuel
 
 #104 decouper les commande de strategy par fichier dans command/
-
-#106 amméliorer le process pour le démarrer du bot sur IG pour avoir la data initial pour les différentes timeframes plus facilement
 
 #107 Optimisation des trades :
     - Le signal doit être annulé si le prix dépasse (long) celui de la réintégration de la BB (inverse pour short)
@@ -103,15 +104,15 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 #109 Freeze si pas l'option --initial-fetch avec binancefutures :
     - Est-ce que le fait qu'il n'est pas d'historique pour certaines timeframe le fasse planter ?
 
+#75 TD9 countdown a debug et tester
+
 
 ##########
 # URGENT #
 ##########
 
-#75 TD9 countdown a debug et tester
-
 #57 Vérification des trades au rechargement :
-    - Cas des positions indépendante (CFD, futur) : pas de soucis tant qu'on retrouve la position et les ordres
+    - Cas des positions indépendante (CFD, future) : pas de soucis tant qu'on retrouve la position et les ordres
     - Cas des crypto margin: si on rate un trade event, on va perdre le compte : reprendre l'historique des trades, ça devient l'usine à gérer
     - Cas des crypto spot : pareil si on rate un trade event...
     => On pourrait depuis le watcher récupérer à la connexion tout les TRADES
@@ -149,13 +150,7 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 
 #85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, l'intérêt c'est d'avoir le trigger coté bot, pour ne pas bloquer les fonds coté broker
 
-#38 Fetcher et (REST) Watcher Tiingo (est-ce vraiment utile aujourd'hui ?)
-
-#98 Fetcher, Watcher PyEX (mais c'est payant)
-
-#45 Pour le watcher AlphaVantage faire une liste cyclique avec priorité vers les marché qui n'ont pas été mis encore à jour
-    pour ainsi faire tourner si plus de 5 marché suivis a une ut de 1m
-    => finalement avec Tiingo ou PyEx on devrait tout avoir donc pas besoin d'en faire trop sur AlphaVantage.
+#98 Fetcher, Watcher PyEX (mais c'est payant) => rapidapi-morningstar mais pas de WS
 
 
 #########

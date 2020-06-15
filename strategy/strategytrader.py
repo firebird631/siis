@@ -32,13 +32,6 @@ error_logger = logging.getLogger('siis.error.strategy.trader')
 class StrategyTrader(object):
     """
     A strategy can manage multiple instrument. Strategy trader is on of the managed instruments.
-
-    @todo _global_streamer must be improved. streaming functionnalities must be only connected to the
-        notification receiver (only then keep notify_order calls), streaming will be done on a distinct service.
-        disable any others streaming capacities on the strategy-traders excepted for debug purposes.
-
-    @todo Use a local proxy trader in place of global.
-    @todo Copy any usefull Market data to Instrument to don't have to use global trader.
     """
 
     MARKET_TYPE_MAP = {
@@ -77,7 +70,11 @@ class StrategyTrader(object):
         self._next_alert_id= 1
 
         self._global_streamer = None
-        self._trade_streamer = None
+        
+        self._trade_entry_streamer = None
+        self._trade_update_streamer = None
+        self._trade_exit_streamer = None
+
         self._timeframe_streamers = {}
 
         self._reporting = StrategyTrader.REPORTING_NONE
@@ -992,12 +989,6 @@ class StrategyTrader(object):
         """
         return False
 
-    def stream_call(self):
-        """
-        Process the call for the strategy trader. Must be overriden.
-        """
-        pass
-
     def report_state(self, mode=0):
         """
         Collect the state of the strategy trader (instant) and return a dataset.
@@ -1199,10 +1190,6 @@ class StrategyTrader(object):
             # system notification
             self.strategy.notify_signal(timestamp, signal, self)
 
-            # @deprecated
-            if self._global_streamer:
-                self._global_streamer.member('buy-entry' if signal.direction > 0 else 'sell-entry').update(signal.price, timestamp)
-
             # @todo stream
 
     def notify_trade_entry(self, timestamp, trade):
@@ -1210,12 +1197,9 @@ class StrategyTrader(object):
             # system notification
             self.strategy.notify_trade_entry(timestamp, trade, self)
 
-            # @deprecated
-            if self._global_streamer:
-                self._global_streamer.member('buy-entry' if trade.direction > 0 else 'sell-entry').update(trade.order_price, timestamp)
-
-            if self._trade_streamer:
-                self._trade_streamer.member('trade-entry').update(self, trade, timestamp)
+            if self._trade_entry_streamer:
+                self._trade_entry_streamer.member('trade-entry').update(self, trade, timestamp)
+                self._trade_entry_streamer.publish()
 
             # for reporting if specified
             if self._reporting == self.REPORTING_VERBOSE:
@@ -1227,20 +1211,18 @@ class StrategyTrader(object):
             # will flood, maybee will distinct a trade amend from update
             # self.strategy.notify_trade_update(timestamp, trade, self)
 
-            if self._trade_streamer:
-                self._trade_streamer.member('trade-update').update(self, trade, timestamp)
+            if self._trade_update_streamer:
+                self._trade_update_streamer.member('trade-update').update(self, trade, timestamp)
+                self._trade_update_streamer.publish()
 
     def notify_trade_exit(self, timestamp, trade):
         if trade:
             # system notification
             self.strategy.notify_trade_exit(timestamp, trade, self)
 
-            # @deprecated
-            if self._global_streamer:
-                self._global_streamer.member('buy-exit' if trade.direction > 0 else 'sell-exit').update(trade.exit_price, timestamp)
-                
-            if self._trade_streamer:
-                self._trade_streamer.member('trade-exit').update(self, trade, timestamp)
+            if self._trade_exit_streamer:
+                self._trade_exit_streamer.member('trade-exit').update(self, trade, timestamp)
+                self._trade_exit_streamer.publish()
 
             # for reporting if specified
             if self._reporting == self.REPORTING_VERBOSE:

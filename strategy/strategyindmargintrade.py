@@ -229,7 +229,7 @@ class StrategyIndMarginTrade(StrategyTrade):
             if trader.create_order(order, instrument):
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
-                
+
                 self.last_stop_ot[0] = order.created_time
                 self.last_stop_ot[1] += 1
 
@@ -475,10 +475,11 @@ class StrategyIndMarginTrade(StrategyTrade):
                 # cleanup
                 #
 
-                if self.e >= self.oq:
+                if self.e >= self.oq or data.get('fully-filled', False):
+                    # bitmex does not send ORDER_DELETED signal, cleanup here
+                    # we have a fully-filled status with binancefutures
                     self._entry_state = StrategyTrade.STATE_FILLED
 
-                    # bitmex does not send ORDER_DELETED signal, cleanup here
                     self.create_oid = None
                     self.create_ref_oid = None
                 else:
@@ -571,8 +572,9 @@ class StrategyIndMarginTrade(StrategyTrade):
                 # cleanup
                 #
 
-                if self.x >= self.e:
+                if self.x >= self.e or data.get('fully-filled', False):
                     # bitmex does not send ORDER_DELETED signal, cleanup here
+                    # we have a fully-filled status with binancefutures
                     if data['id'] == self.limit_oid:
                         self.limit_oid = None
                         self.limit_ref_oid = None

@@ -16,7 +16,7 @@ from instrument.candlegenerator import CandleGenerator
 from common.utils import timeframe_from_str
 
 from monitor.streamable import Streamable, StreamMemberInt, StreamMemberFloatTuple, StreamMemberFloatScatter, \
-                               StreamMemberTradeEntry, StreamMemberTradeUpdate, StreamMemberTradeExit
+                               StreamMemberTradeEntry, StreamMemberTradeUpdate, StreamMemberTradeExit, StreamMemberFloatSerie
 
 import logging
 logger = logging.getLogger('siis.strategy.trader')
@@ -197,19 +197,17 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
     def setup_streaming(self):
         self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO, self.strategy.identifier, self.instrument.market_id)
-        self._global_streamer.add_member(StreamMemberFloatTuple('tfs'))  # @deprecated
+        self._global_streamer.add_member(StreamMemberFloatSerie('performance', 0))
 
-        # merged on the price @deprecated
-        self._global_streamer.add_member(StreamMemberFloatScatter('buy-entry', 0, 'g^'))  # @deprecated
-        self._global_streamer.add_member(StreamMemberFloatScatter('sell-entry', 0, 'r^'))  # @deprecated
-        self._global_streamer.add_member(StreamMemberFloatScatter('buy-exit', 0, 'r^'))  # @deprecated
-        self._global_streamer.add_member(StreamMemberFloatScatter('sell-exit', 0, 'g^'))  # @deprecated
+        # trade streams
+        self._trade_entry_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
+        self._trade_entry_streamer.add_member(StreamMemberTradeEntry('trade-entry'))
 
-        # trade stream
-        self._trade_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
-        self._trade_streamer.add_member(StreamMemberTradeEntry('trade-entry'))
-        self._trade_streamer.add_member(StreamMemberTradeUpdate('trade-update'))
-        self._trade_streamer.add_member(StreamMemberTradeExit('trade-exit'))
+        self._trade_update_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
+        self._trade_update_streamer.add_member(StreamMemberTradeUpdate('trade-update'))
+
+        self._trade_exit_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
+        self._trade_exit_streamer.add_member(StreamMemberTradeExit('trade-exit'))
 
     def stream(self):
         # global data
@@ -217,20 +215,11 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             if self._global_streamer:
                 self._global_streamer.publish()
 
-            if self._trade_streamer:
-                self._trade_streamer.publish()
-
             # and per timeframe
             for tf, timeframe_streamer in self._timeframe_streamers.items():
                 data = self.timeframes.get(tf)
                 if data:
                     self.stream_timeframe_data(timeframe_streamer, data)
-
-    def stream_call(self):
-        # timeframes list @deprecated
-        if self._global_streamer:
-            self._global_streamer.member('tfs').update(list(self.timeframes.keys()))
-            self._global_streamer.publish()
 
     def create_chart_streamer(self, sub):
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART, self.strategy.identifier, "%s:%i" % (self.instrument.market_id, sub.tf))
