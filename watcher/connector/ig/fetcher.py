@@ -95,6 +95,13 @@ class IGFetcher(Fetcher):
         return []
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None, fetch_option=""):
+        # query must be done in London timezone
+        if from_date:
+            from_date = from_date.astimezone(pytz.timezone('Europe/London')) 
+        
+        if to_date:
+            to_date = to_date.astimezone(pytz.timezone('Europe/London'))
+
         try:
             if n_last:
                 data = self._connector.history_last_n(market_id, timeframe, n_last)

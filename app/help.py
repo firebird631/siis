@@ -123,6 +123,8 @@ def display_cli_help():
     Terminal.inst().message("    Specify --broker, --market, --from and --to date.")
     Terminal.inst().message("  --rebuild Rebuild OHLCs from the trades/ticks/quotes file data.")
     Terminal.inst().message("    Specify --broker, --market, --timeframe, --from and --to date. Plus one of : --target or --cascaded.")
+    Terminal.inst().message("  --optimize Check OHLCs consistency from the trades/ticks/quotes file data.")
+    Terminal.inst().message("    Specify --broker, --market, --timeframe, --from and --to date.")
     Terminal.inst().message("  --import Import a SIIS or MT4 data set from a file.")
     Terminal.inst().message("    For MT4 specify --broker, --market, --timeframe, --from and --to date. Optional --zip.")
     Terminal.inst().message("  --export Export a data set to a SIIS file format.")

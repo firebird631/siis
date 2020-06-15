@@ -147,7 +147,7 @@ def application(argv):
                 elif arg == '--binarize':
                     # use the binarizer
                     options['tool'] = "binarizer"
-                elif arg == '--optimizer':
+                elif arg == '--optimize':
                     # use the optimizer
                     options['tool'] = "optimizer"
                 elif arg == '--sync':

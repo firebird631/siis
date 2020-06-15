@@ -1149,8 +1149,11 @@ class IGWatcher(Watcher):
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         # query must be done in London timezone
-        from_date = from_date.astimezone(pytz.timezone('Europe/London'))
-        to_date = to_date.astimezone(pytz.timezone('Europe/London'))
+        if from_date:
+            from_date = from_date.astimezone(pytz.timezone('Europe/London'))
+
+        if to_date:
+            to_date = to_date.astimezone(pytz.timezone('Europe/London'))
 
         try:
             if n_last:
@@ -1173,7 +1176,7 @@ class IGWatcher(Watcher):
         for price in prices:
             dt = datetime.strptime(price['snapshotTimeUTC'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
 
-            # fix for D,W,M snapshotTimeUTC, because it is LSE aligne and shifted by the DST (then might be +1 or -1 hour)
+            # fix for D,W,M snapshotTimeUTC, because it is LSE aligned and shifted by the DST (then might be +1 or -1 hour)
             if timeframe in (Instrument.TF_1D, Instrument.TF_1W, Instrument.TF_1M):
                 if dt.hour == 22:
                     # is 22:00 on the previous day, add 2h

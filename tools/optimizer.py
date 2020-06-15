@@ -194,16 +194,6 @@ def do_optimizer(options):
     from_date = options.get('from')
     to_date = options.get('to')
 
-    if not to_date:
-        today = datetime.now().astimezone(UTC())
-
-        if timeframe == Instrument.TF_MONTH:
-            to_date = today + timedelta(months=1)
-        else:
-            to_date = today + timedelta(seconds=timeframe)
-
-        to_date = to_date.replace(microsecond=0)
-
     if not options.get('timeframe'):
         timeframe = None
     else:
@@ -214,6 +204,16 @@ def do_optimizer(options):
                 timeframe = int(options['timeframe'])
             except:
                 pass
+
+    if not to_date:
+        today = datetime.now().astimezone(UTC())
+
+        if timeframe == Instrument.TF_MONTH:
+            to_date = today + timedelta(months=1)
+        else:
+            to_date = today + timedelta(seconds=timeframe)
+
+        to_date = to_date.replace(microsecond=0)
 
     try:
         # checking data integrity, gap...
