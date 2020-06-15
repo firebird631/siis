@@ -197,7 +197,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
     def setup_streaming(self):
         self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO, self.strategy.identifier, self.instrument.market_id)
-        self._global_streamer.add_member(StreamMemberFloatSerie('performance', 0))
+        # self._global_streamer.add_member(StreamMemberFloatSerie('performance', 0))
 
         # trade streams
         self._trade_entry_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)

@@ -1198,8 +1198,11 @@ class StrategyTrader(object):
             self.strategy.notify_trade_entry(timestamp, trade, self)
 
             if self._trade_entry_streamer:
-                self._trade_entry_streamer.member('trade-entry').update(self, trade, timestamp)
-                self._trade_entry_streamer.publish()
+                try:
+                    self._trade_entry_streamer.member('trade-entry').update(self, trade, timestamp)
+                    self._trade_entry_streamer.publish()
+                except Exception as e:
+                    logger.error(repr(e))
 
             # for reporting if specified
             if self._reporting == self.REPORTING_VERBOSE:
@@ -1212,8 +1215,11 @@ class StrategyTrader(object):
             # self.strategy.notify_trade_update(timestamp, trade, self)
 
             if self._trade_update_streamer:
-                self._trade_update_streamer.member('trade-update').update(self, trade, timestamp)
-                self._trade_update_streamer.publish()
+                try:
+                    self._trade_update_streamer.member('trade-update').update(self, trade, timestamp)
+                    self._trade_update_streamer.publish()
+                except Exception as e:
+                    logger.error(repr(e))
 
     def notify_trade_exit(self, timestamp, trade):
         if trade:
@@ -1221,8 +1227,11 @@ class StrategyTrader(object):
             self.strategy.notify_trade_exit(timestamp, trade, self)
 
             if self._trade_exit_streamer:
-                self._trade_exit_streamer.member('trade-exit').update(self, trade, timestamp)
-                self._trade_exit_streamer.publish()
+                try:
+                    self._trade_exit_streamer.member('trade-exit').update(self, trade, timestamp)
+                    self._trade_exit_streamer.publish()
+                except Exception as e:
+                    logger.error(repr(e))
 
             # for reporting if specified
             if self._reporting == self.REPORTING_VERBOSE:
