@@ -114,7 +114,6 @@ class IGFetcher(Fetcher):
             data = {}
 
         prices = data.get('prices', [])
-        print(from_date, to_date, n_last)
 
         # get local timezone, assume its the same of the account, or overrided by account detail
         tzname = self._tzname or time.tzname[0]

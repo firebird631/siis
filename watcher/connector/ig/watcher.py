@@ -1167,7 +1167,6 @@ class IGWatcher(Watcher):
             data = {}
 
         prices = data.get('prices', [])
-        logger.debug("%s %s" % (timeframe, len(prices)))
 
         # get local timezone, assume its the same of the account, or overrided by account detail
         tzname = self._tzname or time.tzname[0]
