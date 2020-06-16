@@ -104,22 +104,22 @@ $(window).ready(function() {
         },
         'scalp-lg': {
             'label': 'Scalp LG',
-            'take-profit': 'percent-1.0',
-            'stop-loss':'percent-1.0',
+            'take-profit': 'percent-1.00',
+            'stop-loss':'percent-1.00',
             'context': null,
             'timeframe': null
         },
         'scalp-xl': {
             'label': 'Scalp XL',
-            'take-profit':'percent-1.5',
-            'stop-loss':'percent-1.0',
+            'take-profit':'percent-1.50',
+            'stop-loss':'percent-1.00',
             'context': null,
             'timeframe': null
         },
         'fx-scalp-xs': {
             'label': 'FX Scalp XS',
-            'take-profit': 'pip-3',
-            'stop-loss': 'pip-3',
+            'take-profit': 'pip-5',
+            'stop-loss': 'pip-5',
             'context': null,
             'timeframe': null
         },
@@ -132,15 +132,15 @@ $(window).ready(function() {
         },
         'fx-scalp-md': {
             'label': 'FX Scalp MD',
-            'take-profit': 'pip-12',
-            'stop-loss': 'pip-6',
+            'take-profit': 'pip-10',
+            'stop-loss': 'pip-8',
             'context': null,
             'timeframe': null
         },
         'fx-scalp-lg': {
             'label': 'FX Scalp LG',
-            'take-profit': 'pip-12',
-            'stop-loss': 'pip-8',
+            'take-profit': 'pip-15',
+            'stop-loss': 'pip-10',
             'context': null,
             'timeframe': null
         },
@@ -307,33 +307,17 @@ $(window).ready(function() {
             'type': 'limit'
         },
         'last': {
-            'label': 'Last',
+            'label': 'Market',
             'type': 'market'
         },
         'best1': {
             'label': 'Best 1',
-            'type': 'best1'
+            'type': 'best-1'
         },
-        'best2': {
-            'label': 'Best 2',
-            'type': 'best2'
-        },
-        'bid1': {
-            'label': 'Bid 1',
-            'type': 'bid1'
-        },
-        'ask1': {
-            'label': 'Ask 1',
-            'type': 'ask1'
-        },
-        'bid2': {
-            'label': 'Bid 2',
-            'type': 'bid2'
-        },
-        'ask2': {
-            'label': 'Ask 2',
-            'type': 'ask2'
-        },
+        // 'best2': {
+        //     'label': 'Best 2',
+        //     'type': 'best-2'
+        // },
     }
 
     //
@@ -350,6 +334,10 @@ $(window).ready(function() {
 
     $('#authentification').modal({'show': true, 'backdrop': false});
     $('#list_active_trades').css('background', 'chocolate');
+
+    $('#list_performances').on('click', function(e) {
+        on_update_performances();
+    });
 
     $('#authentification').on('shown.bs.modal', function () {
         $('#identifier').focus();
@@ -773,7 +761,7 @@ function fetch_trades() {
 
         for (let i = 0; i < trades.length; ++i) {
             let trade = trades[i];
-            window.actives_trades[trade.id] = trade;
+            window.actives_trades[trade['symbol'] + ':' + trade.id] = trade;
 
             // initial add
             add_active_trade(trade.symbol, trade);
@@ -1147,18 +1135,12 @@ function on_change_stop_loss_method(elt) {
     let entry_method = retrieve_stop_loss_method(trader_id);
 
     if (entry_method == "price") {
-        let ep = $('input.stop-loss-price[trader-id="' + trader_id +'"]');
-        ep.prop("disabled", false);
+        let slp = $('input.stop-loss-price[trader-id="' + trader_id +'"]');
+        slp.prop("disabled", false);
     } else {
-        let ep = $('input.stop-loss-price[trader-id="' + trader_id +'"]');
-        ep.prop("disabled", true);
+        let slp = $('input.stop-loss-price[trader-id="' + trader_id +'"]');
+        slp.prop("disabled", true);
     }
-}
-
-function on_change_stop_loss_price(elt) {
-    let symbol = retrieve_symbol(elt);
-
-    // @todo
 }
 
 function on_change_take_profit_method(elt) {
@@ -1168,16 +1150,109 @@ function on_change_take_profit_method(elt) {
     let entry_method = retrieve_take_profit_method(trader_id);
 
     if (entry_method == "price") {
-        let ep = $('input.take-profit-price[trader-id="' + trader_id +'"]');
-        ep.prop("disabled", false);
+        let tpp = $('input.take-profit-price[trader-id="' + trader_id +'"]');
+        tpp.prop("disabled", false);
     } else {
-        let ep = $('input.take-profit-price[trader-id="' + trader_id +'"]');
-        ep.prop("disabled", true);
+        let tpp = $('input.take-profit-price[trader-id="' + trader_id +'"]');
+        tpp.prop("disabled", true);
     }
 }
 
-function on_change_take_profit_price(elt) {
-    let symbol = retrieve_symbol(elt);
+function on_update_performances() {
+    if ($('div.performance-list-entries').css('display') != 'none') {
+        let table = $('div.performance-list-entries').find('tbody');
+        table.empty();
 
-    // @todo
+        let active_total_sum = 0.0;
+        let history_total_sum = 0.0;
+
+        let success_sum = 0;
+        let failed_sum = 0;
+        let roe_sum = 0;
+
+        let perfs = {};
+
+        for (let trade in window.actives_trades) {
+            let at = window.actives_trades[trade];
+            let market_id = at['symbol'];
+
+            if (!(market_id in perfs)) {
+                perfs[market_id] = {
+                    'success': 0,
+                    'failed': 0,
+                    'roe': 0,
+                    'active': 0.0,
+                    'history': 0.0
+                }
+            }
+
+            if (!isNaN(at['profit-loss-pct'])) {
+                perfs[market_id].active += at['profit-loss-pct'];
+                active_total_sum += at['profit-loss-pct'];
+            }
+        }
+
+        for (let trade in window.historical_trades) {
+            let ht = window.historical_trades[trade];
+            let market_id = ht['symbol'];
+
+            if (!(market_id in perfs)) {
+                perfs[market_id] = {
+                    'success': 0,
+                    'failed': 0,
+                    'roe': 0,
+                    'active': 0.0,
+                    'history': 0.0
+                }
+            }
+
+            if (!isNaN(ht['profit-loss-pct'])) {
+                if (ht['profit-loss-pct'] > 0.0) {
+                    perfs[market_id].success += 1;
+                    success_sum += 1;
+                } else if (ht['profit-loss-pct'] < 0.0) {
+                    perfs[market_id].failed += 1;
+                    failed_sum += 1;
+                } else {
+                    perfs[market_id].roe += 1;
+                    roe_sum += 1;
+                }
+
+                perfs[market_id].history += ht['profit-loss-pct'];
+                history_total_sum += ht['profit-loss-pct'];
+            }
+        }
+
+        for (let perf in perfs) {
+            let active_total = perfs[perf].active;
+            let history_total = perfs[perf].history;
+            let success = perfs[perf].success;
+            let failed = perfs[perf].failed;
+            let roe = perfs[perf].roe;
+
+            let row_entry = $('<tr class="performance-entry"></tr>');
+            row_entry.append($('<td class="performance-symbol">' + perf + '</td>'));
+            row_entry.append($('<td class="performance-percent-active">' + active_total.toFixed(2) + '%</td>'));
+            row_entry.append($('<td class="performance-percent-history">' + history_total.toFixed(2) + '%</td>'));
+            row_entry.append($('<td class="performance-success">' + success + '</td>'));
+            row_entry.append($('<td class="performance-failed">' + failed + '</td>'));
+            row_entry.append($('<td class="performance-roe">' + roe + '</td>'));
+
+            table.append(row_entry);
+        }
+
+        let row_entry = $('<tr class="performance-entry"></tr>');
+        row_entry.append($('<td class="performance-symbol">Total</td>'));
+        row_entry.append($('<td class="performance-percent-active">' + active_total_sum.toFixed(2) + '%</td>'));
+        row_entry.append($('<td class="performance-percent-history">' + history_total_sum.toFixed(2) + '%</td>'));
+        row_entry.append($('<td class="performance-success">' + success_sum + '</td>'));
+        row_entry.append($('<td class="performance-failed">' + failed_sum + '</td>'));
+        row_entry.append($('<td class="performance-roe">' + roe_sum + '</td>'));
+        row_entry.css('border-top', '1px solid gray');
+
+        table.append(row_entry);
+
+        // update every second until displayed
+        setTimeout(on_update_performances, 500);
+    }
 }

@@ -5,14 +5,20 @@ function notify(notification) {
     let type = notification['type'] || "info";
     let color = '#fff';
     let body_bg_color = '#444';
+    let now = new Date();
+    let datetime = when != 'now' ? timestamp_to_date_str(when) + ' ' + timestamp_to_time_str(when) : timestamp_to_date_str(now) + ' ' + timestamp_to_time_str(now);
+    let badge_type = 'info';
 
     let bg_color = '#375a7f';
     if (type == 'alert' || type == 'error') {
         bg_color = '#d62c1a';
+        badge_type = 'danger';
     } else if (type == 'success' || type == 'ok') {
         bg_color = '#00bc8c';
+        badge_type = 'success';
     } else if (type == 'info' || type == 'message') {
         bg_color = '#217dbb';
+        badge_type = 'info';
     }
 
     let notif = $('<div class="toast" role="alert" aria-live="polite" aria-atomic="true" data-delay="2000">' +
@@ -32,4 +38,16 @@ function notify(notification) {
     notif.on('hidden.bs.toast', function () {
         notif.remove();
     });
+
+    let table = $('div.console-list-entries').find('tbody');
+    let row_entry = $('<tr class="console-message"></tr>');
+    row_entry.append($('<td class="message-datetime">' + datetime + '</td>'));
+    row_entry.append($('<td class="message-type"><span class="badge badge-' + badge_type + '">' + type + '</span></td>'));
+    row_entry.append($('<td class="message-content">' + message + '</td>'));
+
+    table.prepend(row_entry);
+
+    if (table.children().length > 200) {
+        table.children().filter(':gt(200)').remove();
+    }
 }

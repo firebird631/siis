@@ -50,6 +50,8 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
     - background-color du % UPNL green / red avec opacity selon distance au SL/TP
     - streamer et afficher balance, margin du compte
 
+#112 trade manual sur best1 price, qui prend le limit bid sur long ou limit ofr sur short
+
 #111 mode trade by strategy : selon context choisit, gérer comme si c'était un signal et avoir ce mode depuis le manuel
 
 #104 decouper les commande de strategy par fichier dans command/

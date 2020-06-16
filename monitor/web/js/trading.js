@@ -39,18 +39,10 @@ function on_order_long(elt) {
             method = "limit"
         } else if (entry_price_mode == "market") {
             method = "market"
-        } else if (entry_price_mode == "best1") {
-            // @todo
-        } else if (entry_price_mode == "best2") {
-            // @todo
-        } else if (entry_price_mode == "bid1") {
-            // @todo
-        } else if (entry_price_mode == "bid2") {
-            // @todo
-        } else if (entry_price_mode == "ask1") {
-            // @todo
-        } else if (entry_price_mode == "ask2") {
-            // @todo
+        } else if (entry_price_mode == "best-1") {
+            method = "best-1";
+        } else if (entry_price_mode == "best-2") {
+            method = "best-2";
         }
 
         quantity_rate = retrieve_quantity_rate(trader_id) * 0.01 * retrieve_quantity_factor(trader_id);
@@ -93,8 +85,13 @@ function on_order_long(elt) {
             contentType: 'application/json'
         })
         .done(function(data) {
-            // console.log(data);
-            notify({'message': "Success", 'title': 'Order Long', 'type': 'success'});
+            if (data.error) {
+                for (let msg in data.messages) {
+                    notify({'message': data.messages[msg], 'title': 'Order Long', 'type': 'error'});
+                }
+            } else {
+                notify({'message': "Success", 'title': 'Order Long', 'type': 'success'});
+            }
         })
         .fail(function(data) {
             for (let msg in data.messages) {
@@ -145,18 +142,10 @@ function on_order_short(elt) {
             method = "limit"
         } else if (entry_price_mode == "market") {
             method = "market"
-        } else if (entry_price_mode == "best1") {
-            // @todo
-        } else if (entry_price_mode == "best2") {
-            // @todo
-        } else if (entry_price_mode == "bid1") {
-            // @todo
-        } else if (entry_price_mode == "bid2") {
-            // @todo
-        } else if (entry_price_mode == "ask1") {
-            // @todo
-        } else if (entry_price_mode == "ask2") {
-            // @todo
+        } else if (entry_price_mode == "best-1") {
+            method = "best-1";
+        } else if (entry_price_mode == "best-2") {
+            method = "best-2";
         }
 
         quantity_rate = retrieve_quantity_rate(trader_id) * 0.01 * retrieve_quantity_factor(trader_id);
@@ -199,7 +188,13 @@ function on_order_short(elt) {
             contentType: 'application/json'
         })
         .done(function(data) {
-            notify({'message': "Success", 'title': 'Order Short', 'type': 'success'});
+            if (data.error) {
+                for (let msg in data.messages) {
+                    notify({'message': data.messages[msg], 'title': 'Order Short', 'type': 'error'});
+                }
+            } else {
+                notify({'message': "Success", 'title': 'Order Short', 'type': 'success'});
+            }
         })
         .fail(function(data) {
             for (let msg in data.messages) {
@@ -243,7 +238,13 @@ function on_close_trade(elt) {
             contentType: 'application/json'
         })
         .done(function(data) {
-            notify({'message': "Success", 'title': 'Order Close', 'type': 'success'});
+            if (data.error) {
+                for (let msg in data.messages) {
+                    notify({'message': data.messages[msg], 'title': 'Order Close', 'type': 'error'});
+                }
+            } else {
+                notify({'message': "Success", 'title': 'Order Close', 'type': 'success'});
+            }
         })
         .fail(function(data) {
             for (let msg in data.messages) {
@@ -523,7 +524,7 @@ function update_active_trade(market_id, trade) {
     trade_elt.find('span.trade-stop-loss').replaceWith(trade_stop_loss);
     trade_elt.find('span.trade-take-profit').replaceWith(trade_take_profit);
 
-    window.history[key] = trade;
+    window.actives_trades[key] = trade;
 };
 
 function remove_active_trade(market_id, trade_id) {
@@ -531,7 +532,9 @@ function remove_active_trade(market_id, trade_id) {
     let container = $('div.active-trade-list-entries tbody');
 
     container.find('tr.active-trade[trade-key="' + key + '"]').remove();
-    delete window.actives_trades[key];
+    if (key in window.actives_trades) {
+        delete window.actives_trades[key];
+    }    
 };
 
 function format_quote_price(symbol, price) {

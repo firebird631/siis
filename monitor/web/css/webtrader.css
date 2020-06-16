@@ -232,6 +232,10 @@ div.performance-list-entries {
     display: none;
 }
 
+div.console-list-entries {
+    display: none;
+}
+
 span.trade-long {
     color: green;
 }
