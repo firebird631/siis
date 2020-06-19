@@ -28,31 +28,24 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 
 #100 active regions view
 
-#101 command to manually copy trade a signal
-
 #102 trade_quantity in percent of account, ou plutôt en % de risque sur le compte
 
 #103 WebTrader
     - gérer play/pause par market
-    - context de trading
-    - charting OHLC et ticks (streaming)
-    - charting de la performance de la strat (streaming)
+    - charting OHLC et ticks (streaming) + performance
     - goto charting historique sur un trade passé
     - récupération des trades historiques à la connexion (ou reformater le format de rapport avec les dumps, donc revoir la table cli)
     - reverse trade
     - details trade avec modal
     - modify SL/TP active trade (en cours) + DSL
     - session expiry message to renew
-    - alerts list + WS + REST create, delete, prefetch
-    - signals list + WS
-    - performance tab, locally computed
-    - ticker WS
-    - background-color du % UPNL green / red avec opacity selon distance au SL/TP
+    - active alerts prefetch à la connexion, WS d'update et de delete (à chaque trigger countdown peu changer)
+    - ticker WS, basé sur quoi ? trader ticker ? strategy instrument ?
+        - plutôt sur le trader car pas besoin de surcharger encore le strategy trader
     - streamer et afficher balance, margin du compte
+    - copy de signal
 
-#112 trade manual sur best1 price, qui prend le limit bid sur long ou limit ofr sur short
-
-#111 mode trade by strategy : selon context choisit, gérer comme si c'était un signal et avoir ce mode depuis le manuel
+#113 trade manual sur best1 price, qui prend le limit bid sur long ou limit ofr sur short
 
 #104 decouper les commande de strategy par fichier dans command/
 
@@ -87,8 +80,7 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 # BUG #
 #######
 
-#92 Charting client date time issue, pourtant les bonnes valeurs sont envoyées, à la réception c'est autre chose...
-    - Supprimer le client chart une fois la version web réalisée, donc ce bug ne devrait plus être
+#114 Supprimer le client chart une fois la version web réalisée, donc ce bug ne devrait plus être
 
 #87 Problème sur le comptage de la quantité de sortie, et du prix moyen de sortie d'un trade
     - En effet si la sortie est effectué par plusieurs ordres dans le cas du filled et exec-price, pas de problème,

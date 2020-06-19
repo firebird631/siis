@@ -79,6 +79,7 @@ function on_order_long(elt) {
             url: url,
             headers: {
                 'Authorization': "Bearer " + server['auth-token'],
+                'TWISTED_SESSION': server.session,
             },
             data: JSON.stringify(data),
             dataType: 'json',
@@ -182,6 +183,7 @@ function on_order_short(elt) {
             url: url,
             headers: {
                 'Authorization': "Bearer " + server['auth-token'],
+                'TWISTED_SESSION': server.session,
             },
             data: JSON.stringify(data),
             dataType: 'json',
@@ -232,6 +234,7 @@ function on_close_trade(elt) {
             url: url,
             headers: {
                 'Authorization': "Bearer " + server['auth-token'],
+                'TWISTED_SESSION': server.session,
             },
             data: JSON.stringify(data),
             dataType: 'json',
@@ -470,7 +473,8 @@ function update_active_trade(market_id, trade) {
     let trade_upnl = $('<span class="trade-upnl"></span>').text(format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
 
     // fees
-    let trade_fees = $('<span class="trade-fees"></span>').text(format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']));
+    let fees = format_quote_price(trade.stats['entry-fees'] + trade.stats['exit-fees']);
+    let trade_fees = $('<span class="trade-fees"></span>').text(format_quote_price(market_id, fees));
 
     // stop-loss
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);  // + UP/DN buttons
@@ -568,7 +572,9 @@ function add_historical_trade(market_id, trade) {
 
     let trade_percent = $('<span class="trade-percent"></span>').text(trade['profit-loss-pct'] +'%');   
     let trade_pnl = $('<span class="trade-pnl"></span>').text(format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
-    let trade_fees = $('<span class="trade-fees"></span>').text(trade.stats['entry-fees'] + trade.stats['exit-fees']);
+
+    let fees = format_quote_price(trade.stats['entry-fees'] + trade.stats['exit-fees']);
+    let trade_fees = $('<span class="trade-fees"></span>').text(fees);
 
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);
     trade_stop_loss.attr('data-toggle', "tooltip");
@@ -644,13 +650,16 @@ function on_apply_modify_active_trade_take_profit() {
     let url = base_url() + '/' + endpoint;
 
     let market = window.markets[symbol];
+    let take_profit_price = parseFloat($('#modified_take_profit_price').val());
 
     if (symbol && market && trade_id) {
         let data = {
             'market-id': market['market-id'],
             'trade-id': trade_id,
-            'action': "modify",
-            'command': "trade-modify"
+            'command': "trade-modify",
+            'action': "take-profit",
+            'stop-loss': take_profit_price,
+            'force': true
         };
 
         $.ajax({
@@ -658,13 +667,20 @@ function on_apply_modify_active_trade_take_profit() {
             url: url,
             headers: {
                 'Authorization': "Bearer " + server['auth-token'],
+                'TWISTED_SESSION': server.session,
             },
             data: JSON.stringify(data),
             dataType: 'json',
             contentType: 'application/json'
         })
         .done(function(data) {
-            notify({'message': "Success", 'title': 'Modify Take-Profit', 'type': 'success'});
+            if (data.error) {
+                for (let msg in data.messages) {
+                    notify({'message': data.messages[msg], 'title': 'Modify Take-Profit', 'type': 'error'});
+                }
+            } else {
+                notify({'message': "Success", 'title': 'Modify Take-Profit', 'type': 'success'});
+            }
         })
         .fail(function(data) {
             for (let msg in data.messages) {
@@ -675,15 +691,115 @@ function on_apply_modify_active_trade_take_profit() {
 }
 
 function on_apply_modify_active_trade_stop_loss() {
-    alert("todo sl");
+    let key = $('#modify_trade_stop_loss').attr('trade-key', key);
 
-    // @todo
-    let command = 'trade-modify'
+    let parts = key.split(':');
+    if (parts.length != 2) {
+        return false;
+    }
+
+    let symbol = parts[0];
+    let trade_id = parseInt(parts[1]);
+
+    let endpoint = "strategy/trade";
+    let url = base_url() + '/' + endpoint;
+
+    let market = window.markets[symbol];
+    let stop_loss_price = parseFloat($('#modified_stop_loss_price').val());
+
+    if (symbol && market && trade_id) {
+        let data = {
+            'market-id': market['market-id'],
+            'trade-id': trade_id,
+            'command': "trade-modify",
+            'action': "stop-loss",
+            'stop-loss': stop_loss_price,
+            'force': true
+        };
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            headers: {
+                'Authorization': "Bearer " + server['auth-token'],
+                'TWISTED_SESSION': server.session,
+            },
+            data: JSON.stringify(data),
+            dataType: 'json',
+            contentType: 'application/json'
+        })
+        .done(function(data) {
+            if (data.error) {
+                for (let msg in data.messages) {
+                    notify({'message': data.messages[msg], 'title': 'Modify Stop-Loss', 'type': 'error'});
+                }
+            } else {
+                notify({'message': "Success", 'title': 'Modify Stop-Loss', 'type': 'success'});
+            }
+        })
+        .fail(function(data) {
+            for (let msg in data.messages) {
+                notify({'message': msg, 'title': 'Modify Stop-Loss', 'type': 'error'});
+            }
+        });
+    }
 }
 
 function on_add_active_trade_dynamic_stop_loss() {
-    // @todo
-    let command = 'trade-modify'
+    let key = $('#modify_trade_stop_loss').attr('trade-key', key);
+
+    let parts = key.split(':');
+    if (parts.length != 2) {
+        return false;
+    }
+
+    let symbol = parts[0];
+    let trade_id = parseInt(parts[1]);
+
+    let endpoint = "strategy/trade";
+    let url = base_url() + '/' + endpoint;
+
+    let market = window.markets[symbol];
+
+    let dynamic_stop_loss_price = parseFloat($('#dynamic_stop_loss_price').val());
+    let trigger_price = parseFloat($('#dynamic_stop_loss_trigger_price').val());
+
+    if (symbol && market && trade_id) {
+        let data = {
+            'market-id': market['market-id'],
+            'trade-id': trade_id,
+            'command': "trade-modify",
+            'action': "dynamic-stop-loss",
+            'stop-loss': dynamic_stop_loss_price,
+            'trigger': trigger_price
+        };
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            headers: {
+                'Authorization': "Bearer " + server['auth-token'],
+                'TWISTED_SESSION': server.session,
+            },
+            data: JSON.stringify(data),
+            dataType: 'json',
+            contentType: 'application/json'
+        })
+        .done(function(data) {
+            if (data.error) {
+                for (let msg in data.messages) {
+                    notify({'message': data.messages[msg], 'title': 'Add Dynamic Stop-Loss', 'type': 'error'});
+                }
+            } else {
+                notify({'message': "Success", 'title': 'Add Dynamic Stop-Loss', 'type': 'success'});
+            }
+        })
+        .fail(function(data) {
+            for (let msg in data.messages) {
+                notify({'message': msg, 'title': 'Add Dynamic Stop-Loss', 'type': 'error'});
+            }
+        });
+    }
 }
 
 function on_details_active_trade(elt) {

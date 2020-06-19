@@ -6,6 +6,7 @@ $(window).ready(function() {
         'ws-port': null,
         'auth-token': null,
         'ws-auth-token': null,
+        'session': "",
     };
 
     window.ws = null;
@@ -65,13 +66,17 @@ $(window).ready(function() {
     window.tickers = {
         // bid
         // ofr
-        // vol24 base
-        // vol24 quote
+        // spread
+        // vol24 (base)
+        // vol24quote
+        // depth
     };
 
     window.strategy = {};
     window.actives_trades = {};
     window.historical_trades = {};
+    window.alerts = {};
+    window.signals = {};
 
     window.default_profiles = {
         'price': {
@@ -401,9 +406,12 @@ $(window).ready(function() {
             url: url,
             data: JSON.stringify(data),
             dataType: 'json',
-            contentType: 'application/json'
+            contentType: 'application/json',
+            headers: {
+                'TWISTED_SESSION': "",
+            },
         })
-        .done(function(result) {
+        .done(function(result, textStatus, xhr) {
             if (result['error'] || !result['auth-token']) {
                 notify({'message': "Rejected authentication", 'type': 'error'});
                 return;
@@ -411,6 +419,7 @@ $(window).ready(function() {
 
             server['auth-token'] = result['auth-token'];
             server['ws-auth-token'] = result['ws-auth-token'];
+            server['session'] = result['session'];
 
             if (server['ws-port'] != null) {
                 start_ws();
@@ -449,7 +458,10 @@ $(window).ready(function() {
             url: url,
             data: JSON.stringify(data),
             dataType: 'json',
-            contentType: 'application/json'
+            contentType: 'application/json',
+            headers: {
+                'TWISTED_SESSION': "",
+            },
         })
         .done(function(result) {
             server['auth-token'] = result['auth-token'];
@@ -626,6 +638,7 @@ function fetch_strategy() {
         type: "GET",
         url: url,
         headers: {
+            'TWISTED_SESSION': server.session,
             'Authorization': "Bearer " + server['auth-token'],
         },
         dataType: 'json',
@@ -749,6 +762,7 @@ function fetch_trades() {
         url: url,
         data: params,
         headers: {
+            'TWISTED_SESSION': server.session,
             'Authorization': "Bearer " + server['auth-token'],
         },
         dataType: 'json',
@@ -1053,7 +1067,11 @@ function toggle_auto(elt) {
         url: url,
         data: JSON.stringify(data),
         dataType: 'json',
-        contentType: 'application/json'
+        contentType: 'application/json',
+        headers: {
+            'TWISTED_SESSION': server.session,
+            'Authorization': "Bearer " + server['auth-token'],
+        },
     })
     .done(function(result) {
         if (result['error'] || !result['auth-token']) {
@@ -1252,7 +1270,41 @@ function on_update_performances() {
 
         table.append(row_entry);
 
-        // update every second until displayed
+        // update every half-second until displayed
         setTimeout(on_update_performances, 500);
     }
+}
+
+function on_update_ticker(market_id, market_id, timestamp, ticker) {
+    console.log(ticker);
+
+    if (!(market_id in window.tickers)) {
+        window.tickers[market_id] = {
+            'bid': 0.0,
+            'ofr': 0.0,
+            'vol24': 0.0,
+            'vol24quote': 0.0,
+            'spread': 0.0,
+            'depth': []
+        }
+    }
+
+    if (ticker.bid) {
+       window.tickers[market_id].bid = ticker.bid;
+    }
+
+    if (ticker.ofr) {
+        window.tickers[market_id].ofr = ticker.ofr;
+    }
+
+    if (ticker.vol24) {
+        window.tickers[market_id].vol24 = ticker.vol24;
+    }
+
+    if (ticker.vol24quote) {
+        window.tickers[market_id].vol24quote = ticker.vol24quote;
+    }
+
+    // update spread
+    window.tickers[market_id].spread = ticker.ofr - ticker.bid;
 }

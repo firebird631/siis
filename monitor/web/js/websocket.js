@@ -8,6 +8,7 @@ const STREAM_STRATEGY_TRADE = 6;
 const STREAM_STRATEGY_ALERT = 7;
 const STREAM_STRATEGY_SIGNAL = 8;
 
+
 function read_value(data) {
     if (data.t == "b") {
         return read_bool(data);
@@ -39,6 +40,12 @@ function read_value(data) {
         return read_float_scatter(data);
     } else if (data.t == "os") {
         return read_ohlc_serie(data);
+    } else if (data.t == "tk") {
+        return read_ticker(data);
+    } else if (data.t == "ts") {
+        return read_signal(data);
+    } else if (data.t == "sa") {
+        return read_alert(data);
     } else {
         return None;
     }
@@ -100,6 +107,18 @@ function read_ohlc_serie(data) {
     return data.v;
 }
 
+function read_ticker(data) {
+    return data.v;
+}
+
+function read_signal(data) {
+    return data.v;
+}
+
+function read_alert(data) {
+    return data.v;
+}
+
 function on_ws_message(data) {
     // n i o g c v b s t
     // c categorie, g groupe, s name
@@ -110,8 +129,16 @@ function on_ws_message(data) {
         // nothing for now
 
     } else if (data.c == STREAM_TRADER) {
-        // strategy trader status
-        // nothing for now
+        // trader status
+        let symbol = data.s;
+
+        let value = read_value(data);
+
+        if (value && data.t == 'tk') {
+            // update ticker
+            on_update_ticker(data.s, value.id, data.b*1000, value);
+
+        }
 
     } else if (data.c == STREAM_STRATEGY) {
         // strategy info
@@ -156,13 +183,19 @@ function on_ws_message(data) {
         let strategy = data.g;
         let symbol = data.s;
 
-        // @todo notify and log
+        let value = read_value(data);
+        if (value && data.t == 'sa') {
+            on_strategy_alert(data.s, value.id, data.b*1000, value);
+        }
 
     } else if (data.c == STREAM_STRATEGY_SIGNAL) {
         // strategy trader signal
         let strategy = data.g;
         let symbol = data.s;
 
-        // @todo notify and log
+        let value = read_value(data);
+        if (value && data.t == 'ts') {
+            on_strategy_signal(data.s, value.id, data.b*1000, value);
+        }
     }
 }

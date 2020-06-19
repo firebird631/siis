@@ -10,10 +10,11 @@ not fully featured.
 
 Consider this client as deprecated.
 
+@deprecated now uses the webtrader chart client
+
 Usage
 =====
 
 python client.py </tmp/pathtofifofile> --appliance=<appliance-id> --market=<market-id>
 
 To show a specific market performance and charting.
-

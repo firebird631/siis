@@ -79,13 +79,14 @@
       </div>
       <div class="modal-body">
         <div>
+          <input type="number" class="price" id="modified_stop_loss_price" style="width: 200px;">
           <input type="range" class="amount" name="amount" style="width: 200px;">
           <select class="amount-type" name="amount-type"></select>
         </div>
         <div>
           <span>Dynamic :</span>
-          <input type="number" class="trigger" name="trigger" placeholder="trigger" style="width: 150px;">
-          <input type="number" class="trigger" name="price" placeholder="price" style="width: 150px;">
+          <input type="number" class="trigger" name="trigger" id="dynamic_stop_loss_trigger_price"  placeholder="trigger" style="width: 150px;">
+          <input type="number" class="trigger" name="price" id="dynamic_stop_loss_price"  placeholder="price" style="width: 150px;">
           <button type="button" class="btn btn-light" id="apply_trade_add_dynamic_stop_loss">Add</button>
         </div>
         <div>
@@ -108,6 +109,7 @@
       </div>
       <div class="modal-body">
         <div>
+          <input type="number" class="price" id="modified_take_profit_price" style="width: 200px;">
           <input type="range" class="amount" name="amount" style="width: 200px;">
           <select class="amount-type" name="amount-type"></select>
         </div>
@@ -216,8 +218,7 @@
                       <th style="width: 30px;"><span class="fa fa-arrows-v" style="padding-left: 4px;"></span></th>
                       <th style="width: 30px;"><span class="fa fa-arrows-h" style="padding-left: 4px;"></span></th>
                       <th style="width: 165px;">Date</th>
-                      <th>Entry</th>
-                      <th>Exit</th>
+                      <th>Order</th>
                       <th>Context</th>
                       <th>Stop-Loss</th>
                       <th>Take-Profit</th>

@@ -10,11 +10,9 @@ import collections
 
 from datetime import datetime
 
-from terminal.terminal import Terminal, Color
-from terminal import charmap
+from terminal.terminal import Terminal
 
 from common.runnable import Runnable
-from monitor.streamable import Streamable, StreamMemberFloat, StreamMemberBool
 from common.utils import timeframe_to_str, timeframe_from_str
 from config.utils import merge_parameters
 
@@ -63,8 +61,7 @@ class Strategy(Runnable):
 
     COMMAND_TRADER_MODIFY = 20
     COMMAND_TRADER_INFO = 21
-    COMMAND_TRADER_CHART = 22
-    COMMAND_TRADER_STREAM = 23
+    COMMAND_TRADER_STREAM = 22
 
     def __init__(self, name, strategy_service, watcher_service, trader_service, options, default_parameters=None, user_parameters=None):
         super().__init__("st-%s" % name)
@@ -112,8 +109,6 @@ class Strategy(Runnable):
             watcher = self._watcher_service.watcher(k)
             if watcher is None:
                 logger.error("Watcher %s not found during strategy __init__" % k)
-
-        self.setup_streaming()
 
     @property
     def name(self):
@@ -209,14 +204,6 @@ class Strategy(Runnable):
             signal_data = alert.dumps_notify(timestamp, result, strategy_trader)
             self.service.notify(Signal.SIGNAL_STRATEGY_ALERT, self._name, signal_data)
 
-    def setup_streaming(self):
-        self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY, "status", self.identifier)
-        self._streamable.add_member(StreamMemberFloat('cpu-load'))
-        self._last_call_ts = 0.0
-
-    def stream(self):
-        pass
-
     def subscribe_stream(self, market_id, timeframe):
         """
         Override to create a specific streamer.
@@ -287,10 +274,6 @@ class Strategy(Runnable):
         if len(self._signals) > Strategy.MAX_SIGNALS:
             Terminal.inst().warning("Strategy %s has more than %s waiting signals, some market data could be ignored !" % (
                 self.name, Strategy.MAX_SIGNALS), view='debug')
-
-        # stream call
-        with self._mutex:
-            self.stream()
 
     def ping(self, timeout):
         if self._condition.acquire(timeout=timeout):
@@ -1380,8 +1363,6 @@ class Strategy(Runnable):
             return self.strategy_trader_command("info", data, self.cmd_strategy_trader_modify)
         elif command_type == Strategy.COMMAND_TRADER_INFO:
             return self.strategy_trader_command("info", data, self.cmd_strategy_trader_info)
-        elif command_type == Strategy.COMMAND_TRADER_CHART:
-            return self.strategy_trader_command("chart", data, self.cmd_strategy_trader_chart)
         elif command_type == Strategy.COMMAND_TRADER_STREAM:
             return self.strategy_trader_command("stream", data, self.cmd_strategy_trader_stream)
 
@@ -2407,29 +2388,6 @@ class Strategy(Runnable):
             if disabled:
                 disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
                 Terminal.inst().message("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')
-
-    def cmd_strategy_trader_chart(self, strategy_trader, data):
-        """
-        Open as possible a process with chart of a specific sub-tader.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }      
-
-        monitor_url = data.get('monitor-url')
-        timeframe = data.get('timeframe', 15*60)
-
-        if results['error']:
-            return results
-
-        strategy_trader.subscribe_stream(timeframe)
-
-        import subprocess
-        p = subprocess.Popen(["python", "-m", "monitor.client.client", monitor_url[0], monitor_url[1]],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE, preexec_fn=os.setsid)
-
-        return results
 
     def cmd_strategy_trader_stream(self, strategy_trader, data):
         """

@@ -74,6 +74,8 @@ class StrategyTrader(object):
         self._trade_entry_streamer = None
         self._trade_update_streamer = None
         self._trade_exit_streamer = None
+        self._signal_streamer = None
+        self._alert_streamer = None
 
         self._timeframe_streamers = {}
 
@@ -361,10 +363,9 @@ class StrategyTrader(object):
         """
         results = []
 
-        with self._mutex:
-            with self._trade_mutex:
-                for trade in self.trades:
-                    results.append(trade.dumps_notify_update(self.strategy.timestamp, self))
+        with self._trade_mutex:
+            for trade in self.trades:
+                results.append(trade.dumps_notify_update(self.strategy.timestamp, self))
 
         return results
 
@@ -579,12 +580,18 @@ class StrategyTrader(object):
                             except Exception as e:
                                 error_logger.error(str(e))
 
-                        # notify
+                        # notification exit reason if not reported
                         if not trade.exit_reason:
-                            if trade.exit_price >= trade.take_profit and trade.take_profit > 0:
-                                trade.exit_reason = trade.REASON_TAKE_PROFIT_LIMIT
-                            elif trade.exit_price <= trade.stop_loss and trade.stop_loss > 0:
-                                trade.exit_reason = trade.REASON_STOP_LOSS_MARKET                    
+                            if trade.direction > 0:
+                                if trade.exit_price >= trade.take_profit and trade.take_profit > 0:
+                                    trade.exit_reason = trade.REASON_TAKE_PROFIT_LIMIT
+                                elif trade.exit_price <= trade.stop_loss and trade.stop_loss > 0:
+                                    trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
+                            elif trade.direction < 0:
+                                if trade.exit_price <= trade.take_profit and trade.take_profit > 0:
+                                    trade.exit_reason = trade.REASON_TAKE_PROFIT_LIMIT
+                                elif trade.exit_price >= trade.stop_loss and trade.stop_loss > 0:
+                                    trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
 
                         trade.pl = profit_loss
 
@@ -1190,13 +1197,20 @@ class StrategyTrader(object):
             # system notification
             self.strategy.notify_signal(timestamp, signal, self)
 
-            # @todo stream
+            # stream
+            if self._signal_streamer:
+                try:
+                    self._signal_streamer.member('signal').update(self, signal, timestamp)
+                    self._signal_streamer.publish()
+                except Exception as e:
+                    logger.error(repr(e))
 
     def notify_trade_entry(self, timestamp, trade):
         if trade:
             # system notification
             self.strategy.notify_trade_entry(timestamp, trade, self)
 
+            # stream
             if self._trade_entry_streamer:
                 try:
                     self._trade_entry_streamer.member('trade-entry').update(self, trade, timestamp)
@@ -1210,10 +1224,7 @@ class StrategyTrader(object):
 
     def notify_trade_update(self, timestamp, trade):
         if trade:
-            # system notification
-            # will flood, maybee will distinct a trade amend from update
-            # self.strategy.notify_trade_update(timestamp, trade, self)
-
+            # stream only but could be remove, client will update using tickers, and only receive amends update
             if self._trade_update_streamer:
                 try:
                     self._trade_update_streamer.member('trade-update').update(self, trade, timestamp)
@@ -1226,6 +1237,7 @@ class StrategyTrader(object):
             # system notification
             self.strategy.notify_trade_exit(timestamp, trade, self)
 
+            # stream
             if self._trade_exit_streamer:
                 try:
                     self._trade_exit_streamer.member('trade-exit').update(self, trade, timestamp)
@@ -1242,4 +1254,10 @@ class StrategyTrader(object):
             # system notification
             self.strategy.notify_alert(timestamp, alert, result, self)
 
-            # @todo stream
+            # stream
+            if self._alert_streamer:
+                try:
+                    self._alert_streamer.member('alert').update(self, alert, result, timestamp)
+                    self._alert_streamer.publish()
+                except Exception as e:
+                    logger.error(repr(e))

@@ -51,6 +51,7 @@ class LongSession(Session):
 
 class AuthRestAPI(resource.Resource):
     isLeaf = True
+    sessions = set()
 
     def __init__(self, monitor_service, api_key, api_secret):
         super().__init__()
@@ -83,23 +84,36 @@ class AuthRestAPI(resource.Resource):
                 'messages': ["invalid-auth"],
                 'auth-token': None,
                 'ws-auth-token': None,
+                'session': "",
             }).encode("utf-8")
 
-        s_auth_token = IAuthToken(request.getSession())
+        session = request.getSession()
+
+        s_auth_token = IAuthToken(session)
         s_auth_token.value = auth_token
 
         request.setHeader('Authorization', 'Bearer ' + auth_token)
+        request.setHeader('Session', session.uid.decode('utf-8'))
+
+        if session.uid not in self.sessions:
+            self.sessions.add(session.uid)
+            session.notifyOnExpire(lambda: self._expired(session.uid))
 
         return json.dumps({
             'error': False,
             'auth-token': auth_token,
             'ws-auth-token': ws_auth_token,
+            'session': session.uid.decode('utf-8'),
         }).encode("utf-8")
 
     def render_DELETE(self, request):
         request.getSession().expired()
 
         return json.dumps({}).encode("utf-8")
+
+    def _expired(self, uid):
+        # cleanup here or could disconnnect related websocket
+        self.sessions.remove(uid)
 
 
 def check_auth_token(request):

@@ -426,7 +426,7 @@ def application(argv):
     trader_service = TraderService(watcher_service, monitor_service, options)
     strategy_service = StrategyService(watcher_service, trader_service, monitor_service, options)
 
-    # monitoring service
+    # watchdog service
     Terminal.inst().info("Starting watchdog service...")
     try:
         watchdog_service.start(options)

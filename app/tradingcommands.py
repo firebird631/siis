@@ -886,55 +886,6 @@ class AssignCommand(Command):
         return args, 0
 
 
-class ChartCommand(Command):
-
-    SUMMARY = "to display a chat for a specific market"
-    
-    def __init__(self, strategy_service, monitor_service):
-        super().__init__('chart', 'V')
-
-        self._strategy_service = strategy_service
-        self._monitor_service = monitor_service
-
-    def execute(self, args):
-        if not args:
-            return False, "Missing parameters"
-
-        # ie: ":chart BTCUSDT"
-        market_id = None
-
-        # optionnal timeframe (could depend of the strategy)
-        timeframe = None
-
-        if len(args) < 1:
-            return False, "Missing parameters"
-
-        try:
-            market_id = args[0]
-
-            if len(args) == 2:
-                timeframe = timeframe_from_str(args[1])
-
-        except Exception:
-            return False, "Invalid parameters"
-
-        self._strategy_service.command(Strategy.COMMAND_TRADER_CHART, {
-            'market-id': market_id,
-            'timeframe': timeframe,
-            'monitor-url': self._monitor_service.url()
-        })
-
-        return True, []
-
-    def completion(self, args, tab_pos, direction):
-        if len(args) <= 1:
-            strategy = self._strategy_service.strategy()
-            if strategy:
-                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
-
-        return args, 0
-
-
 class UserSaveCommand(Command):
 
     # @todo
@@ -1104,7 +1055,6 @@ def register_trading_commands(commands_handler, trader_service, strategy_service
     commands_handler.register(PlayCommand(strategy_service, notifier_service))
     commands_handler.register(PauseCommand(strategy_service, notifier_service))
     commands_handler.register(InfoCommand(strategy_service, notifier_service))
-    commands_handler.register(ChartCommand(strategy_service, monitor_service))
     commands_handler.register(UserSaveCommand(strategy_service))
     commands_handler.register(SetQuantityCommand(strategy_service))
 

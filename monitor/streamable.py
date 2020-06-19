@@ -6,6 +6,17 @@
 class Streamable(object):
     """
     Interface for an object having some variable to be monitored/streamed.
+
+    't': target
+    'c': command/category
+    'g': group name (strategy name, trader name...)
+    'd': data
+    'T': timestamp
+    'n': name
+    'i': index for timeserie
+    't': data type
+    'b': data timestamp for timesterie
+    'o': data look'n'feel (glyph...)
     """
 
     # command/category
@@ -291,6 +302,7 @@ class StreamMemberTradeEntry(StreamMember):
 
     def update(self, strategy_trader, trade, timestamp):
         self._trade = trade.dumps_notify_entry(timestamp, strategy_trader)
+        self._timestamp = timestamp
         self._updated = True
 
     def content(self):
@@ -312,6 +324,7 @@ class StreamMemberTradeUpdate(StreamMember):
 
     def update(self, strategy_trader, trade, timestamp):
         self._trade = trade.dumps_notify_update(timestamp, strategy_trader)
+        self._timestamp = timestamp
         self._updated = True
 
     def content(self):
@@ -333,10 +346,55 @@ class StreamMemberTradeExit(StreamMember):
 
     def update(self, strategy_trader, trade, timestamp):
         self._trade = trade.dumps_notify_exit(timestamp, strategy_trader)
+        self._timestamp = timestamp
         self._updated = True
 
     def content(self):
         return {'n': self._name, 't': self._type, 'v': self._trade, 'b': self._timestamp}
+
+
+class StreamMemberTradeSignal(StreamMember):
+    """
+    Specialization for a trade signal.
+    """
+
+    TYPE_TRADE_SIGNAL = "ts"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberTradeSignal.TYPE_TRADE_SIGNAL)
+
+        self._timestamp = 0.0
+        self._trade_signal = {}
+
+    def update(self, strategy_trader, trade_signal, timestamp):
+        self._trade_signal = trade_signal.dumps_notify(timestamp, strategy_trader)
+        self._timestamp = timestamp
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._trade_signal, 'b': self._timestamp}
+
+
+class StreamMemberStrategyAlert(StreamMember):
+    """
+    Specialization for a strategy alert.
+    """
+
+    TYPE_STRATEGY_ALERT = "sa"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberStrategyAlert.TYPE_STRATEGY_ALERT)
+
+        self._timestamp = 0.0
+        self._alert = {}
+
+    def update(self, strategy_trader, alert, result, timestamp):
+        self._alert = alert.dumps_notify(timestamp, result, strategy_trader)
+        self._timestamp = timestamp
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._alert, 'b': self._timestamp}
 
 
 class StreamMemberSerie(StreamMember):
@@ -406,3 +464,25 @@ class StreamMemberOhlcSerie(StreamMember):
 
     def content(self):
         return {'n': self._name, 'i': self._index, 't': self._type, 'v': self._value, 'b': self._timestamp}
+
+
+class StreamMemberWatcherTicker(StreamMember):
+    """
+    Specialization for a watcher ticker.
+    """
+
+    TYPE_WATCHER_TICKER = "tk"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberTradeExit.TYPE_WATCHER_TICKER)
+
+        self._timestamp = 0.0
+        self._ticker = {}
+
+    def update(self, strategy_trader, ticker, timestamp):
+        self._ticker = ticker
+        self._timestamp = timestamp
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._trade_alert, 'b': self._timestamp}

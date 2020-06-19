@@ -244,6 +244,14 @@ span.trade-short {
     color: red;
 }
 
+span.signal-entry {
+    color: cyan;
+}
+
+span.signal-exit {
+    color: orange;
+}
+
 button.trade-modify-take-profit, button.trade-modify-stop-loss {
     padding: 4px;
     margin-left: 3px;

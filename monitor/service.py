@@ -6,18 +6,15 @@
 import copy
 import json
 import time, datetime
-import tempfile, os, posix
 import threading
 import traceback
 import collections
-import base64, hashlib
 
 from twisted.internet import reactor
 from twisted.internet.error import ReactorAlreadyRunning, ReactorNotRunning
 from common.service import Service
 
 from monitor.streamable import Streamable
-from monitor.rpc import Rpc
 
 from strategy.strategy import Strategy
 
@@ -32,12 +29,10 @@ traceback_logger = logging.getLogger('siis.traceback.monitor')
 class MonitorService(Service):
     """
     Monitoring web service.
-    @todo remove deprecated FIFO method
     """
 
     MODE_NONE = 0
-    MODE_FIFO = 1
-    MODE_HTTP_WEBSOCKET = 2
+    MODE_HTTP_WEBSOCKET = 1
 
     REACTOR = 0  # global twisted reactor ref counter
 
@@ -51,8 +46,6 @@ class MonitorService(Service):
             self._monitoring = True
         else:
             self._monitoring = False
-
-        self._content = collections.deque()
 
         self._thread = None
         self._thread_ws = None
@@ -69,9 +62,7 @@ class MonitorService(Service):
         # host, port, allowed host, order, deny... from config
         self._mode = None
 
-        if self._monitoring_config.get('mode', None) == "fifo":
-            self._mode = MonitorService.MODE_FIFO 
-        elif self._monitoring_config.get('mode', None) == "http+websocket":
+        if self._monitoring_config.get('mode', None) == "http+websocket":
             self._mode = MonitorService.MODE_HTTP_WEBSOCKET 
 
         self._host = self._monitoring_config.get('host', '127.0.0.1')
@@ -98,21 +89,6 @@ class MonitorService(Service):
             self._denied_ips = self._monitoring_config.get('list', [])
 
         self._client_ws_auth_token = {}
-
-        # fifo
-        self._tmpdir = None
-        self._filename_read = None
-        self._filename = None
-        self._fifo = -1
-        self._fifo_read = None
-
-    def url(self):
-        if self._mode == MonitorService.MODE_FIFO:
-            return (self._filename, self._filename_read)
-        elif self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
-            return ("ws://%s:%i" % (self._host, self._port), "ws://%s:%i" % (self._host, self._port))
-        else:
-            return ("", "")
 
     def setup(self, watcher_service, trader_service, strategy_service):
         self._watcher_service = watcher_service
@@ -171,44 +147,7 @@ class MonitorService(Service):
 
     def start(self):
         if self._monitoring:
-            if self._mode == MonitorService.MODE_FIFO:
-                # publish fifo
-                self._tmpdir = tempfile.mkdtemp()
-                self._filename = os.path.join(self._tmpdir, 'siis.stream')
-
-                try:
-                    os.mkfifo(self._filename, 0o600)
-                except OSError as e:
-                    error_logger.error("Failed to create monitor write FIFO: %s" % repr(e))
-                    os.rmdir(self._tmpdir)
-                    self._filename = None
-                else:
-                    self._fifo = posix.open(self._filename, posix.O_NONBLOCK | posix.O_RDWR)  # posix.O_WRONLY
-
-                # read command fifo
-                self._filename_read = os.path.join(self._tmpdir, 'siis.rpc')
-
-                try:
-                    os.mkfifo(self._filename_read, 0o600)
-                except OSError as e:
-                    error_logger.error("Failed to create monitor read FIFO: %s" % repr(e))
-                    os.rmdir(self._tmpdir)
-
-                    # close the write fifo
-                    os.remove(self._filename)
-                    posix.close(self._fifo)
-                    self._fifo = -1
-                    self._filename = None
-                    self._filename_read = None
-                else:
-                    self._fifo_read = posix.open(self._filename_read, posix.O_NONBLOCK)
-
-                if self._fifo and self._fifo_read:
-                    self._running = True
-                    self._thread = threading.Thread(name="monitor", target=self.run_fifo)
-                    self._thread.start()
-
-            elif self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
+            if self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
                 from .http.httprestserver import HttpRestServer
                 from .http.httpwsserver import HttpWebSocketServer
 
@@ -231,47 +170,14 @@ class MonitorService(Service):
         self._running = False
         self._running_ws = False
 
-        if self._mode == MonitorService.MODE_FIFO:
-            if self._thread:
-                try:
-                    self._thread.join()
-                except:
-                    pass
-
-                self._thread = None
-
-            if self._fifo_read:
-                try:
-                    posix.close(self._fifo_read)
-                    self._fifo_read = -1
-                except (BrokenPipeError, IOError):
-                    pass
-
-                if self._filename_read:
-                    os.remove(self._filename_read)
-                    self._filename_read = None
-
-            if self._fifo:
-                try:
-                    posix.close(self._fifo)
-                    self._fifo = -1
-                except (BrokenPipeError, IOError):
-                    pass
-
-                if self._filename:
-                    os.remove(self._filename)
-                    self._filename = None
-
-            if self._tmpdir:
-                os.rmdir(self._tmpdir)
-                self._tmpdir = None
-
-        elif self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
+        if self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
             if self._ws:
                 self._ws.stop()
 
             if self._http:
                 self._http.stop()
+
+            self.release_reactor()
 
             if self._thread:
                 try:
@@ -294,64 +200,6 @@ class MonitorService(Service):
             self._http = None
             self._ws = None
 
-    def run_fifo(self):
-        size = 32768
-        cur = bytearray()
-
-        while self._running:
-            if self._fifo > 0 and self._fifo_read and self._monitoring:
-                # receive
-                try:
-                    # buf = posix.read(self._fifo, len(buf))
-                    # buf = os.read(self._fifo, size)
-                    buf = os.read(self._fifo_read, size)
-
-                    if buf:
-                        for n in buf:
-                            if n == 10:  # new line as message termination
-                                try:
-                                    msg = json.loads(cur.decode('utf8'))
-                                    self.on_rpc_message(msg)
-
-                                except Exception as e:
-                                    error_logger.error(repr(e))
-                                    traceback_logger.error(traceback.format_exc())
-
-                                cur = bytearray()
-                            else:
-                                cur.append(n)
-
-                except (BrokenPipeError, IOError):
-                    pass
-
-                # publish
-                count = 0
-
-                while self._content:
-                    c = self._content.popleft()
-
-                    # insert category, group and stream name
-                    c[3]['c'] = c[0]
-                    c[3]['g'] = c[1]
-                    c[3]['s'] = c[2]
-
-                    try:
-                        # write to fifo
-                        posix.write(self._fifo, (json.dumps(c[3]) + '\n').encode('utf8'))
-                    except (BrokenPipeError, IOError):
-                        pass
-                    except (TypeError, ValueError) as e:
-                        error_logger.error("Monitor error sending message : %s" % repr(c))
-                        traceback_logger.error(traceback.format_exc())
-
-                    count += 1
-                    if count > 10:
-                        break
-
-            # don't waste the CPU, might need a condition on outgoing data and on select incoming
-            # but this will be replaced by an asyncio WS + REST API
-            time.sleep(0.001)
-
     def run_ws(self):
         self._ws.start()
 
@@ -369,76 +217,10 @@ class MonitorService(Service):
             del (self._client_ws_auth_token[auth_token])
 
     def publish(self, stream_category, stream_group, stream_name, content):
-        if self._mode == MonitorService.MODE_FIFO:
-            if self._running:
-                self._content.append((stream_category, stream_group, stream_name, content))
+        try:
+            if self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
+                if self._running_ws:
+                    self._ws.publish(stream_category, stream_group, stream_name, content)
 
-        elif self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
-            if self._running_ws:
-                self._ws.publish(stream_category, stream_group, stream_name, content)
-
-    def on_rpc_message(self, msg):
-        # retrieve the strategy
-        # @todo using Rpc model and update on the client side
-        # rpc = Rpc()
-        # rpc.loads(msg)
-
-        cat = msg.get('c', -1)
-
-        if cat == Rpc.STREAM_STRATEGY_CHART:
-            group = msg.get('g')
-            market_id = msg.get('s')
-            timeframe = msg.get('v')
-
-            if group and market_id:
-                self._strategy_service.command(Strategy.COMMAND_TRADER_STREAM, {
-                    'market-id': market_id,
-                    'timeframe': timeframe,
-                    'type': "chart",
-                    'action': "unsubscribe" if msg.get('n', 'close') else "subscribe"
-                })
-
-        elif cat == Rpc.STREAM_STRATEGY_INFO:
-            group = msg.get('g')
-            market_id = msg.get('s')
-            timeframe = msg.get('v')
-            # sub_key = msg.get('v')[1]
-
-            if group and market_id:
-                self._strategy_service.command(Strategy.COMMAND_TRADER_STREAM, {
-                    'market-id': market_id,
-                    'timeframe': None,
-                    'subscriber-key': "",  # @todo
-                    'type': "info",
-                    'action': "unsubscribe" if msg.get('n', 'close') else "subscribe"
-                })
-
-        elif cat == Rpc.STRATEGY_TRADE_EXIT_ALL:
-            pass
-
-        elif cat == Rpc.STRATEGY_TRADE_ENTRY:
-            pass
-
-        elif cat == Rpc.STRATEGY_TRADE_MODIFY:
-            pass
-
-        elif cat == Rpc.STRATEGY_TRADE_EXIT:
-            pass
-
-        elif cat == Rpc.STRATEGY_TRADE_INFO:
-            pass
-
-        elif cat == Rpc.STRATEGY_TRADE_ASSIGN:
-            pass
-
-        elif cat == Rpc.STRATEGY_TRADE_CLEAN:
-            pass
-
-        elif cat == Rpc.STRATEGY_TRADER_MODIFY:
-            pass
-
-        elif cat == Rpc.STRATEGY_TRADER_INFO:
-            pass
-
-        elif cat == Rpc.STRATEGY_TRADER_INFO:
-            pass
+        except Exception as e:
+            error_logger.error(repr(e))
