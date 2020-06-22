@@ -300,6 +300,32 @@ def dynamic_stop_loss_cur_atrsr_short(timeframe, entry_price, last_price, curr_s
     return 0.0
 
 
+def dynamic_stop_loss_fixed_hma_long(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
+    stop_loss = 0.0
+
+    if timeframe.hma and timeframe.hma.hmas is not None and len(timeframe.hma.hmas) > 0:
+        if 1:#timeframe.last_closed:
+            p = timeframe.hma.hmas[-1]
+
+            if p > curr_stop_loss_price and p < last_price - price_epsilon:
+                stop_loss = p
+
+    return stop_loss
+
+
+def dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
+    stop_loss = 0.0
+
+    if timeframe.hma and timeframe.hma.hmas is not None and len(timeframe.hma.hmas) > 0:
+        if 1:#timeframe.last_closed:
+            p = timeframe.hma.hmas[-1]
+
+            if p < curr_stop_loss_price and p > last_price + price_epsilon:
+                stop_loss = p
+
+    return stop_loss
+
+
 def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, curr_stop_loss_price, depth=1, orientation=0, price_epsilon=0.0, distance=0.0):
     if direction > 0:
         if method == BaseSignal.PRICE_NONE:
@@ -320,8 +346,8 @@ def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, cur
         elif method == BaseSignal.PRICE_HMA:
             return dynamic_stop_loss_fixed_dist_long(timeframe, last_price, curr_stop_loss_price, distance)
 
-        # elif method == BaseSignal.PRICE_HMA and distance > 0.0:
-        #     return dynamic_stop_loss_hma_long(timeframe, last_price, curr_stop_loss_price, distance)
+        elif method == BaseSignal.PRICE_HMA and distance > 0.0:
+            return dynamic_stop_loss_fixed_hma_long(timeframe, last_price, curr_stop_loss_price, price_epsilon)
 
     elif direction < 0:
         if method == BaseSignal.PRICE_NONE:
@@ -342,7 +368,7 @@ def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, cur
         elif method == BaseSignal.PRICE_FIXED_DIST and distance > 0.0:
             return dynamic_stop_loss_fixed_dist_short(timeframe, last_price, curr_stop_loss_price, distance)
 
-        # elif method == BaseSignal.PRICE_HMA:
-        #     return dynamic_stop_loss_hma_short(timeframe, last_price, curr_stop_loss_price, distance)
+        elif method == BaseSignal.PRICE_HMA:
+            return dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_price, price_epsilon)
 
     return 0.0

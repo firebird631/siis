@@ -147,7 +147,7 @@ class StochRSIIndicator(Indicator):
 
             K[j]=(d-lowest)/(highest-lowest)  # +epsilon to avoid 0
 
-        D = MM_n(N_D, K)   
+        D = MM_n(N_D, K)
         return K, D
 
     def compute(self, timestamp, prices):

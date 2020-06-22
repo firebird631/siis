@@ -5,7 +5,7 @@
 
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample, MM_n
-from talib import SMA as ta_SMA
+from talib import SMA as ta_SMA, WMA as ta_WMA
 
 import numpy as np
 import math
@@ -77,19 +77,23 @@ class HMAIndicator(Indicator):
         N_2 = int(N / 2)
         N_sqrt = int(math.sqrt(N))
 
-        weights = np.array([float(x) for x in range(1, len(data)+1)])
+        # not good weights for N_2 and N_sqrt
+        # weights = np.array([float(x) for x in range(1, len(data)+1)])
 
         # 1) calculate a WMA with period n / 2 and multiply it by 2
         # hma12 = 2 * MM_n(N_2, data*weights) / MM_n(N_2, weights)
-        hma12 = 2.0 * ta_SMA(data*weights, N_2) / ta_SMA(weights, N_2)
+        # hma12 = 2.0 * ta_SMA(data*weights, N_2) / ta_SMA(weights, N_2)
+        hma12 = 2.0 * ta_WMA(data, N_2)
 
         # 2) calculate a WMA for period n and subtract if from step 1
         # hma12 = hma12 - (MM_n(N, data*weights) / MM_n(N, weights))
-        hma12 = hma12 - (ta_SMA(data*weights, N) / ta_SMA(weights, N))
+        # hma12 = hma12 - (ta_SMA(data*weights, N) / ta_SMA(weights, N))
+        hma12 = hma12 - ta_WMA(data, N)
 
         # 3) calculate a WMA with period sqrt(n) using the data from step 2
         # hma = (MM_n(N_sqrt, hma12*weights) / MM_n(N_sqrt, weights))
-        hma = (ta_SMA(hma12*weights, N_sqrt) / ta_SMA(weights, N_sqrt))
+        # hma = (ta_SMA(hma12*weights, N_sqrt) / ta_SMA(weights, N_sqrt))
+        hma = ta_WMA(hma12, N_sqrt)
 
         return hma
 
