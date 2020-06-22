@@ -61,17 +61,8 @@ function on_copy_signal(elt) {
     alert("todo!");
 }
 
-        // if self.signal == StrategySignal.SIGNAL_ENTRY:
-        //     return {
-        //         'entry-timeout': timeframe_to_str(self.entry_timeout),
-        //         'expiry': self.expiry,
-        //         'is-user-trade': False,
-        //         'entry-open-time': self.dump_timestamp(self.ts),
-        //     }
-        // elif self.signal == StrategySignal.SIGNAL_EXIT:
-        //     return {
-        //         'entry-timeout': timeframe_to_str(self.entry_timeout),
-        //         'expiry': self.expiry,
-        //         'is-user-trade': False,
-        //         'exit-open-time': self.dump_timestamp(self.ts),
-        //     }
+//         'entry-timeout': timeframe_to_str(self.entry_timeout),
+//         'expiry': self.expiry,
+//         'is-user-trade': False,
+//         'entry-open-time': self.dump_timestamp(self.ts),
+//         'exit-open-time': self.dump_timestamp(self.ts),
