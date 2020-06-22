@@ -77,11 +77,11 @@ class HMAIndicator(Indicator):
         N_2 = int(N / 2)
         N_sqrt = int(math.sqrt(N))
 
-        weights = np.array([x for x in range(1, len(data)+1)])
+        weights = np.array([float(x) for x in range(1, len(data)+1)])
 
         # 1) calculate a WMA with period n / 2 and multiply it by 2
         # hma12 = 2 * MM_n(N_2, data*weights) / MM_n(N_2, weights)
-        hma12 = 2 * ta_SMA(data*weights, N_2) / ta_SMA(weights, N_2)
+        hma12 = 2.0 * ta_SMA(data*weights, N_2) / ta_SMA(weights, N_2)
 
         # 2) calculate a WMA for period n and subtract if from step 1
         # hma12 = hma12 - (MM_n(N, data*weights) / MM_n(N, weights))
