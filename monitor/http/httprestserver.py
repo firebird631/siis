@@ -230,6 +230,7 @@ class StrategyInfoRestAPI(resource.Resource):
             'strategy': {
                 'name': strategy_name,
                 'id': strategy_id,
+                'backtesting': self._strategy_service.backtesting,
             },
             'markets': markets,
         }

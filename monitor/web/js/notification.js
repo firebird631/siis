@@ -51,3 +51,32 @@ function notify(notification) {
         table.children().filter(':gt(200)').remove();
     }
 }
+
+function audio_notify(mode) {
+    // no audio in backtesting
+    if (!window.audio.enabled || window.strategy.backtesting) {
+        return;
+    }
+
+    let alt = window.audio.alt;
+
+    if (mode == 'alert' && !alt) {
+        document.getElementById("audio_alert").play();
+    } else if (mode == 'alert' && alt) {
+        document.getElementById("audio_alert2").play();
+    } else if (mode == 'loose' && !alt) {
+        document.getElementById("audio_loose").play();
+    } else if (mode == 'loose' && alt) {
+        document.getElementById("audio_loose2").play();
+    } else if (mode == 'win' && !alt) {
+        document.getElementById("audio_win").play();
+    } else if (mode == 'win' && alt) {
+        document.getElementById("audio_win2").play();
+    } else if (mode == 'timeout') {
+        document.getElementById("audio_timeout").play();
+    } else if (mode == 'signal') {
+        document.getElementById("audio_signal").play();
+    } else if (mode == 'entry') {
+        document.getElementById("audio_entry").play();
+    }
+}

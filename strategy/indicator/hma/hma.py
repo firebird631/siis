@@ -55,7 +55,7 @@ class HMAIndicator(Indicator):
     @property
     def step(self):
         return self._step
-    
+
     @step.setter
     def step(self, step):
         self._step = step
@@ -124,7 +124,7 @@ class HMAIndicator(Indicator):
 
     def compute(self, timestamp, prices):
         self._prev = self._last
-        self._hmas = HMAIndicator.HMA_n(self._length, prices)
+        self._hmas = HMAIndicator.HMA_n(self._length, prices)  #[-self._length-7:])
 
         self._last = self._hmas[-1]
         self._last_timestamp = timestamp

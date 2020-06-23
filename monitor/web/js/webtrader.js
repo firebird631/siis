@@ -78,6 +78,11 @@ $(window).ready(function() {
     window.alerts = {};
     window.signals = {};
 
+    window.audio = {
+        'enabled': true,
+        'alt': false,
+    }
+
     window.default_profiles = {
         'price': {
             'label': 'Price',
@@ -436,6 +441,8 @@ $(window).ready(function() {
 
             // store api-key into a cookie
             setCookie('identifier', api_key, 15);
+
+            audio_notify('signal');
         })
         .fail(function() {
             notify({'message': "Unable to obtain an auth-token !", 'type': 'error'});
@@ -476,6 +483,8 @@ $(window).ready(function() {
 
             // store identifier into a cookie
             setCookie('identifier', identifier, 15);
+
+            audio_notify('signal');
         })
         .fail(function() {
             alert("Unable to obtain an auth-token !");
@@ -649,9 +658,7 @@ function fetch_strategy() {
         window.strategy = {};
         window.broker = result['broker'];
 
-        window.strategy = {
-            'name': result['strategy']
-        };
+        window.strategy = result['strategy'];
 
         for (let market_id in result['markets']) {
             let market = result['markets'][market_id];

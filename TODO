@@ -44,6 +44,7 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
         - plutôt sur le trader car pas besoin de surcharger encore le strategy trader
     - streamer et afficher balance, margin du compte
     - copy de signal
+    - toggle audio and save in cookie
 
 #113 trade manual sur best1 price, qui prend le limit bid sur long ou limit ofr sur short
 

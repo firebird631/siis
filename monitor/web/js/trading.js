@@ -273,7 +273,7 @@ let on_active_trade_update_message = function(market_id, trade_id, timestamp, va
 
 let on_active_trade_exit_message = function(market_id, trade_id, timestamp, value) {
     // remove from active trades
-    remove_active_trade(market_id, trade_id);
+    remove_active_trade(market_id, trade_id, value);
 
     // insert to historical trades
     add_historical_trade(market_id, value);
@@ -443,6 +443,8 @@ function add_active_trade(market_id, trade) {
     trade_take_profit_chg.on('click', on_modify_active_trade_take_profit);
 
     window.actives_trades[key] = trade;
+
+    audio_notify('entry');
 };
 
 function update_active_trade(market_id, trade) {
@@ -531,14 +533,20 @@ function update_active_trade(market_id, trade) {
     window.actives_trades[key] = trade;
 };
 
-function remove_active_trade(market_id, trade_id) {
+function remove_active_trade(market_id, trade_id, trade) {
     let key = market_id + ':' + trade_id;
     let container = $('div.active-trade-list-entries tbody');
 
     container.find('tr.active-trade[trade-key="' + key + '"]').remove();
     if (key in window.actives_trades) {
         delete window.actives_trades[key];
-    }    
+    }
+
+    if (trade['profit-loss-pct'] > 0.0) {
+        audio_notify('win');
+    } else {
+        audio_notify('loose');
+    }
 };
 
 function format_quote_price(symbol, price) {
