@@ -224,26 +224,26 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
     return 0.0
 
 
-def dynamic_take_profit_fixed_bollinger_long(timeframe, last_price, curr_take_profit_price):
+def dynamic_take_profit_fixed_bollinger_long(timeframe, last_price, curr_take_profit_price, price_epsilon):
     take_profit = 0.0
 
     if timeframe.bollinger and len(timeframe.bollinger.tops) > 0:
         p = timeframe.bollinger.tops[-1]
 
-        if p > curr_take_profit_price and p > last_price:
-            take_profit = p
+        if p > curr_take_profit_price and p - price_epsilon > last_price:
+            take_profit = p - price_epsilon
 
     return take_profit
 
 
-def dynamic_take_profit_fixed_bollinger_short(timeframe, last_price, curr_take_profit_price):
+def dynamic_take_profit_fixed_bollinger_short(timeframe, last_price, curr_take_profit_price, price_epsilon):
     take_profit = 0.0
 
     if timeframe.bollinger and len(timeframe.bollinger.bottoms) > 0:
         p = timeframe.bollinger.bottoms[-1]
 
-        if p < curr_take_profit_price and p < last_price:
-            take_profit = p
+        if p < curr_take_profit_price and p + price_epsilon < last_price:
+            take_profit = p + price_epsilon
 
     return take_profit
 
@@ -366,7 +366,7 @@ def dynamic_take_profit(direction, method, timeframe, entry_price, last_price, c
             return dynamic_take_profit_cur_atrsr_long(timeframe, entry_price, last_price, curr_take_profit_price, depth, orientation, price_epsilon)
 
         elif method == BaseSignal.PRICE_BOLLINGER:
-            return dynamic_take_profit_fixed_bollinger_long(timeframe, last_price, curr_take_profit_price)
+            return dynamic_take_profit_fixed_bollinger_long(timeframe, last_price, curr_take_profit_price, price_epsilon)
 
         elif method == BaseSignal.PRICE_FIXED_PCT and distance > 0.0:
             return dynamic_take_profit_fixed_pct_long(timeframe, last_price, curr_take_profit_price, distance)
@@ -385,7 +385,7 @@ def dynamic_take_profit(direction, method, timeframe, entry_price, last_price, c
             return dynamic_take_profit_cur_atrsr_short(timeframe, entry_price, last_price, curr_take_profit_price, depth, orientation, price_epsilon)
 
         elif method == BaseSignal.PRICE_BOLLINGER:
-            return dynamic_take_profit_fixed_bollinger_short(timeframe, last_price, curr_take_profit_price)
+            return dynamic_take_profit_fixed_bollinger_short(timeframe, last_price, curr_take_profit_price, price_epsilon)
 
         elif method == BaseSignal.PRICE_FIXED_PCT and distance > 0.0:
             return dynamic_take_profit_fixed_pct_short(timeframe, last_price, curr_take_profit_price, distance)

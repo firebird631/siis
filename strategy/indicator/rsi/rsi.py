@@ -26,7 +26,7 @@ class RSIIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
 
-    def __init__(self, timeframe, length=9):
+    def __init__(self, timeframe, length=14):
         super().__init__("rsi", timeframe)
 
         self._length = length   # periods number
@@ -76,7 +76,8 @@ class RSIIndicator(Indicator):
         bn = MM_n(N, b)  # MMexp_n(N, b)
 
         # prefer to return in normalized 0..1
-        rsi = hn/(hn+bn)
+        rsi = hn/(hn+bn) * 100
+
         return rsi
 
     @staticmethod
@@ -107,13 +108,14 @@ class RSIIndicator(Indicator):
         bn = np.interp(range(len(data)), t_subdata[1:], MM_n(N, b))
 
         # prefer to return in normalized 0..1
-        rsi = hn/(hn+bn)
+        rsi = hn/(hn+bn) * 100
+
         return rsi
 
     def compute(self, timestamp, prices):
         self._prev = self._last
         # self._rsis = RSIIndicator.RSI_n_sf(self._length, prices)  # , self._step, self._filtering)
-        self._rsis = ta_RSI(prices, self._length) * 0.01
+        self._rsis = ta_RSI(prices, self._length)
 
         self._last = self._rsis[-1]
         self._last_timestamp = timestamp

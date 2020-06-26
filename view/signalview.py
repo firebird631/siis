@@ -95,7 +95,7 @@ class SignalView(TableView):
 
                 signals.append(entry)
         else:
-            signals.sort(key=lambda x: -x['timestamp'])
+            signals = sorted(signals, key=lambda x: -x['timestamp'])
 
         signals = signals[offset:limit]
 

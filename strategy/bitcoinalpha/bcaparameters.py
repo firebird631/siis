@@ -44,8 +44,8 @@ DEFAULT_PARAMS = {
                 "tomdemark": ("tomdemark", 9),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }   
         },
         "hourly": {
@@ -78,8 +78,8 @@ DEFAULT_PARAMS = {
                 "mama": ("mama", 0.5, 0.05),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         },
         # "30min": {
@@ -109,8 +109,8 @@ DEFAULT_PARAMS = {
         #         "mama": ("mama", 0.5, 0.05),
         #     },
         #     "constants": {
-        #         "rsi_low": 0.3,
-        #         "rsi_high": 0.7,
+        #         "rsi_low": 30,
+        #         "rsi_high": 70,
         #     }
         # },
         "3min": {
@@ -138,8 +138,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 9, 3.0, 5, 16, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         }
     }

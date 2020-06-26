@@ -78,7 +78,7 @@ class TimeframeBasedSub(object):
             self.next_timestamp = candles[-1].timestamp if not candles[-1].ended else candles[-1].timestamp + self.tf
 
         # last closed candle processed (reseted before next gen)
-        self._last_closed = False
+        # self._last_closed = False
         self.last_timestamp = timestamp
 
     def cleanup(self, timestamp):

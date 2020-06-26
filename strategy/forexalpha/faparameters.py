@@ -47,8 +47,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             },
             "scores": {
                 "rsi_factor": 1.0,
@@ -90,8 +90,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             },
             "scores": {
                 "rsi_factor": 1.0,
@@ -135,8 +135,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             },
             "scores": {
                 "rsi_factor": 1.0,
@@ -178,8 +178,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             },
             "scores": {
                 "rsi_factor": 1.0,
@@ -221,8 +221,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             },
             "scores": {
                 "rsi_factor": 1.0,
@@ -264,8 +264,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             },
             "scores": {
                 "rsi_factor": 1.0,
@@ -306,8 +306,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 36, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             },
             "scores": {
                 # "rsi_factor": 0.04,
@@ -356,8 +356,8 @@ DEFAULT_PARAMS = {
         #         "bsawe": ("bsawe", 50, 3.0, 5, 34, False),
         #     },
         #     "constants": {
-        #         "rsi_low": 0.3,
-        #         "rsi_high": 0.7,
+        #         "rsi_low": 30,
+        #         "rsi_high": 70,
         #     },
         #     "scores": {
         #         # "rsi_factor": 0.04,
@@ -368,8 +368,8 @@ DEFAULT_PARAMS = {
         #         # "hma_vwma_cross_factor": 0,
         #         # "ema_vwma_cross_bonus": 0.05,
         #         # "rsi_hma_trend_div_factor": -1.0,
-        #         "rsi_low": 0.3,
-        #         "rsi_high": 0.7,
+        #         "rsi_low": 30,
+        #         "rsi_high": 70,
         #         "rsi_factor": 1.0,
         #         "rsi_trend_factor": 0.5,
         #         "sma_ema_cross_factor": (-0.5, -0.5),  # no-div/div

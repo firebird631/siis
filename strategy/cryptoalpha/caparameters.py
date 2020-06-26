@@ -44,8 +44,8 @@ DEFAULT_PARAMS = {
                 "atr": ("atr", 14, 2.618),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             },
         },
         "daily": {
@@ -77,8 +77,8 @@ DEFAULT_PARAMS = {
                 "atr": ("atr", 14, 2.618),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             },
         },
         "4hour": {
@@ -110,8 +110,8 @@ DEFAULT_PARAMS = {
                 "atr": ("atr", 14, 2.618),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }   
         },
         "hourly": {
@@ -144,8 +144,8 @@ DEFAULT_PARAMS = {
                 "mama": ("mama", 0.5, 0.05),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         },
         "15min": {
@@ -177,8 +177,8 @@ DEFAULT_PARAMS = {
                 "atr": ("atr", 14, 2.618),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         },
         "5min": {
@@ -210,8 +210,8 @@ DEFAULT_PARAMS = {
                 "atr": ("atr", 14, 2.618),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         },
         "1min": {
@@ -243,8 +243,8 @@ DEFAULT_PARAMS = {
                 "atr": ("atr", 14, 2.618),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         }
     }

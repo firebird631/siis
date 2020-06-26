@@ -376,8 +376,8 @@ class StrategyChart(object):
         #       if self.chart.rsi:
         #           # could multiply to display in percent
         #           self.chart.plot_serie(1, 0, self.chart.rsi)
-        #           self.chart.plot_serie(1, 1, [0.30]*len(self.chart.rsi))
-        #           self.chart.plot_serie(1, 2, [0.70]*len(self.chart.rsi))
+        #           self.chart.plot_serie(1, 1, [30]*len(self.chart.rsi))
+        #           self.chart.plot_serie(1, 2, [70]*len(self.chart.rsi))
 
         #       # if self.chart.bollinger[0]:
         #       #   self.chart.plot_serie(2, 0, self.chart.bollinger[0])  # bottom

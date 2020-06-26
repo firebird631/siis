@@ -164,9 +164,9 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
 
     #       # 30/70 @todo use Comparator, cross + strength by distance
     #       if rsi[-1] < self.rsi_low:
-    #           rsi_score = (self.rsi_low-rsi[-1])  # ++
+    #           rsi_score = (self.rsi_low-rsi[-1]) * 0.01 # ++
     #       elif rsi[-1] > self.rsi_high:
-    #           rsi_score = (self.rsi_high-rsi[-1])
+    #           rsi_score = (self.rsi_high-rsi[-1]) * 0.01
     #       else:
     #           rsi_score = 0
 

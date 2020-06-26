@@ -138,5 +138,10 @@
         "status": "load",
         "classpath": "strategy.indicator.willy.willy.WillyIndicator",
         "options": {}
+    },
+    "dmi": {
+        "status": "load",
+        "classpath": "strategy.indicator.dmi.dmi.DMIIndicator",
+        "options": {}
     }
 }

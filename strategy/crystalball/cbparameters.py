@@ -31,8 +31,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }   
         },
         "hourly": {
@@ -52,8 +52,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         },
         "15min": {
@@ -73,8 +73,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         },
         "5min": {
@@ -94,8 +94,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         },
         "2min":{
@@ -115,8 +115,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         },
         "1min": {
@@ -136,8 +136,8 @@ DEFAULT_PARAMS = {
                 "bsawe": ("bsawe", 20, 3.0, 5, 34, False),
             },
             "constants": {
-                "rsi_low": 0.3,
-                "rsi_high": 0.7,
+                "rsi_low": 30,
+                "rsi_high": 70,
             }
         }
     }

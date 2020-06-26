@@ -49,6 +49,7 @@ class EntryExit(object):
     EX_ENTRY = 1
     EX_TAKE_PROFIT = 2
     EX_STOP_LOSS = 3
+    EX_BREAKEVEN = 4
 
     @classmethod
     def ex(cls):
@@ -62,6 +63,8 @@ class EntryExit(object):
             return "take-profit"
         elif cls.ex() == cls.EX_STOP_LOSS:
             return "stop-loss"
+        elif cls.ex() == cls.EX_BREAKEVEN:
+            return "breakeven"
         else:
             return "undefined"
 
@@ -224,6 +227,26 @@ class EXStopLoss(EntryExit):
         return result
 
 
+class EXBreakeven(EntryExit):
+
+    @classmethod
+    def ex(cls):
+        return cls.EX_BREAKEVEN
+
+    def __init__(self):
+        super().__init__()
+
+    def loads(self, strategy_trader, params):
+        super().loads(strategy_trader, params)
+
+    def dumps(self):
+        result = super().dumps()
+
+        # @todo
+
+        return result
+
+
 class BaseSignal(StrategySignalContext):
 
     PRICE_NONE = 0
@@ -277,6 +300,7 @@ class BaseSignal(StrategySignalContext):
         self.stop_loss = EXStopLoss()
         self.dynamic_take_profit = None
         self.dynamic_stop_loss = None
+        self.breakeven = None
 
         self.pre_signal = None   # runtime current pullback pre-signal
         self.last_signal = None  # runtime last generated strategy signal
