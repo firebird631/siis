@@ -36,6 +36,8 @@ function on_strategy_alert(market_id, alert_id, timestamp, alert) {
 
     let message = alert.name + " "  + alert.reason + " " + alert.symbol + " " + alert.message;
     notify({'message': message, 'title': 'Strategy Alert', 'type': 'info'});
+
+    audio_notify('alert');
 }
 
 function on_strategy_active_alert(market_id, alert_id, timestamp, alert) {

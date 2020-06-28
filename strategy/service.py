@@ -78,6 +78,7 @@ class StrategyService(Service):
             self._to_date = today
 
         self._backtest = False
+        self._backtesting_play = True
         self._start_ts = self._from_date.timestamp() if self._from_date else 0
         self._end_ts = self._to_date.timestamp() if self._to_date else 0
         self._timestep_thread = None
@@ -129,6 +130,16 @@ class StrategyService(Service):
         """
         if self._strategy:
             self._strategy.set_activity(status)
+
+    def toggle_play_pause(self):
+        """
+        Toggle backtesting play/pause.
+        Pause timer.
+        """
+        if self._backtesting and self._backtest:
+            self._backtesting_play = not self._backtesting_play
+
+        return self._backtesting_play
 
     def start(self, options):
         # indicators
@@ -324,6 +335,10 @@ class StrategyService(Service):
 
                         if strategy and trader:
                             while self.c < self.e + self.ts:
+                                if not self.service._backtesting_play:
+                                    time.sleep(0.01)
+                                    continue
+
                                 # now sync the trader base time
                                 trader.set_timestamp(self.c)
 
@@ -441,6 +456,11 @@ class StrategyService(Service):
     def backtesting(self):
         """True if backtesting"""
         return self._backtesting
+
+    @property
+    def backtesting_play(self):
+        """True if backtesting playing"""
+        return self._backtesting_play
 
     @property
     def from_date(self):

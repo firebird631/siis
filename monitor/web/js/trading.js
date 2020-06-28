@@ -545,9 +545,22 @@ function remove_active_trade(market_id, trade_id, trade) {
     if (trade['profit-loss-pct'] > 0.0) {
         audio_notify('win');
     } else {
-        audio_notify('loose');
+        if (trade['filled-entry-qty'] <= 0) {
+            audio_notify('timeout');
+        } else {
+            audio_notify('loose');
+        }
     }
 };
+
+function format_price(symbol, price) {
+    let market = window.markets[symbol];
+    if (market) {
+        return price.toFixed(market['price-limits'][3] || 2);
+    }
+
+    return "0.0";
+}
 
 function format_quote_price(symbol, price) {
     let market = window.markets[symbol];
@@ -555,7 +568,7 @@ function format_quote_price(symbol, price) {
         return price.toFixed(market['notional-limits'][3] || 2);
     }
 
-    return 0.0;
+    return "0.0";
 }
 
 function add_historical_trade(market_id, trade) {
@@ -630,21 +643,83 @@ function add_historical_trade(market_id, trade) {
 };
 
 function on_modify_active_trade_stop_loss(elt) {
-    $('#modify_trade_stop_loss').modal({'show': true, 'backdrop': true});
-
     let key = retrieve_trade_key(elt);
     $('#modify_trade_stop_loss').attr('trade-key', key);
+
+    let trade = window.actives_trades[key];
+    $('#modified_stop_loss_price').val(trade['stop-loss-price']);
+    $('#modified_stop_loss_range').slider('setValue', 50);
+
+    $('#modify_trade_stop_loss').modal({'show': true, 'backdrop': true});
 }
 
 function on_modify_active_trade_take_profit(elt) {
-    $('#modify_trade_take_profit').modal({'show': true, 'backdrop': true});
-
     let key = retrieve_trade_key(elt);
     $('#modify_trade_take_profit').attr('trade-key', key);
+
+    let trade = window.actives_trades[key];
+    $('#modified_take_profit_price').val(trade['take-profit-price']);
+    $('#modified_take_profit_range').slider('setValue', 50);
+
+    $('#modify_trade_take_profit').modal({'show': true, 'backdrop': true});
+}
+
+function on_change_take_profit_step() {
+    let key = $('#modify_trade_take_profit').attr('trade-key');
+
+    let trade = window.actives_trades[key];
+    let take_profit_price = $('#modified_take_profit_price').val();
+
+    let mode = $('#modified_take_profit_type').val();
+    let range = parseFloat($('#modified_take_profit_range').val());
+
+    if (mode == 'percent') {
+        range = (range - 50) * 0.001;
+
+        take_profit_price = format_price(trade['symbol'], parseFloat(trade['take-profit-price']) * (1.0 + range));
+
+        $('#modified_take_profit_range_relative').text((range*100).toFixed(2) + "%");
+    } else if (mode == 'pip') {
+        range = (range - 50);
+        let value_per_pip = window.markets[trade['symbol']]['value-per-pip'];
+
+        take_profit_price = format_price(trade['symbol'], parseFloat(trade['take-profit-price']) + value_per_pip * range);
+
+        $('#modified_take_profit_range_relative').text(range + "pips");
+    }
+
+    $('#modified_take_profit_price').val(take_profit_price);
+}
+
+function on_change_stop_loss_step() {
+    let key = $('#modify_trade_stop_loss').attr('trade-key');
+
+    let trade = window.actives_trades[key];
+    let stop_loss_price = $('#modified_stop_loss_price').val();
+
+    let mode = $('#modified_stop_loss_type').val();
+    let range = parseFloat($('#modified_stop_loss_range').val());
+
+    if (mode == 'percent') {
+        range = (range - 50) * 0.001;
+
+        stop_loss_price = format_price(trade['symbol'], parseFloat(trade['stop-loss-price']) * (1.0 + range));
+
+        $('#modified_stop_loss_range_relative').text((range*100).toFixed(2) + "%");
+    } else if (mode == 'pip') {
+        range = (range - 50);
+        let value_per_pip = window.markets[trade['symbol']]['value-per-pip'];
+
+        stop_loss_price = format_price(trade['symbol'], parseFloat(trade['stop-loss-price']) + value_per_pip * range);
+
+        $('#modified_stop_loss_range_relative').text(range + "pips");
+    }
+
+    $('#modified_stop_loss_price').val(stop_loss_price);
 }
 
 function on_apply_modify_active_trade_take_profit() {
-    let key = $('#modify_trade_take_profit').attr('trade-key', key);
+    let key = $('#modify_trade_take_profit').attr('trade-key');
 
     let parts = key.split(':');
     if (parts.length != 2) {
@@ -666,7 +741,7 @@ function on_apply_modify_active_trade_take_profit() {
             'trade-id': trade_id,
             'command': "trade-modify",
             'action': "take-profit",
-            'stop-loss': take_profit_price,
+            'take-profit': take_profit_price,
             'force': true
         };
 
@@ -699,7 +774,7 @@ function on_apply_modify_active_trade_take_profit() {
 }
 
 function on_apply_modify_active_trade_stop_loss() {
-    let key = $('#modify_trade_stop_loss').attr('trade-key', key);
+    let key = $('#modify_trade_stop_loss').attr('trade-key',);
 
     let parts = key.split(':');
     if (parts.length != 2) {

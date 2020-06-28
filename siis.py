@@ -726,8 +726,10 @@ def application(argv):
                                     watchdog_service.ping(1.0)
 
                                 elif value == ' ':
-                                    # a simple mark on the terminal
-                                    Terminal.inst().notice("Trading time %s" % (datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='status')
+                                    # toggle play/pause on backtesting
+                                    if strategy_service.backtesting:
+                                        result = strategy_service.toggle_play_pause()
+                                        Terminal.inst().notice("Backtesting now %s" % ("play" if result else "paused"), view='status')
 
                                 elif value == 'a':
                                     if notifier_service:
@@ -781,7 +783,7 @@ def application(argv):
                 if strategy_service.timestamp - prev_timestamp >= 1.0:
                     mode = "live"
                     if trader_service.backtesting:
-                        mode = "backtesting"
+                        mode = "backtesting" + (" (paused)" if not strategy_service.backtesting_play else "")
                     elif trader_service.paper_mode:
                         mode = "paper-mode"
 

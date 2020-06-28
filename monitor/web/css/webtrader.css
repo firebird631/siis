@@ -82,6 +82,13 @@ div.traders {
     overflow-y: scroll;
 }
 
+div.charts {
+    height: 75vh;
+    overflow-x: none;
+    overflow-y: none;
+    display: none;
+}
+
 div.trader {
     height: 235px;
     margin-top: 15px;
@@ -255,4 +262,27 @@ span.signal-exit {
 button.trade-modify-take-profit, button.trade-modify-stop-loss {
     padding: 4px;
     margin-left: 3px;
+}
+
+div.chart-1x2 {
+    display: none;
+}
+
+div.chart-2x2 {
+    display: none;
+}
+
+div.chart-3x2 {
+    display: none;
+}
+
+div.chart-2x1 {
+    display: none;
+}
+
+div.chart-buttons {
+    position: absolute;
+    right: 50px;
+    top: 50px;
+    width: 300px;    
 }

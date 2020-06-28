@@ -55,6 +55,7 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal) {
     notify({'message': message, 'title': 'Trade Signal', 'type': 'info'});
 
     // @todo limit list and view...
+    audio_notify('signal');
 }
 
 function on_copy_signal(elt) {

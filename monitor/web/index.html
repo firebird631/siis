@@ -39,6 +39,7 @@
     <script src="js/alerts.js"></script>
     <script src="js/regions.js"></script>
     <script src="js/signals.js"></script>
+    <script src="js/charting.js"></script>
 
 </head>
 
@@ -101,22 +102,41 @@
 </div>
 
 <div class="modal" id="modify_trade_stop_loss" tabindex="-1" role="dialog" aria-labelledby="modify-trade-stop-loss" aria-hidden="true">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-sm" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Modify Stop-Loss</h5>
       </div>
       <div class="modal-body">
         <div>
-          <input type="number" class="price" id="modified_stop_loss_price" style="width: 200px;">
-          <input type="range" class="amount" name="amount" style="width: 200px;">
-          <select class="amount-type" name="amount-type"></select>
+          <div class="form-group">
+            <label for="recipient-name" class="col-form-label">Price :</label>
+            <input type="number" class="price form-control" id="modified_stop_loss_price" style="width: 200px;" lang="en">
+          </div>
+          <div class="form-group">
+            <label for="recipient-name" class="col-form-label">Stepper :</label>
+            <input type="range" class="amount form-control" id="modified_stop_loss_range" name="amount" style="width: 190px;">
+            <span id="modified_stop_loss_range_relative">0.0%</span>
+          </div>
+          <div class="form-group">
+            <label for="recipient-name" class="col-form-label">Stepper mode:</label>
+            <select class="amount-type" name="amount-type" id="modified_stop_loss_type">
+              <option value="percent">%</option>
+              <option value="pip">pip</option>
+            </select>
+          </div>
         </div>
+        <hr>
         <div>
-          <span>Dynamic :</span>
-          <input type="number" class="trigger" name="trigger" id="dynamic_stop_loss_trigger_price"  placeholder="trigger" style="width: 150px;">
-          <input type="number" class="trigger" name="price" id="dynamic_stop_loss_price"  placeholder="price" style="width: 150px;">
-          <button type="button" class="btn btn-light" id="apply_trade_add_dynamic_stop_loss">Add</button>
+          <div class="form-group">
+            <label for="recipient-name" class="col-form-label">Dynamic trigger-price:</label>
+            <input type="number" class="trigger form-control" name="trigger" id="dynamic_stop_loss_trigger_price"  placeholder="trigger" style="width: 150px;" lang="en">
+          </div>
+          <div class="form-group">
+            <label for="recipient-name" class="col-form-label">Dynamic stop-price:</label>
+            <input type="number" class="trigger form-control" name="price" id="dynamic_stop_loss_price" placeholder="price" style="width: 150px;">
+          </div>
+          <button type="button" class="btn btn-info" id="apply_trade_add_dynamic_stop_loss">Add</button>
         </div>
         <div>
           <!-- todo list of existing DSL -->
@@ -124,6 +144,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" id="apply_modify_trade_stop_loss" data-dismiss="modal">Apply</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
       </div>
     </div>
   </div>
@@ -131,20 +152,34 @@
 
 
 <div class="modal" id="modify_trade_take_profit" tabindex="-1" role="dialog" aria-labelledby="modify-trade-take-profit" aria-hidden="true">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-sm" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Modify Take-Profit</h5>
       </div>
       <div class="modal-body">
         <div>
-          <input type="number" class="price" id="modified_take_profit_price" style="width: 200px;">
-          <input type="range" class="amount" name="amount" style="width: 200px;">
-          <select class="amount-type" name="amount-type"></select>
+          <div class="form-group">
+              <label for="recipient-name" class="col-form-label">Price :</label>
+              <input type="number" class="price form-control" id="modified_take_profit_price" style="width: 200px;" lang="en">
+          </div>
+          <div class="form-group">
+              <label for="recipient-name" class="col-form-label">Stepper :</label>
+              <input type="range" class="amount form-control" id="modified_take_profit_range" name="amount" style="width: 190px;">
+              <span id="modified_take_profit_range_relative">0.0%</span>
+          </div>
+          <div class="form-group">
+              <label for="recipient-name" class="col-form-label">Stepper mode:</label>
+              <select class="amount-type" name="amount-type" id="modified_take_profit_type">
+                <option value="percent">%</option>
+                <option value="pip">pip</option>
+              </select>
+            </div>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" id="apply_modify_trade_take_profit" data-dismiss="modal">Apply</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
       </div>
     </div>
   </div>
@@ -152,6 +187,51 @@
 
 
 <div class="main">
+    <div class="container-fluid charts">
+        <div class="chart-buttons">
+        </div>
+
+        <div class="row chart-1x1">
+          <div class="col-sm-12 chart chart1"></div>
+        </div>
+
+        <div class="row chart-2x1">
+          <div class="col-sm-6 chart chart1"></div>
+          <div class="col-sm-6 chart chart2"></div>
+        </div>
+
+        <div class="row chart-1x2">
+          <div class="col-sm-6 chart chart1"></div>
+        </div>
+        <div class="row chart-1x2">
+          <div class="col-sm-6 chart chart2"></div>
+        </div>
+
+        <div class="row chart-2x2">
+          <div class="col-sm-6 chart chart1"></div>
+          <div class="col-sm-6 chart chart2"></div>
+        </div>
+        <div class="row chart-2x2">
+          <div class="col-sm-6 chart chart3"></div>
+          <div class="col-sm-6 chart chart4"></div>
+        </div>
+
+        <div class="row chart-3x2">
+          <div class="col-sm-4 chart chart1"></div>
+          <div class="col-sm-4 chart chart2"></div>
+          <div class="col-sm-4 chart chart3"></div>
+        </div>
+        <div class="row chart-3x2">
+          <div class="col-sm-4 chart chart4"></div>
+          <div class="col-sm-4 chart chart5"></div>
+          <div class="col-sm-4 chart chart6"></div>
+        </div>
+
+        <div class="row chart-performance">
+          <div class="performance-chart"></div>
+        </div>
+    </div>
+
     <div class="container-fluid traders">
         <div class="row">
           <div class="col-sm-3 trader"></div>
@@ -171,10 +251,9 @@
           <div class="col-sm-3 trader"></div>
           <div class="col-sm-3 trader"></div>
         </div>
-
-        <div id="notifications">
-        </div>
     </div>
+
+    <div id="notifications"></div>
 
     <div class="row trade-list">
         <div class="trade-list-menu">

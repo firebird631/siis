@@ -390,6 +390,36 @@ $(window).ready(function() {
         on_add_active_trade_dynamic_stop_loss();
     });
 
+    $('#modified_stop_loss_range').slider({
+        'min': 0,
+        'max': 100,
+        'step': 1,
+        'value': 50,
+    }).on('change', function(elt) {
+        on_change_stop_loss_step();
+    });
+
+    $('#modified_stop_loss_type').selectpicker({'width': '75px', 'size': '10'
+    }).on('change', function(elt) {
+        $('#modified_stop_loss_range').slider('setValue', 50);
+        on_change_stop_loss_step(); 
+    });
+
+    $('#modified_take_profit_range').slider({
+        'min': 0,
+        'max': 100,
+        'step': 1,
+        'value': 50,
+    }).on('change', function(elt) {
+        on_change_take_profit_step();
+    });
+
+    $('#modified_take_profit_type').selectpicker({'width': '75px', 'size': '10'
+    }).on('change', function(elt) {
+        $('#modified_take_profit_range').slider('setValue', 50);
+        on_change_take_profit_step(); 
+    });
+
     //
     // session init
     //
@@ -847,7 +877,7 @@ function add_profiles(id, to, profiles) {
 };
 
 function add_take_profit_price(id, to) {
-    let input = $('<input type="number" class="take-profit-price" name="take-profit-price" placeholder="Take-Profit">');
+    let input = $('<input type="number" class="take-profit-price" name="take-profit-price" placeholder="Take-Profit" lang="en">');
     input.attr('trader-id', id);
 
     to.append(input);
@@ -873,7 +903,7 @@ function add_take_profit_methods(id, to) {
 };
 
 function add_entry_price(id, to) {
-    let input = $('<input type="number" class="entry-price" name="entry-price" placeholder="Entry-Price">');
+    let input = $('<input type="number" class="entry-price" name="entry-price" placeholder="Entry-Price" lang="en">');
     input.attr('trader-id', id);
 
     to.append(input);
@@ -901,7 +931,7 @@ function add_entry_price_methods(id, to) {
 };
 
 function add_stop_loss_price(id, to) {
-    let input = $('<input type="number" class="stop-loss-price" name="stop-loss-price" placeholder="Stop-Loss">');
+    let input = $('<input type="number" class="stop-loss-price" name="stop-loss-price" placeholder="Stop-Loss" lang="en">');
     input.attr('trader-id', id);
 
     to.append(input);
