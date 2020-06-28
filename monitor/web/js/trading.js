@@ -476,7 +476,7 @@ function update_active_trade(market_id, trade) {
 
     // fees
     let fees = format_quote_price(trade.stats['entry-fees'] + trade.stats['exit-fees']);
-    let trade_fees = $('<span class="trade-fees"></span>').text(format_quote_price(market_id, fees));
+    let trade_fees = $('<span class="trade-fees"></span>').text(fees);
 
     // stop-loss
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);  // + UP/DN buttons
@@ -556,6 +556,10 @@ function remove_active_trade(market_id, trade_id, trade) {
 function format_price(symbol, price) {
     let market = window.markets[symbol];
     if (market) {
+        if (typeof(price) === "string") {
+            price = parseFloat(price);
+        }
+
         return price.toFixed(market['price-limits'][3] || 2);
     }
 
@@ -565,6 +569,10 @@ function format_price(symbol, price) {
 function format_quote_price(symbol, price) {
     let market = window.markets[symbol];
     if (market) {
+        if (typeof(price) === "string") {
+            price = parseFloat(price);
+        }
+
         return price.toFixed(market['notional-limits'][3] || 2);
     }
 
