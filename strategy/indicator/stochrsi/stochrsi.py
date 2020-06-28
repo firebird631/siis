@@ -8,7 +8,7 @@ from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample, MMexp_n, MM_n
 
 import numpy as np
-from talib import STOCHRSI as ta_STOCHRSI
+from talib import STOCHRSI as ta_STOCHRSI, STOCH as to_STOCH
 
 
 class StochRSIIndicator(Indicator):
@@ -159,7 +159,10 @@ class StochRSIIndicator(Indicator):
         #     StochRSIIndicator.RSI_n(self._length, prices),  # , self._step, self._filtering),
         #     self._len_D)
 
-        self._ks, self._ds = ta_STOCHRSI(prices, self._length, self._len_K, self._len_D, 0)
+        rsis = ta_RSI(prices, self._length)
+        self._ks, self._ds = ta_STOCH(rsis, rsis, rsis, fastk_period=self._length, slowk_period=self._len_K, slowk_matype=0, slowd_period=self._len_D, slowd_matype=0)
+
+        # self._ks, self._ds = ta_STOCHRSI(prices, self._length, self._len_K, self._len_D, 0)
 
         self._last_k = self._ks[-1]
         self._last_d = self._ds[-1]

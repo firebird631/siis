@@ -471,7 +471,7 @@ function update_active_trade(market_id, trade) {
     trade_exit.attr('title', (exit_price_rate * 100).toFixed(2) + '%');
 
     // pnl
-    let trade_percent = $('<span class="trade-percent"></span>').text(trade['profit-loss-pct'] +'%');   
+    let trade_percent = $('<span class="trade-percent"></span>').text(trade['profit-loss-pct'] + '%');
     let trade_upnl = $('<span class="trade-upnl"></span>').text(format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
 
     // fees

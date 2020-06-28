@@ -17,7 +17,7 @@ class StochasticIndicator(Indicator):
     https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/slow-stochastic
     """
 
-    __slots__ = '_len_K', '_len_D', '_prev_k', '_last_k', '_prev_d', '_last_d', '_ks', '_ds'
+    __slots__ = '_length', '_len_K', '_len_D', '_prev_k', '_last_k', '_prev_d', '_last_d', '_ks', '_ds'
 
     @classmethod
     def indicator_type(cls):
@@ -27,11 +27,12 @@ class StochasticIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
 
-    def __init__(self, timeframe, len_K=9, len_D=3):
+    def __init__(self, timeframe, length=9, len_K=3, len_D=3):
         super().__init__("stochastic", timeframe)
 
-        self._len_K = len_K     # periods number for the K
-        self._len_D = len_D     # periods number for the D
+        self._length = length   # periods number for the K
+        self._len_K = len_K     # periods number for the K smooth
+        self._len_D = len_D     # periods number for the D smooth
 
         self._prev_k = 0.0
         self._last_k = 0.0
@@ -150,9 +151,9 @@ class StochasticIndicator(Indicator):
         self._prev_k = self._last_k
         self._prev_d = self._last_d
 
-        # k, d = StochasticIndicator.Stochastic_sf(self._len_K, close, self._len_D)  # , self._step, self._filtering)
-        # k, d = ta_STOCH(high, low, close, fastk_period=self._len_K, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
-        self._ks, self._ds = to_STOCHF(high, low, close, fastk_period=self._len_K, fastd_period=self._len_D, fastd_matype=0)
+        # self._ks, self._ds = StochasticIndicator.Stochastic_sf(self._len_K, close, self._len_D)  # , self._step, self._filtering)
+        self._ks, self._ds = ta_STOCH(high, low, close, fastk_period=self._length, slowk_period=self._len_K, slowk_matype=0, slowd_period=self._len_D, slowd_matype=0)
+        # self._ks, self._ds = to_STOCHF(high, low, close, fastk_period=self._len_K, fastd_period=self._len_D, fastd_matype=0)
 
         self._last_k = self._ks[-1]
         self._last_d = self._ds[-1]
