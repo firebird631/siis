@@ -658,10 +658,10 @@ function setup_traders() {
         $(elt).append(trader_row5);
         $(elt).append(trader_row6);
 
-        symbol_select.selectpicker('change', market_id).change();
-        profile_select.selectpicker('change', 'scalp-xs').change();
-        stop_loss_select.selectpicker('change', stop_loss_select.val()).change();
-        take_profit_select.selectpicker('change', take_profit_select.val()).change();
+        symbol_select.selectpicker('val', market_id).change();
+        profile_select.selectpicker('val', 'scalp-xs').change();
+        stop_loss_select.selectpicker('val', stop_loss_select.val()).change();
+        take_profit_select.selectpicker('val', take_profit_select.val()).change();
     });
 }
 
