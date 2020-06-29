@@ -1012,12 +1012,14 @@ class IGWatcher(Watcher):
         market.expiry = instrument['expiry']
 
         # not perfect but IG does not provides this information
-        if instrument["marketId"].endswith(instrument["currencies"][0]["name"]):
-            base_symbol = instrument["marketId"][:-len(instrument["currencies"][0]["name"])]
-        else:
-            base_symbol = instrument["marketId"]
+        currency = instrument['currencies'][0].get('name', instrument['currencies'][0].get('code'))
 
-        market.base_exchange_rate = instrument['currencies'][0]['baseExchangeRate']   # "exchangeRate": 0.77
+        if instrument['marketId'].endswith(currency):
+            base_symbol = instrument['marketId'][:-len(currency)]
+        else:
+            base_symbol = instrument['marketId']
+
+        market.base_exchange_rate = instrument['currencies'][0]['baseExchangeRate']   # 'exchangeRate': 0.77
 
         # "1 Index Point" => 1.0
         # "1 Cents/Troy Ounce" => 0.01
@@ -1039,7 +1041,7 @@ class IGWatcher(Watcher):
         # "streamingPricesAvailable": true,
 
         if snapshot:
-            market.is_open = snapshot["marketStatus"] == "TRADEABLE"
+            market.is_open = snapshot['marketStatus'] == "TRADEABLE"
             market.bid = snapshot['bid']
             market.ofr = snapshot['offer']
 
@@ -1060,7 +1062,7 @@ class IGWatcher(Watcher):
         quote_precision = base_precision  # most of the currencies have 2 decimals for usage
 
         # previously it was code, now they change with name...
-        market.set_quote(instrument["currencies"][0]["name"], instrument["currencies"][0]['symbol'], quote_precision)
+        market.set_quote(currency, instrument['currencies'][0].get('symbol', currency), quote_precision)
 
         if instrument.get('marginFactor') and market.is_open:
             if instrument.get('marginFactorUnit', '') == "PERCENTAGE":
@@ -1100,7 +1102,7 @@ class IGWatcher(Watcher):
         market.contract_type = Market.CONTRACT_CFD
 
         # take minDealSize as tick size
-        market.set_size_limits(dealing_rules["minDealSize"]["value"], 0.0, dealing_rules["minDealSize"]["value"])
+        market.set_size_limits(dealing_rules['minDealSize']['value'], 0.0, dealing_rules['minDealSize']['value'])
         # @todo there is some limits in contract size
         market.set_notional_limits(0.0, 0.0, 0.0)
         # use one pip means for minimum and tick price size

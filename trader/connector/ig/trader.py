@@ -449,7 +449,7 @@ class IGTrader(Trader):
                 try:
                     market = self._watcher.fetch_market(market_id)
                 except Exception as e:
-                    logger.error("fetch_market: %s" % repr(e))
+                    logger.error("fetch_market('%s'): %s" % (market_id, repr(e)))
                     return None
 
                 if market:
