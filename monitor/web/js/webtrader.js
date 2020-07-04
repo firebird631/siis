@@ -77,6 +77,7 @@ $(window).ready(function() {
     window.historical_trades = {};
     window.alerts = {};
     window.signals = {};
+    window.charts = {};
 
     window.audio = {
         'enabled': true,

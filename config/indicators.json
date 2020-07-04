@@ -143,5 +143,10 @@
         "status": "load",
         "classpath": "strategy.indicator.dmi.dmi.DMIIndicator",
         "options": {}
+    },
+    "vwap": {
+        "status": "load",
+        "classpath": "strategy.indicator.vwap.vwap.VWAPIndicator",
+        "options": {}
     }
 }

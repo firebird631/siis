@@ -260,18 +260,15 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return result
 
-    def subscribe_stream(self, timeframe):
+    def subscribe_stream(self, tf):
         """
         Use or create a specific streamer.
+        @param 
         """
         result = False
 
         with self._mutex:
-            if timeframe is not None and isinstance(timeframe, (float, int)):
-                timeframe = self.timeframes.get(timeframe)
-
-            if timeframe is None and self.timeframes:
-                tf = sorted(list(self.timeframes.keys()))[0]
+            if tf is not None and isinstance(tf, (float, int)):
                 timeframe = self.timeframes.get(tf)
 
             if timeframe in self._timeframe_streamers:
@@ -287,22 +284,22 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return False
 
-    def unsubscribe_stream(self, timeframe):
+    def unsubscribe_stream(self, tf):
         """
         Delete a specific streamer when no more subscribers.
         """
         result = False
 
         with self._mutex:
-            if timeframe is not None and isinstance(timeframe, (float, int)):
-                timeframe = self.timeframes.get(timeframe)
+            if tf is not None and isinstance(tf, (float, int)):
+                timeframe = self.timeframes.get(tf)
 
             if timeframe in self._timeframe_streamers:
                 self._timeframe_streamers[timeframe].unuse()
                 if self._timeframe_streamers[timeframe].is_free():
                     # delete if 0 subscribers
                     del self._timeframe_streamers[timeframe]
-        
+
                 result = True
 
         return result

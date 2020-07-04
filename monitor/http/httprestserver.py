@@ -431,6 +431,32 @@ class Charting(resource.Resource):
 
         return json.dumps(result).encode("utf-8")
 
+    def render_POST(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
+            command = content.get('command', "")
+
+            if command == "subscribe-chart":
+                results = self._strategy_service.command(Strategy.COMMAND_TRADER_STREAM, content)
+            elif command == "unsubscribe-chart":
+                results = self._strategy_service.command(Strategy.COMMAND_TRADER_STREAM, content)
+            else:
+                results['messages'].append("Missing command.")
+                results['error'] = True
+        except Exception as e:
+            logger.debug(e)
+
+        return json.dumps(results).encode("utf-8")
+
+
 
 class AllowedIPOnlyFactory(server.Site):
 
@@ -495,7 +521,7 @@ class HttpRestServer(object):
         api_v1.putChild(b"monitor", monitor_api)
 
         # charting
-        root.putChild(b"chart", Charting(self._strategy_service, self._trader_service))
+        strategy_api.putChild(b"chart", Charting(self._strategy_service, self._trader_service))
 
         factory = AllowedIPOnlyFactory(root)
         factory.sessionFactory = LongSession

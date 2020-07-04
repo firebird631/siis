@@ -220,7 +220,7 @@ class StrategyService(Service):
 
         # and finally strategy
         strategy_profile = self._profile_config.get('strategy')
-        if strategy_profile['name'] == "default":
+        if not strategy_profile or strategy_profile.get('name', "") == "default":
             return
 
         if self._strategy is not None:

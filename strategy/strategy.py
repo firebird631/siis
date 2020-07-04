@@ -2404,7 +2404,7 @@ class Strategy(Runnable):
 
         if action == "subscribe":
             if typename == "chart":
-                strategy_trader.subscribe_stream(timeframe)
+                strategy_trader.subscribe_stream(timeframe_from_str(timeframe))
                 results['messages'].append("Subscribed for stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "default"))
             elif typename == "info":
                 strategy_trader.subscribe_info()
@@ -2416,7 +2416,7 @@ class Strategy(Runnable):
 
         elif action == "unsubscribe":
             if typename == "chart":            
-                strategy_trader.unsubscribe_stream(timeframe)
+                strategy_trader.unsubscribe_stream(timeframe_from_str(timeframe))
                 results['messages'].append("Unsubscribed from stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "any"))
             elif typename == "info":
                 strategy_trader.unsubscribe_info()

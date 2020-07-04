@@ -349,11 +349,17 @@ class PaperTrader(Trader):
                     # does not support the really offered qty, take all at current price in one shot
                     if order.margin_trade and market.has_margin:
                         if market.indivisible_position:
-                            exec_ind_margin_order(self, order, market, open_exec_price, close_exec_price)
+                            # use order price because could have non realistic spread/slippage
+                            # exec_ind_margin_order(self, order, market, open_exec_price, close_exec_price)
+                            exec_ind_margin_order(self, order, market, order.price, order.price)
                         else:
-                            exec_margin_order(self, order, market, open_exec_price, close_exec_price)
+                            # use order price because could have non realistic spread/slippage
+                            # exec_margin_order(self, order, market, open_exec_price, close_exec_price)
+                            exec_margin_order(self, order, market, order.price, order.price)
                     elif not order.margin_trade and market.has_spot:
-                        exec_buysell_order(self, order, market, open_exec_price, close_exec_price)
+                        # use order price because could have non realistic spread/slippage
+                        # exec_buysell_order(self, order, market, open_exec_price, close_exec_price)
+                        exec_buysell_order(self, order, market, order.price, order.price)
 
                     # fully executed
                     rm_list.append(order.order_id)
@@ -382,11 +388,15 @@ class PaperTrader(Trader):
 
                         if order.margin_trade and market.has_margin:
                             if market.indivisible_position:
-                                exec_indmargin_order(self, order, market, open_exec_price, close_exec_price)
+                                # use order price because could have non realistic spread/slippage
+                                # exec_indmargin_order(self, order, market, open_exec_price, close_exec_price)
+                                exec_indmargin_order(self, order, market, order.price, order.price)
                             else:
                                 exec_margin_order(self, order, market, open_exec_price, close_exec_price)
                         elif not order.margin_trade and market.has_spot:
-                            exec_buysell_order(self, order, market, open_exec_price, close_exec_price)
+                            # use order price because could have non realistic spread/slippage
+                            # exec_buysell_order(self, order, market, open_exec_price, close_exec_price)
+                            exec_buysell_order(self, order, market, order.price, order.price)
 
                         # fully executed
                         rm_list.append(order.order_id)

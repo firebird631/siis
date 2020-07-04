@@ -241,9 +241,15 @@ class TraderService(Service):
         """
         Get the profile configuration for a specific trader name.
         """
+        if not self._profile_config:
+            return {}
+
         profile_trader_config = self._profile_config.get('trader')
 
         trader_config = {}
+
+        if not profile_trader_config:
+            return {}
 
         user_trader_config = utils.load_config(options, 'traders/' + profile_trader_config.get('name', "default.json"))
         if user_trader_config:

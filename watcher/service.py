@@ -259,10 +259,16 @@ class WatcherService(Service):
         """
         Get the profile configuration for a specific watcher name.
         """
+        if not self._profile_config:
+            return {}
+
         watchers_profile = self._profile_config.get('watchers', {})
 
         # @todo could rebuild the list of symbols according to what is found in strategy
         watchers_config = {}
+
+        if not watchers_profile:
+            return {}
 
         for k, profile_watcher_config in watchers_profile.items():
             user_watcher_config = utils.load_config(options, 'watchers/' + k)
