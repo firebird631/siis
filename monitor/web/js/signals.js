@@ -51,7 +51,7 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal) {
 
     window.signals[key] = signal;
 
-    let message = signal.label + " "  + (signal.reason || signal.way) + " " + signal.symbol + " @" + signal['order-price'];
+    let message = signal.label + " "  + (signal.reason || signal.way) + " " + signal.direction + " " + signal.symbol + " @" + signal['order-price'];
     notify({'message': message, 'title': 'Trade Signal', 'type': 'info'});
 
     // @todo limit list and view...
