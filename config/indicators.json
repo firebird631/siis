@@ -148,5 +148,10 @@
         "status": "load",
         "classpath": "strategy.indicator.vwap.vwap.VWAPIndicator",
         "options": {}
+    },
+    "stddevbands": {
+        "status": "load",
+        "classpath": "strategy.indicator.stddevbands.stddevbands.StdDevBandsIndicator",
+        "options": {}
     }
 }

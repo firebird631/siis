@@ -1183,7 +1183,7 @@ class StrategyTrader(object):
         if result:
             msg = "Max trade reached for %s with %s or max reached for the timeframe" % (self.instrument.symbol, max_trades)
 
-            logger.warning(msg)
+            # logger.warning(msg)
             Terminal.inst().notice(msg, view='status')
 
         return result
