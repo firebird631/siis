@@ -8,7 +8,7 @@ from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample, MMexp_n, MM_n
 
 import numpy as np
-from talib import STOCHRSI as ta_STOCHRSI, STOCH as to_STOCH
+from talib import STOCHRSI as ta_STOCHRSI, STOCH as to_STOCH, RSI as ta_RSI
 
 
 class StochRSIIndicator(Indicator):
