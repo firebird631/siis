@@ -1,7 +1,7 @@
 # @date 2018-09-05
 # @author Frederic SCHERMA
 # @license Copyright (c) 2018 Dream Overflow
-# Higher candle generator.
+# OHLC candle generator.
 
 from datetime import datetime, timedelta
 from common.utils import UTC

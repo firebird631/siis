@@ -4,7 +4,7 @@
 # Standard Deviation Bands indicator
 
 from strategy.indicator.indicator import Indicator
-from talib import STDDEV as ta_STDDEV, SMA as ta_SMA, TR as ta_TRANGE
+from talib import STDDEV as ta_STDDEV, SMA as ta_SMA, TRANGE as ta_TRANGE
 
 import statistics as stat
 import numpy as np
