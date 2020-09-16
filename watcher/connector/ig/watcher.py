@@ -542,7 +542,8 @@ class IGWatcher(Watcher):
                         self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
                 if self._store_trade:
-                    Database.inst().store_market_trade((self.name, market_id, int(utm), bid, ofr, ltv or 0))
+                    # no side information so 0
+                    Database.inst().store_market_trade((self.name, market_id, int(utm), bid, ofr, ltv or 0, 0))
 
         except Exception as e:
             error_logger.error(repr(e))

@@ -557,7 +557,7 @@ class BinanceWatcher(Watcher):
             trade_time = data['T'] * 0.001
 
             # trade_id = data['t']
-            # buyer_maker = data['m']
+            buyer_maker = -1 if data['m'] else 1
 
             price = float(data['p'])
             vol = float(data['q'])
@@ -570,7 +570,7 @@ class BinanceWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
             if self._store_trade:
-                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q']))
+                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q'], buyer_maker))
 
             for tf in Watcher.STORED_TIMEFRAMES:
                 # generate candle per timeframe

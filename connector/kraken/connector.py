@@ -219,9 +219,22 @@ class Connector(object):
                 if to_ts and dt > to_ts:
                     break
 
+                bid_ask = 0
+
+                # bid or ask depending of order direction and type
+                if c[3] == 'b' and c[4] == 'l':
+                    bid_ask = -1
+                elif c[3] == 'b' and c[4] == 'm':
+                    bid_ask = 1
+                if c[3] == 's' and c[4] == 'l':
+                    bid_ask = 1
+                if c[3] == 's' and c[4] == 'm':
+                    bid_ask = -1
+
                 yield (int(dt*1000),  # integer ms
                     c[0], c[0],  # price
-                    c[1])  # volume
+                    c[1],  # volume
+                    bid_ask)
 
             if dt > to_ts or not len(trades):
                 break

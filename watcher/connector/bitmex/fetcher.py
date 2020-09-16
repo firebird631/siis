@@ -97,7 +97,7 @@ class BitMexFetcher(Fetcher):
 
         for trade in trades:
             count += 1
-            # timestamp, bid, ofr, volume
+            # timestamp, bid, ofr, volume, direction
             yield(trade)
 
         logger.info("Fetcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))

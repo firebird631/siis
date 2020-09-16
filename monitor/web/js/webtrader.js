@@ -322,11 +322,19 @@ $(window).ready(function() {
             'type': 'market'
         },
         'best1': {
-            'label': 'Best 1',
-            'type': 'best-1'
+            'label': 'Best +1',
+            'type': 'best+1'
         },
         // 'best2': {
-        //     'label': 'Best 2',
+        //     'label': 'Best +2',
+        //     'type': 'best+2'
+        // },
+        'best-1': {
+            'label': 'Best -1',
+            'type': 'best-1'
+        },
+        // 'best-2': {
+        //     'label': 'Best -2',
         //     'type': 'best-2'
         // },
     }

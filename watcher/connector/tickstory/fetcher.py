@@ -95,7 +95,7 @@ class TickStoryFetcher(Fetcher):
                     for line in handle:
                         count += 1
                         # 20180101 170014370,1.200370,1.200870,0
-                        # timestamp, bid, ofr, volume
+                        # timestamp, bid, ofr, volume, direction
                         yield self.parse_tick(line)
 
                     handle.close()
@@ -184,7 +184,8 @@ class TickStoryFetcher(Fetcher):
         parts = row.rstrip('\n').split(',')
         ts = int(datetime.strptime(parts[0]+'000', '%Y%m%d %H%M%S%f').replace(tzinfo=UTC()).timestamp() * 1000)
 
-        return ts, parts[1], parts[2], parts[3]
+        # no direction but distinct bid/ask prices
+        return ts, parts[1], parts[2], parts[3], 0
 
     def parse_min(self, row):
         parts = row.rstrip('\n').split(';')

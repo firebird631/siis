@@ -488,7 +488,7 @@ class BitMexWatcher(Watcher):
 
             #         if self._store_trade:
             #             # store trade
-            #             Database.inst().store_market_trade((self.name, symbol, int(trade_time*1000), price, price, quantity))
+            #             Database.inst().store_market_trade((self.name, symbol, int(trade_time*1000), price, price, quantity, bid_ask))
 
             elif (data[1] == 'instrument' or data[1] == 'quote') and data[0] == 'insert' or data[0] == 'update':
                 # instrument and quote data (bid, ofr, volume)
@@ -577,6 +577,7 @@ class BitMexWatcher(Watcher):
                     last_bid = None
                     last_ofr = None
                     last_vol = None
+                    bid_ask = 0  # @todo bid or ask direction
 
                     if 'bidPrice' in data[3][0] and data[3][0]['bidPrice']:
                         # price update
@@ -593,7 +594,7 @@ class BitMexWatcher(Watcher):
 
                     if bid is not None and ofr is not None and volume is not None and last_vol:
                         # we have a tick when we have a volume in data content
-                        tick = (update_time, bid, ofr, volume)
+                        tick = (update_time, bid, ofr, volume, bid_ask)
 
                         # with self._mutex:
                         #     self._last_tick[market_id] = tick
@@ -603,7 +604,7 @@ class BitMexWatcher(Watcher):
 
                         if self._store_trade:
                             # store trade/tick
-                            Database.inst().store_market_trade((self.name, symbol, int(update_time*1000), bid, ofr, volume))
+                            Database.inst().store_market_trade((self.name, symbol, int(update_time*1000), bid, ofr, volume, bid_ask))
 
                         for tf in Watcher.STORED_TIMEFRAMES:
                             # generate candle per each timeframe

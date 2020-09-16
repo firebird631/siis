@@ -157,7 +157,8 @@ def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
     Database.inst().store_market_trade((
         broker_id, market_id, timestamp,
         self.prev_bid, self.prev_ask,
-        fvol))
+        fvol,
+        0))
 
     return 1
 
@@ -269,7 +270,8 @@ def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
     Database.inst().store_market_trade((
         broker_id, market_id, timestamp,
         self.prev_bid, self.prev_ask,
-        ltv))
+        ltv,
+        0))
 
     return 1
 

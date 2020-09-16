@@ -1540,10 +1540,33 @@ class Strategy(Runnable):
 
         if method == 'market':
             order_type = Order.ORDER_MARKET
+        
         elif method == 'limit':
             order_type = Order.ORDER_LIMIT
+        
         elif method == 'trigger':
             order_type = Order.ORDER_STOP
+        
+        elif method == 'best-1':
+            # limit : first ask price in long, first bid price in short
+            order_type = Order.ORDER_LIMIT
+            limit_price = strategy_trader.instrument.close_exec_price(direction)
+
+        elif method == 'best-2':
+            # limit : second ask price in long, second bid price in short
+            order_type = Order.ORDER_LIMIT
+            limit_price = strategy_trader.instrument.close_exec_price(direction)
+
+        elif method == 'best+1':
+            # limit if supported by broker : first bid price in long, first ask price in short
+            order_type = Order.ORDER_LIMIT
+            limit_price = strategy_trader.instrument.open_exec_price(direction)
+
+        elif method == 'best+2':
+            # limit if supported by broker : second bid price in long, second ask price in short
+            order_type = Order.ORDER_LIMIT
+            limit_price = strategy_trader.instrument.open_exec_price(direction)
+
         else:
             order_type = Order.ORDER_MARKET
 

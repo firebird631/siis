@@ -43,6 +43,10 @@ function on_order_long(elt) {
             method = "best-1";
         } else if (entry_price_mode == "best-2") {
             method = "best-2";
+        } else if (entry_price_mode == "best+1") {
+            method = "best+1";
+        } else if (entry_price_mode == "best+2") {
+            method = "best+2";
         }
 
         quantity_rate = retrieve_quantity_rate(trader_id) * 0.01 * retrieve_quantity_factor(trader_id);
@@ -147,6 +151,10 @@ function on_order_short(elt) {
             method = "best-1";
         } else if (entry_price_mode == "best-2") {
             method = "best-2";
+        } else if (entry_price_mode == "best+1") {
+            method = "best+1";
+        } else if (entry_price_mode == "best+2") {
+            method = "best+2";
         }
 
         quantity_rate = retrieve_quantity_rate(trader_id) * 0.01 * retrieve_quantity_factor(trader_id);

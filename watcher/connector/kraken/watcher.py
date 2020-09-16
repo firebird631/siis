@@ -543,15 +543,25 @@ class KrakenWatcher(Watcher):
                 ofr = float(trade[0])
                 vol = float(trade[1])
                 trade_time = float(trade[2])
-                # side = trade[3]
+                bid_ask = 0
 
-                tick = (trade_time, bid, ofr, vol)
+                # bid or ask depending of order direction and type
+                if trade[3] == 'b' and trade[4] == 'l':
+                    bid_ask = -1
+                elif trade[3] == 'b' and trade[4] == 'm':
+                    bid_ask = 1
+                if trade[3] == 's' and trade[4] == 'l':
+                    bid_ask = 1
+                if trade[3] == 's' and trade[4] == 'm':
+                    bid_ask = -1
+
+                tick = (trade_time, bid, ofr, vol, bid_ask)
 
                 # store for generation of OHLCs
                 self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
                 if self._store_trade:
-                    Database.inst().store_market_trade((self.name, market_id, int(trade_time*1000.0), trade[0], trade[0], trade[1]))
+                    Database.inst().store_market_trade((self.name, market_id, int(trade_time*1000.0), trade[0], trade[0], trade[1], bid_ask))
 
                 for tf in Watcher.STORED_TIMEFRAMES:
                     # generate candle per timeframe

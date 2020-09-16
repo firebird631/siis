@@ -334,8 +334,16 @@ class Connector(object):
                 else:
                     start = 0
 
+                # PlusTick,MinusTick,ZeroPlusTick,ZeroMinusTick
+                direction = 0
+
+                if c['tickDirection'] in ('PlusTick', 'ZeroPlusTick'):
+                    direction = 1
+                elif c['tickDirection'] in ('MinusTick', 'ZeroMinusTick'):
+                    direction = -1
+
                 yield (int(dt.timestamp()*1000),  # integer ms
-                    c['price'], c['price'], c['size'])
+                    c['price'], c['price'], c['size'], direction)
 
                 last_datetime = dt
                 last_trade_id = c['trdMatchID']

@@ -112,8 +112,8 @@ class BinanceFetcher(Fetcher):
 
         for trade in trades:
             count += 1
-            # timestamp, bid, ofr, volume
-            yield((trade['T'], trade['p'], trade['p'], trade['q']))
+            # timestamp, bid, ofr, volume, direction
+            yield((trade['T'], trade['p'], trade['p'], trade['q'], -1 if trade['m'] else 1))
 
         logger.info("Fetcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))
 

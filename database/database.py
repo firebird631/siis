@@ -256,6 +256,7 @@ class Database(object):
             str bid (>= 0)
             str ask (>= 0)
             str volume (>= 0)
+            integer bid/ask (-1 for bid, 1 for ask, or 0 if no info)
         """
         with self._mutex:
             # store market per keyed array

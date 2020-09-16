@@ -561,7 +561,7 @@ class BinanceFuturesWatcher(Watcher):
             trade_time = data['T'] * 0.001
 
             # trade_id = data['t']
-            # buyer_maker = data['m']
+            buyer_maker = -1 if data['m'] else 1
 
             price = float(data['p'])
             vol = float(data['q'])
@@ -574,7 +574,7 @@ class BinanceFuturesWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
             if self._store_trade:
-                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q']))
+                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q'], buyer_maker))
 
             for tf in Watcher.STORED_TIMEFRAMES:
                 # generate candle per timeframe
@@ -639,6 +639,8 @@ class BinanceFuturesWatcher(Watcher):
             # @ref https://binance-docs.github.io/apidocs/futures/en/#event-balance-and-position-update
             # exec_logger.info("binancefutures.com ACCOUNT_UPDATE %s" % str(data))
             event_timestamp = float(data['E']) * 0.001
+
+            # @todo New field "m" for event reason type in event "ACCOUNT_UPDATE"
 
             total_wallet_balance = None
             total_unrealized_profit = None
@@ -728,6 +730,9 @@ class BinanceFuturesWatcher(Watcher):
         elif event_type == "ORDER_TRADE_UPDATE":
             # order trade created, updated
             # @ref https://binance-docs.github.io/apidocs/futures/en/#event-order-update
+
+            # @todo New field "rp" for the realized profit of the trade in event "ORDER_TRADE_UPDATE"
+
             exec_logger.info("binancefutures.com ORDER_TRADE_UPDATE %s" % str(data))
             event_timestamp = float(data['E']) * 0.001
             transaction_timestamp = float(data['T']) * 0.001  # transaction time
