@@ -321,11 +321,11 @@ $(window).ready(function() {
             'label': 'Market',
             'type': 'market'
         },
-        'best1': {
+        'best+1': {
             'label': 'Best +1',
             'type': 'best+1'
         },
-        // 'best2': {
+        // 'best+2': {
         //     'label': 'Best +2',
         //     'type': 'best+2'
         // },
