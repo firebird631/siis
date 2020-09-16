@@ -265,8 +265,61 @@ function on_close_trade(elt) {
     }
 };
 
-function on_reverse_trade(elt) {
-    notify({'message': "todo!", 'type': "error"});
+function on_breakeven_trade(elt) {
+    let key = retrieve_trade_key(elt);
+
+    let trade = window.actives_trades[key];
+
+    let parts = key.split(':');
+    if (parts.length != 2) {
+        return false;
+    }
+
+    let symbol = parts[0];
+    let trade_id = parseInt(parts[1]);
+
+    let endpoint = "strategy/trade";
+    let url = base_url() + '/' + endpoint;
+
+    let market = window.markets[symbol];
+    let stop_loss_price = parseFloat(trade['avg-entry-price'] || trade['order-price']);
+
+    if (symbol && market && trade_id) {
+        let data = {
+            'market-id': market['market-id'],
+            'trade-id': trade_id,
+            'command': "trade-modify",
+            'action': "stop-loss",
+            'stop-loss': stop_loss_price,
+            'force': true
+        };
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            headers: {
+                'Authorization': "Bearer " + server['auth-token'],
+                'TWISTED_SESSION': server.session,
+            },
+            data: JSON.stringify(data),
+            dataType: 'json',
+            contentType: 'application/json'
+        })
+        .done(function(data) {
+            if (data.error) {
+                for (let msg in data.messages) {
+                    notify({'message': data.messages[msg], 'title': 'Breakeven Stop-Loss', 'type': 'error'});
+                }
+            } else {
+                notify({'message': "Success", 'title': 'Breakeven Stop-Loss', 'type': 'success'});
+            }
+        })
+        .fail(function(data) {
+            for (let msg in data.messages) {
+                notify({'message': msg, 'title': 'Breakeven Stop-Loss', 'type': 'error'});
+            }
+        });
+    }
 }
 
 let on_active_trade_entry_message = function(market_id, trade_id, timestamp, value) {
@@ -414,7 +467,7 @@ function add_active_trade(market_id, trade) {
     trade_take_profit.attr('title', (take_profit_price_rate * 100).toFixed(2) + '%');
 
     let trade_close = $('<button class="trade-close btn btn-danger fa fa-close"></button>');
-    let trade_reverse = $('<button class="trade-reverse btn btn-light fa fa-random"></button>');
+    let trade_be = $('<button class="trade-be btn btn-light fa fa-random"></button>');
     let trade_details = $('<button class="trade-details btn btn-info fa fa-info"></button>');
 
     trade_elt.append($('<td></td>').append(trade_id));
@@ -446,7 +499,7 @@ function add_active_trade(market_id, trade) {
     // actions
     trade_close.on('click', on_close_trade);
     trade_details.on('click', on_details_active_trade);
-    trade_reverse.on('click', on_reverse_trade);
+    trade_be.on('click', on_breakeven_trade);
     trade_stop_loss_chg.on('click', on_modify_active_trade_stop_loss);
     trade_take_profit_chg.on('click', on_modify_active_trade_take_profit);
 

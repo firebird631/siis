@@ -1527,11 +1527,11 @@ class Strategy(Runnable):
             results['messages'].append("Missing or empty quantity.")
             results['error'] = True
 
-        if method not in ('market', 'limit', 'trigger'):
-            results['messages'].append("Invalid price method (market, limit, trigger).")
+        if method not in ('market', 'limit', 'trigger', 'best-1', 'best+1'):
+            results['messages'].append("Invalid price method (market, limit, trigger, best-1, best+1).")
             results['error'] = True
 
-        if method != 'market' and not limit_price:
+        if method == 'limit' and not limit_price:
             results['messages'].append("Price is missing.")
             results['error'] = True
 
