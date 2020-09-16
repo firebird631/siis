@@ -467,7 +467,7 @@ function add_active_trade(market_id, trade) {
     trade_take_profit.attr('title', (take_profit_price_rate * 100).toFixed(2) + '%');
 
     let trade_close = $('<button class="trade-close btn btn-danger fa fa-close"></button>');
-    let trade_be = $('<button class="trade-be btn btn-light fa fa-random"></button>');
+    let trade_breakeven = $('<button class="trade-be btn btn-light fa fa-random"></button>');
     let trade_details = $('<button class="trade-details btn btn-info fa fa-info"></button>');
 
     trade_elt.append($('<td></td>').append(trade_id));
@@ -490,7 +490,7 @@ function add_active_trade(market_id, trade) {
     trade_elt.append($('<td></td>').append(trade_take_profit).append(trade_take_profit_chg));
     
     trade_elt.append($('<td></td>').append(trade_close));  
-    trade_elt.append($('<td></td>').append(trade_reverse));
+    trade_elt.append($('<td></td>').append(trade_breakeven));
     trade_elt.append($('<td></td>').append(trade_details));
 
     // append
@@ -499,7 +499,7 @@ function add_active_trade(market_id, trade) {
     // actions
     trade_close.on('click', on_close_trade);
     trade_details.on('click', on_details_active_trade);
-    trade_be.on('click', on_breakeven_trade);
+    trade_breakeven.on('click', on_breakeven_trade);
     trade_stop_loss_chg.on('click', on_modify_active_trade_stop_loss);
     trade_take_profit_chg.on('click', on_modify_active_trade_take_profit);
 
