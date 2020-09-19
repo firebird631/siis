@@ -291,7 +291,7 @@ function on_breakeven_trade(elt) {
             'command': "trade-modify",
             'action': "stop-loss",
             'stop-loss': stop_loss_price,
-            'force': true
+            'force': false
         };
 
         $.ajax({
