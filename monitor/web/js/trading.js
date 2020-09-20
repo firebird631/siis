@@ -284,6 +284,14 @@ function on_breakeven_trade(elt) {
     let market = window.markets[symbol];
     let stop_loss_price = parseFloat(trade['avg-entry-price'] || trade['order-price']);
 
+    let pnl_pct = trade['profit-loss-pct'];
+
+    if (pnl_pct <= 0.0) {
+        let msg = "It is not allowed to breakeven a non profit trade. On market " + symbol + ".";
+        notify({'message': msg, 'title': 'Breakeven Stop-Loss', 'type': 'info'});
+        return false;
+    }
+
     if (symbol && market && trade_id) {
         let data = {
             'market-id': market['market-id'],

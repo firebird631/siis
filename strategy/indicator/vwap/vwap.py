@@ -14,14 +14,12 @@ from talib import MULT as ta_MULT, STDDEV as ta_STDDEV
 
 class VWAPIndicator(Indicator):
     """
-    Volume Weighted Average indicator.
+    Volume Weighted Average indicator based on timeframe.
     It's a special indicator because it need to use an intraday timeframe.
-
-    @todo test and validation, but how to optimize the array
     """
 
     __slots__ = '_days', '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \
-        '_last_top', '_last_bottom', '_stddev_len', '_session_offset'
+        '_last_top', '_last_bottom', '_session_offset'
 
     @classmethod
     def indicator_type(cls):
@@ -43,7 +41,6 @@ class VWAPIndicator(Indicator):
         self._last_top = 0.0
         self._last_bottom = 0.0
 
-        self._stddev_len = 5
         self._session_offset = session_offset
 
         self._size = days * (Instrument.TF_1D // timeframe)
@@ -113,7 +110,7 @@ class VWAPIndicator(Indicator):
             # for any new candles
             if timestamps[b] > self._last_timestamp:
                 if timestamps[b] >= self._open_timestamp + Instrument.TF_1D:
-                    # next daily candle
+                    # new session (1 day based with offset)
                     self._pvs = 0.0
                     self._volumes = 0.0
                     self._volumes_dev = 0.0
@@ -152,3 +149,126 @@ class VWAPIndicator(Indicator):
         self._last_timestamp = timestamp
 
         return self._vwaps
+
+
+class TickBarVWAPIndicator(Indicator):
+    """
+    Volume Weighted Average indicator base on tick or trade.
+
+    The history depend of the length parameters. It is related the number of tickbar history needed.
+    """
+
+    __slots__ = '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \
+        '_last_top', '_last_bottom', '_session_offset'
+
+    @classmethod
+    def indicator_type(cls):
+        return Indicator.TYPE_MOMENTUM_VOLUME
+
+    @classmethod
+    def indicator_class(cls):
+        return Indicator.CLS_OSCILLATOR
+
+    def __init__(self, tickbar=50, stddev_len=5, session_offset=0.0):
+        super().__init__("tickbar-vwap", timeframe)
+
+        self._compute_at_close = False  # computed at each tick or trade
+
+        self._prev = 0.0
+        self._last = 0.0
+        self._last_top = 0.0
+        self._last_bottom = 0.0
+
+        self._session_offset = session_offset
+
+        self._size = tickbar
+        self._vwaps = [0.0] * self._size
+
+        self._tops = [0.0] * self._size
+        self._bottoms = [0.0] * self._size
+
+        self._open_timestamp = self._session_offset
+        self._pvs = 0.0
+        self._volumes = 0.0
+        self._volumes_dev = 0.0
+        self._dev2 = 0.0
+
+    @property
+    def prev(self):
+        return self._prev
+
+    @property
+    def last(self):
+        return self._last
+
+    @property
+    def last_top(self, scale=1.0):
+        return self._last_top * scale
+
+    @property
+    def last_bottom(self, scale=1.0):
+        return self._last_bottom * scale
+
+    @property
+    def vwaps(self):
+        return self._vwaps
+
+    @property
+    def bottoms(self):
+        """
+        StdDev-.
+        """
+        return self._bottoms
+    
+    @property
+    def tops(self):
+        """
+        StdDev+.
+        """
+        return self._tops
+
+    def compute(self, timestamp, price, volume):
+        self._prev = self._last
+
+        if timestamp >= self._open_timestamp + Instrument.TF_1D:
+            # new session (1 day based with offset)
+            self._pvs = 0.0
+            self._volumes = 0.0
+            self._volumes_dev = 0.0
+            self._dev2 = 0.0
+            self._open_timestamp = Instrument.basetime(Instrument.TF_1D, timestamp) + self._session_offset
+
+        # cumulatives
+        self._pvs += price * volume
+        self._volumes += volume              
+
+        vwap = self._pvs / self._volumes
+
+        self._vwaps[-1] = vwap
+
+        # std dev
+        self._volumes_dev += price * price * volume
+
+        self._dev2 = max(self._volumes_dev / self._volumes - vwap * vwap, self._dev2)
+        dev = math.sqrt(self._dev2)
+
+        self._tops[-1] = vwap + dev
+        self._bottoms[-1] = vwap - dev
+
+        self._last = self._vwaps[-1]
+        self._last_top = self._tops[-1]
+        self._last_bottom = self._bottoms[-1]
+        self._last_timestamp = timestamp
+
+        return self._vwaps
+
+    def push(self):
+        self._vwaps.append(self._vwaps[-1])
+        self._tops.append(self._tops[-1])
+        self._bottoms.append(self._bottoms[-1])
+
+        # constant fixed size
+        if len(self._vwaps) > self._size:
+            self._vwaps.pop(0)
+            self._tops.pop(0)
+            self._bottoms.pop(0)

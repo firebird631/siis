@@ -451,6 +451,7 @@ class Instrument(object):
         self._ticks = []      # list of tuple(timestamp, bid, ofr, volume)
         self._candles = {}    # list per timeframe
         self._buy_sells = {}  # list per timeframe
+        self._tickbars = []   # list of TickBar
 
         self._one_pip_means = 1.0
         self._value_per_pip = 1.0
@@ -732,48 +733,87 @@ class Instrument(object):
         self._one_pip_means = one_pip_means
 
     #
-    # ticks and candles
+    # ticks or candles
     #
 
-    def tick(self, ofs):
-        if abs(ofs) <= len(self._ticks):
-            return self._ticks[ofs]
+    def last_prices(self, tf, price_type, number):
+        prices = [0] * number
 
-        return None
-
-    # def candle(self, tf, ofs):
-    #     candles = self._candles.get(tf)
-    #     if candles:
-    #         if abs(ofs) <= len(candles):
-    #             return candles[ofs]
-
-    #     return None
-
-    def add_tick(self, tick):
-        if not tick:
-            return
-
-        if isinstance(tick, list):
+        if tf == 0:
+            # get from ticks
             ticks = self._ticks
-
-            if len(ticks) > 0:
-                for t in tick:
-                    # for each tick only add it if more recent
-                    if t[0] > ticks[-1][0]:
-                        ticks.append(t)
-            else:
-                # initiate array
-                self._ticks = tick
+            if ticks:
+                j = number - 1
+                for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
+                    prices[j] = (ticks[i][1] + ticks[i][2]) * 0.5
+                    j -= 1
         else:
-            if len(self._ticks) > 0:
-                # ignore the tick if older than the last one
-                if tick[0] > self._ticks[-1][0]:
-                    self._ticks.append(tick)
-            else:
-                self._ticks.append(tick)
+            candles = self._candles.get(tf)
+            if candles:
+                j = number - 1
+                for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
+                    prices[j] = (candles[i].bid[price_type] + candles[i].ofr[price_type]) * 0.5
+                    j -= 1
 
-    def clear_ticks(self):
-        self._ticks.clear()
+        return prices
+
+    def last_volumes(self, tf, number):
+        volumes = [0] * number
+
+        if tf == 0:
+            # get from ticks
+            ticks = self._ticks
+            if ticks:
+                j = number - 1
+                for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
+                    volumes[j] = ticks[i][3]
+                    j -= 1
+        else:
+            candles = self._candles.get(tf)
+            if candles:
+                j = number - 1
+                for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
+                    volumes[j] = candles[i].volume
+                    j -= 1
+
+        return volumes
+
+    def check_temporal_coherency(self, tf):
+        """
+        Check temporal coherency of the candles and return the list of incoherencies.
+        """
+        issues = []
+
+        for tf, candles in self._candles.items():
+            candles = self._candles.get(tf)
+            number = len(candles)
+            if candles:
+                for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
+                    if candles[i].timestamp - candles[i-1].timestamp != tf:
+                        logger.error("Timestamp inconsistency from %s and %s candles at %s delta=(%s)" % (i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
+                        issues.append(('ohlc', tf, i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
+
+        for tf, buy_sells in self._buy_sells.items():
+            if buy_sells:
+                number = len(buy_sells)
+                for i in range(len(buy_sells)-1, max(-1, len(buy_sells)-number-1), -1):
+                    if buy_sells[i].timestamp - buy_sells[i-1].timestamp != tf:
+                        logger.error("Timestamp inconsistency from %s and %s buy/sell signals at %s delta=(%s)" % (i, i-1, buy_sells[i-1].timestamp, buy_sells[i].timestamp - buy_sells[i-1].timestamp))
+                        issues.append(('buysell', tf, i, i-1, candles[i-1].timestamp, buy_sells[i].timestamp - buy_sells[i-1].timestamp))
+
+        ticks = self._ticks
+        if ticks:
+            number = len(ticks)
+            for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
+                if ticks[i][0] - ticks[i-1][0] != tf:                    
+                    logger.error("Timestamp inconsistency from %s and %s ticks at %s delta=(%s)" % (i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
+                    issues.append(('tick', 0, i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
+        
+        return issues
+
+    #
+    # candles OHLC
+    #
 
     def add_candle(self, candle, max_candles=-1):
         """
@@ -844,58 +884,6 @@ class Instrument(object):
                 while(len(candles)) > max_candles:
                     candles.pop(0)
 
-    def reduce_candles(self, timeframe, max_candles):
-        """
-        Reduce the number of candle to max_candles.
-        """
-        if not max_candles or not timeframe:
-            return
-
-        if self._candles.get(timeframe):
-            candles = self._candles[timeframe][-max_candles:]
-
-    def last_prices(self, tf, price_type, number):
-        prices = [0] * number
-
-        if tf == 0:
-            # get from ticks
-            ticks = self._ticks
-            if ticks:
-                j = number - 1
-                for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
-                    prices[j] = (ticks[i][1] + ticks[i][2]) * 0.5
-                    j -= 1
-        else:
-            candles = self._candles.get(tf)
-            if candles:
-                j = number - 1
-                for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
-                    prices[j] = (candles[i].bid[price_type] + candles[i].ofr[price_type]) * 0.5
-                    j -= 1
-
-        return prices
-
-    def last_volumes(self, tf, number):
-        volumes = [0] * number
-
-        if tf == 0:
-            # get from ticks
-            ticks = self._ticks
-            if ticks:
-                j = number - 1
-                for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
-                    volumes[j] = ticks[i][3]
-                    j -= 1
-        else:
-            candles = self._candles.get(tf)
-            if candles:
-                j = number - 1
-                for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
-                    volumes[j] = candles[i].volume
-                    j -= 1
-
-        return volumes
-
     def last_candles(self, tf, number):
         """
         Return as possible last n candles with a fixed step of time unit.
@@ -921,12 +909,30 @@ class Instrument(object):
 
         return None
 
+    # def candle(self, tf, ofs):
+    #     candles = self._candles.get(tf)
+    #     if candles:
+    #         if abs(ofs) <= len(candles):
+    #             return candles[ofs]
+
+    #     return None
+
     def candles(self, tf):
         """
         Returns candles list for a specific timeframe.
         @param tf Timeframe
         """
         return self._candles.get(tf)
+
+    def reduce_candles(self, timeframe, max_candles):
+        """
+        Reduce the number of candle to max_candles.
+        """
+        if not max_candles or not timeframe:
+            return
+
+        if self._candles.get(timeframe):
+            candles = self._candles[timeframe][-max_candles:]
 
     def last_ended_timestamp(self, tf):
         """
@@ -1015,7 +1021,43 @@ class Instrument(object):
                 else:
                     break
 
-        return results      
+        return results
+
+    #
+    # ticks
+    #
+
+    def add_tick(self, tick):
+        if not tick:
+            return
+
+        if isinstance(tick, list):
+            ticks = self._ticks
+
+            if len(ticks) > 0:
+                for t in tick:
+                    # for each tick only add it if more recent
+                    if t[0] > ticks[-1][0]:
+                        ticks.append(t)
+            else:
+                # initiate array
+                self._ticks = tick
+        else:
+            if len(self._ticks) > 0:
+                # ignore the tick if older than the last one
+                if tick[0] > self._ticks[-1][0]:
+                    self._ticks.append(tick)
+            else:
+                self._ticks.append(tick)
+
+    def clear_ticks(self):
+        self._ticks.clear()
+
+    def tick(self, ofs):
+        if abs(ofs) <= len(self._ticks):
+            return self._ticks[ofs]
+
+        return None
 
     def ticks_after(self, after_ts):
         """
@@ -1046,38 +1088,83 @@ class Instrument(object):
 
         return results
 
-    def check_temporal_coherency(self, tf):
+    #
+    # tick-bar
+    #
+
+    def add_tickbar(self, tickbar, max_tickbars=-1):
         """
-        Check temporal coherency of the candles and return the list of incoherencies.
+        Append a new tickbar.
+        @param max_tickbars Pop tickbars until num tickbars > max_tickbars.
+
+        @todo might split in two method, and same for tick
         """
-        issues = []
+        if not tickbar:
+            return
 
-        for tf, candles in self._candles.items():
-            candles = self._candles.get(tf)
-            number = len(candles)
-            if candles:
-                for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
-                    if candles[i].timestamp - candles[i-1].timestamp != tf:
-                        logger.error("Timestamp inconsistency from %s and %s candles at %s delta=(%s)" % (i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
-                        issues.append(('ohlc', tf, i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
+        if isinstance(tickbar, list):
+            # array of tickbar
+            if len(self._tickbars) > 0:
+                for t in tickbar:
+                    # for each tickbar only add it if more recent or replace a non consolidated
+                    if t.timestamp > self._tickbars[-1].timestamp:
+                        if not self._tickbars[-1].ended:
+                            # remove the last tickbar if was not consolidated
+                            self._tickbars.pop(-1)
 
-        for tf, buy_sells in self._buy_sells.items():
-            if buy_sells:
-                number = len(buy_sells)
-                for i in range(len(buy_sells)-1, max(-1, len(buy_sells)-number-1), -1):
-                    if buy_sells[i].timestamp - buy_sells[i-1].timestamp != tf:
-                        logger.error("Timestamp inconsistency from %s and %s buy/sell signals at %s delta=(%s)" % (i, i-1, buy_sells[i-1].timestamp, buy_sells[i].timestamp - buy_sells[i-1].timestamp))
-                        issues.append(('buysell', tf, i, i-1, candles[i-1].timestamp, buy_sells[i].timestamp - buy_sells[i-1].timestamp))
+                        self._tickbars.append(t)
 
-        ticks = self._ticks
-        if ticks:
-            number = len(ticks)
-            for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
-                if ticks[i][0] - ticks[i-1][0] != tf:                    
-                    logger.error("Timestamp inconsistency from %s and %s ticks at %s delta=(%s)" % (i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
-                    issues.append(('tick', 0, i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
-        
-        return issues
+                    elif t.timestamp == self._tickbars[-1].timestamp and not self._tickbars[-1].ended:
+                        # replace the last tickbar if was not consolidated
+                        self._tickbars[-1] = c
+            else:
+                # initiate array
+                self._tickbars = tickbar
+
+            # keep safe size
+            if max_tickbars > 1:
+                while(len(self._tickbars)) > max_tickbars:
+                    self._tickbars.pop(0)
+        else:
+            # single tickbar
+            if len(self._tickbars) > 0:
+                # ignore the tickbar if older than the latest
+                if tickbar.timestamp > self._tickbars[-1].timestamp:
+                    if not self._tickbars[-1].ended:
+                        # replace the last tickbar if was not consolidated
+                        self._tickbars[-1] = tickbar
+                    else:
+                        self._tickbars.append(tickbar)
+
+                elif tickbar.timestamp == self._tickbars[-1].timestamp and not self._tickbars[-1].ended:
+                    # replace the last tickbar if was not consolidated
+                    self._tickbars[-1] = tickbar
+            else:
+                self._tickbars.append(tickbar)
+
+            # keep safe size
+            if max_tickbars > 1:
+                while(len(self._tickbars)) > max_tickbars:
+                    self._tickbars.pop(0)
+
+    def tickbar(self):
+        """
+        Return as possible the last tickbar.
+        """
+        if self._tickbars:
+            return self._tickbars[-1]
+
+        return None
+
+    def tickbars(self):
+        """
+        Returns tickbars list.
+        """
+        return self._tickbars
+
+    #
+    # general
+    #
 
     def spread(self):
         """
@@ -1330,10 +1417,6 @@ class Instrument(object):
             return True
 
         return False
-
-    #
-    # helpers
-    #
 
     def open_exec_price(self, direction):
         """
