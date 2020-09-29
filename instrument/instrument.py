@@ -407,7 +407,7 @@ class Instrument(object):
                 '_trade_quantity', '_trade_max_factor', '_trade_quantity_mode', '_leverage', \
                 '_market_bid', '_market_ofr', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
-                '_ticks', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry', \
+                '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry', \
                 '_value_per_pip', '_one_pip_means'
 
     def __init__(self, name, symbol, market_id, alias=None):
