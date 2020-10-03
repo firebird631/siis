@@ -1,5 +1,5 @@
 # @date 2019-06-25
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # terminal region commands and registration
 

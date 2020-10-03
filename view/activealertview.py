@@ -1,5 +1,5 @@
 # @date 2020-05-30
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2020 Dream Overflow
 # Active alerts view.
 

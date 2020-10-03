@@ -1,5 +1,5 @@
 # @date 2019-09-12
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
 # Base strategy take profit methods
 

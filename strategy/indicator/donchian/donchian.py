@@ -1,5 +1,5 @@
 # @date 2019-02-16
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2016 Dream Overflow
 # Donchian channel indicator using low and high prices.
 

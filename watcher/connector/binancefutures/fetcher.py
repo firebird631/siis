@@ -1,5 +1,5 @@
 # @date 2020-05-09
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2020 Dream Overflow
 # www.binance.com futures data fetcher
 

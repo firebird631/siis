@@ -1,5 +1,5 @@
 7# @date 2018-09-02
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @author Xavier BONNIN
 # @license Copyright (c) 2018 Dream Overflow
 # Simple Moving Average indicator

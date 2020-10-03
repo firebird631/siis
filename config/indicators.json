@@ -153,5 +153,15 @@
         "status": "load",
         "classpath": "strategy.indicator.stddevbands.stddevbands.StdDevBandsIndicator",
         "options": {}
+    },
+    "compositevolumeprofile": {
+        "status": "load",
+        "classpath": "strategy.indicator.compositevolumeprofile.compositevolumeprofile.CompositeVolumeProfileIndicator",
+        "options": {}
+    },
+    "multiplevolumeprofile": {
+        "status": "load",
+        "classpath": "strategy.indicator.multiplevolumeprofile.multiplevolumeprofile.MultipleVolumeProfileIndicator",
+        "options": {}
     }
 }

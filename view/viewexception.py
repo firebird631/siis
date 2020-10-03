@@ -1,5 +1,5 @@
 # @date 2018-09-08
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
 # View exceptions classes
 

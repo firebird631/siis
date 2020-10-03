@@ -1,5 +1,5 @@
 # @date 2020-09-19
-# @author Frederic SCHERMA
+# @author Frederic Scherma
 # @license Copyright (c) 2020 Dream Overflow
 # Tick-bar based strategy trader. 
 

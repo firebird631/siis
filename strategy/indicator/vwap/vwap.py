@@ -1,5 +1,5 @@
 7# @date 2020-06-30
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2020 Dream Overflow
 # Volume Weighted Average indicator
 
@@ -27,7 +27,7 @@ class VWAPIndicator(Indicator):
 
     @classmethod
     def indicator_class(cls):
-        return Indicator.CLS_OSCILLATOR
+        return Indicator.CLS_INDEX
 
     def __init__(self, timeframe, days=2, stddev_len=5, session_offset=0.0):
         super().__init__("vwap", timeframe)
@@ -155,7 +155,7 @@ class TickBarVWAPIndicator(Indicator):
     """
     Volume Weighted Average indicator base on tick or trade.
 
-    The history depend of the length parameters. It is related the number of tickbar history needed.
+    The history depend of the length parameters. It is related the number of tickbars history needed.
     """
 
     __slots__ = '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \
@@ -167,7 +167,7 @@ class TickBarVWAPIndicator(Indicator):
 
     @classmethod
     def indicator_class(cls):
-        return Indicator.CLS_OSCILLATOR
+        return Indicator.CLS_INDEX
 
     def __init__(self, tickbar=50, stddev_len=5, session_offset=0.0):
         super().__init__("tickbar-vwap", timeframe)

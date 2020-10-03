@@ -1,5 +1,5 @@
 # @date 2018-09-07
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Paper trader, asset spot ordering.
 

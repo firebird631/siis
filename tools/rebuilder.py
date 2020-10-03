@@ -1,5 +1,5 @@
 # @date 2019-09-18
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2017 Dream Overflow
 # Ohlc rebuilder from ticks/trades data tool
 

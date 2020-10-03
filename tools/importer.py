@@ -1,5 +1,5 @@
 # @date 2019-12-23
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # SIIS and MT4, MT5 Importer tool.
 

@@ -1,5 +1,5 @@
 # @date 2018-11-30
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Android Firebase push.
 

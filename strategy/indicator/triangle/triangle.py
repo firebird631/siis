@@ -1,5 +1,5 @@
 # @date 2018-09-15
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @author Xavier BONNIN
 # @license Copyright (c) 2018 Dream Overflow
 # Triangle indicator and trend detection indicator

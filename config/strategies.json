@@ -1,22 +1,22 @@
 {
     "cryptoalpha": {
         "status": "load",
-        "classpath": "strategy.cryptoalpha.castrategy.CryptoAlphaStrategy",
+        "classpath": "strategy.strategies.cryptoalpha.castrategy.CryptoAlphaStrategy",
         "options": {}
     },
     "forexalpha": {
         "status": "load",
-        "classpath": "strategy.forexalpha.fastrategy.ForexAlphaStrategy",
+        "classpath": "strategy.strategies.forexalpha.fastrategy.ForexAlphaStrategy",
         "options": {}
     },
     "bitcoinalpha": {
         "status": "load",
-        "classpath": "strategy.bitcoinalpha.bcastrategy.BitcoinAlphaStrategy",
+        "classpath": "strategy.strategies.bitcoinalpha.bcastrategy.BitcoinAlphaStrategy",
         "options": {}
     },
     "crystalball": {
         "status": "load",
-        "classpath": "strategy.crystalball.cbstrategy.CrystalBallStrategy",
+        "classpath": "strategy.strategies.crystalball.cbstrategy.CrystalBallStrategy",
         "options": {}
     }
 }

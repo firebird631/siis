@@ -1,5 +1,5 @@
 # @date 2019-02-13
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
 # Average True Range indicator
 

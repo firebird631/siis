@@ -1,5 +1,5 @@
 # @date 2019-10-02
-# @author Frederic SCHERMA
+# @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Service responsible of the differents configured and enabled notifiers.
 
