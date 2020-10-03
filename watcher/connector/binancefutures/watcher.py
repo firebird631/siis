@@ -9,6 +9,7 @@ import time
 import traceback
 import bisect
 import math
+import copy
 
 from datetime import datetime
 
@@ -376,7 +377,7 @@ class BinanceFuturesWatcher(Watcher):
             if hedging:
                 market.hedging = hedging['dualSidePosition']
 
-            # @todo special case if dual side position
+            # @todo special case if dual side position (hedging enabled)
             market.trade = Market.TRADE_MARGIN | Market.TRADE_IND_MARGIN
 
             # @todo orders capacities
@@ -631,104 +632,10 @@ class BinanceFuturesWatcher(Watcher):
         """
         event_type = data.get('e', '')
 
-        if event_type == "MARGIN_CALL":
-            pass
+        if event_type == "ORDER_TRADE_UPDATE":
+            # trade update are pushed before account (position) update in way to be processed before
 
-        elif event_type == "ACCOUNT_UPDATE":
-            # balance and position updated
-            # @ref https://binance-docs.github.io/apidocs/futures/en/#event-balance-and-position-update
-            # exec_logger.info("binancefutures.com ACCOUNT_UPDATE %s" % str(data))
-            event_timestamp = float(data['E']) * 0.001
-
-            # @todo New field "m" for event reason type in event "ACCOUNT_UPDATE"
-
-            total_wallet_balance = None
-            total_unrealized_profit = None
-            total_cross_margin_balance = None
-            total_isolated_margin_balance = None
-
-            if 'B' in data['a']:
-                total_wallet_balance = 0.0
-                total_cross_margin_balance = 0.0
-
-                balances = data['a']['B']
-                for b in balances:
-                    total_wallet_balance += float(b['wb'])
-                    total_cross_margin_balance += float(b['cw'])
-
-            if 'P' in data['a']:
-                total_unrealized_profit = 0.0
-                total_isolated_margin_balance = 0.0
-
-                positions = data['a']['P']
-                for pos in positions:
-                    symbol = pos['s']
-                    ref_order_id = ""
-
-                    direction = Order.LONG if float(pos['pa']) > 0.0 else Order.SHORT
-                    # pos['ps'] == 'BOTH' else pos['ps'] == 'LONG' or pos['ps'] == 'SHORT'  in case of hedging enabled
-
-                    total_unrealized_profit += float(pos['up'])
-
-                    if pos['mt'] == 'isolated':  # else 'cross'
-                        total_isolated_margin_balance += float(pos['iw'])
-
-                    operation_time = float(data['T'])
-                    quantity = abs(float(pos['pa']))
-
-                    position_data = {
-                        'id': symbol,
-                        'symbol': symbol,
-                        'direction': direction,
-                        'timestamp': operation_time,
-                        'quantity': quantity,
-                        'avg-entry-price': float(pos['ep']),
-                        'exec-price': None,
-                        'stop-loss': None,
-                        'take-profit': None,
-                        'cumulative-filled': quantity,
-                        'filled': None,  # no have
-                        'liquidation-price': None,  # no have
-                        'commission': 0.0,
-                        'profit-currency': self.BASE_QUOTE,
-                        'profit-loss': float(pos['up']),
-                        'profit-loss-rate': None,
-                    }
-
-                    # needed to know if opened or deleted position
-                    key = "%s:%s" % (direction, symbol)
-                    entry = self._last_positions.get(key)
-
-                    if entry is None or entry == 0.0:
-                        # not current quantity, but open order qty
-                        self._last_positions[key] = quantity
-                        self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (symbol, position_data, ref_order_id))
-
-                    elif quantity != 0.0:
-                        # current qty updated
-                        self._last_positions[key] = quantity
-                        self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, ref_order_id))
-
-                    elif quantity == 0.0:
-                        # empty quantity no open order qty, position deleted
-                        del self._last_positions[key]
-                        self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (symbol, position_data, ref_order_id))
-
-            with self._mutex:
-                if total_wallet_balance is not None:
-                    self._total_balance['totalWalletBalance'] = total_wallet_balance
-
-                if total_unrealized_profit is not None:
-                    self._total_balance['totalUnrealizedProfit'] = total_unrealized_profit
-
-                if total_cross_margin_balance is not None:
-                    self._total_balance['totalCrossMarginBalance'] = total_cross_margin_balance
-
-                if total_isolated_margin_balance is not None:
-                    self._total_balance['totalIsolatedMarginBalance'] = total_isolated_margin_balance
-
-        elif event_type == "ORDER_TRADE_UPDATE":
-            # order trade created, updated
+            # order trade : created, updated, rejected, canceled, deleted
             # @ref https://binance-docs.github.io/apidocs/futures/en/#event-order-update
 
             # @todo New field "rp" for the realized profit of the trade in event "ORDER_TRADE_UPDATE"
@@ -821,6 +728,8 @@ class BinanceFuturesWatcher(Watcher):
                     'time-in-force': time_in_force,
                     'commission-amount': fees,
                     'commission-asset': order['N'],
+                    'profit-loss': float(order['rp']),
+                    'profit-currency': self.BASE_QUOTE,
                     'maker': order['m'],   # trade execution over or counter the market : true if maker, false if taker
                     'fully-filled': order['X'] == 'FILLED'  # fully filled status else its partially
                 }
@@ -922,6 +831,106 @@ class BinanceFuturesWatcher(Watcher):
             elif order['x'] == 'RESTATED':
                 pass  # nothing to do (currently unused)
 
+        elif event_type == "ACCOUNT_UPDATE":
+            # process the account update after the trades update events
+
+            # balance and position updated
+            # @ref https://binance-docs.github.io/apidocs/futures/en/#event-balance-and-position-update
+            # exec_logger.info("binancefutures.com ACCOUNT_UPDATE %s" % str(data))
+            # field "m" for event reason type in event "ACCOUNT_UPDATE"
+            event_timestamp = float(data['E']) * 0.001           
+
+            total_wallet_balance = None
+            total_unrealized_profit = None
+            total_cross_margin_balance = None
+            total_isolated_margin_balance = None
+
+            if 'B' in data['a']:
+                total_wallet_balance = 0.0
+                total_cross_margin_balance = 0.0
+
+                balances = data['a']['B']
+                for b in balances:
+                    total_wallet_balance += float(b['wb'])
+                    total_cross_margin_balance += float(b['cw'])
+
+            if 'P' in data['a']:
+                total_unrealized_profit = 0.0
+                total_isolated_margin_balance = 0.0
+
+                operation_time = float(data['T'])
+
+                positions = data['a']['P']
+                for pos in positions:
+                    symbol = pos['s']
+                    ref_order_id = ""
+
+                    direction = Order.LONG if float(pos['pa']) > 0.0 else Order.SHORT
+
+                    total_unrealized_profit += float(pos['up'])
+
+                    # total sum of isolated margin for each symbols
+                    if pos['mt'] == 'isolated':  # else 'cross'
+                        total_isolated_margin_balance += float(pos['iw'])
+                    
+                    quantity = abs(float(pos['pa']))
+
+                    position_data = {
+                        'id': symbol,
+                        'symbol': symbol,
+                        'direction': direction,
+                        'hedging': 0 if pos['ps'] == 'BOTH' else 1 if pos['ps'] == 'LONG' else -1,
+                        'timestamp': operation_time,
+                        'quantity': quantity,
+                        'avg-entry-price': float(pos['ep']),
+                        'exec-price': None,
+                        'stop-loss': None,
+                        'take-profit': None,
+                        'cumulative-filled': quantity,
+                        'filled': None,  # no have
+                        'liquidation-price': None,  # no have
+                        'commission': 0.0,
+                        'profit-currency': self.BASE_QUOTE,
+                        'profit-loss': float(pos['up']),
+                        'profit-loss-rate': None,
+                    }
+
+                    # needed to know if opened or deleted position, only on ORDER event reason type
+                    if data['a']['m'] == 'ORDER':
+                        key = "%s:%s" % (direction, symbol)
+                        last_quantity = self._last_positions.get(key)
+
+                        if not last_quantity and quantity > 0.0:
+                            # not last quantity, but now have so position opened
+                            self._last_positions[key] = quantity
+                            self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (symbol, position_data, ref_order_id))
+
+                        elif last_quantity and quantity > 0.0:
+                            # current qty updated
+                            self._last_positions[key] = quantity
+                            self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, ref_order_id))
+
+                        elif last_quantity and quantity == 0.0:
+                            # empty quantity no remaining open order qty, position deleted
+                            del self._last_positions[key]
+                            self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (symbol, position_data, ref_order_id))
+
+            with self._mutex:
+                if total_wallet_balance is not None:
+                    self._total_balance['totalWalletBalance'] = total_wallet_balance
+
+                if total_unrealized_profit is not None:
+                    self._total_balance['totalUnrealizedProfit'] = total_unrealized_profit
+
+                if total_cross_margin_balance is not None:
+                    self._total_balance['totalCrossMarginBalance'] = total_cross_margin_balance
+
+                if total_isolated_margin_balance is not None:
+                    self._total_balance['totalIsolatedMarginBalance'] = total_isolated_margin_balance
+
+        elif event_type == "MARGIN_CALL":
+            pass
+
     #
     # miscs
     #
@@ -1000,5 +1009,18 @@ class BinanceFuturesWatcher(Watcher):
             # (timestamp, open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
             yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[1], candle[2], candle[3], candle[4], candle[5]))
 
-    def get_balance(self):
-        return self._total_balance
+    def get_balances(self):
+        """
+        Return a dict with :
+            'totalWalletBalance': float,
+            'totalUnrealizedProfit': float,
+            'totalCrossMarginBalance': float,
+            'totalIsolatedMarginBalance': float,
+        """
+        balances = None
+
+        with self._mutex:
+            balances = copy.copy(self._total_balance)
+
+        return balances
+

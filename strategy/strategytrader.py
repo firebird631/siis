@@ -530,7 +530,7 @@ class StrategyTrader(object):
 
                         if profit_loss <= 0.0:
                             self._stats['cont-loss'] += 1
-                            self._stats['cont-win'] = 1
+                            self._stats['cont-win'] = 0
 
                         elif profit_loss > 0.0:
                             self._stats['cont-loss'] = 0

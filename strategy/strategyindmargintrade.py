@@ -18,12 +18,12 @@ class StrategyIndMarginTrade(StrategyTrade):
     Specialization for indivisible margin position trade.
 
     In this case we only have a single position per market without integrated stop/limit.
-    Works with crypto futures brokers (bitmex...).
+    Works with crypto futures brokers (bitmex, binancefutures...).
 
     We cannot deal in opposite direction at the same time (no hedging),
     but we can evantually manage many trade on the same direction.
 
-    We prefers here to update on trade order signal. A position deleted mean any related trade closed.
+    We prefers here to update on trade order signal. A position deleted mean any related trades closed.
 
     @todo fill the exit_trades and update the x and axp each time and compute the axg and x correctly,
         specially with bitmex which only returns a cumulative filled
@@ -600,7 +600,10 @@ class StrategyIndMarginTrade(StrategyTrade):
         if signal_type == Signal.SIGNAL_POSITION_UPDATED:
             # profit/loss update
             if data.get('profit-loss'):
-                self._stats['unrealized-profit-loss'] = data['profit-loss']
+                # trade current quantity is part or total of the indivisible position
+                ratio = (self.e - self.x) / data['quantity']
+                self._stats['unrealized-profit-loss'] = data['profit-loss'] * ratio
+
             if data.get('profit-currency'):
                 self._stats['profit-loss-currency'] = data['profit-currency']
 

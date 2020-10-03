@@ -71,15 +71,15 @@ class BinanceFuturesAccount(Account):
                     self._name = balance[0]["accountAlias"]
             else:
                 # next throught WS updates
-                balance = self.parent()._watcher.balance()
+                balances = self.parent()._watcher.get_balances()
 
-                self._balance = balance['totalWalletBalance']
+                self._balance = balances['totalWalletBalance']
 
                 # net worth : balance + unrealized profit/loss
-                self._net_worth = self._balance['totalWalletBalance'] + self._balance['totalUnrealizedProfit']
-                self._margin_balance = self._balance['totalCrossMarginBalance'] + self._balance['totalIsolatedMarginBalance']   # free margin
+                self._net_worth = balances['totalWalletBalance'] + balances['totalUnrealizedProfit']
+                self._margin_balance = balances['totalCrossMarginBalance'] + balances['totalIsolatedMarginBalance']   # free margin
 
-                self._risk_limit = self._balance['totalCrossMarginBalance'] + self._balance['totalIsolatedMarginBalance']
+                self._risk_limit = balances['totalCrossMarginBalance'] + balances['totalIsolatedMarginBalance']
 
             # margin level
             used_margin = self._balance - self._margin_balance

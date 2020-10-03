@@ -353,6 +353,8 @@ class StrategyTradeRestAPI(resource.Resource):
                 results = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
             elif command == "trade-modify":
                 results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, content)
+            elif command == "trade-clean":
+                results = self._strategy_service.command(Strategy.COMMAND_TRADE_CLEAN, content)
             else:
                 results['messages'].append("Missing command.")
                 results['error'] = True

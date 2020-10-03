@@ -2814,10 +2814,18 @@ class Client(object):
     def futures_position_side_dual(self, **params):
         """Get position side dual state
 
-        https://binance-docs.github.io/apidocs/futures/en/#get-future-account-transaction-history-list-user_data
+        https://binance-docs.github.io/apidocs/futures/en/#get-current-position-mode-user_data
 
         """
         return self._request_futures_api('get', 'positionSide/dual', True, data=params)
+
+    def futures_change_position_side_dual(self, **params):
+        """Get position side dual state
+
+        https://binance-docs.github.io/apidocs/futures/en/#change-position-mode-trade
+
+        """
+        return self._request_futures_api('post', 'positionSide/dual', True, data=params)
 
     def futures_change_margin_type(self, **params):
         """Change the margin type for a symbol
