@@ -159,7 +159,7 @@ class Database(object):
         config = utils.load_config(options, 'databases')
 
         self._autocleanup = config.get('auto-cleanup', False)
-        self._store_trade_text = config.get('trade-text', True)
+        self._store_trade_text = config.get('trade-text', False)
         self._store_trade_binary = config.get('trade-binary', True)
 
         self.connect(config)
