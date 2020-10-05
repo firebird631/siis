@@ -168,11 +168,11 @@ def do_fetcher(options):
     do_update = False
 
     if options.get('update'):
-        if options.get('from'):
-            error_logger.error("Either --from or --update parameters must be defined")
-            terminate(-1)
-        else:
-            do_update = True
+        # if options.get('from'):
+        #     error_logger.error("Either --from or --update parameters must be defined")
+        #     terminate(-1)
+        # else:
+        do_update = True
 
     try:
         fetcher.connect()
@@ -203,8 +203,9 @@ def do_fetcher(options):
 
                                 if next_date:
                                     options['from'] = next_date
-                                else:
-                                    # or fetch the complete current month
+
+                                elif not options.get('from'):
+                                    # or fetch the complete current month else use the from date
                                     options['from'] = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
                             else:
                                 # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
@@ -220,7 +221,9 @@ def do_fetcher(options):
 
                                     last_date = datetime.fromtimestamp(last_timestamp, tz=UTC())
                                     options['from'] = last_date
-                                else:
+
+                                elif not options.get('from'):
+                                    # or fetch the complete current month else use the from date
                                     options['from'] = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
 
                         fetcher.fetch_and_generate(market_id, timeframe,
