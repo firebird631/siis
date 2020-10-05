@@ -179,6 +179,8 @@ def do_fetcher(options):
     except:
         terminate(-1)
 
+    today = datetime.now().astimezone(UTC())
+
     if fetcher.connected:
         logger.info("Fetcher authentified to %s, trying to collect data..." % fetcher.name)
 
@@ -199,7 +201,11 @@ def do_fetcher(options):
                                 last_tick = Database.inst().get_last_tick(options['broker'], market_id)
                                 next_date = datetime.fromtimestamp(last_tick[0] + 0.001, tz=UTC()) if last_tick else None
 
-                                options['from'] = next_date
+                                if next_date:
+                                    options['from'] = next_date
+                                else:
+                                    # or fetch the complete current month
+                                    options['from'] = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
                             else:
                                 # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
                                 last_ohlc = Database.inst().get_last_ohlc(options['broker'], market_id, timeframe)
@@ -215,7 +221,7 @@ def do_fetcher(options):
                                     last_date = datetime.fromtimestamp(last_timestamp, tz=UTC())
                                     options['from'] = last_date
                                 else:
-                                    options['from'] = None
+                                    options['from'] = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
 
                         fetcher.fetch_and_generate(market_id, timeframe,
                             options.get('from'), options.get('to'), options.get('last'),

@@ -8,7 +8,7 @@
         "port": 5432,
         "conn_max_age": 86400,
         "auto-cleanup": false,
-        "trade-text": true,
+        "trade-text": false,
         "trade-binary": true
     }
 }
