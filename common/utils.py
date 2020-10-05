@@ -24,8 +24,6 @@ class UTC(tzinfo):
 
 # timeframe to str map (double: str)
 TIMEFRAME_TO_STR_MAP = {
-    # -2: 'q',
-    # -1: 'tr',
     0: 't',
     1: '1s',
     3: '3s',
@@ -53,8 +51,7 @@ TIMEFRAME_TO_STR_MAP = {
     2*24*60*60: '2d',
     3*24*60*60: '3d',
     7*24*60*60: '1w',
-    30*24*60*60: '1M',
-    365*24*60*60: '1Y'
+    30*24*60*60: '1M'
 }
 
 # timeframe reverse map (str: double)
@@ -67,6 +64,10 @@ def timeframe_to_str(timeframe):
 
 def timeframe_from_str(timeframe):
     return TIMEFRAME_FROM_STR_MAP.get(timeframe, 0.0)
+
+
+def is_solid_timeframe(timeframe):
+    return timeframe in TIMEFRAME_TO_STR_MAP
 
 
 def direction_to_str(direction):

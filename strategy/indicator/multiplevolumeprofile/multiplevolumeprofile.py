@@ -8,8 +8,9 @@ import math
 from strategy.indicator.indicator import Indicator
 from instrument.instrument import Instrument
 
+from common.utils import truncate
+
 import numpy as np
-from talib import MULT as ta_MULT, STDDEV as ta_STDDEV
 
 
 class MultipleVolumeProfileIndicator(Indicator):
@@ -95,6 +96,19 @@ class MultipleVolumeProfileIndicator(Indicator):
         """
         return self._tops
 
+    def adjust_price(self, price):
+        """
+        Format the price according to the precision.
+        """
+        if price is None:
+            price = 0.0
+
+        precision = self._price_limits[3] or 8
+        tick_size = self._price_limits[2] or 0.00000001
+
+        # adjusted price at precision and by step of pip meaning
+        return truncate(round(price / tick_size) * tick_size, precision)
+
     def compute(self, timestamp, timestamps, highs, lows, closes, volumes):
         self._prev = self._last
 
@@ -149,9 +163,9 @@ class MultipleVolumeProfileIndicator(Indicator):
         return self._vwaps
 
 
-class TickBarMultipleVolumeProfileIndicator(Indicator):
+class TickMultipleVolumeProfileIndicator(Indicator):
     """
-    Multiple Volume Profile indicator base on tick or trade.
+    Multiple Volume Profile indicator based on tick or trade.
     """
 
     __slots__ = '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \

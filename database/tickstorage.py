@@ -167,7 +167,7 @@ class TickStreamer(object):
     Streamer that read data from an initial position.
     """
 
-    TICK_SIZE = 4*8+8  # 40bits
+    TICK_SIZE = 4*8+1  # 33bytes
 
     def __init__(self, markets_path, broker_id, market_id, from_date, to_date=None, buffer_size=1000, binary=True):
         """
@@ -477,7 +477,7 @@ class LastTickFinder(object):
     Last tick find helper.
     """
 
-    TICK_SIZE = 4*8+8  # 40bits
+    TICK_SIZE = 4*8+1  # 33bytes
 
     def __init__(self, markets_path, broker_id, market_id, buffer_size=1000, binary=True):
         self._markets_path = markets_path

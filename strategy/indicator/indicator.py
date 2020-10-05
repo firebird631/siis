@@ -46,6 +46,13 @@ class Indicator(object):
         self._last_timestamp = 0  # last compute timestamp
         self._compute_at_close = False
 
+    def setup(self, instrument):
+        """
+        After the instantiation this method is called with the related instrument objet.
+        To be overloaded.
+        """
+        pass
+
     @property
     def name(self):
         return self._name

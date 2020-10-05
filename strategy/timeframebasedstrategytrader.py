@@ -18,7 +18,7 @@ from monitor.streamable import Streamable, StreamMemberInt, \
                                StreamMemberFloatSerie, StreamMemberTradeSignal, StreamMemberStrategyAlert
 
 import logging
-logger = logging.getLogger('siis.strategy.trader')
+logger = logging.getLogger('siis.strategy.timeframebasedstrategytrader')
 
 
 class TimeframeBasedStrategyTrader(StrategyTrader):

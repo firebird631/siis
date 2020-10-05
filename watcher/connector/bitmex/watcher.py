@@ -175,20 +175,31 @@ class BitMexWatcher(Watcher):
     # instruments
     #
 
-    def subscribe(self, market_id, timeframe, ohlc_depths=None, order_book_depth=None):
+    def subscribe(self, market_id, ohlc_depths=None, tick_depth=None, order_book_depth=None):
         with self._mutex:
             if market_id in self._watched_instruments:
                 # subscribed instrument
                 self.insert_watched_instrument(market_id, [0])
 
-                # fetch from 1M to 1W
+                # fetch from source
                 if self._initial_fetch:
                     logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                    self.fetch_and_generate(market_id, Instrument.TF_1M, timeframes.get(Instrument.TF_1M, self.DEFAULT_PREFETCH_SIZE) * 3, Instrument.TF_3M)
-                    self.fetch_and_generate(market_id, Instrument.TF_5M, timeframes.get(Instrument.TF_5M, self.DEFAULT_PREFETCH_SIZE) * 6, Instrument.TF_30M)
-                    self.fetch_and_generate(market_id, Instrument.TF_1H, timeframes.get(Instrument.TF_1H, self.DEFAULT_PREFETCH_SIZE) * 4, Instrument.TF_4H)
-                    self.fetch_and_generate(market_id, Instrument.TF_1D, timeframes.get(Instrument.TF_1D, self.DEFAULT_PREFETCH_SIZE) * 7, Instrument.TF_1W)
+                    for timeframe, depth in ohlc_depths.items():
+                        if timeframe >= Instrument.TF_1M and timeframe <= Instrument.TF_3M:
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth * 3, Instrument.TF_3M)
+                        
+                        elif timeframe >= Instrument.TF_5M and timeframe <= Instrument.TF_30M:
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth * 6, Instrument.TF_30M)
+                        
+                        elif timeframe >= Instrument.TF_1H and timeframe <= Instrument.TF_4H:
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth * 4, Instrument.TF_4H)
+                        
+                        elif timeframe >= Instrument.TF_1D and timeframe <= Instrument.TF_1W:
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth * 7, Instrument.TF_1W)
+
+                    if tick_depth:
+                        self.fetch_ticks(market_id, tick_depth)
 
                     # debug only
                     # if market_id == "XBTUSD":
@@ -777,6 +788,21 @@ class BitMexWatcher(Watcher):
                 market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+
+    def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
+        trades = []
+
+        try:
+            trades = self._connector.get_historical_trades(market_id, from_date, to_date)
+        except Exception as e:
+            logger.error("Watcher %s cannot retrieve aggregated trades on market %s" % (self.name, market_id))
+
+        count = 0
+
+        for trade in trades:
+            count += 1
+            # timestamp, bid, ofr, volume, direction
+            yield(trade)
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         TF_MAP = {

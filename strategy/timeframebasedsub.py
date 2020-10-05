@@ -4,6 +4,10 @@
 # Timeframe based sub-strategy base class.
 
 from instrument.candlegenerator import CandleGenerator
+from common.utils import timeframe_to_str
+
+import logging
+logger = logging.getLogger('siis.strategy.timeframebasedsub')
 
 
 class TimeframeBasedSub(object):
@@ -30,6 +34,31 @@ class TimeframeBasedSub(object):
         self._last_closed = False  # last generated candle closed
 
         self.last_signal = None
+
+    def setup_indicators(self, params):
+        """
+        Standard implementation to instanciate and setup the indicator based on the timeframe,
+        from the parameters.
+        """
+        if 'indicators' not in params:
+            return None
+
+        if type(params['indicators']) is not dict:
+            return None
+
+        for ind, param in params['indicators'].items():
+            if param is not None:
+                if self.strategy_trader.strategy.indicator(param[0]):
+                    # instanciate and setup indicator
+                    indicator = self.strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:])
+                    indicator.setup(strategy_trader.instrument)
+
+                    setattr(self, ind, indicator)
+                else:
+                    logger.error("Indicator %s not found for %s on timeframe %s" % (param[0], ind, timeframe_to_str(self.tf)))
+            else:
+                logger.info("No indicator for %s on timeframe %s" % (ind, timeframe_to_str(self.tf)))
+                setattr(self, ind, None)
 
     def init_candle_generator(self):
         """

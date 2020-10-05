@@ -269,7 +269,7 @@ class IGWatcher(Watcher):
     # instruments
     #
 
-    def subscribe(self, market_id, timeframes, ohlc_depths=None, order_book_depth=None):
+    def subscribe(self, market_id, ohlc_depths=None, tick_depth=None, order_book_depth=None):
         with self._mutex:
             if market_id in self.__matching_symbols:
                 # fetch from 1m to 1w, we have a problem of the 10k candle limit per week, then we only fetch current
@@ -287,22 +287,33 @@ class IGWatcher(Watcher):
                     logger.info("%s prefetch for %s" % (self.name, market_id))
 
                     try:
-                        # sync to the last 30 mins of data
-                        # its 60 req/min max, but we cannot wait to long else there is a buffer overflow with the tickers
-                        self.fetch_and_generate(market_id, Instrument.TF_1M, 120)
-                        self.fetch_and_generate(market_id, Instrument.TF_5M, 120)
-                        self.fetch_and_generate(market_id, Instrument.TF_15M, 120)
-                        self.fetch_and_generate(market_id, Instrument.TF_30M, 120)
-                        self.fetch_and_generate(market_id, Instrument.TF_1H, 120, Instrument.TF_4H)
-                        self.fetch_and_generate(market_id, Instrument.TF_1D, 7)
-                        self.fetch_and_generate(market_id, Instrument.TF_1W, 1)
+                        # sync to recent OHLCs
+                        for timeframe, depth in ohlc_depths.items():
+                            # its 60 req/min max, but we cannot wait to long else there is a buffer overflow with the tickers
+                            if timeframe in (Instrument.TF_1M,  Instrument.TF_2M, Instrument.TF_3M):
+                                self.fetch_and_generate(market_id, Instrument.TF_1M, 120, None)
 
-                        # self.fetch_and_generate(market_id, Instrument.TF_1M, 30, Instrument.TF_30M)  # 1m, 5m, 15m, 30m
-                        # self.fetch_and_generate(market_id, Instrument.TF_3M, 10)
-                        # self.fetch_and_generate(market_id, Instrument.TF_1H, 4, Instrument.TF_2H)  # 1h, 4h
-                        # self.fetch_and_generate(market_id, Instrument.TF_1D, 1)
-                        # self.fetch_and_generate(market_id, Instrument.TF_1W, 1)
-                        # self.fetch_and_generate(market_id, Instrument.TF_1M, 1)
+                            elif timeframe in (Instrument.TF_5M, Instrument.TF_10M):
+                                self.fetch_and_generate(market_id, Instrument.TF_5M, 120, None):
+
+                            elif timeframe == Instrument.TF_15M:
+                                self.fetch_and_generate(market_id, Instrument.TF_15M, 120, None):
+
+                            elif timeframe == Instrument.TF_30M:
+                                self.fetch_and_generate(market_id, Instrument.TF_30M, 120, None):
+
+                            elif timeframe in (Instrument.TF_1H, Instrument.TF_2H, Instrument.TF_3H, Instrument.TF_4H, Instrument.TF_6H, Instrument.TF_8H, Instrument.TF_12H):
+                                self.fetch_and_generate(market_id, Instrument.TF_1H, 120, Instrument.TF_4H):
+
+                            elif timeframe in (Instrument.TF_1D, Instrument.TF_2D, Instrument.TF_3D):
+                                self.fetch_and_generate(market_id, Instrument.TF_1D, 7, None)
+
+                            elif timeframe == Instrument.TF_1W:
+                                self.fetch_and_generate(market_id, Instrument.TF_1W, 1, None)
+
+                            elif timeframe == Instrument.TF_MONTH:
+                                self.fetch_and_generate(market_id, Instrument.TF_MONTH, 1, None)
+
                     except:
                         # exceed of quota...
                         pass

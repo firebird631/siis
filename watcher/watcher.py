@@ -42,6 +42,9 @@ class Watcher(Runnable):
 
     DEFAULT_PREFETCH_SIZE = 100  # by defaut prefetch 100 OHLCs for each stored timeframe
 
+    TICK_STORAGE_DELAY = 0.05  # 50ms
+    MAX_PENDING_TICK = 10000
+
     # stored ohlc timeframes
     STORED_TIMEFRAMES = (
         Instrument.TF_MIN,
@@ -208,12 +211,14 @@ class Watcher(Runnable):
         """
         return self._watched_instruments
 
-    def subscribe(self, market_id, timeframes, ohlc_depths=None, order_book_depth=None):
+    def subscribe(self, market_id, ohlc_depths=None, tick_depth=None, order_book_depth=None):
         """
         Subscribes for receiving data from price source for a market and a timeframe.
 
         @param market_id str Valid market identifier
-        @param timeframes A tuple of tuple with timeframe, count
+        @param ohlc_dpeth A dict of timeframe with an integer value depth of history or -1 for full update from last stored point
+        @pram tick_deth An integer of depth value of ticks/trader or -1 for full update from last stored point
+        @param order_book_depth An integer of order book size
         """
         return False
 
@@ -462,9 +467,9 @@ class Watcher(Runnable):
 
     def fetch_and_generate(self, market_id, timeframe, n_last=1, cascaded=None):
         """
-        For initial fetching of the current OHLC.
+        For initial fetching of the last OHLCs.
         """
-        if timeframe > 0 and timeframe not in self.GENERATED_TF:
+        if timeframe < Instrument.TF_1M or timeframe not in self.GENERATED_TF:
             error_logger.error("Timeframe %i is not allowed !" % (timeframe,))
             return
 
@@ -480,12 +485,47 @@ class Watcher(Runnable):
 
         # for n last, minus a delta time
         if timeframe == Instrument.TF_MONTH:
-            from_date = today - timedelta(months=int(timeframe/Instrument.TF_MONTH)*n_last)
+            # ohlc based
+            if n_last < 0:
+                # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
+                last_ohlc = Database.inst().get_last_ohlc(self.name, market_id, timeframe)
+
+                if last_ohlc:
+                    last_timestamp = last_ohlc.timestamp
+
+                    last_date = datetime.fromtimestamp(last_timestamp, tz=UTC())
+                    from_date = last_date
+                else:
+                    # no previous then query all necessary
+                    from_date = today - timedelta(months=int(timeframe/Instrument.TF_MONTH)*n_last)
+            else:
+                from_date = today - timedelta(months=int(timeframe/Instrument.TF_MONTH)*n_last)
+
         else:
-            from_date = today - timedelta(seconds=int(timeframe)*n_last)
+            # ohlc based
+            if n_last < 0:
+                # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
+                last_ohlc = Database.inst().get_last_ohlc(self.name, market_id, timeframe)
+
+                if last_ohlc:
+                    # if cascaded is defined, then we need more past data to have a full range
+                    # (until 7x1d for the week, until 4x1h for the 4h...)
+                    if cascaded:
+                        last_timestamp = Instrument.basetime(cascaded, last_ohlc.timestamp)
+                    else:
+                        last_timestamp = last_ohlc.timestamp
+
+                    last_date = datetime.fromtimestamp(last_timestamp, tz=UTC())
+                    from_date = last_date
+                else:
+                    # no previous then query all necessary
+                    from_date = today - timedelta(seconds=int(timeframe)*n_last)
+            else:
+                from_date = today - timedelta(seconds=int(timeframe)*n_last)
 
         to_date = today
 
+        last_ticks = []
         last_ohlcs = {}
 
         # cascaded generation of candles
@@ -508,6 +548,7 @@ class Watcher(Runnable):
 
         n = 0
 
+        # fetch OHLC history
         for data in self.fetch_candles(market_id, timeframe, from_date, to_date, None):
             # store (int timestamp ms, str open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
             Database.inst().store_market_ohlc((
@@ -555,6 +596,46 @@ class Watcher(Runnable):
         for k, ohlc in self._last_ohlc[market_id].items():
             if ohlc:
                 ohlc.set_consolidated(False)
+
+    def fetch_ticks(self, market_id, tick_depth=None):
+        """
+        For initial fetching of the recents ticks.
+        """
+        # compute a from date
+        today = datetime.now().astimezone(UTC())
+        from_date = today
+
+        # update from last know
+        last_tick = Database.inst().get_last_tick(self.name, market_id)
+        next_date = datetime.fromtimestamp(last_tick[0] + 0.001, tz=UTC()) if last_tick else None
+
+        if not next_date:
+            # or fetch the complete current month
+            from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
+
+        to_date = today
+
+        n = 0
+
+        # fetch ticks history
+        for data in self.fetch_trades(market_id, from_date, to_date, None):
+            # store (int timestamp in ms, str bid, str ofr, str volume, int direction)
+            Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3], data[4]))
+
+            n += 1
+
+            # calm down the storage of tick, if parsing is faster
+            while Database.inst().num_pending_ticks_storage() > Watcher.MAX_PENDING_TICK:
+                time.sleep(Watcher.TICK_STORAGE_DELAY)  # wait a little before continue
+
+    def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
+        """
+        Retrieve the historical trades data for a certain a period of date.
+        @param market_id Specific name of the market
+        @param from_date
+        @param to_date
+        """
+        return []
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         """

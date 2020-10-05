@@ -8,16 +8,19 @@ import math
 from strategy.indicator.indicator import Indicator
 from instrument.instrument import Instrument
 
+from common.utils import truncate
+
 import numpy as np
-from talib import MULT as ta_MULT, STDDEV as ta_STDDEV
 
 
 class CompositeVolumeProfileIndicator(Indicator):
     """
     Composite Volume Profile indicator based on timeframe.
+    It is prefered to use the TickCompositeVolumeProfileIndicator version because this timeframe based version
+    will reduce the precision, better using lower timeframe, but best is still per tick or trade update.
     """
 
-    __slots__ = '_days', '_prev', '_last', '_volumes', '_open_timestamp', '_size', '_poc', '_valleys', '_peaks'
+    __slots__ = '_volumes', '_open_timestamp', '_poc', '_valleys', '_peaks', '_sensibility', '_price_precision', '_tick_size'
 
     @classmethod
     def indicator_type(cls):
@@ -27,73 +30,64 @@ class CompositeVolumeProfileIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_INDEX
 
-    def __init__(self, timeframe, days=2, stddev_len=5, session_offset=0.0):
+    def __init__(self, timeframe, sensibility=10.0, session_offset=0.0):
         super().__init__("compositevolumeprofile", timeframe)
 
         self._compute_at_close = True  # only at close
 
-        self._days = days   # number of day history
+        self._sensibility = sensibility
 
-        self._prev = 0.0
-        self._last = 0.0
-        self._last_top = 0.0
-        self._last_bottom = 0.0
+        self._price_precision = 8
+        self._tick_size = 1.0
 
         self._session_offset = session_offset
 
-        self._size = days * (Instrument.TF_1D // timeframe)
-        self._vwaps = [0.0] * self._size
-
-        self._tops = [0.0] * self._size
-        self._bottoms = [0.0] * self._size
+        self._volumes = {}
+        self._peaks = []
+        self._valleys = []
 
         self._open_timestamp = self._session_offset
-        self._pvs = 0.0
-        self._volumes = 0.0
-        self._volumes_dev = 0.0
-        self._dev2 = 0.0
+
+        self._poc = 0.0
+
+    def setup(self, instrument):
+        if instrument is None:
+            return
+
+        self._precision = instrument.price_precision or 8
+        self._tick_size = instrument.tick_price or 0.00000001
 
     @property
-    def days(self):
-        return self._days
-    
-    @days.setter
-    def days(self, days):
-        self._days = days
+    def sensibility(self):
+        return self._sensibility
 
     @property
-    def prev(self):
-        return self._prev
-
-    @property
-    def last(self):
-        return self._last
-
-    @property
-    def last_top(self, scale=1.0):
-        return self._last_top * scale
-
-    @property
-    def last_bottom(self, scale=1.0):
-        return self._last_bottom * scale
-
-    @property
-    def vwaps(self):
-        return self._vwaps
-
-    @property
-    def bottoms(self):
+    def poc(self):
         """
-        StdDev-.
+        POC price level.
         """
-        return self._bottoms
+        return self._poc
+
+    @property
+    def volumes(self):
+        """
+        Returns a dict of price and volume.
+        """
+        return self._volumes
+
+    @property
+    def peaks(self):
+        """
+        Returns an array of the prices for the detected peaks.
+        """
+        return self._peaks
     
     @property
-    def tops(self):
+    def valleys(self):
         """
-        StdDev+.
+        Returns an array of the prices for the detected valleys.
         """
-        return self._tops
+        return self._valleys
 
     def compute(self, timestamp, timestamps, highs, lows, closes, volumes):
         self._prev = self._last
@@ -107,13 +101,13 @@ class CompositeVolumeProfileIndicator(Indicator):
         for b in range(num-delta, num):
             # for any new candles
             if timestamps[b] > self._last_timestamp:
-                if timestamps[b] >= self._open_timestamp + Instrument.TF_1D:
-                    # new session (1 day based with offset)
-                    self._pvs = 0.0
-                    self._volumes = 0.0
-                    self._volumes_dev = 0.0
-                    self._dev2 = 0.0
-                    self._open_timestamp = Instrument.basetime(Instrument.TF_1D, timestamps[b]) + self._session_offset
+                if timestamps[b] >= self._open_timestamp + self._timeframe:
+                    # new session (timeframe based session with offset)
+                    self._volumes = {}
+                    self._peaks = []
+                    self._valleys = []
+                    self._poc = 0.0
+                    self._open_timestamp = Instrument.basetime(self._timeframe, timestamps[b]) + self._session_offset
 
                 # avg price based on HLC3
                 hlc3 = (highs[b] + lows[b] + closes[b]) / 3
@@ -149,13 +143,12 @@ class CompositeVolumeProfileIndicator(Indicator):
         return self._vwaps
 
 
-class TickBarCompositeVolumeProfileIndicator(Indicator):
+class TickCompositeVolumeProfileIndicator(Indicator):
     """
     Composite Volume Profile indicator base on tick or trade.
     """
 
-    __slots__ = '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \
-        '_last_top', '_last_bottom', '_session_offset'
+    __slots__ = '_volumes', '_open_timestamp', '_poc', '_valleys', '_peaks', '_sensibility'
 
     @classmethod
     def indicator_type(cls):
@@ -165,63 +158,53 @@ class TickBarCompositeVolumeProfileIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_INDEX
 
-    def __init__(self, tickbar=50, stddev_len=5, session_offset=0.0):
-        super().__init__("tickbar-compositevolumeprofile", timeframe)
+    def __init__(self, timeframe, sensibility=10.0, session_offset=0.0):
+        super().__init__("compositevolumeprofile", timeframe)
 
-        self._compute_at_close = False  # computed at each tick or trade
+        self._compute_at_close = False  # at each trade
 
-        self._prev = 0.0
-        self._last = 0.0
-        self._last_top = 0.0
-        self._last_bottom = 0.0
-
+        self._sensibility = sensibility
         self._session_offset = session_offset
 
-        self._size = tickbar
-        self._vwaps = [0.0] * self._size
-
-        self._tops = [0.0] * self._size
-        self._bottoms = [0.0] * self._size
+        self._volumes = {}
+        self._peaks = []
+        self._valleys = []
 
         self._open_timestamp = self._session_offset
-        self._pvs = 0.0
-        self._volumes = 0.0
-        self._volumes_dev = 0.0
-        self._dev2 = 0.0
+
+        self._poc = 0.0
 
     @property
-    def prev(self):
-        return self._prev
+    def sensibility(self):
+        return self._sensibility
 
     @property
-    def last(self):
-        return self._last
-
-    @property
-    def last_top(self, scale=1.0):
-        return self._last_top * scale
-
-    @property
-    def last_bottom(self, scale=1.0):
-        return self._last_bottom * scale
-
-    @property
-    def vwaps(self):
-        return self._vwaps
-
-    @property
-    def bottoms(self):
+    def poc(self):
         """
-        StdDev-.
+        POC price level.
         """
-        return self._bottoms
+        return self._poc
+
+    @property
+    def volumes(self):
+        """
+        Returns a dict of price and volume.
+        """
+        return self._volumes
+
+    @property
+    def peaks(self):
+        """
+        Returns an array of the prices for the detected peaks.
+        """
+        return self._peaks
     
     @property
-    def tops(self):
+    def valleys(self):
         """
-        StdDev+.
+        Returns an array of the prices for the detected valleys.
         """
-        return self._tops
+        return self._valleys
 
     def compute(self, timestamp, price, volume):
         self._prev = self._last

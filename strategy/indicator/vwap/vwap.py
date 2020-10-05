@@ -153,7 +153,7 @@ class VWAPIndicator(Indicator):
 
 class TickBarVWAPIndicator(Indicator):
     """
-    Volume Weighted Average indicator base on tick or trade.
+    Volume Weighted Average indicator based on tick or trade.
 
     The history depend of the length parameters. It is related the number of tickbars history needed.
     """

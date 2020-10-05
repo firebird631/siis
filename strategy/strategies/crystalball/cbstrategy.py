@@ -84,7 +84,7 @@ class CrystalBallStrategy(Strategy):
                 watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
                 if watcher:
                     tfs = {tf['timeframe']: tf['history'] for tf in self.timeframes_config.values() if tf['timeframe'] > 0}
-                    watcher.subscribe(instrument.symbol, tfs)
+                    watcher.subscribe(instrument.symbol, tfs, None, None)
 
                     # query for most recent candles per timeframe
                     for k, timeframe in self.timeframes_config.items():
@@ -121,11 +121,11 @@ class CrystalBallStrategy(Strategy):
                         # wait for this timeframe before processing
                         instrument.want_timeframe(timeframe['timeframe'])
 
-            # create a feeder per instrument and fetch ticks and candles + ticks
-            feeder = StrategyDataFeeder(self, instrument.market_id, [], True)
-            self.add_feeder(feeder)
+                # create a feeder per instrument and fetch ticks and candles + ticks
+                feeder = StrategyDataFeeder(self, instrument.market_id, [], True)
+                self.add_feeder(feeder)
 
-            # fetch market info from the DB
-            Database.inst().load_market_info(self.service, watcher.name, instrument.market_id)
+                # fetch market info from the DB
+                Database.inst().load_market_info(self.service, watcher.name, instrument.market_id)
 
-            feeder.initialize(watcher.name, from_date, to_date)
+                feeder.initialize(watcher.name, from_date, to_date)

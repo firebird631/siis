@@ -18,7 +18,7 @@ from monitor.streamable import Streamable, StreamMemberInt, \
                                StreamMemberFloatSerie, StreamMemberTradeSignal, StreamMemberStrategyAlert
 
 import logging
-logger = logging.getLogger('siis.strategy.trader')
+logger = logging.getLogger('siis.strategy.tickbarbasedstrategytrader')
 
 
 class TickBarBasedStrategyTrader(StrategyTrader):
@@ -38,7 +38,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         """
         super().__init__(strategy, instrument, depth=2)
 
-        self._base_timeframe = base_timeframe
+        self._base_timeframe = Instrument.TF_TICK
 
         self.tickbar_generator = None  # can be a TickBarRangeGenerator or TickBarReversalGenerator.
 
@@ -266,8 +266,17 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         if mode == 0:
             for k, timeframe in self.timeframes.items():
                 result['data'] += timeframe.report_state()
+        elif mode == 1:
+            result['data'] += self.report_tickbar_state()
 
         return result
+
+    def report_tickbar_state(self):
+        """
+        Report the properties of the state of the tickbar, according to what is computed and what is implemented.
+        To be overloaded.
+        """
+        return []
 
     #
     # helpers

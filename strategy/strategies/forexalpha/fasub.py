@@ -21,9 +21,4 @@ class ForexAlphaStrategySub(TimeframeBasedSub):
 
         self.score = Score(2, self.depth)
 
-        # indicators
-        for ind, param in params['indicators'].items():
-            if param is not None:
-                setattr(self, ind, self.strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:]))
-            else:
-                setattr(self, ind, None)
+        self.setup_indicators(params)
