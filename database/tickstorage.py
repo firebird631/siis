@@ -560,6 +560,9 @@ class LastTickFinder(object):
 
             # prev month/year
             if self._curr_date.month == 1:
+                if self._curr_date.year < 2000:
+                    return None
+
                 self._curr_date = self._curr_date.replace(year=self._curr_date.year-1, month=12, day=1)
             else:
                 self._curr_date = self._curr_date.replace(month=self._curr_date.month-1, day=1)
