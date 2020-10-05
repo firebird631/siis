@@ -9,9 +9,7 @@ from strategy.strategy import Strategy
 from strategy.strategytrader import StrategyTrader
 from strategy.strategysignal import StrategySignal
 
-from instrument.instrument import Instrument, Candle
-from instrument.candlegenerator import CandleGenerator
-from common.utils import timeframe_from_str
+from instrument.instrument import Instrument
 
 from monitor.streamable import Streamable, StreamMemberInt, \
                                StreamMemberTradeEntry, StreamMemberTradeUpdate, StreamMemberTradeExit, \
@@ -25,8 +23,11 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     """
     Tick-bar based strategy trader base class.
 
-    There is no OHLC in this abstraction. All is tick or trade based.
+    There is no OHLC in this abstraction. It is tick or trade based.
     It only works with a tick or trade data flow.
+
+    But it is possible to internaly compute OHLC for somes specifics needs.
+    There is no support of sub per timeframe.
     
     A single configuration of tick-bar array can be generated.
     """
@@ -41,6 +42,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         self._base_timeframe = Instrument.TF_TICK
 
         self.tickbar_generator = None  # can be a TickBarRangeGenerator or TickBarReversalGenerator.
+        self._tickbar_streamer = None
 
         self.depth = depth
 
@@ -49,6 +51,10 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
         self.last_timestamp = 0.0
 
+    @property
+    def is_tickbars_based(self):
+        return True
+
     def update_tickbar(self, timestamp):
         """
         Update the current tickbar according to the last trade and timestamp or create a new tickbar.
@@ -56,9 +62,9 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         """       
         with self._mutex:
             # update at tick or trade
-            ticks = self.instrument.ticks_after(self.last_timestamp)
+            ticks = self.instrument.ticks()  # self.instrument.ticks_after(self.last_timestamp)
 
-            generated = self.tickbar_generator.generate_from_ticks(ticks)
+            generated = self.tickbar_generator.generate(ticks)
             if generated:
                 self.instrument.add_tickbar(generated)
 
@@ -74,32 +80,22 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
     def compute(self, timestamp):
         """
-        Compute the signals for the differents timeframes depending of the update policy.
+        Compute the signals at ticks.
         """
         # split entries from exits signals
         entries = []
         exits = []
 
-        for tf, sub in self.timeframes.items():
-            if not sub.next_timestamp:
-                # initial timestamp only
-                sub.next_timestamp = self.strategy.timestamp
+        if not sub.next_timestamp:
+            # initial timestamp only
+            sub.next_timestamp = self.strategy.timestamp
 
-            if sub.update_at_close:
-                if sub.need_update(timestamp):
-                    compute = True
-                else:
-                    compute = False
-            else:
-                compute = True
-
-            if compute:
-                signal = sub.process(timestamp)
-                if signal:
-                    if signal.signal == StrategySignal.SIGNAL_ENTRY:
-                        entries.append(signal)
-                    elif signal.signal == StrategySignal.SIGNAL_EXIT:
-                        exits.append(signal)
+            signal = sub.process(timestamp)
+            if signal:
+                if signal.signal == StrategySignal.SIGNAL_ENTRY:
+                    entries.append(signal)
+                elif signal.signal == StrategySignal.SIGNAL_EXIT:
+                    exits.append(signal)
 
         # finally sort them by timeframe ascending
         entries.sort(key=lambda s: s.timeframe)
@@ -220,19 +216,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         result = False
 
         with self._mutex:
-            if tf is not None and isinstance(tf, (float, int)):
-                timeframe = self.timeframes.get(tf)
-
-            if timeframe in self._timeframe_streamers:
-                self._timeframe_streamers[timeframe].use()
-                result = True
-            else:
-                streamer = self.create_chart_streamer(timeframe)
-
-                if streamer:
-                    streamer.use()
-                    self._timeframe_streamers[timeframe.tf] = streamer
-                    result = True
+            pass  # @todo
 
         return False
 
@@ -243,16 +227,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         result = False
 
         with self._mutex:
-            if tf is not None and isinstance(tf, (float, int)):
-                timeframe = self.timeframes.get(tf)
-
-            if timeframe in self._timeframe_streamers:
-                self._timeframe_streamers[timeframe].unuse()
-                if self._timeframe_streamers[timeframe].is_free():
-                    # delete if 0 subscribers
-                    del self._timeframe_streamers[timeframe]
-
-                result = True
+            pass  # @todo
 
         return result
 
@@ -264,9 +239,6 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         result = super().report_state(mode)
 
         if mode == 0:
-            for k, timeframe in self.timeframes.items():
-                result['data'] += timeframe.report_state()
-        elif mode == 1:
             result['data'] += self.report_tickbar_state()
 
         return result
@@ -277,17 +249,3 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         To be overloaded.
         """
         return []
-
-    #
-    # helpers
-    #
-
-    def timeframe_from_param(self, param):
-        if isinstance(param, str):
-            return timeframe_from_str(param)
-        elif isinstance(param, float):
-            return param
-        elif isinstance(param, int):
-            return float(param)
-        else:
-            return 0.0

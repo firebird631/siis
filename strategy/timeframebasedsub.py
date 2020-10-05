@@ -124,7 +124,7 @@ class TimeframeBasedSub(object):
         Get the candles list to process.
         """
         # candles = self.strategy_trader.instrument.last_candles(self.tf, self.depth)
-        candles = self.strategy_trader.instrument._candles.get(self.tf)[-self.depth:]
+        candles = self.strategy_trader.instrument.candles(self.tf)[-self.depth:]
         # candles = self.strategy_trader.instrument.candles_from(self.tf, self.next_timestamp - self.depth*self.tf)
 
         return candles

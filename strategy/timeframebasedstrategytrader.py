@@ -44,9 +44,14 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         self._base_timeframe = base_timeframe
 
         self.timeframes = {}  # analyser per timeframe
+        self._timeframe_streamers = {}  # data streamers per timeframe
 
         self.prev_price = 0.0
         self.last_price = 0.0
+
+    @property
+    def is_timeframes_based(self):
+        return True
 
     @property
     def base_timeframe(self):
@@ -69,13 +74,13 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             # at tick we update any timeframes because we want the non consolidated candle
             for tf, sub in self.timeframes.items():
                 # update at tick
-                ticks = self.instrument.ticks_after(sub.candles_gen.last_timestamp)
+                ticks = self.instrument.ticks()  # self.instrument.ticks_after(sub.candles_gen.last_timestamp)
 
                 sub._last_closed = False
 
                 generated = sub.candles_gen.generate_from_ticks(ticks)
                 if generated:
-                    self.instrument.add_candle(generated, sub.depth)
+                    self.instrument.add_candles(generated, sub.depth)
 
                     # last OHLC close
                     sub._last_closed = True
@@ -105,12 +110,12 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
                 generated = sub.candles_gen.generate_from_candles(candles)
                 if generated:
-                    self.instrument.add_candle(generated, sub.depth)
+                    self.instrument.add_candles(generated, sub.depth)
 
                     # last OHLC close
                     sub._last_closed = True
 
-                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # with tne non consolidated
+                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # with the non consolidated
 
             # keep prev and last price at processing step
             if self.instrument._candles.get(self._base_timeframe):

@@ -34,6 +34,7 @@ from database.database import Database
 import logging
 logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
+traceback_logger = logging.getLogger('siis.traceback.strategy')
 
 
 class Strategy(Runnable):
@@ -727,7 +728,7 @@ class Strategy(Runnable):
                     # interest in tick data
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
-                        # add the new candle to the instrument in live mode
+                        # add the new tick to the instrument in live mode
                         with strategy_trader._mutex:
                             if strategy_trader.instrument.ready():
                                 strategy_trader.instrument.add_tick(signal.data[1])
@@ -757,7 +758,7 @@ class Strategy(Runnable):
                         if signal.data[1]:
                             with strategy_trader._mutex:
                                 # can accum before ready status
-                                strategy_trader.instrument.add_tick(signal.data[1])
+                                strategy_trader.instrument.add_ticks(signal.data[1])
 
                                 do_update.add(strategy_trader)
 
@@ -772,7 +773,7 @@ class Strategy(Runnable):
                         if signal.data[2]:
                             # in live mode directly add candles to instrument
                             with strategy_trader._mutex:
-                                strategy_trader.instrument.add_candle(signal.data[2])
+                                strategy_trader.instrument.add_candles(signal.data[2])
 
                             # initials candles loaded
                             if initial:
@@ -914,6 +915,19 @@ class Strategy(Runnable):
         # bootstraping in progress, avoid live until complete
         strategy_trader._bootstraping = 2
 
+        try:
+            if strategy_trader.is_timeframes_based:
+                self.timeframe_based_bootstrap(strategy_trader)
+            elif strategy_trader.is_tickbars_based:
+                self.tickbar_based_bootstrap(strategy_trader)
+        except Error as e:
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
+
+        # bootstraping done, can now branch to live
+        strategy_trader._bootstraping = 0
+
+    def timeframe_based_bootstrap(self, strategy_trader):
         # captures all initials candles
         initial_candles = {}
 
@@ -933,7 +947,7 @@ class Strategy(Runnable):
                 # get the nearest next candle
                 next_timestamp = min(next_timestamp, candles[0].timestamp + sub.depth*sub.timeframe)
 
-        logger.debug("%s bootstrap begin at %s, now is %s" % (instrument.market_id, next_timestamp, self.timestamp))
+        logger.debug("%s timeframes bootstrap begin at %s, now is %s" % (instrument.market_id, next_timestamp, self.timestamp))
 
         # initials candles
         lower_timeframe = 0
@@ -1013,9 +1027,22 @@ class Strategy(Runnable):
                 # no more candles to process
                 break
 
-        # bootstraping done, can now branch to live
-        strategy_trader._bootstraping = 0
-        logger.debug("%s bootstraping done" % instrument.market_id)
+        logger.debug("%s timeframes bootstraping done" % instrument.market_id)
+
+    def tickbar_based_bootstrap(self, strategy_trader):
+        # captures all initials candles
+        initial_ticks = []
+
+        # compute the begining timestamp
+        next_timestamp = self.timestamp
+
+        instrument = strategy_trader.instrument
+
+        logger.debug("%s tickbars bootstrap begin at %s, now is %s" % (instrument.market_id, next_timestamp, self.timestamp))
+
+        # @todo need tickstreamer, and call strategy_trader.bootstrap(next_timestamp) at per bulk of ticks (temporal size defined)
+
+        logger.debug("%s tickbars bootstraping done" % instrument.market_id)
 
     def update_strategy(self, strategy_trader):
         """

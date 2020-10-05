@@ -91,7 +91,7 @@ class StrategyDataFeeder(object):
             candles = streamer.next(timestamp)
 
             if candles:
-                self._instrument.add_candle(candles)
+                self._instrument.add_candles(candles)
                 updated.append(tf)
 
                 # defines the last market price
@@ -105,7 +105,7 @@ class StrategyDataFeeder(object):
             # ticks = self._tick_streamer.next(timestamp)
 
             # if ticks:
-            #   self._instrument.add_tick(ticks)
+            #   self._instrument.add_ticks(ticks)
             #   updated.append(0)
 
             # speedup version, direct fill the instrument array

@@ -12,13 +12,16 @@ from common.utils import truncate
 
 import numpy as np
 
+# @todo Support of cash session and overnight session.
+
 
 class MultipleVolumeProfileIndicator(Indicator):
     """
     Multiple Volume Profile indicator based on timeframe.
     """
 
-    __slots__ = '_days', '_prev', '_last', '_volumes', '_open_timestamp', '_size', '_poc', '_valleys', '_peaks'
+    __slots__ = '_days', '_prev', '_last', '_volumes', '_open_timestamp', '_size', '_poc', '_valleys', '_peaks', \
+        '_session_offset', '_price_precision', '_tick_size'
 
     @classmethod
     def indicator_type(cls):
@@ -28,7 +31,7 @@ class MultipleVolumeProfileIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_INDEX
 
-    def __init__(self, timeframe, days=2, stddev_len=5, session_offset=0.0):
+    def __init__(self, timeframe, days=2, stddev_len=5):
         super().__init__("multiplevolumeprofile", timeframe)
 
         self._compute_at_close = True  # only at close
@@ -40,7 +43,10 @@ class MultipleVolumeProfileIndicator(Indicator):
         self._last_top = 0.0
         self._last_bottom = 0.0
 
-        self._session_offset = session_offset
+        self._session_offset = 0.0
+
+        self._price_precision = 1
+        self._tick_size = 1.0
 
         self._size = days * (Instrument.TF_1D // timeframe)
         self._vwaps = [0.0] * self._size
@@ -48,11 +54,21 @@ class MultipleVolumeProfileIndicator(Indicator):
         self._tops = [0.0] * self._size
         self._bottoms = [0.0] * self._size
 
-        self._open_timestamp = self._session_offset
+        self._open_timestamp = 0.0
         self._pvs = 0.0
         self._volumes = 0.0
         self._volumes_dev = 0.0
         self._dev2 = 0.0
+
+    def setup(self, instrument):
+        if instrument is None:
+            return
+
+        self._price_precision = instrument.price_precision or 8
+        self._tick_size = instrument.tick_price or 0.00000001
+
+        self._session_offset = instrument.session_offset
+        self._open_timestamp = self._session_offset
 
     @property
     def days(self):
@@ -169,7 +185,7 @@ class TickMultipleVolumeProfileIndicator(Indicator):
     """
 
     __slots__ = '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \
-        '_last_top', '_last_bottom', '_session_offset'
+        '_last_top', '_last_bottom', '_session_offset', '_price_precision', '_tick_size'
 
     @classmethod
     def indicator_type(cls):
@@ -189,6 +205,9 @@ class TickMultipleVolumeProfileIndicator(Indicator):
         self._last_top = 0.0
         self._last_bottom = 0.0
 
+        self._price_precision = 1
+        self._tick_size = 1.0
+
         self._session_offset = session_offset
 
         self._size = tickbar
@@ -202,6 +221,16 @@ class TickMultipleVolumeProfileIndicator(Indicator):
         self._volumes = 0.0
         self._volumes_dev = 0.0
         self._dev2 = 0.0
+
+    def setup(self, instrument):
+        if instrument is None:
+            return
+
+        self._price_precision = instrument.price_precision or 8
+        self._tick_size = instrument.tick_price or 0.00000001
+
+        self._session_offset = instrument.session_offset
+        self._open_timestamp = self._session_offset
 
     @property
     def prev(self):

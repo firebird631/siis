@@ -24,7 +24,7 @@ class TickBarBaseGenerator(object):
         self._last_consumed = 0
         self._last_timestamp = 0.0
 
-    def generate_from_ticks(self, from_ticks):
+    def generate(self, from_ticks):
         """
         Generate as many tick-bar as possible from the array of ticks or trades given in parameters.
         """
@@ -32,7 +32,7 @@ class TickBarBaseGenerator(object):
         self._last_consumed = 0
 
         for from_tick in from_ticks:
-            to_tickbar = self.update_from_tick(from_tick)
+            to_tickbar = self.update(from_tick)
             if to_tickbar:
                 to_tickbars.append(to_tickbar)
 
@@ -40,7 +40,7 @@ class TickBarBaseGenerator(object):
 
         return to_tickbars
 
-    def update_from_tick(self, tick):
+    def update(self, tick):
         """
         Overrides this method to implements specifics computed tick-bar model from a single tick or trade.
         """
@@ -69,7 +69,7 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
 
         return last_tickbar
 
-    def update_from_tick(self, tick):
+    def update(self, tick):
         if tick[0] < self._last_timestamp:
             return None
 
@@ -146,7 +146,7 @@ class TickBarReversalGenerator(TickBarBaseGenerator):
 
         return last_tickbar
 
-    def update_from_tick(self, tick):
+    def update(self, tick):
         if tick[0] < self._last_timestamp:
             return None
 

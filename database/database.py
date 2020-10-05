@@ -145,7 +145,7 @@ class Database(object):
 
         self._autocleanup = False
         self._fetch = False
-        self._store_trade_text = True
+        self._store_trade_text = False
         self._store_trade_binary = True
 
     def lock(self, blocking=True, timeout=-1):
@@ -158,9 +158,10 @@ class Database(object):
         # load database
         config = utils.load_config(options, 'databases')
 
-        self._autocleanup = config.get('auto-cleanup', False)
-        self._store_trade_text = config.get('trade-text', False)
-        self._store_trade_binary = config.get('trade-binary', True)
+        if 'siis' in config:
+            self._autocleanup = config['siis'].get('auto-cleanup', False)
+            self._store_trade_text = config['siis'].get('trade-text', False)
+            self._store_trade_binary = config['siis'].get('trade-binary', True)
 
         self.connect(config)
 

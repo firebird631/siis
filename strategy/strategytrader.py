@@ -70,14 +70,11 @@ class StrategyTrader(object):
         self._next_alert_id= 1
 
         self._global_streamer = None
-        
         self._trade_entry_streamer = None
         self._trade_update_streamer = None
         self._trade_exit_streamer = None
         self._signal_streamer = None
         self._alert_streamer = None
-
-        self._timeframe_streamers = {}
 
         self._reporting = StrategyTrader.REPORTING_NONE
 
@@ -93,6 +90,14 @@ class StrategyTrader(object):
             'cont-win': 0,     # contigous win trades
             'cont-loss': 0,    # contigous loss trades
         }
+
+    @property
+    def is_timeframes_based(self):
+        return False
+
+    @property
+    def is_tickbars_based(self):
+        return False
 
     #
     # processing
@@ -756,7 +761,7 @@ class StrategyTrader(object):
 
     def check_alerts(self, timestamp, bid, ofr, timeframes):
         """
-        Compare timeframes indicators values to defined alerts if somes are defineds.
+        Compare timeframes indicators values to defined alerts if somes are defined.
         @param bid float Last instrument bid price
         @param ofr flaot Last instrument ofr price
         @param timeframes list of TimeframeBasedSub to check with any alerts.

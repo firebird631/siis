@@ -341,7 +341,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # retained long entry do the order entry signal
         for signal in retained_entries:
             # @todo problem want only in live mode, not during backtesting
-            height = 0  # self.instrument.height(entry.timeframe, -1)
+            height = 0
 
             # @todo or trade at order book, compute the limit price from what the order book offer or could use ATR
             signal_price = signal.price + height

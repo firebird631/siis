@@ -12,6 +12,8 @@ from common.utils import truncate
 
 import numpy as np
 
+# @todo Support of cash session and overnight session.
+
 
 class CompositeVolumeProfileIndicator(Indicator):
     """
@@ -20,7 +22,8 @@ class CompositeVolumeProfileIndicator(Indicator):
     will reduce the precision, better using lower timeframe, but best is still per tick or trade update.
     """
 
-    __slots__ = '_volumes', '_open_timestamp', '_poc', '_valleys', '_peaks', '_sensibility', '_price_precision', '_tick_size'
+    __slots__ = '_volumes', '_open_timestamp', '_poc', '_valleys', '_peaks', '_sensibility', \
+        '_session_offset', '_price_precision', '_tick_size'
 
     @classmethod
     def indicator_type(cls):
@@ -30,23 +33,23 @@ class CompositeVolumeProfileIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_INDEX
 
-    def __init__(self, timeframe, sensibility=10.0, session_offset=0.0):
+    def __init__(self, timeframe, sensibility=10.0):
         super().__init__("compositevolumeprofile", timeframe)
 
         self._compute_at_close = True  # only at close
 
         self._sensibility = sensibility
 
-        self._price_precision = 8
+        self._price_precision = 1
         self._tick_size = 1.0
 
-        self._session_offset = session_offset
+        self._session_offset = 0.0
 
         self._volumes = {}
         self._peaks = []
         self._valleys = []
 
-        self._open_timestamp = self._session_offset
+        self._open_timestamp = 0.0
 
         self._poc = 0.0
 
@@ -54,8 +57,11 @@ class CompositeVolumeProfileIndicator(Indicator):
         if instrument is None:
             return
 
-        self._precision = instrument.price_precision or 8
+        self._price_precision = instrument.price_precision or 8
         self._tick_size = instrument.tick_price or 0.00000001
+
+        self._session_offset = instrument.session_offset
+        self._open_timestamp = self._session_offset
 
     @property
     def sensibility(self):
@@ -148,7 +154,8 @@ class TickCompositeVolumeProfileIndicator(Indicator):
     Composite Volume Profile indicator base on tick or trade.
     """
 
-    __slots__ = '_volumes', '_open_timestamp', '_poc', '_valleys', '_peaks', '_sensibility'
+    __slots__ = '_volumes', '_open_timestamp', '_poc', '_valleys', '_peaks', '_sensibility', \
+        '_session_offset', '_price_precision', '_tick_size'
 
     @classmethod
     def indicator_type(cls):
@@ -158,21 +165,34 @@ class TickCompositeVolumeProfileIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_INDEX
 
-    def __init__(self, timeframe, sensibility=10.0, session_offset=0.0):
+    def __init__(self, timeframe, sensibility=10.0):
         super().__init__("compositevolumeprofile", timeframe)
 
         self._compute_at_close = False  # at each trade
 
+        self._price_precision = 1
+        self._tick_size = 1.0
+
         self._sensibility = sensibility
-        self._session_offset = session_offset
+        self._session_offset = 0.0
 
         self._volumes = {}
         self._peaks = []
         self._valleys = []
 
-        self._open_timestamp = self._session_offset
+        self._open_timestamp = 0.0
 
         self._poc = 0.0
+
+    def setup(self, instrument):
+        if instrument is None:
+            return
+
+        self._price_precision = instrument.price_precision or 8
+        self._tick_size = instrument.tick_price or 0.00000001
+
+        self._session_offset = instrument.session_offset
+        self._open_timestamp = self._session_offset
 
     @property
     def sensibility(self):

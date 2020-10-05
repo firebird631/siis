@@ -16,6 +16,8 @@ class VWAPIndicator(Indicator):
     """
     Volume Weighted Average indicator based on timeframe.
     It's a special indicator because it need to use an intraday timeframe.
+
+    @todo Support of cash session and overnight session.
     """
 
     __slots__ = '_days', '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \
@@ -29,7 +31,7 @@ class VWAPIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_INDEX
 
-    def __init__(self, timeframe, days=2, stddev_len=5, session_offset=0.0):
+    def __init__(self, timeframe, days=2, stddev_len=5):
         super().__init__("vwap", timeframe)
 
         self._compute_at_close = True  # only at close
@@ -41,7 +43,7 @@ class VWAPIndicator(Indicator):
         self._last_top = 0.0
         self._last_bottom = 0.0
 
-        self._session_offset = session_offset
+        self._session_offset = 0.0
 
         self._size = days * (Instrument.TF_1D // timeframe)
         self._vwaps = [0.0] * self._size
@@ -49,11 +51,18 @@ class VWAPIndicator(Indicator):
         self._tops = [0.0] * self._size
         self._bottoms = [0.0] * self._size
 
-        self._open_timestamp = self._session_offset
+        self._open_timestamp = 0.0
         self._pvs = 0.0
         self._volumes = 0.0
         self._volumes_dev = 0.0
         self._dev2 = 0.0
+
+    def setup(self, instrument):
+        if instrument is None:
+            return
+
+        self._session_offset = instrument.session_offset
+        self._open_timestamp = self._session_offset
 
     @property
     def days(self):
@@ -169,7 +178,7 @@ class TickBarVWAPIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_INDEX
 
-    def __init__(self, tickbar=50, stddev_len=5, session_offset=0.0):
+    def __init__(self, tickbar=50, stddev_len=5):
         super().__init__("tickbar-vwap", timeframe)
 
         self._compute_at_close = False  # computed at each tick or trade
@@ -179,7 +188,7 @@ class TickBarVWAPIndicator(Indicator):
         self._last_top = 0.0
         self._last_bottom = 0.0
 
-        self._session_offset = session_offset
+        self._session_offset = 0.0
 
         self._size = tickbar
         self._vwaps = [0.0] * self._size
@@ -187,11 +196,18 @@ class TickBarVWAPIndicator(Indicator):
         self._tops = [0.0] * self._size
         self._bottoms = [0.0] * self._size
 
-        self._open_timestamp = self._session_offset
+        self._open_timestamp = 0.0
         self._pvs = 0.0
         self._volumes = 0.0
         self._volumes_dev = 0.0
         self._dev2 = 0.0
+
+    def setup(self, instrument):
+        if instrument is None:
+            return
+
+        self._session_offset = instrument.session_offset
+        self._open_timestamp = self._session_offset
 
     @property
     def prev(self):

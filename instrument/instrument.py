@@ -403,7 +403,7 @@ class Instrument(object):
                 '_market_bid', '_market_ofr', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
                 '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry', \
-                '_value_per_pip', '_one_pip_means'
+                '_value_per_pip', '_one_pip_means', '_cash_session', '_overnight_session'
 
     def __init__(self, name, symbol, market_id, alias=None):
         self._watchers = {}
@@ -443,13 +443,16 @@ class Instrument(object):
         self._price_limits = (0.0, 0.0, 0.0, 0)
         self._notional_limits = (0.0, 0.0, 0.0, 0)
 
-        self._ticks = []      # list of tuple(timestamp, bid, ofr, volume)
+        self._ticks = []      # list of tuple(timestamp, bid, ofr, volume, direction)
         self._candles = {}    # list per timeframe
         self._buy_sells = {}  # list per timeframe
         self._tickbars = []   # list of TickBar
 
         self._one_pip_means = 1.0
         self._value_per_pip = 1.0
+
+        self._cash_session = (0.0, 24*60*60.0-0.001)  # day cash session from 00h00m00s000ms to 23h59m59s999ms in UTC
+        self._overnight_session = None  # no overnight session by default else a tuple of two duration in seconds
 
         self._wanted = []  # list of wanted timeframe before be ready (its only for initialization)
 
@@ -591,6 +594,26 @@ class Instrument(object):
     @trade_quantity_mode.setter
     def trade_quantity_mode(self, trade_quantity_mode):
         self._trade_quantity_mode = trade_quantity_mode
+
+    #
+    # market session
+    #
+
+    @property
+    def cash_session(self):
+        return self._cash_session
+
+    @property
+    def overnight_session(self):
+        return self._overnight_session
+
+    @property
+    def has_overnight_session(self):
+        return self._overnight_session is not None
+
+    @property
+    def session_offset(self):
+        return -self._cash_session[0]
 
     #
     # price/volume
@@ -743,48 +766,6 @@ class Instrument(object):
     # ticks or candles
     #
 
-    def last_prices(self, tf, price_type, number):
-        prices = [0] * number
-
-        if tf == 0:
-            # get from ticks
-            ticks = self._ticks
-            if ticks:
-                j = number - 1
-                for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
-                    prices[j] = (ticks[i][1] + ticks[i][2]) * 0.5
-                    j -= 1
-        else:
-            candles = self._candles.get(tf)
-            if candles:
-                j = number - 1
-                for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
-                    prices[j] = (candles[i].bid[price_type] + candles[i].ofr[price_type]) * 0.5
-                    j -= 1
-
-        return prices
-
-    def last_volumes(self, tf, number):
-        volumes = [0] * number
-
-        if tf == 0:
-            # get from ticks
-            ticks = self._ticks
-            if ticks:
-                j = number - 1
-                for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
-                    volumes[j] = ticks[i][3]
-                    j -= 1
-        else:
-            candles = self._candles.get(tf)
-            if candles:
-                j = number - 1
-                for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
-                    volumes[j] = candles[i].volume
-                    j -= 1
-
-        return volumes
-
     def check_temporal_coherency(self, tf):
         """
         Check temporal coherency of the candles and return the list of incoherencies.
@@ -822,74 +803,79 @@ class Instrument(object):
     # candles OHLC
     #
 
+    def add_candles(self, candles_list, max_candles=-1):
+        """
+        Append an array of new candle.
+        @param max_candles Pop candles until num candles > max_candles.
+        """
+        if not candles_list:
+            return
+
+        # array of candles
+        tf = candles_list[0]._timeframe
+
+        if self._candles.get(tf):
+            candles = self._candles[tf]
+
+            if len(candles) > 0:
+                for c in candles_list:
+                    # for each candle only add it if more recent or replace a non consolidated
+                    if c.timestamp > candles[-1].timestamp:
+                        if not candles[-1].ended:
+                            # remove the last candle if was not consolidated
+                            candles.pop(-1)
+
+                        candles.append(c)
+
+                    elif c.timestamp == candles[-1].timestamp and not candles[-1].ended:
+                        # replace the last candle if was not consolidated
+                        candles[-1] = c
+            else:
+                # initiate array
+                candles.extend(candles_list)
+        else:
+            self._candles[tf] = candles_list
+
+        # keep safe size
+        if max_candles > 1:
+            candles = self._candles[tf]
+            while(len(candles)) > max_candles:
+                candles.pop(0)
+
     def add_candle(self, candle, max_candles=-1):
         """
         Append a new candle.
         @param max_candles Pop candles until num candles > max_candles.
-
-        @todo might split in two method, and same for tick
         """
         if not candle:
             return
 
-        if isinstance(candle, list):
-            # array of candles
-            tf = candle[0]._timeframe
+        # single candle
+        if self._candles.get(candle._timeframe):
+            candles = self._candles[candle._timeframe]
 
-            if self._candles.get(tf):
-                candles = self._candles[tf]
-
-                if len(candles) > 0:
-                    for c in candle:
-                        # for each candle only add it if more recent or replace a non consolidated
-                        if c.timestamp > candles[-1].timestamp:
-                            if not candles[-1].ended:
-                                # remove the last candle if was not consolidated
-                                candles.pop(-1)
-
-                            candles.append(c)
-
-                        elif c.timestamp == candles[-1].timestamp and not candles[-1].ended:
-                            # replace the last candle if was not consolidated
-                            candles[-1] = c
-                else:
-                    # initiate array
-                    candles.extend(candle)
-            else:
-                self._candles[tf] = candle
-
-            # keep safe size
-            if max_candles > 1:
-                candles = self._candles[tf]
-                while(len(candles)) > max_candles:
-                    candles.pop(0)
-        else:
-            # single candle
-            if self._candles.get(candle._timeframe):
-                candles = self._candles[candle._timeframe]
-
-                if len(candles) > 0:
-                    # ignore the candle if older than the latest
-                    if candle.timestamp > candles[-1].timestamp:
-                        if not candles[-1].ended:
-                            # replace the last candle if was not consolidated
-                            candles[-1] = candle
-                        else:
-                            candles.append(candle)
-
-                    elif candle.timestamp == candles[-1].timestamp and not candles[-1].ended:
+            if len(candles) > 0:
+                # ignore the candle if older than the latest
+                if candle.timestamp > candles[-1].timestamp:
+                    if not candles[-1].ended:
                         # replace the last candle if was not consolidated
                         candles[-1] = candle
-                else:
-                    candles.append(candle)
-            else:
-                self._candles[candle._timeframe] = [candle]
+                    else:
+                        candles.append(candle)
 
-            # keep safe size
-            if max_candles > 1:
-                candles = self._candles[candle._timeframe]
-                while(len(candles)) > max_candles:
-                    candles.pop(0)
+                elif candle.timestamp == candles[-1].timestamp and not candles[-1].ended:
+                    # replace the last candle if was not consolidated
+                    candles[-1] = candle
+            else:
+                candles.append(candle)
+        else:
+            self._candles[candle._timeframe] = [candle]
+
+        # keep safe size
+        if max_candles > 1:
+            candles = self._candles[candle._timeframe]
+            while(len(candles)) > max_candles:
+                candles.pop(0)
 
     def last_candles(self, tf, number):
         """
@@ -915,14 +901,6 @@ class Instrument(object):
             return candles[-1]
 
         return None
-
-    # def candle(self, tf, ofs):
-    #     candles = self._candles.get(tf)
-    #     if candles:
-    #         if abs(ofs) <= len(candles):
-    #             return candles[ofs]
-
-    #     return None
 
     def candles(self, tf):
         """
@@ -1034,37 +1012,39 @@ class Instrument(object):
     # ticks
     #
 
+    def add_ticks(self, ticks_list):
+        if not ticks_list:
+            return
+
+        ticks = self._ticks
+
+        if len(ticks) > 0:
+            for t in ticks_list:
+                # for each tick only add it if more recent
+                if t[0] > ticks[-1][0]:
+                    ticks.append(t)
+        else:
+            # initiate array
+            self._ticks = tick
+
     def add_tick(self, tick):
         if not tick:
             return
 
-        if isinstance(tick, list):
-            ticks = self._ticks
+        ticks = self._ticks
 
-            if len(ticks) > 0:
-                for t in tick:
-                    # for each tick only add it if more recent
-                    if t[0] > ticks[-1][0]:
-                        ticks.append(t)
-            else:
-                # initiate array
-                self._ticks = tick
+        if len(ticks) > 0:
+            # ignore the tick if older than the last one
+            if tick[0] > ticks[-1][0]:
+                ticks.append(tick)
         else:
-            if len(self._ticks) > 0:
-                # ignore the tick if older than the last one
-                if tick[0] > self._ticks[-1][0]:
-                    self._ticks.append(tick)
-            else:
-                self._ticks.append(tick)
+            ticks.append(tick)
 
     def clear_ticks(self):
         self._ticks.clear()
 
-    def tick(self, ofs):
-        if abs(ofs) <= len(self._ticks):
-            return self._ticks[ofs]
-
-        return None
+    def ticks(self):
+        return self._ticks
 
     def ticks_after(self, after_ts):
         """
@@ -1083,76 +1063,73 @@ class Instrument(object):
 
         return results
 
-    def last_ticks(self, number):
-        results = [Ticks()] * number
-
-        ticks = self._ticks
-        if ticks:
-            j = number - 1
-            for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
-                results[j] = ticks[i]
-                j -= 1
-
-        return results
-
     #
     # tick-bar
     #
+    
+    def add_tickbars(self, tickbars_list, max_tickbars=-1):
+        """
+        Append an array of new tickbars.
+        @param max_tickbars Pop tickbars until num tickbars > max_tickbars.
+        """
+        if not tickbars_list:
+            return
+
+        tickbars = self._tickbars
+
+        # array of tickbar
+        if len(tickbars) > 0:
+            for t in tickbars_list:
+                # for each tickbar only add it if more recent or replace a non consolidated
+                if t.timestamp > tickbars[-1].timestamp:
+                    if not tickbars[-1].ended:
+                        # remove the last tickbar if was not consolidated
+                        tickbars.pop(-1)
+
+                    tickbars.append(t)
+
+                elif t.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
+                    # replace the last tickbar if was not consolidated
+                    tickbars[-1] = c
+        else:
+            # initiate array
+            self._tickbars = tickbars_list
+
+        # keep safe size
+        if max_tickbars > 1:
+            while(len(tickbars)) > max_tickbars:
+                tickbars.pop(0)
 
     def add_tickbar(self, tickbar, max_tickbars=-1):
         """
         Append a new tickbar.
         @param max_tickbars Pop tickbars until num tickbars > max_tickbars.
-
-        @todo might split in two method, and same for tick
         """
         if not tickbar:
             return
 
-        if isinstance(tickbar, list):
-            # array of tickbar
-            if len(self._tickbars) > 0:
-                for t in tickbar:
-                    # for each tickbar only add it if more recent or replace a non consolidated
-                    if t.timestamp > self._tickbars[-1].timestamp:
-                        if not self._tickbars[-1].ended:
-                            # remove the last tickbar if was not consolidated
-                            self._tickbars.pop(-1)
+        tickbars = self._tickbars
 
-                        self._tickbars.append(t)
-
-                    elif t.timestamp == self._tickbars[-1].timestamp and not self._tickbars[-1].ended:
-                        # replace the last tickbar if was not consolidated
-                        self._tickbars[-1] = c
-            else:
-                # initiate array
-                self._tickbars = tickbar
-
-            # keep safe size
-            if max_tickbars > 1:
-                while(len(self._tickbars)) > max_tickbars:
-                    self._tickbars.pop(0)
-        else:
-            # single tickbar
-            if len(self._tickbars) > 0:
-                # ignore the tickbar if older than the latest
-                if tickbar.timestamp > self._tickbars[-1].timestamp:
-                    if not self._tickbars[-1].ended:
-                        # replace the last tickbar if was not consolidated
-                        self._tickbars[-1] = tickbar
-                    else:
-                        self._tickbars.append(tickbar)
-
-                elif tickbar.timestamp == self._tickbars[-1].timestamp and not self._tickbars[-1].ended:
+        # single tickbar
+        if len(self._tickbars) > 0:
+            # ignore the tickbar if older than the latest
+            if tickbar.timestamp > tickbars[-1].timestamp:
+                if not tickbars[-1].ended:
                     # replace the last tickbar if was not consolidated
-                    self._tickbars[-1] = tickbar
-            else:
-                self._tickbars.append(tickbar)
+                    tickbars[-1] = tickbar
+                else:
+                    tickbars.append(tickbar)
 
-            # keep safe size
-            if max_tickbars > 1:
-                while(len(self._tickbars)) > max_tickbars:
-                    self._tickbars.pop(0)
+            elif tickbar.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
+                # replace the last tickbar if was not consolidated
+                tickbars[-1] = tickbar
+        else:
+            tickbars.append(tickbar)
+
+        # keep safe size
+        if max_tickbars > 1:
+            while(len(tickbars)) > max_tickbars:
+                tickbars.pop(0)
 
     def tickbar(self):
         """
@@ -1168,239 +1145,6 @@ class Instrument(object):
         Returns tickbars list.
         """
         return self._tickbars
-
-    #
-    # general
-    #
-
-    def spread(self):
-        """
-        Returns the last more recent spread.
-        @todo need to update market data
-        """
-        if self._ticks:
-            return self._ticks[-1][2] - self._ticks[-1][1]
-        else:
-            candles = None
-            if self._candles.get(Instrument.TF_SEC):
-                candles = self._candles[Instrument.TF_SEC]
-            elif self._candles.get(60):
-                candles = self._candles[Instrument.TF_MIN]
-
-            if candles:
-                return candles[-1].spread
-
-        # or another way to query it
-        return 0.0
-
-    def bid(self, tf=None):
-        """
-        Returns the last more recent bid (close) price.
-        @param tf At desired timeframe or at the most precise found
-        """
-        if self._ticks:
-            return self._ticks[-1][1]
-        else:
-            candles = None
-            if tf and self._candles.get(tf):
-                candles = self._candles[tf]
-            elif self._candles.get(Instrument.TF_SEC):
-                candles = self._candles[Instrument.TF_SEC]
-            elif self._candles.get(Instrument.TF_MIN):
-                candles = self._candles[Instrument.TF_MIN]
-
-            if candles:
-                return candles[-1].bid_close
-        
-        return None
-
-    def ofr(self, tf=None):
-        """
-        Returns the last more recent offer (close) price.
-        @param tf At desired timeframe or at the most precise found
-        """
-        if self._ticks:
-            return self._ticks[-1][2]
-        else:
-            candles = None
-            if tf and self._candles.get(tf):
-                candles = self._candles[tf]
-            elif self._candles.get(Instrument.TF_SEC):
-                candles = self._candles[Instrument.TF_SEC]
-            elif self._candles.get(Instrument.TF_MIN):
-                candles = self._candles[Instrument.TF_MIN]
-
-            if candles:
-                return candles[-1].ofr_close
-
-        return None
-
-    def price(self, tf=None):
-        """
-        Returns the last more recent mid (close) price.
-        @param tf At desired timeframe or at the most precise found
-        """
-        if self._ticks:
-            return (self._ticks[-1][1] + self._ticks[-1][2]) * 0.5
-        else:
-            candles = None
-            if tf and self._candles.get(tf):
-                candles = self._candles[tf]
-            elif self._candles.get(Instrument.TF_SEC):
-                candles = self._candles[Instrument.TF_SEC]
-            elif self._candles.get(Instrument.TF_MIN):
-                candles = self._candles[Instrument.TF_MIN]
-
-            if candles:
-                return candles[-1].close
-
-        return None
-
-    def num_samples(self, tf):
-        if tf == Instrument.TF_TICK:
-            return len(self._ticks)
-
-        if self._candles.get(tf):
-            return len(self._candles[tf])
-
-        return 0
-
-    def height(self, tf, index):
-        """
-        Returns the height of the last candle for a specified timeframe.
-        @param tf At desired timeframe
-        """
-        candles = self._candles.get(tf)
-        if candles:
-            return candles[index].height
-
-        return 0.0
-
-    def purge_last(self, tf, n):
-        """
-        Clean candle or tick for a particular timeframe, and keep only the n last entries.
-        """
-        if tf > 0:
-            candles = self._candles.get(tf)
-            if candles and len(candles) > n:
-                self._candles[tf] = candles[-n:]
-        elif self._ticks and len(self._ticks) > n:
-            self._ticks = self._ticks[-n:]
-
-    def purge(self, older_than=60*60*24, n_last=100):
-        """
-        Purge ticks and candles that are older than predefined conditions or n keep only n last candles, to avoid memory issues.
-        """
-        now = time.time()
-
-        # on ticks
-        m = 0
-        for n, tick in enumerate(self._ticks):
-            if now - tick[0] < older_than:
-                m = n
-                break
-
-        if m > 0:
-            # keep the m+1 recents
-            self._ticks = self._ticks[m:]
-
-        # per tf of candles
-        for tf, candles in self._candles.items():
-            m = 0
-
-            for n, candle in enumerate(candles):
-                if now - candle.timestamp < older_than:
-                    m = n
-                    break
-
-            if m > 0:
-                # keep the m+1 recents
-                self._candles[tf] = candles[m:]
-
-        # per tf of buy/sell signals
-        for tf, buy_sells in self._buy_sells.items():
-            m = 0
-
-            for n, buy_sell in enumerate(buy_sells):
-                if now - buy_sell.timestamp < older_than:
-                    m = n
-                    break
-
-            if m > 0:
-                # keep the m+1 recents
-                self._buy_sells[tf] = buy_sells[m:]             
-
-    def from_to_prices(self, tf, price_type, from_ts=0, to_ts=-1):
-        prices = [0] * number
-
-        candles = self._candles.get(tf)
-        if candles:
-            if from_ts <= 0:
-                # from the older
-                from_ts = candles[0].timestamp
-
-            if to_ts <= 0:
-                # to the latest
-                to_ts = candles[-1].timestamp
-
-            j = 0
-            for candle in candles:
-                if candle.timestamp < from_ts:
-                    continue
-                elif candle.timestamp > to_ts:
-                    break
-
-                prices[j] = (candle.bid[price_type] + candle.ofr[price_type]) * 0.5
-                j += 1
-
-        return prices
-
-    def from_to_volumes(self, tf, from_ts=0, to_ts=-1):
-        volumes = [0] * number
-
-        if tf == 0:
-            # get volumes from ticks
-            ticks = self._ticks.get(tf)
-            if ticks:
-                if from_ts <= 0:
-                    # from the older
-                    from_ts = ticks[0][0]
-
-                if to_ts <= 0:
-                    # to the latest
-                    to_ts = ticks[-1][0]
-
-                j = 0
-                for tick in ticks:
-                    if tick[0] < from_ts:
-                        continue
-                    elif tick[0] > to_ts:
-                        break
-
-                    volumes[j] = tick[3]
-                    j += 1
-        else:
-            candles = self._candles.get(tf)
-            if candles:
-                if from_ts <= 0:
-                    # from the older
-                    from_ts = candles[0].timestamp
-
-                if to_ts <= 0:
-                    # to the latest
-                    to_ts = candles[-1].timestamp
-
-                j = 0
-                for candle in candles:
-                    if candle.timestamp < from_ts:
-                        continue
-                    elif candle.timestamp > to_ts:
-                        break
-
-                    volumes[j] = candle.volume
-                    j += 1
-
-        return volumes
 
     #
     # sync
