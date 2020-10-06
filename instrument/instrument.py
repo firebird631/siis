@@ -403,7 +403,7 @@ class Instrument(object):
                 '_market_bid', '_market_ofr', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
                 '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry', \
-                '_value_per_pip', '_one_pip_means', '_cash_session', '_overnight_session'
+                '_value_per_pip', '_one_pip_means', '_cash_session', '_overnight_session', '_week_session'
 
     def __init__(self, name, symbol, market_id, alias=None):
         self._watchers = {}
@@ -452,7 +452,8 @@ class Instrument(object):
         self._value_per_pip = 1.0
 
         self._cash_session = (0.0, 24*60*60.0-0.001)  # day cash session from 00h00m00s000ms to 23h59m59s999ms in UTC
-        self._overnight_session = None  # no overnight session by default else a tuple of two duration in seconds
+        self._overnight_session = None  # no overnight session by default else a tuple of two durations in seconds
+        self._week_session = None       # no week session mean every day markets, else a tuple of two float timedelta in seconds
 
         self._wanted = []  # list of wanted timeframe before be ready (its only for initialization)
 
@@ -614,6 +615,14 @@ class Instrument(object):
     @property
     def session_offset(self):
         return -self._cash_session[0]
+
+    @property
+    def week_session(self):
+        return self._week_session
+
+    @property
+    def has_week_session(self):
+        return self._week_session is not None
 
     #
     # price/volume
