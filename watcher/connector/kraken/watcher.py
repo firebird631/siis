@@ -234,16 +234,16 @@ class KrakenWatcher(Watcher):
                             self.fetch_and_generate(market_id, Instrument.TF_1M, depth*3, None)
                         
                         elif timeframe == Instrument.TF_5M:
-                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth, None):
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth, None)
 
                         elif timeframe == Instrument.TF_10M:
-                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth*2, None):
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth*2, None)
                         
                         elif timeframe == Instrument.TF_15M:
-                            self.fetch_and_generate(market_id, Instrument.TF_15M, depth, None):
+                            self.fetch_and_generate(market_id, Instrument.TF_15M, depth, None)
 
                         elif timeframe == Instrument.TF_30M:
-                            self.fetch_and_generate(market_id, Instrument.TF_15M, depth*2, Instrument.TF_30M):
+                            self.fetch_and_generate(market_id, Instrument.TF_15M, depth*2, Instrument.TF_30M)
 
                         elif timeframe == Instrument.TF_1H:
                             self.fetch_and_generate(market_id, Instrument.TF_1H, depth, None)
