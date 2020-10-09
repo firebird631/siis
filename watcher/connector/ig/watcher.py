@@ -294,13 +294,13 @@ class IGWatcher(Watcher):
                                 self.fetch_and_generate(market_id, Instrument.TF_1M, 120, None)
 
                             elif timeframe in (Instrument.TF_5M, Instrument.TF_10M):
-                                self.fetch_and_generate(market_id, Instrument.TF_5M, 120, None):
+                                self.fetch_and_generate(market_id, Instrument.TF_5M, 120, None)
 
                             elif timeframe == Instrument.TF_15M:
-                                self.fetch_and_generate(market_id, Instrument.TF_15M, 120, None):
+                                self.fetch_and_generate(market_id, Instrument.TF_15M, 120, None)
 
                             elif timeframe == Instrument.TF_30M:
-                                self.fetch_and_generate(market_id, Instrument.TF_30M, 120, None):
+                                self.fetch_and_generate(market_id, Instrument.TF_30M, 120, None)
 
                             elif timeframe in (Instrument.TF_1H, Instrument.TF_2H, Instrument.TF_3H, Instrument.TF_4H, Instrument.TF_6H, Instrument.TF_8H, Instrument.TF_12H):
                                 self.fetch_and_generate(market_id, Instrument.TF_1H, 120, Instrument.TF_4H):
