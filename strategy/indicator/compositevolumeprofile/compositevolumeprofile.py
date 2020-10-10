@@ -12,7 +12,7 @@ from common.utils import truncate
 
 import numpy as np
 
-# @todo Support of cash session and overnight session.
+# @todo Support of evening session and overnight session.
 
 
 class CompositeVolumeProfileIndicator(Indicator):

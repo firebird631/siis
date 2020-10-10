@@ -51,7 +51,7 @@ class TimeframeBasedSub(object):
                 if self.strategy_trader.strategy.indicator(param[0]):
                     # instanciate and setup indicator
                     indicator = self.strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:])
-                    indicator.setup(strategy_trader.instrument)
+                    indicator.setup(self.strategy_trader.instrument)
 
                     setattr(self, ind, indicator)
                 else:

@@ -49,6 +49,7 @@ class Strategy(Runnable):
     """
 
     MAX_SIGNALS = 2000   # max size of the signals messages queue before ignore some market data (tick, ohlc)
+    MAX_SIGNALS_DELAY = 5.0     # alert only when max signal is reach for a period of 5 seconds
 
     COMMAND_INFO = 1
     COMMAND_TRADE_EXIT_ALL = 2  # close any trade for any market or only for a specific market-id
@@ -96,6 +97,8 @@ class Strategy(Runnable):
         self._next_backtest_update = None
 
         self._cpu_load = 0.0   # global CPU for all the instruments managed by a strategy
+        self._overload_timestamp = 0.0
+
         self._condition = threading.Condition()
 
         if options.get('trader'):
@@ -273,8 +276,17 @@ class Strategy(Runnable):
 
         # strategy must consume its signal else there is first a warning, and then some market data could be ignored
         if len(self._signals) > Strategy.MAX_SIGNALS:
-            Terminal.inst().warning("Strategy %s has more than %s waiting signals, some market data could be ignored !" % (
-                self.name, Strategy.MAX_SIGNALS), view='debug')
+            now = time.time()
+
+            # but noly after a delay
+            if self._overload_timestamp == 0.0:
+                self._overload_timestamp = now
+
+            elif time.time() - self._overload_timestamp > Strategy.MAX_SIGNALS_DELAY:
+                Terminal.inst().warning("Strategy %s has more than %s waiting signals for the last %i seconds !" % (
+                    self.name, Strategy.MAX_SIGNALS, Strategy.MAX_SIGNALS_DELAY), view='debug')
+
+                self._overload_timestamp = now
 
     def ping(self, timeout):
         if self._condition.acquire(timeout=timeout):
@@ -647,7 +659,7 @@ class Strategy(Runnable):
         """
         with self._condition:
             # running cancel wait, ping too, normal case is a signal to process
-            while not len(self._signals) and self._running and not self._ping:
+            while (not len(self._signals) or not self._ping) and self._running:
                 self._condition.wait()
 
         count = 0
@@ -873,10 +885,10 @@ class Strategy(Runnable):
                     # trade signal
                     self.order_signal(signal.signal_type, signal.data)
 
-            count += 1
-            if count > 10:
-                # no more than 10 signals per loop, allow aggregate fast ticks, and don't block the processing
-                break
+            # count += 1
+            # if count > 10:
+            #     # no more than 10 signals per loop, allow aggregate fast ticks, and don't block the processing
+            #     break
 
         if self.service.backtesting:
             # process one more backtest step
@@ -1190,7 +1202,9 @@ class Strategy(Runnable):
 
                 self._prefetched = prefetched
 
-        return self._running and self._preset and self._prefetched
+        self._ready = self._running and self._preset and self._prefetched
+
+        return self._ready
 
     def finished(self):
         """
@@ -1454,13 +1468,10 @@ class Strategy(Runnable):
                     # non interested by this instrument/symbol
                     return
 
-            if len(self._signals) > Strategy.MAX_SIGNALS:
-                # if strategy message queue saturate its mostly because of market data too many update
-                logger.warning("More than %s signals in strategy %s - %s" % (Strategy.MAX_SIGNALS, self.name, self.identifier))
-
-                # from the watcher (in live) so then ignore some of those message, the others ones are too important to be ignored
-                if signal.signal_type in (Signal.SIGNAL_TICK_DATA, Signal.SIGNAL_MARKET_DATA):
-                    return
+            # if len(self._signals) > Strategy.MAX_SIGNALS:
+            #     # from the watcher (in live) so then ignore some of those message, the others ones are too important to be ignored
+            #     if signal.signal_type in (Signal.SIGNAL_TICK_DATA, Signal.SIGNAL_MARKET_DATA):
+            #         return
 
             # signal of interest
             self._add_signal(signal)

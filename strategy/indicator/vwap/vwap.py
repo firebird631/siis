@@ -17,7 +17,7 @@ class VWAPIndicator(Indicator):
     Volume Weighted Average indicator based on timeframe.
     It's a special indicator because it need to use an intraday timeframe.
 
-    @todo Support of cash session and overnight session.
+    @todo Support of evening session and overnight session.
     """
 
     __slots__ = '_days', '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \

@@ -1320,10 +1320,13 @@ class Trader(Runnable):
 
                     if t['pl'] < 0:  # loss
                         cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
+                        pnl = Color.colorize("%s%s" % (t['pnl'], t['pnlcur']), Color.RED, style=style)
                     elif t['pl'] > 0:  # profit
                         cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
+                        pnl = Color.colorize("%s%s" % (t['pnl'], t['pnlcur']), Color.GREEN, style=style)
                     else:  # equity
                         cr = "0.0"
+                        pnl = "%s%s" % (t['pnl'], t['pnlcur'])
 
                     if t['d'] == 'long' and aep:
                         slpct = (sl - aep) / aep
@@ -1348,7 +1351,7 @@ class Trader(Runnable):
                         t['aep'],
                         datetime.fromtimestamp(t['xt']).strftime(datetime_format) if t['xt'] > 0 else "",
                         t['axp'],
-                        "%s%s" % (t['pnl'], t['pnlcur']),
+                        pnl,
                         t['cost'],
                         t['margin'],
                         t['key']

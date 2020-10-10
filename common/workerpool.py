@@ -124,10 +124,12 @@ class WorkerPool(object):
     __slots__ = '_num_workers', '_workers', '_queue', '_condition'
 
     def __init__(self, num_workers=None):
+        # at least 3 workers in case of one is block, another intensive work, need a available one
         if not num_workers:
-            self._num_workers = multiprocessing.cpu_count()
+            num_cpus = multiprocessing.cpu_count()
+            self._num_workers = max(3, num_cpus)
         else:
-            self._num_workers = num_workers
+            self._num_workers = max(3, num_workers)
 
         self._workers = []
         self._queue = collections.deque()

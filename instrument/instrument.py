@@ -403,7 +403,7 @@ class Instrument(object):
                 '_market_bid', '_market_ofr', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
                 '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry', \
-                '_value_per_pip', '_one_pip_means', '_cash_session', '_overnight_session', '_week_session'
+                '_value_per_pip', '_one_pip_means', '_evening_session', '_overnight_session', '_week_session'
 
     def __init__(self, name, symbol, market_id, alias=None):
         self._watchers = {}
@@ -451,7 +451,7 @@ class Instrument(object):
         self._one_pip_means = 1.0
         self._value_per_pip = 1.0
 
-        self._cash_session = (0.0, 24*60*60.0-0.001)  # day cash session from 00h00m00s000ms to 23h59m59s999ms in UTC
+        self._evening_session = (0.0, 24*60*60.0-0.001)  # evening session from 00h00m00s000ms to 23h59m59s999ms in UTC
         self._overnight_session = None  # no overnight session by default else a tuple of two durations in seconds
         self._week_session = None       # no week session mean every day markets, else a tuple of two float timedelta in seconds
 
@@ -601,8 +601,8 @@ class Instrument(object):
     #
 
     @property
-    def cash_session(self):
-        return self._cash_session
+    def evening_session(self):
+        return self._evening_session
 
     @property
     def overnight_session(self):
@@ -614,7 +614,7 @@ class Instrument(object):
 
     @property
     def session_offset(self):
-        return -self._cash_session[0]
+        return -self._evening_session[0]
 
     @property
     def week_session(self):
@@ -848,8 +848,9 @@ class Instrument(object):
         # keep safe size
         if max_candles > 1:
             candles = self._candles[tf]
-            while(len(candles)) > max_candles:
-                candles.pop(0)
+            if candles:
+                while(len(candles)) > max_candles:
+                    candles.pop(0)
 
     def add_candle(self, candle, max_candles=-1):
         """
@@ -883,8 +884,9 @@ class Instrument(object):
         # keep safe size
         if max_candles > 1:
             candles = self._candles[candle._timeframe]
-            while(len(candles)) > max_candles:
-                candles.pop(0)
+            if candles:
+                while(len(candles)) > max_candles:
+                    candles.pop(0)
 
     def last_candles(self, tf, number):
         """

@@ -288,14 +288,15 @@ class Position(Keyed):
         delta_price = self.price_diff(market)
         position_cost = self.position_cost(market)
 
-        raw_profit_loss = self.quantity * (delta_price / (market.one_pip_means or 1.0)) * market.value_per_pip
+        # raw_profit_loss = self.quantity * (delta_price / (market.one_pip_means or 1.0)) * market.value_per_pip
+        raw_profit_loss = self.quantity * delta_price * market.contract_size
 
         # use maker fee and commission
-        self._profit_loss = raw_profit_loss - (position_cost * market.maker_fee) - (position_cost * market.maker_commission)
+        self._profit_loss = raw_profit_loss - (position_cost * market.maker_fee) - market.maker_commission
         self._profit_loss_rate = (self._profit_loss / position_cost) if position_cost != 0.0 else 0.0
 
         # use taker fee and commission
-        self._profit_loss_market = raw_profit_loss - (position_cost * market.taker_fee) - (position_cost * market.taker_commission)
+        self._profit_loss_market = raw_profit_loss - (position_cost * market.taker_fee) - market.taker_commission
         self._profit_loss_market_rate = (self._profit_loss_market / position_cost) if position_cost != 0.0 else 0.0
 
     def close_direction(self):
@@ -326,7 +327,9 @@ class Position(Keyed):
         if market is None:
             return 0.0
 
-        return self.quantity * (market.lot_size * market.contract_size) * self._entry_price
+        # @todo not sure lot_size should be here
+        # return self.quantity * (market.lot_size * market.contract_size) * self._entry_price
+        return self.quantity * market.contract_size * self._entry_price
 
     def margin_cost(self, market):
         """
@@ -336,7 +339,9 @@ class Position(Keyed):
         if market is None:
             return 0.0
 
-        return self.quantity * (market.lot_size * market.contract_size) * market.margin_factor * self._entry_price
+        # @todo not sure lot_size should be here
+        # return self.quantity * (market.lot_size * market.contract_size) * market.margin_factor * self._entry_price
+        return self.quantity * market.contract_size * market.margin_factor * self._entry_price
 
     def direction_to_str(self):
         if self._direction > 0:
