@@ -109,8 +109,8 @@ class Fetcher(object):
             # compute a from date
             today = datetime.now().astimezone(UTC())
 
-            if timeframe >= Instrument.TF_MONTH:
-                from_date = (today - timedelta(months=int(timeframe/Instrument.TF_MONTH)*n_last)).replace(day=1).replace(hour=0).replace(minute=0).replace(second=0)
+            if timeframe == Instrument.TF_MONTH:
+                from_date = (today - timedelta(days=30*n_last)).replace(day=1).replace(hour=0).replace(minute=0).replace(second=0)
             elif timeframe >= Instrument.TF_1D:
                 from_date = (today - timedelta(days=int(timeframe/Instrument.TF_1D)*n_last)).replace(hour=0).replace(minute=0).replace(second=0)
             elif timeframe >= Instrument.TF_1H:
@@ -126,7 +126,7 @@ class Fetcher(object):
             today = datetime.now().astimezone(UTC())
 
             if timeframe == Instrument.TF_MONTH:
-                to_date = today + timedelta(months=1)
+                to_date = today + timedelta(days=30)
             else:
                 to_date = today + timedelta(seconds=timeframe)
 

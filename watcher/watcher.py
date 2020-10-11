@@ -497,9 +497,9 @@ class Watcher(Runnable):
                     from_date = last_date
                 else:
                     # no previous then query all necessary
-                    from_date = today - timedelta(months=int(timeframe/Instrument.TF_MONTH)*n_last)
+                    from_date = today - timedelta(days=30*n_last)
             else:
-                from_date = today - timedelta(months=int(timeframe/Instrument.TF_MONTH)*n_last)
+                from_date = today - timedelta(days=30*n_last)
 
         else:
             # ohlc based

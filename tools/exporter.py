@@ -174,7 +174,7 @@ def do_exporter(options):
         today = datetime.now().astimezone(UTC())
 
         if timeframe == Instrument.TF_MONTH:
-            to_date = today + timedelta(months=1)
+            to_date = today + timedelta(days=30)
         else:
             to_date = today + timedelta(seconds=timeframe or 1.0)
 
