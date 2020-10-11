@@ -225,98 +225,101 @@ class BinanceFuturesWatcher(Watcher):
     def subscribe(self, market_id, ohlc_depths=None, tick_depth=None, order_book_depth=None):
         result = False
 
-        with self._mutex:
-            try:
-                if market_id in self.__matching_symbols:
-                    multiplex = []
+        if market_id in self.__matching_symbols:
+            multiplex = []
 
-                    # live data
-                    symbol = market_id.lower()
+            # live data
+            symbol = market_id.lower()
 
-                    # depth - order book
-                    # multiplex.append(symbol + '@depth')
+            # depth - order book
+            # multiplex.append(symbol + '@depth')
 
-                    # aggreged trade
-                    multiplex.append(symbol + '@aggTrade')
+            # aggreged trade
+            multiplex.append(symbol + '@aggTrade')
 
-                    # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
-                    # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
+            # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
+            # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
 
-                    # fetch from source
-                    if self._initial_fetch:
-                        logger.info("%s prefetch for %s" % (self.name, market_id))
+            # fetch from source
+            if self._initial_fetch:
+                logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                        for timeframe, depth in ohlc_depths.items():
-                            if timeframe == Instrument.TF_1M:
-                                self.fetch_and_generate(market_id, Instrument.TF_1M, depth, None)
+                for timeframe, depth in ohlc_depths.items():
+                    try:
+                        if timeframe == Instrument.TF_1M:
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth, None)
 
-                            elif timeframe == Instrument.TF_2M:
-                                self.fetch_and_generate(market_id, Instrument.TF_1M, depth*2, None)
+                        elif timeframe == Instrument.TF_2M:
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth*2, None)
 
-                            elif timeframe == Instrument.TF_3M:
-                                self.fetch_and_generate(market_id, Instrument.TF_1M, depth*3, None)
-                            
-                            elif timeframe == Instrument.TF_5M:
-                                self.fetch_and_generate(market_id, Instrument.TF_5M, depth, None)
+                        elif timeframe == Instrument.TF_3M:
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth*3, None)
+                        
+                        elif timeframe == Instrument.TF_5M:
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth, None)
 
-                            elif timeframe == Instrument.TF_10M:
-                                self.fetch_and_generate(market_id, Instrument.TF_5M, depth*2, None)
-                            
-                            elif timeframe == Instrument.TF_15M:
-                                self.fetch_and_generate(market_id, Instrument.TF_15M, depth, None)
+                        elif timeframe == Instrument.TF_10M:
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth*2, None)
+                        
+                        elif timeframe == Instrument.TF_15M:
+                            self.fetch_and_generate(market_id, Instrument.TF_15M, depth, None)
 
-                            elif timeframe == Instrument.TF_30M:
-                                self.fetch_and_generate(market_id, Instrument.TF_30M, depth, None)
+                        elif timeframe == Instrument.TF_30M:
+                            self.fetch_and_generate(market_id, Instrument.TF_30M, depth, None)
 
-                            elif timeframe == Instrument.TF_1H:
-                                self.fetch_and_generate(market_id, Instrument.TF_1H, depth, None)
+                        elif timeframe == Instrument.TF_1H:
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth, None)
 
-                            elif timeframe == Instrument.TF_2H:
-                                self.fetch_and_generate(market_id, Instrument.TF_1H, depth*2, Instrument.TF_2H)
+                        elif timeframe == Instrument.TF_2H:
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth*2, Instrument.TF_2H)
 
-                            elif timeframe == Instrument.TF_3H:
-                                self.fetch_and_generate(market_id, Instrument.TF_1H, depth*3, None)
+                        elif timeframe == Instrument.TF_3H:
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth*3, None)
 
-                            elif timeframe == Instrument.TF_4H:
-                                self.fetch_and_generate(market_id, Instrument.TF_4H, depth, None)
+                        elif timeframe == Instrument.TF_4H:
+                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth, None)
 
-                            elif timeframe == Instrument.TF_6H:
-                                self.fetch_and_generate(market_id, Instrument.TF_1H, depth*6, None)
+                        elif timeframe == Instrument.TF_6H:
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth*6, None)
 
-                            elif timeframe == Instrument.TF_8H:
-                                self.fetch_and_generate(market_id, Instrument.TF_4H, depth*2, None)
+                        elif timeframe == Instrument.TF_8H:
+                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth*2, None)
 
-                            elif timeframe == Instrument.TF_12H:
-                                self.fetch_and_generate(market_id, Instrument.TF_4H, depth*3, None)
+                        elif timeframe == Instrument.TF_12H:
+                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth*3, None)
 
-                            elif timeframe == Instrument.TF_1D:
-                                self.fetch_and_generate(market_id, Instrument.TF_1D, depth, None)
+                        elif timeframe == Instrument.TF_1D:
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth, None)
 
-                            elif timeframe == Instrument.TF_2D:
-                                self.fetch_and_generate(market_id, Instrument.TF_1D, depth*2, None)
+                        elif timeframe == Instrument.TF_2D:
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth*2, None)
 
-                            elif timeframe == Instrument.TF_3D:
-                                self.fetch_and_generate(market_id, Instrument.TF_1D, depth*3, None)
+                        elif timeframe == Instrument.TF_3D:
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth*3, None)
 
-                            elif timeframe == Instrument.TF_1W:
-                                self.fetch_and_generate(market_id, Instrument.TF_1W, depth, None)
+                        elif timeframe == Instrument.TF_1W:
+                            self.fetch_and_generate(market_id, Instrument.TF_1W, depth, None)
 
-                            elif timeframe == Instrument.TF_MONTH:
-                                self.fetch_and_generate(market_id, Instrument.TF_MONTH, depth, None)
+                        elif timeframe == Instrument.TF_MONTH:
+                            self.fetch_and_generate(market_id, Instrument.TF_MONTH, depth, None)
 
-                        if tick_depth:
-                            self.fetch_ticks(market_id, tick_depth)
+                    except Exception as e:
+                        error_logger.error(repr(e))
 
-                    # one more watched instrument
-                    self.insert_watched_instrument(market_id, [0])
+                if tick_depth:
+                    try:
+                        self.fetch_ticks(market_id, tick_depth)
+                    except Exception as e:
+                        error_logger.error(repr(e))
 
-                    # trade+depth
-                    self._multiplex_handlers[market_id] = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
+            with self._mutex:
+                # one more watched instrument
+                self.insert_watched_instrument(market_id, [0])
 
-                    result = True
+                # and start listening for this symbol (trade+depth)
+                self._multiplex_handlers[market_id] = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
 
-            except Exception as e:
-                error_logger.error(repr(e))
+            result = True
 
         return result
 
@@ -599,8 +602,8 @@ class BinanceFuturesWatcher(Watcher):
             self.__on_trade_data(data['data'])
         elif data['stream'].endswith('@depth'):
             self.__on_depth_data(data['data'])
-        elif '@kline_' in data['stream']:
-            self.__on_kline_data(data['data'])
+        # elif '@kline_' in data['stream']:
+        #     self.__on_kline_data(data['data'])
         # elif data['stream'] == '!ticker@arr':
         #     self.__on_tickers_data(data['data'])
 
@@ -620,7 +623,7 @@ class BinanceFuturesWatcher(Watcher):
             bid = price
             ofr = price
 
-            tick = (trade_time, bid, ofr, vol)
+            tick = (trade_time, bid, ofr, vol, buyer_maker)
 
             self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 

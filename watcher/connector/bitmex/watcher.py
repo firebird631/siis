@@ -176,48 +176,47 @@ class BitMexWatcher(Watcher):
     #
 
     def subscribe(self, market_id, ohlc_depths=None, tick_depth=None, order_book_depth=None):
-        with self._mutex:
-            if market_id in self._watched_instruments:
-                # subscribed instrument
-                self.insert_watched_instrument(market_id, [0])
+        if market_id in self._watched_instruments:
+            # subscribed instrument
+            self.insert_watched_instrument(market_id, [0])
 
-                # fetch from source
-                if self._initial_fetch:
-                    logger.info("%s prefetch for %s" % (self.name, market_id))
+            # fetch from source
+            if self._initial_fetch:
+                logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                    for timeframe, depth in ohlc_depths.items():
-                        if timeframe >= Instrument.TF_1M and timeframe <= Instrument.TF_3M:
-                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth * 3, Instrument.TF_3M)
-                        
-                        elif timeframe >= Instrument.TF_5M and timeframe <= Instrument.TF_30M:
-                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth * 6, Instrument.TF_30M)
-                        
-                        elif timeframe >= Instrument.TF_1H and timeframe <= Instrument.TF_4H:
-                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth * 4, Instrument.TF_4H)
-                        
-                        elif timeframe >= Instrument.TF_1D and timeframe <= Instrument.TF_1W:
-                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth * 7, Instrument.TF_1W)
+                for timeframe, depth in ohlc_depths.items():
+                    if timeframe >= Instrument.TF_1M and timeframe <= Instrument.TF_3M:
+                        self.fetch_and_generate(market_id, Instrument.TF_1M, depth * 3, Instrument.TF_3M)
+                    
+                    elif timeframe >= Instrument.TF_5M and timeframe <= Instrument.TF_30M:
+                        self.fetch_and_generate(market_id, Instrument.TF_5M, depth * 6, Instrument.TF_30M)
+                    
+                    elif timeframe >= Instrument.TF_1H and timeframe <= Instrument.TF_4H:
+                        self.fetch_and_generate(market_id, Instrument.TF_1H, depth * 4, Instrument.TF_4H)
+                    
+                    elif timeframe >= Instrument.TF_1D and timeframe <= Instrument.TF_1W:
+                        self.fetch_and_generate(market_id, Instrument.TF_1D, depth * 7, Instrument.TF_1W)
 
-                    if tick_depth:
-                        self.fetch_ticks(market_id, tick_depth)
+                if tick_depth:
+                    self.fetch_ticks(market_id, tick_depth)
 
-                    # debug only
-                    # if market_id == "XBTUSD":
-                    #     logger.info(str(self._last_ohlc["XBTUSD"].get(60)))
-                    #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*5)))
-                    #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*15)))
-                    #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60)))
-                    #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*4)))
-                    #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*2)))
-                    #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24)))
-                    #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24*7)))
+                # debug only
+                # if market_id == "XBTUSD":
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*5)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*15)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*4)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*2)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24)))
+                #     logger.info(str(self._last_ohlc["XBTUSD"].get(60*60*24*7)))
 
-                # connector by default any
-                # nothing to do, see connector
+            # connector by default any
+            # nothing to do, see connector
 
-                return True
-            else:
-                return False
+            return True
+        else:
+            return False
 
     def unsubscribe(self, market_id, timeframe):
         with self._mutex:

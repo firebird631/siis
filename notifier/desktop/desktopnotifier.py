@@ -111,13 +111,15 @@ class DesktopNotifier(Notifier):
         try:
             self.notify2 = import_module('notify2', package='')
         except ModuleNotFoundError as e:
-            logger.error(repr(e))
+            logger.debug("lib notify2 was not found, desktop notifications are not possibles")
 
         # lib notify
         if self.notify2:
             self.notify2.init('SiiS')
 
-        return super().start(options)
+            return super().start(options)
+
+        return False
 
     def terminate(self):
         if self.notify2:

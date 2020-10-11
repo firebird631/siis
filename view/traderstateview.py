@@ -50,6 +50,7 @@ class TraderStateView(TableView):
 
         self._reported_activity = False
         self._reported_bootstraping = False
+        self._reported_ready = False
 
         # listen to its service
         self.service.add_listener(self)
@@ -208,6 +209,7 @@ class TraderStateView(TableView):
         # for title
         self._reported_activity = strategy_trader_state.get('activity', False)
         self._reported_bootstraping = strategy_trader_state.get('bootstraping', False)
+        self._reported_ready = strategy_trader_state.get('ready', False)
 
         if offset is None:
             offset = 0
@@ -257,6 +259,7 @@ class TraderStateView(TableView):
                     
                     reported_activity = self._reported_activity
                     reported_bootstraping = self._reported_bootstraping
+                    reported_ready = self._reported_ready
 
                     try:
                         columns, table, total_size = self.trader_state_table(strategy, *self.table_format())
@@ -269,6 +272,7 @@ class TraderStateView(TableView):
 
                 state = " - ".join((
                     "active" if reported_activity else "disabled",
+                    "ready" if reported_ready else "pending",
                     "bootstraping" if reported_bootstraping else "computing"))
 
                 self.set_title("Trader state for strategy %s - %s on %s - mode %s - %s" % (strategy.name, strategy.identifier, market_id, report_mode, state))

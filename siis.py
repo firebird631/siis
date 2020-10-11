@@ -186,7 +186,7 @@ def application(argv):
                 elif arg == '--install-market':
                     # fetcher option
                     options['install-market'] = True
-                elif arg == '--initial-fetch':
+                elif arg == '--initial-fetch' or arg == '--prefetch':
                     # do the initial OHLC fetch for watchers (syncer, watcher), default False
                     options['initial-fetch'] = True
                 elif arg == '--store-trade':

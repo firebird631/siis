@@ -72,10 +72,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         """
         with self._mutex:
             # at tick we update any timeframes because we want the non consolidated candle
-            for tf, sub in self.timeframes.items():
-                # update at tick
-                ticks = self.instrument.ticks()  # self.instrument.ticks_after(sub.candles_gen.last_timestamp)
+            ticks = self.instrument.ticks()  # self.instrument.ticks_after(sub.candles_gen.last_timestamp)
 
+            for tf, sub in self.timeframes.items():
                 sub._last_closed = False
 
                 generated = sub.candles_gen.generate_from_ticks(ticks)

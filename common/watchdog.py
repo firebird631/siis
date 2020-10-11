@@ -19,7 +19,7 @@ class WatchdogService(Service):
     Watchdog service to track other services.
     """
 
-    TIMER_DELAY = 5.0
+    TIMER_DELAY = 15.0
     PING_TIMEOUT = 30.0
 
     def __init__(self, options):

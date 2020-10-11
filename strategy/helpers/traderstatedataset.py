@@ -24,6 +24,7 @@ def get_strategy_trader_state(strategy, market_id, report_mode=0):
         'market-id': market_id,
         'activity': False,
         'bootstraping': False,
+        'ready': False,
         'members': [],
         'data': [],
         'num-modes': 1

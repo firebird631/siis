@@ -1012,6 +1012,7 @@ class StrategyTrader(object):
             'market-id': self.instrument.market_id,
             'activity': self._activity,
             'bootstraping': self._bootstraping == 2,
+            'ready': self.instrument.ready(),
             'members': [],
             'data': [],
             'num-modes': 1

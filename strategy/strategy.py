@@ -657,10 +657,20 @@ class Strategy(Runnable):
         """
         Does not override this method. Internal update mecanism.
         """
-        with self._condition:
+        if not self._running:
+            return False
+
+        if self._condition.acquire(timeout=1.0):
             # running cancel wait, ping too, normal case is a signal to process
-            while (not len(self._signals) or not self._ping) and self._running:
-                self._condition.wait()
+            while (not len(self._signals) and not self._ping):
+                self._condition.wait(1.0)
+
+            self._condition.release()
+
+        # with self._condition:
+        #     # running cancel wait, ping too, normal case is a signal to process
+        #     while (not len(self._signals) or not self._ping):
+        #         self._condition.wait()
 
         count = 0
         do_update = set()
@@ -1414,9 +1424,16 @@ class Strategy(Runnable):
     #
 
     def _add_signal(self, signal):
-        with self._condition:
+        if self._condition.acquire(timeout=1.0):
             self._signals.append(signal)
             self._condition.notify()
+            self._condition.release()
+        else:
+            self._signals.append(signal)
+
+        # with self._condition:
+        #     self._signals.append(signal)
+        #     self._condition.notify()
 
     def receiver(self, signal):
         if signal.source == Signal.SOURCE_STRATEGY:

@@ -22,7 +22,7 @@ def display_help(commands_handler, user_context=False):
         Terminal.inst().message("General commands. Direct key actions (single key press), view key are in uppercase:", view='content')
         # @todo accelerator with Command
         Terminal.inst().message(" - '?' ping all services", view='content')
-        Terminal.inst().message(" - <space> print a time mark in status bar", view='content')
+        Terminal.inst().message(" - <space> toggle play/pause in backtesting", view='content')
         Terminal.inst().message(" - 'n' toggle desktop notifications", view='content')
         Terminal.inst().message(" - 'a' toggle audible notifications", view='content')
         Terminal.inst().message(" - '%' toggle table percent display", view='content')
@@ -109,6 +109,7 @@ def display_cli_help():
     Terminal.inst().message("  --spec=<specific-option> Specific fetcher option (exemple STOCK for alphavantage.co fetcher to fetch a stock market).")
     Terminal.inst().message("  --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.")
     Terminal.inst().message("  --initial-fetch Process the fetching of recent OHLCs when subscribing to a market. Default don't fetch.")
+    Terminal.inst().message("  --prefetch Alias for --initial-fetch.")
     Terminal.inst().message("  --store-ohlc Write OHLCs to DB. Default not stored.")
     Terminal.inst().message("  --store-trade Write tick/trade/quote to filesystem. Default not stored.")
     Terminal.inst().message("")

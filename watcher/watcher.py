@@ -156,6 +156,8 @@ class Watcher(Runnable):
     def insert_watched_instrument(self, market_id, timeframes):
         """
         Must be called for each subscribed market to initialize the last price data structure.
+
+        @warning Non thread safe method.
         """
         if market_id not in self._watched_instruments:
             self._watched_instruments.add(market_id)
@@ -476,9 +478,6 @@ class Watcher(Runnable):
         generators = []
         from_tf = timeframe
 
-        if not market_id in self._last_ohlc:
-            self._last_ohlc[market_id] = {}
-
         # compute a from date
         today = datetime.now().astimezone(UTC())
         from_date = today
@@ -527,6 +526,7 @@ class Watcher(Runnable):
 
         last_ticks = []
         last_ohlcs = {}
+        current_ohlc = {}
 
         # cascaded generation of candles
         if cascaded:
@@ -570,7 +570,7 @@ class Watcher(Runnable):
             last_ohlcs[timeframe].append(candle)
 
             # only the last
-            self._last_ohlc[market_id][timeframe] = candle
+            current_ohlc[timeframe] = candle
 
             # generate higher candles
             for generator in generators:              
@@ -583,19 +583,29 @@ class Watcher(Runnable):
                     last_ohlcs[generator.to_tf].extend(candles)
 
                     # only the last as current
-                    self._last_ohlc[market_id][generator.to_tf] = candles[-1]
+                    current_ohlc[generator.to_tf] = candles[-1]
 
                 elif generator.current:
-                    self._last_ohlc[market_id][generator.to_tf] = generator.current
+                    current_ohlc[generator.to_tf] = generator.current
 
                 # remove consumed candles
                 last_ohlcs[generator.from_tf] = []
 
             n += 1
 
-        for k, ohlc in self._last_ohlc[market_id].items():
+        for k, ohlc in current_ohlc.items():
             if ohlc:
                 ohlc.set_consolidated(False)
+
+        # keep the current OHLC for each timeframe
+        with self._mutex:
+            if not market_id in self._last_ohlc:
+                self._last_ohlc[market_id] = {}
+
+            for k, ohlc in current_ohlc.items():
+                # set current OHLC
+                self._last_ohlc[market_id][k] = ohlc
+
 
     def fetch_ticks(self, market_id, tick_depth=None):
         """
