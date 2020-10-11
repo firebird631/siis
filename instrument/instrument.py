@@ -1180,7 +1180,7 @@ class Instrument(object):
 
         return False
 
-    def open_exec_price(self, direction):
+    def open_exec_price(self, direction, maker=False):
         """
         Return the execution price if an order open a position.
         It depend of the direction of the order and the market bid/ofr prices.
@@ -1188,13 +1188,13 @@ class Instrument(object):
         If position is short, then returns the market bid price.
         """
         if direction > 0:
-            return self._market_ofr
+            return self._market_ofr if not maker else self._market_bid
         elif direction < 0:
-            return self._market_bid
+            return self._market_bid if not maker else self._market_ofr
         else:
-            return self._market_ofr
+            return (self._market_ofr + self._market_bid) * 0.5
 
-    def close_exec_price(self, direction):
+    def close_exec_price(self, direction, maker=False):
         """
         Return the execution price if an order/position is closing.
         It depend of the direction of the order and the market bid/ofr prices.
@@ -1202,11 +1202,11 @@ class Instrument(object):
         If position is short, then returns the market ofr price.
         """
         if direction > 0:
-            return self._market_bid
+            return self._market_bid if not maker else self._market_ofr
         elif direction < 0:
-            return self._market_ofr
+            return self._market_ofr if not maker else self._market_bid
         else:
-            return self._market_bid
+            return (self._market_bid * self._market_ofr) * 0.5
 
     def trade_quantity_mode_to_str(self):
         if self._trade_quantity_mode == Instrument.TRADE_QUANTITY_DEFAULT:

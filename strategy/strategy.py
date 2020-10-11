@@ -1586,24 +1586,24 @@ class Strategy(Runnable):
             order_type = Order.ORDER_STOP
         
         elif method == 'best-1':
-            # limit : first ask price in long, first bid price in short
+            # limit as first taker price : first ask price in long, first bid price in short
             order_type = Order.ORDER_LIMIT
-            limit_price = strategy_trader.instrument.close_exec_price(direction)
+            limit_price = strategy_trader.instrument.open_exec_price(direction)
 
         elif method == 'best-2':
-            # limit : second ask price in long, second bid price in short
+            # limit as first maker price + current spread : second ask price in long, second bid price in short
             order_type = Order.ORDER_LIMIT
-            limit_price = strategy_trader.instrument.close_exec_price(direction)
+            limit_price = strategy_trader.instrument.open_exec_price(direction) + strategy_trader.instrument.market_spread * direction
 
         elif method == 'best+1':
-            # limit if supported by broker : first bid price in long, first ask price in short
+            # limit as first maker price : first bid price in long, first ask price in short
             order_type = Order.ORDER_LIMIT
-            limit_price = strategy_trader.instrument.open_exec_price(direction)
+            limit_price = strategy_trader.instrument.open_exec_price(direction, True)
 
         elif method == 'best+2':
-            # limit if supported by broker : second bid price in long, second ask price in short
+            # limit as first maker price + current spread : second bid price in long, second ask price in short
             order_type = Order.ORDER_LIMIT
-            limit_price = strategy_trader.instrument.open_exec_price(direction)
+            limit_price = strategy_trader.instrument.open_exec_price(direction, True) - strategy_trader.instrument.market_spread * direction
 
         else:
             order_type = Order.ORDER_MARKET
