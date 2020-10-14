@@ -16,7 +16,6 @@ import collections
 import numpy as np
 
 from datetime import datetime
-from instrument.instrument import Tick
 
 import logging
 logger = logging.getLogger('siis.database')

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from common.utils import matching_symbols_set, timeframe_to_str, UTC
 from terminal.terminal import Terminal
 
-from instrument.instrument import Tick, Candle, Instrument
+from instrument.instrument import Candle, Instrument
 from instrument.candlegenerator import CandleGenerator
 
 from common.signal import Signal

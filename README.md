@@ -124,7 +124,7 @@ From deps/ directory, first install TA-Lib (C lib needed by the Python binding) 
 ```
 tar xvzf deps/ta-lib-0.4.0-src.tar.gz
 cd ta-lib
-cp deps/patch/ta_utility.h ta-lib/src/ta_func
+cp ../deps/patch/ta_utility.h src/ta_func
 ./configure
 make
 ```

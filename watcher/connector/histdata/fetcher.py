@@ -273,7 +273,7 @@ class HistDataFetcher(Fetcher):
         fetcher_config = self.service.fetcher_config(self._name)
         if fetcher_config:
             markets = fetcher_config.get('markets', {})
-            
+
             if market_id in markets:
                 logger.info("Fetcher %s retrieve and install market %s from local data" % (self.name, market_id))
                 self.install_market_data(market_id, markets[market_id])

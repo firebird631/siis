@@ -14,7 +14,7 @@ from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, timefram
 from terminal.terminal import Terminal
 from database.database import Database
 
-from instrument.instrument import Tick, Candle, Instrument
+from instrument.instrument import Candle, Instrument
 from instrument.candlegenerator import CandleGenerator
 
 import logging

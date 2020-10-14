@@ -243,54 +243,6 @@ class BuySellSignal(object):
         self._params = params
 
 
-class Tick(object):
-    """
-    A tick is a 4 floats tuple with (timestamp, bid, ofr, volume).
-    Because class instance take extra memory an CPU cost we uses a simple tuple.
-    Those constant of index are helpers/reminders.
-
-    @note ofr is a synonym for ask.
-    """
-
-    TIMESTAMP = 0
-    BID = 1
-    OFR = 2
-    VOLUME = 3
-
-    TS = 0
-    ASK = 2
-    VOL = 3
-
-    T = 0
-    B = 1
-    O = 2
-    V = 3
-
-    @staticmethod
-    def timestamp(tick):
-        return tick[TS]
-
-    @staticmethod
-    def bid(tick):
-        return tick[BID]
-
-    @staticmethod
-    def ofr(tick):
-        return tick[OFR]
-
-    @staticmethod
-    def volume(tick):
-        return tick[VOL]
-
-    @staticmethod
-    def price(tick):
-        return (tick[BID] + tick[OFR]) * 0.5
-
-    @staticmethod
-    def spread(tick):
-        return tick[OFR] - tick[BID]
-
-
 class Instrument(object):
     """
     Instrument is the strategy side of the market model.

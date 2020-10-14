@@ -6,7 +6,10 @@
 import json
 import time
 import traceback
+import math
 
+
+from database.database import Database
 from watcher.fetcher import Fetcher
 
 from connector.kraken.connector import Connector
@@ -20,6 +23,8 @@ class KrakenFetcher(Fetcher):
     """
     Kraken market data fetcher.
     """
+
+    BASE_QUOTE = "ZEUR"
 
     TF_MAP = {
         60: 1,          # 1m
@@ -37,6 +42,7 @@ class KrakenFetcher(Fetcher):
         super().__init__("kraken.com", service)
 
         self._connector = None
+        self._instruments = {}
 
     def connect(self):
         super().connect()
@@ -68,6 +74,12 @@ class KrakenFetcher(Fetcher):
                 for market_id, instrument in instruments.items():
                     self._available_instruments.add(market_id)
 
+                # size limits are locally defined as for the watcher
+                self._size_limits = self.service.fetcher_config(self._name).get("size-limits", {})
+
+                # keep them for market install
+                self._instruments = instruments
+
         except Exception as e:
             logger.error(repr(e))
             error_logger.error(traceback.format_exc())
@@ -94,6 +106,104 @@ class KrakenFetcher(Fetcher):
     @property
     def authenticated(self):
         return self._connector and self._connector.authenticated
+
+    def install_market(self, market_id):
+        instrument = self._instruments.get(market_id)
+
+        if instrument:
+            symbol = instrument['altname']
+
+            is_open = True
+            expiry = '-'
+
+            # "aclass_base":"currency"
+            base_display = base_asset = instrument['base']  # XXBT
+            base_precision = instrument['pair_decimals']
+
+            # "aclass_quote":"currency"
+            quote_display = quote_asset = instrument['quote']  # ZUSD 
+            quote_precision = instrument['lot_decimals']
+
+            # tick size at the base asset precision
+            one_pip_means = math.pow(10.0, -instrument['pair_decimals'])  # 1
+            value_per_pip = 1.0
+            contract_size = 1.0
+            lot_size = 1.0  # "lot":"unit", "lot_multiplier":1
+
+            # "margin_call":80, "margin_stop":40
+            # margin_call = margin call level
+            # margin_stop = stop-out/liquidation margin level
+
+            leverages = set(instrument.get('leverage_buy', []))
+            leverages.intersection(set(instrument.get('leverage_sell', [])))
+
+            margin_factor = 1.0 / max(leverages) if len(leverages) > 0 else 1.0
+
+            size_limit = self._size_limits.get(instrument['altname'], {})
+            min_size = size_limit.get('min-size', 1.0)
+
+            size_limits = [str(min_size), "0.0", str(min_size)]
+            notional_limits = ["0.0", "0.0", "0.0"]
+            price_limits = ["0.0", "0.0", "0.0"]
+
+            # "lot":"unit"
+            unit_type = 0
+            market_type = 2
+            contract_type = 0
+
+            trade = 1
+            if leverages:
+                trade |= 2
+                trade |= 8
+
+            # orders capacities
+            orders = 1 | 0 | 2 | 4
+
+            # @todo take the first but it might depends of the traded volume per 30 days, then request volume window to got it
+            # "fees":[[0,0.26],[50000,0.24],[100000,0.22],[250000,0.2],[500000,0.18],[1000000,0.16],[2500000,0.14],[5000000,0.12],[10000000,0.1]],
+            # "fees_maker":[[0,0.16],[50000,0.14],[100000,0.12],[250000,0.1],[500000,0.08],[1000000,0.06],[2500000,0.04],[5000000,0.02],[10000000,0]],
+            fees = instrument.get('fees', [])
+            fees_maker = instrument.get('fees_maker', [])
+
+            if fees:
+                taker_fee = round(fees[0][1] * 0.01, 6)
+            if fees_maker:
+                maker_fee = round(fees_maker[0][1] * 0.01, 6)
+
+            if instrument.get('fee_volume_currency'):
+                fee_currency = instrument['fee_volume_currency']
+
+            if quote_asset != self.BASE_QUOTE:
+                # from XXBTZUSD / XXBTZEUR ...
+                # @todo
+                pass
+                # if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
+                #     base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
+                # elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
+                #     base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
+                # else:
+                #     base_exchange_rate = 1.0
+            else:
+                base_exchange_rate = 1.0
+
+            # @todo contract_size
+            # contract_size = 1.0 / mid_price
+            # value_per_pip = contract_size / mid_price
+
+            # store the last market info to be used for backtesting
+            Database.inst().store_market_info((self.name, market_id, symbol,
+                market_type, unit_type, contract_type,  # type
+                trade, orders,  # type
+                base_asset, base_display, base_precision,  # base
+                quote_asset, quote_display, quote_precision,  # quote
+                expiry, int(time.time() * 1000.0),  # expiry, timestamp
+                str(lot_size), str(contract_size), str(base_exchange_rate),
+                str(value_per_pip), str(one_pip_means), '-',
+                *size_limits,
+                *notional_limits,
+                *price_limits,
+                str(maker_fee), str(taker_fee), "0.0", "0.0")
+            )
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
         trades = []
