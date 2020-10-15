@@ -204,7 +204,7 @@ def do_fetcher(options):
                                 if next_date:
                                     options['from'] = next_date
 
-                                elif not options.get('from'):
+                                if not options.get('from'):
                                     # or fetch the complete current month else use the from date
                                     options['from'] = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
                             else:
@@ -220,9 +220,10 @@ def do_fetcher(options):
                                         last_timestamp = last_ohlc.timestamp
 
                                     last_date = datetime.fromtimestamp(last_timestamp, tz=UTC())
+
                                     options['from'] = last_date
 
-                                elif not options.get('from'):
+                                if not options.get('from'):
                                     # or fetch the complete current month else use the from date
                                     options['from'] = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
 
