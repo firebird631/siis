@@ -191,7 +191,18 @@ class Connector(object):
             if last_datetime:
                 params['since'] = last_datetime
 
-            results = self.query_public('Trades', params)
+            try:
+                results = self.query_public('Trades', params)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 502:
+                    # bad gateway service, retry for 3 times delayed by 5 seconds
+                    time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
+                        raise ValueError("Kraken historical trades : %s !" % '\n'Multiple failures after consecutives errors 502."")
+
+                    continue
 
             if results.get('error', []):
                 if results['error'][0] == "EAPI:Rate limit exceeded":
@@ -247,7 +258,6 @@ class Connector(object):
             else:
                 break
 
-            # kraken does not manage lot of history (no need to loop)
             time.sleep(1.5)  # don't excess API usage limit
 
     def get_historical_candles(self, symbol, interval, from_date, to_date=None, limit=None):
@@ -276,7 +286,18 @@ class Connector(object):
             if last_datetime:
                 params['since'] = int(last_datetime)
 
-            results = self.query_public('OHLC', params)
+            try:
+                results = self.query_public('OHLC', params)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 502:
+                    # bad gateway service, retry for 3 times delayed by 5 seconds
+                    time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.CANDLES_HISTORY_MAX_RETRY:
+                        raise ValueError("Kraken historical candles !" % '\n'Multiple failures after consecutives errors 502."")
+
+                    continue
 
             if results.get('error', []):
                 if results['error'][0] == "EAPI:Rate limit exceeded":
@@ -287,12 +308,12 @@ class Connector(object):
                     time.sleep(5.0)
                     retry_count += 1
 
-                    if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
+                    if retry_count > Connector.CANDLES_HISTORY_MAX_RETRY:
                         raise ValueError("Kraken historical candles : %s !" % '\n'.join(results['error']))
 
                     continue
                 else:
-                    raise ValueError("Kraken historical trades : %s !" % '\n'.join(results['error']))
+                    raise ValueError("Kraken historical candles : %s !" % '\n'.join(results['error']))
 
             candles = results.get('result', {}).get(symbol, [])
 
@@ -316,9 +337,6 @@ class Connector(object):
 
             # kraken does not manage lot of history (no need to loop)
             break
-
-            # last_datetime = float(results.get('last', dt*1000)) * 0.001
-            # time.sleep(1.5)  # don't excess API usage limit
 
     def get_order_book(self, symbol, depth):
         """
