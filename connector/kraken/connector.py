@@ -200,7 +200,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
-                        raise ValueError("Kraken historical trades : %s !" % '\n'Multiple failures after consecutives errors 502."")
+                        raise ValueError("Kraken historical trades\nMultiple failures after consecutives errors 502.")
 
                     continue
 
@@ -296,7 +296,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.CANDLES_HISTORY_MAX_RETRY:
-                        raise ValueError("Kraken historical candles !" % '\n'Multiple failures after consecutives errors 502."")
+                        raise ValueError("Kraken historical candles\nMultiple failures after consecutives errors 502.")
 
                     continue
 
