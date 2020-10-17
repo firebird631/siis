@@ -256,6 +256,7 @@ class Database(object):
             integer timestamp (ms since epoch)
             str bid (>= 0)
             str ask (>= 0)
+            str trade price (>= 0)
             str volume (>= 0)
             integer bid/ask (-1 for bid, 1 for ask, or 0 if no info)
         """
@@ -291,8 +292,8 @@ class Database(object):
             str market_id (not empty)
             integer timestamp (ms since epoch)
             integer timeframe (time unit in seconds)        
-            str bid_open, bid_high, bid_low, bid_close (>= 0)
-            str ask_open, ask_high, ask_low, ask_close (>= 0)
+            str open, high, low, close (>= 0)
+            str spread (>= 0)
             str volume (>= 0)
 
         @note Replace if exists.

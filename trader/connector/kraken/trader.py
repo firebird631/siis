@@ -246,7 +246,7 @@ class KrakenTrader(Trader):
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
         # volume = market_or_instrument.format_quantity(market_or_instrument.adjust_quantity(order.quantity))
         volume = market_or_instrument.adjust_quantity(order.quantity or 0.1)
-        notional = volume * (order.price or market_or_instrument.market_ofr)
+        notional = volume * (order.price or market_or_instrument.market_ask)
 
         # if notional < market_or_instrument.min_notional:
         #     # reject if lesser than min notinal

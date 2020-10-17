@@ -19,7 +19,7 @@ class TickBarBase(object):
     """
 
     __slots__ = '_timestamp', '_last_timestamp', '_volume', '_ended', '_open', '_close', '_ticks', \
-        '_pov', '_pov_bid', '_pov_ofr', '_vol_bid', '_vol_ofr', '_avg_size', '_low', '_high', '_dir'
+        '_pov', '_pov_bid', '_pov_ask', '_vol_bid', '_vol_ask', '_avg_size', '_low', '_high', '_dir'
 
     def __init__(self, timestamp, price):
         """
@@ -42,14 +42,14 @@ class TickBarBase(object):
         self._volume = 0.0  # total volume for any ticks of the bar
 
         self._vol_bid = 0.0
-        self._vol_ofr = 0.0
+        self._vol_ask = 0.0
 
         self._avg_size = 0.0  # trade average size or aggreged trades average size ( = volume / num_trades)
         self._num_trades = 0  # num of total trades or aggreged trades ( +1 at each trade)
 
         self._pov = 0.0
         self._pov_bid = 0.0
-        self._pov_ofr = 0.0
+        self._pov_ask = 0.0
 
         self._dir = 1
 
@@ -87,7 +87,7 @@ class TickBarBase(object):
         return 0.0
 
     @property
-    def ofr_vol(self, price):
+    def ask_vol(self, price):
         if price in self._ticks:
             return self._ticks[price][1]
 
@@ -134,8 +134,8 @@ class TickBarBase(object):
         return self._pov_bid
     
     @property
-    def pov_ofr(self):
-        return self._pov_ofr
+    def pov_ask(self):
+        return self._pov_ask
 
     @property
     def direction(self):
@@ -187,7 +187,7 @@ class TickBarBase(object):
                 vb = vs[0]
                 pb = p
 
-            # similar for ofr but for the higher price
+            # similar for ask but for the higher price
             if vs[1] == vo:
                 # only if price is higher
                 if p > po:
@@ -200,7 +200,7 @@ class TickBarBase(object):
 
         self._pov = pg  # retains the price of the higher merged volume
         self._pov_bid = pb  # and for the bid volume, the lower price
-        self._pov_ofr = po  # and for the ofr volume, the higher price
+        self._pov_ask = po  # and for the ask volume, the higher price
 
 
 class TickBar(object):

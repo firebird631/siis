@@ -95,8 +95,8 @@ class StrategyDataFeeder(object):
                 updated.append(tf)
 
                 # defines the last market price
-                self.instrument.market_bid = candles[-1].bid_close
-                self.instrument.market_ofr = candles[-1].ofr_close
+                self.instrument.market_bid = candles[-1].close - candles[-1].spread * 0.5
+                self.instrument.market_ask = candles[-1].close + candles[-1].spread * 0.5
 
             finished = streamer.finished() and not candles
 
@@ -112,10 +112,14 @@ class StrategyDataFeeder(object):
             if self._tick_streamer.next_to(timestamp, self._instrument._ticks):
                 updated.append(0)
 
+                last_tick = self._instrument._ticks[-1]
+
                 # defines the last market price (prefer at tick if we have candles and ticks)
-                self.instrument.last_update_time = self._instrument._ticks[-1][0]
-                self.instrument.market_bid = self._instrument._ticks[-1][1]
-                self.instrument.market_ofr = self._instrument._ticks[-1][2]
+                self.instrument.last_update_time = last_tick[0]
+
+                # set bid/ask from tick, but on trade data we don't have it
+                self.instrument.market_bid = last_tick[1]
+                self.instrument.market_ask = last_tick[2]
 
             finished = self._tick_streamer.finished()
 

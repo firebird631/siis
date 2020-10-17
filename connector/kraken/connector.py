@@ -243,7 +243,8 @@ class Connector(object):
                     bid_ask = -1
 
                 yield (int(dt*1000),  # integer ms
-                    c[0], c[0],  # price
+                    c[0], c[0],  # bid, ask
+                    c[0],  # last
                     c[1],  # volume
                     bid_ask)
 
@@ -328,6 +329,7 @@ class Connector(object):
 
                 yield (int(dt*1000),  # integer ms
                     c[1], c[2], c[3], c[4],  # ohlc
+                    0.0,  # spread
                     c[6])  # volume
 
                 last_datetime = dt

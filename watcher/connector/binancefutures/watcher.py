@@ -67,7 +67,7 @@ class BinanceFuturesWatcher(Watcher):
         super().__init__("binancefutures.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
 
         self._connector = None
-        self._depths = {}  # depth chart per symbol tuple (last_id, bids, ofrs)
+        self._depths = {}  # depth chart per symbol tuple (last_id, bids, asks)
 
         self._symbols_data = {}
         self._tickers_data = {}
@@ -451,11 +451,11 @@ class BinanceFuturesWatcher(Watcher):
             if leverage:
                 market.margin_factor = 1.0 / leverage[1]  # leverage[0] to know if isolated margin
 
-            # only order book can give us bid/ofr
+            # only order book can give us bid/ask
             market.bid = float(ticker['bidPrice'])
-            market.ofr = float(ticker['askPrice'])
+            market.ask = float(ticker['askPrice'])
 
-            mid_price = (market.bid * market.ofr) * 0.5
+            mid_price = (market.bid * market.ask) * 0.5
 
             # volume 24h
             # in ticker/24hr but cost is 40 for any symbols then wait it at all-tickers WS event
@@ -522,12 +522,12 @@ class BinanceFuturesWatcher(Watcher):
 
                 # from book ticker
                 bid = None
-                ofr = None
+                ask = None
 
                 vol24_base = float(ticker['v']) if ticker['v'] else 0.0
                 vol24_quote = float(ticker['q']) if ticker['q'] else 0.0
 
-                market_data = (symbol, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
+                market_data = (symbol, last_update_time > 0, last_update_time, bid, ask, None, None, None, vol24_base, vol24_quote)
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_book_tickers_data(self, data):
@@ -535,9 +535,9 @@ class BinanceFuturesWatcher(Watcher):
         symbol = data['s']
 
         bid = float(data['b'])  # B for qty
-        ofr = float(data['a'])  # A for qty
+        ask = float(data['a'])  # A for qty
 
-        market_data = (symbol, True, None, bid, ofr, None, None, None, None, None)
+        market_data = (symbol, True, None, bid, ask, None, None, None, None, None)
         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_depth_data(self, data):
@@ -620,22 +620,21 @@ class BinanceFuturesWatcher(Watcher):
             price = float(data['p'])
             vol = float(data['q'])
 
-            bid = price
-            ofr = price
+            spread = 0.0  # @todo from ticker ask - bid
 
-            tick = (trade_time, bid, ofr, vol, buyer_maker)
+            tick = (trade_time, price, price, price, vol, buyer_maker)
 
             self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
             if self._store_trade:
-                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['q'], buyer_maker))
+                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['p'], data['q'], buyer_maker))
 
             for tf in Watcher.STORED_TIMEFRAMES:
                 # generate candle per timeframe
                 candle = None
 
                 with self._mutex:
-                    candle = self.update_ohlc(symbol, tf, trade_time, bid, ofr, vol)
+                    candle = self.update_ohlc(symbol, tf, trade_time, price, spread, vol)
 
                 if candle is not None:
                     self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
@@ -653,19 +652,16 @@ class BinanceFuturesWatcher(Watcher):
 
             candle = Candle(timestamp, tf)
 
-            # only price, no spread
-            candle.set_bid_ohlc(
+            candle.set_ohlc(
               float(k['o']),
               float(k['h']),
               float(k['l']),
               float(k['c']))
 
-            candle.set_ofr_ohlc(
-              float(k['o']),
-              float(k['h']),
-              float(k['l']),
-              float(k['c']))
+            # @todo from ticker ask - bid
+            spread = 0.0
 
+            candle.set_spread(spread)
             candle.set_volume(float(k['v']))
             candle.set_consolidated(k['x'])
 
@@ -676,7 +672,7 @@ class BinanceFuturesWatcher(Watcher):
                 Database.inst().store_market_ohlc((
                     self.name, symbol, int(k['t']), tf,
                     k['o'], k['h'], k['l'], k['c'],
-                    k['o'], k['h'], k['l'], k['c'],
+                    spread,
                     k['v']))
 
     def __on_user_data(self, data):
@@ -1014,7 +1010,7 @@ class BinanceFuturesWatcher(Watcher):
 
             elif market.is_open:
                 # market exists and tradable
-                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ofr,
+                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ask,
                         market.base_exchange_rate, market.contract_size, market.value_per_pip,
                         market.vol24h_base, market.vol24h_quote)
             else:
@@ -1035,8 +1031,8 @@ class BinanceFuturesWatcher(Watcher):
 
         for trade in trades:
             count += 1
-            # timestamp, bid, ofr, volume, direction
-            yield((trade['T'], trade['p'], trade['p'], trade['q'], -1 if trade['m'] else 1))
+            # timestamp, bid, ask, last, volume, direction
+            yield((trade['T'], trade['p'], trade['p'], trade['p'], trade['q'], -1 if trade['m'] else 1))
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         TF_MAP = {
@@ -1074,8 +1070,8 @@ class BinanceFuturesWatcher(Watcher):
         
         for candle in candles:
             count += 1
-            # (timestamp, open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
-            yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[1], candle[2], candle[3], candle[4], candle[5]))
+            # (timestamp, open, high, low, close, spread, volume)
+            yield((candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]))
 
     def get_balances(self):
         """

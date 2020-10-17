@@ -82,7 +82,7 @@ class Market(object):
                 '_quote', '_quote_display', '_quote_precision', \
                 '_expiry', '_is_open', '_contract_size', '_lot_size', '_base_exchange_rate', '_value_per_pip', '_one_pip_means', '_margin_factor', \
                 '_size_limits', '_price_limits', '_notional_limits', '_market_type', '_unit_type', '_contract_type', '_vol24h_base', '_vol24h_quote', \
-                '_hedging', '_fees', '_fee_currency', '_previous', '_leverages', '_last_update_time', '_bid', '_ofr'
+                '_hedging', '_fees', '_fee_currency', '_previous', '_leverages', '_last_update_time', '_bid', '_ask'
 
     def __init__(self, market_id, symbol):
         self._market_id = market_id
@@ -132,7 +132,7 @@ class Market(object):
         self._last_update_time = 0.0
 
         self._bid = 0.0
-        self._ofr = 0.0
+        self._ask = 0.0
 
     @property
     def market_id(self):
@@ -234,19 +234,19 @@ class Market(object):
     
     @property
     def spread(self):
-        return self._ofr - self._bid
+        return self._ask - self._bid
 
     @property
-    def ofr(self):
-        return self._ofr
+    def ask(self):
+        return self._ask
 
-    @ofr.setter
-    def ofr(self, ofr):
-        self._ofr = ofr
+    @ask.setter
+    def ask(self, ask):
+        self._ask = ask
 
     @property
     def price(self):
-        return (self._bid + self._ofr) * 0.5
+        return (self._bid + self._ask) * 0.5
 
     @property
     def last_update_time(self):
@@ -498,28 +498,28 @@ class Market(object):
     def open_exec_price(self, direction):
         """
         Return the execution price if an order open a position.
-        It depend of the direction of the order and the market bid/ofr prices.
-        If position is long, then returns the market ofr price.
+        It depend of the direction of the order and the market bid/ask prices.
+        If position is long, then returns the market ask price.
         If position is short, then returns the market bid price.
         """
         if direction == Position.LONG:
-            return self._ofr
+            return self._ask
         elif direction == Position.SHORT:
             return self._bid
         else:
-            return self._ofr
+            return self._ask
 
     def close_exec_price(self, direction):
         """
         Return the execution price if an order/position is closing.
-        It depend of the direction of the order and the market bid/ofr prices.
+        It depend of the direction of the order and the market bid/ask prices.
         If position is long, then returns the market bid price.
-        If position is short, then returns the market ofr price.
+        If position is short, then returns the market ask price.
         """
         if direction == Position.LONG:
             return self._bid
         elif direction == Position.SHORT:
-            return self._ofr
+            return self._ask
         else:
             return self._bid
 
@@ -671,7 +671,7 @@ class Market(object):
 
     def push_price(self):
         """
-        Push the last bid/ofr price, base exchange rate and timestamp.
+        Push the last bid/ask price, base exchange rate and timestamp.
         Keep only TICK_PRICE_TIMEOUT of samples in memory.
         """
         while self._previous and (self._last_update_time - self._previous[0][0]) > self.TICK_PRICE_TIMEOUT:
@@ -680,7 +680,7 @@ class Market(object):
         self._previous.append((
             self._last_update_time,
             self._bid,
-            self._ofr,
+            self._ask,
             self._base_exchange_rate))
 
     def recent_price(self, timestamp):
@@ -703,7 +703,7 @@ class Market(object):
     def recent(self, timestamp):
         """
         One minute ticks price history.
-        @return tuple(timestamp, bid, ofr, base-exchange-rate) or None
+        @return tuple(timestamp, bid, ask, base-exchange-rate) or None
 
         @todo Could use a dichotomic search.
         """
@@ -720,7 +720,7 @@ class Market(object):
     def previous(self):
         """
         One minute ticks price history, return the previous entry.
-        @return tuple(timestamp, bid, ofr, base-exchange-rate) or None
+        @return tuple(timestamp, bid, ask, base-exchange-rate) or None
         """
         return self._previous[-1] if self._previous else None
 

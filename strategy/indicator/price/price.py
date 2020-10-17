@@ -15,7 +15,6 @@ logger = logging.getLogger('siis.strategy.indicator.price')
 class PriceIndicator(Indicator):
     """
     Simple average price indicator using candle data.
-    Always use the average of bid and ofr prices.
     """
 
     PRICE_CLOSE = 0   # return close price
@@ -96,7 +95,6 @@ class PriceIndicator(Indicator):
         prices = []
 
         if method == PriceIndicator.PRICE_CLOSE:
-            # average of bid/ofr close price
             prices = np.array([x.close for x in data])
 
         elif method == PriceIndicator.PRICE_HLC3:
@@ -121,7 +119,6 @@ class PriceIndicator(Indicator):
         prices = np.array([])
 
         if method == PriceIndicator.PRICE_CLOSE:
-            # average of bid/ofr close price
             c_prices = [x.close for x in data]
 
             # t_subdata = range(0,len(data),step)
@@ -166,7 +163,6 @@ class PriceIndicator(Indicator):
 
         # price = PriceIndicator.Price(self._method, candles)  # , self._step, self._filtering)
         if self._method == PriceIndicator.PRICE_CLOSE:
-            # average of bid/ofr close price
             self._prices = np.array([x.close for x in candles])
 
             self._open = np.array([x.open for x in candles])

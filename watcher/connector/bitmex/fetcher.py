@@ -97,7 +97,7 @@ class BitMexFetcher(Fetcher):
 
         for trade in trades:
             count += 1
-            # timestamp, bid, ofr, volume, direction
+            # timestamp, bid, ask, last, volume, direction
             yield(trade)
 
         logger.info("Fetcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))
@@ -122,8 +122,8 @@ class BitMexFetcher(Fetcher):
         
         for candle in candles:
             count += 1
-            # store (timestamp, open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+            # store (timestamp, open, high, low, close, spread, volume)
             if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
-                yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[1], candle[2], candle[3], candle[4], candle[5]))
+                yield((candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]))
 
         logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, bin_size))

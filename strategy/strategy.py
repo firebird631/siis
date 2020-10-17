@@ -829,7 +829,7 @@ class Strategy(Runnable):
                                 if signal.data[3]:
                                     instrument.market_bid = signal.data[3]
                                 if signal.data[4]:
-                                    instrument.market_ofr = signal.data[4]
+                                    instrument.market_ask = signal.data[4]
 
                                 # if signal.data[5]:
                                 #     instrument.base_exchange_rate = signal.data[5]
@@ -1140,7 +1140,7 @@ class Strategy(Runnable):
 
             # the feeder update the instrument price data, so use them directly
             trader.on_update_market(instrument.market_id, True, instrument.last_update_time,
-                    instrument.market_bid, instrument.market_ofr, None)
+                    instrument.market_bid, instrument.market_ask, None)
 
         # update strategy as necessary
         if updated:

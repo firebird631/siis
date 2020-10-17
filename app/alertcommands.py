@@ -64,10 +64,10 @@ class PriceCrossAlertCommand(Command):
                     price = float(value[1:])
                 elif value == "bid":
                     price_src = Alert.PRICE_SRC_BID
-                elif value == "ofr":
-                    price_src = Alert.PRICE_SRC_OFR
+                elif value == "asj":
+                    price_src = Alert.PRICE_SRC_ASK
                 elif value == "ask":
-                    price_src = Alert.PRICE_SRC_OFR
+                    price_src = Alert.PRICE_SRC_ASK
                 elif value == "mid":
                     price_src = Alert.PRICE_SRC_MID
                 elif value.startswith("x"):

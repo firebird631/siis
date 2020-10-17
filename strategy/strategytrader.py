@@ -681,7 +681,7 @@ class StrategyTrader(object):
 
         return False
 
-    def cleanup_regions(self, timestamp, bid, ofr):
+    def cleanup_regions(self, timestamp, bid, ask):
         """
         Regenerate the list of regions by removing the expired regions.
         @warning Non thread-safe but must be protected.
@@ -689,18 +689,18 @@ class StrategyTrader(object):
         regions = []
 
         for region in self.regions:
-            if not region.can_delete(timestamp, bid, ofr):
+            if not region.can_delete(timestamp, bid, ask):
                 regions.append(region)
 
         # replace the regions list
         self.regions = regions
 
-    def check_regions(self, timestamp, bid, ofr, signal, allow=True):
+    def check_regions(self, timestamp, bid, ask, signal, allow=True):
         """
         Compare a signal to defined regions if somes are defineds.
         @param signal StrategySignal to check with any regions.
         @param bid float Last instrument bid price
-        @param ofr flaot Last instrument ofr price
+        @param ask float Last instrument ask price
         @param allow Default returned value if there is no defined region (default True).
 
         @note Thread-safe method.
@@ -711,7 +711,7 @@ class StrategyTrader(object):
             # one ore many region, have to pass at least one test
             with self._mutex:
                 for region in self.regions:
-                    if region.can_delete(timestamp, bid, ofr):
+                    if region.can_delete(timestamp, bid, ask):
                         mutated |= True
 
                     elif region.test_region(timestamp, signal):
@@ -719,7 +719,7 @@ class StrategyTrader(object):
                         return True
 
                 if mutated:
-                    self.cleanup_regions(timestamp, bid, ofr)
+                    self.cleanup_regions(timestamp, bid, ask)
 
             return False
         else:
@@ -745,7 +745,7 @@ class StrategyTrader(object):
 
         return False
 
-    def cleanup_alerts(self, timestamp, bid, ofr):
+    def cleanup_alerts(self, timestamp, bid, ask):
         """
         Regenerate the list of alerts by removing the expired alerts.
         @warning Non thread-safe but must be protected.
@@ -753,17 +753,17 @@ class StrategyTrader(object):
         alerts = []
 
         for alert in self.alerts:
-            if not alert.can_delete(timestamp, bid, ofr):
+            if not alert.can_delete(timestamp, bid, ask):
                 alerts.append(alert)
 
         # replace the alerts list
         self.alerts = alerts
 
-    def check_alerts(self, timestamp, bid, ofr, timeframes):
+    def check_alerts(self, timestamp, bid, ask, timeframes):
         """
         Compare timeframes indicators values to defined alerts if somes are defined.
         @param bid float Last instrument bid price
-        @param ofr flaot Last instrument ofr price
+        @param ask float Last instrument ask price
         @param timeframes list of TimeframeBasedSub to check with any alerts.
 
         @note Thread-safe method.
@@ -777,16 +777,16 @@ class StrategyTrader(object):
                 results = []
 
                 for alert in self.alerts:
-                    if alert.can_delete(timestamp, bid, ofr):
+                    if alert.can_delete(timestamp, bid, ask):
                         mutated |= True
                     else:
-                        result = alert.test_alert(timestamp, bid, ofr, timeframes)
+                        result = alert.test_alert(timestamp, bid, ask, timeframes)
                         if result:
                             # alert triggered, dump message could be done with alert dump_notify and result data
                             results.append((alert, result))
 
                 if mutated:
-                    self.cleanup_alerts(timestamp, bid, ofr)
+                    self.cleanup_alerts(timestamp, bid, ask)
 
                 if results:
                     return results
@@ -1103,7 +1103,7 @@ class StrategyTrader(object):
             trade_quantity = self.instrument.trade_quantity
 
         if trader.has_asset(self.instrument.quote):
-            # quantity = min(quantity, trader.asset(self.instrument.quote).free) / self.instrument.market_ofr
+            # quantity = min(quantity, trader.asset(self.instrument.quote).free) / self.instrument.market_ask
             if trader.has_quantity(self.instrument.quote, trade_quantity or self.instrument.trade_quantity):
                 quantity = self.instrument.adjust_quantity(trade_quantity / price)  # and adjusted to 0/max/step
             else:

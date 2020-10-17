@@ -156,11 +156,11 @@ class Fetcher(object):
 
         if timeframe == 0:
             for data in self.fetch_trades(market_id, from_date, to_date, None):
-                # store (int timestamp in ms, str bid, str ofr, str volume, int direction)
-                Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3], data[4]))
+                # store (int timestamp in ms, str bid, str ask, str last, str volume, int direction)
+                Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3], data[4], data[5]))
 
                 if generators:
-                    self._last_ticks.append((float(data[0]) * 0.001, float(data[1]), float(data[2]), float(data[3]), int(data[4])))
+                    self._last_ticks.append((float(data[0]) * 0.001, float(data[1]), float(data[2]), float(data[3]), float(data[4]), int(data[5])))
 
                 # generate higher candles
                 for generator in generators:
@@ -207,20 +207,21 @@ class Fetcher(object):
 
         elif timeframe > 0:
             for data in self.fetch_candles(market_id, timeframe, from_date, to_date, None):
-                # store (int timestamp ms, str open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+                # store (int timestamp ms, str open, high, low, close, spread, volume)
                 Database.inst().store_market_ohlc((
                     self.name, market_id, data[0], int(timeframe),
-                    data[1], data[2], data[3], data[4],
-                    data[5], data[6], data[7], data[8],
-                    data[9]))
+                    data[1], data[2], data[3], data[4],  # OHLC
+                    data[5],  # spread
+                    data[6]))  # vol
 
                 if generators:
                     candle = Candle(float(data[0]) * 0.001, timeframe)
 
-                    candle.set_bid_ohlc(float(data[1]), float(data[2]), float(data[3]), float(data[4]))
-                    candle.set_ofr_ohlc(float(data[5]), float(data[6]), float(data[7]), float(data[8]))
+                    candle.set_ohlc(float(data[1]), float(data[2]), float(data[3]), float(data[4]))
 
-                    candle.set_volume(float(data[9]))
+                    candle.set_spread(float(data[5]))
+                    candle.set_volume(float(data[6]))
+
                     candle.set_consolidated(True)
 
                     self._last_ohlcs[timeframe].append(candle)
@@ -274,8 +275,8 @@ class Fetcher(object):
     def store_candle(self, market_id, timeframe, candle):
         Database.inst().store_market_ohlc((
             self.name, market_id, int(candle.timestamp*1000.0), int(timeframe),
-            str(candle.bid_open), str(candle.bid_high), str(candle.bid_low), str(candle.bid_close),
-            str(candle.ofr_open), str(candle.ofr_high), str(candle.ofr_low), str(candle.ofr_close),
+            str(candle.open), str(candle.high), str(candle.low), str(candle.close),
+            str(candle.spread),
             str(candle.volume)))
 
     def install_market(self, market_id):

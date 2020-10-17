@@ -106,8 +106,8 @@ MAX_PENDING_TICK = 10000
 def store_ohlc(broker_name, market_id, timeframe, ohlc):
     Database.inst().store_market_ohlc((
         broker_name, market_id, int(ohlc.timestamp*1000.0), int(timeframe),
-        str(ohlc.bid_open), str(ohlc.bid_high), str(ohlc.bid_low), str(ohlc.bid_close),
-        str(ohlc.ofr_open), str(ohlc.ofr_high), str(ohlc.ofr_low), str(ohlc.ofr_close),
+        str(ohlc.open), str(ohlc.high), str(ohlc.low), str(ohlc.close),
+        str(ohlc.spread),
         str(ohlc.volume)))
 
 

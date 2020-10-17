@@ -203,7 +203,7 @@ class BinanceFuturesTrader(Trader):
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
         # quantity = market_or_instrument.format_quantity(market_or_instrument.adjust_quantity(order.quantity))
         quantity = market_or_instrument.adjust_quantity(order.quantity)
-        notional = quantity * (order.price or market_or_instrument.market_ofr)
+        notional = quantity * (order.price or market_or_instrument.market_ask)
 
         if notional < market_or_instrument.min_notional:
             # reject if lesser than min notinal
@@ -643,11 +643,11 @@ class BinanceFuturesTrader(Trader):
     # markets
     #
 
-    def on_update_market(self, market_id, tradable, last_update_time, bid, ofr,
+    def on_update_market(self, market_id, tradable, last_update_time, bid, ask,
             base_exchange_rate, contract_size=None, value_per_pip=None,
             vol24h_base=None, vol24h_quote=None):
 
-        super().on_update_market(market_id, tradable, last_update_time, bid, ofr, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
+        super().on_update_market(market_id, tradable, last_update_time, bid, ask, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
 
         # update positions profit/loss for the related market id
         market = self.market(market_id)

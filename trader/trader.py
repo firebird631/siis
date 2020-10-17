@@ -807,10 +807,10 @@ class Trader(Runnable):
     #
 
     @Runnable.mutexed
-    def on_update_market(self, market_id, tradable, last_update_time, bid, ofr, base_exchange_rate,
+    def on_update_market(self, market_id, tradable, last_update_time, bid, ask, base_exchange_rate,
             contract_size=None, value_per_pip=None, vol24h_base=None, vol24h_quote=None):
         """
-        Update bid, ofr, base exchange rate and last update time of a market.
+        Update bid, ask, base exchange rate and last update time of a market.
         Take care this method is not thread safe. Use it with the trader mutex or exclusively in the same thread.
         """
         market = self._markets.get(market_id)
@@ -820,8 +820,8 @@ class Trader(Runnable):
 
         if bid:
             market.bid = bid
-        if ofr:
-            market.ofr = ofr
+        if ask:
+            market.ask = ask
 
         if base_exchange_rate is not None:
             market.base_exchange_rate = base_exchange_rate
@@ -957,7 +957,7 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets tickers.
         """
-        columns = ('Market', 'Symbol', 'Bid', 'Ofr', 'Spread', 'Vol24h base', 'Vol24h quote', 'Time')
+        columns = ('Market', 'Symbol', 'Bid', 'Ask', 'Spread', 'Vol24h base', 'Vol24h quote', 'Time')
         total_size = (len(columns), 0)
         data = []
 
@@ -980,11 +980,11 @@ class Trader(Runnable):
                 recent = market.recent(self.timestamp - 0.5 if not prev_timestamp else prev_timestamp)
                 if recent:
                     bid = Color.colorize_updn(market.format_price(market.bid), recent[1], market.bid, style=style)
-                    ofr = Color.colorize_updn(market.format_price(market.ofr), recent[2], market.ofr, style=style)
+                    ask = Color.colorize_updn(market.format_price(market.ask), recent[2], market.ask, style=style)
                     spread = Color.colorize_updn(market.format_spread(market.spread), market.spread, recent[2] - recent[1], style=style)
                 else:
                     bid = market.format_price(market.bid)
-                    ofr = market.format_price(market.ofr)
+                    ask = market.format_price(market.ask)
                     spread = market.format_spread(market.spread)
 
                 if market.vol24h_quote:
@@ -1007,7 +1007,7 @@ class Trader(Runnable):
                      market.market_id,
                      market.symbol,
                      bid,
-                     ofr,
+                     ask,
                      spread,
                      market.format_quantity(market.vol24h_base) if market.vol24h_base else charmap.HOURGLASS,
                      vol24h_quote,

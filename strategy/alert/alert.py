@@ -35,7 +35,7 @@ class Alert(object):
     ALERT_PRICE_PCT_CHANGE_DOWN = 6
 
     PRICE_SRC_BID = 0
-    PRICE_SRC_OFR = 1
+    PRICE_SRC_ASK = 1
     PRICE_SRC_MID = 2
 
     NAME = "undefined"
@@ -120,7 +120,7 @@ class Alert(object):
     # processing
     #
 
-    def test_alert(self, timestamp, bid, ofr, timeframes):
+    def test_alert(self, timestamp, bid, ask, timeframes):
         """
         Each time the market price change perform to this test. If the test pass then
         it is executed and removed from the list or kept if its a persistent alert (until its expiry).
@@ -139,7 +139,7 @@ class Alert(object):
             # countdown reached 0 previously
             return None
 
-        result = self.test(timestamp, bid, ofr, timeframes)
+        result = self.test(timestamp, bid, ask, timeframes)
 
         if result and self._countdown > 0:
             # dec countdown
@@ -164,7 +164,7 @@ class Alert(object):
         """
         return True
 
-    def test(self, timestamp, bid, ofr, timeframes):
+    def test(self, timestamp, bid, ask, timeframes):
         """
         Perform the test of the alert on the last price and timeframes data.
 
@@ -172,14 +172,14 @@ class Alert(object):
         """
         return None
 
-    def can_delete(self, timestamp, bid, ofr):
+    def can_delete(self, timestamp, bid, ask):
         """
         By default perform a test on expiration time, but more deletion cases can be added,
         like a cancelation price trigger.
 
         @param timestamp float Current timestamp
         @param bid float last bid price
-        @param ofr float last ofr price
+        @param ask float last ask price
         """
         return (self._expiry > 0 and timestamp >= self._expiry) or self._countdown == 0
 

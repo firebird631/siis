@@ -268,7 +268,7 @@ class Position(Keyed):
         if self.direction == Position.LONG:
             delta_price = market.bid - self.entry_price
         elif self.direction == Position.SHORT:
-            delta_price = self.entry_price - market.ofr
+            delta_price = self.entry_price - market.ask
         else:
             delta_price = 0.0
 
@@ -279,7 +279,7 @@ class Position(Keyed):
         Compute profit_loss and profit_loss_rate for maker and taker.
         @param market A valid market object related to the symbol of the position.
         """
-        if market is None or not market.bid or not market.ofr:
+        if market is None or not market.bid or not market.ask:
             return
 
         if self.entry_price is None:
@@ -316,7 +316,7 @@ class Position(Keyed):
         if self.direction == Position.LONG:
             return market.bid - self.entry_price
         elif self.direction == Position.SHORT:
-            return self.entry_price - market.ofr
+            return self.entry_price - market.ask
 
         return 0.0
 

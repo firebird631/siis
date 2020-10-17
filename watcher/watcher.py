@@ -343,14 +343,14 @@ class Watcher(Runnable):
     # utils
     #
 
-    def update_ohlc(self, market_id, tf, ts, bid, ofr, volume):
+    def update_ohlc(self, market_id, tf, ts, last, spread, volume):
         """
         Update the current OHLC or create a new one, and save them.
         @param market_id str Unique market identifier
         @param tf float Timeframe (normalized timeframe at second)
         @param ts float Timestamp of the update or of the tick/trade
-        @param bid float Bid price.
-        @param ofr float Offer/ask price.
+        @param last float Last price.
+        @param last float Spread.
         @param volume float Volume transacted or 0 if unspecified.
         """
         ended_ohlc = None
@@ -383,10 +383,11 @@ class Watcher(Runnable):
 
             ohlc.set_consolidated(False)
 
-            if bid:
-                ohlc.set_bid(bid)
-            if ofr:
-                ohlc.set_ofr(ofr)
+            if last:
+                ohlc.set(last)
+
+            if spread:
+                ohlc.set_spread(spread)
 
             last_ohlc_by_timeframe[tf] = ohlc
 
@@ -395,35 +396,28 @@ class Watcher(Runnable):
             if volume:
                 ohlc._volume += volume
 
-            if bid:
-                if not ohlc._bid_open:
-                    ohlc.set_bid(bid)
+            if last:
+                if not ohlc._open:
+                    ohlc.set(last)
 
-                # update bid prices
-                ohlc._bid_high = max(ohlc._bid_high, bid)
-                ohlc._bid_low = min(ohlc._bid_low, bid)
-
-                # potential close
-                ohlc._bid_close = bid
-
-            if ofr:
-                if not ohlc.ofr_open:
-                    ohlc.set_ofr(ofr)
-
-                # update ofr prices
-                ohlc._ofr_high = max(ohlc._ofr_high, ofr)
-                ohlc._ofr_low = min(ohlc._ofr_low, ofr)
+                # update prices
+                ohlc._high = max(ohlc._high, last)
+                ohlc._low = min(ohlc._low, last)
 
                 # potential close
-                ohlc._ofr_close = ofr
+                ohlc._close = last
+
+            if spread:
+                # potential spread
+                ohlc._spread = spread
 
         # stored timeframes only
         if self._store_ohlc and ended_ohlc and (tf in self.STORED_TIMEFRAMES):
             Database.inst().store_market_ohlc((
                 self.name, market_id, int(ended_ohlc.timestamp*1000), tf,
-                ended_ohlc.bid_open, ended_ohlc.bid_high, ended_ohlc.bid_low, ended_ohlc.bid_close,
-                ended_ohlc.ofr_open, ended_ohlc.ofr_high, ended_ohlc.ofr_low, ended_ohlc.ofr_close,
-                ended_ohlc.volume))
+                ended_ohlc._open, ended_ohlc._high, ended_ohlc._low, ended_ohlc._close,
+                ended_ohlc._spread,
+                ended_ohlc._volume))
 
         return ohlc
 
@@ -442,9 +436,9 @@ class Watcher(Runnable):
         if self._store_ohlc and ended_ohlc and (tf in self.STORED_TIMEFRAMES):
             Database.inst().store_market_ohlc((
                 self.name, market_id, int(ended_ohlc.timestamp*1000), tf,
-                ended_ohlc.bid_open, ended_ohlc.bid_high, ended_ohlc.bid_low, ended_ohlc.bid_close,
-                ended_ohlc.ofr_open, ended_ohlc.ofr_high, ended_ohlc.ofr_low, ended_ohlc.ofr_close,
-                ended_ohlc.volume))
+                ended_ohlc._open, ended_ohlc._high, ended_ohlc._low, ended_ohlc._close,
+                ended_ohlc._spread,
+                ended_ohlc._volume))
 
         return ended_ohlc
 
@@ -550,19 +544,19 @@ class Watcher(Runnable):
 
         # fetch OHLC history
         for data in self.fetch_candles(market_id, timeframe, from_date, to_date, None):
-            # store (int timestamp ms, str open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+            # store (int timestamp ms, str open, high, low, close, spread, volume)
             Database.inst().store_market_ohlc((
                 self.name, market_id, data[0], int(timeframe),
-                data[1], data[2], data[3], data[4],
-                data[5], data[6], data[7], data[8],
-                data[9]))
+                data[1], data[2], data[3], data[4],  # OHLC
+                data[5],  # spread
+                data[6]))  # volume
 
             candle = Candle(float(data[0]) * 0.001, timeframe)
 
-            candle.set_bid_ohlc(float(data[1]), float(data[2]), float(data[3]), float(data[4]))
-            candle.set_ofr_ohlc(float(data[5]), float(data[6]), float(data[7]), float(data[8]))
+            candle.set_ohlc(float(data[1]), float(data[2]), float(data[3]), float(data[4]))
 
-            candle.set_volume(float(data[9]))
+            candle.set_spread(float(data[5]))
+            candle.set_volume(float(data[6]))
 
             if candle.timestamp >= Instrument.basetime(timeframe, time.time()):
                 candle.set_consolidated(False)  # current
@@ -629,8 +623,8 @@ class Watcher(Runnable):
 
         # fetch ticks history
         for data in self.fetch_trades(market_id, from_date, to_date, None):
-            # store (int timestamp in ms, str bid, str ofr, str volume, int direction)
-            Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3], data[4]))
+            # store (int timestamp in ms, str bid, str ask, str last, str volume, int direction)
+            Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3], data[4], data[5]))
 
             n += 1
 
@@ -661,6 +655,6 @@ class Watcher(Runnable):
     def store_candle(self, market_id, timeframe, candle):
         Database.inst().store_market_ohlc((
             self.name, market_id, int(candle.timestamp*1000.0), int(timeframe),
-            str(candle.bid_open), str(candle.bid_high), str(candle.bid_low), str(candle.bid_close),
-            str(candle.ofr_open), str(candle.ofr_high), str(candle.ofr_low), str(candle.ofr_close),
+            str(candle.open), str(candle.high), str(candle.low), str(candle.close),
+            str(candle.spread),
             str(candle.volume)))

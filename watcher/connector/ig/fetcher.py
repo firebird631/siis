@@ -157,14 +157,27 @@ class IGFetcher(Fetcher):
                 # ignore empty candles
                 continue
 
-            # yield (timestamp, high bid, low, open, close, high ofr, low, open, close, volume)
+            ob = price.get('openPrice')['bid'] or price.get('openPrice')['ask']
+            oa = price.get('openPrice')['ask'] or price.get('openPrice')['bid']
+
+            hb = price.get('highPrice')['bid'] or price.get('highPrice')['ask']
+            ha = price.get('highPrice')['ask'] or price.get('highPrice')['bid']
+
+            lb = price.get('lowPrice')['bid'] or price.get('lowPrice')['ask']
+            la = price.get('lowPrice')['ask'] or price.get('lowPrice')['bid']
+
+            cb = price.get('closePrice')['bid'] or price.get('closePrice')['ask']
+            ca = price.get('closePrice')['ask'] or price.get('closePrice')['bid']
+
+            o = (ob + oa) * 0.5
+            h = (hb + ha) * 0.5
+            l = (lb + la) * 0.5
+            c = (cb + ca) * 0.5
+
+            spread = max(0.0, ca - cb)
+
+            # yield (timestamp, open, high, low, close, spread, volume)
             yield([int(timestamp * 1000),
-                str(price.get('openPrice')['bid'] or price.get('openPrice')['ask']),
-                str(price.get('highPrice')['bid'] or price.get('highPrice')['ask']),
-                str(price.get('lowPrice')['bid'] or price.get('lowPrice')['ask']),
-                str(price.get('closePrice')['bid'] or price.get('closePrice')['ask']),
-                str(price.get('openPrice')['ask'] or price.get('openPrice')['bid']),
-                str(price.get('highPrice')['ask'] or price.get('highPrice')['bid']),
-                str(price.get('lowPrice')['ask'] or price.get('lowPrice')['bid']),
-                str(price.get('closePrice')['ask'] or price.get('closePrice')['bid']),
+                str(o), str(h), str(l), str(c),
+                spread,
                 price.get('lastTradedVolume', '0')])

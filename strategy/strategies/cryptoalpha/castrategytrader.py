@@ -140,7 +140,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 continue
 
             # trade region
-            if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ofr, entry, self.region_allow):
+            if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ask, entry, self.region_allow):
                 continue
 
             # ref timeframe is bear don't take the risk (always long entry)
@@ -412,7 +412,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # ajust max quantity according to free asset of quote, and convert in asset base quantity
         if trader.has_asset(self.instrument.quote):
-            # quantity = min(quantity, trader.asset(self.instrument.quote).free) / self.instrument.market_ofr
+            # quantity = min(quantity, trader.asset(self.instrument.quote).free) / self.instrument.market_ask
             if trader.has_quantity(self.instrument.quote, self.instrument.trade_quantity):
                 quantity = self.instrument.adjust_quantity(self.instrument.trade_quantity / price)  # and adjusted to 0/max/step
             else:

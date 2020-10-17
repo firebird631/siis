@@ -15,27 +15,22 @@ logger = logging.getLogger('siis.instrument.instrument')
 class Candle(object):
     """
     Candle for an instrument.
-    @note Ofr is a synonym for ask.
 
-    @note 11 floats + 1 bool
+    @note 8 floats + 1 bool
     """
 
-    __slots__ = '_timestamp', '_timeframe', '_bid_open', '_bid_high', '_bid_low', '_bid_close', '_ofr_open', '_ofr_high', '_ofr_low', '_ofr_close', '_volume', '_ended'
+    __slots__ = '_timestamp', '_timeframe', '_open', '_high', '_low', '_close', '_spread', '_volume', '_ended'
 
     def __init__(self, timestamp, timeframe):
         self._timestamp = timestamp
         self._timeframe = timeframe
         
-        self._bid_open = 0.000000001
-        self._bid_high = 0.000000001
-        self._bid_low = 0.000000001
-        self._bid_close = 0.000000001
+        self._open = 0.000000001
+        self._high = 0.000000001
+        self._low = 0.000000001
+        self._close = 0.000000001
 
-        self._ofr_open = 0.000000001
-        self._ofr_high = 0.000000001
-        self._ofr_low = 0.000000001
-        self._ofr_close = 0.000000001
-
+        self._spread = 0.0
         self._volume = 0
         self._ended = True
 
@@ -49,79 +44,27 @@ class Candle(object):
 
     @property
     def open(self):
-        return (self._bid_open + self._ofr_open) * 0.5
+        return self._open
 
     @property
     def high(self):
-        return (self._bid_high + self._ofr_high) * 0.5  
+        return self._high
 
     @property
     def low(self):
-        return (self._bid_low + self._ofr_low) * 0.5
+        return self._low
 
     @property
     def close(self):
-        return (self._bid_close + self._ofr_close) * 0.5
+        return self._close
 
     @property
     def spread(self):
-        return abs(self._ofr_close - self._bid_close)
+        return self._spread
 
     @property
     def ended(self):
         return self._ended
-
-    def bid(self, price_type):
-        if price_type == 0:
-            return self._bid_open
-        if price_type == 1:
-            return self._bid_high
-        if price_type == 2:
-            return self._bid_low
-        
-        return self._bid_close
-
-    def ofr(self, price_type):
-        if price_type == 0:
-            return self._ofr_open
-        if price_type == 1:
-            return self._ofr_high
-        if price_type == 2:
-            return self._ofr_low
-
-        return self._ofr_close
-
-    @property
-    def bid_open(self):
-        return self._bid_open
-    
-    @property
-    def bid_high(self):
-        return self._bid_high
-    
-    @property
-    def bid_low(self):
-        return self._bid_low
-    
-    @property
-    def bid_close(self):
-        return self._bid_close
-    
-    @property
-    def ofr_open(self):
-        return self._ofr_open
-    
-    @property
-    def ofr_high(self):
-        return self._ofr_high
-    
-    @property
-    def ofr_low(self):
-        return self._ofr_low
-    
-    @property
-    def ofr_close(self):
-        return self._ofr_close
 
     @property
     def volume(self):
@@ -130,61 +73,43 @@ class Candle(object):
     @property
     def height(self):
         return self.high - self.low
+    
+    def set(self, last): 
+        self._open = last
+        self._high = last
+        self._low = last
+        self._close = last
 
-    def set_bid(self, bid):
-        self._bid_open = bid
-        self._bid_high = bid
-        self._bid_low = bid
-        self._bid_close = bid
-
-    def set_ofr(self, ofr):
-        self._ofr_open = ofr
-        self._ofr_high = ofr
-        self._ofr_low = ofr
-        self._ofr_close = ofr
-
-    def set_bid_ohlc(self, o, h, l, c): 
-        self._bid_open = o
-        self._bid_high = h
-        self._bid_low = l
-        self._bid_close = c
-
-    def set_ofr_ohlc(self, o, h, l, c): 
-        self._ofr_open = o
-        self._ofr_high = h
-        self._ofr_low = l
-        self._ofr_close = c
+    def set_ohlc(self, o, h, l, c): 
+        self._open = o
+        self._high = h
+        self._low = l
+        self._close = c
 
     def set_volume(self, ltv):
         self._volume = ltv
 
+    def set_spread(self, spread):
+        self._spread = spread
+
     def set_consolidated(self, cons):
         self._ended = cons
 
-    def copy_bid(self, dup):
-        self._bid_open = dup._bid_open
-        self._bid_high = dup._bid_high
-        self._bid_low = dup._bid_low
-        self._bid_close = dup._bid_close
-
-    def copy_ofr(self, dup):
-        self._ofr_open = dup._ofr_open
-        self._ofr_high = dup._ofr_high
-        self._ofr_low = dup._ofr_low
-        self._ofr_close = dup._ofr_close
+    def copy(self, dup):
+        self._open = dup._open
+        self._high = dup._high
+        self._low = dup._low
+        self._close = dup._close
+        self._spread = dup._spread
 
     def __repr__(self):
-        return "%s %s bid %s/%s/%s/%s ofr %s/%s/%s/%s" % (
+        return "%s %s %s/%s/%s/%s" % (
             timeframe_to_str(self._timeframe),
             self._timestamp,
-            self._bid_open,
-            self._bid_high,
-            self._bid_low,
-            self._bid_close,
-            self._ofr_open,
-            self._ofr_high,
-            self._ofr_low,
-            self._ofr_close)
+            self._open,
+            self._high,
+            self._low,
+            self._close)
 
 
 class BuySellSignal(object):
@@ -253,8 +178,6 @@ class Instrument(object):
     @member symbol str Common usual name (ex: EURUSD, BTCUSD).
     @member market_id str Unique broker identifier.
     @member alias str A secondary or display name.
-
-    @note ofr is a synonym for ask.
 
     @todo may we need hedging, leverage limits, contract_size, lot_size ?
     """
@@ -352,7 +275,7 @@ class Instrument(object):
 
     __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_tradeable', '_currency', \
                 '_trade_quantity', '_trade_max_factor', '_trade_quantity_mode', '_leverage', \
-                '_market_bid', '_market_ofr', '_last_update_time', \
+                '_market_bid', '_market_ask', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
                 '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry', \
                 '_value_per_pip', '_one_pip_means', '_evening_session', '_overnight_session', '_week_session'
@@ -383,7 +306,7 @@ class Instrument(object):
         self._leverage = 1.0  # 1 / margin_factor
 
         self._market_bid = 0.0
-        self._market_ofr = 0.0
+        self._market_ask = 0.0
         self._last_update_time = 0.0
 
         self._vol24h_base = None
@@ -395,7 +318,7 @@ class Instrument(object):
         self._price_limits = (0.0, 0.0, 0.0, 0)
         self._notional_limits = (0.0, 0.0, 0.0, 0)
 
-        self._ticks = []      # list of tuple(timestamp, bid, ofr, volume, direction)
+        self._ticks = []      # list of tuple(timestamp, bid, ask, last, volume, direction)
         self._candles = {}    # list per timeframe
         self._buy_sells = {}  # list per timeframe
         self._tickbars = []   # list of TickBar
@@ -589,20 +512,20 @@ class Instrument(object):
         self._market_bid = bid
 
     @property
-    def market_ofr(self):
-        return self._market_ofr
+    def market_ask(self):
+        return self._market_ask
 
-    @market_ofr.setter
-    def market_ofr(self, ofr):
-        self._market_ofr = ofr
+    @market_ask.setter
+    def market_ask(self, ask):
+        self.market_ask = ask
 
     @property
     def market_price(self):
-        return (self._market_bid + self._market_ofr) * 0.5
+        return (self._market_bid + self.market_ask) * 0.5
 
     @property
     def market_spread(self):
-        return (self._market_ofr - self._market_bid)
+        return (self.market_ask - self._market_bid)
 
     @property
     def last_update_time(self):
@@ -920,8 +843,7 @@ class Instrument(object):
                             filler = Candle(ts, tf)
 
                             # same as previous
-                            filler.copy_bid(results[-1])
-                            filler.copy_ofr(results[-1])
+                            filler.copy(results[-1])
 
                             # empty volume
                             filler._volume = 0
@@ -956,8 +878,7 @@ class Instrument(object):
                             filler = Candle(ts, tf)
 
                             # same as previous
-                            filler.copy_bid(results[-1])
-                            filler.copy_ofr(results[-1])
+                            filler.copy(results[-1])
 
                             # empty volume
                             filler._volume = 0
@@ -1135,30 +1056,30 @@ class Instrument(object):
     def open_exec_price(self, direction, maker=False):
         """
         Return the execution price if an order open a position.
-        It depend of the direction of the order and the market bid/ofr prices.
-        If position is long, then returns the market ofr price.
+        It depend of the direction of the order and the market bid/ask prices.
+        If position is long, then returns the market ask price.
         If position is short, then returns the market bid price.
         """
         if direction > 0:
-            return self._market_ofr if not maker else self._market_bid
+            return self._market_ask if not maker else self._market_bid
         elif direction < 0:
-            return self._market_bid if not maker else self._market_ofr
+            return self._market_bid if not maker else self._market_ask
         else:
-            return (self._market_ofr + self._market_bid) * 0.5
+            return (self._market_ask + self._market_bid) * 0.5
 
     def close_exec_price(self, direction, maker=False):
         """
         Return the execution price if an order/position is closing.
-        It depend of the direction of the order and the market bid/ofr prices.
+        It depend of the direction of the order and the market bid/ask prices.
         If position is long, then returns the market bid price.
-        If position is short, then returns the market ofr price.
+        If position is short, then returns the market ask price.
         """
         if direction > 0:
-            return self._market_bid if not maker else self._market_ofr
+            return self._market_bid if not maker else self._market_ask
         elif direction < 0:
-            return self._market_ofr if not maker else self._market_bid
+            return self._market_ask if not maker else self._market_bid
         else:
-            return (self._market_bid * self._market_ofr) * 0.5
+            return (self._market_bid * self._market_ask) * 0.5
 
     def trade_quantity_mode_to_str(self):
         if self._trade_quantity_mode == Instrument.TRADE_QUANTITY_DEFAULT:

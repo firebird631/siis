@@ -27,7 +27,7 @@ class Signal(object):
 	SIGNAL_WATCHER_DISCONNECTED = 201   # data is None
 
 	SIGNAL_ACCOUNT_DATA = 300           # data is a tuple with (balance, free_margin, pnl, currency, risk_limit)
-	SIGNAL_MARKET_DATA = 301            # data is a tuple with (market_id, tradable, timestamp, bid, ofr, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
+	SIGNAL_MARKET_DATA = 301            # data is a tuple with (market_id, tradable, timestamp, bid, ask, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
 	SIGNAL_MARKET_INFO_DATA = 302       # data is a tuple with (market_id, Market())
 	SIGNAL_MARKET_LIST_DATA = 303       # data is an array of tuples of str (market_id, symbol, base, quote)
 	SIGNAL_MARKET_SIGNAL = 304          # @todo

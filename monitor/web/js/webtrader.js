@@ -65,7 +65,7 @@ $(window).ready(function() {
 
     window.tickers = {
         // bid
-        // ofr
+        // ask
         // spread
         // vol24 (base)
         // vol24quote
@@ -712,7 +712,7 @@ function fetch_strategy() {
                 'notional-limits': market['notional-limits'],  // array 4 float
                 'size-limits': market['size-limits'],  // array 4 float
                 'bid': market['bid'],
-                'ofr': market['ofr'],
+                'ask': market['ask'],
                 'mid': market['mid'],
                 'spread': market['spread'],
                 'profiles': {}
@@ -1327,7 +1327,7 @@ function on_update_ticker(market_id, market_id, timestamp, ticker) {
     if (!(market_id in window.tickers)) {
         window.tickers[market_id] = {
             'bid': 0.0,
-            'ofr': 0.0,
+            'ask': 0.0,
             'vol24': 0.0,
             'vol24quote': 0.0,
             'spread': 0.0,
@@ -1339,8 +1339,8 @@ function on_update_ticker(market_id, market_id, timestamp, ticker) {
        window.tickers[market_id].bid = ticker.bid;
     }
 
-    if (ticker.ofr) {
-        window.tickers[market_id].ofr = ticker.ofr;
+    if (ticker.ask) {
+        window.tickers[market_id].ask = ticker.ask;
     }
 
     if (ticker.vol24) {
@@ -1352,5 +1352,5 @@ function on_update_ticker(market_id, market_id, timestamp, ticker) {
     }
 
     // update spread
-    window.tickers[market_id].spread = ticker.ofr - ticker.bid;
+    window.tickers[market_id].spread = ticker.ask - ticker.bid;
 }

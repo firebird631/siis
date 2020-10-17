@@ -152,8 +152,8 @@ class PgSql(Database):
                 id SERIAL PRIMARY KEY,
                 broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
                 timestamp BIGINT NOT NULL, timeframe INTEGER NOT NULL,
-                bid_open VARCHAR(32) NOT NULL, bid_high VARCHAR(32) NOT NULL, bid_low VARCHAR(32) NOT NULL, bid_close VARCHAR(32) NOT NULL,
-                ask_open VARCHAR(32) NOT NULL, ask_high VARCHAR(32) NOT NULL, ask_low VARCHAR(32) NOT NULL, ask_close VARCHAR(32) NOT NULL,
+                open VARCHAR(32) NOT NULL, high VARCHAR(32) NOT NULL, low VARCHAR(32) NOT NULL, close VARCHAR(32) NOT NULL,
+                spread VARCHAR(32) NOT NULL,
                 volume VARCHAR(48) NOT NULL,
                 UNIQUE(broker_id, market_id, timestamp, timeframe))""")
 
@@ -182,7 +182,7 @@ class PgSql(Database):
     def get_last_ohlc(self, broker_id, market_id, timeframe):
         cursor = self._db.cursor()
 
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp DESC LIMIT 1""" % (
                             broker_id, market_id, timeframe))
 
@@ -192,10 +192,10 @@ class PgSql(Database):
             timestamp = float(row[0]) * 0.001  # to float second timestamp
             ohlc = Candle(timestamp, timeframe)
 
-            ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
-            ohlc.set_ofr_ohlc(float(row[5]), float(row[6]), float(row[7]), float(row[8]))
+            ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
-            ohlc.set_volume(float(row[9]))
+            ohlc.set_spread(float(row[5]))
+            ohlc.set_volume(float(row[6]))
 
             if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
                 ohlc.set_consolidated(False)  # current
@@ -683,27 +683,27 @@ class PgSql(Database):
                         offset = max(0, count - mk[6])
 
                         # LIMIT should not be necessary then
-                        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (
                                             mk[1], mk[2], mk[3], mk[6], offset))
                     elif mk[4] and mk[5]:
                         # from to
-                        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3], mk[4], mk[5]))
                     elif mk[4]:
                         # from to now
-                        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3], mk[4]))
                     elif mk[5]:
                         # to now
-                        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3], mk[5]))
                     else:
                         # all
-                        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3]))
 
@@ -715,15 +715,15 @@ class PgSql(Database):
                         timestamp = float(row[0]) * 0.001  # to float second timestamp
                         ohlc = Candle(timestamp, mk[3])
 
-                        ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
-                        ohlc.set_ofr_ohlc(float(row[5]), float(row[6]), float(row[7]), float(row[8]))
+                        ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
-                        # if float(row[9]) <= 0:
+                        # if float(row[6]) <= 0:
                         #   # prefer to ignore empty volume ohlc because it can broke volume signal and it is a no way but it could be
                         #   # a lack of this information like on SPX500 of ig.com. So how to manage that cases...
                         #   continue
 
-                        ohlc.set_volume(float(row[9]))
+                        ohlc.set_spread(float(row[5]))
+                        ohlc.set_volume(float(row[6]))
 
                         if ohlc.timestamp >= Instrument.basetime(mk[3], time.time()):
                             ohlc.set_consolidated(False)  # current
@@ -763,17 +763,17 @@ class PgSql(Database):
 
                     for mk in mkd:
                         if (mk[0], mk[1], mk[2], mk[3]) not in data:
-                            elts.append("('%s', '%s', %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5], mk[6], mk[7], mk[8], mk[9], mk[10], mk[11], mk[12]))
+                            elts.append("('%s', '%s', %i, %i, '%s', '%s', '%s', '%s', '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5], mk[6], mk[7], mk[8], mk[9]))
                             data.add((mk[0], mk[1], mk[2], mk[3]))
 
-                    query = ' '.join(("INSERT INTO ohlc(broker_id, market_id, timestamp, timeframe, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume) VALUES",
+                    query = ' '.join(("INSERT INTO ohlc(broker_id, market_id, timestamp, timeframe, open, high, low, close, spread, volume) VALUES",
                                 ','.join(elts),
-                                "ON CONFLICT (broker_id, market_id, timestamp, timeframe) DO UPDATE SET bid_open = EXCLUDED.bid_open, bid_high = EXCLUDED.bid_high, bid_low = EXCLUDED.bid_low, bid_close = EXCLUDED.bid_close, ask_open = EXCLUDED.ask_open, ask_high = EXCLUDED.ask_high, ask_low = EXCLUDED.ask_low, ask_close = EXCLUDED.ask_close, volume = EXCLUDED.volume"))
+                                "ON CONFLICT (broker_id, market_id, timestamp, timeframe) DO UPDATE SET open = EXCLUDED.open, high = EXCLUDED.high, low = EXCLUDED.low, close = EXCLUDED.close, spread = EXCLUDED.spread, volume = EXCLUDED.volume"))
 
                     # query = ' '.join((
-                    #     "INSERT INTO ohlc(broker_id, market_id, timestamp, timeframe, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume) VALUES",
-                    #     ','.join(["('%s', '%s', %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5], mk[6], mk[7], mk[8], mk[9], mk[10], mk[11], mk[12]) for mk in mkd]),
-                    #     "ON CONFLICT (broker_id, market_id, timestamp, timeframe) DO UPDATE SET bid_open = EXCLUDED.bid_open, bid_high = EXCLUDED.bid_high, bid_low = EXCLUDED.bid_low, bid_close = EXCLUDED.bid_close, ask_open = EXCLUDED.ask_open, ask_high = EXCLUDED.ask_high, ask_low = EXCLUDED.ask_low, ask_close = EXCLUDED.ask_close, volume = EXCLUDED.volume"
+                    #     "INSERT INTO ohlc(broker_id, market_id, timestamp, timeframe, open, high, low, close, spread, volume) VALUES",
+                    #     ','.join(["('%s', '%s', %i, %i, '%s', '%s', '%s', '%s', '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5], mk[6], mk[7], mk[8], mk[9]) for mk in mkd]),
+                    #     "ON CONFLICT (broker_id, market_id, timestamp, timeframe) DO UPDATE SET open = EXCLUDED.open, high = EXCLUDED.high, low = EXCLUDED.low, close = EXCLUDED.close, spread = EXCLUDED.spread, volume = EXCLUDED.volume"
                     # ))
 
                     cursor.execute(query)

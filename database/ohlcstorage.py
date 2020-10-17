@@ -75,8 +75,8 @@ class OhlcStorage(object):
             str market_id (not empty)
             integer timestamp (ms since epoch)
             integer timeframe (time unit in seconds)
-            str bid_open, bid_high, bid_low, bid_close (>= 0)
-            str ask_open, ask_high, ask_low, ask_close (>= 0)
+            str open, high, low, close (>= 0)
+            str spread (>= 0)
             str volume (>= 0)
         """
         if data[3] < 60:
@@ -98,8 +98,8 @@ class OhlcStorage(object):
 
             for ohlc in ohlcs:
                 cursor.execute("""
-                    INSERT INTO ohlc(timestamp, timeframe, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume)
-                        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", ohlc)
+                    INSERT INTO ohlc(timestamp, timeframe, open, high, low, close, spread, volume)
+                        VALUES(?, ?, ?, ?, ?, ?, ?, ?)""", ohlc)
 
             self._db.commit()
 
@@ -165,10 +165,10 @@ class OhlcStorage(object):
     #         timestamp = float(row[0]) * 0.001  # to float second timestamp
     #         ohlc = Candle(timestamp, timeframe)
 
-    #         ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
-    #         ohlc.set_ofr_ohlc(float(row[5]), float(row[6]), float(row[7]), float(row[8]))
+    #         ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
-    #         ohlc.set_volume(float(row[9]))
+    #         ohlc.set_spread(float(row[5]))
+    #         ohlc.set_volume(float(row[6]))
 
     #         ohlcs.append(ohlc)
 
@@ -178,7 +178,7 @@ class OhlcStorage(object):
     #     return data
 
     # def query_all(self, cursor, timeframe):
-    #     cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+    #     cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
     #                         WHERE timeframe = %s ORDER BY timestamp ASC""" % (timeframe,))
 
     # def query_last(self, cursor, timeframe, limit):
@@ -187,21 +187,21 @@ class OhlcStorage(object):
     #     offset = max(0, count - limit)
 
     #     # LIMIT should not be necessary then
-    #     cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+    #     cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
     #                     WHERE timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (timeframe, limit, offset))
 
     # def query_from_to(self, cursor, timeframe, from_ts, to_ts):
-    #     cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+    #     cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
     #                     WHERE timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
     #                         timeframe, from_ts, to_ts))
 
     # def query_from_limit(self, cursor, timeframe, from_ts, limit):
-    #     cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+    #     cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
     #                     WHERE timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC LIMIT %i""" % (
     #                         timeframe, from_ts, limit))
 
     # def query_to(self, cursor, timeframe, to_ts):
-    #     cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+    #     cursor.execute("""SELECT timestamp, open, high, low, close, spread volume FROM ohlc
     #                     WHERE timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
     #                         timeframe, to_ts))
 
@@ -343,17 +343,17 @@ class OhlcStreamer(object):
             timestamp = float(row[0]) * 0.001  # to float second timestamp
             ohlc = Candle(timestamp, timeframe)
 
-            ohlc.set_bid_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
-            ohlc.set_ofr_ohlc(float(row[5]), float(row[6]), float(row[7]), float(row[8]))
+            ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
-            ohlc.set_volume(float(row[9]))
+            ohlc.set_spread(float(row[5]))
+            ohlc.set_volume(float(row[6]))
 
             ohlcs.append(ohlc)
 
         return ohlcs
 
     def query_all(self, cursor, timeframe):
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                             WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
                                 self._broker_id, self._market_id, timeframe))
 
@@ -365,21 +365,21 @@ class OhlcStreamer(object):
         offset = max(0, count - limit)
 
         # LIMIT should not be necessary then
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (
                             self._broker_id, self._market_id, timeframe, limit, offset))
 
     def query_from_to(self, cursor, timeframe, from_ts, to_ts):
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
                             self._broker_id, self._market_id, timeframe, from_ts, to_ts))
 
     def query_from_limit(self, cursor, timeframe, from_ts, limit):
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC LIMIT %i""" % (
                             self._broker_id, self._market_id, timeframe, from_ts, limit))
 
     def query_to(self, cursor, timeframe, to_ts):
-        cursor.execute("""SELECT timestamp, bid_open, bid_high, bid_low, bid_close, ask_open, ask_high, ask_low, ask_close, volume FROM ohlc
+        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
                             self._broker_id, self._market_id, timeframe, to_ts))

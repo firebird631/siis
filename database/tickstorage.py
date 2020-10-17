@@ -25,7 +25,7 @@ class TickStorage(object):
     """
     Default implementation store in a single file but further one file per month.
     File format is a tab separated file with no header and :
-    timestamp(int ms since epoch) bid(str) ask(str) volume(str) direction(signed char)
+    timestamp(int ms since epoch) bid(str) ask(str) last(str) volume(str) direction(signed char)
 
     Price and volume should be formated with the asset precision if possible but scientific notation
     is tolerate.
@@ -53,11 +53,11 @@ class TickStorage(object):
         self._text = text
         self._binary = binary
 
-        self._struct = struct.Struct('<ddddb')
+        self._struct = struct.Struct('<dddddb')
 
     def store(self, data):
         """
-        @param data tuple with (broker_id, market_id, timestamp, bid, ofr, volume)
+        @param data tuple with (broker_id, market_id, timestamp, bid, ask, last, volume)
         """
         with self._mutex:
             if isinstance(data, list):
@@ -135,13 +135,13 @@ class TickStorage(object):
 
                 if self._text_file: 
                     # convert to a tabular row          
-                    content = "%i\t%s\t%s\t%s\t%i\n" % (d[2], d[3], d[4], d[5], d[6])  # t b o v d
+                    content = "%i\t%s\t%s\t%s\t%s\t%i\n" % (d[2], d[3], d[4], d[5], d[6], d[7])  # t b a l v d
                     self._text_file.write(content)
 
                 if self._binary_file:
                     # convert to a struct
-                    f = (float(d[2]) * 0.001, float(d[3]), float(d[4]), float(d[5]), d[6])  # t b o v d (t in second)
-                    # s = struct.pack('<ddddb', *f)
+                    f = (float(d[2]) * 0.001, float(d[3]), float(d[4]), float(d[5]), float(d[6]), d[7])  # t b a l v d (t in second)
+                    # s = struct.pack('<dddddb', *f)
                     s = self._struct.pack(*f)
 
                     self._binary_file.write(s)
@@ -166,7 +166,7 @@ class TickStreamer(object):
     Streamer that read data from an initial position.
     """
 
-    TICK_SIZE = 4*8+1  # 33bytes
+    TICK_SIZE = 5*8+1  # 41bytes
 
     def __init__(self, markets_path, broker_id, market_id, from_date, to_date=None, buffer_size=1000, binary=True):
         """
@@ -190,8 +190,8 @@ class TickStreamer(object):
         self._binary = binary  # use binary format
         self._is_binary = False
 
-        self._struct = struct.Struct('ddddb')
-        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('o', 'float64'), ('v', 'float64'), ('d', 'int8')])
+        self._struct = struct.Struct('dddddb')
+        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('a', 'float64'), ('l', 'float64'), ('v', 'float64'), ('d', 'int8')])
 
     def open(self):
         if self._file:
@@ -359,14 +359,14 @@ class TickStreamer(object):
                             file_end = True
                             break
 
-                        ts, bid, ofr, vol, d = row.rstrip('\n').split('\t')
+                        ts, bid, ask, last, vol, d = row.rstrip('\n').split('\t')
 
                         ts = float(ts) * 0.001
                         if ts < self._from_date.timestamp():
                             # ignore older than initial date
                             continue
 
-                        self._buffer.append((ts, float(bid), float(ofr), float(vol), int(d)))
+                        self._buffer.append((ts, float(bid), float(ask), float(last), float(vol), int(d)))
             else:
                 file_end = True
 
@@ -405,7 +405,7 @@ class TextToBinary(object):
         self._text_file = None
         self._binary_file = None
 
-        self._struct = struct.Struct('<ddddb')
+        self._struct = struct.Struct('<dddddb')
 
     def open(self):
         if self._text_file:
@@ -451,13 +451,13 @@ class TextToBinary(object):
 
             if self._text_file and self._binary_file:
                 for row in self._text_file:
-                    ts, bid, ofr, vol, d = row.rstrip('\n').split('\t')
+                    ts, bid, ask, last, vol, d = row.rstrip('\n').split('\t')
 
                     ts = float(ts) * 0.001
 
                     # convert to a struct
-                    f = [ts, float(bid), float(ofr), float(vol), int(d)]  # t b o v d (t in second)
-                    # s = struct.pack('<ddddb', *f)
+                    f = [ts, float(bid), float(ask), float(vol), float(last), int(d)]  # t b a l v d (t in second)
+                    # s = struct.pack('<dddddb', *f)
                     s = self._struct.pack(*f)
 
                     self._binary_file.write(s)
@@ -476,7 +476,7 @@ class LastTickFinder(object):
     Last tick find helper.
     """
 
-    TICK_SIZE = 4*8+1  # 33bytes
+    TICK_SIZE = 5*8+1  # 41bytes
 
     def __init__(self, markets_path, broker_id, market_id, buffer_size=1000, binary=True):
         self._markets_path = markets_path
@@ -489,7 +489,7 @@ class LastTickFinder(object):
         self._binary = binary  # use binary format
 
         self._struct = struct.Struct('ddddb')
-        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('o', 'float64'), ('v', 'float64'), ('d', 'int8')])
+        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('a', 'float64'), ('l', 'float64'), ('v', 'float64'), ('d', 'int8')])
 
     def open(self):
         data_path = pathlib.Path(self._markets_path, self._broker_id, self._market_id, 'T')
@@ -537,10 +537,10 @@ class LastTickFinder(object):
 
                 if pos >= 0:
                     row = content[pos+1:]
-                    ts, bid, ofr, vol, d = row.rstrip('\n').split('\t')
+                    ts, bid, ask, last, vol, d = row.rstrip('\n').split('\t')
 
                     # timestamp in seconds
-                    tick = (float(ts) * 0.001, float(bid), float(ofr), float(vol), int(d))
+                    tick = (float(ts) * 0.001, float(bid), float(ask), float(last), float(vol), int(d))
 
                 tfile.close()
 
@@ -603,14 +603,14 @@ class LastTickFinder(object):
                             file_end = True
                             break
 
-                        ts, bid, ofr, vol, d = row.rstrip('\n').split('\t')
+                        ts, bid, ask, last, vol, d = row.rstrip('\n').split('\t')
 
                         ts = float(ts) * 0.001
                         if ts < self._from_date.timestamp():
                             # ignore older than initial date
                             continue
 
-                        self._buffer.append((ts, float(bid), float(ofr), float(vol), int(d)))
+                        self._buffer.append((ts, float(bid), float(ask), float(last), float(vol), int(d)))
             else:
                 file_end = True
 

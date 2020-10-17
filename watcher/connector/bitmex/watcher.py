@@ -244,7 +244,7 @@ class BitMexWatcher(Watcher):
             # account data update
             #
             
-            if data[1] in ('margin', 'instrument', 'quote'):
+            if (data[1] == 'margin'):
                 funds = self.connector.ws.funds()
                 ratio = 1.0
                 currency = funds['currency']
@@ -261,7 +261,7 @@ class BitMexWatcher(Watcher):
 
                 self.service.notify(Signal.SIGNAL_ACCOUNT_DATA, self.name, account_data)
 
-            elif data[1] == 'liquidation' and data[0] == 'insert':  # action
+            elif (data[1] == 'liquidation') and (data[0] == 'insert'):  # action
                 exec_logger.info("bitmex l226 liquidation > %s " % str(data))
 
                 for ld in data[3]:
@@ -286,7 +286,7 @@ class BitMexWatcher(Watcher):
             # orders partial execution
             #
 
-            if data[1] == 'execution' and data[2]:
+            if (data[1] == 'execution') and data[2]:
                 for ld in data[3]:
                     exec_logger.info("bitmex l185 execution > %s" % str(ld))
 
@@ -294,7 +294,7 @@ class BitMexWatcher(Watcher):
             # positions
             #
 
-            elif data[1] == 'position':  # action
+            elif (data[1] == 'position'):  # action
                 for ld in data[3]:
                     ref_order_id = ""
                     symbol = ld['symbol']
@@ -356,7 +356,7 @@ class BitMexWatcher(Watcher):
             # orders
             #
 
-            elif data[1] == 'order':
+            elif (data[1] == 'order'):
                 for ld in data[3]:
                     exec_logger.info("bitmex.com order %s" % str(ld))
 
@@ -477,31 +477,46 @@ class BitMexWatcher(Watcher):
             # market
             #
 
-            # elif data[1] == 'trade' and data[0] == 'insert':
-            #     exec_logger.info("bitmex.com trade %s" % str(data))
+            elif (data[1] == 'trade') and (data[0] == 'insert' or data[0] == 'update'):
+                # exec_logger.info("bitmex.com trade %s" % str(data))
 
-            #     for trade in data[3]:
-            #         # trade data
-            #         market_id = trade['symbol']
-            #         trade_time = datetime.strptime(trade['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
-            #         direction = Order.LONG if trade['side'] == 'Buy' else Order.SHORT
-            #         quantity = trade['size']
-            #         price = trade['price']
+                for trade in data[3]:
+                    # trade data
+                    market_id = trade['symbol']
+                    trade_time = datetime.strptime(trade['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
+                    # direction = Order.LONG if trade['side'] == 'Buy' else Order.SHORT
+                    volume = trade['size']
+                    price = trade['price']
+                    spread = 0.0  # @todo
+                    # trade_id = trade['trdMatchID']
+                    # trade['homeNotional']  # 0.4793 value in XBT
 
-            #         # 'homeNotional': 0.4793 value in XBT
+                    # PlusTick,MinusTick,ZeroPlusTick,ZeroMinusTick
+                    bid_ask = 0
 
-            #         # we have a tick when we have a volume in data content
-            #         tick = (trade_time, price, price, quantity)
+                    if trade['tickDirection'] in ('PlusTick', 'ZeroPlusTick'):
+                        bid_ask = 1
+                    elif trade['tickDirection'] in ('MinusTick', 'ZeroMinusTick'):
+                        bid_ask = -1
 
-            #         # and notify
-            #         self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
+                    # we have a tick when we have a volume in data content
+                    tick = (trade_time, price, price, price, volume, bid_ask)
 
-            #         if self._store_trade:
-            #             # store trade
-            #             Database.inst().store_market_trade((self.name, symbol, int(trade_time*1000), price, price, quantity, bid_ask))
+                    # and notify
+                    self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
+
+                    if self._store_trade:
+                        # store trade
+                        Database.inst().store_market_trade((self.name, symbol, int(trade_time*1000), price, price, price, volume, bid_ask))
+
+                    for tf in Watcher.STORED_TIMEFRAMES:
+                        # generate candle per each timeframe
+                        with self._mutex:
+                            candle = self.update_ohlc(market_id, tf, trade_time, price, spread, volume)
+                            if candle is not None:
+                                self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
             elif (data[1] == 'instrument' or data[1] == 'quote') and data[0] == 'insert' or data[0] == 'update':
-                # instrument and quote data (bid, ofr, volume)
                 for market_id in data[2]:
                     instrument = self.connector.ws.get_instrument(market_id)
 
@@ -538,9 +553,9 @@ class BitMexWatcher(Watcher):
                             base_exchange_rate = instrument.get('lastPrice', 1.0) / (base_market.get('lastPrice', 1.0))  # / xbtusd_market.get('lastPrice', 1.0))
 
                     bid = instrument.get('bidPrice')
-                    ofr = instrument.get('askPrice')
+                    ask = instrument.get('askPrice')
 
-                    if bid is not None and ofr is not None:
+                    if bid is not None and ask is not None:
                         # update contract size and value per pip
                         if quote_symbol == 'USD' and base_market_id == symbol:  # XBTUSD (xbt perpetual)
                             base_exchange_rate = instrument.get('lastPrice', 1.0)
@@ -573,55 +588,8 @@ class BitMexWatcher(Watcher):
                         vol24h = instrument.get('volume24h')
                         vol24hquote = instrument.get('foreignNotional24h')
 
-                        market_data = (market_id, tradeable, update_time, bid, ofr, base_exchange_rate, contract_size, value_per_pip, vol24h, vol24hquote)
+                        market_data = (market_id, tradeable, update_time, bid, ask, base_exchange_rate, contract_size, value_per_pip, vol24h, vol24hquote)
                         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
-
-                    #
-                    # notify a tick data update
-                    #
-
-                    # if action == 'update':
-                    #    self.connector.ws.get_ticker(market_id)
-
-                    volume = instrument.get('volume', 0)  # ex: 32057250
-                    last_bid = None
-                    last_ofr = None
-                    last_vol = None
-                    bid_ask = 0  # @todo bid or ask direction
-
-                    if 'bidPrice' in data[3][0] and data[3][0]['bidPrice']:
-                        # price update
-                        last_bid = float(data[3][0]['bidPrice'])
-
-                    if 'askPrice' in data[3][0] and data[3][0]['askPrice']:
-                        # price update
-                        last_ofr = float(data[3][0]['askPrice'])
-
-                    if 'volume' in data[3][0] and data[3][0]['volume']:
-                        last_vol = float(data[3][0]['volume'])
-
-                    # exec_logger.info("bitmex l325 > %s : %s %s %s / last %s %s %s" % (market_id, bid, ofr, volume, last_bid, last_ofr, last_vol))
-
-                    if bid is not None and ofr is not None and volume is not None and last_vol:
-                        # we have a tick when we have a volume in data content
-                        tick = (update_time, bid, ofr, volume, bid_ask)
-
-                        # with self._mutex:
-                        #     self._last_tick[market_id] = tick
-
-                        # and notify
-                        self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
-
-                        if self._store_trade:
-                            # store trade/tick
-                            Database.inst().store_market_trade((self.name, symbol, int(update_time*1000), bid, ofr, volume, bid_ask))
-
-                        for tf in Watcher.STORED_TIMEFRAMES:
-                            # generate candle per each timeframe
-                            with self._mutex:
-                                candle = self.update_ohlc(market_id, tf, update_time, last_bid, last_ofr, last_vol)
-                                if candle is not None:
-                                    self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
             #
             # order book L2 top 25
@@ -659,7 +627,7 @@ class BitMexWatcher(Watcher):
             #     ratio *= to_base_rate
 
             bid = instrument.get('bidPrice')
-            ofr = instrument.get('askPrice')
+            ask = instrument.get('askPrice')
 
             market = Market(market_id, symbol)
 
@@ -710,9 +678,9 @@ class BitMexWatcher(Watcher):
             market.contract_type = Market.CONTRACT_CFD if not expiry else Market.CONTRACT_FUTURE
             market.trade = Market.TRADE_MARGIN | Market.TRADE_IND_MARGIN
 
-            if bid is not None and ofr is not None:
+            if bid is not None and ask is not None:
                 market.bid = bid
-                market.ofr = ofr
+                market.ask = ask
                 market.last_update_time = update_time
 
             market.lot_size = instrument.get('lotSize', 1.0)  # ex: 1.0 for XBTUSD
@@ -780,7 +748,7 @@ class BitMexWatcher(Watcher):
             market = self.fetch_market(market_id)
 
             if market.is_open:
-                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ofr,
+                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ask,
                         market.base_exchange_rate, market.contract_size, market.value_per_pip,
                         market.vol24h_base, market.vol24h_quote)
             else:
@@ -800,7 +768,7 @@ class BitMexWatcher(Watcher):
 
         for trade in trades:
             count += 1
-            # timestamp, bid, ofr, volume, direction
+            # timestamp, bid, ask, last, volume, direction
             yield(trade)
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
@@ -830,6 +798,6 @@ class BitMexWatcher(Watcher):
         
         for candle in candles:
             count += 1
-            # store (timestamp, open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+            # store (timestamp, open, high, low, close, spread, volume)
             if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
-                yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[1], candle[2], candle[3], candle[4], candle[5]))
+                yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[5], candle[6]))

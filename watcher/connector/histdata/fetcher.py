@@ -135,7 +135,7 @@ class HistDataFetcher(Fetcher):
                         for line in handle:
                             count += 1
                             # 20180101 170014370,1.200370,1.200870,0
-                            # timestamp, bid, ofr, volume, direction
+                            # timestamp, bid, ask, volume, direction
                             yield self.parse_tick(line)
 
                         handle.close()
@@ -207,8 +207,8 @@ class HistDataFetcher(Fetcher):
 
         for candle in candles:
             count += 1
-            # (timestamp, open bid, high, low, open, close, open ofr, high, low, close, volume)
-            yield([candle[0], candle[2], candle[3], candle[1], candle[4], candle[2], candle[3], candle[1], candle[4], candle[5]])
+            # (timestamp, open, high, low, open, close, spread, volume)
+            yield([candle[0], candle[2], candle[3], candle[1], candle[4], 0.0, candle[5]])
 
         logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, tf))
 
@@ -261,13 +261,14 @@ class HistDataFetcher(Fetcher):
         ts = int(datetime.strptime(parts[0]+'000', '%Y%m%d %H%M%S%f').replace(tzinfo=UTC()).timestamp() * 1000)
 
         # no direction detail, but distinct bid/ask prices
-        return ts, parts[1], parts[2], parts[3], 0
+        # @todo is there a last price ?
+        return ts, parts[1], parts[2], parts[2], parts[3], 0
 
     def parse_min(self, row):
         parts = row.rstrip('\n').split(';')
         ts = int(datetime.strptime(parts[0], '%Y%m%d %H%M%S').replace(tzinfo=UTC()) * 1000)
 
-        return ts, parts[1], parts[2], parts[3], parts[4], parts[1], parts[2], parts[3], parts[4], parts[5]
+        return ts, parts[1], parts[2], parts[3], parts[4], 0.0, parts[5]
 
     def install_market(self, market_id):
         fetcher_config = self.service.fetcher_config(self._name)

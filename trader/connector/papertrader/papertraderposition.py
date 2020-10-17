@@ -56,7 +56,7 @@ def open_position(trader, order, market, open_exec_price):
 
     account_currency = trader.account.currency
 
-    # long are open on ofr and short on bid
+    # long are open on ask and short on bid
     position.entry_price = market.open_exec_price(order.direction)
 
     # transaction time is creation position date time

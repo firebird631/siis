@@ -60,7 +60,7 @@ class KrakenWatcher(Watcher):
         super().__init__("kraken.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
 
         self._connector = None
-        self._depths = {}  # depth chart per symbol tuple (last_id, bids, ofrs)
+        self._depths = {}  # depth chart per symbol tuple (last_id, bids, asks)
 
         self._symbols_data = {}
         self._tickers_data = {}
@@ -559,7 +559,7 @@ class KrakenWatcher(Watcher):
             ticker = data[1]
             
             bid = float(ticker['b'][0])
-            ofr = float(ticker['a'][0])
+            ask = float(ticker['a'][0])
 
             vol24_base = float(ticker['v'][0])
             vol24_quote = float(ticker['v'][0]) * float(ticker['p'][0])
@@ -574,8 +574,8 @@ class KrakenWatcher(Watcher):
             # else:
             #     market.base_exchange_rate = 1.0
 
-            if bid > 0.0 and ofr > 0.0:
-                market_data = (market_id, last_update_time > 0, last_update_time, bid, ofr, None, None, None, vol24_base, vol24_quote)
+            if bid > 0.0 and ask > 0.0:
+                market_data = (market_id, last_update_time > 0, last_update_time, bid, ask, None, None, None, vol24_base, vol24_quote)
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
         elif isinstance(data, dict):
@@ -593,11 +593,11 @@ class KrakenWatcher(Watcher):
                 return
 
             for trade in data[1]:
-                bid = float(trade[0])
-                ofr = float(trade[0])
+                price = float(trade[0])
                 vol = float(trade[1])
                 trade_time = float(trade[2])
                 bid_ask = 0
+                spread = 0.0
 
                 # bid or ask depending of order direction and type
                 if trade[3] == 'b' and trade[4] == 'l':
@@ -609,18 +609,18 @@ class KrakenWatcher(Watcher):
                 if trade[3] == 's' and trade[4] == 'm':
                     bid_ask = -1
 
-                tick = (trade_time, bid, ofr, vol, bid_ask)
+                tick = (trade_time, price, price, price, vol, bid_ask)
 
                 # store for generation of OHLCs
                 self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
                 if self._store_trade:
-                    Database.inst().store_market_trade((self.name, market_id, int(trade_time*1000.0), trade[0], trade[0], trade[1], bid_ask))
+                    Database.inst().store_market_trade((self.name, market_id, int(trade_time*1000.0), trade[0], trade[0], trade[0], trade[1], bid_ask))
 
                 for tf in Watcher.STORED_TIMEFRAMES:
                     # generate candle per timeframe
                     with self._mutex:
-                        candle = self.update_ohlc(market_id, tf, trade_time, bid, ofr, vol)
+                        candle = self.update_ohlc(market_id, tf, trade_time, price, spread, vol)
 
                     if candle is not None:
                         self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
@@ -902,7 +902,7 @@ class KrakenWatcher(Watcher):
             market = self.fetch_market(market_id)
 
             if market.is_open:
-                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ofr,
+                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ask,
                         market.base_exchange_rate, market.contract_size, market.value_per_pip,
                         market.vol24h_base, market.vol24h_quote)
             else:
@@ -922,7 +922,7 @@ class KrakenWatcher(Watcher):
 
         for trade in trades:
             count += 1
-            # timestamp, bid, ofr, volume, direction
+            # timestamp, bid, ask, last, volume, direction
             yield(trade)
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
@@ -945,8 +945,8 @@ class KrakenWatcher(Watcher):
         
         for candle in candles:
             count += 1
-            # store (timestamp, open bid, high bid, low bid, close bid, open ofr, high ofr, low ofr, close ofr, volume)
+            # store (timestamp, open, high, low, close, spread, volume)
             if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
-                yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[1], candle[2], candle[3], candle[4], candle[5]))
+                yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[5], candle[6]))
 
         logger.info("Watcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, interval))

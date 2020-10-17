@@ -54,10 +54,10 @@ def export_ohlcs_siis_1_0_0(broker_id, market_id, timeframe, from_date, to_date,
         for ohlc in ohlcs:
             ohlc_dt = datetime.utcfromtimestamp(ohlc.timestamp).strftime("%Y%m%d %H%M%S")
 
-            dst.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (
+            dst.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (
                 ohlc_dt,
-                ohlc.bid_open, ohlc.bid_high, ohlc.bid_low, ohlc.bid_close,
-                ohlc.ofr_open, ohlc.ofr_high, ohlc.ofr_low, ohlc.ofr_close,
+                ohlc.open, ohlc.high, ohlc.low, ohlc.close,
+                ohlc.spread,
                 ohlc.volume))
 
             tts = ohlc.timestamp
@@ -116,7 +116,7 @@ def export_ticks_siis_1_0_0(broker_id, market_id, from_date, to_date, dst):
         for data in ticks:
             tick_dt = datetime.utcfromtimestamp(ohlc.timestamp).strftime("%Y%m%d %H%M%S%f")
 
-            dst.write("%s\t%s\t%s\t%s\n" % (tick_dt, data[1], data[2], data[3]))
+            dst.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (tick_dt, data[1], data[2], data[3], data[4], data[5]))
 
             if not prev_tts:
                 prev_tts = tts

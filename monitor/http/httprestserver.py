@@ -193,7 +193,7 @@ class StrategyInfoRestAPI(resource.Resource):
                 'notional-limits': instr._notional_limits,
                 'size-limits': instr._size_limits,
                 'bid': instr.market_bid,
-                'ofr': instr.market_ofr,
+                'ask': instr.market_ask,
                 'mid': instr.market_price,
                 'spread': instr.market_spread,
                 'profiles': profiles

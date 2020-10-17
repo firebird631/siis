@@ -129,29 +129,23 @@ class CandleGenerator(object):
             self._candle.set_consolidated(False)
 
             # all open, close, low high from the initial candle
-            self._candle.set_bid(from_tick[1])
-            self._candle.set_ofr(from_tick[2])
+            self._candle.set(from_tick[3])
+            self._candle.set_spread(from_tick[2] - from_tick[1])
 
         # update volumes
-        self._candle._volume += from_tick[3]
+        self._candle._volume += from_tick[4]
 
-        # update bid prices
+        # update prices
 
-        # bid high/low
-        self._candle._bid_high = max(self._candle._bid_high, from_tick[1])
-        self._candle._bid_low = min(self._candle._bid_low, from_tick[1])
-
-        # potential close
-        self._candle._bid_close = from_tick[1]
-
-        # update ofr prices
-
-        # ofr high/low
-        self._candle._ofr_high = max(self._candle._ofr_high, from_tick[2])
-        self._candle._ofr_low = min(self._candle._ofr_low, from_tick[2])
+        # high/low
+        self._candle._high = max(self._candle._high, from_tick[3])
+        self._candle._low = min(self._candle._low, from_tick[3])
 
         # potential close
-        self._candle._ofr_close = from_tick[2]
+        self._candle._close = from_tick[3]
+
+        # potential spread
+        self._candle._spread = from_tick[2] - from_tick[1]
 
         # keep last timestamp
         self._last_timestamp = from_tick[0]
@@ -201,25 +195,20 @@ class CandleGenerator(object):
             self._candle.set_consolidated(False)
 
             # all open, close, low high from the initial candle
-            self._candle.copy_bid(from_candle)
-            self._candle.copy_ofr(from_candle)
+            self._candle.copy(from_candle)
 
         # update volumes
         self._candle._volume += from_candle.volume
 
-        # update bid prices
-        self._candle._bid_high = max(self._candle._bid_high, from_candle._bid_high)
-        self._candle._bid_low = min(self._candle._bid_low, from_candle._bid_low)
+        # update prices
+        self._candle._high = max(self._candle._high, from_candle._high)
+        self._candle._low = min(self._candle._low, from_candle._low)
 
         # potential close
-        self._candle._bid_close = from_candle._bid_close
+        self._candle._close = from_candle._close
 
-        # update ofr prices
-        self._candle._ofr_high = max(self._candle._ofr_high, from_candle._ofr_high)
-        self._candle._ofr_low = min(self._candle._ofr_low, from_candle._ofr_low)
-
-        # potential close
-        self._candle._ofr_close = from_candle._ofr_close
+        # potential spread
+        self._candle._spread = from_candle._spread
 
         # keep last timestamp
         self._last_timestamp = from_candle.timestamp

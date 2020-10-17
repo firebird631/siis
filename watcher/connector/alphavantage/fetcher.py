@@ -127,7 +127,7 @@ class AlphaVantageFetcher(Fetcher):
 		
 		for candle in candles:
 			count += 1
-			# (timestamp, open bid, high, low, close, open ofr, high, low, close, volume)
-			yield([candle[0], candle[1], candle[2], candle[3], candle[4], candle[1], candle[2], candle[3], candle[4], candle[5]])
+			# (timestamp, open, high, low, close, spread, volume)
+			yield([candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]])
 
 		logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe))

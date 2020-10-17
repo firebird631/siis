@@ -509,7 +509,8 @@ class IGWatcher(Watcher):
                 market_id = name[1]
 
                 bid = None
-                ofr = None
+                ask = None
+                price = None
                 utm = None
                 ltv = None
 
@@ -524,37 +525,43 @@ class IGWatcher(Watcher):
                     bid = self._cached_tick[market_id][1]
 
                 if values['OFR']:
-                    ofr = values['OFR']
+                    ask = values['OFR']
                 elif market_id in self._cached_tick:
-                    ofr = self._cached_tick[market_id][2]
+                    ask = self._cached_tick[market_id][2]
+
+                if values['LTP']:
+                    price = values['LTP']
+                elif market_id in self._cached_tick:
+                    price = self._cached_tick[market_id][3]
 
                 if values['LTV']:
                     ltv = values['LTV']
                 elif market_id in self._cached_tick:
-                    ltv = self._cached_tick[market_id][3]
+                    ltv = self._cached_tick[market_id][4]
 
-                if utm is None or bid is None or ofr is None:
+                if utm is None or bid is None or ask is None:
                     # need all informations, wait the next one
                     return
 
                 # cache for when a value is not defined
-                self._cached_tick[market_id] = (utm, bid, ofr, ltv)
+                self._cached_tick[market_id] = (utm, bid, ask, price, ltv)
 
-                tick = (float(utm) * 0.001, float(bid), float(ofr), float(ltv or "0"), 0)
+                tick = (float(utm) * 0.001, float(bid), float(ask), float(price), float(ltv or "0"), 0)
+                spread = tick[2] - tick[1]
 
                 self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
                 for tf in Watcher.STORED_TIMEFRAMES:
                     # generate candle per each tf
                     with self._mutex:
-                        candle = self.update_ohlc(market_id, tf, tick[0], tick[1], tick[2], tick[3])
+                        candle = self.update_ohlc(market_id, tf, tick[0], tick[3], spread, tick[4])
 
                     if candle is not None:
                         self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
                 if self._store_trade:
                     # no side information so 0
-                    Database.inst().store_market_trade((self.name, market_id, int(utm), bid, ofr, ltv or 0, 0))
+                    Database.inst().store_market_trade((self.name, market_id, int(utm), bid, ask, price, ltv or 0, 0))
 
         except Exception as e:
             error_logger.error(repr(e))
@@ -1055,7 +1062,7 @@ class IGWatcher(Watcher):
         if snapshot:
             market.is_open = snapshot['marketStatus'] == "TRADEABLE"
             market.bid = snapshot['bid']
-            market.ofr = snapshot['offer']
+            market.ask = snapshot['offer']
 
             # determine precision from snapshot
             base_precision = decimal_place(market.one_pip_means)
@@ -1153,7 +1160,7 @@ class IGWatcher(Watcher):
             market = self.fetch_market(market_id)
 
             if market.is_open:
-                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ofr,
+                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ask,
                         market.base_exchange_rate, market.contract_size, market.value_per_pip,
                         market.vol24h_base, market.vol24h_quote)
             else:
@@ -1218,14 +1225,27 @@ class IGWatcher(Watcher):
                 # ignore empty candles
                 continue
 
-            # yield (timestamp, high bid, low, open, close, high ofr, low, open, close, volume)
+            ob = price.get('openPrice')['bid'] or price.get('openPrice')['ask']
+            oa = price.get('openPrice')['ask'] or price.get('openPrice')['bid']
+
+            hb = price.get('highPrice')['bid'] or price.get('highPrice')['ask']
+            ha = price.get('highPrice')['ask'] or price.get('highPrice')['bid']
+
+            lb = price.get('lowPrice')['bid'] or price.get('lowPrice')['ask']
+            la = price.get('lowPrice')['ask'] or price.get('lowPrice')['bid']
+
+            cb = price.get('closePrice')['bid'] or price.get('closePrice')['ask']
+            ca = price.get('closePrice')['ask'] or price.get('closePrice')['bid']
+
+            o = (ob + oa) * 0.5
+            h = (hb + ha) * 0.5
+            l = (lb + la) * 0.5
+            c = (cb + ca) * 0.5
+
+            spread = max(0.0, ca - cb)
+
+            # yield (timestamp, open, high, low, close, spread, volume)
             yield([int(timestamp * 1000),
-                str(price.get('openPrice')['bid'] or price.get('openPrice')['ask']),
-                str(price.get('highPrice')['bid'] or price.get('highPrice')['ask']),
-                str(price.get('lowPrice')['bid'] or price.get('lowPrice')['ask']),
-                str(price.get('closePrice')['bid'] or price.get('closePrice')['ask']),
-                str(price.get('openPrice')['ask'] or price.get('openPrice')['bid']),
-                str(price.get('highPrice')['ask'] or price.get('highPrice')['bid']),
-                str(price.get('lowPrice')['ask'] or price.get('lowPrice')['bid']),
-                str(price.get('closePrice')['ask'] or price.get('closePrice')['bid']),
+                str(o), str(h), str(l), str(c),
+                spread,
                 price.get('lastTradedVolume', '0')])

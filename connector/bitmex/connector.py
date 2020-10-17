@@ -343,7 +343,10 @@ class Connector(object):
                     direction = -1
 
                 yield (int(dt.timestamp()*1000),  # integer ms
-                    c['price'], c['price'], c['size'], direction)
+                    c['price'], c['price'],  # bid, ask
+                    c['price'],  # last
+                    c['size'],  # volume
+                    direction)
 
                 last_datetime = dt
                 last_trade_id = c['trdMatchID']
@@ -421,7 +424,7 @@ class Connector(object):
 
                 yield (int(ot.timestamp()*1000),  # integer ms
                     c['open'], c['high'], c['low'], c['close'],
-                    c['open'], c['high'], c['low'], c['close'],
+                    0.0,  # spread
                     c['volume'])
 
                 last_datetime = dt

@@ -35,6 +35,7 @@ class Importer(object):  # Tool
     def __init__(self):
         self.prev_bid = None
         self.prev_ask = None
+        self.prev_last = None
 
 
 FORMAT_UNDEFINED = 0
@@ -149,6 +150,9 @@ def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
     if parts[3]:
         self.prev_ask = parts[3]
 
+    if parts[4]:
+        self.prev_last = parts[4]
+
     if parts[5]:
         fvol = parts[5]
     else:
@@ -157,6 +161,7 @@ def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
     Database.inst().store_market_trade((
         broker_id, market_id, timestamp,
         self.prev_bid, self.prev_ask,
+        self.prev_last,
         fvol,
         0))
 
@@ -192,7 +197,7 @@ def import_ohlc_mt4(broker_id, market_id, timeframe, from_date, to_date, row):
     Database.inst().store_market_ohlc((
         broker_id, market_id, timestamp, int(timeframe),
         parts[2], parts[3], parts[4], parts[5],
-        parts[2], parts[3], parts[4], parts[5],
+        "0",  # undefined spread
         fvol))
 
     return 1
@@ -233,7 +238,7 @@ def import_ohlc_mt4_long(broker_id, market_id, timeframe, from_date, to_date, ro
     Database.inst().store_market_ohlc((
         broker_id, market_id, timestamp, int(timeframe),
         parts[2], parts[3], parts[4], parts[5],
-        parts[2], parts[3], parts[4], parts[5],
+        parts[8],  # spread
         fvol))
 
     return 1
@@ -262,6 +267,9 @@ def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
     if parts[3]:
         self.prev_ask = parts[3]
 
+    if parts[4]:
+        self.prev_last = parts[4]
+
     if parts[5]:
         ltv = parts[5]
     else:
@@ -270,6 +278,7 @@ def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
     Database.inst().store_market_trade((
         broker_id, market_id, timestamp,
         self.prev_bid, self.prev_ask,
+        self.prev_last,
         ltv,
         0))
 
@@ -307,7 +316,7 @@ def import_ohlc_mt5(broker_id, market_id, timeframe, from_date, to_date, row):
     Database.inst().store_market_ohlc((
         broker_id, market_id, timestamp, int(timeframe),
         parts[1], parts[2], parts[3], parts[4],
-        parts[1], parts[2], parts[3], parts[4],
+        parts[7],  # spread
         fvol))
 
     return 1
@@ -344,7 +353,7 @@ def import_ohlc_mt5_time(broker_id, market_id, timeframe, from_date, to_date, ro
     Database.inst().store_market_ohlc((
         broker_id, market_id, timestamp, int(timeframe),
         parts[2], parts[3], parts[4], parts[5],
-        parts[2], parts[3], parts[4], parts[5],
+        parts[8],  # spread
         fvol))
 
     return 1

@@ -152,7 +152,7 @@ class Asset(object):
         Compute profit_loss and profit_loss_rate for maker and taker.
         @param market A valid market object related to the symbol of the position.
         """
-        if market is None or not market.bid or not market.ofr:
+        if market is None or not market.bid or not market.ask:
             # market must be valid with valid price
             return
 

@@ -30,7 +30,7 @@ class PriceCrossAlert(Alert):
 
         self._dir = 0      # price cross-up or down
         self._price = 0.0  # price value
-        self._price_src = PriceCrossAlert.PRICE_SRC_BID  # source of the price (bid, ofr or mid)
+        self._price_src = PriceCrossAlert.PRICE_SRC_BID  # source of the price (bid, ask or mid)
 
         self._cancelation_price = 0.0  # Remove the alert if price reach it
 
@@ -51,18 +51,18 @@ class PriceCrossAlert(Alert):
     def check(self):
         return (self._dir in (-1, 1) and
                 self._price > 0.0 and
-                self._price_src in (PriceCrossAlert.PRICE_SRC_BID, PriceCrossAlert.PRICE_SRC_OFR, PriceCrossAlert.PRICE_SRC_MID))
+                self._price_src in (PriceCrossAlert.PRICE_SRC_BID, PriceCrossAlert.PRICE_SRC_ASK, PriceCrossAlert.PRICE_SRC_MID))
 
-    def test(self, timestamp, bid, ofr, timeframes):
+    def test(self, timestamp, bid, ask, timeframes):
         trigger = 0
 
         if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
             ref_price = bid
-        elif self._price_src == PriceCrossAlert.PRICE_SRC_OFR:
-            result = ofr >= self._price and self._last_price < self._price
-            ref_price = ofr
+        elif self._price_src == PriceCrossAlert.PRICE_SRC_ASK:
+            result = ask >= self._price and self._last_price < self._price
+            ref_price = ask
         else:
-            ref_price = mid = (bid + ofr) * 0.5
+            ref_price = mid = (bid + ask) * 0.5
 
         if self._last_price <= 0.0:
             self._last_price = ref_price
@@ -96,7 +96,7 @@ class PriceCrossAlert(Alert):
             'trigger': trigger,
         }
 
-    def can_delete(self, timestamp, bid, ofr):
+    def can_delete(self, timestamp, bid, ask):
         return (self._expiry > 0 and timestamp >= self._expiry) or self._countdown == 0
 
     def str_info(self):
@@ -187,8 +187,8 @@ class PriceCrossAlert(Alert):
     def price_src_to_str(self):
         if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
             return "bid"
-        elif self._price_src == PriceCrossAlert.PRICE_SRC_OFR:
-            return "ofr"
+        elif self._price_src == PriceCrossAlert.PRICE_SRC_ASK:
+            return "ask"
         if self._price_src == PriceCrossAlert.PRICE_SRC_MID:
             return "mid"
         else:

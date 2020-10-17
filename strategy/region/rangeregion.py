@@ -44,12 +44,12 @@ class RangeRegion(Region):
         # signal price is in low / high range
         return self._low <= signal.price <= self._high
 
-    def can_delete(self, timestamp, bid, ofr):
+    def can_delete(self, timestamp, bid, ask):
         if self._expiry > 0 and timestamp >= self._expiry:
             return True
 
         # trigger price reached in accordance with the direction
-        if self._dir == Region.LONG and ofr < self._cancelation:
+        if self._dir == Region.LONG and ask < self._cancelation:
             return True
 
         if self._dir == Region.SHORT and bid > self._cancelation:

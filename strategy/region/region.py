@@ -165,14 +165,14 @@ class Region(object):
         """
         return False
 
-    def can_delete(self, timestamp, bid, ofr):
+    def can_delete(self, timestamp, bid, ask):
         """
         By default perform a test on expiration time, but more deletion cases can be added,
         like a cancelation price trigger.
 
         @param timestamp float Current timestamp
         @param bid float last bid price
-        @param ofr float last ofr price
+        @param ask float last ask price
         """
         return self._expiry > 0 and timestamp >= self._expiry
 

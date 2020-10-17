@@ -332,13 +332,13 @@ class PaperTrader(Trader):
                 # slippage emulation
                 # @todo deferred execution, could make a rand delay around the slippage factor
 
-                # open long are executed on bid and short on ofr, close the inverse
+                # open long are executed on bid and short on ask, close the inverse
                 if order.direction == Position.LONG:
-                    open_exec_price = market.ofr
+                    open_exec_price = market.ask
                     close_exec_price = market.bid
                 elif order.direction == Position.SHORT:
                     open_exec_price = market.bid
-                    close_exec_price = market.ofr
+                    close_exec_price = market.ask
                 else:
                     # unsupported direction
                     rm_list.append(order.order_id)
@@ -508,23 +508,23 @@ class PaperTrader(Trader):
         #
 
         bid_price = 0
-        ofr_price = 0
+        ask_price = 0
 
         if order.order_type in (Order.ORDER_LIMIT, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT_LIMIT):
             bid_price = order.price
-            ofr_price = order.price
+            ask_price = order.price
 
         elif order.order_type in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT):
             bid_price = trader_market.bid
-            ofr_price = trader_market.ofr
+            ask_price = trader_market.ask
 
-        # open long are executed on bid and short on ofr, close the inverse
+        # open long are executed on bid and short on ask, close the inverse
         if order.direction == Position.LONG:
-            open_exec_price = ofr_price
+            open_exec_price = ask_price
             close_exec_price = bid_price
         elif order.direction == Position.SHORT:
             open_exec_price = bid_price
-            close_exec_price = ofr_price
+            close_exec_price = ask_price
         else:
             logger.error("Unsupported direction")
             return False
@@ -645,23 +645,23 @@ class PaperTrader(Trader):
                 #
 
                 bid_price = 0
-                ofr_price = 0
+                ask_price = 0
 
                 if order.order_type == Order.ORDER_LIMIT:
                     bid_price = order.price
-                    ofr_price = order.price
+                    ask_price = order.price
 
                 elif order.order_type == Order.ORDER_MARKET:
                     bid_price = trader_market.bid
-                    ofr_price = trader_market.ofr
+                    ask_price = trader_market.ask
 
-                # open long are executed on bid and short on ofr, close the inverse
+                # open long are executed on bid and short on ask, close the inverse
                 if order.direction == Position.LONG:
-                    open_exec_price = ofr_price   # bid_price
-                    close_exec_price = bid_price  # ofr_price
+                    open_exec_price = ask_price   # bid_price
+                    close_exec_price = bid_price  # ask_price
                 elif order.direction == Position.SHORT:
-                    open_exec_price = bid_price   # ofr_price
-                    close_exec_price = ofr_price  # bid_price
+                    open_exec_price = bid_price   # ask_price
+                    close_exec_price = ask_price  # bid_price
                 else:
                     logger.error("Unsupported direction")
                     return False
@@ -769,7 +769,7 @@ class PaperTrader(Trader):
         pass        
 
     @Trader.mutexed
-    def on_update_market(self, market_id, tradable, last_update_time, bid, ofr,
+    def on_update_market(self, market_id, tradable, last_update_time, bid, ask,
             base_exchange_rate, contract_size=None, value_per_pip=None,
             vol24h_base=None, vol24h_quote=None):
 
@@ -778,15 +778,15 @@ class PaperTrader(Trader):
             # not interested by this market
             return
 
-        if bid and ofr and market.price:
-            ratio = ((bid + ofr) * 0.5) / market.price
+        if bid and ask and market.price:
+            ratio = ((bid + ask) * 0.5) / market.price
         else:
             ratio = 1.0
 
         if bid:
             market.bid = bid
-        if ofr:
-            market.ofr = ofr
+        if ask:
+            market.ask = ask
 
         if base_exchange_rate is not None:
             market.base_exchange_rate = base_exchange_rate

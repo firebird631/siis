@@ -406,7 +406,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         order_type = Order.ORDER_MARKET  #  Order.ORDER_LIMIT @todo limit later
 
         # @todo or trade at order book, compute the limit price from what the order book offer
-        # limit best price at tiniest ofr price
+        # limit best price at tiniest ask price
 
         # adjust price to min / tick size / max
         order_price = self.instrument.adjust_price(price)

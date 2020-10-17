@@ -129,7 +129,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 continue
 
             # trade region
-            if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ofr, entry, self.region_allow):
+            if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ask, entry, self.region_allow):
                 continue
 
             # ref timeframe is contrary
@@ -506,10 +506,10 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         order_type = Order.ORDER_LIMIT
 
         # @todo or trade at order book, compute the limit price from what the order book offer
-        # limit best price at tiniest ofr price
+        # limit best price at tiniest ask price
 
         # adjust price to min / tick size / max
-        order_price = self.instrument.adjust_price(self.instrument.market_ofr)
+        order_price = self.instrument.adjust_price(self.instrument.market_ask)
 
         if take_profit > 0:
             take_profit = self.instrument.adjust_price(take_profit)

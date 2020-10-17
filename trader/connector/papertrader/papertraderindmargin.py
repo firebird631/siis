@@ -58,7 +58,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         base_exchange_rate = market.base_exchange_rate
         margin_factor = market.margin_factor
 
-        # logger.debug(order.symbol, bid_price, ofr_price, open_exec_price, close_exec_price, delta_price, current_position.entry_price, order.price)
+        # logger.debug(order.symbol, bid_price, ask_price, open_exec_price, close_exec_price, delta_price, current_position.entry_price, order.price)
         realized_position_cost = 0.0  # realized cost of the position in base currency
 
         # effective meaning of delta price in base currency
@@ -307,10 +307,10 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
 
         account_currency = trader.account.currency
 
-        # long are open on ofr and short on bid
+        # long are open on ask and short on bid
         exec_price = open_exec_price
         position.entry_price = exec_price
-        # logger.debug("%s %f %f %f %i" % ("el" if position.direction>0 else "es", position.entry_price, market.bid, market.ofr, market.bid < market.ofr))
+        # logger.debug("%s %f %f %f %i" % ("el" if position.direction>0 else "es", position.entry_price, market.bid, market.ask, market.bid < market.ask))
 
         # transaction time is creation position date time
         order.transact_time = position.created_time

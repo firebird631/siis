@@ -65,7 +65,7 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
         last_tickbar = self._current
 
         # create a new tick-bar
-        self._current = TickBar(tick[0], tick[1])
+        self._current = TickBar(tick[0], tick[3])
 
         return last_tickbar
 
@@ -78,16 +78,16 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
         if self._current is None:
             last_tickbar = self._new_tickbar(tick)
 
-        elif tick[1] > self._current._high:
+        elif tick[3] > self._current._high:
             # is the price extend the size of the tick-bar outside of its allowed range
-            size = int((tick[1] - self._current._low) / self._tick_size) + 1
+            size = int((tick[3] - self._current._low) / self._tick_size) + 1
 
             if size > self._size:
                 last_tickbar = self._new_tickbar(tick)
 
-        elif tick[1] < self._current._low:
+        elif tick[3] < self._current._low:
             # is the price extend the size of the tick-bar outside of its allowed range
-            size = int((self._current._high - tick[1]) / self._tick_size) + 1
+            size = int((self._current._high - tick[3]) / self._tick_size) + 1
 
             if size > self._size:
                 last_tickbar = self._new_tickbar(tick)
@@ -99,23 +99,23 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
         self._current._last_timestamp = tick[0]
 
         # last trade price as close price
-        self._current._close = tick[1]
+        self._current._close = tick[3]
 
         # cumulative volume per tick-bar
-        self._current._volume += tick[3]
+        self._current._volume += tick[4]
 
         # cumulative volume at bid or ask
-        if tick[4] < 0:
-            self._current._vol_bid += tick[3]
+        if tick[5] < 0:
+            self._current._vol_bid += tick[4]
 
-            if tick[1] in self._current._ticks:
+            if tick[3] in self._current._ticks:
 
-        elif tick[4] > 0:
-            self._current._vol_ofr += tick[3]
+        elif tick[5] > 0:
+            self._current._vol_ask += tick[4]
 
         # retains low and high tick prices
-        self._current._low = min(self._current._low, tick[1])
-        self._current._high = max(self._current._high, tick[1])
+        self._current._low = min(self._current._low, tick[3])
+        self._current._high = max(self._current._high, tick[3])
 
         # @todo
 
@@ -139,7 +139,7 @@ class TickBarReversalGenerator(TickBarBaseGenerator):
         last_tickbar = self._current
 
         # create a new tick-bar
-        self._current = TickBar(tick[0], tick[1])
+        self._current = TickBar(tick[0], tick[3])
 
         # opposite direction tick-bar
         self._current._dir = -last_tickbar._dir
@@ -160,21 +160,21 @@ class TickBarReversalGenerator(TickBarBaseGenerator):
             last_tickbar = self._current
 
             # create a new tick-bar
-            self._current = TickBar(tick[0], tick[1])
+            self._current = TickBar(tick[0], tick[3])
 
-        elif tick[1] < self._current._open and self._current._dir > 0:
+        elif tick[3] < self._current._open and self._current._dir > 0:
             # down-tick from open
-            size = int((self._current._open - tick[1]) / self._tick_size) + 1:
+            size = int((self._current._open - tick[3]) / self._tick_size) + 1:
 
             if size > self._size:
-                self._current = TickBar(tick[0], tick[1])
+                self._current = TickBar(tick[0], tick[3])
 
-        elif tick[1] > self._current._open and self._current._dir < 0:
+        elif tick[3] > self._current._open and self._current._dir < 0:
             # up-tick from open
-            size = int((tick[1] - self._current._open) / self._tick_size) + 1:
+            size = int((tick[3] - self._current._open) / self._tick_size) + 1:
 
             if size > self._size:
-                self._current = TickBar(tick[0], tick[1])
+                self._current = TickBar(tick[0], tick[3])
 
         # one more trade
         self._num_trades += 1
@@ -183,23 +183,23 @@ class TickBarReversalGenerator(TickBarBaseGenerator):
         self._current._last_timestamp = tick[0]
 
         # last trade price as close price
-        self._current._close = tick[1]
+        self._current._close = tick[3]
 
         # cumulative volume per tick-bar
-        self._current._volume += tick[3]
+        self._current._volume += tick[4]
 
         # cumulative volume at bid or ask
-        if tick[4] < 0:
-            self._current._vol_bid += tick[3]
+        if tick[5] < 0:
+            self._current._vol_bid += tick[4]
             
-            if tick[1] in self._current._ticks:
+            if tick[3] in self._current._ticks:
 
-        elif tick[4] > 0:
-            self._current._vol_ofr += tick[3]
+        elif tick[5] > 0:
+            self._current._vol_ask += tick[4]
 
         # retains low and high tick prices
-        self._current._low = min(self._current._low, tick[1])
-        self._current._high = max(self._current._high, tick[1])
+        self._current._low = min(self._current._low, tick[3])
+        self._current._high = max(self._current._high, tick[3])
 
         # @todo
 
