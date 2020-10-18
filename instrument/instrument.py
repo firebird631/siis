@@ -517,15 +517,15 @@ class Instrument(object):
 
     @market_ask.setter
     def market_ask(self, ask):
-        self.market_ask = ask
+        self._market_ask = ask
 
     @property
     def market_price(self):
-        return (self._market_bid + self.market_ask) * 0.5
+        return (self._market_bid + self._market_ask) * 0.5
 
     @property
     def market_spread(self):
-        return (self.market_ask - self._market_bid)
+        return (self._market_ask - self._market_bid)
 
     @property
     def last_update_time(self):

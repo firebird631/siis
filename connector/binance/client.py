@@ -718,7 +718,19 @@ class Client(object):
                     # break after max error count reached
                     raise BinanceRequestException("Max retry reached")
                 else:
-                    # retry
+                    # retry in 5 seconds
+                    time.sleep(5.0)
+                    continue
+
+            except requests.exceptions.ConnectionError:
+                retry_count += 1
+
+                if retry_count > Client.AGG_TRADES_HISTORY_MAX_RETRY:
+                    # break after max error count reached
+                    raise BinanceRequestException("Max retry reached")
+                else:
+                    # retry in 5 seconds
+                    time.sleep(5.0)
                     continue
 
             # fromId=n returns a set starting with id n, but we already have
@@ -866,7 +878,19 @@ class Client(object):
                     # break after max error count reached
                     raise BinanceRequestException("Max retry reached")
                 else:
-                    # retry
+                    # retry in 5 seconds
+                    time.sleep(5.0)
+                    continue
+
+            except requests.exceptions.ConnectionError:
+                retry_count += 1
+
+                if retry_count > Client.KLINES_HISTORY_MAX_RETRY:
+                    # break after max error count reached
+                    raise BinanceRequestException("Max retry reached")
+                else:
+                    # retry in 5 seconds
+                    time.sleep(5.0)
                     continue
 
             # handle the case where exactly the limit amount of data was returned last loop
@@ -2517,7 +2541,19 @@ class Client(object):
                     # break after max error count reached
                     raise BinanceRequestException("Max retry reached")
                 else:
-                    # retry
+                    # retry in 5 seconds
+                    time.sleep(5.0)
+                    continue
+
+            except requests.exceptions.ConnectionError:
+                retry_count += 1
+
+                if retry_count > Client.AGG_TRADES_HISTORY_MAX_RETRY:
+                    # break after max error count reached
+                    raise BinanceRequestException("Max retry reached")
+                else:
+                    # retry in 5 seconds
+                    time.sleep(5.0)
                     continue
 
             # fromId=n returns a set starting with id n, but we already have
@@ -2631,7 +2667,19 @@ class Client(object):
                     # break after max error count reached
                     raise BinanceRequestException("Max retry reached")
                 else:
-                    # retry
+                    # retry in 5 seconds
+                    time.sleep(5.0)
+                    continue
+
+            except requests.exceptions.ConnectionError:
+                retry_count += 1
+
+                if retry_count > Client.KLINES_HISTORY_MAX_RETRY:
+                    # break after max error count reached
+                    raise BinanceRequestException("Max retry reached")
+                else:
+                    # retry in 5 seconds
+                    time.sleep(5.0)
                     continue
 
             # handle the case where exactly the limit amount of data was returned last loop

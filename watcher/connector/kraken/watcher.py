@@ -20,7 +20,7 @@ from connector.kraken.connector import Connector
 from trader.order import Order
 from trader.market import Market
 
-from instrument.instrument import Instrument, Candle, Tick
+from instrument.instrument import Instrument, Candle
 
 from terminal.terminal import Terminal
 from database.database import Database

@@ -6,7 +6,7 @@
 from datetime import datetime, timedelta
 from common.utils import UTC
 
-from instrument.instrument import TickBar
+from instrument.tickbar import TickBar
 
 
 class TickBarBaseGenerator(object):

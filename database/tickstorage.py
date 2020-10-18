@@ -488,7 +488,7 @@ class LastTickFinder(object):
         self._buffer_size = buffer_size
         self._binary = binary  # use binary format
 
-        self._struct = struct.Struct('ddddb')
+        self._struct = struct.Struct('dddddb')
         self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('a', 'float64'), ('l', 'float64'), ('v', 'float64'), ('d', 'int8')])
 
     def open(self):
