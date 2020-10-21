@@ -126,7 +126,7 @@ class TickStorage(object):
                 #     # process next
                 #     d = ticks.pop(0)  # too slow when millions of elements
 
-                date_utc = datetime.utcfromtimestamp(d[2] * 0.001)
+                date_utc = datetime.utcfromtimestamp(d[2] * 0.001)  # .replace(tzinfo=UTC()) not necessary because not directly compared
 
                 if self._curr_date and (self._curr_date.year != date_utc.year or self._curr_date.month != date_utc.month):
                     self.close()

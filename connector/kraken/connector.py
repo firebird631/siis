@@ -203,6 +203,8 @@ class Connector(object):
                         raise ValueError("Kraken historical trades\nMultiple failures after consecutives errors 502.")
 
                     continue
+                else:
+                    raise ValueError("Kraken historical trades : %s !" % e.response.status_code)
 
             if results.get('error', []):
                 if results['error'][0] == "EAPI:Rate limit exceeded":
@@ -299,6 +301,8 @@ class Connector(object):
                         raise ValueError("Kraken historical candles\nMultiple failures after consecutives errors 502.")
 
                     continue
+                else:
+                    raise ValueError("Kraken historical candles : %s !" % e.response.status_code)
 
             if results.get('error', []):
                 if results['error'][0] == "EAPI:Rate limit exceeded":
