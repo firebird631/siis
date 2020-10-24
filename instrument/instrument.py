@@ -1119,7 +1119,7 @@ class Instrument(object):
         adjusted_price = truncate(round(price / tick_size) * tick_size, precision)
         formatted_price = "{:0.0{}f}".format(adjusted_price, precision)
 
-        # remove tailing 0s and dot
+        # remove trailing 0s and dot
         if '.' in formatted_price:
             formatted_price = formatted_price.rstrip('0').rstrip('.')
 

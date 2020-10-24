@@ -251,34 +251,6 @@ class IGService:
             raise(Exception(response['errorCode']))
         return response
 
-    # ------ DATAFRAME TOOLS -------- #
-
-    def colname_unique(self, d_cols):
-        """Returns a set of column names (unique)"""
-        s = set()
-        for _, lst in d_cols.items():
-            for colname in lst:
-                s.add(colname)
-        return s
-
-    def expand_columns(self, data, d_cols, flag_col_prefix=False, col_overlap_allowed=None):
-        """Expand columns"""
-        if col_overlap_allowed is None:
-            col_overlap_allowed = []
-        for (col_lev1, lst_col) in d_cols.items():
-            ser = data[col_lev1]
-            del data[col_lev1]
-            for col in lst_col:
-                if col not in data.columns or col in col_overlap_allowed:
-                    if flag_col_prefix:
-                        colname = col_lev1 + "_" + col
-                    else:
-                        colname = col
-                    data[colname] = ser.map(lambda x: x[col])
-                else:
-                    raise(NotImplementedError("col overlap: %r" % col))
-        return data
-
     # -------- ACCOUNT ------- #
 
     def fetch_account(self, accountId, session=None):
@@ -325,8 +297,7 @@ class IGService:
             'milliseconds': milliseconds,
             'trans_type': trans_type
         }
-        endpoint = '/history/transactions/{trans_type}/{milliseconds}'.\
-            format(**url_params)
+        endpoint = '/history/transactions/{trans_type}/{milliseconds}'.format(**url_params)
         action = 'read'
         response = self._req(action, endpoint, params, session)
         data = self.parse_response(response.text)

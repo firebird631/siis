@@ -717,11 +717,6 @@ class PgSql(Database):
 
                         ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
-                        # if float(row[6]) <= 0:
-                        #   # prefer to ignore empty volume ohlc because it can broke volume signal and it is a no way but it could be
-                        #   # a lack of this information like on SPX500 of ig.com. So how to manage that cases...
-                        #   continue
-
                         ohlc.set_spread(float(row[5]))
                         ohlc.set_volume(float(row[6]))
 
