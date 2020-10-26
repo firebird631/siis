@@ -335,7 +335,7 @@ class PgSql(Database):
                         market_info.value_per_pip = float(row[17])
                         market_info.one_pip_means = float(row[18])
 
-                        if row[19] is not None or row[19] is not 'None':
+                        if row[19] is not None or row[19] != 'None':
                             if row[19] == '-':  # not defined mean 1.0 or no margin
                                 market_info.margin_factor = 1.0
                             else:
