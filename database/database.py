@@ -22,6 +22,7 @@ from config import utils
 
 from .tickstorage import TickStorage, TickStreamer, LastTickFinder
 from .ohlcstorage import OhlcStorage, OhlcStreamer
+from .quotestorage import QuoteStorage, QuoteStreamer
 
 import logging
 logger = logging.getLogger('siis.database')
@@ -135,13 +136,16 @@ class Database(object):
 
         self._pending_liquidation_insert = []
 
-        self._last_tick_flush = 0
         self._last_ohlc_flush = 0
         self._last_ohlc_clean = time.time()
 
-        self._markets_path = None
+        self._markets_path = None   # path were data are stored into files (ticks, quotes, cached indicators)
+
         self._tick_storages = {}    # TickStorage per market
         self._pending_tick_insert = set()
+
+        self._quote_storages = {}   # QuoteStorage per market
+        self._pending_quote_insert = set()
 
         self._autocleanup = False
         self._fetch = False
@@ -235,6 +239,15 @@ class Database(object):
             self._tick_storages = {}
             self._pending_tick_insert = set()
 
+        # flush remaining quotes
+        with self._mutex:
+            for k, quote_storage in self._quote_storages.items():
+                quote_storage.flush()
+                quote_storage.close()
+
+            self._quote_storages = {}
+            self._pending_quote_insert = set()
+
     def setup_market_sql(self):
         pass
 
@@ -284,6 +297,36 @@ class Database(object):
         with self._mutex:
             n = len(self._pending_tick_insert)
             return n
+
+    def store_market_quote(self, data):
+        """
+        @param data is a tuple or an array of tuples containing data in that order and format :
+            str broker_id (not empty)
+            str market_id (not empty)
+            integer timestamp (ms since epoch)
+            str open (>= 0)
+            str high (>= 0)
+            str low (>= 0)
+            str close (>= 0)
+            str spread (>= 0)
+            str volume (>= 0)
+        """
+        with self._mutex:
+            # store market per keyed array
+            key = data[0]+'/'+data[1]
+            quotestorage = self._quote_storages.get(key)
+
+            if not quotestorage:
+                quotestorage = QuoteStorage(self._markets_path, data[0], data[1], text=self._store_trade_text, binary=self._store_trade_binary)
+                self._quote_storages[key] = quotestorage
+
+            quotestorage.store(data)
+
+            # pending list of QuoteStorage controller having data to process to avoid to check everyone
+            self._pending_quote_insert.add(quotestorage)
+
+        with self._condition:
+            self._condition.notify()
 
     def store_market_ohlc(self, data):
         """
@@ -436,6 +479,10 @@ class Database(object):
         """Load and return only the last found and most recent stored tick."""
         return LastTickFinder(self._markets_path, broker_id, market_id, binary=True).last()
 
+    def get_last_quote(self, broker_id, market_id):
+        """Load and return only the last found and most recent stored tick."""
+        return LastQuoteFinder(self._markets_path, broker_id, market_id, binary=True).last()
+
     def get_last_ohlc(self, broker_id, market_id, timeframe):
         """Load and return only the last found and most recent stored OHLC from a specific timeframe."""
         return None
@@ -450,9 +497,15 @@ class Database(object):
         """
         return TickStreamer(self._markets_path, broker_id, market_id, from_date, to_date, buffer_size, True)
 
+    def create_quote_streamer(self, broker_id, market_id, timeframe, from_date, to_date, buffer_size=8192):
+        """
+        Create a new quote streamer. It comes from the OHLC file storage.
+        """
+        return QuoteStreamer(self._db, broker_id, market_id, timeframe, from_date, to_date, buffer_size, True)
+
     def create_ohlc_streamer(self, broker_id, market_id, timeframe, from_date, to_date, buffer_size=8192):
         """
-        Create a new tick streamer.
+        Create a new OHLC streamer. It comes from OHLC database table.
         """
         return OhlcStreamer(self._db, broker_id, market_id, timeframe, from_date, to_date, buffer_size)
 
@@ -581,6 +634,7 @@ class Database(object):
                 self.process_ohlc()
 
             self.process_tick()
+            self.process_quote()
 
     def process_market(self):
         pass
@@ -593,6 +647,10 @@ class Database(object):
 
     def process_tick(self):
         with self._mutex:
+            # is there some ticks to store
+            if not self._pending_tick_insert:
+                return
+
             pti = self._pending_tick_insert
             self._pending_tick_insert = set()
 
@@ -605,6 +663,25 @@ class Database(object):
                     # data remaining
                     with self._mutex:
                         self._pending_tick_insert.add(tick_storage)
+
+    def process_quote(self):
+        with self._mutex:
+            # is there some quotes to store
+            if not self._pending_quote_insert:
+                return
+
+            pqi = self._pending_quote_insert
+            self._pending_quote_insert = set()
+
+        for quote_storage in pqi:
+            if self._fetch or quote_storage.can_flush():
+                if quote_storage.has_data():
+                    quote_storage.flush(close_at_end=not self._fetch)
+
+                if quote_storage.has_data():
+                    # data remaining
+                    with self._mutex:
+                        self._pending_quote_insert.add(quote_storage)
 
     #
     # Extra

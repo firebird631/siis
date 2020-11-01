@@ -18,7 +18,7 @@ import numpy as np
 from datetime import datetime
 
 import logging
-logger = logging.getLogger('siis.database')
+logger = logging.getLogger('siis.database.tickstorage')
 
 
 class TickStorage(object):
@@ -29,8 +29,6 @@ class TickStorage(object):
 
     Price and volume should be formated with the asset precision if possible but scientific notation
     is tolerate.
-
-    @todo Seek to file position before writing.
     """
 
     FLUSH_DELAY = 60.0
@@ -218,6 +216,7 @@ class TickStreamer(object):
                 timestamp = self._curr_date.timestamp()
                 prev_timestamp = 0
                 pos = 0
+                prev_pos = -1
                 left = 0
                 right = file_size
                 eof = file_size-1 if file_size > 0 else 0
@@ -230,8 +229,9 @@ class TickStreamer(object):
 
                     tick = self._struct.unpack(data)
 
-                    if right - left <= TickStreamer.TICK_SIZE:
-                        # found our starting offset
+                    # if right - left <= TickStreamer.TICK_SIZE or prev_pos == pos:
+                    if right - left < TickStreamer.TICK_SIZE or prev_pos == pos:
+                        # found our starting offset or the first entry is later but should be in this file
                         self._file.seek(-TickStreamer.TICK_SIZE, 1)
                         break
 
@@ -247,6 +247,7 @@ class TickStreamer(object):
                     elif self._file.tell() >= eof:
                         break
 
+                    prev_pos = pos  # keep if not changes from previous search
                     pos = max(0, left + ((right - left) // TickStreamer.TICK_SIZE) // 2 * TickStreamer.TICK_SIZE)
                     self._file.seek(pos, 0)
 

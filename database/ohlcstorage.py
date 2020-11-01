@@ -18,7 +18,7 @@ from instrument.instrument import Candle
 from common.utils import UTC
 
 import logging
-logger = logging.getLogger('siis.database')
+logger = logging.getLogger('siis.database.ohlcstorage')
 
 
 class OhlcStorage(object):
