@@ -509,10 +509,13 @@ class LastTickFinder(object):
                 bfile = open(pathname, "rb")
 
                 # directly seek to the last tick entry
-                bfile.seek(-TickStreamer.TICK_SIZE, 2)
+                try:
+                    bfile.seek(-TickStreamer.TICK_SIZE, 2)
 
-                arr = bfile.read(TickStreamer.TICK_SIZE)
-                tick = self._struct.unpack(arr)
+                    arr = bfile.read(TickStreamer.TICK_SIZE)
+                    tick = self._struct.unpack(arr)
+                except:
+                    pass
 
                 bfile.close()
 
