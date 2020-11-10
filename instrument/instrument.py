@@ -930,6 +930,14 @@ class Instrument(object):
     def ticks(self):
         return self._ticks
 
+    def detach_ticks(self):
+        """
+        Detach the array of tich and setup a new empty for the instrument.
+        """
+        ticks = self._ticks
+        self._ticks = []
+        return ticks
+
     def ticks_after(self, after_ts):
         """
         Returns ticks having timestamp > from_ts in seconds.

@@ -11,6 +11,8 @@ import copy
 import traceback
 import pathlib
 
+from importlib import import_module
+
 from watcher.service import WatcherService
 
 from instrument.instrument import Candle
@@ -20,12 +22,13 @@ from trader.asset import Asset
 
 from config import utils
 
-from .tickstorage import TickStorage, TickStreamer, LastTickFinder
+from .tickstorage import TickStorage, TickStreamer, FirstTickFinder, LastTickFinder
 from .ohlcstorage import OhlcStorage, OhlcStreamer
 from .quotestorage import QuoteStorage, QuoteStreamer
 
 import logging
 logger = logging.getLogger('siis.database')
+error_logger = logging.getLogger('siis.database.error')
 
 
 class DatabaseException(Exception):
@@ -151,6 +154,14 @@ class Database(object):
         self._fetch = False
         self._store_trade_text = False
         self._store_trade_binary = True
+
+        # sqlite3 support needed for cached data
+        self.sqlite3 = None
+
+        try:
+            self.sqlite3 = import_module('sqlite3', package='')
+        except ModuleNotFoundError as e:
+            logger.error(repr(e))
 
     def lock(self, blocking=True, timeout=-1):
         self._mutex.acquire(blocking, timeout)
@@ -475,6 +486,10 @@ class Database(object):
     # sync loads
     #
 
+    def get_first_tick(self, broker_id, market_id):
+        """Load and return only the first found and older stored tick."""
+        return FirstTickFinder(self._markets_path, broker_id, market_id, binary=True).first()
+
     def get_last_tick(self, broker_id, market_id):
         """Load and return only the last found and most recent stored tick."""
         return LastTickFinder(self._markets_path, broker_id, market_id, binary=True).last()
@@ -501,7 +516,7 @@ class Database(object):
         """
         Create a new quote streamer. It comes from the OHLC file storage.
         """
-        return QuoteStreamer(self._db, broker_id, market_id, timeframe, from_date, to_date, buffer_size, True)
+        return QuoteStreamer(self._markets_path, broker_id, market_id, timeframe, from_date, to_date, buffer_size, True)
 
     def create_ohlc_streamer(self, broker_id, market_id, timeframe, from_date, to_date, buffer_size=8192):
         """
@@ -695,3 +710,195 @@ class Database(object):
         @note This is a synchronous method.
         """
         pass
+
+    #
+    # sync cache data
+    #
+
+    def get_cached_db_filename(self, broker_id, market_id, strategy_id):
+        cleanup_name = strategy_id
+        return os.path.join(self._markets_path, broker_id, market_id, 'C', cleanup_name + '.db')
+
+    def open_cached_db(self, broker_id, market_id, strategy_id):
+        filename = self.get_cached_db_filename(broker_id, market_id, strategy_id)
+        db = None
+        exist = False
+
+        if os.path.exists(filename):
+            exist = True
+        else:
+            cached_path = pathlib.Path(self._markets_path, broker_id, market_id, 'C')
+            if not cached_path.exists():
+                cached_path.mkdir(parents=True)
+
+        try:
+            db = self.sqlite3.connect(filename)
+        except Exception as e:
+            error_logger.error(repr(e))
+
+        if not exist:
+            try:
+                self.setup_cached_limits_sql(db)
+                self.setup_cached_volume_profile_sql(db)
+            except Exception as e:
+                error_logger.error(repr(e))
+
+        return db
+
+    def setup_cached_limits_sql(self, db):
+        cursor = db.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS limits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+                from_timestamp INTEGER NOT NULL,
+                last_timestamp INTEGER NOT NULL,
+                min_price VARCHAR(16) NOT NULL,
+                max_price VARCHAR(16) NOT NULL)""")
+        db.commit()
+
+    def setup_cached_volume_profile_sql(self, db):
+        """
+        market_id
+        peaks and valleys are JSON dict price:volume
+        """
+        cursor = db.cursor()
+        # The volume profile table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS volume_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+                timestamp INTEGER NOT NULL, timeframe INTEGER NOT NULL,
+                poc VARCHAR(32) NOT NULL,
+                low_area VARCHAR(32) NOT NULL,
+                high_area VARCHAR(32) NOT NULL,
+                volumes VARCHAR(16384) NOT NULL,
+                peaks VARCHAR(4096) NOT NULL,
+                valleys VARCHAR(4096) NOT NULL,
+                sensibility INTEGER NOT NULL,
+                volume_area INTEGER NOT NULL,
+                UNIQUE (timestamp, timeframe, sensibility, volume_area))""")
+
+        db.commit()
+
+    def get_cached_limits(self, broker_id, market_id, strategy_id):
+        """Load TA limits from the data cache for a specific broker id market id and strategy identifier."""
+        try:
+            db = self.open_cached_db(broker_id, market_id, strategy_id)
+            cursor = db.cursor()
+
+            cursor.execute("""SELECT from_timestamp, last_timestamp, min_price, max_price FROM limits""")
+            row = cursor.fetchone()
+
+            db.close()
+            db = None
+
+            if row:
+                return TALimits(
+                    float(row[0]) * 0.001, float(row[1]) * 0.001,
+                    float(row[2]), float(row[3])
+                )
+            else:
+                return None
+        except Exception as e:
+            self.on_error(e)
+            raise DatabaseException("Unable to get cached limits for %s %s" % (broker_id, market_id))
+
+    def get_cached_volume_profile(self, broker_id, market_id, strategy_id, timeframe, from_date, to_date=None, sensibility=10, volume_area=70):
+        """Load TA Volume Profile cache for a specific broker id market id and strategy identifier and inclusive period."""
+        from_ts = from_date.timestamp()
+        to_ts = to_date.timestamp() if to_date else time.time()
+
+        try:
+            db = self.open_cached_db(broker_id, market_id, strategy_id)
+            cursor = db.cursor()
+
+            cursor.execute("""SELECT timestamp, poc, low_area, high_area, volumes, peaks, valleys FROM volume_profile
+                            WHERE timeframe = ? AND sensibility = ? AND volume_area = ? AND timestamp >= ? AND timestamp <= ?
+                            ORDER BY timestamp ASC""", (
+                                timeframe, sensibility, volume_area, int(from_ts * 1000), int(to_ts * 1000)))
+
+            rows = cursor.fetchall()
+            now = time.time()
+
+            db.close()
+            db = None
+
+            results = []
+
+            for row in rows:
+                timestamp = float(row[0]) * 0.001  # to float second timestamp
+                vp = VolumeProfile(timestamp, timeframe, float(row[1]),  float(row[2]), float(row[3]),
+                    {b: v for b, v in json.loads(row[4])},
+                    json.loads(row[5]),
+                    json.loads(row[6]))
+
+                results.append(vp)
+
+            return results
+
+        except Exception as e:
+            self.on_error(e)
+            raise DatabaseException("Unable to get a range of cached Volume Profile for %s %s" % (broker_id, market_id))
+
+    def store_cached_limits(self, broker_id, market_id, strategy_id, limits):
+        """
+        limits is Limits dataclass.
+        """
+        if not limits:
+            return
+
+        try:
+            db = self.open_cached_db(broker_id, market_id, strategy_id)
+            cursor = db.cursor()
+
+            cursor.execute("""INSERT OR REPLACE INTO limits(from_timestamp, last_timestamp, min_price, max_price) VALUES (?, ?, ?, ?)""", (
+                int(limits.from_timestamp * 1000), int(limits.last_timestamp * 1000), limits.min_price, limits.max_price))
+
+            db.commit()
+
+            db.close()
+            db = None
+        except self.sqlite3.IntegrityError as e:
+            self.on_error(e)
+            raise DatabaseException("SQlite Integrity Error: Failed to insert cached Limits for %s.\n" % (market_id,) + str(e))
+
+    def store_cached_volume_profile(self, broker_id, market_id, strategy_id, timeframe, data, sensibility=10, volume_area=70):
+        """
+        @param data A single tuple or a list of tuple.
+
+        Format of a Volume Profile tuple is (timestamp:float in seconds, POC_price:float, POC_volume:float, Volumes:dict, Peaks:list, Valleys:list)
+        Format of a peak or a valley is price as key, volume as value.
+        """
+        if not data:
+            return
+
+        if type(data) is list:
+            # array of VPs
+            data_set = [(timeframe, sensibility, volume_area, int(d.timestamp*1000), d.poc, d.low_area, d.high_area,
+                json.dumps(tuple((b, v) for b, v in d.volumes.items())), json.dumps(d.peaks), json.dumps(d.valleys)) for d in data]
+
+            try:
+                db = self.open_cached_db(broker_id, market_id, strategy_id)
+                cursor = db.cursor()
+                
+                cursor.executemany("""INSERT OR REPLACE INTO volume_profile(timeframe, sensibility, volume_area, timestamp, poc, low_area, high_area, volumes, peaks, valleys) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", data_set)
+
+                db.commit()
+            except self.sqlite3.IntegrityError as e:
+                self.on_error(e)
+                raise DatabaseException("SQlite Integrity Error: Failed to insert cached Volume Profile for %s %s.\n" % (broker_id, market_id,) + str(e))
+
+        elif type(data) is tuple:
+            # single VP
+            try:
+                db = self.open_cached_db(broker_id, market_id, strategy_id)
+                cursor = db.cursor()
+
+                cursor.execute("""INSERT OR REPLACE INTO volume_profile(timeframe, sensibility, volume_area, timestamp, poc, low_area, high_area, volumes, peaks, valleys) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", (timeframe, sensibility, volume_area, int(data.timestamp*1000), data.poc, data.low_area, data.high_area,
+                            json.dumps(data.volumes), json.dumps(data.peaks), json.dumps(data.valleys)))
+
+                db.commit()
+            except self.sqlite3.IntegrityError as e:
+                self.on_error(e)
+                raise DatabaseException("SQlite Integrity Error: Failed to insert cached Volume Profile for %s %s.\n" % (broker_id, market_id,) + str(e))

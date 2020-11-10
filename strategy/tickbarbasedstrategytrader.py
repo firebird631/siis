@@ -32,12 +32,12 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     A single configuration of tick-bar array can be generated.
     """
 
-    def __init__(self, strategy, instrument):
+    def __init__(self, strategy, instrument, depth=50):
         """
         @param strategy Parent strategy (mandatory)
         @param instrument Related unique instance of instrument (mandatory)
         """
-        super().__init__(strategy, instrument, depth=2)
+        super().__init__(strategy, instrument)
 
         self._base_timeframe = Instrument.TF_TICK
 
@@ -78,67 +78,26 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             # no longer need them
             self.instrument.clear_ticks()
 
-    def compute(self, timestamp):
-        """
-        Compute the signals at ticks.
-        """
-        # split entries from exits signals
-        entries = []
-        exits = []
+    def update_tickbar_ext(self, timestamp):
+        # update data at tick level
+        with self._mutex:
+            # update at tick or trade
+            ticks = self.instrument.detach_ticks()
 
-        if not sub.next_timestamp:
-            # initial timestamp only
-            sub.next_timestamp = self.strategy.timestamp
+            generated = self.tickbar_generator.generate(ticks)
+            if generated:
+                self.instrument.add_tickbar(generated)
 
-            signal = sub.process(timestamp)
-            if signal:
-                if signal.signal == StrategySignal.SIGNAL_ENTRY:
-                    entries.append(signal)
-                elif signal.signal == StrategySignal.SIGNAL_EXIT:
-                    exits.append(signal)
+            self.instrument.add_tickbar(copy.copy(tickbar_generator.current), self.depth)
 
-        # finally sort them by timeframe ascending
-        entries.sort(key=lambda s: s.timeframe)
-        exits.sort(key=lambda s: s.timeframe)
+            # keep prev and last price at processing step
+            if self.instrument._ticks:
+                self.prev_price = self.last_price
+                self.last_price = (self.instrument._ticks[-1][1] + self.instrument._ticks[-1][2]) * 0.5  # last tick mid
 
-        return entries, exits
+            return ticks
 
-    def precompute(self, timestamp):
-        """
-        Compute the signals for the differents timeframes depending of the update policy.
-        """
-        # split entries from exits signals
-        entries = []
-        exits = []
-
-        for tf, sub in self.timeframes.items():
-            if not sub.next_timestamp:
-                # initial timestamp from older candle
-                candles = self.instrument.candles(tf)
-                if candles:
-                    sub.next_timestamp = candles[-1].timestamp
-                else:
-                    sub.next_timestamp = self.strategy.timestamp
-
-            if sub.update_at_close:
-                if sub.need_update(timestamp):
-                    compute = True
-            else:
-                compute = True
-
-            if compute:
-                signal = sub.process(timestamp)
-                if signal:
-                    if signal.signal == StrategySignal.SIGNAL_ENTRY:
-                        entries.append(signal)
-                    elif signal.signal == StrategySignal.SIGNAL_EXIT:
-                        exits.append(signal)
-
-        # finally sort them by timeframe ascending
-        entries.sort(key=lambda s: s.timeframe)
-        exits.sort(key=lambda s: s.timeframe)
-
-        return entries, exits
+        return []
 
     #
     # streaming

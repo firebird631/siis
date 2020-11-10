@@ -41,6 +41,8 @@ class Streamable(object):
         self._members = {}
         self._count = 0   # reference counter
 
+        self._last_timestamp = 0.0
+
     def enable(self):
         self._activity = True
 

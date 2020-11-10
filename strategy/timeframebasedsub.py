@@ -25,7 +25,6 @@ class TimeframeBasedSub(object):
         self.history = history   # sample history size
 
         self.last_timestamp = 0.0
-        self.next_timestamp = 0.0  # next waiting, to be processed ohlc timestamp
 
         self._update_at_close = params.get('update-at-close', False)
         self._signal_at_close = params.get('signal-at-close', False)
@@ -102,11 +101,7 @@ class TimeframeBasedSub(object):
         """
         Must be called at the end of the process method.
         """
-        if candles:
-            # last processed candle timestamp (from last candle if non consolidated else from the next one)
-            self.next_timestamp = candles[-1].timestamp if not candles[-1].ended else candles[-1].timestamp + self.tf
-
-        # last closed candle processed (reseted before next gen)
+        # last closed candle processed (reset before next gen)
         # self._last_closed = False
         self.last_timestamp = timestamp
 
@@ -125,7 +120,6 @@ class TimeframeBasedSub(object):
         """
         # candles = self.strategy_trader.instrument.last_candles(self.tf, self.depth)
         candles = self.strategy_trader.instrument.candles(self.tf)[-self.depth:]
-        # candles = self.strategy_trader.instrument.candles_from(self.tf, self.next_timestamp - self.depth*self.tf)
 
         return candles
 

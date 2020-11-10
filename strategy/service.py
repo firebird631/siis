@@ -79,7 +79,7 @@ class StrategyService(Service):
 
         self._backtest = False
         self._backtesting_play = True
-        self._start_ts = self._from_date.timestamp() if self._from_date else 0
+        self._begin_ts = self._from_date.timestamp() if self._from_date else 0
         self._end_ts = self._to_date.timestamp() if self._to_date else 0
         self._timestep_thread = None
         self._time_factor = 0.0
@@ -303,28 +303,25 @@ class StrategyService(Service):
                 # start the time thread once the strategy instance get its data and are ready
                 class TimeStepThread(threading.Thread):
 
-                    def __init__(self, service, s, e, ts, base_tf=0.0, tf=0.0):
+                    def __init__(self, service, begin, end, timestep, base_timeframe=0.0, time_factor=0.0):
                         super().__init__(name="backtest")
 
                         self.service = service
                         self.abort = False
-                        self.s = s
-                        self.e = e
-                        self.c = s
-                        self.ts = ts
-                        self.ppc = 0
-                        self.tf = tf
+
+                        self.begin = begin
+                        self.end = end
+                        self.current = begin
+
+                        self.timestep = timestep
+                        self.time_factor = time_factor
+                        self.base_timeframe = base_timeframe
+
+                        # bench begin and end timestamp
                         self.begin_ts = 0
                         self.end_ts = 0
-                        self.base_tf = base_tf
 
                     def run(self):
-                        prev = self.c
-                        min_limit = 0.0001
-                        limit = min_limit  # starts with min limit
-                        last_saturation = 0
-                        last_sleep = time.time()
-
                         Terminal.inst().info("Backtesting started...", view='status')
 
                         strategy = self.service.strategy()
@@ -334,22 +331,22 @@ class StrategyService(Service):
                         self.begin_ts = time.time()   # bench
 
                         if strategy and trader:
-                            while self.c < self.e + self.ts:
+                            while self.current < self.end + self.timestep:
                                 if not self.service._backtesting_play:
                                     time.sleep(0.01)
                                     continue
 
                                 # now sync the trader base time
-                                trader.set_timestamp(self.c)
+                                trader.set_timestamp(self.current)
 
-                                strategy.backtest_update(self.c, self.e)
+                                strategy.backtest_update(self.current, self.end)
 
-                                if self.tf > 0:
+                                if self.time_factor > 0:
                                     # wait factor of time step, so 1 mean realtime simulation, 0 mean as fast as possible
-                                    time.sleep((1/self.tf)*self.ts)
+                                    time.sleep((1/self.time_factor)*self.timestep)
 
-                                self.c += self.ts  # add one time step
-                                self.service._timestamp = self.c
+                                self.current += self.timestep  # add one time step
+                                self.service._timestamp = self.current
 
                                 # one more step then we can update trader (limits orders, P/L update...)
                                 trader.update()
@@ -365,7 +362,7 @@ class StrategyService(Service):
 
                         self.end_ts = time.time()
 
-                self._timestep_thread = TimeStepThread(self, self._start_ts, self._end_ts, self._timestep, self._timeframe, self._time_factor)
+                self._timestep_thread = TimeStepThread(self, self._begin_ts, self._end_ts, self._timestep, self._timeframe, self._time_factor)
                 self._timestep_thread.setDaemon(True)
                 self._timestep_thread.start()
 
@@ -379,7 +376,7 @@ class StrategyService(Service):
             if strategy and strategy.running:
                 progress += strategy.progress()
 
-            total = self._end_ts - self._start_ts
+            total = self._end_ts - self._begin_ts
             remaining = self._end_ts - progress
 
             pc = 100.0 - (remaining / (total+0.001) * 100)
@@ -397,7 +394,7 @@ class StrategyService(Service):
 
                 # bench message
                 logger.info("Backtested %i samples within a duration of %s" % (
-                    int((self._timestep_thread.c - self._timestep_thread.s) / self._timestep_thread.ts),
+                    int((self._timestep_thread.current - self._timestep_thread.begin) / self._timestep_thread.timestep),
                     format_delta(self._timestep_thread.end_ts - self._timestep_thread.begin_ts)))
 
     def notify(self, signal_type, source_name, signal_data):

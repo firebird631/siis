@@ -86,21 +86,22 @@ class EntryExit(object):
         if 'type' not in params or params.get('type') not in BaseSignal.PRICE:
             raise ValueError("Undefined or unsupported 'type' value for %s" % self.name())
 
-        if 'orientation' not in params or params.get('orientation') not in BaseSignal.ORIENTATION:
-            raise ValueError("Undefined or unsupported 'orientation' value for %s" % self.name())
+        # if 'orientation' not in params or params.get('orientation') not in BaseSignal.ORIENTATION:
+        #     raise ValueError("Undefined or unsupported 'orientation' value for %s" % self.name())
 
         self.type = BaseSignal.PRICE.get(params['type'])
-        self.timeframe = timeframe_from_str(params.get('timeframe', ""))
+        self.timeframe = timeframe_from_str(params.get('timeframe', "t"))
+
+        if self.timeframe < 0:
+            raise ValueError("Undefined or unsupported 'timeframe' value for %s" % self.name())
 
         if params.get('timeout'):
             # optionnal timeout
             self.timeout = timeframe_from_str(params.get('timeout', ""))
-            if not self.timeframe:
-                raise ValueError("Undefined or unsupported 'timeframe' value for %s" % self.name())
-
+        
         self.depth = params.get('depth', 1)
         self.multi = params.get('multi', False)
-        self.orientation = BaseSignal.ORIENTATION.get(params['orientation'])
+        self.orientation = BaseSignal.ORIENTATION.get(params.get('orientation',BaseSignal.ORIENTATION_UP))
 
         distance = params.get('distance', "0.0")
 
@@ -137,9 +138,12 @@ class EntryExit(object):
             self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
 
     def compile(self, strategy_trader):
-        self.timeframe = strategy_trader.timeframes.get(self.timeframe)
-        if not self.timeframe:
-            raise ValueError("Timeframe model not found for 'timeframe' for %s" % self.name())
+        if strategy_trader.is_timeframes_based:
+            self.timeframe = strategy_trader.timeframes.get(self.timeframe)
+            if not self.timeframe:
+                raise ValueError("Timeframe model not found for 'timeframe' for %s" % self.name())
+        elif strategy_trader.is_tickbars_based:
+            self.timeframe = None
 
     def dumps(self):
         result = {}

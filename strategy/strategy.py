@@ -7,13 +7,14 @@ import os
 import threading
 import time
 import collections
+import traceback
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from terminal.terminal import Terminal
 
 from common.runnable import Runnable
-from common.utils import timeframe_to_str, timeframe_from_str
+from common.utils import timeframe_to_str, timeframe_from_str, UTC
 from config.utils import merge_parameters
 
 from common.signal import Signal
@@ -24,12 +25,31 @@ from watcher.watcher import Watcher
 from trader.market import Market
 from trader.order import Order
 
+from strategy.indicator.models import Limits
+
 from strategy.strategyassettrade import StrategyAssetTrade
 from strategy.strategymargintrade import StrategyMarginTrade
 from strategy.strategypositiontrade import StrategyPositionTrade
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
 
 from database.database import Database
+
+from strategy.process.alphaprocess import install_alpha_process
+
+from strategy.command.strategycmdexitalltrade import cmd_strategy_exit_all_trade
+
+from strategy.command.strategycmdstrategytraderinfo import cmd_strategy_trader_info
+from strategy.command.strategycmdstrategytradermodify import cmd_strategy_trader_modify
+from strategy.command.strategycmdstrategytraderstream import cmd_strategy_trader_stream
+
+from strategy.command.strategycmdtradeassign import cmd_trade_assign
+from strategy.command.strategycmdtradeclean import cmd_trade_clean
+from strategy.command.strategycmdtradeentry import cmd_trade_entry
+from strategy.command.strategycmdtradeexit import cmd_trade_exit
+from strategy.command.strategycmdtradeinfo import cmd_trade_info
+from strategy.command.strategycmdtrademodify import cmd_trade_modify
+
+from strategy.command.strategycmdtraderinfo import cmd_trader_info
 
 import logging
 logger = logging.getLogger('siis.strategy')
@@ -75,6 +95,22 @@ class Strategy(Runnable):
         self._identifier = None
 
         self._parameters = Strategy.parse_parameters(merge_parameters(default_parameters, user_parameters))
+
+        #
+        # composite processing inner methods
+        #
+
+        self._setup_backtest = None
+        self._setup_live = None
+        self._update_strategy = None
+        self._async_update_strategy = None
+
+        # default use alpha processor (support bootstrap but no preprocessing)
+        install_alpha_process(self)
+
+        #
+        # states and parameters
+        #
 
         self._preset = False       # True once instrument are setup
         self._prefetched = False   # True once strategies are ready
@@ -418,9 +454,22 @@ class Strategy(Runnable):
 
         # now can setup backtest or live mode
         if self.service.backtesting:
-            self.setup_backtest(self.service.from_date, self.service.to_date, self.service.timeframe)
+            self._setup_backtest(self, self.service.from_date, self.service.to_date, self.service.timeframe)
         else:
-            self.setup_live()
+            self._setup_live(self)
+
+    def start(self):
+        if super().start():
+            # reset data
+            self.reset()
+
+            # listen to watchers and strategy signals
+            self.watcher_service.add_listener(self)
+            self.service.add_listener(self)
+
+            return True
+        else:
+            return False
 
     def stop(self):
         if self._running:
@@ -429,6 +478,9 @@ class Strategy(Runnable):
             with self._condition:
                 # wake up the update
                 self._condition.notify()
+
+        # rest data
+        self.reset()
 
     def terminate(self):
         """
@@ -672,7 +724,6 @@ class Strategy(Runnable):
         #     while (not len(self._signals) or not self._ping):
         #         self._condition.wait()
 
-        count = 0
         do_update = set()
 
         while self._signals:
@@ -895,11 +946,6 @@ class Strategy(Runnable):
                     # trade signal
                     self.order_signal(signal.signal_type, signal.data)
 
-            # count += 1
-            # if count > 10:
-            #     # no more than 10 signals per loop, allow aggregate fast ticks, and don't block the processing
-            #     break
-
         if self.service.backtesting:
             # process one more backtest step
             with self._mutex:
@@ -916,210 +962,18 @@ class Strategy(Runnable):
                     for strategy_trader in do_update:
                         if strategy_trader.instrument.ready():
                             # parallelize jobs on workers
-                            self.service.worker_pool.add_job(None, (self.async_update_strategy, (strategy_trader,)))
+                            self.service.worker_pool.add_job(None, (self._async_update_strategy, (self, strategy_trader,)))
                 else:
                     # no parallelisation for single instrument
                     for strategy_trader in do_update:
                         if strategy_trader.instrument.ready():
-                            self.update_strategy(strategy_trader)
+                            self._update_strategy(self, strategy_trader)
 
         return True
-
-    def bootstrap(self, strategy_trader):
-        """
-        Process the bootstrap of the strategy trader until complete using the preloaded OHLCs.
-        Any received updates are ignored until the bootstrap is completed.
-        """
-        if strategy_trader._bootstraping == 2:
-            # in progress
-            return
-
-        # bootstraping in progress, avoid live until complete
-        strategy_trader._bootstraping = 2
-
-        try:
-            if strategy_trader.is_timeframes_based:
-                self.timeframe_based_bootstrap(strategy_trader)
-            elif strategy_trader.is_tickbars_based:
-                self.tickbar_based_bootstrap(strategy_trader)
-        except Error as e:
-            error_logger.error(repr(e))
-            traceback_logger.error(traceback.format_exc())
-
-        # bootstraping done, can now branch to live
-        strategy_trader._bootstraping = 0
-
-    def timeframe_based_bootstrap(self, strategy_trader):
-        # captures all initials candles
-        initial_candles = {}
-
-        # compute the begining timestamp
-        next_timestamp = self.timestamp
-
-        instrument = strategy_trader.instrument
-
-        for tf, sub in strategy_trader.timeframes.items():
-            candles = instrument.candles(tf)
-            initial_candles[tf] = candles
-
-            # reset, distribute one at time
-            instrument._candles[tf] = []
-
-            if candles:
-                # get the nearest next candle
-                next_timestamp = min(next_timestamp, candles[0].timestamp + sub.depth*sub.timeframe)
-
-        logger.debug("%s timeframes bootstrap begin at %s, now is %s" % (instrument.market_id, next_timestamp, self.timestamp))
-
-        # initials candles
-        lower_timeframe = 0
-
-        for tf, sub in strategy_trader.timeframes.items():
-            candles = initial_candles[tf]
-
-            # feed with the initials candles
-            while candles and next_timestamp >= candles[0].timestamp:
-                candle = candles.pop(0)
-
-                instrument._candles[tf].append(candle)
-
-                # and last is closed
-                sub._last_closed = True
-
-                # keep safe size
-                if(len(instrument._candles[tf])) > sub.depth:
-                    instrument._candles[tf].pop(0)
-
-                # prev and last price according to the lower timeframe close
-                if not lower_timeframe or tf < lower_timeframe:
-                    lower_timeframe = tf
-                    strategy_trader.prev_price = strategy_trader.last_price
-                    strategy_trader.last_price = candle.close  # last mid close
-
-            sub.next_timestamp = next_timestamp  # + lower_timeframe
-            # logger.debug("%s for %s and time is %s rest=%s" % (len(instrument._candles[tf]), tf, sub.next_timestamp, len(initial_candles[tf])))
-
-        # process one lowest candle at time
-        while 1:
-            num_candles = 0
-            strategy_trader.bootstrap(next_timestamp)
-
-            # at least of lower timeframe
-            base_next_timestamp = 0.0
-            lower_timeframe = 0
-
-            # increment by the lower available timeframe
-            for tf, sub in strategy_trader.timeframes.items():
-                if initial_candles[tf]:
-                    if not base_next_timestamp:
-                        # initiate with the first
-                        base_next_timestamp = initial_candles[tf][0].timestamp
-
-                    elif initial_candles[tf][0].timestamp < base_next_timestamp:
-                        # found a lower
-                        base_next_timestamp = initial_candles[tf][0].timestamp
-
-            for tf, sub in strategy_trader.timeframes.items():
-                candles = initial_candles[tf]
-
-                # feed with the next candle
-                if candles and base_next_timestamp >= candles[0].timestamp:
-                    candle = candles.pop(0)
-
-                    instrument._candles[tf].append(candle)
-
-                    # and last is closed
-                    sub._last_closed = True
-
-                    # keep safe size
-                    if(len(instrument._candles[tf])) > sub.depth:
-                        instrument._candles[tf].pop(0)
-
-                    if not lower_timeframe or tf < lower_timeframe:
-                        lower_timeframe = tf
-                        strategy_trader.prev_price = strategy_trader.last_price
-                        strategy_trader.last_price = candle.close  # last mid close
-
-                    num_candles += 1
-
-            # logger.info("next is %s (delta=%s) / now %s (n=%i) (low=%s)" % (base_next_timestamp, base_next_timestamp-next_timestamp, self.timestamp, num_candles, lower_timeframe))
-            next_timestamp = base_next_timestamp
-
-            if not num_candles:
-                # no more candles to process
-                break
-
-        logger.debug("%s timeframes bootstraping done" % instrument.market_id)
-
-    def tickbar_based_bootstrap(self, strategy_trader):
-        # captures all initials candles
-        initial_ticks = []
-
-        # compute the begining timestamp
-        next_timestamp = self.timestamp
-
-        instrument = strategy_trader.instrument
-
-        logger.debug("%s tickbars bootstrap begin at %s, now is %s" % (instrument.market_id, next_timestamp, self.timestamp))
-
-        # @todo need tickstreamer, and call strategy_trader.bootstrap(next_timestamp) at per bulk of ticks (temporal size defined)
-
-        logger.debug("%s tickbars bootstraping done" % instrument.market_id)
-
-    def update_strategy(self, strategy_trader):
-        """
-        Override this method to compute a strategy step per instrument.
-        Default implementation supports bootstrapping.
-        @param strategy_trader StrategyTrader Instance of the strategy trader to process.
-        @note Non thread-safe method.
-        """
-        if strategy_trader:
-            strategy_trader._processing = True
-
-            if strategy_trader._bootstraping:
-                # bootstrap using preloaded data history
-                self.bootstrap(strategy_trader)
-            else:
-                # until process instrument update
-                strategy_trader.process(self.timestamp)
-
-            strategy_trader._processing = False
-
-    def async_update_strategy(self, strategy_trader):
-        """
-        Override this method to compute a strategy step per instrument.
-        Default implementation supports bootstrapping.
-        @param strategy_trader StrategyTrader Instance of the strategy trader to process.
-        @note Thread-safe method.
-        """
-        if strategy_trader:
-            # process only if previous job was completed
-            process = False
-
-            with strategy_trader._mutex:
-                if not strategy_trader._processing:
-                    # can process
-                    process = strategy_trader._processing = True
-
-            if process:
-                if strategy_trader._bootstraping:
-                    self.bootstrap(strategy_trader)
-                else:
-                    strategy_trader.process(self.timestamp)
-
-                with strategy_trader._mutex:
-                    # process complete
-                    strategy_trader._processing = False
 
     #
     # backtesting
     #
-
-    def setup_backtest(self, from_date, to_date, base_timeframe=Instrument.TF_TICK):
-        """
-        Override this method to implement your backtesting strategy data set of instrument and feeders.
-        """
-        pass
 
     def query_backtest_update(self, timestamp, total_ts):
         with self._mutex:
@@ -1144,8 +998,7 @@ class Strategy(Runnable):
 
         # update strategy as necessary
         if updated:
-            self.update_strategy(strategy_trader)
-            # self.async_update_strategy(strategy_trader)
+            self._update_strategy(self, strategy_trader)
 
     def backtest_update(self, timestamp, total_ts):
         """
@@ -1178,7 +1031,6 @@ class Strategy(Runnable):
 
         # last done timestamp, to manage progression
         self._last_done_ts = timestamp
-
 
     def reset(self):
         # backtesting only, the last processed timestamp
@@ -1243,181 +1095,6 @@ class Strategy(Runnable):
             return 0
 
         return self._last_done_ts
-
-    #
-    # live setup
-    #
-
-    def setup_live(self):
-        """
-        Override this method to implement your live strategy data setup.
-        Do it here dataset preload and other stuff before update be called.
-        """
-
-        # load the strategy-traders and traders for this strategy/account
-        trader = self.trader()
-
-        Database.inst().load_user_trades(self.service, self, trader.name,
-                trader.account.name, self.identifier)
-
-        Database.inst().load_user_traders(self.service, self, trader.name,
-                trader.account.name, self.identifier)
-
-    #
-    # commands
-    #
-
-    def trade_command(self, label, data, func):
-        # manually trade modify a trade (add/remove an operation)
-        market_id = data.get('market-id')
-
-        strategy_trader = self._strategy_traders.get(market_id)
-        if strategy_trader:
-            Terminal.inst().notice("Trade %s for strategy %s - %s" % (label, self.name, self.identifier), view='content')
-
-            # retrieve the trade and apply the modification
-            result = func(strategy_trader, data)
-
-            if result:
-                if result['error']:
-                    Terminal.inst().info(result['messages'][0], view='status')
-                else:
-                    Terminal.inst().info("Done", view='status')
-
-                for message in result['messages']:
-                    Terminal.inst().message(message, view='content')
-
-                return result
-
-        return None
-
-    def exit_all_trade_command(self, data):
-        # manually trade modify a trade or any trades (add/remove an operation)
-        market_id = data.get('market-id')
-
-        strategy_trader = self._strategy_traders.get(market_id)
-        if strategy_trader and strategy_trader.has_trades():
-            Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (self.name, self.identifier), view='content')
-
-            # retrieve any trades
-            trades = []
-
-            # if there is some trade, cancel or close them, else goes to the next trader
-            if strategy_trader.has_trades():
-                trades.extend([(strategy_trader.instrument.market_id, trade_id) for trade_id in strategy_trader.list_trades()])
-
-            # multi command
-            results = []
-
-            for trade in trades:
-                # retrieve the trade and apply the modification
-                strategy_trader = self._strategy_traders.get(trade[0])
-                data['trade-id'] = trade[1]
-
-                result = self.cmd_trade_exit(strategy_trader, data)
-
-                if result:
-                    if result['error']:
-                        Terminal.inst().info(result['messages'][0], view='status')
-                    else:
-                        Terminal.inst().info("Done", view='status')
-
-                    for message in result['messages']:
-                        Terminal.inst().message(message, view='content')
-
-                results.append(result)
-
-            return results
-        else:
-            Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (self.name, self.identifier), view='content')
-
-            # retrieve any trades for any traders
-            trades = []
-
-            with self._mutex:
-                for market_id, strategy_trader in self._strategy_traders.items():
-                    # if there is some trade, cancel or close them, else goes to the next trader
-                    if strategy_trader.has_trades():
-                        trades.extend([(strategy_trader.instrument.market_id, trade_id) for trade_id in strategy_trader.list_trades()])
-
-            # multi command
-            results = []
-
-            for trade in trades:
-                # retrieve the trade and apply the modification
-                strategy_trader = self._strategy_traders.get(trade[0])
-                data['trade-id'] = trade[1]
-
-                result = self.cmd_trade_exit(strategy_trader, data)
-
-                if result:
-                    if result['error']:
-                        Terminal.inst().info(result['messages'][0], view='status')
-                    else:
-                        Terminal.inst().info("Done", view='status')
-
-                    for message in result['messages']:
-                        Terminal.inst().message(message, view='content')
-
-                results.append(result)
-
-            return results
-
-    def strategy_trader_command(self, label, data, func):
-        # manually trade modify a trade (add/remove an operation)
-        market_id = data.get('market-id')
-
-        strategy_trader = self._strategy_traders.get(market_id)
-        if strategy_trader:
-            Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, market_id), view='content')
-
-            # retrieve the trade and apply the modification
-            result = func(strategy_trader, data)
-
-            if result:
-                if result['error']:
-                    Terminal.inst().info(result['messages'][0], view='status')
-                else:
-                    Terminal.inst().info("Done", view='status')
-
-                for message in result['messages']:
-                    Terminal.inst().message(message, view='content')
-
-            return result
-
-        return None
-
-    def command(self, command_type, data):
-        """
-        Apply a command to the strategy and return a results dict or an array of dict or None.
-        """
-        if command_type == Strategy.COMMAND_INFO:
-            return self.cmd_trader_info(data)
-
-        elif command_type == Strategy.COMMAND_TRADE_EXIT_ALL:
-            return self.exit_all_trade_command(data)
-
-        elif command_type == Strategy.COMMAND_TRADE_ENTRY:
-            return self.trade_command("entry", data, self.cmd_trade_entry)
-        elif command_type == Strategy.COMMAND_TRADE_EXIT:
-            return self.trade_command("exit", data, self.cmd_trade_exit)
-        elif command_type == Strategy.COMMAND_TRADE_CLEAN:
-            return self.trade_command("clean", data, self.cmd_trade_clean)
-        elif command_type == Strategy.COMMAND_TRADE_MODIFY:
-            return self.trade_command("modify", data, self.cmd_trade_modify)
-        elif command_type == Strategy.COMMAND_TRADE_INFO:
-            return self.trade_command("info", data, self.cmd_trade_info)
-        elif command_type == Strategy.COMMAND_TRADE_ASSIGN:
-            return self.trade_command("assign", data, self.cmd_trade_assign)
-
-        elif command_type == Strategy.COMMAND_TRADER_MODIFY:
-            return self.strategy_trader_command("info", data, self.cmd_strategy_trader_modify)
-        elif command_type == Strategy.COMMAND_TRADER_INFO:
-            return self.strategy_trader_command("info", data, self.cmd_strategy_trader_info)
-        elif command_type == Strategy.COMMAND_TRADER_STREAM:
-            return self.strategy_trader_command("stream", data, self.cmd_strategy_trader_stream)
-
-        return None
 
     #
     # signals/slots
@@ -1549,967 +1226,88 @@ class Strategy(Runnable):
         return trades
 
     #
-    # trade commands (@todo to be moved to decicated command/file.py)
+    # commands
     #
 
-    def cmd_trade_entry(self, strategy_trader, data):
+    def command(self, command_type, data):
         """
-        Create a new trade according data on given strategy_trader.
+        Apply a command to the strategy and return a results dict or an array of dict or None.
         """
-        results = {
-            'messages': [],
-            'error': False
-        }
+        if command_type == Strategy.COMMAND_INFO:
+            return cmd_trader_info(self, data)
 
-        # command data
-        direction = data.get('direction', Order.LONG)
-        method = data.get('method', 'market')
-        limit_price = data.get('limit-price')
-        trigger_price = data.get('trigger-price')
-        quantity_rate = data.get('quantity-rate', 1.0)
-        stop_loss = data.get('stop-loss', 0.0)
-        take_profit = data.get('take-profit', 0.0)
-        stop_loss_price_mode = data.get('stop-loss-price-mode', 'price')
-        take_profit_price_mode = data.get('take-profit-price-mode', 'price')
-        timeframe = data.get('timeframe', Instrument.TF_4HOUR)
-        leverage = data.get('leverage', 1.0)
-        hedging = data.get('hedging', True)
-        margin_trade = data.get('margin-trade', False)
-        entry_timeout = data.get('entry-timeout', None)
-        context = data.get('context', None)
+        elif command_type == Strategy.COMMAND_TRADE_EXIT_ALL:
+            return cmd_strategy_exit_all_trade(self, data)
 
-        if quantity_rate <= 0.0:
-            results['messages'].append("Missing or empty quantity.")
-            results['error'] = True
+        elif command_type == Strategy.COMMAND_TRADE_ENTRY:
+            return self.trade_command("entry", data, cmd_trade_entry)
+        elif command_type == Strategy.COMMAND_TRADE_EXIT:
+            return self.trade_command("exit", data, cmd_trade_exit)
+        elif command_type == Strategy.COMMAND_TRADE_CLEAN:
+            return self.trade_command("clean", data, cmd_trade_clean)
+        elif command_type == Strategy.COMMAND_TRADE_MODIFY:
+            return self.trade_command("modify", data, cmd_trade_modify)
+        elif command_type == Strategy.COMMAND_TRADE_INFO:
+            return self.trade_command("info", data, cmd_trade_info)
+        elif command_type == Strategy.COMMAND_TRADE_ASSIGN:
+            return self.trade_command("assign", data, cmd_trade_assign)
 
-        if method not in ('market', 'limit', 'trigger', 'best-1', 'best+1'):
-            results['messages'].append("Invalid price method (market, limit, trigger, best-1, best+1).")
-            results['error'] = True
+        elif command_type == Strategy.COMMAND_TRADER_MODIFY:
+            return self.strategy_trader_command("modify", data, cmd_strategy_trader_modify)
+        elif command_type == Strategy.COMMAND_TRADER_INFO:
+            return self.strategy_trader_command("info", data, cmd_strategy_trader_info)
+        elif command_type == Strategy.COMMAND_TRADER_STREAM:
+            return self.strategy_trader_command("stream", data, cmd_strategy_trader_stream)
 
-        if method == 'limit' and not limit_price:
-            results['messages'].append("Price is missing.")
-            results['error'] = True
+        return None
 
-        if results['error']:
-            return results
+    def strategy_trader_command(self, label, data, func):
+        # manually trade modify a trade (add/remove an operation)
+        market_id = data.get('market-id')
 
-        if method == 'market':
-            order_type = Order.ORDER_MARKET
-        
-        elif method == 'limit':
-            order_type = Order.ORDER_LIMIT
-        
-        elif method == 'trigger':
-            order_type = Order.ORDER_STOP
-        
-        elif method == 'best-1':
-            # limit as first taker price : first ask price in long, first bid price in short
-            order_type = Order.ORDER_LIMIT
-            limit_price = strategy_trader.instrument.open_exec_price(direction)
+        strategy_trader = self._strategy_traders.get(market_id)
+        if strategy_trader:
+            Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, market_id), view='content')
 
-        elif method == 'best-2':
-            # limit as first maker price + current spread : second ask price in long, second bid price in short
-            order_type = Order.ORDER_LIMIT
-            limit_price = strategy_trader.instrument.open_exec_price(direction) + strategy_trader.instrument.market_spread * direction
+            # retrieve the trade and apply the modification
+            result = func(strategy_trader, data)
 
-        elif method == 'best+1':
-            # limit as first maker price : first bid price in long, first ask price in short
-            order_type = Order.ORDER_LIMIT
-            limit_price = strategy_trader.instrument.open_exec_price(direction, True)
-
-        elif method == 'best+2':
-            # limit as first maker price + current spread : second bid price in long, second ask price in short
-            order_type = Order.ORDER_LIMIT
-            limit_price = strategy_trader.instrument.open_exec_price(direction, True) - strategy_trader.instrument.market_spread * direction
-
-        else:
-            order_type = Order.ORDER_MARKET
-
-        order_quantity = 0.0
-
-        trader = self.trader()
-
-        # need a valid price to compute the quantity
-        price = limit_price or strategy_trader.instrument.open_exec_price(direction)
-        trade = None
-
-        if price <= 0.0:
-            results['error'] = True
-            results['messages'].append("Not price found for %s" % (strategy_trader.instrument.market_id,))
-            return results
-
-        if strategy_trader.instrument.has_spot and not margin_trade:
-            # market support spot and margin option is not defined
-            trade = StrategyAssetTrade(timeframe)
-
-            # ajust max quantity according to free asset of quote, and convert in asset base quantity
-            if trader.has_asset(strategy_trader.instrument.quote):
-                qty = strategy_trader.instrument.trade_quantity*quantity_rate
-
-                if trader.has_quantity(strategy_trader.instrument.quote, qty):
-                    order_quantity = strategy_trader.instrument.adjust_quantity(qty / price)  # and adjusted to 0/max/step
+            if result:
+                if result['error']:
+                    Terminal.inst().info(result['messages'][0], view='status')
                 else:
-                    results['error'] = True
-                    results['messages'].append("Not enought free quote asset %s, has %s but need %s" % (
-                            strategy_trader.instrument.quote,
-                            strategy_trader.instrument.format_quantity(trader.asset(strategy_trader.instrument.quote).free),
-                            strategy_trader.instrument.format_quantity(qty)))
+                    Terminal.inst().info("Done", view='status')
 
-        elif strategy_trader.instrument.has_margin and strategy_trader.instrument.has_position:
-            trade = StrategyPositionTrade(timeframe)
+                for message in result['messages']:
+                    Terminal.inst().message(message, view='content')
 
-            if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
-            else:
-                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+            return result
 
-            if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
-                results['error'] = True
-                results['messages'].append("Not enought margin, need %s" % (trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
+        return None
 
-        elif strategy_trader.instrument.has_margin and strategy_trader.instrument.indivisible_position:
-            trade = StrategyIndMarginTrade(timeframe)
+    def trade_command(self, label, data, func):
+        # manually trade modify a trade (add/remove an operation)
+        market_id = data.get('market-id')
 
-            if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
-            else:
-                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+        strategy_trader = self._strategy_traders.get(market_id)
+        if strategy_trader:
+            Terminal.inst().notice("Trade %s for strategy %s - %s" % (label, self.name, self.identifier), view='content')
 
-            if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
-                results['error'] = True
-                results['messages'].append("Not enought margin, need %s" % (trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
+            # retrieve the trade and apply the modification
+            result = func(strategy_trader, data)
 
-        elif strategy_trader.instrument.has_margin and not strategy_trader.instrument.indivisible_position and not strategy_trader.instrument.has_position:
-            trade = StrategyMarginTrade(timeframe)
-
-            if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
-            else:
-                order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
-
-            if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
-                results['error'] = True
-                results['messages'].append("Not enought margin, need %s" % (trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
-
-        else:
-            results['error'] = True
-            results['messages'].append("Unsupported market type")
-
-        if order_quantity <= 0 or order_quantity * price < strategy_trader.instrument.min_notional:
-            results['error'] = True
-            results['messages'].append("Min notional not reached (%s)" % strategy_trader.instrument.min_notional)
-
-        if results['error']:
-            return results
-
-        order_price = strategy_trader.instrument.adjust_price(price)
-
-        #
-        # compute stop-loss and take-profit price depending of their respective mode
-        #
-
-        if stop_loss_price_mode == "percent":
-            if direction > 0:
-                stop_loss = strategy_trader.instrument.adjust_price(order_price * (1.0 - stop_loss * 0.01))
-            elif direction < 0:
-                stop_loss = strategy_trader.instrument.adjust_price(order_price * (1.0 + stop_loss * 0.01))
-
-        elif stop_loss_price_mode == "pip":
-            if direction > 0:
-                stop_loss = strategy_trader.instrument.adjust_price(order_price - stop_loss * strategy_trader.instrument.value_per_pip)
-            elif direction < 0:
-                stop_loss = strategy_trader.instrument.adjust_price(order_price + stop_loss * strategy_trader.instrument.value_per_pip)
-
-        if take_profit_price_mode == "percent":
-            if direction > 0:
-                take_profit = strategy_trader.instrument.adjust_price(order_price * (1.0 + take_profit * 0.01))
-            elif direction < 0:
-                take_profit = strategy_trader.instrument.adjust_price(order_price * (1.0 - take_profit * 0.01))
-
-        elif take_profit_price_mode == "pip":
-            if direction > 0:
-                take_profit = strategy_trader.instrument.adjust_price(order_price + take_profit * strategy_trader.instrument.value_per_pip)
-            elif direction < 0:
-                take_profit = strategy_trader.instrument.adjust_price(order_price - take_profit * strategy_trader.instrument.value_per_pip)
-
-        #
-        # check stop-loss and take-profit and reject if not consistent
-        #
-
-        if stop_loss < 0.0:
-            results['error'] = True
-            results['messages'].append("Rejected trade on %s:%s because the stop-loss is negative" % (self.identifier, strategy_trader.instrument.market_id))
-
-            return results
-
-        if take_profit < 0.0:
-            results['error'] = True
-            results['messages'].append("Rejected trade on %s:%s because the take-profit is negative" % (self.identifier, strategy_trader.instrument.market_id))
-
-            return results
-
-        if direction > 0:
-            if stop_loss > order_price:
-                results['error'] = True
-                results['messages'].append("Rejected trade on %s:%s because the stop-loss is above the entry price" % (self.identifier, strategy_trader.instrument.market_id))
-
-                return results
-
-            if take_profit < order_price:
-                results['error'] = True
-                results['messages'].append("Rejected trade on %s:%s because the take-profit is below the entry price" % (self.identifier, strategy_trader.instrument.market_id))
-
-                return results
-
-        elif direction < 0:
-            if stop_loss < order_price:
-                results['error'] = True
-                results['messages'].append("Rejected trade on %s:%s because the stop-loss is below the entry price" % (self.identifier, strategy_trader.instrument.market_id))
-
-                return results
-
-            if take_profit > order_price:
-                results['error'] = True
-                results['messages'].append("Rejected trade on %s:%s because the take-profit is above the entry price" % (self.identifier, strategy_trader.instrument.market_id))
-
-                return results
-
-        if trade:
-            # user managed trade
-            trade.set_user_trade()
-
-            if entry_timeout:
-                # entry timeout expiration defined (could be overrided by trade context if specified)
-                trade.entry_timeout = entry_timeout
-
-            if context:
-                if not strategy_trader.set_trade_context(trade, context):
-                    # add an error result message
-                    results['error'] = True
-                    results['messages'].append("Rejected trade on %s:%s because the context was not found" % (self.identifier, strategy_trader.instrument.market_id))
-
-                    return results
-
-            # the new trade must be in the trades list if the event comes before, and removed after only it failed
-            strategy_trader.add_trade(trade)
-
-            if trade.open(trader, strategy_trader.instrument, direction, order_type, order_price, order_quantity,
-                          take_profit, stop_loss, leverage=leverage, hedging=hedging):
-
-                # notifications and stream
-                strategy_trader.notify_trade_entry(self.timestamp, trade)
-
-                # add a success result message
-                results['messages'].append("Created trade %i on %s:%s" % (trade.id, self.identifier, strategy_trader.instrument.market_id))
-            else:
-                strategy_trader.remove_trade(trade)
-
-                # add an error result message
-                results['error'] = True
-                results['messages'].append("Rejected trade on %s:%s" % (self.identifier, strategy_trader.instrument.market_id))
-
-        return results
-
-    def cmd_trade_exit(self, strategy_trader, data):
-        """
-        Exit an existing trade according data on given strategy_trader.
-
-        @note If trade-id is -1 assume the last trade.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        # retrieve the trade
-        trade_id = -1
-
-        try:
-            trade_id = int(data.get('trade-id'))
-        except Exception:
-            results['error'] = True
-            results['messages'].append("Invalid trade identifier")
-
-        if results['error']:
-            return results
-
-        trade = None
-
-        trader = self.trader()
-
-        with strategy_trader._mutex:
-            if trade_id == -1 and strategy_trader.trades:
-                trade = strategy_trader.trades[-1]
-            else:
-                for t in strategy_trader.trades:
-                    if t.id == trade_id:
-                        trade = t
-                        break
-
-            if trade:
-                price = strategy_trader.instrument.close_exec_price(trade.direction)
-
-                if not trade.is_active():
-                    # cancel open
-                    trade.cancel_open(trader, strategy_trader.instrument)
-
-                    # add a success result message
-                    results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, self.identifier, strategy_trader.instrument.market_id))
+            if result:
+                if result['error']:
+                    Terminal.inst().info(result['messages'][0], view='status')
                 else:
-                    # close or cancel
-                    trade.close(trader, strategy_trader.instrument)
+                    Terminal.inst().info("Done", view='status')
 
-                    # add a success result message
-                    results['messages'].append("Close trade %i on %s:%s at market price %s" % (
-                        trade.id, self.identifier, strategy_trader.instrument.market_id, strategy_trader.instrument.format_price(price)))
-            else:
-                results['error'] = True
-                results['messages'].append("Invalid trade identifier %i" % trade_id)
+                for message in result['messages']:
+                    Terminal.inst().message(message, view='content')
 
-        return results
+                return result
 
-    def cmd_trade_clean(self, strategy_trader, data):
-        """
-        Clean an existing trade according data on given strategy_trader.
-
-        @note If trade-id is -1 assume the last trade.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        # retrieve the trade
-        trade_id = -1
-
-        try:
-            trade_id = int(data.get('trade-id'))
-        except Exception:
-            results['error'] = True
-            results['messages'].append("Invalid trade identifier")
-
-        if results['error']:
-            return results
-
-        trade = None
-        trader = self.trader()
-
-        with strategy_trader._mutex:
-            if trade_id == -1 and strategy_trader.trades:
-                trade = strategy_trader.trades[-1]
-            else:
-                for t in strategy_trader.trades:
-                    if t.id == trade_id:
-                        trade = t
-                        break
-
-            if trade:
-                # remove orders
-                trade.remove(trader, strategy_trader.instrument)
-
-                # and the trade, don't keet it for history because unqualifiable
-                strategy_trader.remove_trade(trade)
-
-                # add a success result message
-                results['messages'].append("Force remove trade %i on %s:%s" % (trade.id, self.identifier, strategy_trader.instrument.market_id))
-            else:
-                results['error'] = True
-                results['messages'].append("Invalid trade identifier %i" % trade_id)
-
-        return results
-
-    def cmd_trade_modify(self, strategy_trader, data):
-        """
-        Modify a trade according data on given strategy_trader.
-
-        @note If trade-id is -1 assume the last trade.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        # retrieve the trade
-        trade_id = -1
-        action = ""
-
-        try:
-            trade_id = int(data.get('trade-id'))
-            action = data.get('action')
-        except Exception:
-            results['error'] = True
-            results['messages'].append("Invalid trade identifier")
-
-        if results['error']:
-            return results
-
-        trade = None
-
-        with strategy_trader._mutex:
-            if trade_id == -1 and strategy_trader.trades:
-                trade = strategy_trader.trades[-1]
-            else:
-                for t in strategy_trader.trades:
-                    if t.id == trade_id:
-                        trade = t
-                        break
-
-            if trade:
-                # modify SL
-                if action == 'stop-loss' and 'stop-loss' in data and type(data['stop-loss']) in (float, int):
-                    if data['stop-loss'] > 0.0:
-                        if trade.has_stop_order() or data.get('force', False):
-                            trade.modify_stop_loss(self.trader(), strategy_trader.instrument, data['stop-loss'])
-                        else:
-                            trade.sl = data['stop-loss']
-                    else:
-                        results['error'] = True
-                        results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)
-
-                # modify TP
-                elif action == 'take-profit' and 'take-profit' in data and type(data['take-profit']) in (float, int):
-                    if data['take-profit'] > 0.0:
-                        if trade.has_limit_order() or data.get('force', False):
-                            trade.modify_take_profit(self.trader(), strategy_trader.instrument, data['take-profit'])
-                        else:
-                            trade.tp = data['take-profit']
-                    else:
-                        results['error'] = True
-                        results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)
-
-                # add operation
-                elif action == 'add-op':
-                    op_name = data.get('operation', "")
-
-                    if op_name in self.service.tradeops:
-                        try:
-                            # instanciate the operation
-                            operation = self.service.tradeops[op_name]()
-
-                            # and define the parameters
-                            operation.init(data)
-
-                            if operation.check(trade):
-                                # append the operation to the trade
-                                trade.add_operation(operation)
-                            else:
-                                results['error'] = True
-                                results['messages'].append("Operation checking error %s on trade %i" % (op_name, trade.id))
-
-                        except Exception as e:
-                            results['error'] = True
-                            results['messages'].append(repr(e))
-                    else:
-                        results['error'] = True
-                        results['messages'].append("Unsupported operation %s on trade %i" % (op_name, trade.id))
-
-                # remove operation
-                elif action == 'del-op':
-                    trade_operation_id = -1
-
-                    if 'operation-id' in data and type(data.get('operation-id')) is int:
-                        trade_operation_id = data['operation-id']
-
-                    if not trade.remove_operation(trade_operation_id):
-                        results['error'] = True
-                        results['messages'].append("Unknown operation-id on trade %i" % trade.id)
-                else:
-                    # unsupported action
-                    results['error'] = True
-                    results['messages'].append("Unsupported action on trade %i" % trade.id)
-
-            else:
-                results['error'] = True
-                results['messages'].append("Invalid trade identifier %i" % trade_id)
-
-        return results
-
-    def cmd_trade_assign(self, strategy_trader, data):
-        """
-        Assign a free quantity of an asset to a newly created trade according data on given strategy_trader.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        # command data
-        direction = data.get('direction', Order.LONG)
-        entry_price = data.get('entry-price', 0.0)
-        quantity = data.get('quantity', 0.0)
-        stop_loss = data.get('stop-loss', 0.0)
-        take_profit = data.get('take-profit', 0.0)
-        timeframe = data.get('timeframe', Instrument.TF_4HOUR)
-
-        if quantity <= 0.0:
-            results['messages'].append("Missing or empty quantity.")
-            results['error'] = True
-
-        if entry_price <= 0:
-            results['messages'].append("Invalid entry price.")
-            results['error'] = True
-
-        if stop_loss and stop_loss > entry_price:
-            results['messages'].append("Stop-loss price must be lesser than entry price.")
-            results['error'] = True
-
-        if take_profit and take_profit < entry_price:
-            results['messages'].append("Take-profit price must be greater then entry price.")
-            results['error'] = True
-
-        if direction != Order.LONG:
-            results['messages'].append("Only trade long direction is allowed.")
-            results['error'] = True
-
-        trader = self.trader()
-
-        if not trader.has_quantity(strategy_trader.instrument.base, quantity):
-            results['messages'].append("No enought free asset quantity.")
-            results['error'] = True
-
-        # @todo trade type
-        if not strategy_trader.instrument.has_spot:
-            results['messages'].append("Only allowed on a spot market.")
-            results['error'] = True
-
-        if results['error']:
-            return results
-
-        trade = StrategyAssetTrade(timeframe)
-
-        # user managed trade
-        trade.set_user_trade()
-
-        trade._entry_state = StrategyAssetTrade.STATE_FILLED
-        trade._exit_state = StrategyAssetTrade.STATE_NEW
-        
-        trade.dir = Order.LONG
-        trade.op = entry_price
-        trade.oq = quantity
-
-        trade.tp = take_profit
-        trade.sl = stop_loss        
-
-        trade.eot = time.time()
-
-        trade.aep = entry_price
-
-        trade.e = quantity
-
-        strategy_trader.add_trade(trade)
-
-        results['messages'].append("Assigned trade %i on %s:%s" % (trade.id, self.identifier, strategy_trader.instrument.market_id))
-
-        return results
-
-    def cmd_trade_info(self, strategy_trader, data):
-        """
-        Get trade info according data on given strategy_trader.
-
-        @note If trade-id is -1 assume the last trade.
-        """        
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        trade_id = -1
-
-        try:
-            trade_id = int(data.get('trade-id'))
-        except Exception:
-            results['error'] = True
-            results['messages'].append("Invalid trade identifier")
-
-        if results['error']:
-            return results
-
-        trade = None
-
-        with strategy_trader._mutex:
-            if trade_id == -1 and strategy_trader.trades:
-                trade = strategy_trader.trades[-1]
-            else:
-                for t in strategy_trader.trades:
-                    if t.id == trade_id:
-                        trade = t
-                        break
-
-            if trade:
-                results['messages'].append("Trade %i, list %i operations:" % (trade.id, len(trade.operations)))
-
-                # @todo or as table using operation.parameters() dict
-                for operation in trade.operations:
-                    results['messages'].append(" - #%i: %s" % (operation.id, operation.str_info()))
-            else:
-                results['error'] = True
-                results['messages'].append("Invalid trade identifier %i" % trade_id)
-
-        return results
-
-    def cmd_trade_close_all(self, strategy_trader, data):
-        """
-        Close any active trade for the strategy trader, at market, deleted related orders.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        # @todo
-
-        return results
-
-    def cmd_trade_sell_all(self, strategy_trader, data):
-        """
-        Assign a free quantity of an asset to a newly created trade according data on given strategy_trader.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        # @todo
-
-        return results
-
-    def cmd_strategy_trader_modify(self, strategy_trader, data):
-        """
-        Modify a strategy-trader state, a region or an alert.
-        """        
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        action = ""
-        expiry = 0
-        countdown = -1
-        timeframe = 0
-
-        with strategy_trader._mutex:
-            try:
-                action = data.get('action')
-            except Exception:
-                results['error'] = True
-                results['messages'].append("Invalid trader action")
-
-            if action == "add-region":
-                region_name = data.get('region', "")
-
-                try:
-                    stage = int(data.get('stage', 0))
-                    direction = int(data.get('direction', 0))
-                    created = float(data.get('created', 0.0))
-                    expiry = float(data.get('expiry', 0.0))
-
-                    if 'timeframe' in data and type(data['timeframe']) is str:
-                        timeframe = timeframe_from_str(data['timeframe'])
-
-                except ValueError:
-                    results['error'] = True
-                    results['messages'].append("Invalid parameters")
-
-                if not results['error']:
-                    if region_name in self.service.regions:
-                        try:
-                            # instanciate the region
-                            region = self.service.regions[region_name](created, stage, direction, timeframe)
-
-                            if expiry:
-                                region.set_expiry(expiry)
-
-                            # and defined the parameters
-                            region.init(data)
-
-                            if region.check():
-                                # append the region to the strategy trader
-                                strategy_trader.add_region(region)
-                            else:
-                                results['error'] = True
-                                results['messages'].append("Region checking error %s" % (region_name,))
-
-                        except Exception as e:
-                            results['error'] = True
-                            results['messages'].append(repr(e))
-                    else:
-                        results['error'] = True
-                        results['messages'].append("Unsupported region %s" % (region_name,))
-
-            elif action == "del-region":
-                try:
-                    region_id = int(data.get('region-id', -1))
-                except Exception:
-                    results['error'] = True
-                    results['messages'].append("Invalid region identifier format")
-
-                if region_id >= 0:
-                    if not strategy_trader.remove_region(region_id):
-                        results['messages'].append("Invalid region identifier")
-
-            elif action == 'add-alert':
-                alert_name = data.get('alert', "")
-
-                try:
-                    created = float(data.get('created', 0.0))
-                    expiry = float(data.get('expiry', 0.0))
-                    countdown = int(data.get('countdown', -1))
-                    timeframe = 0
-
-                    if 'timeframe' in data:
-                        if type(data['timeframe']) is str:
-                            timeframe = timeframe_from_str(data['timeframe'])
-                        elif type(data['timeframe']) in (float, int):
-                            timeframe = data['timeframe']
-
-                except ValueError:
-                    results['error'] = True
-                    results['messages'].append("Invalid parameters")
-
-                if not results['error']:
-                    if alert_name in self.service.alerts:
-                        try:
-                            # instanciate the alert
-                            alert = self.service.alerts[alert_name](created, timeframe)
-                            alert.set_countdown(countdown)
-
-                            if expiry:
-                                alert.set_expiry(expiry)                         
-
-                            # and defined the parameters
-                            alert.init(data)
-
-                            if alert.check():
-                                # append the alert to the strategy trader
-                                strategy_trader.add_alert(alert)
-                            else:
-                                results['error'] = True
-                                results['messages'].append("Alert checking error %s" % (alert_name,))
-
-                        except Exception as e:
-                            results['error'] = True
-                            results['messages'].append(repr(e))
-                    else:
-                        results['error'] = True
-                        results['messages'].append("Unsupported alert %s" % (alert_name,))
-
-            elif action == 'del-alert':
-                try:
-                    alert_id = int(data.get('alert-id', -1))
-                except Exception:
-                    results['error'] = True
-                    results['messages'].append("Invalid alert identifier format")
-
-                if alert_id >= 0:
-                    if not strategy_trader.remove_alert(alert_id):
-                        results['messages'].append("Invalid alert identifier")
-
-            elif action == "enable":
-                if not strategy_trader.activity:
-                    strategy_trader.set_activity(True)
-                    results['messages'].append("Enabled strategy trader for market %s" % strategy_trader.instrument.market_id)
-                else:
-                    results['messages'].append("Already enabled strategy trader for market %s" % strategy_trader.instrument.market_id)
-
-            elif action == "disable":
-                if strategy_trader.activity:
-                    strategy_trader.set_activity(False)
-                    results['messages'].append("Disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
-                else:
-                    results['messages'].append("Already disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
-
-            elif action == "set-quantity":
-                quantity = 0.0
-                max_factor = 1
-
-                try:
-                    quantity = float(data.get('quantity', -1))
-                except Exception:
-                    results['error'] = True
-                    results['messages'].append("Invalid quantity")
-
-                try:
-                    max_factor = int(data.get('max-factor', 1))
-                except Exception:
-                    results['error'] = True
-                    results['messages'].append("Invalid max factor")
-
-                if quantity < 0.0:
-                    results['error'] = True
-                    results['messages'].append("Quantity must be greater than zero")
-
-                if max_factor <= 0:
-                    results['error'] = True
-                    results['messages'].append("Max factor must be greater than zero")
-
-                if quantity > 0.0 and strategy_trader.instrument.trade_quantity != quantity:
-                    strategy_trader.instrument.trade_quantity = quantity
-                    results['messages'].append("Modified trade quantity for %s to %s" % (strategy_trader.instrument.market_id, quantity))
-
-                if max_factor > 0 and strategy_trader.instrument.trade_max_factor != max_factor:
-                    strategy_trader.instrument.trade_max_factor = max_factor
-                    results['messages'].append("Modified trade quantity max factor for %s to %s" % (strategy_trader.instrument.market_id, max_factor))
-
-            else:
-                results['error'] = True
-                results['messages'].append("Invalid action")
-
-        return results
-
-    def cmd_strategy_trader_info(self, strategy_trader, data):
-        """
-        Get strategy-trader info or specific element if detail defined.
-        """        
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        detail = data.get('detail', "")
-        region_id = -1
-
-        if detail == "region":
-            try:
-                region_id = int(data.get('region-id'))
-            except Exception:
-                results['error'] = True
-                results['messages'].append("Invalid region identifier")
-
-        if results['error']:
-            return results
-
-        trade = None
-
-        with strategy_trader._mutex:
-            if detail == "region":
-                if region_id >= 0:
-                    region = None
-
-                    for r in strategy_trader.regions:
-                        if r.id == region_id:
-                            region = r
-                            break
-
-                    if region:
-                        results['messages'].append("Stragegy trader %s region details:" % strategy_trader.instrument.market_id)
-                        results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
-                    else:
-                        results['error'] = True
-                        results['messages'].append("Invalid region identifier %i" % region_id)
-
-                else:
-                    results['messages'].append("Stragegy trader %s, list %i regions:" % (strategy_trader.instrument.market_id, len(strategy_trader.regions)))
-
-                    for region in strategy_trader.regions:
-                        results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
-
-            elif detail == "alert":
-                # @todo
-                pass
-
-            elif detail == "status":
-                # status
-                results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
-
-            elif not detail or detail == "details":
-                # no specific detail
-                results['messages'].append("Stragegy trader %s details:" % strategy_trader.instrument.market_id)
-
-                # status
-                results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
-
-                # quantity
-                results['messages'].append("Trade quantity : %s, max factor is x%s, mode is %s" % (
-                    strategy_trader.instrument.trade_quantity,
-                    strategy_trader.instrument.trade_max_factor,
-                    strategy_trader.instrument.trade_quantity_mode_to_str()
-                ))
-
-                # regions
-                results['messages'].append("List %i regions:" % len(strategy_trader.regions))
-
-                for region in strategy_trader.regions:
-                    results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
-            else:
-                results['error'] = True
-                results['messages'].append("Invalid detail type name %s" % detail)
-
-        return results
-
-    def cmd_trader_info(self, data):
-        # info on the strategy
-        if 'market-id' in data:
-            with self._mutex:
-                strategy_trader = self._strategy_traders.get(data['market-id'])
-                if strategy_trader:
-                    Terminal.inst().message("Market %s of strategy %s identified by \\2%s\\0 is %s. Trade quantity is %s x%s" % (
-                        data['market-id'], self.name, self.identifier, "active" if strategy_trader.activity else "paused",
-                            strategy_trader.instrument.trade_quantity, strategy_trader.instrument.trade_max_factor),
-                            view='content')
-        else:
-            Terminal.inst().message("Strategy %s is identified by \\2%s\\0" % (self.name, self.identifier), view='content')
-
-            enabled = []
-            disabled = []
-
-            with self._mutex:
-                for k, strategy_trader in self._strategy_traders.items():
-                    if strategy_trader.activity:
-                        enabled.append(k)
-                    else:
-                        disabled.append(k)
-
-            if enabled:
-                enabled = [e if i%10 else e+'\n' for i, e in enumerate(enabled)]
-                Terminal.inst().message("Enabled instruments (%i): %s" % (len(enabled), " ".join(enabled)), view='content')
-
-            if disabled:
-                disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
-                Terminal.inst().message("Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled)), view='content')
-
-    def cmd_strategy_trader_stream(self, strategy_trader, data):
-        """
-        Stream subscribe/unsubscribe to a market.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }      
-
-        timeframe = data.get('timeframe', None)
-        action = data.get('action', "")
-        typename = data.get('type', "")
-
-        if action == "subscribe":
-            if typename == "chart":
-                strategy_trader.subscribe_stream(timeframe_from_str(timeframe))
-                results['messages'].append("Subscribed for stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "default"))
-            elif typename == "info":
-                strategy_trader.subscribe_info()
-                results['messages'].append("Subscribed for stream info %s %s" % (self.identifier, strategy_trader.instrument.market_id))
-            else:
-                # unsupported type
-                results['error'] = True
-                results['messages'].append("Unsupported stream %s for trader %s" % (typename, strategy_trader.instrument.market_id))
-
-        elif action == "unsubscribe":
-            if typename == "chart":            
-                strategy_trader.unsubscribe_stream(timeframe_from_str(timeframe))
-                results['messages'].append("Unsubscribed from stream %s %s %s" % (self.identifier, strategy_trader.instrument.market_id, timeframe or "any"))
-            elif typename == "info":
-                strategy_trader.unsubscribe_info()
-                results['messages'].append("Unsubscribed from stream info %s %s" % (self.identifier, strategy_trader.instrument.market_id))
-            else:
-                # unsupported type
-                results['error'] = True
-                results['messages'].append("Unsupported stream %s for trader %s" % (typename, strategy_trader.instrument.market_id))
-
-        else:
-             # unsupported action
-            results['error'] = True
-            results['messages'].append("Unsupported stream action %s for trader %s" % (action, strategy_trader.instrument.market_id))
-
-        return results
+        return None
 
     #
     # static
@@ -2562,9 +1360,9 @@ class Strategy(Runnable):
             timeframe.setdefault('history', 0)
 
             parameters.setdefault('timeframe', None)
-            
-            parameters.setdefault('update-at-close', True)
-            parameters.setdefault('signal-at-close', True)
+
+            parameters.setdefault('update-at-close', False)
+            parameters.setdefault('signal-at-close', False)
 
             convert(timeframe, 'timeframe')
 

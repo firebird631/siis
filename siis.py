@@ -201,11 +201,15 @@ def application(argv):
                     options['paper-mode'] = True
                     options['backtesting'] = True
                 elif arg.startswith('--timestep='):
-                    # backesting timestep, default is 60 second
+                    # backtesting timestep, default is 60 second
                     options['timestep'] = float(arg.split('=')[1])
                 elif arg.startswith('--time-factor='):
                     # backtesting time-factor
                     options['time-factor'] = float(arg.split('=')[1])
+
+                elif arg == '--preprocess':
+                    # preprocess the indicators for the next backtest or live running
+                    options['preprocess'] = True
 
                 elif arg.startswith('--filename='):
                     # used with import or export
@@ -275,9 +279,10 @@ def application(argv):
                 sys.exit(-1)
 
     #
-    # binarizer mode
+    # tool mode
     #
 
+    # @todo merge as Tool model
     if options.get('tool') == "binarizer":
         if options.get('market') and options.get('from') and options.get('to') and options.get('broker'):
             from tools.binarizer import do_binarizer
@@ -287,10 +292,7 @@ def application(argv):
 
         sys.exit(0)
 
-    #
-    # fetcher mode
-    #
-
+    # @todo merge as Tool model
     if options.get('tool') == "fetcher":
         if options.get('market') and options.get('broker'):
             from tools.fetcher import do_fetcher
@@ -300,10 +302,7 @@ def application(argv):
 
         sys.exit(0)
 
-    #
-    # optimizer mode
-    #
-
+    # @todo merge as Tool model
     if options.get('tool') == "optimizer":
         if options.get('market') and options.get('from') and options.get('broker'):
             from tools.optimizer import do_optimizer
@@ -313,10 +312,7 @@ def application(argv):
 
         sys.exit(0)
 
-    #
-    # rebuilder mode
-    #
-
+    # @todo merge as Tool model
     if options.get('tool') == "rebuilder":
         if options.get('market') and options.get('from') and options.get('broker') and options.get('timeframe'):
             from tools.rebuilder import do_rebuilder
@@ -326,10 +322,7 @@ def application(argv):
 
         sys.exit(0)
 
-    #
-    # exporter mode
-    #
-
+    # @todo merge as Tool model
     if options.get('tool') == "exporter":
         if options.get('market') and options.get('from') and options.get('broker') and options.get('filename'):
             from tools.exporter import do_exporter
@@ -339,10 +332,7 @@ def application(argv):
 
         sys.exit(0)
 
-    #
-    # importer mode
-    #
-
+    # @todo merge as Tool model
     if options.get('tool') == "importer":
         if options.get('filename'):
             from tools.importer import do_importer
@@ -351,10 +341,6 @@ def application(argv):
             display_cli_help()
 
         sys.exit(0)
-
-    #
-    # tool mode
-    #
 
     if options.get('tool'):
         ToolClazz = Tool.load_tool(options.get('tool'))
@@ -390,12 +376,12 @@ def application(argv):
         else:
             sys.exit(-1)
 
-    if options['identity'].startswith('-'):
-        Terminal.inst().error("First option must be the identity name")
-
     #
     # normal mode
     #
+
+    if options['identity'].startswith('-'):
+        Terminal.inst().error("First option must be the identity name")
 
     Terminal.inst().info("Starting SIIS using %s identity..." % options['identity'])
     Terminal.inst().action("- type ':q<Enter> or :quit<Enter>' to terminate")
@@ -404,6 +390,8 @@ def application(argv):
 
     if options.get('backtesting'):  
         Terminal.inst().notice("Process a backtesting.")
+    else:
+        Terminal.inst().notice("Process on real time.")
 
     if options.get('paper-mode'):
         Terminal.inst().notice("- Using paper-mode trader.")

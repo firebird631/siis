@@ -340,9 +340,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
             signal.dir = 1
             signal.p = candles[-1].close
 
-        if candles:
-            # last processed candle timestamp (from last candle is non consolidated else from the next one)
-            self.next_timestamp = candles[-1].timestamp if not candles[-1].ended else candles[-1].timestamp + self.tf
+        self.complete(candles, timestamp)
 
         return signal
 
@@ -1063,10 +1061,10 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
 
         streamer.add_member(StreamMemberSerie('end'))
 
-        streamer.next_timestamp = self.next_timestamp
+        streamer.last_timestamp = self.last_timestamp
 
     def stream(self, streamer):
-        delta = min(int((self.next_timestamp - streamer.next_timestamp) / self.tf) + 1, len(self.price.prices))
+        delta = min(int((self.last_timestamp - streamer.last_timestamp) / self.tf) + 1, len(self.price.prices))
 
         for i in range(-delta, 0, 1):
             ts = self.price.timestamp[i]
@@ -1100,4 +1098,4 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
             # publish per frame
             streamer.publish()
 
-        streamer.next_timestamp = self.next_timestamp
+        streamer.last_timestamp = self.last_timestamp

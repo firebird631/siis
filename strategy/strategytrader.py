@@ -15,9 +15,11 @@ from strategy.strategymargintrade import StrategyMarginTrade
 from strategy.strategypositiontrade import StrategyPositionTrade
 from strategy.strategytrade import StrategyTrade
 
+from strategy.indicator.models import Limits
+
 from instrument.instrument import Instrument
 
-from common.utils import timeframe_to_str
+from common.utils import timeframe_to_str, UTC
 from common.signal import Signal
 from terminal.terminal import Terminal
 
@@ -56,8 +58,17 @@ class StrategyTrader(object):
 
         self._mutex = threading.RLock()  # activity, global locker, region locker, instrument locker
         self._activity = True
-        self._bootstraping = 1    # 1 bootstrap waited, 2 bootstrap in progress, 0 normal
-        self._processing = False  # True during processing
+
+        self._limits = Limits()     # price and timestamp ranges
+
+        self._preprocessing = 1     # 1 waited, 2 to 4 in progress, 0 normal
+        self._preprocess_depth = 0  # in second, need of preprocessed data depth of history
+        self._preprocess_streamer = None       # current tick or quote streamer
+        self._preprocess_from_timestamp = 0.0  # preprocessed date from this timestamp to limit last timestamp
+
+        self._bootstraping = 1      # 1 waited, 2 in progress, 0 normal, done from loaded OHLCs history
+
+        self._processing = False   # True during processing
 
         self._trade_mutex = threading.RLock()   # trades locker
         self.trades = []
@@ -91,6 +102,10 @@ class StrategyTrader(object):
             'cont-loss': 0,    # contigous loss trades
         }
 
+    #
+    # properties
+    #
+
     @property
     def is_timeframes_based(self):
         return False
@@ -116,10 +131,42 @@ class StrategyTrader(object):
         """
         self._activity = status   
 
+    #
+    # processing
+    #
+
+    def preprocess_load_cache(self, from_date, to_date):
+        """
+        Override this method to load the cached data before performing preprocess.
+        """
+        pass
+
+    def preprocess(self, trade):
+        """
+        Override this method to preprocess trade per trade each most recent data than the cache.
+        """
+        pass
+
+    def preprocess_store_cache(self, from_date, to_date):
+        """
+        Override this method to store in cache the preprocessed data.
+        """
+        pass       
+
+    def prepare(self):
+        """
+        Prepare before entering live or backtest data stream.
+        Prepare indicators, signals states and flags.
+        """
+        pass
+
     def bootstrap(self, timestamp):
         """
-        Override this method to do her all the initial strategy work using the preloaded OHLCs history.
+        Override this method to do all the initial strategy work using the preloaded OHLCs history.
         No trade must be done here, but signal pre-state could be computed.
+
+        This is useful for strategies having pre trigger signal, in way to don't miss the comings
+        signals validations.
         """
         pass
 
@@ -1012,6 +1059,7 @@ class StrategyTrader(object):
             'market-id': self.instrument.market_id,
             'activity': self._activity,
             'bootstraping': self._bootstraping == 2,
+            'preprocessing': self._preprocessing == 2,
             'ready': self.instrument.ready(),
             'members': [],
             'data': [],

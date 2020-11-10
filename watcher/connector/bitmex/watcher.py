@@ -184,18 +184,19 @@ class BitMexWatcher(Watcher):
             if self._initial_fetch:
                 logger.info("%s prefetch for %s" % (self.name, market_id))
 
-                for timeframe, depth in ohlc_depths.items():
-                    if timeframe >= Instrument.TF_1M and timeframe <= Instrument.TF_3M:
-                        self.fetch_and_generate(market_id, Instrument.TF_1M, depth * 3, Instrument.TF_3M)
-                    
-                    elif timeframe >= Instrument.TF_5M and timeframe <= Instrument.TF_30M:
-                        self.fetch_and_generate(market_id, Instrument.TF_5M, depth * 6, Instrument.TF_30M)
-                    
-                    elif timeframe >= Instrument.TF_1H and timeframe <= Instrument.TF_4H:
-                        self.fetch_and_generate(market_id, Instrument.TF_1H, depth * 4, Instrument.TF_4H)
-                    
-                    elif timeframe >= Instrument.TF_1D and timeframe <= Instrument.TF_1W:
-                        self.fetch_and_generate(market_id, Instrument.TF_1D, depth * 7, Instrument.TF_1W)
+                if ohlc_depths:
+                    for timeframe, depth in ohlc_depths.items():
+                        if timeframe >= Instrument.TF_1M and timeframe <= Instrument.TF_3M:
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth * 3, Instrument.TF_3M)
+                        
+                        elif timeframe >= Instrument.TF_5M and timeframe <= Instrument.TF_30M:
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth * 6, Instrument.TF_30M)
+                        
+                        elif timeframe >= Instrument.TF_1H and timeframe <= Instrument.TF_4H:
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth * 4, Instrument.TF_4H)
+                        
+                        elif timeframe >= Instrument.TF_1D and timeframe <= Instrument.TF_1W:
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth * 7, Instrument.TF_1W)
 
                 if tick_depth:
                     self.fetch_ticks(market_id, tick_depth)

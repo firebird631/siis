@@ -1,17 +1,25 @@
-###################
-# Some TODOs here #
-###################
-
-
 ###############
 # Discussions #
 ###############
 
-IG on a 10k candle/mois on en a besoin de 47 à chaque démarrage pour se synchroniser,
-donc cela permet 21 démarrages par mois avec 10 symboles, ce qui est large même si on relance 1x ou 2 par semaine.
-Sinon il faut faire la synchro initiale depuis une autre source, mais laquelle ?
+Limitations de IG des 10k candle/mois en fetch :
+    - selon la stratégie on en a besoin au moins de 47 à chaque démarrage pour se synchroniser,
+        - cela permet 21 démarrages par mois avec 10 symboles, ce qui est large même si on relance 1x ou 2 par semaine.
+    - besoin de synchro depuis les imports MT5 ou d'une autre source CFD
+        - ou mieux depuis une source data avec des volumes futures pour indices, metals, forex
 
 Distance et timeout-distance si en DIST doivent être supporté par distance_type et timeout_distance_type dans les methode de SL/TP et dynamiques.
+
+Bootstrap et Preprocess risque de se recouvrer dans certains cas :
+    - comment eviter cela si la stratégie execute les 2 méthodes ?
+    - le bootstrap devrait être retiré au profit d'une initialisation des signaux
+        - utilisant le depth normal, pas d'history comme ça
+            - on a bourricot, firebird et scalpspectre qui bootstrap
+                - bourricot : c'est juste pour détecter les pullback, ça peu se faire sans état
+                - scalpspectre : pas besoin car c'est pour du scalp et est abandonné
+                - firebird : pareil que pour bourricot on peu calculer les flags autrement
+            => une méthode bootstrap mais qui ne rejout pas les candles :
+                - ce qui en plus évite les imprecisions de ce pseudo replay
 
 
 ############
@@ -35,9 +43,8 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
     - charting OHLC et ticks (streaming) + performance
     - goto charting historique sur un trade passé
     - récupération des trades historiques à la connexion (ou reformater le format de rapport avec les dumps, donc revoir la table cli)
-    - reverse trade
     - details trade avec modal
-    - modify SL/TP active trade (en cours) + DSL
+    - helper pour le DSL
     - session expiry message to renew
     - active alerts prefetch à la connexion, WS d'update et de delete (à chaque trigger countdown peu changer)
     - ticker WS, basé sur quoi ? trader ticker ? strategy instrument ?
@@ -46,33 +53,9 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
     - copy de signal
     - toggle audio and save in cookie
 
-#113 trade manual sur best1 price, qui prend le limit bid sur long ou limit ofr sur short
-
 #104 decouper les commande de strategy par fichier dans command/
 
-#107 Optimisation des trades :
-    - Le signal doit être annulé si le prix dépasse (long) celui de la réintégration de la BB (inverse pour short)
-    - prix de TP :
-        1) on a une MA20 50 100 ou 200 dans la bollinger, on prend la plus éloignée qui est dans la BB
-        2) si pas assez loin ou en dehors, on cherche la tenkan (si assez loin du prix)
-        3) on prend le précédent ATR le plus loin dans la BB ou le en cours si rien d'autre
-        4) fixed-pct ou fixed-distance si rien d'autre
-    - prix de SL :
-        1) current ATR si == bas de la bougie de break
-        2) precedent ATR en dessous de la open de la bougie de réintégration
-        3) fixed
-    - entrée :
-        1) vérifier qu'on est tjs dans la partie basse (inversement haute) de la bollinger (fait mais semble pas suffire)
-        2) vérifier le % min, limité par la bollinger opposés, qu'il soit suffisant
-        3) le corps de la bougie de confirmation doit être au moins N x epsilon
-        4) valider une entré sur une HMA20 dépassée par la close de conf
-        5) Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon continuation
-    - sortie :
-        1) TP initial, on l'écarte tant que les bougies sont rouges
-        2) Si verte que à partir du price epsilon sinon on la compte comme rouge
-        3) On coupe si signal opposé sur la même timeframe
-
-#108 Move from siis.py for the command part the rest to command_handler
+#108 Move from siis.py for the resting command part to command_handler
 
 #89 Finir les conversion des tools avec le model Tool (binarizer, fetcher, optimizer)
 
@@ -96,9 +79,6 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 #96 Valeur d'un pip pour les marchés BitMex => et corriger ainsi calcule uPnl.
     - Enfin même question avec BinanceFutures, calcule fait sur une supposition, mais par contre reste le prob pour le uPnl
 
-#109 Freeze si pas l'option --initial-fetch avec binancefutures :
-    - Est-ce que le fait qu'il n'est pas d'historique pour certaines timeframe le fasse planter ?
-
 #75 TD9 countdown a debug et tester
 
 
@@ -117,7 +97,7 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
             - pour ig.com pas de question à se poser on regarde l'état de la position, et éventuellement les ordres actifs qu'on a fetched
 
 #63 Mode backup urgency :
-    - Instance démarré à coté pour fermé les trades en profit et se fermer une fois tous les trades fermé
+    - Instance démarré à coté pour fermer les trades en profit et se fermer une fois tous les trades fermé
 
 
 #############
@@ -147,6 +127,8 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 
 #98 Fetcher, Watcher PyEX (mais c'est payant) => rapidapi-morningstar mais pas de WS
 
+#115 Fetcher, Watche polygon.io (99$ à 399$ / mois) => selon 1m ou tick, REST ou WS
+
 
 #########
 # OPTIM #
@@ -170,3 +152,24 @@ Distance et timeout-distance si en DIST doivent être supporté par distance_typ
 - Chande Kroll Stop @ref https://www.centralcharts.com/fr/forums/12-analyse-technique/1366-indicateur-chande-kroll-stop
 - Algo-G pour optimiser les paramètres
 - ML avec TensorFlow selon différent indicateurs ou encore selon des signaux prétraité (hilbert...)
+
+- Le signal doit être annulé si le prix dépasse (long) celui de la réintégration de la BB (inverse pour short)
+- prix de TP :
+    1) on a une MA20 50 100 ou 200 dans la bollinger, on prend la plus éloignée qui est dans la BB
+    2) si pas assez loin ou en dehors, on cherche la tenkan (si assez loin du prix)
+    3) on prend le précédent ATR le plus loin dans la BB ou le en cours si rien d'autre
+    4) fixed-pct ou fixed-distance si rien d'autre
+- prix de SL :
+    1) current ATR si == bas de la bougie de break
+    2) precedent ATR en dessous de la open de la bougie de réintégration
+    3) fixed
+- entrée :
+    1) vérifier qu'on est tjs dans la partie basse (inversement haute) de la bollinger (fait mais semble pas suffire)
+    2) vérifier le % min, limité par la bollinger opposés, qu'il soit suffisant
+    3) le corps de la bougie de confirmation doit être au moins N x epsilon
+    4) valider une entré sur une HMA20 dépassée par la close de conf
+    5) Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon continuation
+- sortie :
+    1) TP initial, on l'écarte tant que les bougies sont rouges
+    2) Si verte que à partir du price epsilon sinon on la compte comme rouge
+    3) On coupe si signal opposé sur la même timeframe

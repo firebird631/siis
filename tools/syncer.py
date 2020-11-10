@@ -23,7 +23,6 @@ error_logger = logging.getLogger('siis.tools.error.syncer')
 class Syncer(Tool):
     """
     Make a connection and synchronize the market data in local DB.
-    @todo merge do_syncer into this model
     """ 
 
     @classmethod

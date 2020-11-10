@@ -18,5 +18,10 @@
         "status": "load",
         "classpath": "strategy.strategies.crystalball.cbstrategy.CrystalBallStrategy",
         "options": {}
+    },
+    "sentinel": {
+        "status": "load",
+        "classpath": "strategy.strategies.sentinel.ststrategy.SentinelStrategy",
+        "options": {}
     }
 }

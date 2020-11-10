@@ -130,52 +130,11 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         exits = []
 
         for tf, sub in self.timeframes.items():
-            if not sub.next_timestamp:
-                # initial timestamp only
-                sub.next_timestamp = self.strategy.timestamp
-
             if sub.update_at_close:
                 if sub.need_update(timestamp):
                     compute = True
                 else:
                     compute = False
-            else:
-                compute = True
-
-            if compute:
-                signal = sub.process(timestamp)
-                if signal:
-                    if signal.signal == StrategySignal.SIGNAL_ENTRY:
-                        entries.append(signal)
-                    elif signal.signal == StrategySignal.SIGNAL_EXIT:
-                        exits.append(signal)
-
-        # finally sort them by timeframe ascending
-        entries.sort(key=lambda s: s.timeframe)
-        exits.sort(key=lambda s: s.timeframe)
-
-        return entries, exits
-
-    def precompute(self, timestamp):
-        """
-        Compute the signals for the differents timeframes depending of the update policy.
-        """
-        # split entries from exits signals
-        entries = []
-        exits = []
-
-        for tf, sub in self.timeframes.items():
-            if not sub.next_timestamp:
-                # initial timestamp from older candle
-                candles = self.instrument.candles(tf)
-                if candles:
-                    sub.next_timestamp = candles[-1].timestamp
-                else:
-                    sub.next_timestamp = self.strategy.timestamp
-
-            if sub.update_at_close:
-                if sub.need_update(timestamp):
-                    compute = True
             else:
                 compute = True
 

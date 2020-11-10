@@ -144,10 +144,10 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
 
         streamer.add_member(StreamMemberSerie('end'))
 
-        streamer.next_timestamp = self.next_timestamp
+        streamer.last_timestamp = self.last_timestamp
 
     def stream(self, streamer):
-        delta = min(int((self.next_timestamp - streamer.next_timestamp) / self.tf) + 1, len(self.price.prices))
+        delta = min(int((self.last_timestamp - streamer.last_timestamp) / self.tf) + 1, len(self.price.prices))
 
         for i in range(-delta, 0, 1):
             ts = self.price.timestamp[i]
@@ -180,4 +180,4 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
             # publish per frame
             streamer.publish()
 
-        streamer.next_timestamp = self.next_timestamp
+        streamer.last_timestamp = self.last_timestamp
