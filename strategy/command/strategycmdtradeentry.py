@@ -3,6 +3,9 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy command trade entry
 
+from trader.order import Order
+from instrument.instrument import Instrument
+
 from strategy.strategyassettrade import StrategyAssetTrade
 from strategy.strategymargintrade import StrategyMarginTrade
 from strategy.strategypositiontrade import StrategyPositionTrade
