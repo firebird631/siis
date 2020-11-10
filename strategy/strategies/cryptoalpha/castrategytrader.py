@@ -58,7 +58,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.sltp_timeframe = self.timeframe_from_param(params.setdefault('sltp-timeframe', '1h'))
         self.ref_timeframe = self.timeframe_from_param(params.setdefault('ref-timeframe', '1d'))
 
-        for k, timeframe in strategy.timeframes_config.items():
+        for k, timeframe in self.timeframes_parameters.items():
             if timeframe['mode'] == 'A':
                 sub = CryptoAlphaStrategySubA(self, timeframe)
                 self.timeframes[timeframe['timeframe']] = sub

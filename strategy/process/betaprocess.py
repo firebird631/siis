@@ -18,6 +18,7 @@ from instrument.instrument import Instrument
 from watcher.watcher import Watcher
 
 from strategy.indicator.models import Limits
+from strategy.strategydatafeeder import StrategyDataFeeder
 
 from database.database import Database
 
@@ -27,7 +28,7 @@ error_logger = logging.getLogger('siis.error.strategy.process.beta')
 traceback_logger = logging.getLogger('siis.traceback.strategy.process.beta')
 
 
-def install_beta_process(strategy):
+def setup_process(strategy):
     """
     Setup this beta processing to the strategy.
     Setup for live and backtesting are OHLCs history, and process trade/tick data for backtesting.

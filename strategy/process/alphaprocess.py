@@ -18,6 +18,7 @@ from instrument.instrument import Instrument
 from watcher.watcher import Watcher
 
 from strategy.indicator.models import Limits
+from strategy.strategydatafeeder import StrategyDataFeeder
 
 from database.database import Database
 
@@ -27,7 +28,7 @@ error_logger = logging.getLogger('siis.error.strategy.process.alpha')
 traceback_logger = logging.getLogger('siis.traceback.strategy.process.alpha')
 
 
-def install_alpha_process(strategy):
+def setup_process(strategy):
     """
     Setup this alpha processing to the strategy.
     Setup for live and backtesting are OHLCs history, and process trade/tick data for backtesting.
@@ -247,7 +248,7 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
         watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
         if watcher:
             # query an history of candles per timeframe
-            for k, timeframe in strategy.timeframes_config.items():
+            for k, timeframe in strategy.parameters.get('timeframes', {}).items():
                 if timeframe['timeframe'] > 0:
                     # preload some previous candles
                     l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
@@ -293,11 +294,11 @@ def alpha_setup_live(strategy):
         try:
             watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
             if watcher:
-                tfs = {tf['timeframe']: tf['history'] for tf in strategy.timeframes_config.values() if tf['timeframe'] > 0}
+                tfs = {tf['timeframe']: tf['history'] for tf in strategy.parameters.get('timeframes', {}).values() if tf['timeframe'] > 0}
                 watcher.subscribe(instrument.symbol, tfs, None, None)
 
                 # query for most recent candles per timeframe
-                for k, timeframe in strategy.timeframes_config.items():
+                for k, timeframe in strategy.parameters.get('timeframes', {}).items():
                     if timeframe['timeframe'] > 0:
                         l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                         l_to = now

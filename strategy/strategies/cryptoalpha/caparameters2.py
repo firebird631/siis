@@ -3,7 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Crypto Alpha strategy default parameters.
 
-# magic 8,13,21,55,89,13
 DEFAULT_PARAMS = {
     "reversal": True,
     "max-trades": 2,    # max number of simultaned trades for a same market

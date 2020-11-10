@@ -57,7 +57,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.sltp_max_rate = params.get('modify-max-rate', 3.0)
         self.sltp_max_timeframe = self.timeframe_from_param(params.get('modify-max-timeframe', '1m'))
 
-        for k, timeframe in strategy.timeframes_config.items():
+        for k, timeframe in self.timeframes_parameters.items():
             if timeframe['mode'] == 'A':
                 sub = BitcoinAlphaStrategySubA(self, timeframe)
                 self.timeframes[timeframe['timeframe']] = sub

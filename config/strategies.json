@@ -1,27 +1,54 @@
 {
     "cryptoalpha": {
         "status": "load",
-        "classpath": "strategy.strategies.cryptoalpha.castrategy.CryptoAlphaStrategy",
-        "options": {}
+        "classpath": "strategy.strategy.Strategy",
+        "strategytrader": {
+            "classpath": "strategy.strategies.cryptoalpha.castrategytrader.CryptoAlphaStrategyTrader"
+        },
+        "parameters": {
+            "classpath": "strategy.strategies.cryptoalpha.caparameters2"
+        },
+        "options": {
+            "processor": "strategy.process.alphaprocess"
+        }
     },
     "forexalpha": {
         "status": "load",
-        "classpath": "strategy.strategies.forexalpha.fastrategy.ForexAlphaStrategy",
-        "options": {}
+        "classpath": "strategy.strategy.Strategy",
+        "strategytrader": {
+            "classpath": "strategy.strategies.forexalpha.fastrategytrader.ForexAlphaStrategyTrader"
+        },
+        "parameters": {
+            "classpath": "strategy.strategies.forexalpha.faparameters"
+        },
+        "options": {
+            "processor": "strategy.process.alphaprocess"
+        }
     },
     "bitcoinalpha": {
         "status": "load",
-        "classpath": "strategy.strategies.bitcoinalpha.bcastrategy.BitcoinAlphaStrategy",
-        "options": {}
+        "classpath": "strategy.strategy.Strategy",
+        "strategytrader": {
+            "classpath": "strategy.strategies.bitcoinalpha.bcastrategytrader.BitcoinAlphaStrategyTrader"
+        },
+        "parameters": {
+            "classpath": "strategy.strategies.bitcoinalpha.bcaparameters"
+         },
+        "options": {
+            "processor": "strategy.process.alphaprocess"
+        }
     },
     "crystalball": {
         "status": "load",
-        "classpath": "strategy.strategies.crystalball.cbstrategy.CrystalBallStrategy",
-        "options": {}
-    },
-    "sentinel": {
-        "status": "load",
-        "classpath": "strategy.strategies.sentinel.ststrategy.SentinelStrategy",
-        "options": {}
+        "classpath": "strategy.strategy.Strategy",
+        "strategytrader": {
+            "classpath": "strategy.strategies.crystalball.cbstrategytrader.CrystalBallStrategyTrader"
+        },
+        "parameters": {
+            "classpath": "strategy.strategies.crystalball.cbparameters"
+        },
+        "options": {
+            "processor": "strategy.process.alphaprocess"
+        }
     }
 }

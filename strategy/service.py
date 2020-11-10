@@ -205,15 +205,39 @@ class StrategyService(Service):
 
             if strategy.get("status") is not None and strategy.get("status") == "load":
                 # retrieve the classname and instanciate it
-                parts = strategy.get('classpath').split('.')
+                parts = strategy.get('classpath', "strategy.strategy.Strategy").split('.')
 
                 module = import_module('.'.join(parts[:-1]))
                 Clazz = getattr(module, parts[-1])
 
+                parts = strategy.get('strategytrader', {}).get('classpath', "").split('.')
+
+                module = import_module('.'.join(parts[:-1]))
+                TraderClazz = getattr(module, parts[-1])
+
+                parts = strategy.get('parameters', {}).get('classpath', "")
+
+                module = import_module(parts)
+                DefaultParams = getattr(module, 'DEFAULT_PARAMS')
+
+                parts = strategy.get('options', {}).get('processor', 'alphaprocess')
+
+                module = import_module(parts)
+                ProcessModule = module
+
                 if not Clazz:
                     raise StrategyServiceException("Cannot load strategy %s" % k)
 
-                self._strategies[k] = Clazz
+                if not TraderClazz:
+                    raise StrategyServiceException("Cannot load strategy trader for strategy %s" % k)
+
+                if not DefaultParams:
+                    raise StrategyServiceException("Cannot load strategy DEFAULT_PARAMS for strategy %s" % k)
+
+                if not ProcessModule:
+                    raise StrategyServiceException("Cannot load strategy processor for strategy %s" % k)
+
+                self._strategies[k] = (Clazz, TraderClazz, DefaultParams, ProcessModule)
 
         if self._watcher_only:
             return
@@ -233,12 +257,18 @@ class StrategyService(Service):
         if not strategy_profile or not strategy_profile.get('name'):
             error_logger.error("Invalid strategy configuration for strategy %s. Ignored !" % strategy_profile['name'])
 
-        Clazz = self._strategies.get(strategy_profile['name'])
-        if not Clazz:
+        strategy = self._strategies.get(strategy_profile['name'])
+        if not strategy:
             error_logger.error("Unknown strategy name %s. Ignored !" % strategy_profile['name'])
             return
 
-        strategy_inst = Clazz(self, self.watcher_service, self.trader_service, self._profile_config, parameters)
+        strategy_inst = strategy[0](
+                strategy_profile['name'],  # strategy name
+                self, self.watcher_service, self.trader_service,  # services
+                strategy[1],  #  strategy trader clazz
+                self._profile_config, default_parameters=strategy[2], user_parameters=parameters,  # options, default param, user params
+                processor=strategy[3])  # strategy processor module
+
         strategy_inst.set_identifier(strategy_profile.get('id', strategy_profile['name']))
 
         if strategy_inst.start():

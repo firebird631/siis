@@ -34,7 +34,7 @@ from strategy.strategyindmargintrade import StrategyIndMarginTrade
 
 from database.database import Database
 
-from strategy.process.alphaprocess import install_alpha_process
+from strategy.process import alphaprocess
 
 from strategy.command.strategycmdexitalltrade import cmd_strategy_exit_all_trade
 
@@ -85,7 +85,12 @@ class Strategy(Runnable):
     COMMAND_TRADER_INFO = 21
     COMMAND_TRADER_STREAM = 22
 
-    def __init__(self, name, strategy_service, watcher_service, trader_service, options, default_parameters=None, user_parameters=None):
+    def __init__(self, name,
+            strategy_service, watcher_service, trader_service,
+            strategy_trader_clazz,
+            options, default_parameters=None, user_parameters=None,
+            processor=alphaprocess):
+
         super().__init__("st-%s" % name)
 
         self._name = name
@@ -93,6 +98,8 @@ class Strategy(Runnable):
         self._watcher_service = watcher_service
         self._trader_service = trader_service
         self._identifier = None
+
+        self._strategy_trader_clazz = strategy_trader_clazz
 
         self._parameters = Strategy.parse_parameters(merge_parameters(default_parameters, user_parameters))
 
@@ -106,7 +113,7 @@ class Strategy(Runnable):
         self._async_update_strategy = None
 
         # default use alpha processor (support bootstrap but no preprocessing)
-        install_alpha_process(self)
+        processor.setup_process(self)
 
         #
         # states and parameters
@@ -354,10 +361,7 @@ class Strategy(Runnable):
     #
 
     def create_trader(self, instrument):
-        """
-        To be overrided. Must return an instance of StrategyTrader specific for the strategy and instrument.
-        """
-        return None
+        return self._strategy_trader_clazz(self, instrument, self.specific_parameters(instrument.market_id))
 
     def preset(self):
         """
@@ -1270,7 +1274,7 @@ class Strategy(Runnable):
             Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, market_id), view='content')
 
             # retrieve the trade and apply the modification
-            result = func(strategy_trader, data)
+            result = func(self, strategy_trader, data)
 
             if result:
                 if result['error']:
@@ -1294,7 +1298,7 @@ class Strategy(Runnable):
             Terminal.inst().notice("Trade %s for strategy %s - %s" % (label, self.name, self.identifier), view='content')
 
             # retrieve the trade and apply the modification
-            result = func(strategy_trader, data)
+            result = func(self, strategy_trader, data)
 
             if result:
                 if result['error']:

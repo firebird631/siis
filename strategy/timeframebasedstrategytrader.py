@@ -57,6 +57,13 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     def base_timeframe(self):
         return self._base_timeframe
 
+    @property
+    def timeframes_parameters(self):
+        """
+        Returns the dict of timeframes with name as key and settings in value.
+        """
+        return self.strategy.parameters.get('timeframes', {})
+
     def on_received_initial_candles(self, timeframe):
         """
         Slot called once the initial bulk of candles are received for each timeframe.
