@@ -6,6 +6,7 @@
 import os
 import json
 import time
+import copy
 import threading
 import traceback
 import collections
@@ -274,10 +275,10 @@ class OhlcStreamer(object):
 
         self._timeframe = timeframe
 
-        self._from_date = from_date
-        self._to_date = to_date
+        self._from_date = copy.copy(from_date)
+        self._to_date = copy.copy(to_date)
 
-        self._curr_date = from_date
+        self._curr_date = copy.copy(from_date)
 
         self._buffer = collections.deque()
         self._buffer_size = buffer_size

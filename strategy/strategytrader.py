@@ -132,7 +132,7 @@ class StrategyTrader(object):
         self._activity = status   
 
     #
-    # processing
+    # pre-processing
     #
 
     def preprocess_load_cache(self, from_date, to_date):
@@ -151,12 +151,18 @@ class StrategyTrader(object):
         """
         Override this method to store in cache the preprocessed data.
         """
-        pass       
+        pass   
+
+    #
+    # processing
+    #
 
     def prepare(self):
         """
         Prepare before entering live or backtest data stream.
         Prepare indicators, signals states and flags.
+
+        It is called before bootstrap iterations and before process iterations.
         """
         pass
 
@@ -172,11 +178,11 @@ class StrategyTrader(object):
 
     def process(self, timeframe, timestamp):
         """
-        Override this method to do her all the strategy work. You must call the update_trades method
-        during the process.
+        Override this method to do her all the strategy work.
+        You must call the update_trades method during the process in way to manage the trades.
 
         @param timeframe Update timeframe unit.
-        @param timestamp Current timestamp (or past time in backtest).
+        @param timestamp Current timestamp (or in backtest the processed time in past).
         """
         pass
 

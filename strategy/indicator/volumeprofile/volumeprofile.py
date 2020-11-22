@@ -23,7 +23,7 @@ class BaseVolumeProfileIndicator(Indicator):
     Single or multiple Volume Profile indicator base model.
     """
 
-    __slots__ = '_length', '_sensibility', '_volume_area', '_open_timestamp', '_size', '_vps', '_current', \
+    __slots__ = '_length', '_sensibility', '_volume_area', '_size', '_vps', '_current', \
         '_session_offset', '_price_precision', '_tick_size', '_range', '_bins'
 
     @classmethod
@@ -48,8 +48,6 @@ class BaseVolumeProfileIndicator(Indicator):
         self._price_precision = 1
         self._tick_size = 1.0
 
-        self._open_timestamp = 0.0
-
         self._range = (1.0, 1.0)
         self._bins = tuple()
 
@@ -64,7 +62,6 @@ class BaseVolumeProfileIndicator(Indicator):
         self._tick_size = instrument.tick_price or 0.00000001
 
         self._session_offset = instrument.session_offset
-        self._open_timestamp = self._session_offset
 
     def setup_range(self, instrument, min_price, max_price):
         self._range = (min_price, max_price)
@@ -106,13 +103,13 @@ class BaseVolumeProfileIndicator(Indicator):
         if vp is None:
             return
 
-        vp.poc = self.find_poc(vp)
+        vp.poc = VolumeProfile.find_poc(vp)
 
         # volumes arranged by price
-        volumes_by_price = self.sort_volumes_by_price(vp)
+        volumes_by_price = VolumeProfile.sort_volumes_by_price(vp)
 
         # find peaks and valley
-        vp.peaks, vp.valleys = self.basic_peaks_and_valleys_detection(vp)
+        vp.peaks, vp.valleys = VolumeProfile.basic_peaks_and_valleys_detection(self._bins, self._sensibility, vp)
 
     #
     # internal computing
@@ -151,7 +148,8 @@ class BaseVolumeProfileIndicator(Indicator):
         # last bin or overflow
         return self._bins[-1]
 
-    def find_poc(self, vp):
+    @staticmethod
+    def find_poc(vp):
         """
         Detect the price at the max volume.
         """
@@ -165,10 +163,12 @@ class BaseVolumeProfileIndicator(Indicator):
 
         return poc_price
 
-    def sort_volumes_by_price(self, vp):
+    @staticmethod
+    def sort_volumes_by_price(vp):
         return sorted([(b, v) for b, v in vp.volumes.items()], key=lambda x: x[0])
 
-    def single_volume_area(self, vp, volumes_by_price, poc_price):
+    @staticmethod
+    def single_volume_area(vp, volumes_by_price, poc_price, volume_area):
         """
         Simplest method to detect the volume area.
         Starting from the POC goes left and right until having the inner volume reached.
@@ -193,7 +193,7 @@ class BaseVolumeProfileIndicator(Indicator):
 
         sum_vols = sum(vp.volumes.values())
 
-        in_area = sum_vols * self._volume_area * 0.01
+        in_area = sum_vols * volume_area * 0.01
         out_area = 1.0 - in_area
 
         left = index
@@ -217,7 +217,8 @@ class BaseVolumeProfileIndicator(Indicator):
 
         return low_price, high_price
 
-    def basic_peaks_and_valleys_detection(self, vp):
+    @staticmethod
+    def basic_peaks_and_valleys_detection(src_bins, sensibility, vp):
         """
         Simplest peaks and valleys detection algorithm.
         """
@@ -227,17 +228,17 @@ class BaseVolumeProfileIndicator(Indicator):
         peaks = []
         valleys = []
 
-        bins = np.array(self._bins)
-        volumes = np.zeros(len(self._bins))
+        bins = np.array(src_bins)
+        volumes = np.zeros(len(src_bins))
 
         avg = np.average(list(vp.volumes.values()))
 
-        for i, b in enumerate(self._bins):
+        for i, b in enumerate(src_bins):
             if b in vp.volumes:
                 volumes[i] = vp.volumes[b]
 
         # @todo high_region, low_region detection
-        sens = self._sensibility * 0.01 * 10
+        sens = sensibility * 0.01 * 10
 
         last_peak = -1
         last_valley = -1
@@ -280,7 +281,7 @@ class BaseVolumeProfileIndicator(Indicator):
                 sensibility=self._sensibility, volume_area=self._volume_area)
 
         if self._vps:
-            if Instrument.basetime(self._timeframe, self._vps[-1].timestamp) <= Instrument.basetime(self._timeframe, base_timestamp):
+            if self._vps[-1].timestamp <= base_timestamp < self._vps[-1].timestamp + self._timeframe:
                 # current detected
                 self._current = self._vps.pop()
 
@@ -301,16 +302,36 @@ class VolumeProfileIndicator(BaseVolumeProfileIndicator):
         num = len(timestamps)
 
         for b in range(num-delta, num):
+            # ignore non closed candles
+            if timestamp < timestamps[b] + self._timeframe:
+                break
+
             # for any new candles
-            if timestamps[b] > self._last_timestamp:
-                if timestamps[b] >= self._open_timestamp + self._timeframe:
-                    # new session (1 day based with offset)
-                    self._open_timestamp = Instrument.basetime(self._timeframe, timestamps[b]) + self._session_offset
+            if self._current and timestamps[b] >= self._current.timestamp + self._timeframe:
+                self.finalize(self._current)
 
-                # avg price based on HLC3
-                hlc3 = (highs[b] + lows[b] + closes[b]) / 3
+                self._vps.append(self._current)
+                self._current = None
 
-                # @todo
+            if self._current is None:
+                basetime = Instrument.basetime(self._timeframe, timestamps[b])
+                self._current = VolumeProfile(basetime, self._timeframe)
+
+            # avg price based on HLC3
+            hlc3 = (highs[b] + lows[b] + closes[b]) / 3
+
+            # round price to bin
+            lbin = self.bin_lookup(hlc3)
+
+            if lbin:
+                if lbin not in self._current.volumes:
+                    # set volume to the bin
+                    self._current.volumes[lbin] = volumes[b]
+                else:
+                    # or merge
+                    self._current.volumes[lbin] += volumes[b]
+
+        self._last_timestamp = timestamp
 
 
 class TickVolumeProfileIndicator(BaseVolumeProfileIndicator):
@@ -321,14 +342,17 @@ class TickVolumeProfileIndicator(BaseVolumeProfileIndicator):
     def __init__(self, timeframe, length=10, sensibility=10, volume_area=70):
         super().__init__("tickbar-volumeprofile", timeframe, length, sensibility, volume_area)
 
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TICK
+
     def compute(self, timestamp, tick):
         # @todo session_offset, evening/overnight session
         if self._current and tick[0] >= self._current.timestamp + self._timeframe:
-            if self._current:
-                self.finalize(self._current)
+            self.finalize(self._current)
 
-                self._vps.append(self._current)
-                self._current = None
+            self._vps.append(self._current)
+            self._current = None
 
         if self._current is None:
             basetime = Instrument.basetime(self._timeframe, tick[0])
@@ -345,6 +369,8 @@ class TickVolumeProfileIndicator(BaseVolumeProfileIndicator):
                 # or merge
                 self._current.volumes[lbin] += tick[4]
 
+        self._last_timestamp = timestamp
+
 
 class CompositeVolumeProfile(object):
     """
@@ -357,14 +383,93 @@ class CompositeVolumeProfile(object):
     Then the cumulated duration is timeframe x length.
     """
 
-    __slots__ = '_vps'
+    __slots__ = '_timeframe', '_length', '_use_current', '_vp', '_volume_profile', '_last_timestamp', '_last_base_timestamp'
 
-    def __init__(self, timeframe, length):
+    def __init__(self, timeframe, length, volume_profile, use_current=True):
+        self._timeframe = timeframe
+        self._length = length
+        self._use_current = use_current
+        
+        self._last_timestamp = 0.0
+        self._last_base_timestamp = 0.0
+
+        self._volume_profile = volume_profile
+
         self._vp = VolumeProfile(0, timeframe)
-
-    def composite(self, timestamp, volume_profile):
-        pass
 
     @property
     def vp(self):
         self._vp
+
+    def is_update_needed(self, timestamp, partial_update=True):
+        """
+        Returns True of the close timestamp was reached.
+
+        @param partial_update If True it will return True at each intermediate volume profile realized,
+            else it will wait for the length of new volumes profiles completed.
+        """
+        if partial_update:
+            return timestamp >= self._last_base_timestamp + self._timeframe
+        else:
+            return timestamp >= self._last_base_timestamp + self._timeframe * self._length
+
+    def composite(self, timestamp):
+        """
+        Build a composite profile of length, enventually use the current volume profile in addiction.
+        """
+        if self._volume_profile is None or not self._volume_profile.vps:
+            return
+
+        volume_profile = self._volume_profile
+
+        base_index = max(-self._length, -len(volume_profile.vps))
+        base_timestamp = volume_profile.vps[base_index]
+
+        cvp = VolumeProfile(Instrument.basetime(self._timeframe, base_timestamp), self._timeframe)
+
+        for vp in volume_profile.vps[base_index:]:
+            for b, v in vp.volumes.items():
+                if b not in cvp.volumes:
+                    cvp.volumes[b] = v
+                else:
+                    cvp.volumes[b] += v
+
+        self._last_base_timestamp = volume_profile.vps[-1].timestamp
+
+        # append current VP
+        if self._use_current and volume_profile.current:
+            vp = volume_profile.current
+
+            for b, v in vp.volumes.items():
+                if b not in cvp.volumes:
+                    cvp.volumes[b] = v
+                else:
+                    cvp.volumes[b] += v
+
+            self._last_base_timestamp = volume_profile.current.timestamp
+
+        cvp._finalize(volume_profile, cvp)
+
+        self._last_timestamp = timestamp
+
+        return cvp
+
+    #
+    # internal methods
+    #
+
+    def _finalize(self, volume_profile, vp):
+        """
+        Finalize the computation of the last VP and push it.
+        Does by update when the last trade timestamp open a new session.
+        """
+        if vp is None:
+            return
+
+        vp.poc = VolumeProfile.find_poc(vp)
+
+        # volumes arranged by price
+        volumes_by_price = VolumeProfile.sort_volumes_by_price(vp)
+
+        # find peaks and valley
+        vp.peaks, vp.valleys = VolumeProfile.basic_peaks_and_valleys_detection(volume_profile.bins, volume_profile.sensibility, vp)

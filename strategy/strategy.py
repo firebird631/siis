@@ -1,7 +1,7 @@
 # @date 2018-08-24
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Strategy interface
+# Strategy base model and implementation
 
 import os
 import threading
@@ -59,10 +59,10 @@ traceback_logger = logging.getLogger('siis.traceback.strategy')
 
 class Strategy(Runnable):
     """
-    Strategy base class.
+    Strategy base model and implementation.
 
-    @todo Move Each COMMAND_ to command/ and have a registry
-    @todo Add possibility to insert/delete a strategy trader during runtime only in live mode.
+    @todo Having a commands registry (trade cmd, trader cmd, strategy cmd)
+    @todo Add possibility to insert/delete a strategy-trader and instrument during runtime only in live mode.
 
     @note In backtesting the method backtest_update don't mutex the strategy_traders list because
         in that case the dict never changes.

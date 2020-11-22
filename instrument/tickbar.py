@@ -28,7 +28,7 @@ class TickBarBase(object):
         self._timestamp = timestamp
         self._last_timestamp = timestamp
 
-        self._ticks = []  # array of ticks
+        self._ticks = {}  # map of ticks : volume [merged volume, (bid volume, ask volume) ...]
 
         # initial open/close
         self._open = price
@@ -80,27 +80,6 @@ class TickBarBase(object):
         return self._ticks
 
     @property
-    def bid_vol(self, price):
-        if price in self._ticks:
-            return self._ticks[price][0]
-
-        return 0.0
-
-    @property
-    def ask_vol(self, price):
-        if price in self._ticks:
-            return self._ticks[price][1]
-
-        return 0.0
-    
-    @property
-    def ask_vol(self, price):
-        if price in self._ticks:
-            return self._ticks[price][1]
-
-        return 0.0
-
-    @property
     def open(self):
         return self._open
     
@@ -149,6 +128,13 @@ class TickBarBase(object):
         self._ended = True
 
         self._update_pov()
+
+    def add_tick(self, price, volume):
+        if price in self._ticks:
+            pos = self._ticks.index(price)
+            self._ticks[pos] += volume
+        else:
+            self._ticks.append()
 
     #
     # protected
@@ -203,10 +189,47 @@ class TickBarBase(object):
         self._pov_ask = po  # and for the ask volume, the higher price
 
 
-class TickBar(object):
+class TickBarBidAsk(TickBarBase):
     """
-    Tick-bar instance for an instrument.
+    Tick-bar instance for an instrument with distinct bid/ask volume.
     """
 
     def __init__(self, timestamp, price):
         super().__init__(timestamp, price)
+
+    @property
+    def bid_vol(self, price):
+        if price in self._ticks:
+            return self._ticks[price][0]
+
+        return 0.0
+
+    @property
+    def ask_vol(self, price):
+        if price in self._ticks:
+            return self._ticks[price][1]
+
+        return 0.0
+
+    @property
+    def ask_vol(self, price):
+        if price in self._ticks:
+            return self._ticks[price][1]
+
+        return 0.0
+
+
+class TickBarVolume(TickBarBase):
+    """
+    Tick-bar instance for an instrument with merged volume.
+    """
+
+    def __init__(self, timestamp, price):
+        super().__init__(timestamp, price)
+
+    @property
+    def vol(self, price):
+        if price in self._ticks:
+            return self._ticks[price]
+
+        return 0.0

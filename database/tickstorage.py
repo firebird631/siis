@@ -17,6 +17,8 @@ import numpy as np
 
 from datetime import datetime
 
+from common.utils import UTC
+
 import logging
 logger = logging.getLogger('siis.database.tickstorage')
 
@@ -176,10 +178,10 @@ class TickStreamer(object):
         self._broker_id = broker_id
         self._market_id = market_id
 
-        self._from_date = from_date
-        self._to_date = to_date
+        self._from_date = copy.copy(from_date)
+        self._to_date = copy.copy(to_date)
 
-        self._curr_date = from_date
+        self._curr_date = copy.copy(from_date)
 
         self._buffer = collections.deque()
         self._buffer_size = buffer_size
@@ -213,7 +215,7 @@ class TickStreamer(object):
         """
         self.close()
 
-        self._curr_date = self._from_date
+        self._curr_date = copy.copy(self._from_date)
         self._buffer = collections.deque()
 
     def open(self):
@@ -421,10 +423,10 @@ class TextToBinary(object):
         self._broker_id = broker_id
         self._market_id = market_id
 
-        self._from_date = from_date
-        self._to_date = to_date
+        self._from_date = copy.copy(from_date)
+        self._to_date = copy.copy(to_date)
 
-        self._curr_date = from_date
+        self._curr_date = copy.copy(from_date)
 
         self._buffer = []
         
@@ -610,7 +612,7 @@ class FirstTickFinder(object):
         self._broker_id = broker_id
         self._market_id = market_id
 
-        self._curr_date = datetime(year=2000, month=1, day=1)
+        self._curr_date = datetime(year=2000, month=1, day=1).replace(tzinfo=UTC())
 
         self._buffer_size = buffer_size
         self._binary = binary  # use binary format

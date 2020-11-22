@@ -183,6 +183,7 @@ class Instrument(object):
     """
 
     TF_TICK = 0
+    TF_TRADE = TF_TICK
     TF_T = TF_TICK
     TF_SEC = 1
     TF_1S = TF_SEC

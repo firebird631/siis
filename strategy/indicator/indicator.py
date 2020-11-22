@@ -27,6 +27,10 @@ class Indicator(object):
     CLS_OVERLAY = 4
     CLS_CYCLE = 5
 
+    BASE_TIMEFRAME = 0
+    BASE_TICKBAR = 1
+    BASE_TICK = 2
+
     @classmethod
     def indicator_type(cls):
         return Indicator.TYPE_UNKNOWN
@@ -38,6 +42,31 @@ class Indicator(object):
     @classmethod
     def persistent(cls):
         return False
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME
+
+    @classmethod
+    def indicator_tickbar_based(cls):
+        """
+        Is timeframe bar based indicator.
+        """
+        return cls.indicator_base() == Indicator.BASE_TICKBAR
+
+    @classmethod
+    def indicator_timeframe_based(cls):
+        """
+        Is tick bar based indicator.
+        """
+        return cls.indicator_base() == Indicator.BASE_TIMEFRAME
+
+    @classmethod
+    def indicator_tick_based(cls):
+        """
+        Is tick based indicator.
+        """
+        return cls.indicator_base() == Indicator.BASE_TICK
 
     def __init__(self, name, timeframe):
         self._name = name
@@ -69,12 +98,18 @@ class Indicator(object):
     def timeframe(self):
         return self._timeframe
 
-    def compute(self, timestamp):
-        return None
-
     @property
     def compute_at_close(self):
         """
         Some indicator could be only computed at an OHLC close
         """
         return self._compute_at_close
+
+    #
+    # process
+    #
+
+    def compute(self, timestamp):
+        # parameters are different depending of the indicator
+        return None
+
