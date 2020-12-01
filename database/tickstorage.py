@@ -403,9 +403,9 @@ class TickStreamer(object):
 
                 # next month/year
                 if self._curr_date.month == 12:
-                    self._curr_date = self._curr_date.replace(year=self._curr_date.year+1, month=1, day=1)
+                    self._curr_date = datetime(year=self._curr_date.year+1, month=1, day=1, tzinfo=UTC())
                 else:
-                    self._curr_date = self._curr_date.replace(month=self._curr_date.month+1, day=1)
+                    self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1, tzinfo=UTC())
 
 
 class TextToBinary(object):
@@ -494,9 +494,9 @@ class TextToBinary(object):
 
             # next month/year
             if self._curr_date.month == 12:
-                self._curr_date = self._curr_date.replace(year=self._curr_date.year+1, month=1)
+                self._curr_date = datetime(year=self._curr_date.year+1, month=1, day=1, tzinfo=UTC())
             else:
-                self._curr_date = self._curr_date.replace(month=self._curr_date.month+1)
+                self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1, tzinfo=UTC())
 
 
 class LastTickFinder(object):
@@ -593,9 +593,9 @@ class LastTickFinder(object):
                 if self._curr_date.year < 2000:
                     return None
 
-                self._curr_date = self._curr_date.replace(year=self._curr_date.year-1, month=12, day=1)
+                self._curr_date = datetime(year=self._curr_date.year-1, month=12, day=1, tzinfo=UTC())
             else:
-                self._curr_date = self._curr_date.replace(month=self._curr_date.month-1, day=1)
+                self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month-1, day=1, tzinfo=UTC())
 
         return tick
 
@@ -612,7 +612,7 @@ class FirstTickFinder(object):
         self._broker_id = broker_id
         self._market_id = market_id
 
-        self._curr_date = datetime(year=2000, month=1, day=1).replace(tzinfo=UTC())
+        self._curr_date = datetime(year=2000, month=1, day=1, tzinfo=UTC())
 
         self._buffer_size = buffer_size
         self._binary = binary  # use binary format
@@ -689,8 +689,8 @@ class FirstTickFinder(object):
                 if self._curr_date > today:
                     return None
 
-                self._curr_date = self._curr_date.replace(year=self._curr_date.year+1, month=1, day=1)
+                self._curr_date = datetime(year=self._curr_date.year+1, month=1, day=1, tzinfo=UTC())
             else:
-                self._curr_date = self._curr_date.replace(month=self._curr_date.month+1, day=1)
+                self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1, tzinfo=UTC())
 
         return tick

@@ -16,7 +16,7 @@ import collections
 import numpy as np
 
 from datetime import datetime
-from common.utils import timeframe_to_str
+from common.utils import timeframe_to_str, UTC
 from instrument.instrument import Candle
 
 import logging
@@ -402,9 +402,9 @@ class QuoteStreamer(object):
 
                 # next month/year
                 if self._curr_date.month == 12:
-                    self._curr_date = self._curr_date.replace(year=self._curr_date.year+1, month=1, day=1)
+                    self._curr_date = datetime(year=self._curr_date.year+1, month=1, day=1, tzinfo=UTC())
                 else:
-                    self._curr_date = self._curr_date.replace(month=self._curr_date.month+1, day=1)
+                    self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1, tzinfo=UTC())
 
 
 class LastQuoteFinder(object):
@@ -509,9 +509,9 @@ class LastQuoteFinder(object):
                 if self._curr_date.year < 2000:
                     return None
 
-                self._curr_date = self._curr_date.replace(year=self._curr_date.year-1, month=12, day=1)
+                self._curr_date = self._curr_date.replace(year=self._curr_date.year-1, month=12, day=1, hour=0, minute=0, second=0, microsecond=0)
             else:
-                self._curr_date = self._curr_date.replace(month=self._curr_date.month-1, day=1)
+                self._curr_date = self._curr_date.replace(month=self._curr_date.month-1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
         return quote
 
@@ -566,6 +566,6 @@ class LastQuoteFinder(object):
 
                 # prev month/year
                 if self._curr_date.month == 1:
-                    self._curr_date = self._curr_date.replace(year=self._curr_date.year-1, month=12, day=1)
+                    self._curr_date = datetime(year=self._curr_date.year-1, month=12, day=1, tzinfo=UTC())
                 else:
-                    self._curr_date = self._curr_date.replace(month=self._curr_date.month-1, day=1)
+                    self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month-1, day=1, tzinfo=UTC())
