@@ -130,6 +130,12 @@ class KrakenWatcher(Watcher):
                         for market_id, instrument in instruments.items():
                             self._available_instruments.add(market_id)
 
+                        # and start ws manager if necessary
+                        try:
+                            self._connector.ws.start()
+                        except RuntimeError:
+                            logger.debug("%s WS already started..." % (self.name))
+
                         #
                         # user data
                         #
@@ -152,12 +158,6 @@ class KrakenWatcher(Watcher):
                                 },
                                 callback=self.__on_open_orders
                             )
-
-                        # and start ws manager if necessarry
-                        try:
-                            self._connector.ws.start()
-                        except RuntimeError:
-                            logger.debug("%s WS already started..." % (self.name))
 
                         # once market are init
                         self._ready = True
@@ -203,124 +203,124 @@ class KrakenWatcher(Watcher):
     #
 
     def subscribe(self, market_id, ohlc_depths=None, tick_depth=None, order_book_depth=None):
-        result = False
+        if market_id not in self.__matching_symbols:
+            return False
+
+        instrument = self._instruments.get(market_id)
+        if not instrument:
+            return False
+
+        # fetch from 1m to 1w
+        if self._initial_fetch:
+            logger.info("%s prefetch for %s" % (self.name, market_id))
+
+            if ohlc_depths:
+                for timeframe, depth in ohlc_depths.items():
+                    try:
+                        if timeframe == Instrument.TF_1M:
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth, None)
+
+                        elif timeframe == Instrument.TF_2M:
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth*2, None)
+
+                        elif timeframe == Instrument.TF_3M:
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth*3, None)
+                        
+                        elif timeframe == Instrument.TF_5M:
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth, None)
+
+                        elif timeframe == Instrument.TF_10M:
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth*2, None)
+                        
+                        elif timeframe == Instrument.TF_15M:
+                            self.fetch_and_generate(market_id, Instrument.TF_15M, depth, None)
+
+                        elif timeframe == Instrument.TF_30M:
+                            self.fetch_and_generate(market_id, Instrument.TF_15M, depth*2, Instrument.TF_30M)
+
+                        elif timeframe == Instrument.TF_1H:
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth, None)
+
+                        elif timeframe == Instrument.TF_2H:
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth*2, Instrument.TF_2H)
+
+                        elif timeframe == Instrument.TF_3H:
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth*3, None)
+
+                        elif timeframe == Instrument.TF_4H:
+                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth, None)
+
+                        elif timeframe == Instrument.TF_6H:
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth*6, None)
+
+                        elif timeframe == Instrument.TF_8H:
+                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth*2, None)
+
+                        elif timeframe == Instrument.TF_12H:
+                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth*3, None)
+
+                        elif timeframe == Instrument.TF_1D:
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth, None)
+
+                        elif timeframe == Instrument.TF_2D:
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth*2, None)
+
+                        elif timeframe == Instrument.TF_3D:
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth*3, None)
+
+                        elif timeframe == Instrument.TF_1W:
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth*7, Instrument.TF_1W)
+
+                        elif timeframe == Instrument.TF_MONTH:
+                            self.fetch_and_generate(market_id, Instrument.TF_MONTH, depth*32, Instrument.TF_MONTH)
+
+                    except Exception as e:
+                        error_logger.error(repr(e))
+
+            if tick_depth:
+                try:
+                    self.fetch_ticks(market_id, tick_depth)
+                except Exception as e:
+                    error_logger.error(repr(e))
+
+        # one more watched instrument
         with self._mutex:
-            try:
-                if market_id not in self.__matching_symbols:
-                    return False
+            self._wsname_lookup[instrument['wsname']] = market_id
+            self.insert_watched_instrument(market_id, [0])
 
-                instrument = self._instruments.get(market_id)
-                if not instrument:
-                    return False
+            pairs = []
 
-                pairs = []
+            # live data
+            pairs.append(instrument['wsname'])    
 
-                # live data
-                pairs.append(instrument['wsname'])
-                self._wsname_lookup[instrument['wsname']] = market_id
+            if pairs:
+                self._connector.ws.subscribe_public(
+                    subscription={
+                        'name': 'ticker'
+                    },
+                    pair=pairs,
+                    callback=self.__on_ticker_data
+                )
 
-                # fetch from 1m to 1w
-                if self._initial_fetch:
-                    logger.info("%s prefetch for %s" % (self.name, market_id))
+                self._connector.ws.subscribe_public(
+                    subscription={
+                        'name': 'trade'
+                    },
+                    pair=pairs,
+                    callback=self.__on_trade_data
+                )
 
-                    if ohlc_depths:
-                        for timeframe, depth in ohlc_depths.items():
-                            if timeframe == Instrument.TF_1M:
-                                self.fetch_and_generate(market_id, Instrument.TF_1M, depth, None)
-
-                            elif timeframe == Instrument.TF_2M:
-                                self.fetch_and_generate(market_id, Instrument.TF_1M, depth*2, None)
-
-                            elif timeframe == Instrument.TF_3M:
-                                self.fetch_and_generate(market_id, Instrument.TF_1M, depth*3, None)
-                            
-                            elif timeframe == Instrument.TF_5M:
-                                self.fetch_and_generate(market_id, Instrument.TF_5M, depth, None)
-
-                            elif timeframe == Instrument.TF_10M:
-                                self.fetch_and_generate(market_id, Instrument.TF_5M, depth*2, None)
-                            
-                            elif timeframe == Instrument.TF_15M:
-                                self.fetch_and_generate(market_id, Instrument.TF_15M, depth, None)
-
-                            elif timeframe == Instrument.TF_30M:
-                                self.fetch_and_generate(market_id, Instrument.TF_15M, depth*2, Instrument.TF_30M)
-
-                            elif timeframe == Instrument.TF_1H:
-                                self.fetch_and_generate(market_id, Instrument.TF_1H, depth, None)
-
-                            elif timeframe == Instrument.TF_2H:
-                                self.fetch_and_generate(market_id, Instrument.TF_1H, depth*2, Instrument.TF_2H)
-
-                            elif timeframe == Instrument.TF_3H:
-                                self.fetch_and_generate(market_id, Instrument.TF_1H, depth*3, None)
-
-                            elif timeframe == Instrument.TF_4H:
-                                self.fetch_and_generate(market_id, Instrument.TF_4H, depth, None)
-
-                            elif timeframe == Instrument.TF_6H:
-                                self.fetch_and_generate(market_id, Instrument.TF_1H, depth*6, None)
-
-                            elif timeframe == Instrument.TF_8H:
-                                self.fetch_and_generate(market_id, Instrument.TF_4H, depth*2, None)
-
-                            elif timeframe == Instrument.TF_12H:
-                                self.fetch_and_generate(market_id, Instrument.TF_4H, depth*3, None)
-
-                            elif timeframe == Instrument.TF_1D:
-                                self.fetch_and_generate(market_id, Instrument.TF_1D, depth, None)
-
-                            elif timeframe == Instrument.TF_2D:
-                                self.fetch_and_generate(market_id, Instrument.TF_1D, depth*2, None)
-
-                            elif timeframe == Instrument.TF_3D:
-                                self.fetch_and_generate(market_id, Instrument.TF_1D, depth*3, None)
-
-                            elif timeframe == Instrument.TF_1W:
-                                self.fetch_and_generate(market_id, Instrument.TF_1D, depth*7, Instrument.TF_1W)
-
-                            elif timeframe == Instrument.TF_MONTH:
-                                self.fetch_and_generate(market_id, Instrument.TF_MONTH, depth*32, Instrument.TF_MONTH)
-
-                    if tick_depth:
-                        self.fetch_ticks(market_id, tick_depth)
-
-                # one more watched instrument
-                self.insert_watched_instrument(market_id, [0])
-
-                if pairs:
+                if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
                     self._connector.ws.subscribe_public(
                         subscription={
-                            'name': 'ticker'
+                            'name': 'book'
                         },
                         pair=pairs,
-                        callback=self.__on_ticker_data
+                        depth=order_book_depth,
+                        callback=self.__on_depth_data
                     )
 
-                    self._connector.ws.subscribe_public(
-                        subscription={
-                            'name': 'trade'
-                        },
-                        pair=pairs,
-                        callback=self.__on_trade_data
-                    )
-
-                    if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
-                        self._connector.ws.subscribe_public(
-                            subscription={
-                                'name': 'book'
-                            },
-                            pair=pairs,
-                            depth=order_book_depth,
-                            callback=self.__on_depth_data
-                        )
-
-                    result = True
-
-            except Exception as e:
-                error_logger.error(repr(e))
-
-        return result
+        return True
 
     def unsubscribe(self, market_id, timeframe):
         with self._mutex:
@@ -358,8 +358,8 @@ class KrakenWatcher(Watcher):
         if 0:#self._reconnect_user_ws:
             ws_token = self._connector.get_ws_token()
 
-            self._connector.ws.stop_socket('ownTrades')
-            self._connector.ws.stop_socket('openOrders')
+            self._connector.ws.stop_private_socket('ownTrades')
+            self._connector.ws.stop_private_socket('openOrders')
 
             if ws_token and ws_token.get('token'):
                 self._connector.ws.subscribe_private(
@@ -580,6 +580,9 @@ class KrakenWatcher(Watcher):
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
         elif isinstance(data, dict):
+            if not data.get('event'):
+                return
+
             if data['event'] == "subscriptionStatus":
                 if data['status'] == "subscribed" and data['channelName'] == "ticker":
                     # @todo register channelID...
@@ -627,6 +630,9 @@ class KrakenWatcher(Watcher):
                         self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
         elif isinstance(data, dict):
+            if not data.get('event'):
+                return
+
             if data['event'] == "subscriptionStatus":
                 if data['status'] == "subscribed" and data['channelName'] == "trade":
                     # @todo register channelID...
@@ -821,6 +827,9 @@ class KrakenWatcher(Watcher):
                     pass
 
         elif isinstance(data, dict):
+            if not data.get('event'):
+                return
+
             if data['event'] == 'heartBeat':
                 self._ws_own_trades['ping'] = time.time()
 
@@ -866,6 +875,9 @@ class KrakenWatcher(Watcher):
                     pass
 
         elif isinstance(data, dict):
+            if not data.get('event'):
+                return
+
             if data['event'] == 'heartBeat':
                 self._ws_open_orders['ping'] = time.time()
 

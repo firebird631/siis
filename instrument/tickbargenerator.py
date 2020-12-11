@@ -6,7 +6,7 @@
 from datetime import datetime, timedelta
 from common.utils import UTC
 
-from instrument.tickbar import TickBar
+from instrument.tickbar import TickBarBidAsk, TickBarVolume
 
 
 class TickBarBaseGenerator(object):
@@ -110,7 +110,7 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
         last_tickbar = self._current
 
         # create a new tick-bar
-        self._current = TickBar(tick[0], tick[3])
+        self._current = TickBarBidAsk(tick[0], tick[3])
 
         return last_tickbar
 
@@ -119,6 +119,8 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
             return None
 
         last_tickbar = None
+
+        # @todo different case
 
         if self._current is None:
             last_tickbar = self._new_tickbar(tick)
@@ -171,7 +173,7 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
 
 class TickBarReversalGenerator(TickBarBaseGenerator):
 
-    __slots__ = 'self._last_price'
+    __slots__ = '_last_price'
 
     def __init__(self, size, tick_scale=1.0):
         """
@@ -190,7 +192,7 @@ class TickBarReversalGenerator(TickBarBaseGenerator):
         last_tickbar = self._current
 
         # create a new tick-bar
-        self._current = TickBar(tick[0], tick[3])
+        self._current = TickBarBidAsk(tick[0], tick[3])
 
         return last_tickbar
 
@@ -202,7 +204,7 @@ class TickBarReversalGenerator(TickBarBaseGenerator):
 
         adjusted_price = self.adjust_price(tick[3])
 
-        # 
+        # @todo different case
 
         if self._current is None:
             # create a new tick-bar
@@ -230,7 +232,7 @@ class TickBarReversalGenerator(TickBarBaseGenerator):
             if size > self._size:
                 last_tickbar = self._new_tickbar(tick)
 
-        elif tick[3] == 
+        # elif tick[3] == 
 
         # one more trade
         self._num_trades += 1

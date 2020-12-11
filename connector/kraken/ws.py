@@ -123,7 +123,7 @@ class KrakenSocketManager(threading.Thread):
         factory.callback = callback
         factory.reconnect = True
         self.factories[id_] = factory
-        reactor.callFromThread(self.add_connection, id_)
+        reactor.callFromThread(self.add_connection, id_, factory_url)
 
     def _start_private_socket(self, id_, payload, callback):
         if id_ in self._private_conns:
@@ -136,16 +136,25 @@ class KrakenSocketManager(threading.Thread):
         factory.callback = callback
         factory.reconnect = True
         self.factories[id_] = factory
-        reactor.callFromThread(self.add_connection, id_)
+        reactor.callFromThread(self.add_connection, id_, factory_url)
 
-    def add_connection(self, id_):
+    def add_connection(self, id_, url):
         """
         Convenience function to connect and store the resulting
         connector.
         """
+        # factory = self.factories[id_]
+        # context_factory = ssl.ClientContextFactory()
+        # self._conns[id_] = connectWS(factory, context_factory)
+
+        if not url.startswith("wss://"):
+            raise ValueError("expected wss:// URL prefix")
+
+        hostname = url[6:]
+
         factory = self.factories[id_]
-        context_factory = ssl.ClientContextFactory()
-        self._conns[id_] = connectWS(factory, context_factory)
+        options = ssl.optionsForClientTLS(hostname=hostname) # for TLS SNI
+        self._conns[id_] = connectWS(factory, options)
 
     def stop_socket(self, conn_key):
         """Stop a websocket given the connection key
@@ -245,3 +254,8 @@ class WssClient(KrakenSocketManager):
         }
         payload = json.dumps(data, ensure_ascii=False).encode('utf8')
         return self._start_private_socket(id_, payload, callback)
+
+    def request(self, request, callback, **kwargs):
+        id_ = "_".join([request['event'], request['type']])
+        payload = json.dumps(request, ensure_ascii=False).encode('utf8')
+        return self._start_socket(id_, payload, callback, private=True)

@@ -99,7 +99,9 @@ class KrakenTrader(Trader):
         if (market is None or force) and self._watcher is not None:
             try:
                 market = self._watcher.fetch_market(market_id)
-                self._markets[market_id] = market
+                if market:
+                    self._markets[market_id] = market
+
             except Exception as e:
                 logger.error("fetch_market: %s" % repr(e))
                 return None
@@ -145,6 +147,7 @@ class KrakenTrader(Trader):
             return True
 
         if KrakenTrader.REST_OR_WS:
+            # @todo need wait time
             # account data update
             with self._mutex:
                 try:
@@ -411,14 +414,15 @@ class KrakenTrader(Trader):
             if asset_name+qs in self._markets:
                 asset.add_market_id(asset_name+qs)
 
-        # # find the most appriopriate quote of an asset.
+        # find the most appriopriate quote of an asset.
         quote_symbol = None
 
+        # @todo update
         if asset.symbol == self._account.currency and self._watcher.has_instrument(asset.symbol+self._account.alt_currency):
-            # probably BTCUSDT
+            # probably XXBTZUSD
             quote_symbol = self._account.alt_currency
         elif asset.symbol != self._account.currency and self._watcher.has_instrument(asset.symbol+self._account.currency):
-            # any pair based on BTC
+            # any pair based on XBT
             quote_symbol = self._account.currency
         else:
             # others case but might not occurs often because most of the assets are expressed in BTC
@@ -458,10 +462,12 @@ class KrakenTrader(Trader):
         positions = self._watcher.connector.get_open_positions()
 
         for position in positions:
+            # @todo
             pass
 
     def __fetch_orders(self):
         orders = self._watcher.connector.get_open_orders()
 
         for order in orders:
+            # @todo
             pass

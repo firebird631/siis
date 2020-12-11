@@ -94,10 +94,6 @@ class Connector(object):
             # only subscribe to avalaibles instruments
             symbols = []
 
-            # self._ws.subscribe_public(...)
-            # @todo
-            # self._ws.connect(self.__api_key, self.__api_secret)
-
     def disconnect(self):
         if self._ws:
             self._ws.stop()
