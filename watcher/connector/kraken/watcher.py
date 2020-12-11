@@ -76,6 +76,7 @@ class KrakenWatcher(Watcher):
         self._assets = {}
         self._instruments = {}
         self._wsname_lookup = {}
+        self._markets_aliases = {}
 
         self._ws_own_trades = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
         self._ws_open_orders = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
@@ -544,6 +545,14 @@ class KrakenWatcher(Watcher):
         self._assets = self._connector.assets()
         self._instruments = self._connector.instruments()
 
+        # map alias name to market-id, need for fetch orders, trades and positions
+        markets_aliases = {}
+
+        for market_id, instr in self._instruments.items():
+            markets_aliases[instr["altname"]] = market_id
+
+        self._markets_aliases = markets_aliases
+
     def __on_depth_data(self, data):
         # @ref https://www.kraken.com/en-us/features/websocket-api#message-book
         pass
@@ -655,7 +664,6 @@ class KrakenWatcher(Watcher):
                 exec_logger.info("kraken.com ownTrades : %s - %s" % (txid, trade))
 
                 market_id = self._wsname_lookup.get(trade['pair'])
-                # base_asset, quote_asset = trade['pair'].split('/')
 
                 if not market_id:
                     continue
@@ -666,7 +674,11 @@ class KrakenWatcher(Watcher):
                 position_id = trade['postxid']
 
                 side = Order.LONG if trade['type'] == "buy" else Order.SHORT
-                # cost, fee, vol, margin, orderType
+                # cost, fee, vol, margin, ordertype
+
+                #
+                # only for positions
+                #
 
                 posstatus = trade.get('posstatus', "")
 
@@ -823,9 +835,6 @@ class KrakenWatcher(Watcher):
 
                     #     self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
 
-                else:
-                    pass
-
         elif isinstance(data, dict):
             if not data.get('event'):
                 return
@@ -855,11 +864,20 @@ class KrakenWatcher(Watcher):
             #   'vol': '9.99355396', 'vol_exec': '0.00000000'}}
             for entry in data[0]:
                 order_id = list(entry.keys())[0]
-                order = list(entry.values())[0]
+                order_data = list(entry.values())[0]
 
-                exec_logger.info("kraken.com openOrders : %s - %s" % (order_id, order))
+                exec_logger.info("kraken.com openOrders : %s - %s" % (order_id, order_data))
 
-                status = order.get("status", "")
+                market_id = self._wsname_lookup.get(order_data['pair'])
+
+                if not market_id:
+                    continue
+
+                timestamp = float(order_data['opentm'])
+
+                side = Order.LONG if order_data['type'] == "buy" else Order.SHORT
+
+                status = order_data.get("status", "")
 
                 if status == "open":
                     ref_order_id = order.get('refid')
@@ -899,6 +917,9 @@ class KrakenWatcher(Watcher):
     # miscs
     #
 
+    def market_alias(self, market_id):
+        return self._markets_aliases.get(market_id)
+
     def price_history(self, market_id, timestamp):
         """
         Retrieve the historical price for a specific market id.
@@ -909,7 +930,8 @@ class KrakenWatcher(Watcher):
         """
         Update market info.
         """
-        self.__prefetch_markets()
+        with self._mutex:
+            self.__prefetch_markets()
 
         for market_id in self._watched_instruments:
             market = self.fetch_market(market_id)

@@ -1069,7 +1069,7 @@ class Trader(Runnable):
 
                     quote_market = self.market(market.quote+self.account.currency)
                     if quote_market:
-                        base_exchange_rate = 1.0 / quote_market.price
+                        base_exchange_rate = 1.0 / quote_market.price if quote_market.price else 1.0
 
                     profit_loss = market.format_price(asset.profit_loss) if market.quote == self.account.currency else ""
                     profit_loss_alt = market.format_price(asset.profit_loss / base_exchange_rate) if market.quote == self.account.alt_currency else ""

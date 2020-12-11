@@ -26,6 +26,11 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 # EN COURS #
 ############
 
+#116 kraken watcher et trader :
+    - fetch des positions
+    - fetch des trades history
+    - WS des trades/positions et des orders
+
 #112 Dans local reste 27 strategies a convertir vers le nouveau format (probablement certaines a supprimer)
 
 #113 Dans siis-lab reste 18 strategies a convertir vers le nouveau format (probablement certaines a supprimer)

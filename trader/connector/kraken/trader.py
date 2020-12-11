@@ -216,6 +216,8 @@ class KrakenTrader(Trader):
         #     fciq = prefer fee in quote currency
         #     nompp = no market price protection
         #     post = post only order (available when ordertype = limit)
+
+        # fees always on quote
         oflags = ['fciq']
 
         # order type (what is stop-loss-profit)
@@ -268,7 +270,6 @@ class KrakenTrader(Trader):
         if order.margin_trade:
             data['leverage'] = order.leverage
 
-        # limit order need timeInForce
         if order.order_type == Order.ORDER_LIMIT:
             data['price'] = market_or_instrument.format_price(order.price)
         elif order.order_type == Order.ORDER_STOP:
@@ -459,15 +460,144 @@ class KrakenTrader(Trader):
             asset.set_quantity(0.0, float(balance))
 
     def __fetch_positions(self):
-        positions = self._watcher.connector.get_open_positions()
+        open_positions = self._watcher.connector.get_open_positions()
 
-        for position in positions:
+        positions = {}
+
+        for tx_id, data in open_positions:
             # @todo
             pass
+
+        if positions:
+            with self._mutex:
+                self._positions = positions
 
     def __fetch_orders(self):
-        orders = self._watcher.connector.get_open_orders()
+        open_orders = self._watcher.connector.get_open_orders()  # userref=int
 
-        for order in orders:
-            # @todo
-            pass
+        orders = {}
+
+        for order_id, data in open_orders.items():
+            try:
+                descr = data['descr']
+                symbol = self._watcher.market_alias(descr['pair'])
+                market = self.market(symbol)
+
+                if not market:
+                    continue
+
+                # must be
+                if data['status'] != 'open':
+                    continue
+
+                order = Order(self, descr['pair'])
+
+                order.set_order_id(order_id)
+
+                if data['userref']:
+                    pass  # @todo
+
+                if data['refid']:
+                    order.set_ref_order_id(data['refid'])
+
+                order.quantity = float(data.get('vol', "0.0"))
+                order.executed = float(data.get('vol_exec', "0.0"))
+
+                order.direction = Order.LONG if descr['type'] == 'buy' else Order.SHORT
+
+                if descr['leverage'] and descr['leverage'] != 'none':
+                    order.margin_trade = True
+                    order.leverage = int(descr['leverage'])
+
+                if descr['ordertype'] == "limit":
+                    order.order_type = Order.ORDER_LIMIT
+                    order.price = float(descr['price']) if 'price' in descr else None
+
+                elif descr['ordertype'] == "stop-loss":
+                    order.order_type = Order.ORDER_STOP
+                    order.stop_price = float(descr['price']) if 'price' in descr else None
+
+                elif descr['ordertype'] == "take-profit":
+                    order.order_type = Order.ORDER_TAKE_PROFIT
+                    order.stop_price = float(descr['price']) if 'price' in descr else None
+
+                elif descr['ordertype'] == "stop-loss-limit":
+                    order.order_type = Order.ORDER_STOP_LIMIT
+                    order.price = float(descr['price2']) if 'price2' in descr else None
+                    order.stop_price = float(descr['price']) if 'price' in descr else None
+
+                elif descr['ordertype'] == "take-profit-limit":
+                    order.order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    order.price = float(descr['price2']) if 'price2' in descr else None
+                    order.stop_price = float(descr['price']) if 'price' in descr else None
+
+                elif descr['ordertype'] == "market":
+                    order.order_type = Order.ORDER_MARKET
+
+                # stop-loss-profit
+                order.created_time = data['opentm']
+                order.transact_time = data['starttm']
+
+                if data['oflags']:
+                    flags = data['oflags'].split(',')
+
+                    if 'fcib' in flags:
+                        # fee in base currency
+                        pass
+                    elif 'fciq' in flags:
+                        # fee in quote currency:
+                        pass
+
+                    if 'post' in flags:
+                        order.post_only = True
+
+                if data['misc']:
+                    misc = data['misc'].split(',')
+
+                    # stopped = triggered by stop price
+                    # touched = triggered by touch price
+                    # liquidated = liquidation
+                    # partial = partial fill
+
+                # 'expiretm' expiration timestamp
+                # if data['timeInForce'] == 'GTC':
+                #     order.time_in_force = Order.TIME_IN_FORCE_GTC
+                # elif data['timeInForce'] == 'IOC':
+                #     order.time_in_force = Order.TIME_IN_FORCE_IOC
+                # elif data['timeInForce'] == 'FOK':
+                #     order.time_in_force = Order.TIME_IN_FORCE_FOK
+                # else:
+                #     order.time_in_force = Order.TIME_IN_FORCE_GTC
+
+                # @todo
+                # cost = total cost (quote currency unless unless viqc set in oflags)
+                # fee = total fee (quote currency)
+                # price = average price (quote currency unless viqc set in oflags)
+                # stopprice = stop price (quote currency, for trailing stops)
+                # limitprice = triggered limit price (quote currency, when limit based order type triggered)
+
+                # conditional close
+                if descr['close']:
+                    pass  # @todo
+
+                # @todo
+                # trades = array of trade ids related to order (if trades info requested and data available)
+
+                orders[order.order_id] = order
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+        # if signals:
+        #     # deleted (for signals if no WS)
+        #     deleted_list = self._orders.keys() - orders.keys()
+        #     # @todo
+
+        #     # created (for signals if no WS)
+        #     created_list = orders.keys() - self._orders.keys()
+        #     # @todo
+
+        if orders:
+            with self._mutex:
+                self._orders = orders

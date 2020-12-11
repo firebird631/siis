@@ -407,12 +407,19 @@ class Connector(object):
 
         return {}
 
-    def get_open_orders(self):
+    def get_open_orders(self, trades=False, userref=None):
         # trades = inclure les trades ou non dans la requête (facultatif. par défaut = faux) 
         # userref = restreindre les résultats à un identifiant de référence utilisateur donné (facult
         params = {}
 
-        result = self.query_private('OpenOrders', params)
+        if trades:
+            params['trades'] = True
+
+        if userref:
+            params['userref'] = userref
+
+        data = self.query_private('OpenOrders', params)
+
         # refid = identifiant de référence de la transaction qui a créé cette commande
         # userref = identifiant de référence de l'utilisateur
         # status = état de l'ordre
@@ -452,11 +459,16 @@ class Connector(object):
         #     nompp = pas de protection des prix du marché
         # trades = tableau d'identifiants de transaction liés à l'ordre (si des informations sur les transactions sont demandées et les données disponibles)
 
-        # @todo
+        if data['error']:
+            logger.error("query open orders: %s" % ', '.join(data['error']))
+            return {}
+
+        if data['result']:
+            return data['result'].get('open', {})
 
         return {}
 
-    def get_trades_history(self):
+    def get_trades_history(self, trade_type='all', start_date=None, end_date=None):
         """
         @note Unless otherwise stated, costs, fees, prices, and volumes are in the asset pair's scale, not the currency's scale.
         @note Times given by trade tx ids are more accurate than unix timestamps.
@@ -473,7 +485,13 @@ class Connector(object):
         # ofs = result offset
         params = {}
 
-        result = self.query_private('OpenOrders', params)
+        if trade_type:
+            params['type'] = trade_type
+
+        # @todo start_date, and end_date
+
+        result = self.query_private('TradesHistory', params)
+
         # trades = array of trade info with txid as the key
         #     ordertxid = order responsible for execution of trade
         #     pair = asset pair
@@ -498,7 +516,12 @@ class Connector(object):
         #     net = net profit/loss of closed portion of position (quote currency, quote currency scale)
         #     trades = list of closing trades for position (if available)
 
-        # @todo
+        if data['error']:
+            logger.error("query trades history: %s" % ', '.join(data['error']))
+            return {}
+
+        if data['result']:
+            return data['result'].get('trades', {})
 
         return {}
 
@@ -565,14 +588,20 @@ class Connector(object):
 
         return result
 
-    def get_open_positions(self):
+    def get_open_positions(self, txids=None, docalcs=False):
         # txid = comma delimited list of transaction ids to restrict output to
         # docalcs = whether or not to include profit/loss calculations (optional.  default = false)
         # consolidation = what to consolidate the positions data around (optional.)
         # market = will consolidate positions based on market pair
         params = {}
 
-        result = self.query_private('OpenPositions', params)
+        if txids:
+            params['txid'] = ','.join(txids)
+
+        if docalcs:
+            params['docalcs'] = True
+
+        data = self.query_private('OpenPositions', params)
         # <position_txid> = open position info
         #     ordertxid = order responsible for execution of trade
         #     pair = asset pair
@@ -590,7 +619,13 @@ class Connector(object):
         #     oflags = comma delimited list of order flags
         #         viqc = volume in quote currency
 
-        # @todo
+        if data['error']:
+            logger.error("query open positions: %s" % ', '.join(data['error']))
+            return {}
+
+        if data['result']:
+            logger.info(data['result'])
+            return data['result'].get('open', {})
 
         return {}
 
