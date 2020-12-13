@@ -9,6 +9,8 @@ from common.keyed import Keyed
 class Order(Keyed):
     """
     Order for execution on a trader.
+
+    @todo GTD could be distinct and need an expiry_time field
     """
 
     LONG = 1    # long direction

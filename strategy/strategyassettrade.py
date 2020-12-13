@@ -519,8 +519,11 @@ class StrategyAssetTrade(StrategyTrade):
                     # commission asset is itself, have to reduce it from filled, done after status determination because of the qty reduced by the fee
                     self.e = instrument.adjust_quantity(self.e - data.get('commission-amount', 0.0))
 
-                # realized fees
-                self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+                # realized fees : in cumulated quote or compute from filled quantity and trade execution
+                if 'cumulative-commission-amount' in data:
+                    self._stats['entry-fees'] = data['cumulative-commission-amount']
+                else:
+                    self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
 
                 # retains the trade timestamp
                 if not self._stats['first-realized-entry-timestamp']:
@@ -594,8 +597,11 @@ class StrategyAssetTrade(StrategyTrade):
                 if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
                     self.x = instrument.adjust_quantity(self.x - data.get('commission-amount', 0))
 
-                # realized fees
-                self._stats['exit-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+                # realized fees : in cumulated quote or compute from filled quantity and trade execution
+                if 'cumulative-commission-amount' in data:
+                    self._stats['exit-fees'] = data['cumulative-commission-amount']
+                else:
+                    self._stats['exit-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
 
                 # retains the trade timestamp
                 if not self._stats['first-realized-exit-timestamp']:

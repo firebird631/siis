@@ -283,17 +283,17 @@ class KrakenTrader(Trader):
             data['price2'] = market_or_instrument.format_price(order.price)
             data['price'] = market_or_instrument.format_price(order.stop_price)
 
-        data['userref'] = int(order.ref_order_id)  # 32bits integer
+        data['userref'] = int(order.ref_order_id) if order.ref_order_id else 0  # 32bits integer
 
         # starttm (for scheduled start time, 0 now)
         # expiretm (for expiration time, 0, none or not defined no expiry)
 
-        # close[ordertype], close[price], close[price2] for optional closing order
+        # close['ordertype'], close['price'], close['price2'] for optional closing order
 
         # @todo for testing only
         # data['validate'] = True
 
-        logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('quantity'), pair, data.get('price')))
+        logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('vol'), pair, data.get('price')))
 
         results = None
         reason = None
@@ -347,7 +347,7 @@ class KrakenTrader(Trader):
         result = None
 
         try:
-            result = self._watcher.connector.cancel_order(order_id)
+            results = self._watcher.connector.cancel_order(order_id)
         except Exception as e:
             reason = str(e)
 
@@ -355,14 +355,31 @@ class KrakenTrader(Trader):
             error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, pair, reason))
             return False
 
-        if result.get('count', 0) <= 0:
-            error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, pair, reason))
-            order_logger.error(result)
-            return False
+        if results:
+            if results.get('error', []):
+                reason = ','.join(results['error'])
 
-        order_logger.info(result)
+                error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, pair, reason))
+                order_logger.error(results)
 
-        return True
+                return False
+
+            elif results.get('result', {}):
+                result = results['result']
+
+                if result.get('count', 0) <= 0:
+                    error_logger.error("Trader %s cancel order %s %s invalid count !" % (self.name, order_id, pair))
+                    order_logger.error(result)
+                    return False
+
+                else:
+                    order_logger.info(result)
+                    return True
+
+        error_logger.error("Trader %s rejected cancel order %s %s !" % (self.name, order_id, pair))
+        order_logger.error(results)
+
+        return False
 
     def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         if not position_id or not market_or_instrument:
@@ -495,17 +512,17 @@ class KrakenTrader(Trader):
                 order.set_order_id(order_id)
 
                 if data['userref']:
-                    pass  # @todo
+                    order.set_ref_order_id(str(data['refid']))
 
-                if data['refid']:
-                    order.set_ref_order_id(data['refid'])
+                # if data['refid']:
+                #     order.set_ref_order_id(data['refid'])
 
                 order.quantity = float(data.get('vol', "0.0"))
                 order.executed = float(data.get('vol_exec', "0.0"))
 
                 order.direction = Order.LONG if descr['type'] == 'buy' else Order.SHORT
 
-                if descr['leverage'] and descr['leverage'] != 'none':
+                if descr['leverage'] is not None and descr['leverage'] != 'none':
                     order.margin_trade = True
                     order.leverage = int(descr['leverage'])
 
@@ -544,6 +561,7 @@ class KrakenTrader(Trader):
                     if 'fcib' in flags:
                         # fee in base currency
                         pass
+
                     elif 'fciq' in flags:
                         # fee in quote currency:
                         pass
@@ -557,24 +575,14 @@ class KrakenTrader(Trader):
                     # stopped = triggered by stop price
                     # touched = triggered by touch price
                     # liquidated = liquidation
-                    # partial = partial fill
 
-                # 'expiretm' expiration timestamp
-                # if data['timeInForce'] == 'GTC':
-                #     order.time_in_force = Order.TIME_IN_FORCE_GTC
-                # elif data['timeInForce'] == 'IOC':
-                #     order.time_in_force = Order.TIME_IN_FORCE_IOC
-                # elif data['timeInForce'] == 'FOK':
-                #     order.time_in_force = Order.TIME_IN_FORCE_FOK
-                # else:
-                #     order.time_in_force = Order.TIME_IN_FORCE_GTC
+                if data['expiretm'] is not None and data['expiretm'] > 0:
+                    order.time_in_force = Order.TIME_IN_FORCE_GTD
+                    # @todo order.expiry = float(data['expiretm'])
 
-                # @todo
                 # cost = total cost (quote currency unless unless viqc set in oflags)
                 # fee = total fee (quote currency)
                 # price = average price (quote currency unless viqc set in oflags)
-                # stopprice = stop price (quote currency, for trailing stops)
-                # limitprice = triggered limit price (quote currency, when limit based order type triggered)
 
                 # conditional close
                 if descr['close']:

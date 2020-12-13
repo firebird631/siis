@@ -30,6 +30,10 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
     - fetch des positions
     - fetch des trades history
     - WS des trades/positions et des orders
+        - comment savoir si maker ou taker ?
+        - finir order : open, traded, closed, updated
+        - trade : seulement pour avoir l'update des positions
+    - 'cumulative-commission-amount' pour les fees, seulement géré sur assettrade, mais devrait être supporté par les autres
 
 #112 Dans local reste 27 strategies a convertir vers le nouveau format (probablement certaines a supprimer)
 

@@ -83,6 +83,12 @@ class KrakenWatcher(Watcher):
 
         self._last_ws_hearbeat = 0.0
 
+        self._got_orders_init_snapshot = False
+        self._got_trades_init_snapshot = False
+
+        self._orders_ws_cache = {}     # orders data cache to be updated per WS
+        self._positions_ws_cache = {}  # positions data cache to be updated per WS
+
     def connect(self):
         super().connect()
 
@@ -553,6 +559,10 @@ class KrakenWatcher(Watcher):
 
         self._markets_aliases = markets_aliases
 
+    #
+    # public trade WS
+    #
+
     def __on_depth_data(self, data):
         # @ref https://www.kraken.com/en-us/features/websocket-api#message-book
         pass
@@ -651,189 +661,194 @@ class KrakenWatcher(Watcher):
     def __on_kline_data(self, data):
         pass
 
+    #
+    # private trade/position WS
+    #
+
+    def __update_position_cache(self, position_id, new_position_data):
+        position_data_cache = self._positions_ws_cache.get(position_id)
+        status = new_position_data['posstatus']
+
+        if position_data_cache:
+            # update the cached data
+            self._positions_ws_cache[position_id] = new_position_data
+
+            # remove from cache if Closing
+            if status == "Closing":
+                del self._positions_ws_cache[position_id]
+
+            # exists, data
+            return status == "Opened", new_position_data
+        else:
+            # add to cache if Opened
+            if status == "Opened":
+                self._positions_ws_cache[position_id] = new_position_data
+
+            # exists, data
+            return status == "Opened", new_position_data
+
+    def __del_position_cache(self, position_id):
+        if position_id in self._positions_ws_cache:
+            del self._positions_ws_cache[position_id]
+
     def __on_own_trades(self, data):
         if isinstance(data, list) and data[1] == "ownTrades":
-            # [{'xxxx-yyyy-zzzz': {'cost': '110.15956', 'fee': '0.28642', 'margin': '22.03191', 'ordertxid': 'xxxx-yyyy-zzzz', 'ordertype': 'market', 'pair': 'XBT/EUR', 'posstatus': 'Closing',
-            #    'postxid': 'xxxx-yyyy-zzzz', 'price': '7343.97067', 'time': '1571773989.359761', 'type': 'buy', 'vol': '0.01500000'}},
-            #   {'xxxx-yyyy-zzzz': {'cost': '110.58150', 'fee': '0.29857', 'margin': '22.11630', 'ordertxid': 'xxxx-yyyy-zzzz', 'ordertype': 'market', 'pair': 'XBT/EUR', 'posstatus': 'Opened',
-            #    'postxid': 'xxxx-yyyy-zzzz', 'price': '7372.10000', 'time': '1571725122.392658', 'type': 'sell', 'vol': '0.01500000'}}]
+            if not self._got_trades_init_snapshot:
+                # ignore the initial snapshot (got them throught REST api), but keep open positions for the cache
+                for entry in data[0]:
+                    # only single object per entry
+                    trade_id, trade_data = next(iter(entry.items()))
+
+                    if trade_data.get('posstatus'):
+                        position_id = trade_data['postxid']
+                        self.__update_position_cache(position_id, trade_data)
+
+                self._got_trades_init_snapshot = True
+
+                return
+
             for entry in data[0]:
-                txid = list(entry.keys())[0]
-                trade = list(entry.values())[0]
+                # only single object per entry
+                trade_id, trade_data = next(iter(entry.items()))
 
-                exec_logger.info("kraken.com ownTrades : %s - %s" % (txid, trade))
+                exec_logger.info("kraken.com ownTrades : %s - %s" % (trade_id, trade_data))
 
-                market_id = self._wsname_lookup.get(trade['pair'])
+                symbol = self._wsname_lookup.get(trade_data['pair'])
 
-                if not market_id:
+                if not symbol:
                     continue
 
-                timestamp = float(trade['time'])
+                if trade_data.get('posstatus'):                   
+                    ref_order_id = trade_data['ordertxid']
+                    position_id = trade_data['postxid']
 
-                order_id = trade['ordertxid']
-                position_id = trade['postxid']
+                    self.__update_position_cache(position_id, trade_data)
 
-                side = Order.LONG if trade['type'] == "buy" else Order.SHORT
-                # cost, fee, vol, margin, ordertype
+                    timestamp = float(trade_data['time'])
+                    posstatus = trade_data['posstatus']
 
-                #
-                # only for positions
-                #
+                    price = None
+                    stop_price = None
 
-                posstatus = trade.get('posstatus', "")
+                    if descr['ordertype'] == "limit":
+                        order_type = Order.ORDER_LIMIT
+                    elif descr['ordertype'] == "stop-loss":
+                        order_type = Order.ORDER_STOP
+                    elif descr['ordertype'] == "take-profit":
+                        order_type = Order.ORDER_TAKE_PROFIT
+                    elif descr['ordertype'] == "stop-loss-limit":
+                        order_type = Order.ORDER_STOP_LIMIT
+                    elif descr['ordertype'] == "take-profit-limit":
+                        order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    elif descr['ordertype'] == "market":
+                        order_type = Order.ORDER_MARKET
+                    else:
+                        order_type = Order.ORDER_MARKET
 
-                if posstatus == 'Closing':
-                    pass
-                    #     client_order_id = str(data['c'])
-                    #     reason = ""
+                    exec_vol = float(trade_data['vol'])
+                    exec_price = float(trade_data['price'])
+                    fee = float(trade_data['fee'])  # in quote (or base depend of order)
 
-                    #     if data['r'] == 'INSUFFICIENT_BALANCE':
-                    #         reason = 'insufficient balance'
+                    # trade
+                    order = {
+                        'id': order_id,
+                        'symbol': symbol,
+                        'type': order_type,
+                        'trade-id': trade_id,
+                        'direction': Order.LONG if trade_data['type'] == 'buy' else Order.SHORT,
+                        'timestamp': timestamp,
+                        'exec-price': exec_price,
+                        'filled': exec_vol,
+                        # 'cumulative-filled': ,
+                        'quote-transacted': float(trade_data['cost']),
+                        'commission-amount': fee,
+                        # 'commission-asset': , is quote
+                        # 'maker': ,   # trade execution over or counter the market : true if maker, false if taker
+                        # 'fully-filled':   # fully filled status else its partially
+                    }
 
-                    #     self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
+                    # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
 
-                    # elif (data['x'] == 'TRADE') and (data['X'] == 'FILLED' or data['X'] == 'PARTIALLY_FILLED'):
-                    #     order_id = str(data['i'])
-                    #     client_order_id = str(data['c'])
+                    # position
+                    # @todo
+                    # 'margin': used margin
+                    # 'cost': size in quote
 
-                    #     timestamp = float(data['T']) * 0.001  # transaction time
+                    position_data = {
+                        'id': position_id,
+                        'symbol': symbol,
+                        'direction': Order.LONG if trade_data['type'] == 'buy' else Order.SHORT,
+                        'timestamp': timestamp,
+                        'stop-loss': None,
+                        'take-profit': None,
+                        # 'avg-entry-price': ,
+                        'exec-price': exec_price,
+                        'filled': exec_vol,  # no have
+                        # 'cumulative-filled': ,
+                        'liquidation-price': None,  # no have
+                        'commission': fee,
+                        # 'profit-currency': self.BASE_QUOTE,
+                        # 'profit-loss': float(pos['up']),
+                        'profit-loss-rate': None,
+                    }
 
-                    #     price = None
-                    #     stop_price = None
+                    # if posstatus == 'Closing':
+                    #     pass  # @todo
 
-                    #     if data['o'] == 'LIMIT':
-                    #         order_type = Order.ORDER_LIMIT
-                    #         price = float(data['p'])
+                    #     # position closed...
+                    #     # self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, ref_order_id))
+                    #     # self.service.notify(Signal.SIGNAL_POSITION_CLOSED, self.name, (symbol, position_data, ref_order_id))
 
-                    #     elif data['o'] == 'MARKET':
-                    #         order_type = Order.ORDER_MARKET
+                    # elif posstatus == 'Opened':
+                    #     pass  # @todo   
 
-                    #     elif data['o'] == 'STOP_LOSS':
-                    #         order_type = Order.ORDER_STOP
-                    #         stop_price = float(data['P'])
+                    #     # position opened...
+                    #     # self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, ref_order_id))
+                    #     # self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (symbol, position_data, ref_order_id))
+                else:
+                    # spot order traded (partial or full). for now we use the trade update message
+                    order_id = trade_data['ordertxid']
+                    ref_order_id = None
+                    timestamp = float(trade_data['time'])
 
-                    #     elif data['o'] == 'STOP_LOSS_LIMIT':
-                    #         order_type = Order.ORDER_STOP_LIMIT
-                    #         price = float(data['p'])
-                    #         stop_price = float(data['P'])
+                    price = None
+                    stop_price = None
 
-                    #     elif data['o'] == 'TAKE_PROFIT':
-                    #         order_type = Order.ORDER_TAKE_PROFIT
-                    #         stop_price = float(data['P'])
+                    if descr['ordertype'] == "limit":
+                        order_type = Order.ORDER_LIMIT
+                    elif descr['ordertype'] == "stop-loss":
+                        order_type = Order.ORDER_STOP
+                    elif descr['ordertype'] == "take-profit":
+                        order_type = Order.ORDER_TAKE_PROFIT
+                    elif descr['ordertype'] == "stop-loss-limit":
+                        order_type = Order.ORDER_STOP_LIMIT
+                    elif descr['ordertype'] == "take-profit-limit":
+                        order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    elif descr['ordertype'] == "market":
+                        order_type = Order.ORDER_MARKET
+                    else:
+                        order_type = Order.ORDER_MARKET
 
-                    #     elif data['o'] == 'TAKE_PROFIT_LIMIT':
-                    #         order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                    #         price = float(data['p'])
-                    #         stop_price = float(data['P'])
+                    # @todo
 
-                    #     elif data['o'] == 'LIMIT_MAKER':
-                    #         order_type = Order.ORDER_LIMIT
-                    #         price = float(data['p'])
+                    order = {
+                        'id': order_id,
+                        'symbol': symbol,
+                        'type': order_type,
+                        'trade-id': trade_id,
+                        'direction': Order.LONG if trade_data['type'] == 'buy' else Order.SHORT,
+                        'timestamp': timestamp,
+                        'exec-price': float(trade_data['price']),
+                        'filled': float(trade_data['vol']),
+                        # 'cumulative-filled': ,
+                        'quote-transacted': float(trade_data['cost']),
+                        'commission-amount': float(trade_data['fee']),
+                        # 'commission-asset': , is quote
+                        # 'maker': ,   # trade execution over or counter the market : true if maker, false if taker
+                        # 'fully-filled':   # fully filled status else its partially
+                    }
 
-                    #     else:
-                    #         order_type = Order.ORDER_LIMIT
-
-                    #     if data['f'] == 'GTC':
-                    #         time_in_force = Order.TIME_IN_FORCE_GTC
-                    #     elif data['f'] == 'IOC':
-                    #         time_in_force = Order.TIME_IN_FORCE_IOC
-                    #     elif data['f'] == 'FOK':
-                    #         time_in_force = Order.TIME_IN_FORCE_FOK
-                    #     else:
-                    #         time_in_force = Order.TIME_IN_FORCE_GTC
-
-                    #     order = {
-                    #         'id': order_id,
-                    #         'symbol': symbol,
-                    #         'type': order_type,
-                    #         'trade-id': str(data['t']),
-                    #         'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
-                    #         'timestamp': timestamp,
-                    #         'quantity': float(data['q']),
-                    #         'price': price,
-                    #         'stop-price': stop_price,
-                    #         'exec-price': float(data['L']),
-                    #         'filled': float(data['l']),
-                    #         'cumulative-filled': float(data['z']),
-                    #         'quote-transacted': float(data['Y']),  # similar as float(data['Z']) for cumulative
-                    #         'stop-loss': None,
-                    #         'take-profit': None,
-                    #         'time-in-force': time_in_force,
-                    #         'commission-amount': float(data['n']),
-                    #         'commission-asset': data['N'],
-                    #         'maker': data['m'],   # trade execution over or counter the market : true if maker, false if taker
-                    #         'fully-filled': data['X'] == 'FILLED'  # fully filled status else its partially
-                    #     }
-
-                    #     self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
-
-                elif posstatus == 'Opened':
-                    pass
-                    #     order_id = str(data['i'])
-                    #     timestamp = float(data['O']) * 0.001  # order creation time
-                    #     client_order_id = str(data['c'])
-
-                    #     iceberg_qty = float(data['F'])
-
-                    #     price = None
-                    #     stop_price = None
-
-                    #     if data['o'] == 'LIMIT':
-                    #         order_type = Order.ORDER_LIMIT
-                    #         price = float(data['p'])
-
-                    #     elif data['o'] == 'MARKET':
-                    #         order_type = Order.ORDER_MARKET
-
-                    #     elif data['o'] == 'STOP_LOSS':
-                    #         order_type = Order.ORDER_STOP
-                    #         stop_price = float(data['P'])
-
-                    #     elif data['o'] == 'STOP_LOSS_LIMIT':
-                    #         order_type = Order.ORDER_STOP_LIMIT
-                    #         price = float(data['p'])
-                    #         stop_price = float(data['P'])
-
-                    #     elif data['o'] == 'TAKE_PROFIT':
-                    #         order_type = Order.ORDER_TAKE_PROFIT
-                    #         stop_price = float(data['P'])
-
-                    #     elif data['o'] == 'TAKE_PROFIT_LIMIT':
-                    #         order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                    #         price = float(data['p'])
-                    #         stop_price = float(data['P'])
-
-                    #     elif data['o'] == 'LIMIT_MAKER':
-                    #         order_type = Order.ORDER_LIMIT
-                    #         price = float(data['p'])
-
-                    #     else:
-                    #         order_type = Order.ORDER_LIMIT
-
-                    #     if data['f'] == 'GTC':
-                    #         time_in_force = Order.TIME_IN_FORCE_GTC
-                    #     elif data['f'] == 'IOC':
-                    #         time_in_force = Order.TIME_IN_FORCE_IOC
-                    #     elif data['f'] == 'FOK':
-                    #         time_in_force = Order.TIME_IN_FORCE_FOK
-                    #     else:
-                    #         time_in_force = Order.TIME_IN_FORCE_GTC
-
-                    #     order = {
-                    #         'id': order_id,
-                    #         'symbol': symbol,
-                    #         'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
-                    #         'type': order_type,
-                    #         'timestamp': event_timestamp,
-                    #         'quantity': float(data['q']),
-                    #         'price': price,
-                    #         'stop-price': stop_price,
-                    #         'time-in-force': time_in_force,
-                    #         'stop-loss': None,
-                    #         'take-profit': None
-                    #     }
-
-                    #     self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
+                    # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
 
         elif isinstance(data, dict):
             if not data.get('event'):
@@ -849,48 +864,254 @@ class KrakenWatcher(Watcher):
 
             elif data['event'] == "subscriptionStatus":
                 if data['status'] == "error":
-                    error_logger.error("%s - %s" % (data['errorMessage'], data['name']))
+                    error_logger.error("ownTrades subscriptionStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
+
                     self._ws_own_trades['status'] = False
                     self._reconnect_user_ws = True
 
                 elif data['status'] == "subscribed" and data['channelName'] == "ownTrades":
                     self._ws_own_trades['subscribed'] = True
 
+    #
+    # private order WS
+    #
+
+    def __set_order(self, symbol, order_id, order_data):
+        event_timestamp = float(order_data['opentm'])
+
+        descr = order_data['descr']
+
+        price = None
+        stop_price = None
+
+        if descr['ordertype'] == "limit":
+            order_type = Order.ORDER_LIMIT
+            price = float(descr['price']) if 'price' in descr else None
+
+        elif descr['ordertype'] == "stop-loss":
+            order_type = Order.ORDER_STOP
+            stop_price = float(descr['price']) if 'price' in descr else None
+
+        elif descr['ordertype'] == "take-profit":
+            order_type = Order.ORDER_TAKE_PROFIT
+            top_price = float(descr['price']) if 'price' in descr else None
+
+        elif descr['ordertype'] == "stop-loss-limit":
+            order_type = Order.ORDER_STOP_LIMIT
+            price = float(descr['price2']) if 'price2' in descr else None
+            stop_price = float(descr['price']) if 'price' in descr else None
+
+        elif descr['ordertype'] == "take-profit-limit":
+            order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+            price = float(descr['price2']) if 'price2' in descr else None
+            stop_price = float(descr['price']) if 'price' in descr else None
+
+        elif descr['ordertype'] == "market":
+            order_type = Order.ORDER_MARKET
+
+        else:
+            order_type = Order.ORDER_MARKET
+
+        time_in_force = Order.TIME_IN_FORCE_GTC
+        partial = False
+
+        if order_data['expiretm'] is not None and order_data['expiretm'] > 0:
+            time_in_force = Order.TIME_IN_FORCE_GTD
+            expiry = float(order_data['expiretm'])
+
+        if descr['leverage'] is not None and descr['leverage'] != 'none':
+            margin_trade = True
+            leverage = int(descr['leverage'])
+        else:
+            margin_trade = False
+            leverage = 0
+
+        executed = float(order_data.get('vol_exec', "0.0"))
+        transact_time = order_data['starttm']
+        post_only = False
+        commission_asset_is_quote = True
+
+        if order_data['oflags']:
+            flags = order_data['oflags'].split(',')
+       
+            if 'fcib' in flags:
+                # fee in base currency
+                commission_asset_is_quote = False
+
+            elif 'fciq' in flags:
+                # fee in quote currency:
+                commission_asset_is_quote = True
+
+            if 'post' in flags:
+                post_only = True
+
+        # conditional close
+        # if descr['close']:
+        #     pass  # @todo
+
+        return {
+            'id': order_id,
+            'symbol': symbol,
+            'direction': Order.LONG if descr['type'] == "buy" else Order.SHORT,
+            'type': order_type,
+            'timestamp': event_timestamp,
+            'quantity': float(order_data.get('vol', "0.0")),
+            'price': price,
+            'stop-price': stop_price,
+            'time-in-force': time_in_force,
+            'post-only': post_only,
+            # 'close-only': ,
+            # 'reduce-only': ,
+            'stop-loss': None,
+            'take-profit': None
+        }
+
+    def __fill_order(self, order, order_data, filled_volume):
+        if filled_volume > 0.0:
+            cumulative_filled = float(order_data['vol_exec'])
+            partial = False
+
+            if order_data['misc']:
+                misc = order_data['misc'].split(',')
+
+                if 'partial' in order_data['misc']:
+                    partial = True
+
+            # if cumulative_filled > 0.0:
+            #     fully_filled = not partial
+
+            order.update({
+                'exec-price': float(order_data['avg_price']),
+                'filled': filled_volume,
+                'cumulative-filled': cumulative_filled,
+                'cumulative-commission-amount': float(order_data['fee']),
+                # 'commission-asset': , is quote symbol because order always use quote fee flag
+                # 'maker': ,   # trade execution over or counter the market : true if maker, false if taker
+                # 'fully-filled': fully_filled  # fully filled status else its partially
+            })
+
+        return order
+
+    def __update_order_cache(self, order_id, new_order_data):
+        order_data_cache = self._orders_ws_cache.get(order_id)
+
+        if order_data_cache:
+            # detect a diff in executed volume
+            prev_exec_vol = 0.0
+            new_exec_vol = 0.0
+
+            if 'vol_exec' in order_data_cache:
+                prev_exec_vol = float(order_data_cache['vol_exec'])
+
+            if 'vol_exec' in new_order_data:
+                new_exec_vol = float(new_order_data['vol_exec'])
+
+            filled_volume = new_exec_vol - prev_exec_vol
+
+            # was pending, now opened
+            opened = order_data_cache['status'] == 'pending' and new_order_data['status'] == 'open'
+
+            # update the cached data
+            order_data_cache.update(new_order_data)
+
+            # remove from cache if closed or deleted
+            if new_order_data['status'] in ("closed", "deleted"):
+                del self._orders_ws_cache[order_id]
+
+            # executed vol diff (can be 0), data are updated
+            return opened, filled_volume, order_data_cache
+        else:
+            # add to cache if pending or opened
+            if new_order_data['status'] in ("pending", "open"):
+                self._orders_ws_cache[order_id] = new_order_data
+
+            # no execute volume, data are original
+            return False, 0.0, new_order_data
+
+    def __del_order_cache(self, order_id):
+        if order_id in self._orders_ws_cache:
+            del self._orders_ws_cache[order_id]
+
     def __on_open_orders(self, data):
         if isinstance(data, list) and data[1] == "openOrders":
-            # [{'xxxx-yyyy-zzzz': {'avg_price': '0.00000', 'cost': '0.00000', 'descr': {'close': None, 'leverage': None, 'order': 'sell 9.99355396 LTC/EUR @ limit 56.15000',
-            #   'ordertype': 'limit', 'pair': 'LTC/EUR', 'price': '56.15000', 'price2': '0.00000', 'type': 'sell'}, 'expiretm': None, 'fee': '0.00000', 'limitprice': '0.00000',
-            #   'misc': '', 'oflags': 'fciq', 'opentm': '1573672059.209149', 'refid': None, 'starttm': None, 'status': 'open', 'stopprice': '0.00000', 'userref': 0,
-            #   'vol': '9.99355396', 'vol_exec': '0.00000000'}}
+            if not self._got_orders_init_snapshot:
+                # ignore the initial snapshot (got them throught REST api)
+                self._got_orders_init_snapshot = True
+                return
+
             for entry in data[0]:
-                order_id = list(entry.keys())[0]
-                order_data = list(entry.values())[0]
+                # only single object per entry
+                order_id, order_data = next(iter(entry.items()))
 
                 exec_logger.info("kraken.com openOrders : %s - %s" % (order_id, order_data))
 
-                market_id = self._wsname_lookup.get(order_data['pair'])
+                # opened status is when previous was 'pending' and new is 'open'
+                # then we can filter the initial 'open' messages
+                opened, filled_volume, order_data = self.__update_order_cache(order_id, order_data)
 
-                if not market_id:
+                if 'descr' not in order_data:
+                    # no have previous message to tell the symbol
                     continue
 
-                timestamp = float(order_data['opentm'])
+                symbol = self._wsname_lookup.get(order_data['descr']['pair'])
 
-                side = Order.LONG if order_data['type'] == "buy" else Order.SHORT
+                if not symbol:
+                    # non managed symbol
+                    continue
 
-                status = order_data.get("status", "")
+                status = order_data['status']
 
-                if status == "open":
-                    ref_order_id = order.get('refid')
+                if status == "pending":
+                    # nothing is done here, waiting for a rejection or open
                     pass
+
+                elif status == "open":
+                    # only if we have the order in a pending state at a previous msg
+                    client_order_id = str(order_data['userref']) if order_data['userref'] else ""
+                    order = self.__set_order(symbol, order_id, order_data)
+
+                    self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
+
+                    if filled_volume > 0.0:
+                        self.__fill_order(order, order_data, filled_volume)
+                        self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
 
                 elif status == "closed":
-                    pass
+                    client_order_id = str(order_data['userref']) if order_data['userref'] else ""
+                    order = self.__set_order(symbol, order_id, order_data)
+
+                    # @todo the rest is SIGNAL_ORDER_UPDATED
+
+                    if filled_volume > 0.0:
+                        self.__fill_order(order, order_data, filled_volume)
+                        self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
+
+                    self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, client_order_id))
 
                 elif status == "updated":
-                    pass
+                    client_order_id = str(order_data['userref']) if order_data['userref'] else ""
+                    order = self.__set_order(symbol, order_id, order_data)
+
+                    self.service.notify(Signal.SIGNAL_ORDER_UPDATED, self.name, (symbol, order, client_order_id))
+
+                    if filled_volume > 0.0:
+                        self.__fill_order(order, order_data, filled_volume)
+                        self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
 
                 elif status == "deleted":
-                    pass
+                    client_order_id = str(order_data['userref']) if order_data['userref'] else ""
+                    order = self.__set_order(symbol, order_id, order_data)
+
+                    if filled_volume > 0.0:
+                        self.__fill_order(order, order_data, filled_volume)
+                        self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
+
+                    self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
+
+                elif status == "canceled":
+                    client_order_id = str(order_data['userref']) if order_data['userref'] else ""
+
+                    self.service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (symbol, order_id, client_order_id))
 
         elif isinstance(data, dict):
             if not data.get('event'):
@@ -906,12 +1127,43 @@ class KrakenWatcher(Watcher):
 
             elif data['event'] == "subscriptionStatus":
                 if data['status'] == "error":
-                    error_logger.error("%s - %s" % (data['errorMessage'], data['name']))
+                    error_logger.error("kraken.com openOrders:openOrders subscriptionStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
+
                     self._ws_open_orders['status'] = False
                     self._reconnect_user_ws = True
 
                 elif data['status'] == "subscribed" and data['channelName'] == "openOrders":
                     self._ws_open_orders['subscribed'] = True
+
+            elif data['event'] == "addOrderStatus":
+                if data['status'] == "error":
+                    error_logger.error("kraken.com openOrders:addOrderStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
+
+                    # already get in REST response
+                    # self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
+
+                elif data['status'] == "ok":
+                    trade_id = data['txid']
+
+                    exec_logger.info("kraken.com openOrders:addOrderStatus : %s" % (trade_id,))
+
+            elif data['event'] == "cancelOrderStatus":
+                if data['status'] == "error":
+                    error_logger.error("kraken.com openOrders:cancelOrderStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
+
+                elif data['status'] == "ok":
+                    order_ids = data['txid']  # array of order_id
+
+                    exec_logger.info("kraken.com openOrders:cancelOrderStatus ids : %s" % (repr(order_ids),))
+
+            elif data['event'] == "cancelAllStatus":
+                if data['status'] == "error":
+                    error_logger.error("cancelAllStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
+
+                elif data['status'] == "ok":
+                    canceled_orders_count = data['count']
+
+                    exec_logger.info("kraken.com openOrders:cancelAllStatus : %s orders" % (canceled_orders_count,))
 
     #
     # miscs

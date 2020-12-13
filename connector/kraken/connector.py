@@ -32,18 +32,54 @@ class Connector(object):
     Order/cancel does not affect this counter.
     Trade history increase by 2, other by 2
 
-    # https://api.kraken.com/0/private/OpenOrders
     # https://api.kraken.com/0/private/ClosedOrders
     # https://api.kraken.com/0/private/QueryOrders
-    # https://api.kraken.com/0/private/TradesHistory
     # https://api.kraken.com/0/private/QueryTrades
-    # https://api.kraken.com/0/private/OpenPositions
-    # https://api.kraken.com/0/private/TradeVolume
-    # https://api.kraken.com/0/private/AddOrder
-    # https://api.kraken.com/0/private/CancelOrder
 
     # @ref REST https://www.kraken.com/features/api
     # @ref WSS https://www.kraken.com/en-us/features/websocket-api
+
+    Public WS errors :
+        "Already subscribed"
+        "Currency pair not in ISO 4217-A3 format"
+        "Malformed request"
+        "Pair field must be an array"
+        "Pair field unsupported for this subscription type"
+        "Pair(s) not found"
+        "Subscription book depth must be an integer"
+        "Subscription depth not supported"
+        "Subscription field must be an object"
+        "Subscription name invalid"
+        "Subscription object unsupported field"
+        "Subscription ohlc interval must be an integer"
+        "Subscription ohlc interval not supported"
+        "Subscription ohlc requires interval"
+
+    Private WS errors :
+        "EAccount:Invalid permissions"
+        "EAuth:Account temporary disabled"
+        "EAuth:Account unconfirmed"
+        "EAuth:Rate limit exceeded"
+        "EAuth:Too many requests"
+        "EGeneral:Invalid arguments"
+        "EOrder:Cannot open opposing position"
+        "EOrder:Cannot open position"
+        "EOrder:Insufficient funds (insufficient user funds)""
+        "EOrder:Insufficient margin (exchange does not have sufficient funds to allow margin trading)""
+        "EOrder:Invalid price"
+        "EOrder:Margin allowance exceeded"
+        "EOrder:Margin level too low"
+        "EOrder:Order minimum not met (volume too low)""
+        "EOrder:Orders limit exceeded"
+        "EOrder:Positions limit exceeded"
+        "EOrder:Rate limit exceeded"
+        "EOrder:Scheduled orders limit exceeded"
+        "EOrder:Unknown position"
+        "EService:Market in cancel_only mode"
+        "EService:Market in limit_only mode"
+        "EService:Market in post_only mode"
+        "EService:Unavailable"
+        "ETrade:Invalid request"
     """
 
     CANDLES_HISTORY_MAX_RETRY = 3

@@ -20,16 +20,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import traceback
 import threading
 import json
 import hmac
 import hashlib
+import logging
+
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 from twisted.internet import reactor, ssl
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet.error import ReactorAlreadyRunning
 
 from monitor.service import MonitorService
+
+error_logger = logging.getLogger('siis.error.kraken.ws')
+traceback_logger = logging.getLogger('siis.traceback.kraken.ws')
 
 
 class KrakenClientProtocol(WebSocketClientProtocol):
@@ -55,7 +61,11 @@ class KrakenClientProtocol(WebSocketClientProtocol):
             except ValueError:
                 pass
             else:
-                self.factory.callback(payload_obj)
+                try:
+                    self.factory.callback(payload_obj)
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
 
 
 class KrakenReconnectingClientFactory(ReconnectingClientFactory):
