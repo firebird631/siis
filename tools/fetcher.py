@@ -187,7 +187,7 @@ def do_fetcher(options):
         markets = fetcher.matching_symbols_set(options['market'].split(','), fetcher.available_instruments())
 
         try:
-            for market_id in markets:
+            for market_id in markets:                
                 if not fetcher.has_instrument(market_id, options.get('spec')):
                     logger.error("Market %s not found !" % (market_id,))
                 else:
@@ -195,6 +195,12 @@ def do_fetcher(options):
                         fetcher.install_market(market_id)
                     else:
                         if do_update:
+                            # reset from initials options
+                            from_date = options.get('from')
+                            to_date = options.get('to')
+                            last = options.get('last')
+                            spec = options.get('spec')
+
                             # update from last entry, compute the from datetime
                             if timeframe <= Instrument.TF_TICK:
                                 # get last datetime from tick storage and add 1 millisecond
@@ -202,11 +208,11 @@ def do_fetcher(options):
                                 next_date = datetime.fromtimestamp(last_tick[0] + 0.001, tz=UTC()) if last_tick else None
 
                                 if next_date:
-                                    options['from'] = next_date
+                                    from_date = next_date
 
                                 if not options.get('from'):
                                     # or fetch the complete current month else use the from date
-                                    options['from'] = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
+                                    from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
                             else:
                                 # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
                                 last_ohlc = Database.inst().get_last_ohlc(options['broker'], market_id, timeframe)
@@ -221,15 +227,15 @@ def do_fetcher(options):
 
                                     last_date = datetime.fromtimestamp(last_timestamp, tz=UTC())
 
-                                    options['from'] = last_date
+                                    from_date = last_date
 
                                 if not options.get('from'):
                                     # or fetch the complete current month else use the from date
-                                    options['from'] = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
+                                    from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
 
                         fetcher.fetch_and_generate(market_id, timeframe,
-                            options.get('from'), options.get('to'), options.get('last'),
-                            options.get('spec'), cascaded)
+                            from_date, to_date, last,
+                            spec, cascaded)
 
         except KeyboardInterrupt:
             pass
