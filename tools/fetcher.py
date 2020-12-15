@@ -200,6 +200,8 @@ def do_fetcher(options):
                         last = options.get('last')
                         spec = options.get('spec')
 
+                        print("Init for %s..." % (market_id,))
+
                         if do_update:
                             # update from last entry, compute the from datetime
                             if timeframe <= Instrument.TF_TICK:
@@ -239,6 +241,8 @@ def do_fetcher(options):
                             from_date, to_date, last,
                             spec, cascaded)
 
+        except Exception as e:
+            logger.error(repr(e))
         except KeyboardInterrupt:
             pass
         finally:
