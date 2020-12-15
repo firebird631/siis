@@ -1009,9 +1009,6 @@ class KrakenWatcher(Watcher):
 
             filled_volume = new_exec_vol - prev_exec_vol
 
-            # was pending, now opened
-            opened = order_data_cache['status'] == 'pending' and new_order_data['status'] == 'open'
-
             # update the cached data
             order_data_cache.update(new_order_data)
 
@@ -1020,14 +1017,14 @@ class KrakenWatcher(Watcher):
                 del self._orders_ws_cache[order_id]
 
             # executed vol diff (can be 0), data are updated
-            return opened, filled_volume, order_data_cache
+            return filled_volume, order_data_cache
         else:
             # add to cache if pending or opened
             if new_order_data['status'] in ("pending", "open"):
                 self._orders_ws_cache[order_id] = new_order_data
 
             # no execute volume, data are original
-            return False, 0.0, new_order_data
+            return 0.0, new_order_data
 
     def __del_order_cache(self, order_id):
         if order_id in self._orders_ws_cache:
@@ -1038,6 +1035,14 @@ class KrakenWatcher(Watcher):
             if not self._got_orders_init_snapshot:
                 # ignore the initial snapshot (got them throught REST api)
                 self._got_orders_init_snapshot = True
+
+                for entry in data[0]:
+                    # only single object per entry
+                    order_id, order_data = next(iter(entry.items()))
+
+                    # cache the initials entries
+                    self.__update_order_cache(order_id, order_data)
+
                 return
 
             for entry in data[0]:
@@ -1046,21 +1051,21 @@ class KrakenWatcher(Watcher):
 
                 exec_logger.info("kraken.com openOrders : %s - %s" % (order_id, order_data))
 
-                # opened status is when previous was 'pending' and new is 'open'
-                # then we can filter the initial 'open' messages
-                opened, filled_volume, order_data = self.__update_order_cache(order_id, order_data)
+                filled_volume, order_data = self.__update_order_cache(order_id, order_data)
 
                 if 'descr' not in order_data:
                     # no have previous message to tell the symbol
+                    error_logger.warning("kraken.com openOrder : Could not retrieve the order symbol for order %s. Message ignored !" % (order_id,))
                     continue
 
                 symbol = self._wsname_lookup.get(order_data['descr']['pair'])
 
                 if not symbol:
-                    # non managed symbol
+                    # not managed symbol
+                    error_logger.warning("kraken.com openOrder : Could not retrieve the order symbol for order %s. Message ignored !" % (order_id,))
                     continue
 
-                status = order_data['status']
+                status = order_data.get('status', "")
 
                 if status == "pending":
                     # nothing is done here, waiting for a rejection or open
