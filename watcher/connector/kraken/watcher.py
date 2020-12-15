@@ -969,16 +969,17 @@ class KrakenWatcher(Watcher):
     def __fill_order(self, order, order_data, filled_volume):
         if filled_volume > 0.0:
             cumulative_filled = float(order_data['vol_exec'])
+            volume = float(order_data['vol'])
             partial = False
 
             if order_data['misc']:
                 misc = order_data['misc'].split(',')
 
-                if 'partial' in order_data['misc']:
+                if 'partial' in misc:
                     partial = True
 
-            # if cumulative_filled > 0.0:
-            #     fully_filled = not partial
+            # if cumulative_filled >= vol:
+            #     fully_filled = True
 
             order.update({
                 'exec-price': float(order_data['avg_price']),
@@ -987,7 +988,7 @@ class KrakenWatcher(Watcher):
                 'cumulative-commission-amount': float(order_data['fee']),
                 # 'commission-asset': , is quote symbol because order always use quote fee flag
                 # 'maker': ,   # trade execution over or counter the market : true if maker, false if taker
-                # 'fully-filled': fully_filled  # fully filled status else its partially
+                'fully-filled': fully_filled
             })
 
         return order

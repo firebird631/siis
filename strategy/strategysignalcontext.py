@@ -86,11 +86,16 @@ class EntryExit(object):
         if 'type' not in params or params.get('type') not in BaseSignal.PRICE:
             raise ValueError("Undefined or unsupported 'type' value for %s" % self.name())
 
-        # if 'orientation' not in params or params.get('orientation') not in BaseSignal.ORIENTATION:
-        #     raise ValueError("Undefined or unsupported 'orientation' value for %s" % self.name())
-
         self.type = BaseSignal.PRICE.get(params['type'])
         self.timeframe = timeframe_from_str(params.get('timeframe', "t"))
+
+        # ATR SR need orientation and depth parameters
+        if self.type in (BaseSignal.PRICE_ATR_SR,):
+            if 'orientation' not in params or params.get('orientation') not in BaseSignal.ORIENTATION:
+                raise ValueError("Undefined or unsupported 'orientation' value for %s" % self.name())
+
+            if 'depth' not in params:
+                raise ValueError("Undefined 'depth' value for %s" % self.name())
 
         if self.timeframe < 0:
             raise ValueError("Undefined or unsupported 'timeframe' value for %s" % self.name())

@@ -34,6 +34,8 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
         - finir order : open, traded, closed, updated
         - trade : seulement pour avoir l'update des positions
     - 'cumulative-commission-amount' pour les fees, seulement géré sur assettrade, mais devrait être supporté par les autres
+    - si on gere a sell les fee sur quote et qu'il manque en fiat... ça va rejeter, et si on laisse par defaut sur asset alors il faut 
+        bien que les calcules interne et arrondis soient bien calculés
 
 #112 Dans local reste 27 strategies a convertir vers le nouveau format (probablement certaines a supprimer)
 

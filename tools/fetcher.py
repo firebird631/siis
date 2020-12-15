@@ -210,7 +210,7 @@ def do_fetcher(options):
                                 if next_date:
                                     from_date = next_date
 
-                                if not options.get('from'):
+                                if not from_date:
                                     # or fetch the complete current month else use the from date
                                     from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
                             else:
@@ -229,7 +229,7 @@ def do_fetcher(options):
 
                                     from_date = last_date
 
-                                if not options.get('from'):
+                                if not from_date:
                                     # or fetch the complete current month else use the from date
                                     from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
 

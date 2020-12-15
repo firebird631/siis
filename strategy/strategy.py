@@ -1363,10 +1363,10 @@ class Strategy(Runnable):
             timeframe.setdefault('depth', 0)
             timeframe.setdefault('history', 0)
 
-            parameters.setdefault('timeframe', None)
+            timeframe.setdefault('timeframe', None)
 
-            parameters.setdefault('update-at-close', False)
-            parameters.setdefault('signal-at-close', False)
+            timeframe.setdefault('update-at-close', False)
+            timeframe.setdefault('signal-at-close', False)
 
             convert(timeframe, 'timeframe')
 
