@@ -194,13 +194,13 @@ def do_fetcher(options):
                     if options.get('install-market', False):
                         fetcher.install_market(market_id)
                     else:
-                        if do_update:
-                            # reset from initials options
-                            from_date = options.get('from')
-                            to_date = options.get('to')
-                            last = options.get('last')
-                            spec = options.get('spec')
+                        # reset from initials options
+                        from_date = options.get('from')
+                        to_date = options.get('to')
+                        last = options.get('last')
+                        spec = options.get('spec')
 
+                        if do_update:
                             # update from last entry, compute the from datetime
                             if timeframe <= Instrument.TF_TICK:
                                 # get last datetime from tick storage and add 1 millisecond
