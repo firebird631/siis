@@ -282,7 +282,7 @@ class Connector(object):
                     c[1],  # volume
                     bid_ask)
 
-            if dt > to_ts or not len(trades):
+            if dt > to_ts:  # or not len(trades):
                 break
 
             last_ts = result.get('last', "")

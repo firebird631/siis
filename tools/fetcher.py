@@ -233,6 +233,8 @@ def do_fetcher(options):
                                     # or fetch the complete current month else use the from date
                                     from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
 
+                        print("Update %s from %s..." % (market_id, from_date))
+
                         fetcher.fetch_and_generate(market_id, timeframe,
                             from_date, to_date, last,
                             spec, cascaded)
