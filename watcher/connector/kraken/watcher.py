@@ -978,8 +978,8 @@ class KrakenWatcher(Watcher):
                 if 'partial' in misc:
                     partial = True
 
-            # if cumulative_filled >= vol:
-            #     fully_filled = True
+            if cumulative_filled >= vol and not partial:
+                fully_filled = True
 
             order.update({
                 'exec-price': float(order_data['avg_price']),
