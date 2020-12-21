@@ -979,7 +979,7 @@ class KrakenWatcher(Watcher):
                 if 'partial' in misc:
                     partial = True
 
-            if cumulative_filled >= vol and not partial:
+            if cumulative_filled >= volume and not partial:
                 fully_filled = True
 
             order.update({
