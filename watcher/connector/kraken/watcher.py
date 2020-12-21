@@ -730,17 +730,17 @@ class KrakenWatcher(Watcher):
                     price = None
                     stop_price = None
 
-                    if descr['ordertype'] == "limit":
+                    if trade_data['ordertype'] == "limit":
                         order_type = Order.ORDER_LIMIT
-                    elif descr['ordertype'] == "stop-loss":
+                    elif trade_data['ordertype'] == "stop-loss":
                         order_type = Order.ORDER_STOP
-                    elif descr['ordertype'] == "take-profit":
+                    elif trade_data['ordertype'] == "take-profit":
                         order_type = Order.ORDER_TAKE_PROFIT
-                    elif descr['ordertype'] == "stop-loss-limit":
+                    elif trade_data['ordertype'] == "stop-loss-limit":
                         order_type = Order.ORDER_STOP_LIMIT
-                    elif descr['ordertype'] == "take-profit-limit":
+                    elif trade_data['ordertype'] == "take-profit-limit":
                         order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                    elif descr['ordertype'] == "market":
+                    elif trade_data['ordertype'] == "market":
                         order_type = Order.ORDER_MARKET
                     else:
                         order_type = Order.ORDER_MARKET
@@ -814,17 +814,17 @@ class KrakenWatcher(Watcher):
                     price = None
                     stop_price = None
 
-                    if descr['ordertype'] == "limit":
+                    if trade_data['ordertype'] == "limit":
                         order_type = Order.ORDER_LIMIT
-                    elif descr['ordertype'] == "stop-loss":
+                    elif trade_data['ordertype'] == "stop-loss":
                         order_type = Order.ORDER_STOP
-                    elif descr['ordertype'] == "take-profit":
+                    elif trade_data['ordertype'] == "take-profit":
                         order_type = Order.ORDER_TAKE_PROFIT
-                    elif descr['ordertype'] == "stop-loss-limit":
+                    elif trade_data['ordertype'] == "stop-loss-limit":
                         order_type = Order.ORDER_STOP_LIMIT
-                    elif descr['ordertype'] == "take-profit-limit":
+                    elif trade_data['ordertype'] == "take-profit-limit":
                         order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                    elif descr['ordertype'] == "market":
+                    elif trade_data['ordertype'] == "market":
                         order_type = Order.ORDER_MARKET
                     else:
                         order_type = Order.ORDER_MARKET
@@ -1012,15 +1012,15 @@ class KrakenWatcher(Watcher):
             # update the cached data
             order_data_cache.update(new_order_data)
 
-            # remove from cache if closed or deleted
-            if new_order_data['status'] in ("closed", "deleted"):
+            # remove from cache if closed, canceled or deleted
+            if ('status' in new_order_data) and (new_order_data['status'] in ("closed", "deleted", "canceled")):
                 del self._orders_ws_cache[order_id]
 
             # executed vol diff (can be 0), data are updated
             return filled_volume, order_data_cache
         else:
             # add to cache if pending or opened
-            if new_order_data['status'] in ("pending", "open"):
+            if ('status' in new_order_data) and (new_order_data['status'] in ("pending", "open")):
                 self._orders_ws_cache[order_id] = new_order_data
 
             # no execute volume, data are original
