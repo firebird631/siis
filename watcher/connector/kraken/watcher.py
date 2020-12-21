@@ -971,6 +971,7 @@ class KrakenWatcher(Watcher):
             cumulative_filled = float(order_data['vol_exec'])
             volume = float(order_data['vol'])
             partial = False
+            fully_filled = False
 
             if order_data['misc']:
                 misc = order_data['misc'].split(',')
