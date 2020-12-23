@@ -507,7 +507,7 @@ class KrakenTrader(Trader):
                 if data['status'] != 'open':
                     continue
 
-                order = Order(self, descr['pair'])
+                order = Order(self, symbol)
 
                 order.set_order_id(order_id)
 
