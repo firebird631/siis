@@ -29,7 +29,7 @@ class SignalView(TableView):
     REFRESH_RATE = 60  # only on signal or 1 minute refresh
 
     MAX_SIGNALS = 200
-    COLUMNS = ('#', 'Market', charmap.ARROWLR, charmap.ARROWUPDN, 'TF', 'EP', 'SL', 'TP', 'Date', 'Label', 'Reason', 'P/L')
+    COLUMNS = ('#', 'Symbol', charmap.ARROWLR, charmap.ARROWUPDN, 'TF', 'EP', 'SL', 'TP', 'Date', 'Label', 'Reason', 'P/L')
 
     def __init__(self, service, strategy_service):
         super().__init__("signal", service)

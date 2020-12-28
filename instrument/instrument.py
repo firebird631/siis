@@ -174,7 +174,6 @@ class Instrument(object):
     Its a denormalized model because it duplicate some members used during strategy processing,
     to avoid dealing with the trader thread/process.
 
-    @member name str Comes from the broker usage name (could use the epic or market-id if none other).
     @member symbol str Common usual name (ex: EURUSD, BTCUSD).
     @member market_id str Unique broker identifier.
     @member alias str A secondary or display name.
@@ -274,18 +273,17 @@ class Instrument(object):
     TRADE_QUANTITY_DEFAULT = 0
     TRADE_QUANTITY_QUOTE_TO_BASE = 1
 
-    __slots__ = '_watchers', '_name', '_symbol', '_market_id', '_alias', '_tradeable', '_currency', \
+    __slots__ = '_watchers', '_market_id', '_symbol', '_alias', '_tradeable', '_currency', \
                 '_trade_quantity', '_trade_max_factor', '_trade_quantity_mode', '_leverage', \
                 '_market_bid', '_market_ask', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
                 '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry', \
                 '_value_per_pip', '_one_pip_means', '_evening_session', '_overnight_session', '_week_session'
 
-    def __init__(self, name, symbol, market_id, alias=None):
+    def __init__(self, market_id, symbol, alias=None):
         self._watchers = {}
-        self._name =  name
-        self._symbol = symbol
         self._market_id = market_id
+        self._symbol = symbol
         self._alias = alias
         self._tradeable = True
         self._expiry = "-"
@@ -341,21 +339,25 @@ class Instrument(object):
         return self._watchers.get(watcher_type)
 
     @property
-    def name(self):
-        return self._name
-    
-    @property
     def symbol(self):
         return self._symbol
-    
+
+    @symbol.setter
+    def symbol(self, symbol):
+        self._symbol = symbol
+
     @property
     def alias(self):
         return self._alias
-    
+
+    @alias.setter
+    def alias(self, alias):
+        self._alias = alias
+
     @property
     def market_id(self):
         return self._market_id
-    
+
     @property
     def tradeable(self):
         return self._tradeable

@@ -10,8 +10,16 @@ from .strategycmdtradeexit import cmd_trade_exit
 def cmd_strategy_exit_all_trade(strategy, data):
     # manually trade modify a trade or any trades (add/remove an operation)
     market_id = data.get('market-id')
+    strategy_trader = None
 
-    strategy_trader = strategy._strategy_traders.get(market_id)
+    if market_id:
+        strategy_trader = strategy._strategy_traders.get(market_id)
+
+        if not strategy_trader:
+            # lookup by symbol name
+            instrument = strategy.find_instrument(market_id)
+            market_id = instrument.market_id if instrument else None
+
     if strategy_trader and strategy_trader.has_trades():
         Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (strategy.name, strategy.identifier), view='content')
 

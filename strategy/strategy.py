@@ -381,7 +381,7 @@ class Strategy(Runnable):
                 logger.error("Watcher %s not found during strategy initialize" % watcher_name)
                 continue
 
-            # help with watcher matching method
+            # help with watcher matching method, symbols match to the broker market-id or string mapping with placeholder
             strategy_symbols = watcher.matching_symbols_set(watcher_conf.get('symbols'), watcher.available_instruments())
 
             # create an instrument per mapped symbol where to locally store received data
@@ -399,8 +399,10 @@ class Strategy(Runnable):
                 if mapped_symbol:
                     if self._instruments.get(mapped_symbol) is None:
                         # create managed instruments not already got from watcher (backtesting...)
-                        instrument = Instrument(symbol, self.symbol_for_market_id(mapped_symbol) or symbol,
-                                market_id=mapped_symbol, alias=mapped_instrument.get('alias'))
+                        instrument = Instrument(
+                                market_id=mapped_symbol,
+                                symbol=self.symbol_for_market_id(mapped_symbol) or symbol,
+                                alias=mapped_instrument.get('alias'))
 
                         instrument.trade_quantity = mapped_instrument.get('size', 0.0)
                         instrument.trade_max_factor = mapped_instrument.get('max-factor', 1)
@@ -415,6 +417,8 @@ class Strategy(Runnable):
                         market = self._trader.market(symbol)
                         if market:
                             # synchronize initial market data into the instrument
+                            instrument.symbol = market.symbol
+
                             instrument.trade = market.trade
                             instrument.orders = market.orders
                             instrument.hedging = market.hedging
@@ -635,7 +639,7 @@ class Strategy(Runnable):
 
         # or look with mapping of the name
         for k, instr in self._instruments.items():
-            if symbol_or_market_id == instr.name or symbol_or_market_id == instr.symbol or symbol_or_market_id == instr.alias:
+            if symbol_or_market_id == instr.market_id or symbol_or_market_id == instr.symbol or symbol_or_market_id == instr.alias:
                 return instr
 
         return None
@@ -1270,6 +1274,14 @@ class Strategy(Runnable):
         market_id = data.get('market-id')
 
         strategy_trader = self._strategy_traders.get(market_id)
+
+        if not strategy_trader:
+            # lookup by symbol name
+            instrument = self.find_instrument(market_id)
+            market_id = instrument.market_id if instrument else None
+
+            strategy_trader = self._strategy_traders.get(market_id)
+
         if strategy_trader:
             Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, market_id), view='content')
 
@@ -1294,6 +1306,14 @@ class Strategy(Runnable):
         market_id = data.get('market-id')
 
         strategy_trader = self._strategy_traders.get(market_id)
+
+        if not strategy_trader:
+            # lookup by symbol name
+            instrument = self.find_instrument(market_id)
+            market_id = instrument.market_id if instrument else None
+
+            strategy_trader = self._strategy_traders.get(market_id)
+
         if strategy_trader:
             Terminal.inst().notice("Trade %s for strategy %s - %s" % (label, self.name, self.identifier), view='content')
 

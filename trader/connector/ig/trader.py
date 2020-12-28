@@ -354,7 +354,7 @@ class IGTrader(Trader):
             error_logger.error("Trader %s refuse to close position because of missing connector" % (self.name,))
             return False
 
-        epic = market_or_instrument.symbol
+        epic = market_or_instrument.market_id
         expiry = market_or_instrument.expiry
         deal_id = position_id
         quote_id = None

@@ -8,8 +8,16 @@ from terminal.terminal import Terminal
 def cmd_trader_info(strategy, data):
     # info on the strategy
     if 'market-id' in data:
+        market_id = data['market-id']
+
         with strategy._mutex:
-            strategy_trader = strategy._strategy_traders.get(data['market-id'])
+            strategy_trader = strategy._strategy_traders.get(market_id)
+
+            if not strategy_trader:
+                # lookup by symbol name
+                instrument = strategy.find_instrument(market_id)
+                market_id = instrument.market_id if instrument else None
+
             if strategy_trader:
                 Terminal.inst().message("Market %s of strategy %s identified by \\2%s\\0 is %s. Trade quantity is %s x%s" % (
                     data['market-id'], strategy.name, strategy.identifier, "active" if strategy_trader.activity else "paused",

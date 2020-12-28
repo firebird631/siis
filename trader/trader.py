@@ -1286,7 +1286,7 @@ class Trader(Runnable):
         """
         Returns a table of any active positions.
         """
-        columns = ['Market', '#', charmap.ARROWUPDN, 'x', 'P/L(%)', 'SL', 'TP', 'TR', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'UPNL', 'Cost', 'Margin', 'Key']
+        columns = ['Symbol', '#', charmap.ARROWUPDN, 'x', 'P/L(%)', 'SL', 'TP', 'TR', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'UPNL', 'Cost', 'Margin', 'Key']
 
         if quantities:
             columns += ['Qty']
@@ -1339,7 +1339,7 @@ class Trader(Runnable):
                         tppct = 0
 
                     row = [
-                        t['mid'],
+                        t['sym'],
                         t['id'],
                         direction,
                         "%.2f" % t['l'] if t['l'] else '-',
@@ -1374,7 +1374,7 @@ class Trader(Runnable):
         """
         Returns a table of any active orders.
         """
-        columns = ['Market', '#', 'ref #', charmap.ARROWUPDN, 'Type', 'x', 'Limit', 'Stop', 'SL', 'TP', 'TR', 'Created date', 'Transac date',
+        columns = ['Symbol', '#', 'ref #', charmap.ARROWUPDN, 'Type', 'x', 'Limit', 'Stop', 'SL', 'TP', 'TR', 'Created date', 'Transac date',
             'Reduce', 'Post', 'Hedge', 'Close', 'Margin', 'TIF', 'Price', 'Key']
 
         if quantities:
@@ -1419,7 +1419,7 @@ class Trader(Runnable):
                         tppct = 0
 
                     row = [
-                        t['mid'],
+                        t['sym'],
                         t['id'],
                         t['refid'],
                         direction,

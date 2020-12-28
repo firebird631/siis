@@ -23,7 +23,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
     """
     Returns a table of any active trades.
     """
-    columns = ['Market', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'UPNL']
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'UPNL']
 
     if quantities:
         columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -88,7 +88,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 tppct = 0
 
             row = [
-                t['mid'],
+                t['sym'],
                 t['id'],
                 direction,
                 cr,

@@ -23,7 +23,7 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
     """
     Returns a table of any aggreged active and closes trades.
     """
-    columns = ('Market', 'P/L(%)', 'Total(%)', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE', 'Best Sum (%)', 'Worst Sum (%)', 'Best+Worst Sum (%)')
+    columns = ('Symbol', 'P/L(%)', 'Total(%)', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE', 'Best Sum (%)', 'Worst Sum (%)', 'Best+Worst Sum (%)')
     total_size = (len(columns), 0)
     data = []
 
@@ -71,7 +71,7 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
             cp = Color.colorize_updn("%.2f" % (t['perf']*100.0), 0.0, t['perf'], style=style)
 
             row = (
-                t['mid'],
+                t['sym'],
                 cr,
                 cp,
                 "%.2f" % (t['best']*100.0),

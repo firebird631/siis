@@ -253,7 +253,7 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
                     # preload some previous candles
                     l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                     l_to = from_date - timedelta(seconds=1)
-                    watcher.historical_data(instrument.symbol, timeframe['timeframe'], from_date=l_from, to_date=l_to)
+                    watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
 
                     # wait for this timeframe before processing
                     instrument.want_timeframe(timeframe['timeframe'])
@@ -295,7 +295,7 @@ def alpha_setup_live(strategy):
             watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
             if watcher:
                 tfs = {tf['timeframe']: tf['history'] for tf in strategy.parameters.get('timeframes', {}).values() if tf['timeframe'] > 0}
-                watcher.subscribe(instrument.symbol, tfs, None, None)
+                watcher.subscribe(instrument.market_id, tfs, None, None)
 
                 # query for most recent candles per timeframe
                 for k, timeframe in strategy.parameters.get('timeframes', {}).items():
@@ -303,7 +303,7 @@ def alpha_setup_live(strategy):
                         l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                         l_to = now
 
-                        watcher.historical_data(instrument.symbol, timeframe['timeframe'], from_date=l_from, to_date=l_to)
+                        watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
 
                         # wait for this timeframe before processing
                         instrument.want_timeframe(timeframe['timeframe'])

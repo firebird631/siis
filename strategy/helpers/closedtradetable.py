@@ -22,7 +22,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
     """
     Returns a table of any closed trades.
     """
-    columns = ['Market', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'RPNL']
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'RPNL']
 
     if quantities:
         columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -84,7 +84,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 wpct = (aep - float(t['w'])) / aep
 
             row = [
-                t['mid'],
+                t['sym'],
                 t['id'],
                 direction,
                 cr,
