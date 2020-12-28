@@ -137,6 +137,10 @@ class KrakenWatcher(Watcher):
                         for market_id, instrument in instruments.items():
                             self._available_instruments.add(market_id)
 
+                            # and the related name mapping from WS that is different
+                            if instrument.get('wsname'):
+                                self._wsname_lookup[instrument['wsname']] = market_id
+
                         # and start ws manager if necessary
                         try:
                             self._connector.ws.start()
@@ -292,7 +296,6 @@ class KrakenWatcher(Watcher):
 
         # one more watched instrument
         with self._mutex:
-            self._wsname_lookup[instrument['wsname']] = market_id
             self.insert_watched_instrument(market_id, [0])
 
             pairs = []
@@ -462,13 +465,15 @@ class KrakenWatcher(Watcher):
             size_limit = self._size_limits.get(instrument['altname'], {})
             min_size = size_limit.get('min-size', 1.0)
 
+            min_price = math.pow(10.0, -instrument['pair_decimals'])
+
             size_limits = [str(min_size), "0.0", str(min_size)]
             notional_limits = ["0.0", "0.0", "0.0"]
-            price_limits = ["0.0", "0.0", "0.0"]
+            price_limits = [str(min_price), "0.0", str(min_price)]
 
             market.set_size_limits(float(size_limits[0]), float(size_limits[1]), float(size_limits[2]))
             market.set_price_limits(float(price_limits[0]), float(price_limits[1]), float(price_limits[2]))
-            market.set_notional_limits(float(notional_limits[0]), 0.0, 0.0)
+            market.set_notional_limits(float(notional_limits[0]), float(notional_limits[1]), float(notional_limits[2]))
 
             # "lot":"unit"
             market.unit_type = Market.UNIT_AMOUNT
@@ -1056,14 +1061,14 @@ class KrakenWatcher(Watcher):
 
                 if 'descr' not in order_data:
                     # no have previous message to tell the symbol
-                    error_logger.warning("kraken.com openOrder : Could not retrieve the order symbol for order %s. Message ignored !" % (order_id,))
+                    error_logger.warning("kraken.com openOrder : Could not retrieve the description for %s. Message ignored !" % (order_id,))
                     continue
 
                 symbol = self._wsname_lookup.get(order_data['descr']['pair'])
 
                 if not symbol:
                     # not managed symbol
-                    error_logger.warning("kraken.com openOrder : Could not retrieve the order symbol for order %s. Message ignored !" % (order_id,))
+                    error_logger.warning("kraken.com openOrder : Could not retrieve the symbol for %s. Message ignored !" % (order_id,))
                     continue
 
                 status = order_data.get('status', "")

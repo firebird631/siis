@@ -11,6 +11,11 @@ from strategy.strategymargintrade import StrategyMarginTrade
 from strategy.strategypositiontrade import StrategyPositionTrade
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
 
+import logging
+logger = logging.getLogger('siis.strategy.cmd.tradeentry')
+error_logger = logging.getLogger('siis.error.strategy.cmd.tradeentry')
+
+
 def cmd_trade_entry(strategy, strategy_trader, data):
     """
     Create a new trade according data on given strategy_trader.
@@ -57,7 +62,7 @@ def cmd_trade_entry(strategy, strategy_trader, data):
     
     elif method == 'limit':
         order_type = Order.ORDER_LIMIT
-    
+
     elif method == 'limit-percent':
         order_type = Order.ORDER_LIMIT
         limit_price = strategy_trader.instrument.open_exec_price(direction) * (1.0 - (limit_price * 0.01 * direction))
@@ -98,7 +103,7 @@ def cmd_trade_entry(strategy, strategy_trader, data):
 
     if price <= 0.0:
         results['error'] = True
-        results['messages'].append("Not price found for %s" % (strategy_trader.instrument.market_id,))
+        results['messages'].append("Price must be greater than zero for %s" % (strategy_trader.instrument.market_id,))
         return results
 
     if strategy_trader.instrument.has_spot and not margin_trade:

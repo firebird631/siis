@@ -38,7 +38,7 @@ function on_order_long(elt) {
             limit_price = retrieve_entry_price(trader_id);
             method = "limit";
         } else if (entry_price_mode == "limit-percent") {
-            limit_price = retrieve_entry_price(trader_id);
+            limit_price = window.entry_methods[retrieve_entry_method(trader_id)].distance;
             method = "limit-percent";
         } else if (entry_price_mode == "market") {
             method = "market";
@@ -77,7 +77,7 @@ function on_order_long(elt) {
         }
 
         if (take_profit_price_mode != "none") {
-            data['take-profit'] = stop_loss;
+            data['take-profit'] = take_profit;
             data['take-profit-price-mode'] = take_profit_price_mode;
         }
 
@@ -139,13 +139,13 @@ function on_order_short(elt) {
 
         if (stop_loss_price_mode == "price") {
             stop_loss = retrieve_stop_loss_price(trader_id);
-        } else {
+        } else if (stop_loss_price_mode != "none") {
             stop_loss = window.methods[retrieve_stop_loss_method(trader_id)].distance;
         }
 
         if (take_profit_price_mode == "price") {
             take_profit = retrieve_take_profit_price(trader_id);
-        } else {
+        } else if (take_profit_price_mode != "none") {
             take_profit = window.methods[retrieve_take_profit_method(trader_id)].distance;
         }
         
@@ -155,7 +155,7 @@ function on_order_short(elt) {
             limit_price = retrieve_entry_price(trader_id);
             method = "limit";
         } else if (entry_price_mode == "limit-percent") {
-            limit_price = retrieve_entry_price(trader_id);
+            limit_price = window.entry_methods[retrieve_entry_method(trader_id)].distance;;
             method = "limit-percent";
         } else if (entry_price_mode == "market") {
             method = "market";
@@ -194,7 +194,7 @@ function on_order_short(elt) {
         }
 
         if (take_profit_price_mode != "none") {
-            data['take-profit'] = stop_loss;
+            data['take-profit'] = take_profit;
             data['take-profit-price-mode'] = take_profit_price_mode;
         }
 

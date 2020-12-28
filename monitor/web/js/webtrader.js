@@ -973,7 +973,7 @@ function add_symbols(id, to) {
     select.attr('trader-id', id);
 
     for (market in markets) {
-        select.append($('<option value="' + market +'">' + market + '</>'));
+        select.append($('<option value="' + market +'">' + markets[market].symbol + '</>'));
     }
 
     to.append(select);

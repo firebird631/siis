@@ -293,7 +293,7 @@ class KrakenTrader(Trader):
         # @todo for testing only
         # data['validate'] = True
 
-        logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('vol'), pair, data.get('price')))
+        logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('volume'), pair, data.get('price')))
 
         results = None
         reason = None
@@ -321,7 +321,7 @@ class KrakenTrader(Trader):
 
                 order_logger.info(results)
 
-                order.set_order_id(str(result.get('txid')))
+                order.set_order_id(str(result.get('txid')[0]))
 
                 order.created_time = time.time()
                 order.transact_time = time.time()
