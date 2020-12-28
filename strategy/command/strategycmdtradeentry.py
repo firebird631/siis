@@ -45,8 +45,8 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         results['messages'].append("Invalid price method (market, limit, limit-percent, trigger, best-1, best+1).")
         results['error'] = True
 
-    if method == 'limit' and not limit_price:
-        results['messages'].append("Price is missing.")
+    if method in ('limit', 'limit-percent') and not limit_price:
+        results['messages'].append("Limit price or distance is missing.")
         results['error'] = True
 
     if results['error']:
@@ -60,7 +60,7 @@ def cmd_trade_entry(strategy, strategy_trader, data):
     
     elif method == 'limit-percent':
         order_type = Order.ORDER_LIMIT
-        limit_price = strategy_trader.instrument.open_exec_price(direction) * (1.0 - (limit_price * 0.01))
+        limit_price = strategy_trader.instrument.open_exec_price(direction) * (1.0 - (limit_price * 0.01 * direction))
 
     elif method == 'trigger':
         order_type = Order.ORDER_STOP
@@ -212,26 +212,26 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         return results
 
     if direction > 0:
-        if stop_loss > order_price:
+        if stop_loss > 0.0 and stop_loss > order_price:
             results['error'] = True
             results['messages'].append("Rejected trade on %s:%s because the stop-loss is above the entry price" % (strategy.identifier, strategy_trader.instrument.market_id))
 
             return results
 
-        if take_profit < order_price:
+        if take_profit > 0.0 and take_profit < order_price:
             results['error'] = True
             results['messages'].append("Rejected trade on %s:%s because the take-profit is below the entry price" % (strategy.identifier, strategy_trader.instrument.market_id))
 
             return results
 
     elif direction < 0:
-        if stop_loss < order_price:
+        if stop_loss > 0.0 and stop_loss < order_price:
             results['error'] = True
             results['messages'].append("Rejected trade on %s:%s because the stop-loss is below the entry price" % (strategy.identifier, strategy_trader.instrument.market_id))
 
             return results
 
-        if take_profit > order_price:
+        if take_profit > 0.0 and take_profit > order_price:
             results['error'] = True
             results['messages'].append("Rejected trade on %s:%s because the take-profit is above the entry price" % (strategy.identifier, strategy_trader.instrument.market_id))
 
