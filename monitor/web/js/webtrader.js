@@ -92,6 +92,13 @@ $(window).ready(function() {
             'context': null,
             'timeframe': null
         },
+        'price': {
+            'label': 'Invest',
+            'take-profit': 'price',
+            'stop-loss': 'none',
+            'context': null,
+            'timeframe': null
+        },
         'scalp-xs': {
             'label': 'Scalp XS',
             'take-profit': 'percent-0.15',
@@ -165,6 +172,11 @@ $(window).ready(function() {
     };
 
     window.methods = {
+        'none': {
+            'label': 'None',
+            'distance': 0.0,
+            'type': 'none',
+        },
         'price': {
             'label': 'Price',
             'distance': 0.0,
@@ -248,6 +260,21 @@ $(window).ready(function() {
         'percent-10.00': {
             'label': '10.00%',
             'distance': 10.0,
+            'type': 'percent',
+        },
+        'percent-20.00': {
+            'label': '20.00%',
+            'distance': 20.0,
+            'type': 'percent',
+        },
+        'percent-50.00': {
+            'label': '50.00%',
+            'distance': 50.0,
+            'type': 'percent',
+        },
+        'percent-100.00': {
+            'label': '100.00%',
+            'distance': 100.0,
             'type': 'percent',
         },
         'pip-5': {
@@ -337,6 +364,96 @@ $(window).ready(function() {
         //     'label': 'Best -2',
         //     'type': 'best-2'
         // },
+        'percent-0.05': {
+            'label': '0.05%',
+            'distance': 0.05,
+            'type': 'limit-percent',
+        },
+        'percent-0.10': {
+            'label': '0.10%',
+            'distance': 0.10,
+            'type': 'limit-percent',
+        },
+        'percent-0.15': {
+            'label': '0.15%',
+            'distance': 0.15,
+            'type': 'limit-percent',
+        },
+        'percent-0.25': {
+            'label': '0.25%',
+            'distance': 0.25,
+            'type': 'limit-percent',
+        },
+        'percent-0.35': {
+            'label': '0.35%',
+            'distance': 0.35,
+            'type': 'limit-percent',
+        },
+        'percent-0.45': {
+            'label': '0.45%',
+            'distance': 0.45,
+            'type': 'limit-percent',
+        },
+        'percent-0.50': {
+            'label': '0.50%',
+            'distance': 0.5,
+            'type': 'limit-percent',
+        },
+        'percent-0.75': {
+            'label': '0.75%',
+            'distance': 0.75,
+            'type': 'limit-percent',
+        },
+        'percent-1.00': {
+            'label': '1.00%',
+            'distance': 1.0,
+            'type': 'limit-percent',
+        },
+        'percent-1.50': {
+            'label': '1.50%',
+            'distance': 1.5,
+            'type': 'limit-percent',
+        },
+        'percent-2.00': {
+            'label': '2.00%',
+            'distance': 2.0,
+            'type': 'limit-percent',
+        },
+        'percent-2.50': {
+            'label': '2.50%',
+            'distance': 2.5,
+            'type': 'limit-percent',
+        },
+        'percent-3.00': {
+            'label': '3.00%',
+            'distance': 3.0,
+            'type': 'limit-percent',
+        },
+        'percent-4.00': {
+            'label': '4.00%',
+            'distance': 4.0,
+            'type': 'limit-percent',
+        },
+        'percent-5.00': {
+            'label': '5.00%',
+            'distance': 5.0,
+            'type': 'limit-percent',
+        },
+        'percent-10.00': {
+            'label': '10.00%',
+            'distance': 10.0,
+            'type': 'limit-percent',
+        },
+        'percent-20.00': {
+            'label': '20.00%',
+            'distance': 20.0,
+            'type': 'limit-percent',
+        },
+        'percent-50.00': {
+            'label': '50.00%',
+            'distance': 50.0,
+            'type': 'limit-percent',
+        },
     }
 
     //

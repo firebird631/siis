@@ -41,8 +41,8 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         results['messages'].append("Missing or empty quantity.")
         results['error'] = True
 
-    if method not in ('market', 'limit', 'trigger', 'best-1', 'best+1'):
-        results['messages'].append("Invalid price method (market, limit, trigger, best-1, best+1).")
+    if method not in ('market', 'limit', 'limit-percent', 'trigger', 'best-1', 'best+1'):
+        results['messages'].append("Invalid price method (market, limit, limit-percent, trigger, best-1, best+1).")
         results['error'] = True
 
     if method == 'limit' and not limit_price:
@@ -58,9 +58,13 @@ def cmd_trade_entry(strategy, strategy_trader, data):
     elif method == 'limit':
         order_type = Order.ORDER_LIMIT
     
+    elif method == 'limit-percent':
+        order_type = Order.ORDER_LIMIT
+        limit_price = strategy_trader.instrument.open_exec_price(direction) * (1.0 - (limit_price * 0.01))
+
     elif method == 'trigger':
         order_type = Order.ORDER_STOP
-    
+
     elif method == 'best-1':
         # limit as first taker price : first ask price in long, first bid price in short
         order_type = Order.ORDER_LIMIT

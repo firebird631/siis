@@ -162,8 +162,16 @@ class View(object):
         self._parent_size = (0, 0)
 
         if stdscr:
-            height, width = stdscr.getmaxyx()
             # H, W, Y, X...
+            height, width = stdscr.getmaxyx()
+
+            # std resolution if empty area (screen, tmux, daemon...)
+            if width <= 0:
+                width = 80
+
+            if height <= 0:
+                height = 25
+
             self._rect = (size[1] or height, size[0] or width, pos[1], pos[0])
             self._parent_size = (height, width)
 
@@ -414,6 +422,13 @@ class View(object):
 
         if self._parent_win:
             height, width = self._parent_win.getmaxyx()
+
+            # std resolution if empty area (screen, tmux, daemon...)
+            if width <= 0:
+                width = 80
+
+            if height <= 0:
+                height = 25
 
             hr = height / self._parent_size[0]
             wr = width / self._parent_size[1]
@@ -819,6 +834,13 @@ class Terminal(object):
                 curses.init_pair(9, curses.COLOR_YELLOW, curses.COLOR_BLUE)
 
             height, width = self._stdscr.getmaxyx()
+
+            # std resolution if empty area (screen, tmux, daemon...)
+            if width <= 0:
+                width = 80
+
+            if height <= 0:
+                height = 25
 
         # to restore at terminate
         self._old_default = self._views

@@ -22,13 +22,13 @@ function on_order_long(elt) {
 
         if (stop_loss_price_mode == "price") {
             stop_loss = retrieve_stop_loss_price(trader_id);
-        } else {
+        } else if (stop_loss_price_mode != "none") {
             stop_loss = window.methods[retrieve_stop_loss_method(trader_id)].distance;
         }
 
         if (take_profit_price_mode == "price") {
             take_profit = retrieve_take_profit_price(trader_id);
-        } else {
+        } else if (take_profit_price_mode != "none") {
             take_profit = window.methods[retrieve_take_profit_method(trader_id)].distance;
         }
         
@@ -36,9 +36,12 @@ function on_order_long(elt) {
 
         if (entry_price_mode == "limit") {
             limit_price = retrieve_entry_price(trader_id);
-            method = "limit"
+            method = "limit";
+        } else if (entry_price_mode == "limit-percent") {
+            limit_price = retrieve_entry_price(trader_id);
+            method = "limit-percent";
         } else if (entry_price_mode == "market") {
-            method = "market"
+            method = "market";
         } else if (entry_price_mode == "best-1") {
             method = "best-1";
         } else if (entry_price_mode == "best-2") {
@@ -64,13 +67,19 @@ function on_order_long(elt) {
             'trigger-price': trigger_price,
             'method': method,
             'quantity-rate': quantity_rate,
-            'stop-loss': stop_loss,
-            'take-profit': take_profit,
-            'stop-loss-price-mode': stop_loss_price_mode,
-            'take-profit-price-mode': take_profit_price_mode,
             'entry-timeout': entry_timeout,
             'leverage': leverage
         };
+
+        if (stop_loss_price_mode != "none") {
+            data['stop-loss'] = stop_loss;
+            data['stop-loss-price-mode'] = stop_loss_price_mode;
+        }
+
+        if (take_profit_price_mode != "none") {
+            data['take-profit'] = stop_loss;
+            data['take-profit-price-mode'] = take_profit_price_mode;
+        }
 
         if (context && profile && ('strategy' in profile)) {
             data['context'] = context;
@@ -144,9 +153,12 @@ function on_order_short(elt) {
 
         if (entry_price_mode == "limit") {
             limit_price = retrieve_entry_price(trader_id);
-            method = "limit"
+            method = "limit";
+        } else if (entry_price_mode == "limit-percent") {
+            limit_price = retrieve_entry_price(trader_id);
+            method = "limit-percent";
         } else if (entry_price_mode == "market") {
-            method = "market"
+            method = "market";
         } else if (entry_price_mode == "best-1") {
             method = "best-1";
         } else if (entry_price_mode == "best-2") {
@@ -172,13 +184,19 @@ function on_order_short(elt) {
             'trigger-price': trigger_price,
             'method': method,
             'quantity-rate': quantity_rate,
-            'stop-loss': stop_loss,
-            'take-profit': take_profit,
-            'stop-loss-price-mode': stop_loss_price_mode,
-            'take-profit-price-mode': take_profit_price_mode,
             'entry-timeout': entry_timeout,
             'leverage': leverage
         };
+
+        if (stop_loss_price_mode != "none") {
+            data['stop-loss'] = stop_loss;
+            data['stop-loss-price-mode'] = stop_loss_price_mode;
+        }
+
+        if (take_profit_price_mode != "none") {
+            data['take-profit'] = stop_loss;
+            data['take-profit-price-mode'] = take_profit_price_mode;
+        }
 
         if (context && profile && ('strategy' in profile)) {
             data['context'] = context;
