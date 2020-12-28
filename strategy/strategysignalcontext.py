@@ -268,6 +268,7 @@ class BaseSignal(StrategySignalContext):
     PRICE_LAST = 7
     PRICE_CUR_ATR_SR = 8
     PRICE_HMA = 9
+    PRICE_VOL_SR = 10
 
     PRICE = {
         'none': PRICE_NONE,
@@ -280,6 +281,7 @@ class BaseSignal(StrategySignalContext):
         'last': PRICE_LAST,
         'cur-atrsr': PRICE_CUR_ATR_SR,
         'hma': PRICE_HMA,
+        'vol-sr': PRICE_VOL_SR,
     }
 
     ORIENTATION_UP = 1
