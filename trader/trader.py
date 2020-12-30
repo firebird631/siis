@@ -18,7 +18,7 @@ from trader.order import Order
 from trader.position import Position
 from trader.market import Market
 
-from monitor.streamable import Streamable, StreamMemberSerie, StreamMemberFloatSerie
+from monitor.streamable import Streamable, StreamMemberSerie, StreamMemberFloatSerie, StreamMemberTraderBalance
 from common.runnable import Runnable
 
 from terminal.terminal import Terminal, Color
@@ -75,6 +75,9 @@ class Trader(Runnable):
         self._timestamp = 0
         self._signals = collections.deque()  # filtered received signals
 
+        self._streamable = None
+        self._balance_streamer = None
+
         # listen to its service
         self.service.add_listener(self)
 
@@ -83,6 +86,10 @@ class Trader(Runnable):
 
     def setup_streaming(self):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_TRADER, "status", self.name)
+
+        # account asset/margin balance streams
+        self._balance_streamer = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.name, self.name)
+        self._balance_streamer.add_member(StreamMemberTraderBalance('account-balance'))
 
     def stream(self):
         self._streamable.publish()
@@ -569,6 +576,13 @@ class Trader(Runnable):
         if risk_limit is not None:
             self.account.set_risk_limit(risk_limit)
 
+        # stream
+        self.notify_balance_update(self.timestamp,
+            self.account.currency, free_margin,
+            self.account.margin_balance, balance,
+            unrealized_pnl,
+            self.account.margin_level)
+
     #
     # positions slots
     #
@@ -800,7 +814,8 @@ class Trader(Runnable):
         pass
 
     def on_asset_updated(self, asset_name, locked, free):
-        pass
+        # stream
+        self.notify_balance_update(self.timestamp, asset_name, free, locked, free+locked)
 
     #
     # market slots
@@ -1562,3 +1577,22 @@ class Trader(Runnable):
             pass
             # self.create_order(order, asset[1])
             # Terminal.inst().action("Create order %s to sell all of %s on %s..." % (order.order_id, asset[0], asset[1].market_id))
+
+    #
+    # stream
+    #
+
+    def notify_balance_update(self, timestamp, asset, free, locked, total, upnl=None, margin_level=None):
+        if self._balance_streamer:
+            try:
+                self._balance_streamer.member('accout-balance').update(self, {
+                    'free': free,
+                    'locked': locked,
+                    'total': total,
+                    'upnl': upnl,
+                    'margin-level': margin_level,
+                }, timestamp)
+
+                self._balance_streamer.publish()
+            except Exception as e:
+                logger.error(repr(e))

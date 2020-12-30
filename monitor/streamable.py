@@ -481,10 +481,32 @@ class StreamMemberWatcherTicker(StreamMember):
         self._timestamp = 0.0
         self._ticker = {}
 
-    def update(self, strategy_trader, ticker, timestamp):
+    def update(self, ticker, timestamp):
         self._ticker = ticker
         self._timestamp = timestamp
         self._updated = True
 
     def content(self):
-        return {'n': self._name, 't': self._type, 'v': self._trade_alert, 'b': self._timestamp}
+        return {'n': self._name, 't': self._type, 'v': self._ticker, 'b': self._timestamp}
+
+
+class StreamMemberTraderBalance(StreamMember):
+    """
+    Specialization for a trader asset or margin balance.
+    """
+
+    TYPE_TRADER_BALANCE = "ab"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberTraderBalance.TYPE_TRADER_BALANCE)
+
+        self._timestamp = 0.0
+        self._balance = {}
+
+    def update(self, balance, timestamp):
+        self._balance = balance
+        self._timestamp = timestamp
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._balance, 'b': self._timestamp}

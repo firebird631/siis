@@ -948,6 +948,9 @@ class BinanceTrader(Trader):
                 asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
                 asset.quantity, asset.price, asset.quote))
 
+        # call base for stream
+        super().on_asset_updated(asset_name, locked, free)
+
     def __update_asset(self, order_type, asset, market, trade_id, exec_price, trade_qty, buy_or_sell, timestamp):
         """
         @note Taking last quote price might be at the timestamp of the trade but it cost an API call credit and plus a delay.

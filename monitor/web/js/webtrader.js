@@ -78,6 +78,7 @@ $(window).ready(function() {
     window.alerts = {};
     window.signals = {};
     window.charts = {};
+    window.account_balances = {};
 
     window.audio = {
         'enabled': true,
@@ -1486,7 +1487,7 @@ function on_change_take_profit_method(elt) {
 
 function on_update_performances() {
     if ($('div.performance-list-entries').css('display') != 'none') {
-        let table = $('div.performance-list-entries').find('tbody');
+        let table = $('div.performance-list-entries table.performance').find('tbody');
         table.empty();
 
         let active_total_sum = 0.0;
@@ -1580,6 +1581,37 @@ function on_update_performances() {
 
         // update every half-second until displayed
         setTimeout(on_update_performances, 500);
+    }
+}
+
+function on_update_balances(symbol, asset, timestamp, data) {
+    if ($('div.performance-list-entries').css('display') != 'none') {
+        let table = $('div.performance-list-entries table.account').find('tbody');
+        table.empty();
+
+        // update the related asset
+        window.account_balances[asset] = data;
+
+        // and redraw
+        for (let balance in window.account_balances) {
+            let row_entry = $('<tr class="account-balance-entry"></tr>');
+            row_entry.append($('<td class="account-balance-symbol">' + asset + '</td>'));
+            row_entry.append($('<td class="account-balance-free">' + balance.free + '</td>'));
+
+            if (balance['margin-level']) {
+                row_entry.append($('<td class="account-balance-locked">' + balance.locked + ' (' +  (balance['margin-level'] * 100).toFixed(2) + '%)</td>'));
+            } else {
+                row_entry.append($('<td class="account-balance-locked">' + balance.locked + '</td>'));
+            }
+
+            if (balance['unpl']) {
+                row_entry.append($('<td class="account-balance-total">' + balance.total + ' / upnl (' +  balance['unpl'] + ')</td>'));  
+            } else {
+                row_entry.append($('<td class="account-balance-total">' + balance.total + '</td>'));
+            }
+           
+            table.append(row_entry);
+        }
     }
 }
 

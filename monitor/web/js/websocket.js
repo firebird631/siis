@@ -46,6 +46,8 @@ function read_value(data) {
         return read_signal(data);
     } else if (data.t == "sa") {
         return read_alert(data);
+    } else if (data.t == "ab") {
+        return read_account_balance(data);
     } else {
         return None;
     }
@@ -119,6 +121,10 @@ function read_alert(data) {
     return data.v;
 }
 
+function read_account_balance(data) {
+    return data.v;
+}
+
 function on_ws_message(data) {
     // n i o g c v b s t
     // c categorie, g groupe, s name
@@ -138,6 +144,9 @@ function on_ws_message(data) {
             // update ticker
             on_update_ticker(data.s, value.id, data.b*1000, value);
 
+        } else if (value && data.t == 'ab') {
+            // update ticker
+            on_update_balances(data.s, value.asset, data.b*1000, value);
         }
 
     } else if (data.c == STREAM_STRATEGY) {
