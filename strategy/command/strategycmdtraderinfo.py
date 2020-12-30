@@ -15,8 +15,10 @@ def cmd_trader_info(strategy, data):
 
             if not strategy_trader:
                 # lookup by symbol name
-                instrument = strategy.find_instrument(market_id)
+                instrument = self.find_instrument(market_id)
                 market_id = instrument.market_id if instrument else None
+
+                strategy_trader = self._strategy_traders.get(market_id)
 
             if strategy_trader:
                 Terminal.inst().message("Market %s of strategy %s identified by \\2%s\\0 is %s. Trade quantity is %s x%s" % (

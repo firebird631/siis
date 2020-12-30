@@ -58,6 +58,7 @@ class StrategyTrader(object):
 
         self._mutex = threading.RLock()  # activity, global locker, region locker, instrument locker
         self._activity = True
+        self._affinity = 5          # based on a linear scale [0..10]
 
         self._limits = Limits()     # price and timestamp ranges
 
@@ -129,7 +130,21 @@ class StrategyTrader(object):
         """
         Enable/disable execution of the automated orders.
         """
-        self._activity = status   
+        self._activity = status
+
+    @property
+    def affinity(self):
+        """
+        Strategy trader affinity rate.
+        """
+        return self._affinity
+
+    @affinity.setter
+    def affinity(self, affinity):
+        """
+        Set strategy trader affinity rate.
+        """
+        self._affinity = affinity
 
     #
     # pre-processing
@@ -231,7 +246,10 @@ class StrategyTrader(object):
                             self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
 
             # dumps of trader data, regions and alerts
-            trader_data = {}
+            trader_data = {
+                'affinity': self._affinity,
+            }
+
             regions_data = [region.dumps() for region in self.regions]
             alerts_data = [alert.dumps() for alert in self.alerts]
 
@@ -243,7 +261,8 @@ class StrategyTrader(object):
         Load strategy trader state and regions.
         """
         # data reserved
-        # ...
+        if 'affinity' in data and type(data['affinity']) is int:
+            self._affinity = data['affinity']
 
         # instanciates the regions
         for r in regions:
@@ -1064,6 +1083,7 @@ class StrategyTrader(object):
         return {
             'market-id': self.instrument.market_id,
             'activity': self._activity,
+            'affinity': self._affinity,
             'bootstraping': self._bootstraping == 2,
             'preprocessing': self._preprocessing == 2,
             'ready': self.instrument.ready(),

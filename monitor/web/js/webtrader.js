@@ -92,7 +92,7 @@ $(window).ready(function() {
             'context': null,
             'timeframe': null
         },
-        'price': {
+        'invest': {
             'label': 'Invest',
             'take-profit': 'price',
             'stop-loss': 'none',
@@ -598,7 +598,7 @@ $(window).ready(function() {
             // store api-key into a cookie
             setCookie('identifier', api_key, 15);
 
-            audio_notify('signal');
+            audio_notify('entry');
         })
         .fail(function() {
             notify({'message': "Unable to obtain an auth-token !", 'type': 'error'});
@@ -640,13 +640,12 @@ $(window).ready(function() {
             // store identifier into a cookie
             setCookie('identifier', identifier, 15);
 
-            audio_notify('signal');
+            audio_notify('entry');
         })
         .fail(function() {
             alert("Unable to obtain an auth-token !");
         });
     };
-
 
     function start_ws() {
         if (ws != null) {
@@ -723,6 +722,50 @@ function getCookie(cname) {
     return "";
 }
 
+function get_local_config(cat) {
+    let key = window.strategy.name + '_' + window.strategy.id + '_' + (window.strategy.backtesting ? 'backtest' : 'live') + '_' + cat;
+
+    if (!(key in localStorage)) {
+        localStorage[key] = '{}';
+    }
+
+    return JSON.parse(localStorage[key]);
+}
+
+function save_local_trader(trader_id, param, value) {
+    let key = window.strategy.name + '_' + window.strategy.id + '_' + (window.strategy.backtesting ? 'backtest' : 'live') + '_' + trader_id;
+    let src = get_local_config(trader_id);
+
+    src[param] = value;
+    localStorage[key] = JSON.stringify(src);
+}
+
+function save_local_option(option, value) {
+    let key = window.strategy.name + '_' + window.strategy.id + '_' + (window.strategy.backtesting ? 'backtest' : 'live') + '_options';
+    let src = get_local_config(options);
+
+    src[param] = value;
+    localStorage[key] = JSON.stringify(src);
+}
+
+function get_local_option(option, defval=null) {
+    let src = get_local_config('options');
+
+    return src[option] || defval;
+}
+
+function get_local_trader(trader_id) {
+    let src = get_local_config(trader_id);
+
+    return src || {
+        'profile': null,
+        'market-id': null,
+        'entry-method': null,
+        'take-profit-method': null,
+        'stop-loss-method': null,
+    };
+}
+
 function authenticate() {
     let identifier = $('#identifier').val();
     let password = $('#password').val();
@@ -756,6 +799,35 @@ function setup_traders() {
             market_id = Object.keys(window.markets)[0];
         }
 
+        let profile = 'price';
+        let entry_method = 'last';
+        let stop_loss_method = 'percent-1.00';
+        let take_profit_method = 'percent-2.00';
+
+        // load local config
+        let local_trader = get_local_trader(id);
+        if (local_trader) {
+            if (local_trader['market-id']) {
+                market_id = local_trader['market-id'];
+            }
+
+            if (local_trader['profile']) {
+                profile = local_trader['profile'];
+            }
+
+            if (local_trader['entry-method']) {
+                entry_method = local_trader['entry-method'];
+            }
+
+            if (local_trader['stop-loss-method']) {
+                stop_loss_method = local_trader['stop-loss-method'];
+            }
+
+            if (local_trader['take-profit-method']) {
+                take_profit_method = local_trader['take-profit-method'];
+            }
+        }
+
         if (market_id != null) {
             market = window.markets[market_id];
             profiles = market['profiles'];
@@ -768,14 +840,14 @@ function setup_traders() {
         let take_profit_select = add_take_profit_methods(id, trader_row2);
 
         add_entry_price(id, trader_row3);
-        add_entry_price_methods(id, trader_row3);
+        let entry_select = add_entry_price_methods(id, trader_row3);
 
         add_stop_loss_price(id, trader_row4);
         let stop_loss_select = add_stop_loss_methods(id, trader_row4);
 
         add_quantity_slider(id, trader_row5);
 
-        add_long_short_actions(id, trader_row6);
+        add_long_short_actions(id, market_id, trader_row6);
 
         $(elt).append(trader_row1);
         $(elt).append(trader_row2);
@@ -785,9 +857,10 @@ function setup_traders() {
         $(elt).append(trader_row6);
 
         symbol_select.selectpicker('val', market_id).change();
-        profile_select.selectpicker('val', 'scalp-xs').change();
-        stop_loss_select.selectpicker('val', stop_loss_select.val()).change();
-        take_profit_select.selectpicker('val', take_profit_select.val()).change();
+        profile_select.selectpicker('val', profile).change();
+        entry_select.selectpicker('val', entry_method).change();
+        stop_loss_select.selectpicker('val', stop_loss_method).change();
+        take_profit_select.selectpicker('val', take_profit_method).change();
     });
 }
 
@@ -896,6 +969,9 @@ function fetch_strategy() {
                     }
                 }
 
+                // @todo initial activity and affinity per trader
+                // @todo need to be streamed in the WS in case of change from the terminal
+
                 window.markets[market_id].profiles[profile_id] = {
                     'strategy': profile['strategy'],
                     'label': profile['profile-id'],
@@ -908,6 +984,7 @@ function fetch_strategy() {
 
         setup_traders();
         fetch_trades();
+        // fetch_history(); @todo
     })
     .fail(function() {
         alert("Unable to obtains markets list info !");
@@ -949,6 +1026,41 @@ function fetch_trades() {
     });
 }
 
+function fetch_history() {
+    let endpoint = "strategy/history";
+    let url = base_url() + '/' + endpoint;
+
+    let params = {}
+
+    $.ajax({
+        type: "GET",
+        url: url,
+        data: params,
+        headers: {
+            'TWISTED_SESSION': server.session,
+            'Authorization': "Bearer " + server['auth-token'],
+        },
+        dataType: 'json',
+        contentType: 'application/json'
+    })
+    .done(function(result) {
+        window.historical_trades = {};
+
+        let trades = result['data'];
+
+        for (let i = 0; i < trades.length; ++i) {
+            let trade = trades[i];
+            window.actives_trades[trade['symbol'] + ':' + trade.id] = trade;
+
+            // initial add
+            add_historical_trade(trade.symbol, trade);
+        }
+    })
+    .fail(function() {
+        alert("Unable to obtains trades history !");
+    });
+}
+
 function timestamp_to_time_str(timestamp) {
     let datetime = new Date(timestamp);
     return datetime.toLocaleTimeString("en-GB");
@@ -979,6 +1091,10 @@ function add_symbols(id, to) {
     to.append(select);
 
     select.selectpicker({'width': '165px', 'size': '10'});
+
+    select.on('change', function(e) {
+        on_change_symbol(e);
+    });
 
     return select;
 };
@@ -1112,6 +1228,11 @@ function add_quantity_slider(id, to) {
 
 function retrieve_symbol(elt) {
     let trader_id = $(elt.target).attr('trader-id');
+
+    if (!trader_id) {
+        trader_id = $(elt.target).parent().attr('trader-id');
+    }
+
     return $('.markets[trader-id="' + trader_id + '"]').val();
 }
 
@@ -1172,7 +1293,7 @@ function retrieve_trade_id(elt) {
     return trade_id ? parseInt(trade_id) : -1;
 }
 
-function add_long_short_actions(id, to) {
+function add_long_short_actions(id, symbol, to) {
     let tv_btn = $('<button class="btn btn-secondary trading-view-action" name="trading-view-action"><span class="fa fa-link"></span>&nbsp;TV</button>');
     let long_btn = $('<button class="btn btn-success long-action" name="long-action">Long</button>');
     let short_btn = $('<button class="btn btn-danger short-action" name="short-action">Short</button>');
@@ -1182,7 +1303,7 @@ function add_long_short_actions(id, to) {
     long_btn.attr('trader-id', id);
     short_btn.attr('trader-id', id);
     tv_btn.attr('trader-id', id);
-    auto_btn.attr('trader-id', id);
+    auto_btn.attr('trader-id', id).attr('market-id', symbol);
     chart_btn.attr('trader-id', id);
 
     to.append(tv_btn);
@@ -1214,43 +1335,49 @@ function add_long_short_actions(id, to) {
 
 function toggle_auto(elt) {
     let symbol = retrieve_symbol(elt);
+    let trader_id = retrieve_trader_id(elt);
 
-    let endpoint = "strategy/trader";
+    let endpoint = "strategy/instrument";
     let url = base_url() + '/' + endpoint;
-
     let market = window.markets[symbol];
 
-    let data = {
-        'market-id': market['market-id'],
-        'activity': 'toggle',
-    }
-
-    $.ajax({
-        type: "POST",
-        url: url,
-        data: JSON.stringify(data),
-        dataType: 'json',
-        contentType: 'application/json',
-        headers: {
-            'TWISTED_SESSION': server.session,
-            'Authorization': "Bearer " + server['auth-token'],
-        },
-    })
-    .done(function(result) {
-        if (result['error'] || !result['auth-token']) {
-            notify({'message': "Rejected authentication", 'type': 'error'});
-            return;
+    if (symbol && market) {
+        let data = {
+            'market-id': market['market-id'],
+            'command': 'activity',
+            'action': 'toggle'
         }
 
-        $(elt).removeClass('fa-play')
-            .removeClass('fa-pause')
-            .addClass(result['activity'] ? 'fa-play' : 'fa-pause');
+        $.ajax({
+            type: "POST",
+            url: url,
+            headers: {
+                'Authorization': "Bearer " + server['auth-token'],
+                'TWISTED_SESSION': server.session,
+            },
+            data: JSON.stringify(data),
+            dataType: 'json',
+            contentType: 'application/json'
+        })
+        .done(function(result) {
+            if (data.error) {
+                for (let msg in data.messages) {
+                    notify({'message': data.messages[msg], 'title': 'Toggle auto-trade"', 'type': 'error'});
+                }
+            } else {
+                // @todo for each trader having the same market-id
+                $('button[market-id="' + symbol + '"] span')
+                    .removeClass('fa-play')
+                    .removeClass('fa-pause')
+                    .addClass(result['activity'] ? 'fa-play' : 'fa-pause');
 
-        notify({'message': "Toggle auto-trade", 'type': 'success'});
-    })
-    .fail(function() {
-        notify({'message': "Unable toggle auto-trade status !", 'type': 'error'});
-    });
+                notify({'message': "Toggle auto-trade", 'type': 'success'});
+            }
+        })
+        .fail(function() {
+            notify({'message': "Unable toggle auto-trade status !", 'type': 'error'});
+        });
+    }
 }
 
 function open_trading_view(elt) {
@@ -1271,6 +1398,16 @@ function open_trading_view(elt) {
     }
 };
 
+function on_change_symbol(elt) {
+    let value = $(elt.target).val();
+
+    if (value in window.markets) {
+        let trader_id = $(elt.target).attr('trader-id');
+
+        save_local_trader(trader_id, 'market-id', value);
+    };
+};
+
 function on_change_profile(elt) {
     let value = $(elt.target).val();
     let market = window.markets[retrieve_symbol(elt)];
@@ -1285,6 +1422,8 @@ function on_change_profile(elt) {
 
         tpm.selectpicker('val', profile['take-profit']).change();
         slm.selectpicker('val', profile['stop-loss']).change();
+
+        save_local_trader(trader_id, 'profile', value);
     };
 };
 
@@ -1301,6 +1440,8 @@ function on_change_entry_method(elt) {
         let ep = $('input.entry-price[trader-id="' + trader_id +'"]');
         ep.prop("disabled", true);
     }
+
+    save_local_trader(trader_id, 'entry-method', entry_method);
 }
 
 function on_change_entry_price(elt) {
@@ -1313,30 +1454,34 @@ function on_change_stop_loss_method(elt) {
     let symbol = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
 
-    let entry_method = retrieve_stop_loss_method(trader_id);
+    let stop_loss_method = retrieve_stop_loss_method(trader_id);
 
-    if (entry_method == "price") {
+    if (stop_loss_method == "price") {
         let slp = $('input.stop-loss-price[trader-id="' + trader_id +'"]');
         slp.prop("disabled", false);
     } else {
         let slp = $('input.stop-loss-price[trader-id="' + trader_id +'"]');
         slp.prop("disabled", true);
     }
+
+    save_local_trader(trader_id, 'stop-loss-method', stop_loss_method);
 }
 
 function on_change_take_profit_method(elt) {
     let symbol = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
 
-    let entry_method = retrieve_take_profit_method(trader_id);
+    let take_profit_method = retrieve_take_profit_method(trader_id);
 
-    if (entry_method == "price") {
+    if (take_profit_method == "price") {
         let tpp = $('input.take-profit-price[trader-id="' + trader_id +'"]');
         tpp.prop("disabled", false);
     } else {
         let tpp = $('input.take-profit-price[trader-id="' + trader_id +'"]');
         tpp.prop("disabled", true);
     }
+
+    save_local_trader(trader_id, 'take-profit-method', take_profit_method);
 }
 
 function on_update_performances() {

@@ -174,6 +174,46 @@ class InfoCommand(Command):
         return args, 0
 
 
+class AffinityCommand(Command):
+
+    SUMMARY = "<market-id> to modify the affinity per market."
+
+    def __init__(self, strategy_service):
+        super().__init__('set-affinity', 'SETAFF')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if len(args) != 2:
+            return False, "Missing parameters"
+
+        action = "set-affinity"
+
+        try:
+            market_id = args[0]
+            affinity = int(args[1])
+
+        except Exception:
+            return False, "Invalid parameters"
+
+        self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+            'market-id': market_id,
+            'affinity': affinity,
+            'action': action
+        })
+
+        return True, []
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            # instrument
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 class LongCommand(Command):
 
     SUMMARY = "to manually create to a new trade in LONG direction"
@@ -1057,6 +1097,7 @@ def register_trading_commands(commands_handler, trader_service, strategy_service
     commands_handler.register(InfoCommand(strategy_service, notifier_service))
     commands_handler.register(UserSaveCommand(strategy_service))
     commands_handler.register(SetQuantityCommand(strategy_service))
+    commands_handler.register(AffinityCommand(strategy_service))
 
     #
     # order

@@ -3,7 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy command trader modify
 
-def cmd_strategy_trader_modify(strategy, strategy_trade, data):
+def cmd_strategy_trader_modify(strategy, strategy_trader, data):
     """
     Modify a strategy-trader state, a region or an alert.
     """        
@@ -23,6 +23,10 @@ def cmd_strategy_trader_modify(strategy, strategy_trade, data):
         except Exception:
             results['error'] = True
             results['messages'].append("Invalid trader action")
+
+        #
+        # regions
+        #
 
         if action == "add-region":
             region_name = data.get('region', "")
@@ -76,6 +80,10 @@ def cmd_strategy_trader_modify(strategy, strategy_trade, data):
             if region_id >= 0:
                 if not strategy_trader.remove_region(region_id):
                     results['messages'].append("Invalid region identifier")
+
+        #
+        # alerts
+        #
 
         elif action == 'add-alert':
             alert_name = data.get('alert', "")
@@ -134,6 +142,10 @@ def cmd_strategy_trader_modify(strategy, strategy_trade, data):
                 if not strategy_trader.remove_alert(alert_id):
                     results['messages'].append("Invalid alert identifier")
 
+        #
+        # activity
+        #
+
         elif action == "enable":
             if not strategy_trader.activity:
                 strategy_trader.set_activity(True)
@@ -141,12 +153,30 @@ def cmd_strategy_trader_modify(strategy, strategy_trade, data):
             else:
                 results['messages'].append("Already enabled strategy trader for market %s" % strategy_trader.instrument.market_id)
 
+            results['activity'] = strategy_trader.activity
+
         elif action == "disable":
             if strategy_trader.activity:
                 strategy_trader.set_activity(False)
                 results['messages'].append("Disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
             else:
                 results['messages'].append("Already disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
+
+            results['activity'] = strategy_trader.activity
+
+        elif action == "toggle":
+            if strategy_trader.activity:
+                strategy_trader.set_activity(False)
+                results['messages'].append("Disabled strategy trader for market %s" % strategy_trader.instrument.market_id)
+            else:
+                strategy_trader.set_activity(True)
+                results['messages'].append("Enabled strategy trader for market %s" % strategy_trader.instrument.market_id)
+
+            results['activity'] = strategy_trader.activity
+
+        #
+        # quantity/size
+        #
 
         elif action == "set-quantity":
             quantity = 0.0
@@ -172,6 +202,9 @@ def cmd_strategy_trader_modify(strategy, strategy_trade, data):
                 results['error'] = True
                 results['messages'].append("Max factor must be greater than zero")
 
+            if results['error']:
+                return results
+
             if quantity > 0.0 and strategy_trader.instrument.trade_quantity != quantity:
                 strategy_trader.instrument.trade_quantity = quantity
                 results['messages'].append("Modified trade quantity for %s to %s" % (strategy_trader.instrument.market_id, quantity))
@@ -179,6 +212,35 @@ def cmd_strategy_trader_modify(strategy, strategy_trade, data):
             if max_factor > 0 and strategy_trader.instrument.trade_max_factor != max_factor:
                 strategy_trader.instrument.trade_max_factor = max_factor
                 results['messages'].append("Modified trade quantity max factor for %s to %s" % (strategy_trader.instrument.market_id, max_factor))
+
+            results['quantity'] = strategy_trader.instrument.trade_quantity
+            results['max-factor'] = strategy_trader.instrument.trade_max_factor
+
+        #
+        # affinity
+        #
+
+        elif action == "set-affinity":
+            affinity = 0
+
+            try:
+                affinity = int(data.get('affinity', 5))
+            except Exception:
+                results['error'] = True
+                results['messages'].append("Invalid affinity")
+
+            if 0 <= affinity <= 10:
+                results['error'] = True
+                results['messages'].append("Affinity must be between 0 and 10 inclusive")
+
+            if results['error']:
+                return results
+
+            if strategy_trader.affinity != affinity:
+                strategy_trader.affinity = affinity
+                results['messages'].append("Modified strategy trader affinity for %s to %s" % (strategy_trader.instrument.market_id, affinity))
+
+            results['affinity'] = strategy_trader.affinity
 
         else:
             results['error'] = True

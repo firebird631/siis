@@ -282,9 +282,24 @@ class InstrumentRestAPI(resource.Resource):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        # @todo toggle play/pause
+        results = {
+            'messages': [],
+            'error': False
+        }
 
-        results = {}
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
+            command = content.get('command', "")
+
+            if command == "activity":
+                results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+            elif command == "affinity":
+                results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+            else:
+                results['messages'].append("Missing command.")
+                results['error'] = True
+        except Exception as e:
+            logger.debug(e)
 
         return json.dumps(results).encode("utf-8")
 
