@@ -453,9 +453,9 @@ class StrategyTrader(object):
         results = []
 
         with self._mutex:
-            results += self._stats['success']
-            results += self._stats['failed']
+            results = self._stats['success'] + self._stats['failed'] + self._stats['roe']
 
+            # sort by entry timestamp desc
             results = sorted(results, key=lambda trade: (trade['eot'], trade['id']), reverse=True)
 
         return results
@@ -593,7 +593,7 @@ class StrategyTrader(object):
 
                         # realized profit/loss
                         profit_loss = trade.profit_loss - trade.entry_fees_rate() - trade.exit_fees_rate()
-                        
+
                         best_pl = (trade.best_price() - trade.entry_price if trade.direction > 0 else trade.entry_price - trade.best_price()) / trade.entry_price
                         worst_pl = (trade.worst_price() - trade.entry_price if trade.direction > 0 else trade.entry_price - trade.worst_price()) / trade.entry_price
 
@@ -613,8 +613,12 @@ class StrategyTrader(object):
                             self._stats['cont-loss'] = 0
                             self._stats['cont-win'] += 1
 
+                        # keep for historical @todo harmonize using this record (remove the next)
+                        # record = trade.dumps_notify_exit(timestamp, self)
+
                         record = {
                             'id': trade.id,
+                            'mid': self.instrument.market_id,
                             'eot': trade.entry_open_time,
                             'xot': trade.exit_open_time,
                             'freot': trade.first_realized_entry_time,
@@ -622,6 +626,7 @@ class StrategyTrader(object):
                             'lreot': trade.last_realized_entry_time,
                             'lrxot': trade.last_realized_exit_time,
                             'd': trade.direction_to_str(),
+                            't': trade.entry_order_type_to_str(),
                             'l': self.instrument.format_price(trade.order_price),
                             'q': self.instrument.format_quantity(trade.order_quantity),
                             'e': self.instrument.format_quantity(trade.exec_entry_qty),

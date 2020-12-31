@@ -407,11 +407,19 @@ class HistoricalTradeRestAPI(resource.Resource):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
+        trade_id = -1
+
         results = {
             'error': False,
             'messages': [],
             'data': None
         }
+
+        if b'trade' in request.args:
+            try:
+                trade_id = int(request.args[b'trade'][0].decode("utf-8"))
+            except ValueError:
+                return NoResource("Incorrect trade value")
 
         if trade_id > 0:
             # @todo
@@ -420,7 +428,7 @@ class HistoricalTradeRestAPI(resource.Resource):
             # current active trade list
             results['data'] = self._strategy_service.strategy().dumps_trades_history()
 
-        return json.dumps(result).encode("utf-8")
+        return json.dumps(results).encode("utf-8")
 
 
 class Charting(resource.Resource):

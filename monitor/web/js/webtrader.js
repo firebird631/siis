@@ -985,7 +985,7 @@ function fetch_strategy() {
 
         setup_traders();
         fetch_trades();
-        // fetch_history(); @todo
+        fetch_history();
     })
     .fail(function() {
         alert("Unable to obtains markets list info !");
@@ -1028,7 +1028,7 @@ function fetch_trades() {
 }
 
 function fetch_history() {
-    let endpoint = "strategy/history";
+    let endpoint = "strategy/historical";
     let url = base_url() + '/' + endpoint;
 
     let params = {}
@@ -1051,7 +1051,45 @@ function fetch_history() {
 
         for (let i = 0; i < trades.length; ++i) {
             let trade = trades[i];
-            window.actives_trades[trade['symbol'] + ':' + trade.id] = trade;
+            // window.historical_trades[trade['symbol'] + ':' + trade.id] = trade;
+            window.historical_trades[trade.mid + ':' + trade.id] = trade;
+
+            // convert dict members
+            trade = {
+                'version': 1.0,
+                'symbol': trade.mid,
+                'id': trade.id,
+                'timestamp': trade.eot,
+                'timeframe': trade.tf,
+                'direction': trade.d,
+                'state': trade.s,
+                'way': "exit",
+                'order-price': trade.l,
+                'order-qty': trade.q,
+                'filled-entry-qty': trade.e,
+                'filled-exit-qty': trade.x,
+                'take-profit-price': trade.tp,
+                'stop-loss-price': trade.sl,
+                'avg-entry-price': trade.aep,
+                'avg-exit-price': trade.axp,
+                'label': trade.label,
+                'profit-loss-pct': parseFloat((trade.pl * 100).toFixed(2)),
+                'stats': {
+                    'best-price': trade.b,
+                    'worst-price': trade.w,
+                    'best-datetime': trade.bt,
+                    'worst-datetime': trade.wt,
+                    'first-realized-entry-datetime': trade.freot,
+                    'first-realized-exit-datetime': trade.frxot,
+                    'last-realized-entry-datetime': trade.lreot,
+                    'last-realized-exit-datetime': trade.lrxot,
+                    // 'entry-fees': trade.fees
+                    // 'exit-fees': self._stats['exit-fees'],
+                    'profit-loss': trade.rpnl,
+                    'profit-loss-currency': trade.pnlcur,
+                    'entry-order-type': trade.t,
+                }
+            };
 
             // initial add
             add_historical_trade(trade.symbol, trade);

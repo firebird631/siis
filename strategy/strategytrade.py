@@ -695,6 +695,9 @@ class StrategyTrade(object):
         else:
             return "undefined"
 
+    def entry_order_type_to_str(self):
+        return order_type_to_str(self._stats['entry-order-type'])
+
     #
     # presistance
     #
@@ -1004,6 +1007,7 @@ class StrategyTrade(object):
             'is-user-trade': self._user_trade,
             'label': self._label,
             'direction': self.direction_to_str(),
+            'state': self.state_to_str(),
             'order-price': strategy_trader.instrument.format_price(self.op),
             'order-qty': strategy_trader.instrument.format_quantity(self.oq),
             'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
@@ -1036,6 +1040,7 @@ class StrategyTrade(object):
             'is-user-trade': self._user_trade,
             'label': self._label,
             'direction': self.direction_to_str(),
+            'state': self.state_to_str(),
             'order-price': strategy_trader.instrument.format_price(self.op),
             'order-qty': strategy_trader.instrument.format_quantity(self.oq),
             'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
@@ -1086,6 +1091,7 @@ class StrategyTrade(object):
             'is-user-trade': self._user_trade,
             'label': self._label,
             'direction': self.direction_to_str(),
+            'state': self.state_to_str(),
             'order-price': strategy_trader.instrument.format_price(self.op),
             'order-qty': strategy_trader.instrument.format_quantity(self.oq),
             'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
