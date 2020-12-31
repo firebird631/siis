@@ -677,7 +677,7 @@ function add_historical_trade(market_id, trade) {
         .addClass(trade.direction == "long" ? 'trade-long' : 'trade-short')
         .addClass(trade.direction == "long" ? 'fa-arrow-up' : 'fa-arrow-down');
 
-    let trade_datetime = $('<span class="trade-datetime"></span>').text(timestamp_to_datetime_str(trade.timestamp*1000));
+    let trade_datetime = $('<span class="trade-datetime"></span>').text(timestamp_to_datetime_str(trade.stats['first-realized-entry-datetime']*1000));
     let trade_order = $('<span class="trade-order"></span>').text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
  
     let trade_entry = $('<span class="trade-entry"></span>').text(trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');

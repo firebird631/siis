@@ -456,7 +456,7 @@ class StrategyTrader(object):
             results = self._stats['success'] + self._stats['failed'] + self._stats['roe']
 
             # sort by entry timestamp desc
-            results = sorted(results, key=lambda trade: (trade['eot'], trade['id']), reverse=True)
+            results = sorted(results, key=lambda trade: -trade['eot'], reverse=True)
 
         return results
 

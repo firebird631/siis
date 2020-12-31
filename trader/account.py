@@ -19,7 +19,7 @@ class Account(object):
 
     TYPE_UNDEFINED = 0
     TYPE_ASSET = 1
-    TYPE_STOP = 1
+    TYPE_SPOT = 1
     TYPE_MARGIN = 2
     TYPE_SPREADBET = 4
 

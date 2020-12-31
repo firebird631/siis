@@ -27,12 +27,11 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 ############
 
 #116 kraken watcher et trader :
-    - fetch des positions
-    - fetch des trades history
-    - WS des trades/positions et des orders
-        - comment savoir si maker ou taker ?
-        - finir order : open, traded, closed, updated
-        - trade : seulement pour avoir l'update des positions
+    - fetch des positions (mais on l'a avec le WS)
+    - fetch des trades history (mais on l'a avec le WS)
+    - WS des trades/positions
+        - comment savoir si trade maker ou taker ?
+        - revoir que si besoin ownTrade pour signal TRADED
     - 'cumulative-commission-amount' pour les fees, seulement géré sur assettrade, mais devrait être supporté par les autres
     - si on gere a sell les fee sur quote et qu'il manque en fiat... ça va rejeter, et si on laisse par defaut sur asset alors il faut 
         bien que les calcules interne et arrondis soient bien calculés
@@ -96,6 +95,8 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 ##########
 # URGENT #
 ##########
+
+#117 Normalize les dumps de trades history (voir de active) pour la partie stats par trader et pour le fetch history
 
 #57 Vérification des trades au rechargement :
     - Cas des positions indépendante (CFD, future) : pas de soucis tant qu'on retrouve la position et les ordres

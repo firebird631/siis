@@ -1,4 +1,6 @@
 $(window).ready(function() {
+    CURRENCIES = ['EUR', 'USD', 'ZEUR', 'ZUSD', 'CAD', 'ZCAD'];
+
     window.server = {
         'protocol': 'http:',
         'host': null,
@@ -986,6 +988,7 @@ function fetch_strategy() {
         setup_traders();
         fetch_trades();
         fetch_history();
+        fetch_balances();
     })
     .fail(function() {
         alert("Unable to obtains markets list info !");
@@ -1097,6 +1100,36 @@ function fetch_history() {
     })
     .fail(function() {
         alert("Unable to obtains trades history !");
+    });
+}
+
+function fetch_balances() {
+    let endpoint = "trader";
+    let url = base_url() + '/' + endpoint;
+
+    let params = {}
+
+    $.ajax({
+        type: "GET",
+        url: url,
+        data: params,
+        headers: {
+            'TWISTED_SESSION': server.session,
+            'Authorization': "Bearer " + server['auth-token'],
+        },
+        dataType: 'json',
+        contentType: 'application/json'
+    })
+    .done(function(result) {
+        let balances = result['data'];
+
+        for (let asset in balances) {
+            let balance = balances[asset];
+            window.account_balances[asset] = balance;
+        }
+    })
+    .fail(function() {
+        alert("Unable to obtains account balances !");
     });
 }
 
@@ -1617,7 +1650,42 @@ function on_update_performances() {
 
         table.append(row_entry);
 
+        // balances
+        table = $('div.performance-list-entries table.account').find('tbody');
+        table.empty();
+
+        for (let asset in window.account_balances) {
+            let balance = window.account_balances[asset];
+
+            if (balance.total <= 0.0) {
+                continue;
+            }
+
+            let precision = 8;
+
+            if (CURRENCIES.indexOf(asset) >= 0) {
+                // @todo
+                precision = 2;
+            }
+
+            let row_entry = $('<tr class="balance-entry"></tr>');
+            row_entry.append($('<td class="balance-symbol">' + asset + '</td>'));
+
+            if (balance.type == "asset") {
+                row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
+                row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + '</td>'));
+                row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '</td>'));
+            } else if (balance.type == "margin") {
+                row_entry.append($('<td class="balance-free">' + balance.free + '</td>'));
+                row_entry.append($('<td class="balance-locked">' + balance.locked + ' (level '+ balance['margin-level'] * 100).toFixed(2) + ')</td>');
+                row_entry.append($('<td class="balance-total">' + balance.total + '(upnl ' + balance.upnl + ')</td>'));
+            }
+
+            table.append(row_entry);
+        }
+
         // update every half-second until displayed
+        setTimeout(fetch_balances, 500);
         setTimeout(on_update_performances, 500);
     }
 }
@@ -1631,23 +1699,33 @@ function on_update_balances(symbol, asset, timestamp, data) {
         window.account_balances[asset] = data;
 
         // and redraw
-        for (let balance in window.account_balances) {
-            let row_entry = $('<tr class="account-balance-entry"></tr>');
-            row_entry.append($('<td class="account-balance-symbol">' + asset + '</td>'));
-            row_entry.append($('<td class="account-balance-free">' + balance.free + '</td>'));
+        for (let asset in window.account_balances) {
+            let balance = window.account_balances[asset];
 
-            if (balance['margin-level']) {
-                row_entry.append($('<td class="account-balance-locked">' + balance.locked + ' (' +  (balance['margin-level'] * 100).toFixed(2) + '%)</td>'));
-            } else {
-                row_entry.append($('<td class="account-balance-locked">' + balance.locked + '</td>'));
+            if (balance.total <= 0.0) {
+                continue;
             }
 
-            if (balance['unpl']) {
-                row_entry.append($('<td class="account-balance-total">' + balance.total + ' / upnl (' +  balance['unpl'] + ')</td>'));  
-            } else {
-                row_entry.append($('<td class="account-balance-total">' + balance.total + '</td>'));
+            let row_entry = $('<tr class="balance-entry"></tr>');
+            row_entry.append($('<td class="balance-symbol">' + asset + '</td>'));
+
+            if (balance.type == "asset") {
+                let precision = 8;
+
+                if (CURRENCIES.indexOf(asset) >= 0) {
+                    // @todo
+                    precision = 2;
+                }
+
+                row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
+                row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + '</td>'));
+                row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '</td>'));
+            } else if (balance.type == "margin") {
+                row_entry.append($('<td class="balance-free">' + balance.free.toFixed(2) + '</td>'));
+                row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(2) + ' (level '+ balance['margin-level'] * 100).toFixed(2) + '%)</td>');
+                row_entry.append($('<td class="balance-total">' + balance.total.toFixed(2) + '(upnl ' + balance.upnl + ')</td>'));
             }
-           
+
             table.append(row_entry);
         }
     }

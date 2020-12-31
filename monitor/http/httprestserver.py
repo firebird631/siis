@@ -431,6 +431,46 @@ class HistoricalTradeRestAPI(resource.Resource):
         return json.dumps(results).encode("utf-8")
 
 
+class TraderRestAPI(resource.Resource):
+    isLeaf = False
+
+    def __init__(self, trader_service):
+        super().__init__()
+
+        self._trader_service = trader_service
+
+    def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        uri = request.uri.decode("utf-8").split('/')
+
+        trader_name = self._trader_service.trader_name()
+
+        asset_symbol = None
+
+        results = {
+            'error': False,
+            'messages': [],
+            'data': None
+        }
+
+        if b'asset' in request.args:
+            try:
+                asset_symbol = int(request.args[b'asset'][0].decode("utf-8"))
+            except ValueError:
+                return NoResource("Incorrect asset value")
+
+        if asset_symbol:
+            # @todo
+            results['data'] = None
+        else:
+            # asset list + margin
+            results['data'] = self._trader_service.trader().fetch_assets_balances()
+
+        return json.dumps(results).encode("utf-8")
+
+
 class Charting(resource.Resource):
     isLeaf = True
 
@@ -538,7 +578,7 @@ class HttpRestServer(object):
         strategy_api.putChild(b"historical", historical_trade_api)
 
         # trader
-        trader_api = resource.Resource()
+        trader_api = TraderRestAPI(self._trader_service)
         api_v1.putChild(b"trader", trader_api)
 
         # monitor

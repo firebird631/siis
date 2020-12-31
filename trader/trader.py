@@ -34,10 +34,10 @@ class Trader(Runnable):
     """
     Trader base class to specialize per broker.
 
-    @todo Not as central ressource, only for intial or informational, strategy must have theirs local proxy methods/data.
     @todo Create sell order for COMMAND_SELL_ALL_ASSET.
     @todo Move table/dataset like as strategy
     @todo Move command to specific files like as strategy will be
+    @todo How to stream margin/spot balances when there is no events ? push every seconds ?
     """
 
     MAX_SIGNALS = 1000                        # max signals queue size before ignore some market data updates
@@ -1586,6 +1586,7 @@ class Trader(Runnable):
         if self._balance_streamer:
             try:
                 self._balance_streamer.member('accout-balance').update(self, {
+                    'type': 'margin',
                     'free': free,
                     'locked': locked,
                     'total': total,
@@ -1596,3 +1597,47 @@ class Trader(Runnable):
                 self._balance_streamer.publish()
             except Exception as e:
                 logger.error(repr(e))
+
+    #
+    # helpers
+    #
+
+    def fetch_assets_balances(self):
+        """
+        Dumps balance/asset update notify.
+        """
+        assets = {}
+
+        with self._mutex:
+            for k, asset in self._assets.items():
+                assets[asset.symbol] = {
+                    'type': 'asset',
+                    'free': asset.free,
+                    'locked': asset.locked,
+                    'total': asset.quantity,
+                    'upnl': 0.0,
+                    'margin-level': 0.0,
+                }
+
+            # append account margin if available
+            if self.account.account_type | self.account.TYPE_MARGIN == self.account.TYPE_MARGIN:
+                assets[self.account.currency] = {
+                    'type': 'margin',
+                    'free': self.account.margin_balance,
+                    'locked': self.account.balance,
+                    'total': self.account.quantity,
+                    'upnl': self.account.profit_loss,
+                    'margin-level': self.account.margin_level,
+                }
+
+            if self.account.account_type | self.account.TYPE_ASSET == self.account.TYPE_ASSET:
+                assets['Spot'] = {
+                    'type': 'asset',
+                    'free': self.account.free_asset_balance,
+                    'locked': self.account.asset_balance - self.account.free_asset_balance,
+                    'total': self.account.asset_balance,
+                    'upnl': 0.0,
+                    'margin-level': 0.0,
+                }
+
+        return assets
