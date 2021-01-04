@@ -1,3 +1,5 @@
+// @todo auto-reconnect
+
 $(window).ready(function() {
     CURRENCIES = ['EUR', 'USD', 'ZEUR', 'ZUSD', 'CAD', 'ZCAD'];
 
@@ -9,6 +11,10 @@ $(window).ready(function() {
         'auth-token': null,
         'ws-auth-token': null,
         'session': "",
+        'delay': 1000,
+        'retry': false,
+        'ws': false,
+        'connected': false
     };
 
     window.ws = null;
@@ -16,13 +22,13 @@ $(window).ready(function() {
     let searchParams = new URLSearchParams(window.location.search);
 
     if (searchParams.has('host')) {
-        server['host'] = searchParams.get('host');
+        window.server['host'] = searchParams.get('host');
     }
     if (searchParams.has('port')) {
-        server['port'] = parseInt(searchParams.get('port'));
+        window.server['port'] = parseInt(searchParams.get('port'));
     }
     if (searchParams.has('ws-port')) {
-        server['ws-port'] = parseInt(searchParams.get('ws-port'));
+        window.server['ws-port'] = parseInt(searchParams.get('ws-port'));
     }
 
     window.broker = {
@@ -554,7 +560,7 @@ $(window).ready(function() {
     //
 
     function setup_auth_data(data) {
-        data['auth-token'] = server['auth-token'];
+        data['auth-token'] = window.server['auth-token'];
     }
 
     function get_auth_token(api_key) {
@@ -581,13 +587,17 @@ $(window).ready(function() {
                 return;
             }
 
-            server['auth-token'] = result['auth-token'];
-            server['ws-auth-token'] = result['ws-auth-token'];
-            server['session'] = result['session'];
+            window.server['auth-token'] = result['auth-token'];
+            window.server['ws-auth-token'] = result['ws-auth-token'];
+            window.server['session'] = result['session'];
 
-            if (server['ws-port'] != null) {
+            if (window.server['ws-port'] != null) {
                 start_ws();
             }
+
+            window.server['connected'] = true;
+            window.server['retry'] = false;
+            window.server['delay'] = 0;
 
             fetch_strategy();
 
@@ -604,7 +614,22 @@ $(window).ready(function() {
             audio_notify('entry');
         })
         .fail(function() {
+            window.server['connected'] = false;
+            window.server['retry'] = true;
+
+            if (window.server['delay'] == 0) {
+                window.server['delay'] = 1000;
+            } else if (window.server['delay'] == 1000) {
+                window.server['delay'] = 5000;
+            } else if (window.server['delay'] == 5000) {
+                window.server['delay'] = 10000;
+            } else if (window.server['delay'] == 10000) {
+                window.server['delay'] = 15000;
+            }
+
             notify({'message': "Unable to obtain an auth-token !", 'type': 'error'});
+
+            // @todo reconnect
         });
     };
 
@@ -630,11 +655,15 @@ $(window).ready(function() {
             },
         })
         .done(function(result) {
-            server['auth-token'] = result['auth-token'];
+            window.server['auth-token'] = result['auth-token'];
 
-            if (server['ws-port'] != null) {
+            if (window.server['ws-port'] != null) {
                 start_ws();
             }
+
+            window.server['connected'] = true;
+            window.server['retry'] = false;
+            window.server['delay'] = 0;
 
             fetch_strategy();
 
@@ -646,7 +675,22 @@ $(window).ready(function() {
             audio_notify('entry');
         })
         .fail(function() {
-            alert("Unable to obtain an auth-token !");
+            window.server['connected'] = false;
+            window.server['retry'] = true;
+
+            if (window.server['delay'] == 0) {
+                window.server['delay'] = 1000;
+            } else if (window.server['delay'] == 1000) {
+                window.server['delay'] = 5000;
+            } else if (window.server['delay'] == 5000) {
+                window.server['delay'] = 10000;
+            } else if (window.server['delay'] == 10000) {
+                window.server['delay'] = 15000;
+            }
+
+            notify({'message': "Unable to obtain an auth-token !", 'title': 'Authentication"', 'type': 'error'});
+
+            // @todo reconnect
         });
     };
 
@@ -657,16 +701,20 @@ $(window).ready(function() {
             ws = null;
         }
 
-        ws = new WebSocket("ws://" + server['host'] + ":" + server['ws-port'] +
-                "?ws-auth-token=" + server['ws-auth-token'] +
-                '&auth-token=' + server['auth-token']);
+        ws = new WebSocket("ws://" + window.server['host'] + ":" + window.server['ws-port'] +
+                "?ws-auth-token=" + window.server['ws-auth-token'] +
+                '&auth-token=' + window.server['auth-token']);
 
         ws.onopen = function(event) {
+            window.server['ws'] = true;
             console.log("WS opened");
         };
 
         ws.onclose = function(event) {
+            window.server['ws'] = false;
             console.log("WS closed by peer !");
+
+            // @todo reconnect if lost
         };
 
         ws.onmessage = function (event) {
@@ -676,22 +724,22 @@ $(window).ready(function() {
 
     // global function to setup data and to get an initial auth-token
     siis_connect = function(api_key, host, port, ws_port=6340) {
-        server['host'] = host;
-        server['port'] = port;
-        server['ws-port'] = ws_port;
+        window.server['host'] = host;
+        window.server['port'] = port;
+        window.server['ws-port'] = ws_port;
 
         return get_auth_token(api_key);
     }
 
     siis_login = function(identifier, password, host, port, ws_port=6340) {
-        server['host'] = host;
-        server['port'] = port;
-        server['ws-port'] = ws_port;
+        window.server['host'] = host;
+        window.server['port'] = port;
+        window.server['ws-port'] = ws_port;
 
         return login(identifier, password);
     }
 
-    server['protocol'] = window.location.protocol;
+    window.server['protocol'] = window.location.protocol;
 
     simple_connect = function(api_key) {
         return siis_connect(api_key, window.location.hostname, parseInt(window.location.port), ws_port=parseInt(window.location.port)+1);
@@ -989,9 +1037,11 @@ function fetch_strategy() {
         fetch_trades();
         fetch_history();
         fetch_balances();
+        // fetch_alerts();
+        // fetch_signals();
     })
     .fail(function() {
-        alert("Unable to obtains markets list info !");
+        notify({'message': "Unable to obtains markets list info !", 'title': 'fetching"', 'type': 'error'});
     });
 }
 
@@ -1026,7 +1076,7 @@ function fetch_trades() {
         }
     })
     .fail(function() {
-        alert("Unable to obtains actives trades !");
+        notify({'message': "Unable to obtains actives trades !", 'title': 'fetching"', 'type': 'error'});
     });
 }
 
@@ -1099,7 +1149,7 @@ function fetch_history() {
         }
     })
     .fail(function() {
-        alert("Unable to obtains trades history !");
+        notify({'message': "Unable to obtains historicals trades !", 'title': 'fetching"', 'type': 'error'});
     });
 }
 
@@ -1129,7 +1179,7 @@ function fetch_balances() {
         }
     })
     .fail(function() {
-        alert("Unable to obtains account balances !");
+        notify({'message': "Unable to obtains account balances", 'title': 'fetching"', 'type': 'error'});
     });
 }
 
@@ -1401,7 +1451,7 @@ function add_long_short_actions(id, symbol, to) {
     });
 
     chart_btn.on('click', function(elt) {
-        alert("TODO !:")
+        notify({'message': " TODO", 'title': 'feature', 'type': 'warning'});
     });
 };
 
@@ -1661,24 +1711,23 @@ function on_update_performances() {
                 continue;
             }
 
-            let precision = 8;
-
-            if (CURRENCIES.indexOf(asset) >= 0) {
-                // @todo
-                precision = 2;
-            }
+            let precision = balance.precision;
 
             let row_entry = $('<tr class="balance-entry"></tr>');
             row_entry.append($('<td class="balance-symbol">' + asset + '</td>'));
 
             if (balance.type == "asset") {
+                if (asset in CURRENCIES) {
+                    precision = 2;
+                }
+
                 row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
                 row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + '</td>'));
                 row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '</td>'));
             } else if (balance.type == "margin") {
-                row_entry.append($('<td class="balance-free">' + balance.free + '</td>'));
-                row_entry.append($('<td class="balance-locked">' + balance.locked + ' (level '+ balance['margin-level'] * 100).toFixed(2) + ')</td>');
-                row_entry.append($('<td class="balance-total">' + balance.total + '(upnl ' + balance.upnl + ')</td>'));
+                row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
+                row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + ' (level '+ balance['margin-level'] * 100).toFixed(2) + ')</td>');
+                row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '(upnl ' + balance.upnl + ')</td>'));
             }
 
             table.append(row_entry);
@@ -1686,7 +1735,10 @@ function on_update_performances() {
 
         // update every half-second until displayed
         setTimeout(fetch_balances, 500);
-        setTimeout(on_update_performances, 500);
+
+        if (window.server['ws']) {
+            setTimeout(on_update_performances, 500);
+        }
     }
 }
 
@@ -1709,11 +1761,10 @@ function on_update_balances(symbol, asset, timestamp, data) {
             let row_entry = $('<tr class="balance-entry"></tr>');
             row_entry.append($('<td class="balance-symbol">' + asset + '</td>'));
 
-            if (balance.type == "asset") {
-                let precision = 8;
+            let precision = balance.precision;
 
-                if (CURRENCIES.indexOf(asset) >= 0) {
-                    // @todo
+            if (balance.type == "asset") {
+                if (asset in CURRENCIES) {
                     precision = 2;
                 }
 
@@ -1721,9 +1772,9 @@ function on_update_balances(symbol, asset, timestamp, data) {
                 row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + '</td>'));
                 row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '</td>'));
             } else if (balance.type == "margin") {
-                row_entry.append($('<td class="balance-free">' + balance.free.toFixed(2) + '</td>'));
-                row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(2) + ' (level '+ balance['margin-level'] * 100).toFixed(2) + '%)</td>');
-                row_entry.append($('<td class="balance-total">' + balance.total.toFixed(2) + '(upnl ' + balance.upnl + ')</td>'));
+                row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
+                row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + ' (level '+ balance['margin-level'] * 100).toFixed(2) + '%)</td>');
+                row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '(upnl ' + balance.upnl + ')</td>'));
             }
 
             table.append(row_entry);

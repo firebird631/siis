@@ -176,6 +176,7 @@ class StrategyInfoRestAPI(resource.Resource):
         strategy_name = self._strategy_service.strategy_name()
         strategy_id = self._strategy_service.strategy_identifier()
 
+        # insert markets details
         markets = {}
 
         instruments_ids = self._strategy_service.strategy().instruments_ids()
@@ -232,7 +233,7 @@ class StrategyInfoRestAPI(resource.Resource):
                 'id': strategy_id,
                 'backtesting': self._strategy_service.backtesting,
             },
-            'markets': markets,
+            'markets': markets
         }
 
         return json.dumps(results).encode("utf-8")

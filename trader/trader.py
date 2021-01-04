@@ -476,7 +476,16 @@ class Trader(Runnable):
         # with self._mutex:
         return self._assets.get(symbol)
 
-        # return None
+    def assets_names(self):
+        """
+        List of managed assets.
+        """
+        assets = []
+
+        with self._mutex:
+            assets = list(self._assets.keys())
+
+        return assets
 
     def has_asset(self, symbol):
         """
@@ -1617,6 +1626,7 @@ class Trader(Runnable):
                     'total': asset.quantity,
                     'upnl': 0.0,
                     'margin-level': 0.0,
+                    'precision': asset.precision
                 }
 
             # append account margin if available
@@ -1628,6 +1638,7 @@ class Trader(Runnable):
                     'total': self.account.quantity,
                     'upnl': self.account.profit_loss,
                     'margin-level': self.account.margin_level,
+                    'precision': 2
                 }
 
             if self.account.account_type | self.account.TYPE_ASSET == self.account.TYPE_ASSET:
@@ -1638,6 +1649,7 @@ class Trader(Runnable):
                     'total': self.account.asset_balance,
                     'upnl': 0.0,
                     'margin-level': 0.0,
+                    'precision': 2
                 }
 
         return assets

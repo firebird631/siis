@@ -49,21 +49,18 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 #102 trade_quantity in percent of account, ou plutôt en % de risque sur le compte
 
 #103 WebTrader
-    - gérer play/pause par market
+    - gérer affinity par market (+ streaming de change car il peut être produit depuis le term ou un autre client)
     - charting OHLC et ticks (streaming) + performance
     - goto charting historique sur un trade passé
-    - récupération des trades historiques à la connexion (ou reformater le format de rapport avec les dumps, donc revoir la table cli)
+    - normalizer trade history avec le dump exit pour la partie terminal
     - details trade avec modal
-    - helper pour le DSL
     - session expiry message to renew
     - active alerts prefetch à la connexion, WS d'update et de delete (à chaque trigger countdown peu changer)
     - ticker WS, basé sur quoi ? trader ticker ? strategy instrument ?
         - plutôt sur le trader car pas besoin de surcharger encore le strategy trader
-    - streamer et afficher balance, margin du compte
-    - copy de signal
-    - toggle audio and save in cookie
-
-#104 decouper les commande de strategy par fichier dans command/
+    - recuperation des info des assets au démarrage avec les infos des markets et stratégies (precision, tick)
+    - copy de signal (bouton)
+    - toggle audio et alt sound alerts + save conf locally
 
 #108 Move from siis.py for the resting command part to command_handler
 
