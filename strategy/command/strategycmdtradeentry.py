@@ -46,8 +46,8 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         results['messages'].append("Missing or empty quantity.")
         results['error'] = True
 
-    if method not in ('market', 'limit', 'limit-percent', 'trigger', 'best-1', 'best+1'):
-        results['messages'].append("Invalid price method (market, limit, limit-percent, trigger, best-1, best+1).")
+    if method not in ('market', 'limit', 'limit-percent', 'trigger', 'best-1', 'best+1', 'best-2', 'best+2'):
+        results['messages'].append("Invalid price method (market, limit, limit-percent, trigger, best-1, best+1, best-1, best+2.")
         results['error'] = True
 
     if method in ('limit', 'limit-percent') and not limit_price:
@@ -59,7 +59,7 @@ def cmd_trade_entry(strategy, strategy_trader, data):
 
     if method == 'market':
         order_type = Order.ORDER_MARKET
-    
+
     elif method == 'limit':
         order_type = Order.ORDER_LIMIT
 
@@ -110,7 +110,7 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         # market support spot and margin option is not defined
         trade = StrategyAssetTrade(timeframe)
 
-        # ajust max quantity according to free asset of quote, and convert in asset base quantity
+        # adjust max quantity according to free asset of quote, and convert in asset base quantity
         if trader.has_asset(strategy_trader.instrument.quote):
             qty = strategy_trader.instrument.trade_quantity*quantity_rate
 

@@ -1717,7 +1717,7 @@ function on_update_performances() {
             row_entry.append($('<td class="balance-symbol">' + asset + '</td>'));
 
             if (balance.type == "asset") {
-                if (asset in CURRENCIES) {
+                if (CURRENCIES.indexOf(asset) >= 0) {
                     precision = 2;
                 }
 
@@ -1764,7 +1764,7 @@ function on_update_balances(symbol, asset, timestamp, data) {
             let precision = balance.precision;
 
             if (balance.type == "asset") {
-                if (asset in CURRENCIES) {
+                if (CURRENCIES.indexOf(asset) >= 0) {
                     precision = 2;
                 }
 
