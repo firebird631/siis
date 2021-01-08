@@ -971,12 +971,12 @@ class KrakenWatcher(Watcher):
             'take-profit': None
         }
 
-    def __fill_order(self, order, order_data, filled_volume):
+    def __fill_order(self, order, order_data, filled_volume, completed=False):
         if filled_volume > 0.0:
             cumulative_filled = float(order_data['vol_exec'])
             volume = float(order_data['vol'])
             partial = False
-            fully_filled = False
+            fully_filled = completed
 
             if order_data['misc']:
                 misc = order_data['misc'].split(',')
@@ -1023,14 +1023,19 @@ class KrakenWatcher(Watcher):
                 del self._orders_ws_cache[order_id]
 
             # executed vol diff (can be 0), data are updated
-            return filled_volume, order_data_cache
+            return False, filled_volume, order_data_cache
         else:
+            opened = False
+
             # add to cache if pending or opened
             if ('status' in new_order_data) and (new_order_data['status'] in ("pending", "open")):
                 self._orders_ws_cache[order_id] = new_order_data
 
+                # first for open state
+                opened = True
+
             # no execute volume, data are original
-            return 0.0, new_order_data
+            return opened, 0.0, new_order_data
 
     def __del_order_cache(self, order_id):
         if order_id in self._orders_ws_cache:
@@ -1057,7 +1062,7 @@ class KrakenWatcher(Watcher):
 
                 exec_logger.info("kraken.com openOrders : %s - %s" % (order_id, order_data))
 
-                filled_volume, order_data = self.__update_order_cache(order_id, order_data)
+                opened, filled_volume, order_data = self.__update_order_cache(order_id, order_data)
 
                 if 'descr' not in order_data:
                     # no have previous message to tell the symbol
@@ -1082,7 +1087,8 @@ class KrakenWatcher(Watcher):
                     client_order_id = str(order_data['userref']) if order_data['userref'] else ""
                     order = self.__set_order(symbol, order_id, order_data)
 
-                    self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
+                    if opened:
+                        self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
 
                     if filled_volume > 0.0:
                         self.__fill_order(order, order_data, filled_volume)
@@ -1094,9 +1100,9 @@ class KrakenWatcher(Watcher):
 
                     # @todo the rest is SIGNAL_ORDER_UPDATED
 
-                    if filled_volume > 0.0:
-                        self.__fill_order(order, order_data, filled_volume)
-                        self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
+                    # last fill with fully-filled state
+                    self.__fill_order(order, order_data, filled_volume, True)
+                    self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
 
                     self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, client_order_id))
 

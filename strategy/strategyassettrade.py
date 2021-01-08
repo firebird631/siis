@@ -545,10 +545,10 @@ class StrategyAssetTrade(StrategyTrade):
             elif (data['id'] == self.limit_oid or data['id'] == self.stop_oid) and ('filled' in data or 'cumulative-filled' in data):
                 # @warning on the exit side, normal case will have a single order, but possibly to have a 
                 # partial limit TP, plus remaining in market
-                if data.get('filled') is not None and data['filled'] > 0:
+                if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
+                    filled = data['cumulative-filled'] - self.x  # compute filled qty                
+                elif data.get('filled') is not None and data['filled'] > 0:
                     filled = data['filled']
-                elif data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                    filled = data['cumulative-filled'] - self.x  # compute filled qty
                 else:
                     filled = 0
 
@@ -566,11 +566,10 @@ class StrategyAssetTrade(StrategyTrade):
                 #     # average exit price
                 #     self.axp = data['avg-price']
 
-                # cumulative filled exit qty
+                # cumulative filled exit qty (commented because in case of partial in limit + remaining in stop or market)
                 # if data.get('cumulative-filled') is not None:
                 #     self.x = data.get('cumulative-filled')
                 # else:
-
                 if filled > 0:
                     self.x = instrument.adjust_quantity(self.x + filled)
 

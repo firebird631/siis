@@ -34,6 +34,13 @@ class TimeframeBasedSub(object):
 
         self.last_signal = None
 
+        self.price = None  # price indicator
+
+        self.open_price = None        # last OHLC open
+        self.close_price = None       # last OHLC close
+        self.prev_open_price = None   # previous OHLC open
+        self.prev_close_price = None  # previous OHLC close
+
     def setup_indicators(self, params):
         """
         Standard implementation to instanciate and setup the indicator based on the timeframe,
@@ -101,9 +108,16 @@ class TimeframeBasedSub(object):
         """
         Must be called at the end of the process method.
         """
-        # last closed candle processed (reset before next gen)
-        # self._last_closed = False
         self.last_timestamp = timestamp
+
+        if self._last_closed and self.price:
+            self.prev_close_price = self.close_price
+            self.prev_open_price = self.open_price
+            self.close_price = self.price.close[-2]  # -1 is current
+            self.open_price = self.price.open[-2]    # -1 is current
+
+            # last closed candle processed (reset before next gen)
+            # self._last_closed = False
 
     def cleanup(self, timestamp):
         """
@@ -112,7 +126,9 @@ class TimeframeBasedSub(object):
 
         For example reseting stats of the closed OHLC.
         """
-        pass
+        if self.close_price:
+            self.prev_open_price = None
+            self.prev_close_price = None
 
     def get_candles(self):
         """
