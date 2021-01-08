@@ -1121,7 +1121,7 @@ class Instrument(object):
         """
         Format the price according to the precision.
         """
-        if price is None:
+        if price is None or math.isnan(price):
             price = 0.0
 
         precision = self._price_limits[3] or 8
