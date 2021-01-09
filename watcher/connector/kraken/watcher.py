@@ -1002,10 +1002,12 @@ class KrakenWatcher(Watcher):
     def __update_order_cache(self, order_id, new_order_data):
         order_data_cache = self._orders_ws_cache.get(order_id)
 
+        opened = False
+        new_exec_vol = 0.0
+
         if order_data_cache:
             # detect a diff in executed volume
             prev_exec_vol = 0.0
-            new_exec_vol = 0.0
 
             if 'vol_exec' in order_data_cache:
                 prev_exec_vol = float(order_data_cache['vol_exec'])
@@ -1015,27 +1017,42 @@ class KrakenWatcher(Watcher):
 
             filled_volume = new_exec_vol - prev_exec_vol
 
+            # status changed
+            if ('status' in new_order_data):
+                # remove from cache if closed, canceled or deleted
+                if (new_order_data['status'] in ("closed", "deleted", "canceled")):
+                    del self._orders_ws_cache[order_id]
+
+                # or open state
+                if new_order_data['status'] == "open":
+                    if 'status' in order_data_cache:
+                        if order_data_cache['status'] == "pending":
+                            # was pending, now its open : opened state for signal
+                            opened = True
+                    else:
+                        # no previous status in cache : opened state for signal
+                        opened = True
+
             # update the cached data
             order_data_cache.update(new_order_data)
 
-            # remove from cache if closed, canceled or deleted
-            if ('status' in new_order_data) and (new_order_data['status'] in ("closed", "deleted", "canceled")):
-                del self._orders_ws_cache[order_id]
-
             # executed vol diff (can be 0), data are updated
-            return False, filled_volume, order_data_cache
+            return opened, filled_volume, order_data_cache
         else:
-            opened = False
-
             # add to cache if pending or opened
             if ('status' in new_order_data) and (new_order_data['status'] in ("pending", "open")):
                 self._orders_ws_cache[order_id] = new_order_data
 
-                # first for open state
-                opened = True
+                # first for open state (sometime it doesnt have pending state so we direct opened from here)
+                if new_order_data['status'] == "open":
+                    opened = True
 
-            # no execute volume, data are original
-            return opened, 0.0, new_order_data
+            if 'vol_exec' in new_order_data:
+                new_exec_vol = float(new_order_data['vol_exec'])
+
+            filled_volume = new_exec_vol
+
+            return opened, filled_volume, new_order_data
 
     def __del_order_cache(self, order_id):
         if order_id in self._orders_ws_cache:
@@ -1097,8 +1114,6 @@ class KrakenWatcher(Watcher):
                 elif status == "closed":
                     client_order_id = str(order_data['userref']) if order_data['userref'] else ""
                     order = self.__set_order(symbol, order_id, order_data)
-
-                    # @todo the rest is SIGNAL_ORDER_UPDATED
 
                     # last fill with fully-filled state
                     self.__fill_order(order, order_data, filled_volume, True)
