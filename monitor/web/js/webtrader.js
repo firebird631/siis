@@ -857,7 +857,7 @@ function setup_traders() {
 
         // load local config
         let local_trader = get_local_trader(id);
-        if (local_trader) {
+        if (local_trader && window.markets[local_trader['market-id']]) {
             if (local_trader['market-id']) {
                 market_id = local_trader['market-id'];
             }
@@ -881,11 +881,6 @@ function setup_traders() {
 
         if (market_id != null) {
             market = window.markets[market_id];
-
-            if (!market) {
-                return;
-            }
-
             profiles = market['profiles'];
         }
 
