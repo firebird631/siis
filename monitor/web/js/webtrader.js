@@ -881,6 +881,11 @@ function setup_traders() {
 
         if (market_id != null) {
             market = window.markets[market_id];
+
+            if (!market) {
+                return;
+            }
+
             profiles = market['profiles'];
         }
 
