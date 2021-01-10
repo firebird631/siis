@@ -69,6 +69,8 @@ class IGWatcher(Watcher):
 
     @todo get vol24 in base and quote unit
     @todo base_exchange_rate must be updated as price changes
+
+    @todo does the subsriptions renegociated by the ws client at reconnection ?
     """
 
     MAX_CONCURRENT_SUBSCRIPTIONS = 40
@@ -156,6 +158,8 @@ class IGWatcher(Watcher):
                     self.__configured_symbols = configured_symbols
                     self.__matching_symbols = matching_symbols
 
+                    # @todo reconnect subscribed markets on lost
+
                 self._ready = True
                 self._connecting = False
 
@@ -216,7 +220,6 @@ class IGWatcher(Watcher):
                     self._ready = False
                     self._connector = None
 
-                    # @todo does the subsriptions renegociated by the ws client ?
                     reconnect = True
 
             if reconnect:

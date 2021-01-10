@@ -67,6 +67,9 @@ class BitMexWatcher(Watcher):
                             self.configured_symbols(),  # want WS subscribes to thats instruments or all if ['*']
                             identity.get('host'),
                             (self, BitMexWatcher._ws_message))
+                    else:
+                        # to get a clean connection
+                        self._connector.disconnect()
 
                     # testnet (demo) server doesn't provided real prices, so never store info from it !
                     if identity.get('host') == 'testnet.bitmex.com':
@@ -79,6 +82,8 @@ class BitMexWatcher(Watcher):
                     # get list of all availables instruments, and list of subscribed
                     self._available_instruments = set(self._connector.all_instruments)
                     self._watched_instruments = set(self._connector.watched_instruments)
+
+                    # any markets are watched by default WS connection
 
                     self._ready = True
                     self._connecting = False

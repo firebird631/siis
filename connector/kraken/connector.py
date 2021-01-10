@@ -97,7 +97,7 @@ class Connector(object):
         # 21600: 1296000,
     }
 
-    def __init__(self, service, account_id, api_key, api_secret, symbols, host="api.kraken.com", callback=None):
+    def __init__(self, service, account_id, api_key, api_secret, host="api.kraken.com"):
         self._protocol = "https://"
         self._host = host or "api.kraken.com"
 
@@ -109,16 +109,11 @@ class Connector(object):
         self._timeout = 7   
         self._retries = 0  # initialize counter
 
-        self._watched_symbols = symbols  # followed instruments or ['*'] for any
-
         self.__api_key = api_key
         self.__api_secret = api_secret
 
-        # REST API
         self._session = None
-
-        # Create websocket for streaming data
-        self._ws = WssClient(api_key, api_secret)
+        self._ws = None
 
     def connect(self, use_ws=True):
         # Prepare HTTPS session
@@ -126,16 +121,14 @@ class Connector(object):
             self._session = requests.Session()
             self._session.headers.update({'user-agent': 'siis-' + '1.0'})
 
-        if self._ws is not None and use_ws:
+        if self._ws is None and use_ws:
             # only subscribe to avalaibles instruments
-            symbols = []
+            self._ws = WssClient(self.__api_key, self.__api_secret)
 
     def disconnect(self):
         if self._ws:
             self._ws.stop()
             self._ws = None
-
-            MonitorService.release_reactor()
 
         if self._session:
             self._session = None
@@ -159,10 +152,6 @@ class Connector(object):
     @property
     def account_id(self):
         return self._account_id
-
-    @property
-    def watched_instruments(self):
-        return self._watched_symbols
 
     def instruments(self):
         data = self.query_public('AssetPairs')

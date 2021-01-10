@@ -53,7 +53,7 @@ class KrakenTrader(Trader):
     def connect(self):
         super().connect()
 
-        # retrieve the ig.com watcher and take its connector
+        # retrieve the kraken.com watcher and take its connector
         with self._mutex:
             self._watcher = self.service.watcher_service.watcher(self._name)
 
@@ -121,20 +121,21 @@ class KrakenTrader(Trader):
 
         if self._watcher is None:
             self.connect()
-        elif self._watcher.connector is None or not self._watcher.connector.connected:
-            # wait for the watcher be connected
-            retry = 0
-            while self._watcher.connector is None or not self._watcher.connector.connected:
-                retry += 1
 
-                if retry >= int(5 / 0.01):
-                    self._watcher.connect()
+        # elif self._watcher.connector is None or not self._watcher.connector.connected:
+        #     # wait for the watcher be connected
+        #     retry = 0
+        #     while self._watcher.connector is None or not self._watcher.connector.connected:
+        #         retry += 1
 
-                    # and wait 0.5 second to be connected
-                    time.sleep(0.5)
+        #         if retry >= int(5 / 0.01):
+        #             self._watcher.connect()
 
-                # don't waste the CPU
-                time.sleep(0.01)
+        #             # and wait 0.5 second to be connected
+        #             time.sleep(0.5)
+
+        #         # don't waste the CPU
+        #         time.sleep(0.01)
 
     def update(self):
         """
@@ -146,36 +147,36 @@ class KrakenTrader(Trader):
         if self._watcher is None or not self._watcher.connected:
             return True
 
-        if KrakenTrader.REST_OR_WS:
-            # @todo need wait time
-            # account data update
-            with self._mutex:
-                try:
-                    self.__fetch_account()
-                    self.__fetch_assets()
-                except Exception as e:
-                    error_logger.error(repr(e))
-                    traceback_logger.error(traceback.format_exc())
+        # if KrakenTrader.REST_OR_WS:
+        #     # @todo need wait time
+        #     # account data update
+        #     with self._mutex:
+        #         try:
+        #             self.__fetch_account()
+        #             self.__fetch_assets()
+        #         except Exception as e:
+        #             error_logger.error(repr(e))
+        #             traceback_logger.error(traceback.format_exc())
 
-            # positions
-            with self._mutex:
-                try:
-                    self.__fetch_positions()
-                    now = time.time()
-                    self._last_update = now
-                except Exception as e:
-                    error_logger.error(repr(e))
-                    traceback_logger.error(traceback.format_exc())
+        #     # positions
+        #     with self._mutex:
+        #         try:
+        #             self.__fetch_positions()
+        #             now = time.time()
+        #             self._last_update = now
+        #         except Exception as e:
+        #             error_logger.error(repr(e))
+        #             traceback_logger.error(traceback.format_exc())
 
-            # orders
-            with self._mutex:
-                try:
-                    self.__fetch_orders()
-                    now = time.time()
-                    self._last_update = now
-                except Exception as e:
-                    error_logger.error(repr(e))
-                    traceback_logger.error(traceback.format_exc())
+        #     # orders
+        #     with self._mutex:
+        #         try:
+        #             self.__fetch_orders()
+        #             now = time.time()
+        #             self._last_update = now
+        #         except Exception as e:
+        #             error_logger.error(repr(e))
+        #             traceback_logger.error(traceback.format_exc())
 
         return True
 

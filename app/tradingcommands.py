@@ -1087,7 +1087,33 @@ class CancelAllOrderCommand(Command):
         return args, 0
 
 
-def register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service, notifier_service):
+class ReconnectCommand(Command):
+
+    SUMMARY = "to force to reconnect"
+    
+    def __init__(self, watcher_service):
+        super().__init__('reconnect', 'RECON')
+
+        self._watcher_service = watcher_service
+
+    def execute(self, args):
+        # will force to try to reconnect
+        if len(args) == 1:
+            self._watcher_service.reconnect(args[0])
+            return True, "Force reconnect for watcher %s" % args[0]
+
+        self._watcher_service.reconnect()
+        return True, "Force reconnect for any watchers"
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            watchers_ids = self._watcher_service.watchers_ids()
+            return self.iterate(0, watchers_ids, args, tab_pos, direction)
+
+        return args, 0
+
+
+def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service, monitor_service, notifier_service):
     #
     # global
     #
@@ -1098,6 +1124,8 @@ def register_trading_commands(commands_handler, trader_service, strategy_service
     commands_handler.register(UserSaveCommand(strategy_service))
     commands_handler.register(SetQuantityCommand(strategy_service))
     commands_handler.register(AffinityCommand(strategy_service))
+
+    commands_handler.register(ReconnectCommand(watcher_service))
 
     #
     # order

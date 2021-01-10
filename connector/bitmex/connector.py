@@ -52,12 +52,10 @@ class Connector(object):
 
         self.__api_key = api_key
         self.__api_secret = api_secret
+        self._callback = callback
 
-        # REST API
         self._session = None
-
-        # Create websocket for streaming data
-        self._ws = BitMEXWebsocket(api_key, api_secret, callback)
+        self._ws = None
 
     def connect(self, use_ws=True):
         # Prepare HTTPS session
@@ -80,24 +78,29 @@ class Connector(object):
                     if instrument['typ'] in ('FFCCSX', 'FFWCSX'):
                         self._all_instruments.append(instrument['symbol'])
 
-        if self._ws is not None and not self._ws.connected and use_ws:
-            # only subscribe to avalaibles instruments
-            symbols = []
+        if use_ws:
+            if self._ws is None:
+                self._ws = BitMEXWebsocket(self.__api_key, self.__api_secret, self._callback)
 
-            if '*' in self._watched_symbols:
-                # follow any
-                self._watched_symbols = self._all_instruments
-            else:
-                # follow only listed symbols
-                for symbol in self._watched_symbols:
-                    if symbol in self._all_instruments:
-                        symbols.append(symbol)
-                    else:
-                        logger.warning('- BitMex instrument %s is not avalaible.' % (symbol,))
+            if self._ws is not None and not self._ws.connected:
+                self._ws = BitMEXWebsocket(api_key, api_secret, callback)
+                # only subscribe to avalaibles instruments
+                symbols = []
 
-                self._watched_symbols = symbols
+                if '*' in self._watched_symbols:
+                    # follow any
+                    self._watched_symbols = self._all_instruments
+                else:
+                    # follow only listed symbols
+                    for symbol in self._watched_symbols:
+                        if symbol in self._all_instruments:
+                            symbols.append(symbol)
+                        else:
+                            logger.warning('- BitMex instrument %s is not avalaible.' % (symbol,))
 
-            self._ws.connect("wss://" + self._host, symbols, should_auth=True)
+                    self._watched_symbols = symbols
+
+                self._ws.connect("wss://" + self._host, symbols, should_auth=True)
 
     def disconnect(self):
         if self._ws:

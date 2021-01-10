@@ -97,6 +97,20 @@ class KrakenWatcher(Watcher):
                 self._ready = False
                 self._connecting = True
 
+                # initial snapshot and cahe for WS
+                self._got_orders_init_snapshot = False
+                self._got_trades_init_snapshot = False
+
+                self._orders_ws_cache = {}
+                self._positions_ws_cache = {}
+
+                self._reconnect_user_ws = False
+
+                self._ws_own_trades = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
+                self._ws_open_orders = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
+
+                self._last_ws_hearbeat = 0.0
+
                 identity = self.service.identity(self._name)
 
                 if identity:
@@ -107,6 +121,9 @@ class KrakenWatcher(Watcher):
                             identity.get('api-key'),
                             identity.get('api-secret'),
                             identity.get('host'))
+                    else:
+                        # to get a clean connection
+                        self._connector.disconnect()
 
                     if not self._connector.connected or not self._connector.ws_connected:
                         self._connector.connect()
@@ -169,6 +186,42 @@ class KrakenWatcher(Watcher):
                                 },
                                 callback=self.__on_open_orders
                             )
+
+                        # retry the previous subscriptions
+                        if self._watched_instruments:
+                            logger.debug("%s re-subscribe to markets..." % (self.name))
+
+                            pairs = []
+
+                            for market_id in self._watched_instruments:
+                                if market_id in instruments:
+                                    pairs.append(instruments[market_id]['wsname'])
+
+                            if pairs:
+                                try:
+                                    self._connector.ws.subscribe_public(
+                                        subscription={
+                                            'name': 'ticker'
+                                        },
+                                        pair=pairs,
+                                        callback=self.__on_ticker_data
+                                    )
+
+                                    self._connector.ws.subscribe_public(
+                                        subscription={
+                                            'name': 'trade'
+                                        },
+                                        pair=pairs,
+                                        callback=self.__on_trade_data
+                                    )
+
+                                    # @todo order book
+
+                                    logger.debug("%s re-subscribe to markets successed" % (self.name))
+
+                                except Exception as e:
+                                    error_logger.error(repr(e))
+                                    traceback_logger.error(traceback.format_exc())
 
                         # once market are init
                         self._ready = True
@@ -347,14 +400,21 @@ class KrakenWatcher(Watcher):
     #
 
     def pre_update(self):
-        if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
-            # retry in 2 second
-            self._ready = False
-            self._connector = None
+        if not self._connecting and not self._ready:
+            reconnect = False
 
-            time.sleep(2)
-            self.connect()
-            return
+            with self._mutex:
+                if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
+                    # cleanup
+                    self._ready = False
+                    self._connector = None
+
+                    reconnect = True
+
+            if reconnect:
+                time.sleep(2)
+                self.connect()
+                return
 
     def update(self):
         if not super().update():
@@ -389,6 +449,8 @@ class KrakenWatcher(Watcher):
                 )
 
             self._reconnect_user_ws = False
+
+            # @todo and instruments
 
         #
         # ohlc close/open
@@ -974,7 +1036,7 @@ class KrakenWatcher(Watcher):
     def __fill_order(self, order, order_data, filled_volume, completed=False):
         if filled_volume > 0.0:
             cumulative_filled = float(order_data['vol_exec'])
-            volume = float(order_data['vol'])
+            order_volume = float(order_data['vol'])
             partial = False
             fully_filled = completed
 
@@ -984,18 +1046,16 @@ class KrakenWatcher(Watcher):
                 if 'partial' in misc:
                     partial = True
 
-            if cumulative_filled >= volume and not partial:
+            if cumulative_filled >= order_volume and not partial:
                 fully_filled = True
 
-            order.update({
-                'exec-price': float(order_data['avg_price']),
-                'filled': filled_volume,
-                'cumulative-filled': cumulative_filled,
-                'cumulative-commission-amount': float(order_data['fee']),
-                # 'commission-asset': , is quote symbol because order always use quote fee flag
-                # 'maker': ,   # trade execution over or counter the market : true if maker, false if taker
-                'fully-filled': fully_filled
-            })
+            order['exec-price'] = float(order_data['avg_price'])
+            order['filled'] = filled_volume
+            order['cumulative-filled'] = cumulative_filled
+            order['cumulative-commission-amount'] = float(order_data['fee'])
+            # order['commission-asset'] =   # is quote symbol because order always use quote fee flag
+            # order['maker'] =    # trade execution over or counter the market : true if maker, false if taker
+            order['fully-filled'] = fully_filled
 
         return order
 

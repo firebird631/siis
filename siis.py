@@ -522,7 +522,7 @@ def application(argv):
 
     # cli commands registration
     register_general_commands(commands_handler)
-    register_trading_commands(commands_handler, trader_service, strategy_service, monitor_service, notifier_service)
+    register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service, monitor_service, notifier_service)
     register_region_commands(commands_handler, strategy_service)
     register_alert_commands(commands_handler, strategy_service)
 

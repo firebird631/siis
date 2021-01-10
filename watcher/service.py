@@ -165,6 +165,9 @@ class WatcherService(Service):
     def watcher(self, name):
         return self._watchers.get(name)
 
+    def watchers_ids(self):
+        return list(self._watchers.keys())
+
     @property
     def backtesting(self):
         return self._backtesting
@@ -219,6 +222,16 @@ class WatcherService(Service):
             self._mutex.release()
         else:
             watchdog_service.service_timeout(self.name, "Unable to join service %s for %s seconds" % (self.name, timeout))
+
+    def reconnect(self, name=None):
+        # force disconnection for it will auto-reconnect
+        if name and name in self._watchers:
+            watcher = self._watchers[name]
+
+            watcher.disconnect()
+        else:
+            for k, watcher in self._watchers.items():
+                watcher.disconnect()
 
     #
     # preferences

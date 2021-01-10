@@ -41,6 +41,8 @@ class BinanceFuturesWatcher(Watcher):
     @todo Finish order book events.
     @todo Once a market is not longer found (market update) we could remove it from watched list,
         and even have a special signal to strategy, and remove the subscriber, and markets data from watcher and trader
+
+    @todo does the subsriptions renegociated by the ws client at reconnection ?
     """
 
     BASE_QUOTE = 'USDT'
@@ -110,6 +112,9 @@ class BinanceFuturesWatcher(Watcher):
                             identity.get('api-key'),
                             identity.get('api-secret'),
                             identity.get('host'))
+                    # else:
+                    #     # to get a clean connection
+                    #     self._connector.disconnect()
 
                     if not self._connector.connected or not self._connector.ws_connected:
                         self._connector.connect(futures=True)
@@ -142,6 +147,8 @@ class BinanceFuturesWatcher(Watcher):
 
                         # userdata
                         self._user_data_handler = self._connector.ws.start_user_socket(self.__on_user_data)
+
+                        # @todo reconnect subscribed markets on lost
 
                         # and start ws manager if necessarry
                         try:
@@ -210,7 +217,6 @@ class BinanceFuturesWatcher(Watcher):
                     self._ready = False
                     self._connector = None
 
-                    # @todo does the subsriptions renegociated by the ws client ?
                     reconnect = True
 
             if reconnect:

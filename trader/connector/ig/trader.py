@@ -105,20 +105,21 @@ class IGTrader(Trader):
 
         if self._watcher is None:
             self.connect()
-        elif self._watcher.connector is None or not self._watcher.connector.connected:
-            # wait for the watcher be connected
-            retry = 0
-            while self._watcher.connector is None or not self._watcher.connector.connected:
-                retry += 1
 
-                if retry >= int(5 / 0.01):
-                    self._watcher.connect()
+        # elif self._watcher.connector is None or not self._watcher.connector.connected:
+        #     # wait for the watcher be connected
+        #     retry = 0
+        #     while self._watcher.connector is None or not self._watcher.connector.connected:
+        #         retry += 1
 
-                    # and wait 0.5 second to be connected
-                    time.sleep(0.5)
+        #         if retry >= int(5 / 0.01):
+        #             self._watcher.connect()
 
-                # don't waste the CPU
-                time.sleep(0.01)
+        #             # and wait 0.5 second to be connected
+        #             time.sleep(0.5)
+
+        #         # don't waste the CPU
+        #         time.sleep(0.01)
 
     def update(self):
         if not super().update():

@@ -26,6 +26,8 @@ error_logger = logging.getLogger('siis.error.watcher')
 class Watcher(Runnable):
     """
     Watcher base class.
+
+    In specialisation, use the pre_update to manage the connection state.
     """
 
     COMMAND_INFO = 1
@@ -267,12 +269,9 @@ class Watcher(Runnable):
         Terminal.inst().info("Joining watcher %s..." % self._name)
         self.disconnect()
 
-    def post_update(self):
-        pass
-
     def update(self):
         """
-        Nothing by default by you must call at least update_from_tick.
+        Nothing by default but must return True.
         """
         return True
 
