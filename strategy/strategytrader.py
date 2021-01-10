@@ -72,13 +72,13 @@ class StrategyTrader(object):
         self._processing = False   # True during processing
 
         self._trade_mutex = threading.RLock()   # trades locker
-        self.trades = []
+        self._trades = []
         self._next_trade_id = 1
 
-        self.regions = []
+        self._regions = []
         self._next_region_id = 1
 
-        self.alerts = []
+        self._alerts = []
         self._next_alert_id= 1
 
         self._global_streamer = None
@@ -211,7 +211,7 @@ class StrategyTrader(object):
 
         with self._mutex:
             with self._trade_mutex:
-                for trade in self.trades:
+                for trade in self._trades:
                     if trade.can_delete() or not trade.is_active() or trade.is_closed():
                         mutated = True
 
@@ -222,7 +222,7 @@ class StrategyTrader(object):
 
                 # updated trade list, the ones we would save
                 if mutated:
-                    self.trades = trades_list
+                    self._trades = trades_list
 
     #
     # persistance
@@ -237,7 +237,7 @@ class StrategyTrader(object):
 
         with self._mutex:
             with self._trade_mutex:
-                for trade in self.trades:
+                for trade in self._trades:
                     t_data = trade.dumps()
                     ops_data = [operation.dumps() for operation in trade.operations]
 
@@ -250,8 +250,8 @@ class StrategyTrader(object):
                 'affinity': self._affinity,
             }
 
-            regions_data = [region.dumps() for region in self.regions]
-            alerts_data = [alert.dumps() for alert in self.alerts]
+            regions_data = [region.dumps() for region in self._regions]
+            alerts_data = [alert.dumps() for alert in self._alerts]
 
             Database.inst().store_user_trader((trader.name, trader.account.name, self.instrument.market_id,
                     self.strategy.identifier, self.activity, trader_data, regions_data, alerts_data))
@@ -356,7 +356,7 @@ class StrategyTrader(object):
         """
         with self._trade_mutex:
             try:
-                for trade in self.trades:
+                for trade in self._trades:
                     # update each trade relating the order (might be a unique)
                     order_id = data[1]['id'] if type(data[1]) is dict else data[1]
                     ref_order_id = data[2] if (len(data) > 2 and type(data[2]) is str) else None
@@ -374,7 +374,7 @@ class StrategyTrader(object):
         """
         with self._trade_mutex:
             try:
-                for trade in self.trades:
+                for trade in self._trades:
                     # update each trade relating the position (could be many)
                     position_id = data[1]['id'] if type(data[1]) is dict else data[1]
                     ref_order_id = data[2] if (len(data) > 2 and type(data[2]) is str) else None
@@ -390,6 +390,10 @@ class StrategyTrader(object):
     # trade
     #
 
+    @property
+    def trades(self):
+        return self._trades
+
     def add_trade(self, trade):
         """
         Add a new trade.
@@ -401,7 +405,7 @@ class StrategyTrader(object):
             trade.id = self._next_trade_id
             self._next_trade_id += 1
 
-            self.trades.append(trade)
+            self._trades.append(trade)
 
     def remove_trade(self, trade):
         """
@@ -411,14 +415,14 @@ class StrategyTrader(object):
             return False
 
         with self._trade_mutex:
-            self.trades.remove(trade)
+            self._trades.remove(trade)
 
     def has_trades(self):
         """
         Is pending or active trades.
         """
         with self._trade_mutex:
-            return len(self.trades) > 0
+            return len(self._trades) > 0
 
         return False
 
@@ -429,7 +433,7 @@ class StrategyTrader(object):
         results = []
 
         with self._trade_mutex:
-            for trade in self.trades:
+            for trade in self._trades:
                 results.append(trade.id)
 
         return results
@@ -441,7 +445,7 @@ class StrategyTrader(object):
         results = []
 
         with self._trade_mutex:
-            for trade in self.trades:
+            for trade in self._trades:
                 results.append(trade.dumps_notify_update(self.strategy.timestamp, self))
 
         return results
@@ -464,7 +468,7 @@ class StrategyTrader(object):
         """
         Update managed trades per instruments and delete terminated trades.
         """
-        if not self.trades:
+        if not self._trades:
             return
 
         trader = self.strategy.trader()
@@ -474,7 +478,7 @@ class StrategyTrader(object):
         #
 
         with self._trade_mutex:
-            for trade in self.trades:
+            for trade in self._trades:
 
                 #
                 # managed operation
@@ -579,7 +583,7 @@ class StrategyTrader(object):
         mutated = False
 
         with self._trade_mutex:
-            for trade in self.trades:
+            for trade in self._trades:
                 if trade.can_delete():
                     mutated = True
 
@@ -688,12 +692,12 @@ class StrategyTrader(object):
             if mutated:
                 trades_list = []
 
-                for trade in self.trades:
+                for trade in self._trades:
                     if not trade.can_delete():
                         # keep only active and pending trades
                         trades_list.append(trade)
 
-                self.trades = trades_list
+                self._trades = trades_list
 
     def on_received_liquidation(self, liquidation):
         """
@@ -743,17 +747,21 @@ class StrategyTrader(object):
     # region management
     #
 
+    @property
+    def regions(self):
+        return self._regions
+
     def add_region(self, region):
         with self._mutex:
             region.set_id(self._next_region_id)
             self._next_region_id += 1
-            self.regions.append(region)
+            self._regions.append(region)
 
     def remove_region(self, region_id):
         with self._mutex:
-            for region in self.regions:
+            for region in self._regions:
                 if region.id == region_id:
-                    self.regions.remove(region)
+                    self._regions.remove(region)
                     return True
 
         return False
@@ -765,12 +773,12 @@ class StrategyTrader(object):
         """
         regions = []
 
-        for region in self.regions:
+        for region in self._regions:
             if not region.can_delete(timestamp, bid, ask):
                 regions.append(region)
 
         # replace the regions list
-        self.regions = regions
+        self._regions = regions
 
     def check_regions(self, timestamp, bid, ask, signal, allow=True):
         """
@@ -782,12 +790,12 @@ class StrategyTrader(object):
 
         @note Thread-safe method.
         """
-        if self.regions:
+        if self._regions:
             mutated = False
 
             # one ore many region, have to pass at least one test
             with self._mutex:
-                for region in self.regions:
+                for region in self._regions:
                     if region.can_delete(timestamp, bid, ask):
                         mutated |= True
 
@@ -807,17 +815,21 @@ class StrategyTrader(object):
     # alert management
     #
 
+    @property
+    def alerts(self):
+        return self._alerts
+
     def add_alert(self, alert):
         with self._mutex:
             alert.set_id(self._next_alert_id)
             self._next_alert_id += 1
-            self.alerts.append(alert)
+            self._alerts.append(alert)
 
     def remove_alert(self, alert_id):
         with self._mutex:
-            for alert in self.alerts:
+            for alert in self._alerts:
                 if alert.id == alert_id:
-                    self.alerts.remove(alert)
+                    self._alerts.remove(alert)
                     return True
 
         return False
@@ -829,12 +841,12 @@ class StrategyTrader(object):
         """
         alerts = []
 
-        for alert in self.alerts:
+        for alert in self._alerts:
             if not alert.can_delete(timestamp, bid, ask):
                 alerts.append(alert)
 
         # replace the alerts list
-        self.alerts = alerts
+        self._alerts = alerts
 
     def check_alerts(self, timestamp, bid, ask, timeframes):
         """
@@ -846,14 +858,14 @@ class StrategyTrader(object):
         @note Thread-safe method.
         @note If the alert is triggered, it still keep alive until the next check_alerts call, even if its a one shot alert.
         """
-        if self.alerts:
+        if self._alerts:
             mutated = False
 
             # one ore many alert, have to pass at least one test
             with self._mutex:
                 results = []
 
-                for alert in self.alerts:
+                for alert in self._alerts:
                     if alert.can_delete(timestamp, bid, ask):
                         mutated |= True
                     else:
@@ -1251,14 +1263,14 @@ class StrategyTrader(object):
         """
         result = False
 
-        if self.trades:
+        if self._trades:
             with self._trade_mutex:
-                if len(self.trades) >= max_trades:
+                if len(self._trades) >= max_trades:
                     # no more than max simultaneous trades
                     result = True
 
                 elif same_timeframe > 0 and same_timeframe_num > 0:
-                    for trade in self.trades:
+                    for trade in self._trades:
                         if trade.timeframe == same_timeframe:
                             same_timeframe_num -= 1
                             if same_timeframe_num <= 0:

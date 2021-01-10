@@ -507,12 +507,15 @@ class StrategyTrade(object):
         and max change per count duration in seconds.
         """
         if self.last_tp_ot[0] <= 0 or self.last_tp_ot[1] <= 0:
+            # never modified, acccept
             return True
 
-        if timestamp - self.last_tp_ot[0] < timeout:
+        if timestamp - self.last_tp_ot[0] >= timeout:
+            # not modified since timeout
             return True
 
         if not self.has_limit_order():
+            # not have existing limit order
             return True
 
         return False
@@ -523,12 +526,15 @@ class StrategyTrade(object):
         and max change per count duration in seconds.
         """
         if self.last_stop_ot[0] <= 0 or self.last_stop_ot[1] <= 0:
+            # never modified, acccept
             return True
 
-        if timestamp - self.last_stop_ot[0] < timeout:
+        if timestamp - self.last_stop_ot[0] >= timeout:
+            # not modified since timeout
             return True
 
         if not self.has_stop_order():
+            # not have existing stop order
             return True
 
         return False
