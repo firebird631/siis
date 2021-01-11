@@ -3,6 +3,8 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy helper to get dataset
 
+import traceback
+
 from datetime import datetime
 
 from terminal.terminal import Color
@@ -13,6 +15,7 @@ from common.utils import timeframe_to_str
 import logging
 logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
+traceback_logger = logging.getLogger('siis.traceback.strategy')
 
 
 def get_strategy_trader_state(strategy, market_id, report_mode=0):
@@ -40,5 +43,6 @@ def get_strategy_trader_state(strategy, market_id, report_mode=0):
 
         except Exception as e:
             error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
 
     return results

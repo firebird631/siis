@@ -110,14 +110,22 @@ class TimeframeBasedSub(object):
         """
         self.last_timestamp = timestamp
 
+        # -1 is current
         if self._last_closed and self.price:
+            # get just closed OHLC price and swap
             self.prev_close_price = self.close_price
             self.prev_open_price = self.open_price
-            self.close_price = self.price.close[-2]  # -1 is current
-            self.open_price = self.price.open[-2]    # -1 is current
+            self.close_price = self.price.close[-2]  
+            self.open_price = self.price.open[-2]
 
             # last closed candle processed (reset before next gen)
             # self._last_closed = False
+
+        elif self.close_price is None or self.open_price is None:
+            # initial
+            if len(self.price.close) > 1:
+                self.close_price = self.price.close[-2]
+                self.open_price = self.price.open[-2]
 
     def cleanup(self, timestamp):
         """

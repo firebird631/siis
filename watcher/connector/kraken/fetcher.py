@@ -8,6 +8,7 @@ import time
 import traceback
 import math
 
+from common.utils import timeframe_to_str
 
 from database.database import Database
 from watcher.fetcher import Fetcher
@@ -232,7 +233,7 @@ class KrakenFetcher(Fetcher):
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         if timeframe not in self.TF_MAP:
-            logger.error("Fetcher %s does not support timeframe %s" % (self.name, timeframe))
+            logger.error("Fetcher %s does not support timeframe %s" % (self.name, timeframe_to_str(timeframe)))
             return
 
         candles = []
@@ -254,4 +255,4 @@ class KrakenFetcher(Fetcher):
             if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
                 yield((candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]))
 
-        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, interval))
+        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe_to_str(timeframe)))

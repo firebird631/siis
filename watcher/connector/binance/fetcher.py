@@ -7,6 +7,7 @@ import json
 import time
 import traceback
 
+from common.utils import timeframe_to_str
 from watcher.fetcher import Fetcher
 
 from connector.binance.connector import Connector
@@ -119,7 +120,7 @@ class BinanceFetcher(Fetcher):
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         if timeframe not in self.TF_MAP:
-            logger.error("Fetcher %s does not support timeframe %s" % (self.name, timeframe))
+            logger.error("Fetcher %s does not support timeframe %s" % (self.name, timeframe_to_str(timeframe)))
             return
 
         candles = []
@@ -138,4 +139,4 @@ class BinanceFetcher(Fetcher):
             # (timestamp, open, high, low, close, spread, volume)
             yield((candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]))
 
-        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, tf))
+        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe_to_str(timeframe)))

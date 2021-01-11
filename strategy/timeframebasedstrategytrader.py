@@ -82,6 +82,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             ticks = self.instrument.ticks()  # self.instrument.ticks_after(sub.candles_gen.last_timestamp)
 
             for tf, sub in self.timeframes.items():
+                # rest the previous last closed flag before update the current
                 sub._last_closed = False
 
                 generated = sub.candles_gen.generate_from_ticks(ticks)

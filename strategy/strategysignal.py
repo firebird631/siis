@@ -55,9 +55,11 @@ class StrategySignal(object):
         self.p = 0.0       # signal price / possible entry-price
         self.sl = 0.0      # possible stop-loss pricce
         self.tp = 0.0      # primary possible take profit price
+
+        self.quantity = 0  # define quantity, if 0 default configured value is used
+
         self.entry_timeout = 0.0   # trade entry expiration in seconds
         self.expiry = 0.0          # trade expiration if in profit after this delay
-        self.quantity = 0  # define quantity, if 0 default configured value is used
 
         self.label = ""      # signal label
         self.context = None  # can be any object inherited from StrategySignalContext (will be setted as reference to the trade)
@@ -89,6 +91,22 @@ class StrategySignal(object):
     @property
     def take_profit(self):
         return self.tp
+
+    @direction.setter
+    def direction(self, direction):
+        self.dir = direction
+
+    @price.setter
+    def price(self, price):
+        self.p = price
+
+    @stop_loss.setter
+    def stop_loss(self, stop_loss):
+        self.sl = stop_loss
+
+    @take_profit.setter
+    def take_profit(self, take_profit):
+        self.tp = take_profit
 
     #
     # helpers

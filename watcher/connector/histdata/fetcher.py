@@ -12,7 +12,7 @@ import zipfile
 
 from datetime import datetime
 
-from common.utils import UTC
+from common.utils import UTC, timeframe_to_str
 from watcher.fetcher import Fetcher
 
 # from connector.histdata.connector import Connector
@@ -210,7 +210,7 @@ class HistDataFetcher(Fetcher):
             # (timestamp, open, high, low, open, close, spread, volume)
             yield([candle[0], candle[2], candle[3], candle[1], candle[4], 0.0, candle[5]])
 
-        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, tf))
+        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe_to_str(tf)))
 
     def is_yearly_or_monthly(self, tick, market_id, cur_date):
         if tick:

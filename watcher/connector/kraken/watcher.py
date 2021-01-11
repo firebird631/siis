@@ -14,6 +14,7 @@ from datetime import datetime
 
 from watcher.watcher import Watcher
 from common.signal import Signal
+from common.utils import timeframe_to_str
 
 from connector.kraken.connector import Connector
 
@@ -1307,7 +1308,7 @@ class KrakenWatcher(Watcher):
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         if timeframe not in self.TF_MAP:
-            logger.error("Watcher %s does not support timeframe %s" % (self.name, timeframe))
+            logger.error("Watcher %s does not support timeframe %s" % (self.name, timeframe_to_str(timeframe)))
             return
 
         candles = []
@@ -1329,4 +1330,4 @@ class KrakenWatcher(Watcher):
             if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
                 yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[5], candle[6]))
 
-        logger.info("Watcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, interval))
+        logger.info("Watcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe_to_str(timeframe)))
