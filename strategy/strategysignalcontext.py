@@ -75,10 +75,10 @@ class EntryExit(object):
         self.multi = False
         self.orientation = BaseSignal.ORIENTATION_UP
         self.timeout = 0.0
-        
+
         self.distance = 0.0
         self.distance_type = BaseSignal.PRICE_NONE
-        
+
         self.timeout_distance = 0.0
         self.timeout_distance_type = BaseSignal.PRICE_NONE
 

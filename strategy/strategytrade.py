@@ -244,6 +244,10 @@ class StrategyTrade(object):
         return self._entry_timeout
 
     @property
+    def entry_order_type(self):
+        return self._stats['entry-order-type']
+
+    @property
     def first_realized_entry_time(self):
         return self._stats['first-realized-entry-timestamp']
 
