@@ -65,7 +65,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             elif t['pl'] > 0:  # profit
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
             else:  # equity
-                cr = "0.0"
+                cr = "0.00" if aep else "-" 
 
             if t['d'] == 'long' and aep > 0 and best > 0 and worst > 0:
                 bpct = (best - aep) / aep - t['fees']
@@ -87,24 +87,50 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 slpct = 0
                 tppct = 0
 
+            # pct from last exec open price
+            if op and (t['s'] in ('new', 'opened', 'filling')):
+                if t['d'] == 'long':
+                    leop = float(t['leop'])
+                    oppct = (op - leop) / op
+                elif t['d'] == 'short':
+                    leop = float(t['leop'])
+                    oppct = (op - leop) / op
+                else:
+                    oppct = 0
+            else:
+                oppct = 0
+
+            def format_with_percent(formated_value, condition, rate):
+                return (("%s (%.2f%%)" % (formated_value, rate * 100)) if percents else formated_value) if condition else '-'
+
+            op = (("%s (%.2f%%)" % (t['l'], oppct * 100)) if percents and oppct else t['l']) if op else '-'
+
+            sl = format_with_percent(t['sl'], sl, slpct)
+            tp = format_with_percent(t['tp'], tp, tppct)
+
+            b = format_with_percent(t['b'], best, bpct)
+            w = format_with_percent(t['w'], worst, wpct)
+
+            upnl = "%s%s" % (t['upnl'], t['pnlcur']) if aep else '-'
+
             row = [
                 t['sym'],
                 t['id'],
                 direction,
                 cr,
-                t['l'],
-                "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
-                "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
-                "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
-                "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
+                op,
+                sl,
+                tp,
+                b,
+                w,
                 t['tf'],
-                datetime.fromtimestamp(t['eot']).strftime(datetime_format) if t['eot'] > 0 else "",
-                datetime.fromtimestamp(t['freot']).strftime(datetime_format) if t['freot'] > 0 else "",
-                t['aep'],
-                datetime.fromtimestamp(t['lrxot']).strftime(datetime_format) if t['lrxot'] > 0 else "",
-                t['axp'],
+                datetime.fromtimestamp(t['eot']).strftime(datetime_format) if t['eot'] > 0 else '-',
+                datetime.fromtimestamp(t['freot']).strftime(datetime_format) if t['freot'] > 0 else '-',
+                t['aep'] if t['aep'] != '0' else '-',
+                datetime.fromtimestamp(t['lrxot']).strftime(datetime_format) if t['lrxot'] > 0 else '-',
+                t['axp'] if t['axp'] != '0' else '-',
                 t['label'],
-                "%s%s" % (t['upnl'], t['pnlcur'])
+                upnl,
             ]
 
             if quantities:

@@ -902,6 +902,10 @@ class StrategyTrade(object):
         """
         During the trade open, compute an estimation of the unrealized profit/loss rate.
         """
+        # if no entry realised
+        if self.e <= 0.0:
+            return 0.0
+
         # estimation at close price
         if self.direction > 0 and self.entry_price > 0:
             profit_loss = (instrument.close_exec_price(self.direction) - self.entry_price) / self.entry_price

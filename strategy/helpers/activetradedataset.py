@@ -69,7 +69,6 @@ def get_all_active_trades(strategy):
                             'x': strategy_trader.instrument.format_quantity(trade.exec_exit_qty),
                             'tp': strategy_trader.instrument.format_price(trade.take_profit),
                             'sl': strategy_trader.instrument.format_price(trade.stop_loss),
-                            'pl': profit_loss,
                             'tf': timeframe_to_str(trade.timeframe),
                             's': trade.state_to_str(),
                             'b': strategy_trader.instrument.format_price(trade.best_price()),
@@ -77,9 +76,11 @@ def get_all_active_trades(strategy):
                             'bt': trade.best_price_timestamp(),
                             'wt': trade.worst_price_timestamp(),
                             'label': trade.label,
+                            'pl': profit_loss,
                             'upnl': strategy_trader.instrument.format_price(trade.unrealized_profit_loss),
                             'pnlcur': trade.profit_loss_currency,
-                            'fees': trade.entry_fees_rate() + trade.estimate_exit_fees_rate(strategy_trader.instrument)
+                            'fees': trade.entry_fees_rate() + trade.estimate_exit_fees_rate(strategy_trader.instrument),
+                            'leop': strategy_trader.instrument.format_price(strategy_trader.instrument.open_exec_price(trade.direction)),
                         })
         except Exception as e:
             error_logger.error(repr(e))
