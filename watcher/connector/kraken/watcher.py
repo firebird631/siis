@@ -525,12 +525,9 @@ class KrakenWatcher(Watcher):
 
             market.set_leverages(leverages)
 
-            size_limit = self._size_limits.get(instrument['altname'], {})
-            min_size = size_limit.get('min-size', 1.0)
-
             min_price = math.pow(10.0, -instrument['pair_decimals'])
 
-            size_limits = [str(min_size), "0.0", str(min_size)]
+            size_limits = [instrument.get('ordermin', "0.0"), "0.0", instrument.get('ordermin', "0.0")]
             notional_limits = ["0.0", "0.0", "0.0"]
             price_limits = [str(min_price), "0.0", str(min_price)]
 
@@ -613,9 +610,6 @@ class KrakenWatcher(Watcher):
     #
 
     def __prefetch_markets(self):
-        # size limits from conf
-        self._size_limits = self.service.watcher_config(self._name).get("size-limits", {})
-
         self._assets = self._connector.assets()
         self._instruments = self._connector.instruments()
 

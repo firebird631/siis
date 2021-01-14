@@ -75,9 +75,6 @@ class KrakenFetcher(Fetcher):
                 for market_id, instrument in instruments.items():
                     self._available_instruments.add(market_id)
 
-                # size limits are locally defined as for the watcher
-                self._size_limits = self.service.fetcher_config(self._name).get("size-limits", {})
-
                 # keep them for market install
                 self._instruments = instruments
 
@@ -143,10 +140,7 @@ class KrakenFetcher(Fetcher):
 
                 margin_factor = 1.0 / max(leverages) if len(leverages) > 0 else 1.0
 
-                size_limit = self._size_limits.get(instrument['altname'], {})
-                min_size = size_limit.get('min-size', 1.0)
-
-                size_limits = [str(min_size), "0.0", str(min_size)]
+                size_limits = [instrument.get('ordermin', "0.0"), "0.0", instrument.get('ordermin', "0.0")]
                 notional_limits = ["0.0", "0.0", "0.0"]
                 price_limits = ["0.0", "0.0", "0.0"]
 
