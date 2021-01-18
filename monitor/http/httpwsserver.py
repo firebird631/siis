@@ -48,7 +48,9 @@ class ServerProtocol(WebSocketServerProtocol):
 
     def onClose(self, wasClean, code, reason):
         logger.debug("WebSocket connection closed: {0}".format(reason))
-        self.connections.remove(self)
+
+        if self in self.connections:
+            self.connections.remove(self)
 
     @classmethod
     def broadcast_message(cls, data):

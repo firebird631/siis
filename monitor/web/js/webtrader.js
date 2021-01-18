@@ -1072,7 +1072,7 @@ function fetch_trades() {
             window.actives_trades[trade['symbol'] + ':' + trade.id] = trade;
 
             // initial add
-            add_active_trade(trade.symbol, trade);
+            add_active_trade(trade['symbol'], trade);
         }
     })
     .fail(function() {
@@ -1145,7 +1145,7 @@ function fetch_history() {
             };
 
             // initial add
-            add_historical_trade(trade.symbol, trade);
+            add_historical_trade(trade['symbol'], trade);
         }
     })
     .fail(function() {
@@ -1415,7 +1415,7 @@ function retrieve_trade_id(elt) {
     return trade_id ? parseInt(trade_id) : -1;
 }
 
-function add_long_short_actions(id, symbol, to) {
+function add_long_short_actions(id, market_id, to) {
     let tv_btn = $('<button class="btn btn-secondary trading-view-action" name="trading-view-action"><span class="fa fa-link"></span>&nbsp;TV</button>');
     let long_btn = $('<button class="btn btn-success long-action" name="long-action">Long</button>');
     let short_btn = $('<button class="btn btn-danger short-action" name="short-action">Short</button>');
@@ -1425,7 +1425,7 @@ function add_long_short_actions(id, symbol, to) {
     long_btn.attr('trader-id', id);
     short_btn.attr('trader-id', id);
     tv_btn.attr('trader-id', id);
-    auto_btn.attr('trader-id', id).attr('market-id', symbol);
+    auto_btn.attr('trader-id', id).attr('market-id', market_id);
     chart_btn.attr('trader-id', id);
 
     to.append(tv_btn);
@@ -1456,14 +1456,14 @@ function add_long_short_actions(id, symbol, to) {
 };
 
 function toggle_auto(elt) {
-    let symbol = retrieve_symbol(elt);
+    let market_id = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
 
     let endpoint = "strategy/instrument";
     let url = base_url() + '/' + endpoint;
-    let market = window.markets[symbol];
+    let market = window.markets[market_id];
 
-    if (symbol && market) {
+    if (market_id && market) {
         let data = {
             'market-id': market['market-id'],
             'command': 'activity',
@@ -1488,7 +1488,7 @@ function toggle_auto(elt) {
                 }
             } else {
                 // @todo for each trader having the same market-id
-                $('button[market-id="' + symbol + '"] span')
+                $('button[market-id="' + market_id + '"] span')
                     .removeClass('fa-play')
                     .removeClass('fa-pause')
                     .addClass(result['activity'] ? 'fa-play' : 'fa-pause');
@@ -1503,19 +1503,19 @@ function toggle_auto(elt) {
 }
 
 function open_trading_view(elt) {
-    let symbol = retrieve_symbol(elt);
+    let market_id = retrieve_symbol(elt);
 
     if (window.broker['name'] in window.broker_to_tv) {
-        if (symbol in window.symbol_to_tv) {
+        if (market_id in window.symbol_to_tv) {
             // mapped symbol
-            let stv = window.symbol_to_tv[symbol];
+            let stv = window.symbol_to_tv[market_id];
 
             window.open('https://fr.tradingview.com/chart?symbol=' + stv[0] + '%3A' + stv[1]);
         } else {
             // direct mapping with suffix
             let btv = window.broker_to_tv[window.broker['name']];
 
-            window.open('https://fr.tradingview.com/chart?symbol=' + btv[0] + '%3A' + symbol + btv[1]);
+            window.open('https://fr.tradingview.com/chart?symbol=' + btv[0] + '%3A' + market_id + btv[1]);
         }
     }
 };
@@ -1550,7 +1550,7 @@ function on_change_profile(elt) {
 };
 
 function on_change_entry_method(elt) {
-    let symbol = retrieve_symbol(elt);
+    let market_id = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
 
     let entry_method = retrieve_entry_method(trader_id);
@@ -1567,13 +1567,13 @@ function on_change_entry_method(elt) {
 }
 
 function on_change_entry_price(elt) {
-    let symbol = retrieve_symbol(elt);
+    let market_id = retrieve_symbol(elt);
 
     // @todo change entry price in case of limit or trigger(limit) order
 }
 
 function on_change_stop_loss_method(elt) {
-    let symbol = retrieve_symbol(elt);
+    let market_id = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
 
     let stop_loss_method = retrieve_stop_loss_method(trader_id);
@@ -1590,7 +1590,7 @@ function on_change_stop_loss_method(elt) {
 }
 
 function on_change_take_profit_method(elt) {
-    let symbol = retrieve_symbol(elt);
+    let market_id = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
 
     let take_profit_method = retrieve_take_profit_method(trader_id);
@@ -1677,9 +1677,10 @@ function on_update_performances() {
             let success = perfs[perf].success;
             let failed = perfs[perf].failed;
             let roe = perfs[perf].roe;
+            let symbol = window.markets[perf] ? window.markets[perf]['symbol'] : perf;
 
             let row_entry = $('<tr class="performance-entry"></tr>');
-            row_entry.append($('<td class="performance-symbol">' + perf + '</td>'));
+            row_entry.append($('<td class="performance-symbol">' + symbol + '</td>'));
             row_entry.append($('<td class="performance-percent-active">' + active_total.toFixed(2) + '%</td>'));
             row_entry.append($('<td class="performance-percent-history">' + history_total.toFixed(2) + '%</td>'));
             row_entry.append($('<td class="performance-success">' + success + '</td>'));

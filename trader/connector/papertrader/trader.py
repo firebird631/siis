@@ -499,7 +499,7 @@ class PaperTrader(Trader):
 
         if (trader_market.min_size > 0.0) and (order.quantity < trader_market.min_size):
             # reject if lesser than min size
-            logger.error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in ref order %s" % (
+            logger.error("Trader %s refuse order because the min size is not reached (%s<%s) %s in ref order %s" % (
                 self.name, order.quantity, trader_market.min_size, order.symbol, order.ref_order_id))
             return False
 
@@ -539,7 +539,7 @@ class PaperTrader(Trader):
 
         if notional < trader_market.min_notional:
             # reject if lesser than min notinal
-            logger.error("%s refuse order because the min notional is not reached (%.f<%.f) %s in ref order %s" % (
+            logger.error("%s refuse order because the min notional is not reached (%s<%s) %s in ref order %s" % (
                 self.name, notional, trader_market.min_notional, order.symbol, order.ref_order_id))
             return False
 

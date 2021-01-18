@@ -883,7 +883,7 @@ class StrategyTrade(object):
     def entry_fees_rate(self):
         """Realized entry fees rate"""
         if self.e > 0:
-            return self._stats['entry-fees'] / self.e
+            return self._stats['entry-fees'] / (self.aep * self.e)
 
         return 0.0
 
@@ -894,7 +894,7 @@ class StrategyTrade(object):
     def exit_fees_rate(self):
         """Realized entry fees rate"""
         if self.x > 0:
-            return self._stats['exit-fees'] / self.x
+            return self._stats['exit-fees'] / (self.axp * self.x)
 
         return 0.0
 
@@ -917,11 +917,8 @@ class StrategyTrade(object):
         # minus realized entry fees rate
         profit_loss -= self.entry_fees_rate()
 
-        # count the exit fees related to limit order type
-        if self._stats['take-profit-order-type'] in (Order.ORDER_LIMIT, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT_LIMIT):
-            profit_loss -= instrument.maker_fee
-        elif self._stats['take-profit-order-type'] in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT):
-            profit_loss -= instrument.taker_fee
+        # and estimation of the exit fees rate
+        profit_loss -= self.estimate_exit_fees_rate(instrument)
 
         return profit_loss
 

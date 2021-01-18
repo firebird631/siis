@@ -245,7 +245,7 @@ class KrakenTrader(Trader):
 
         # if order.quantity < market_or_instrument.min_size:
         #     # reject if lesser than min size
-        #     error_logger.error("Trader %s refuse order because the min size is not reached (%.f<%.f) %s in order %s !" % (
+        #     error_logger.error("Trader %s refuse order because the min size is not reached (%s<%s) %s in order %s !" % (
         #         self.name, order.quantity, market_or_instrument.min_size, pair, order.ref_order_id))
         #     return False
 
@@ -256,7 +256,7 @@ class KrakenTrader(Trader):
 
         # if notional < market_or_instrument.min_notional:
         #     # reject if lesser than min notinal
-        #     error_logger.error("Trader %s refuse order because the min notional is not reached (%.f<%.f) %s in order %s !" % (
+        #     error_logger.error("Trader %s refuse order because the min notional is not reached (%s<%s) %s in order %s !" % (
         #         self.name, notional, market_or_instrument.min_notional, pair, order.ref_order_id))
         #     return False
 

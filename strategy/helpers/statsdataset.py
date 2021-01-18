@@ -87,7 +87,7 @@ def get_stats(strategy):
                             'bt': trade.best_price_timestamp(),
                             'wt': trade.worst_price_timestamp(),
                             'label': trade.label,
-                            'upnl': "%.f" % trade.unrealized_profit_loss,
+                            'upnl': "%s" % trade.unrealized_profit_loss,
                             'pnlcur': trade.profit_loss_currency
                         })
 

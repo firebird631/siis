@@ -1,11 +1,11 @@
 function on_order_long(elt) {
-    let symbol = retrieve_symbol(elt);
+    let market_id = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
-    let market = window.markets[symbol];
+    let market = window.markets[market_id];
 
-    if (symbol && market) {
+    if (market_id && market) {
         let profile_name = retrieve_profile(trader_id);
         let profile = market.profiles[profile_name];
 
@@ -116,13 +116,13 @@ function on_order_long(elt) {
 };
 
 function on_order_short(elt) {
-    let symbol = retrieve_symbol(elt);
+    let market_id = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
-    let market = window.markets[symbol];
+    let market = window.markets[market_id];
 
-    if (symbol && market) {
+    if (market_id && market) {
         let profile_name = retrieve_profile(trader_id);
         let profile = market.profiles[profile_name];
 
@@ -240,15 +240,15 @@ function on_close_trade(elt) {
         return false;
     }
 
-    let symbol = parts[0];
+    let market_id = parts[0];
     let trade_id = parseInt(parts[1]);
 
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
 
-    let market = window.markets[symbol];
+    let market = window.markets[market_id];
 
-    if (symbol && market && trade_id) {
+    if (market_id && market && trade_id) {
         let data = {
             'market-id': market['market-id'],
             'trade-id': trade_id,
@@ -293,24 +293,24 @@ function on_breakeven_trade(elt) {
         return false;
     }
 
-    let symbol = parts[0];
+    let market_id = parts[0];
     let trade_id = parseInt(parts[1]);
 
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
 
-    let market = window.markets[symbol];
+    let market = window.markets[market_id];
     let stop_loss_price = parseFloat(trade['avg-entry-price'] || trade['order-price']);
 
     let pnl_pct = trade['profit-loss-pct'];
 
     if (pnl_pct <= 0.0) {
-        let msg = "It is not allowed to breakeven a non profit trade. On market " + symbol + ".";
+        let msg = "It is not allowed to breakeven a non profit trade. On market " + market['symbol'] + ".";
         notify({'message': msg, 'title': 'Breakeven Stop-Loss', 'type': 'info'});
         return false;
     }
 
-    if (symbol && market && trade_id) {
+    if (market_id && market && trade_id) {
         let data = {
             'market-id': market['market-id'],
             'trade-id': trade_id,
@@ -442,8 +442,10 @@ function add_active_trade(market_id, trade) {
     let key = market_id + ':' + trade.id;
     trade_elt.attr('trade-key', key);
 
+    let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
+
     let trade_id = $('<span class="trade-id"></span>').text(trade.id);
-    let trade_symbol = $('<span class="trade-symbol"></span>').text(market_id);
+    let trade_symbol = $('<span class="trade-symbol"></span>').text(symbol);
     let trade_direction = $('<span class="trade-direction fa"></span>')
         .addClass(trade.direction == "long" ? 'trade-long' : 'trade-short')
         .addClass(trade.direction == "long" ? 'fa-arrow-up' : 'fa-arrow-down');
@@ -640,8 +642,8 @@ function remove_active_trade(market_id, trade_id, trade) {
     }
 };
 
-function format_price(symbol, price) {
-    let market = window.markets[symbol];
+function format_price(market_id, price) {
+    let market = window.markets[market_id];
     if (market) {
         if (typeof(price) === "string") {
             price = parseFloat(price);
@@ -653,8 +655,8 @@ function format_price(symbol, price) {
     return "0.0";
 }
 
-function format_quote_price(symbol, price) {
-    let market = window.markets[symbol];
+function format_quote_price(market_id, price) {
+    let market = window.markets[market_id];
     if (market) {
         if (typeof(price) === "string") {
             price = parseFloat(price);
@@ -671,8 +673,10 @@ function add_historical_trade(market_id, trade) {
     let key = market_id + ':' + trade.id;
     trade_elt.attr('trade-key', key);
 
+    let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
+
     let trade_id = $('<span class="trade-id"></span>').text(trade.id);
-    let trade_symbol = $('<span class="trade-symbol"></span>').text(market_id);
+    let trade_symbol = $('<span class="trade-symbol"></span>').text(symbol);
     let trade_direction = $('<span class="trade-direction fa"></span>')
         .addClass(trade.direction == "long" ? 'trade-long' : 'trade-short')
         .addClass(trade.direction == "long" ? 'fa-arrow-up' : 'fa-arrow-down');
@@ -821,16 +825,16 @@ function on_apply_modify_active_trade_take_profit() {
         return false;
     }
 
-    let symbol = parts[0];
+    let market_id = parts[0];
     let trade_id = parseInt(parts[1]);
 
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
 
-    let market = window.markets[symbol];
+    let market = window.markets[market_id];
     let take_profit_price = parseFloat($('#modified_take_profit_price').val());
 
-    if (symbol && market && trade_id) {
+    if (market_id && market && trade_id) {
         let data = {
             'market-id': market['market-id'],
             'trade-id': trade_id,
@@ -876,16 +880,16 @@ function on_apply_modify_active_trade_stop_loss() {
         return false;
     }
 
-    let symbol = parts[0];
+    let market_id = parts[0];
     let trade_id = parseInt(parts[1]);
 
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
 
-    let market = window.markets[symbol];
+    let market = window.markets[market_id];
     let stop_loss_price = parseFloat($('#modified_stop_loss_price').val());
 
-    if (symbol && market && trade_id) {
+    if (market_id && market && trade_id) {
         let data = {
             'market-id': market['market-id'],
             'trade-id': trade_id,
@@ -931,18 +935,18 @@ function on_add_active_trade_dynamic_stop_loss() {
         return false;
     }
 
-    let symbol = parts[0];
+    let market_id = parts[0];
     let trade_id = parseInt(parts[1]);
 
     let endpoint = "strategy/trade";
     let url = base_url() + '/' + endpoint;
 
-    let market = window.markets[symbol];
+    let market = window.markets[market_id];
 
     let dynamic_stop_loss_price = parseFloat($('#dynamic_stop_loss_price').val());
     let trigger_price = parseFloat($('#dynamic_stop_loss_trigger_price').val());
 
-    if (symbol && market && trade_id) {
+    if (market_id && market && trade_id) {
         let data = {
             'market-id': market['market-id'],
             'trade-id': trade_id,

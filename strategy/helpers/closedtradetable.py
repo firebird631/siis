@@ -30,7 +30,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
     columns = tuple(columns)
     total_size = (len(columns), 0)
     data = []
-    
+
     with strategy._mutex:
         closed_trades = get_closed_trades(strategy)
         total_size = (len(columns), len(closed_trades))
@@ -49,51 +49,64 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
         for t in closed_trades:
             direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
-            # @todo direction
-            if t['pl'] < 0 and float(t['b']) > float(t['aep']):  # has been profitable but loss
+            aep = float(t['aep'])
+            best = float(t['b'])
+            worst = float(t['w'])
+            sl = float(t['sl'])
+            tp = float(t['tp'])
+
+            if t['pl'] < 0 and ((t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep)):
+                # has been profitable but loss
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
             elif t['pl'] < 0:  # loss
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
             elif t['pl'] > 0:  # profit
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
             else:
-                cr = "0.0"
-
-            aep = float(t['aep'])
-            sl = float(t['sl'])
-            tp = float(t['tp'])
+                cr = "0.0" if aep else "-" 
 
             # color TP in green if hitted, similarely in red for SL
-            # @todo not really true, could store the exit reason in trade stats
-            if t['d'] == "long":
+            # @todo not really exact, could use the exit reason
+            if t['d'] == "long" and aep:
                 _tp = Color.colorize_cond(t['tp'], tp > 0 and float(t['axp']) >= tp, style=style, true=Color.GREEN)
                 _sl = Color.colorize_cond(t['sl'], sl > 0 and float(t['axp']) <= sl, style=style, true=Color.RED)
                 slpct = (sl - aep) / aep
                 tppct = (tp - aep) / aep
-            else:
+            elif t['d'] == "short" and aep:
                 _tp = Color.colorize_cond(t['tp'], tp > 0 and float(t['axp']) <= tp, style=style, true=Color.GREEN)
                 _sl = Color.colorize_cond(t['sl'], sl > 0 and float(t['axp']) >= sl, style=style, true=Color.RED)
                 slpct = (aep - sl) / aep
                 tppct = (aep - tp) / aep
+            else:
+                _tp = str(t['sl'])
+                _sl = str(t['tp'])
+                slpct = 0
+                tppct = 0
 
-            if t['d'] == 'long':
-                bpct = (float(t['b']) - aep) / aep
-                wpct = (float(t['w']) - aep) / aep
-            elif t['d'] == 'short':
-                bpct = (aep - float(t['b'])) / aep
-                wpct = (aep - float(t['w'])) / aep
+            if t['d'] == 'long' and aep:
+                bpct = (best - aep) / aep - t['fees']
+                wpct = (worst - aep) / aep - t['fees']
+            elif t['d'] == 'short' and aep:
+                bpct = (aep - best) / aep - t['fees']
+                wpct = (aep - worst) / aep - t['fees']
+            else:
+                bpct = 0
+                wpct = 0
+
+            def format_with_percent(formated_value, condition, rate):
+                return (("%s (%.2f%%)" % (formated_value, rate * 100)) if percents else formated_value) if condition else '-'
 
             row = [
                 t['sym'],
                 t['id'],
                 direction,
                 cr,
-                "%.2f%%" % (t['fees'] * 100),
+                "%.2f%%" % (t['fees'] * 100),  # fee rate converted in percent
                 t['l'],
-                "%s (%.2f)" % (_sl, slpct * 100) if percents else _sl,
-                "%s (%.2f)" % (_tp, tppct * 100) if percents else _tp,
-                "%s (%.2f)" % (t['b'], bpct * 100) if percents else t['b'],
-                "%s (%.2f)" % (t['w'], wpct * 100) if percents else t['w'],
+                format_with_percent(_sl, sl, slpct),
+                format_with_percent(_tp, tp, tppct),
+                format_with_percent(t['b'], best, bpct),
+                format_with_percent(t['w'], worst, wpct),
                 t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime(datetime_format),
                 datetime.fromtimestamp(t['freot']).strftime(datetime_format),
