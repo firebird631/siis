@@ -789,9 +789,9 @@ class Strategy(Runnable):
                             with strategy_trader._mutex:
                                 strategy_trader.loads_trade(data[1], data[2], data[3], data[4])
 
-                        # clear once done (@todo or by trade...)
-                        trader = self.trader()
-                        Database.inst().clear_user_trades(trader.name, trader.account.name, self.identifier)
+                    # clear once done (@todo or by trade...)
+                    trader = self.trader()
+                    Database.inst().clear_user_trades(trader.name, trader.account.name, self.identifier)
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADER_LIST:
                     # for each market load the corresponding settings and regions to the strategy trader

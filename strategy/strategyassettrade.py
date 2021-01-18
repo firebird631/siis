@@ -708,13 +708,13 @@ class StrategyAssetTrade(StrategyTrade):
         self.entry_oid = data.get('entry-oid', None)
 
         self.stop_ref_oid = data.get('stop-ref-oid', None)
-        self.stop_ref_oid = data.get('stop-oid', None)
+        self.stop_oid = data.get('stop-oid', None)
 
         self.limit_ref_oid = data.get('limit-ref-oid', None)
-        self.limit_ref_oid = data.get('limit-oid', None)
+        self.limit_oid = data.get('limit-oid', None)
 
         self.oco_ref_oid = data.get('oco-ref-oid', None)
-        self.oco_ref_oid = data.get('oco-oid', None)
+        self.oco_oid = data.get('oco-oid', None)
 
         self.stop_order_qty = data.get('stop_order_qty', 0.0)
         self.limit_order_qty = data.get('limit-order-qty', 0.0)

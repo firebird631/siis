@@ -749,6 +749,7 @@ class StrategyTrade(object):
             'direction': self.dir,  # self.direction_to_str(),
             'entry-open-time': self.eot,  # self.dump_timestamp(self.eot),
             'exit-open-time': self.xot,  # self.dump_timestamp(self.xot),
+            'order-price': self.op,
             'order-qty': self.oq,
             'filled-entry-qty': self.e,
             'filled-exit-qty': self.x,
@@ -781,6 +782,7 @@ class StrategyTrade(object):
         self._next_operation_id = -1
 
         self.dir = data.get('direction', 0)  # self.direction_from_str(data.get('direction', ''))
+        self.op = data.get('order-price', 0.0)
         self.oq = data.get('order-qty', 0.0)
 
         self.tp = data.get('take-profit-price', 0.0)
