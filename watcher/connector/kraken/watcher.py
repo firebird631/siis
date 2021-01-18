@@ -548,7 +548,7 @@ class KrakenWatcher(Watcher):
 
             min_price = math.pow(10.0, -instrument['pair_decimals'])
 
-            size_limits = [instrument.get('ordermin', "0.0"), "0.0", instrument.get('ordermin', "0.0")]
+            size_limits = [instrument.get('ordermin', "0.0"), "0.0", instrument.get('lot_decimals', 8)]
             notional_limits = ["0.0", "0.0", "0.0"]
             price_limits = [str(min_price), "0.0", str(min_price)]
 
