@@ -493,6 +493,25 @@ class StreamMemberWatcherTicker(StreamMember):
 class StreamMemberTraderBalance(StreamMember):
     """
     Specialization for a trader asset or margin balance.
+
+    balance is a dict with field :
+    for margin balance : {
+        'asset': 'balance',
+        'type': 'margin',
+        'free': free,
+        'locked': locked,
+        'total': total,
+        'upnl': upnl,
+        'margin-level': margin_level
+    }
+
+    for an asset : {
+        'asset': symbol,
+        'type': 'asset',
+        'free': free,
+        'locked': locked,
+        'total': total
+    }
     """
 
     TYPE_TRADER_BALANCE = "ab"

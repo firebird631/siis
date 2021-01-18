@@ -186,6 +186,29 @@ class KrakenTrader(Trader):
         # don't wast the CPU 5 ms loop
         time.sleep(0.005)
 
+    @Trader.mutexed
+    def on_asset_updated(self, asset_name, locked, free):
+        asset = self.__get_or_add_asset(asset_name)
+        if asset is not None:
+            # significant deviation... @todo update qty after traded signal
+            # if abs((locked+free)-asset.quantity) / ((locked+free) or 1.0) >= 0.001:
+            #     logger.debug("%s deviation of computed quantity for %s from %s but must be %s" % (self._name, asset_name, asset.quantity, (locked+free)))
+
+            asset.set_quantity(locked, free)
+
+            if asset.quote and asset.symbol != asset.quote:
+                prefered_market = self._markets.get(asset.symbol+asset.quote)
+                if prefered_market:
+                    asset.update_profit_loss(prefered_market)
+
+            # store in database with the last update quantity
+            Database.inst().store_asset((self._name, self.account.name,
+                asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
+                asset.quantity, asset.price, asset.quote))
+
+        # call base for stream
+        super().on_asset_updated(asset_name, locked, free)
+
     #
     # ordering
     #

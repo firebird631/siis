@@ -44,6 +44,7 @@ class KrakenWatcher(Watcher):
     """
 
     BASE_QUOTE = "ZUSD"
+    UPDATE_ASSET_BALANCE_DELAY = 60.0  # each minute
 
     TF_MAP = {
         60: 1,          # 1m
@@ -78,6 +79,9 @@ class KrakenWatcher(Watcher):
         self._instruments = {}
         self._wsname_lookup = {}
         self._markets_aliases = {}
+
+        self._last_balance_update = 0.0  # last update of balances (assets) timestamp
+        self._last_assets_balances = {}  # last free/locked balances values for each asset
 
         self._ws_own_trades = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
         self._ws_open_orders = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
@@ -166,27 +170,28 @@ class KrakenWatcher(Watcher):
                             logger.debug("%s WS already started..." % (self.name))
 
                         #
-                        # user data
+                        # user data only in real mode
                         #
 
-                        ws_token = self._connector.get_ws_token()
+                        if not self.service.paper_mode:
+                            ws_token = self._connector.get_ws_token()
 
-                        if ws_token and ws_token.get('token'):
-                            self._connector.ws.subscribe_private(
-                                subscription={
-                                    'name': 'ownTrades',
-                                    'token': ws_token['token']
-                                },
-                                callback=self.__on_own_trades
-                            )
+                            if ws_token and ws_token.get('token'):
+                                self._connector.ws.subscribe_private(
+                                    subscription={
+                                        'name': 'ownTrades',
+                                        'token': ws_token['token']
+                                    },
+                                    callback=self.__on_own_trades
+                                )
 
-                            self._connector.ws.subscribe_private(
-                                subscription={
-                                    'name': 'openOrders',
-                                    'token': ws_token['token']
-                                },
-                                callback=self.__on_open_orders
-                            )
+                                self._connector.ws.subscribe_private(
+                                    subscription={
+                                        'name': 'openOrders',
+                                        'token': ws_token['token']
+                                    },
+                                    callback=self.__on_open_orders
+                                )
 
                         # retry the previous subscriptions
                         if self._watched_instruments:
@@ -426,32 +431,34 @@ class KrakenWatcher(Watcher):
             self._ready = False
             return False
 
-        if 0:#self._reconnect_user_ws:
-            ws_token = self._connector.get_ws_token()
+        # disconnected for user socket in real mode, and auto-reconnect failed
+        # if self._reconnect_user_ws and not self.service.paper_mode:
+        #     ws_token = self._connector.get_ws_token()
 
-            self._connector.ws.stop_private_socket('ownTrades')
-            self._connector.ws.stop_private_socket('openOrders')
+        #     self._connector.ws.stop_private_socket('ownTrades')
+        #     self._connector.ws.stop_private_socket('openOrders')
 
-            if ws_token and ws_token.get('token'):
-                self._connector.ws.subscribe_private(
-                    subscription={
-                        'name': 'ownTrades',
-                        'token': ws_token['token']
-                    },
-                    callback=self.__on_own_trades
-                )
+        #     if ws_token and ws_token.get('token'):
+        #         self._connector.ws.subscribe_private(
+        #             subscription={
+        #                 'name': 'ownTrades',
+        #                 'token': ws_token['token']
+        #             },
+        #             callback=self.__on_own_trades
+        #         )
 
-                self._connector.ws.subscribe_private(
-                    subscription={
-                        'name': 'openOrders',
-                        'token': ws_token['token']
-                    },
-                    callback=self.__on_open_orders
-                )
+        #         self._connector.ws.subscribe_private(
+        #             subscription={
+        #                 'name': 'openOrders',
+        #                 'token': ws_token['token']
+        #             },
+        #             callback=self.__on_open_orders
+        #         )
 
-            self._reconnect_user_ws = False
+        #     self._reconnect_user_ws = False
 
-            # @todo and instruments
+        # disconnected for instruments socket in real mode, and auto-reconnect failed
+        # @todo reconnect instruments if necessary
 
         #
         # ohlc close/open
@@ -461,15 +468,29 @@ class KrakenWatcher(Watcher):
             self.update_from_tick()
 
         #
+        # asset balances (each 1m) (only in real mode)
+        #
+
+        if not self.service.paper_mode:
+            if time.time() - self._last_balance_update >= KrakenWatcher.UPDATE_ASSET_BALANCE_DELAY:
+                try:
+                    self.update_assets_balances()
+                except Exception as e:
+                    error_logger.error("update_assets_balances %s" % str(e))
+                finally:
+                    self._last_balance_update = time.time()
+
+        #
         # market info update (each 4h)
         #
 
-        if time.time() - self._last_market_update >= KrakenWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
+        if time.time() - self._last_market_update >= KrakenWatcher.UPDATE_MARKET_INFO_DELAY:
             try:
                 self.update_markets_info()
-                self._last_market_update = time.time()
             except Exception as e:
                 error_logger.error("update_update_markets_info %s" % str(e))
+            finally:
+                self._last_market_update = time.time()
 
         return True
 
@@ -1284,6 +1305,28 @@ class KrakenWatcher(Watcher):
                 market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+
+    def update_assets_balances(self):
+        """
+        Update asset balance.
+
+        @note Non thread-safe because only called at each sync update.
+        """
+        balances = self._connector.get_balances()
+
+        for asset_name, balance in balances.items():
+            asset = self._last_assets_balances.get(asset_name, [0.0, 0.0])  # locked, free
+
+            # use the last computed locked value from opened orders using this asset
+            locked = asset[0]
+            free = float(balance) - locked
+
+            if locked != asset[0] or free != asset[1]:
+                asset[0] = locked
+                asset[1] = free
+
+                # asset updated
+                self.service.notify(Signal.SIGNAL_ASSET_UPDATED, self.name, (asset_name, locked, free))
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
         trades = []

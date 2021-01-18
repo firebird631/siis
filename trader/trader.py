@@ -824,7 +824,7 @@ class Trader(Runnable):
 
     def on_asset_updated(self, asset_name, locked, free):
         # stream
-        self.notify_balance_update(self.timestamp, asset_name, free, locked, free+locked)
+        self.notify_asset_update(self.timestamp, asset_name, free, locked, free+locked)
 
     #
     # market slots
@@ -1594,8 +1594,26 @@ class Trader(Runnable):
     def notify_balance_update(self, timestamp, asset, free, locked, total, upnl=None, margin_level=None):
         if self._balance_streamer:
             try:
-                self._balance_streamer.member('accout-balance').update(self, {
+                self._balance_streamer.member('account-balance').update({
+                    'asset': asset,
                     'type': 'margin',
+                    'free': free,
+                    'locked': locked,
+                    'total': total,
+                    'upnl': upnl,
+                    'margin-level': margin_level,
+                }, timestamp)
+
+                self._balance_streamer.publish()
+            except Exception as e:
+                logger.error(repr(e))
+
+    def notify_asset_update(self, timestamp, asset, free, locked, total, upnl=None, margin_level=None):
+        if self._balance_streamer:
+            try:
+                self._balance_streamer.member('account-balance').update({
+                    'asset': asset,
+                    'type': 'asset',
                     'free': free,
                     'locked': locked,
                     'total': total,

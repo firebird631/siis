@@ -56,6 +56,9 @@ class WatcherService(Service):
         # store trade/tick/quote during watcher process, default is False
         self._store_trade = options.get('store-trade', False)
 
+        # paper mode options to subscribe only to public part of data
+        self._paper_mode = options.get('paper-mode', False)
+
     def create_fetcher(self, options, watcher_name):
         fetcher = self._fetchers_config.get(watcher_name)
         if not fetcher:
@@ -171,6 +174,10 @@ class WatcherService(Service):
     @property
     def backtesting(self):
         return self._backtesting
+
+    @property
+    def paper_mode(self):
+        return self._paper_mode
 
     def command(self, command_type, data):
         results = None

@@ -1735,6 +1735,7 @@ function on_update_performances() {
         }
 
         // update every half-second until displayed
+        // @todo remove after using WS implementation
         setTimeout(fetch_balances, 500);
 
         if (window.server['ws']) {

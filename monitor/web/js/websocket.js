@@ -147,6 +147,7 @@ function on_ws_message(data) {
         } else if (value && data.t == 'ab') {
             // update ticker
             on_update_balances(data.s, value.asset, data.b*1000, value);
+            console.log(data)
         }
 
     } else if (data.c == STREAM_STRATEGY) {
