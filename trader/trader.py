@@ -442,7 +442,7 @@ class Trader(Runnable):
         order = None
 
         with self._mutex:
-            order = self.orders.get(order_id)
+            order = self._orders.get(order_id)
             if order:
                 order = copy.copy(order)
 
