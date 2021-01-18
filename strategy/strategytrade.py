@@ -761,7 +761,7 @@ class StrategyTrade(object):
             'extra': self._extra,
         }
 
-    def loads(self, data, context_builder=None):
+    def loads(self, data, strategy_trader, context_builder=None):
         """
         Override this method to make a loads for the persistance model.
         @return True if success.
@@ -788,7 +788,7 @@ class StrategyTrade(object):
 
         self.aep = data.get('avg-entry-price', 0.0)
         self.axp = data.get('avg-exit-price', 0.0)
-       
+
         self.eot = data.get('entry-open-time', 0)  # self.load_timestamp(data.get('entry-open-datetime'))
         self.xot = data.get('exit-open-time', 0)  # self.load_timestamp(data.get('exit-open-datetime'))
 
@@ -818,7 +818,7 @@ class StrategyTrade(object):
         self._extra = data.get('extra', {})
 
         if context_builder and data.get('context'):
-            self.context = context_builder.loads(data['context'])
+            self.context = context_builder.loads(data['context'], strategy_trader)
         else:
             self.context = None
 

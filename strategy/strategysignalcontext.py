@@ -12,7 +12,7 @@ class StrategySignalContextBuilder(object):
     """
 
     @classmethod
-    def loads(cls, data):
+    def loads(cls, data, strategy_trader):
         return None
 
 
@@ -328,8 +328,8 @@ class BaseSignal(StrategySignalContext):
         pass
 
     def dumps(self):
-        result = {}
-
-        # @todo
+        result = {
+            'name': self.name
+        }
 
         return result

@@ -586,8 +586,8 @@ class StrategyMarginTrade(StrategyTrade):
 
         return data
 
-    def loads(self, data, strategy_service):
-        if not super().loads(data):
+    def loads(self, data, strategy_trader, context_builder=None):
+        if not super().loads(data, strategy_trader, context_builder):
             return False
 
         self.create_ref_oid = data.get('create-ref-oid')

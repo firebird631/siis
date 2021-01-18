@@ -103,6 +103,8 @@ class StrategyTrader(object):
             'cont-loss': 0,    # contigous loss trades
         }
 
+        self._trade_context_builder = None
+
     #
     # properties
     #
@@ -321,7 +323,7 @@ class StrategyTrader(object):
             error_logger.error("During loads, usupported trade type %i" % (trade_type,))
             return
 
-        trade.loads(data, self.strategy.service)
+        trade.loads(data, self, self._trade_context_builder)
 
         # operations
         for op in operations:

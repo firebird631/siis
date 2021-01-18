@@ -700,8 +700,8 @@ class StrategyAssetTrade(StrategyTrade):
 
         return data
 
-    def loads(self, data, strategy_service):
-        if not super().loads(data):
+    def loads(self, data, strategy_trader, context_builder=None):
+        if not super().loads(data, strategy_trader, context_builder):
             return False
 
         self.entry_ref_oid = data.get('entry-ref-oid', None)
