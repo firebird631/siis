@@ -781,10 +781,8 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_LIST:
                     # for each market load the corresponding trades to the strategy trader
-                    logger.debug(repr(signal.data))
                     for data in signal.data:
                         strategy_trader = self._strategy_traders.get(data[0])
-                        logger.debug(repr(data))
 
                         # instantiate the trade and add it
                         if strategy_trader:
