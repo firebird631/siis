@@ -1315,13 +1315,18 @@ class KrakenWatcher(Watcher):
         balances = self._connector.get_balances()
 
         for asset_name, balance in balances.items():
-            asset = self._last_assets_balances.get(asset_name, [0.0, 0.0])  # locked, free
+            if asset_name not in self._last_assets_balances:
+                # initiate cache
+                self._last_assets_balances[asset_name] = [0.0, 0.0]  # locked, free
+
+            asset = self._last_assets_balances[asset_name]
 
             # use the last computed locked value from opened orders using this asset
             locked = asset[0]
             free = float(balance) - locked
 
             if locked != asset[0] or free != asset[1]:
+                # update cache for next comparison
                 asset[0] = locked
                 asset[1] = free
 
