@@ -24,6 +24,7 @@ from trader.order import Order
 from trader.asset import Asset
 
 from connector.kraken.connector import Connector
+from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.trader.kraken')
