@@ -1126,6 +1126,8 @@ function fetch_history() {
                 'avg-entry-price': trade.aep,
                 'avg-exit-price': trade.axp,
                 'label': trade.label,
+                'entry-open-time': trade.eot,
+                'exit-open-time': trade.xot,
                 'profit-loss-pct': parseFloat((trade.pl * 100).toFixed(2)),
                 'stats': {
                     'best-price': trade.b,
