@@ -29,7 +29,7 @@ class StrategyTrade(object):
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
                 'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', '_stats', 'last_tp_ot', 'last_stop_ot', \
-                'exit_trades', '_label', '_entry_timeout', '_expiry', '_dirty', '_extra', 'sl_mode', 'sl_tf', 'tp_mode', 'tp_tf', 'context'
+                'exit_trades', '_label', '_entry_timeout', '_expiry', '_dirty', '_extra', 'context'
 
     VERSION = "1.0.0"
 
@@ -106,12 +106,7 @@ class StrategyTrade(object):
         self.exit_trades = {}  # contain each executed exit trades {<orderId< : (<qty<, <price>)}
 
         self.last_stop_ot = [0, 0]
-        self.sl_mode = 0   # integer that could serves as stop-loss compute method (for update)
-        self.sl_tf = 0     # timeframe model of the stop-loss (not the float value)
-
         self.last_tp_ot = [0, 0]
-        self.tp_mode = 0   # integer that could serves as take-profit compute method (for update)
-        self.tp_tf = 0     # timeframe model of the take-profit (not the float value)
 
         self.context = None  # reference to an object concerning the context of the trade (ref from StrategySignal.context)
 
@@ -741,11 +736,7 @@ class StrategyTrade(object):
             'avg-entry-price': self.aep,
             'avg-exit-price': self.axp,
             'take-profit-price': self.tp,
-            'take-profit-mode': self.tp_mode,
-            'take-profit-timeframe': self.tp_tf.timeframe if self.tp_tf else 0,
             'stop-loss-price': self.sl,
-            'stop-loss-mode': self.sl_mode,
-            'stop-loss-timeframe': self.sl_tf.timeframe if self.sl_tf else 0,
             'direction': self.dir,  # self.direction_to_str(),
             'entry-open-time': self.eot,  # self.dump_timestamp(self.eot),
             'exit-open-time': self.xot,  # self.dump_timestamp(self.xot),
