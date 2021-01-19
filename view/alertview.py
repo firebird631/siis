@@ -108,9 +108,9 @@ class AlertView(TableView):
                 ldatetime
             )
 
-            data.append(row[col_ofs:])
+            data.append(row[0:2] + row[2+col_ofs:])
 
-        return AlertView.COLUMNS[col_ofs:], data, total_size
+        return AlertView.COLUMNS[0:2] + AlertView.COLUMNS[2+col_ofs:], data, total_size
 
     def refresh(self):
         if not self._strategy_service:

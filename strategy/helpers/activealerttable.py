@@ -58,6 +58,6 @@ def actives_alerts_table(strategy, style='', offset=None, limit=None, col_ofs=No
                 t['msg'],
             ]
 
-            data.append(row[col_ofs:])
+            data.append(row[0:3] + row[3+col_ofs:])
 
-    return columns[col_ofs:], data, total_size
+    return columns[0:3] + columns[3+col_ofs:], data, total_size

@@ -933,7 +933,7 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets.
         """
-        columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract', 'Min Size', 'Min Notional', 'Leverage')
+        columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract', 'Min Size', 'Max Size', 'Step Size', 'Min Price', 'Max Price', 'Step Price', 'Min Notional', 'Max Notional', 'Step Notional', 'Leverage')
         total_size = (len(columns), 0)
         data = []
 
@@ -968,14 +968,21 @@ class Trader(Runnable):
                     str("%.8f" % market.value_per_pip).rstrip('0').rstrip('.'),
                     str("%.8f" % market.lot_size).rstrip('0').rstrip('.'),
                     str("%.12f" % market.contract_size).rstrip('0').rstrip('.'),
-                    market.min_size,
-                    market.min_notional,
+                    market.min_size or '-',
+                    market.max_size or '-',
+                    market.step_size or '-',
+                    market.min_price or '-',
+                    market.max_price or '-',
+                    market.step_price or '-',
+                    market.min_notional or '-',
+                    market.max_notional or '-',
+                    market.step_notional or '-',
                     "%.2f" % (1.0 / market.margin_factor if market.margin_factor > 0.0 else 1.0)
                 )
 
-                data.append(row[col_ofs:])
+                data.append(row[0:2] + row[2+col_ofs:])
 
-        return columns[col_ofs:], data, total_size
+        return columns[0:2] + columns[2+col_ofs:], data, total_size
 
     def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None, prev_timestamp=None):
         """
@@ -1037,9 +1044,9 @@ class Trader(Runnable):
                      vol24h_quote,
                      datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S") if market.last_update_time else charmap.HOURGLASS)
 
-                data.append(row[col_ofs:])
+                data.append(row[0:2] + row[2+col_ofs:])
 
-        return columns[col_ofs:], data, total_size
+        return columns[0:2] + columns[2+col_ofs:], data, total_size
 
     def assets_table(self, style='', offset=None, limit=None, col_ofs=None, filter_low=True):
         """
@@ -1127,9 +1134,9 @@ class Trader(Runnable):
                     profit_loss_alt or charmap.ROADBLOCK,
                 )
 
-                data.append(row[col_ofs:])
+                data.append(row[0:1] + row[1+col_ofs:])
 
-        return columns[col_ofs:], data, total_size
+        return columns[0:1] + columns[1+col_ofs:], data, total_size
 
     def account_table(self, style='', offset=None, limit=None, col_ofs=None):
         """
@@ -1197,9 +1204,9 @@ class Trader(Runnable):
             )
 
             if offset < 1 and limit > 0:
-                data.append(row[col_ofs:])
+                data.append(row[0:2] + row[2+col_ofs:])
 
-        return columns[col_ofs:], data, (len(columns), 1)
+        return columns[0:2] + columns[2+col_ofs:], data, (len(columns), 1)
 
     def get_active_orders(self):
         """
@@ -1386,13 +1393,13 @@ class Trader(Runnable):
                     if quantities:
                         row.append(t['q'])
 
-                    data.append(row[col_ofs:])
+                    data.append(row[0:4] + row[4+col_ofs:])
 
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
 
-        return columns[col_ofs:], data, total_size
+        return columns[0:4] + columns[4+col_ofs:], data, total_size
 
     def active_orders_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, datetime_format='%y-%m-%d %H:%M:%S'):
         """
@@ -1470,13 +1477,13 @@ class Trader(Runnable):
                         row.append(t['q'])
                         row.append(t['xq'])
 
-                    data.append(row[col_ofs:])
+                    data.append(row[0:2] + row[2+col_ofs:])
 
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
 
-        return columns[col_ofs:], data, total_size
+        return columns[0:2] + columns[2+col_ofs:], data, total_size
 
     #
     # commands

@@ -135,9 +135,9 @@ class SignalView(TableView):
                 " (%.2f%%)" % (signal['profit-loss-pct'],) if signal.get('profit-loss-pct') is not None else ""
             )
 
-            data.append(row[col_ofs:])
+            data.append(row[0:4] + row[4+col_ofs:])
 
-        return SignalView.COLUMNS[col_ofs:], data, total_size
+        return SignalView.COLUMNS[0:4] + SignalView.COLUMNS[4+col_ofs:], data, total_size
 
     def refresh(self):
         if not self._strategy_service:

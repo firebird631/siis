@@ -123,6 +123,6 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 row.append(t['x'])
                 row.append(t['s'].capitalize())
 
-            data.append(row[col_ofs:])
+            data.append(row[0:4] + row[4+col_ofs:])
 
-    return columns[col_ofs:], data, total_size
+    return columns[0:4] + columns[4+col_ofs:], data, total_size
