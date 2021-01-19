@@ -594,7 +594,7 @@ class StrategyTrader(object):
 
                     # record the trade for analysis and study
                     if not trade.is_canceled():
-                        # last update of stats before logging
+                        # last update of stats before logging (useless because no longer active and done before)
                         trade.update_stats(self.instrument.close_exec_price(trade.direction), timestamp)
 
                         # realized profit/loss

@@ -1050,7 +1050,7 @@ class KrakenWatcher(Watcher):
         }
 
     def __fill_order(self, order, order_data, filled_volume, completed=False):
-        if filled_volume > 0.0:
+        if filled_volume > 0.0 or completed:
             cumulative_filled = float(order_data['vol_exec'])
             order_volume = float(order_data['vol'])
             partial = False
@@ -1191,7 +1191,7 @@ class KrakenWatcher(Watcher):
                     client_order_id = str(order_data['userref']) if order_data['userref'] else ""
                     order = self.__set_order(symbol, order_id, order_data)
 
-                    # last fill with fully-filled state
+                    # last fill with fully-filled state, before deleted signal
                     self.__fill_order(order, order_data, filled_volume, True)
                     self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
 
