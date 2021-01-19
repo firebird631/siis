@@ -56,6 +56,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             op = float(t['l'])
             sl = float(t['sl'])
             tp = float(t['tp'])
+            leop = float(t['leop'])
 
             if t['pl'] < 0 and ((t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep)):
                 # has been profitable but loss
@@ -90,10 +91,8 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             # pct from last exec open price
             if op and (t['s'] in ('new', 'opened', 'filling')):
                 if t['d'] == 'long':
-                    leop = float(t['leop'])
                     oppct = (op - leop) / op
                 elif t['d'] == 'short':
-                    leop = float(t['leop'])
                     oppct = (op - leop) / op
                 else:
                     oppct = 0
@@ -117,7 +116,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 t['sym'],
                 t['id'],
                 direction,
-                cr,
+                cr if leop else charmap.HOURGLASS,
                 op,
                 sl,
                 tp,

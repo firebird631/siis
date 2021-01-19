@@ -909,10 +909,16 @@ class StrategyTrade(object):
             return 0.0
 
         # estimation at close price
+        close_exec_price = instrument.close_exec_price(self.direction)
+
+        # no current price update
+        if not close_exec_price:
+            return 0.0
+
         if self.direction > 0 and self.entry_price > 0:
-            profit_loss = (instrument.close_exec_price(self.direction) - self.entry_price) / self.entry_price
+            profit_loss = (close_exec_price - self.entry_price) / self.entry_price
         elif self.direction < 0 and self.entry_price > 0:
-            profit_loss = (self.entry_price - instrument.close_exec_price(self.direction)) / self.entry_price
+            profit_loss = (self.entry_price - close_exec_price) / self.entry_price
         else:
             profit_loss = 0.0
 
