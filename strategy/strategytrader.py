@@ -461,8 +461,8 @@ class StrategyTrader(object):
         with self._mutex:
             results = self._stats['success'] + self._stats['failed'] + self._stats['roe']
 
-            # sort by entry timestamp desc
-            results = sorted(results, key=lambda trade: -trade['eot'], reverse=True)
+            # sort by last realized exit trade timestamp
+            results = sorted(results, key=lambda trade: trade['lrxot'])
 
         return results
 

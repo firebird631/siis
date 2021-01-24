@@ -37,6 +37,7 @@ from database.database import Database
 from strategy.process import alphaprocess
 
 from strategy.command.strategycmdexitalltrade import cmd_strategy_exit_all_trade
+from strategy.command.strategycmdmodifyall import cmd_strategy_trader_modify_all
 
 from strategy.command.strategycmdstrategytraderinfo import cmd_strategy_trader_info
 from strategy.command.strategycmdstrategytradermodify import cmd_strategy_trader_modify
@@ -84,6 +85,7 @@ class Strategy(Runnable):
     COMMAND_TRADER_MODIFY = 20
     COMMAND_TRADER_INFO = 21
     COMMAND_TRADER_STREAM = 22
+    COMMAND_TRADER_MODIFY_ALL = 23
 
     def __init__(self, name,
             strategy_service, watcher_service, trader_service,
@@ -1274,11 +1276,13 @@ class Strategy(Runnable):
             return self.strategy_trader_command("info", data, cmd_strategy_trader_info)
         elif command_type == Strategy.COMMAND_TRADER_STREAM:
             return self.strategy_trader_command("stream", data, cmd_strategy_trader_stream)
+        elif command_type == Strategy.COMMAND_TRADER_MODIFY_ALL:
+            return cmd_strategy_trader_modify_all(self, data)
 
         return None
 
     def strategy_trader_command(self, label, data, func):
-        # manually trade modify a trade (add/remove an operation)
+        # manually trade modify a trader state, or manage alerts
         market_id = data.get('market-id')
 
         strategy_trader = self._strategy_traders.get(market_id)

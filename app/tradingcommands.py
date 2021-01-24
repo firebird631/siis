@@ -214,6 +214,46 @@ class AffinityCommand(Command):
         return args, 0
 
 
+class FrozeAssetQuantityCommand(Command):
+
+    SUMMARY = "<market-id> to modify the frozen quantity per asset."
+
+    def __init__(self, trader_service):
+        super().__init__('set-frozen', 'SETFRZ')
+
+        self._trader_service = trader_service
+
+    def execute(self, args):
+        if len(args) != 2:
+            return False, "Missing parameters"
+
+        action = "set-frozen"
+
+        try:
+            asset_name = args[0]
+            quantity = float(args[1])
+
+        except Exception:
+            return False, "Invalid parameters"
+
+        self._trader_service.command(Trader.COMMAND_TRADER_FROZE_ASSET_QUANTITY, {
+            'asset': asset_name,
+            'quantity': quantity,
+            'action': action
+        })
+
+        return True, []
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            # asset
+            trader = self._trader_service.trader()
+            if trader:
+                return self.iterate(0, trader.assets_names(), args, tab_pos, direction)
+
+        return args, 0
+
+
 class LongCommand(Command):
 
     SUMMARY = "to manually create to a new trade in LONG direction"
@@ -942,10 +982,10 @@ class UserSaveCommand(Command):
 
 class SetQuantityCommand(Command):
 
-    SUMMARY = "to change the traded quantity and scale factor per market"
+    SUMMARY = "to change the traded quantity and scale factor per any or specific market"
     
     def __init__(self, strategy_service):
-        super().__init__('setquantity', 'SETQTY')
+        super().__init__('set-quantity', 'SETQTY')
 
         self._strategy_service = strategy_service
 
@@ -958,35 +998,76 @@ class SetQuantityCommand(Command):
         quantity = 0.0
         max_factor = 1
 
-        if len(args) < 2:
+        if len(args) < 1:
             return False, "Missing parameters"
 
+        is_float = True
+
         try:
+            float(args[0])
+        except ValueError:
+            is_float = False
+
+        if is_float:
+            try:
+                quantity = float(args[0])
+            except ValueError:
+                return False, "Invalid quantity format"
+
+            if len(args) == 2:
+                try:
+                    max_factor = int(args[1])
+                except ValueError:
+                    return False, "Invalid scale factor value"
+        else:
             market_id = args[0]
-            quantity = float(args[1])
-        except Exception:
-            return False, "Invalid parameters"
+
+            try:
+                quantity = float(args[1])
+            except ValueError:
+                return False, "Invalid quantity format"
+
+            if len(args) == 3:
+                try:
+                    max_factor = int(args[2])
+                except ValueError:
+                    return False, "Invalid scale factor value"
 
         if quantity <= 0.0:
-            return False, "Invalid quantity"
+            return False, "Invalid quantity, must be greater than zero"
 
-        if len(args) == 3:
-            try:
-                max_factor = int(args[2])
-            except Exception:
-                return False, "Invalid scale factor value"
+        if max_factor < 1:
+            return False, "Invalid max factor, must be greater than zero"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
-            'market-id': market_id,
-            'action': "set-quantity",
-            'quantity': quantity,
-            'max-factor': max_factor
-        })
+        if market_id:
+            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+                'market-id': market_id,
+                'action': "set-quantity",
+                'quantity': quantity,
+                'max-factor': max_factor
+            })
+        else:
+            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
+                'action': "set-quantity",
+                'quantity': quantity,
+                'max-factor': max_factor
+            })
 
         return True, []
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
+            if len(args) == 1:
+                is_float = True
+
+                try:
+                    float(args[0])
+                except ValueError:
+                    is_float = False
+
+                if is_float:
+                    return args, 0
+
             strategy = self._strategy_service.strategy()
             if strategy:
                 return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
@@ -1124,6 +1205,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(UserSaveCommand(strategy_service))
     commands_handler.register(SetQuantityCommand(strategy_service))
     commands_handler.register(AffinityCommand(strategy_service))
+    commands_handler.register(FrozeAssetQuantityCommand(trader_service))
 
     commands_handler.register(ReconnectCommand(watcher_service))
 

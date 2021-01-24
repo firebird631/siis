@@ -36,8 +36,7 @@ class Trader(Runnable):
 
     @todo Create sell order for COMMAND_SELL_ALL_ASSET.
     @todo Move table/dataset like as strategy
-    @todo Move command to specific files like as strategy will be
-    @todo How to stream margin/spot balances when there is no events ? push every seconds ?
+    @todo Move command to specific files like as strategy
     """
 
     MAX_SIGNALS = 1000                        # max signals queue size before ignore some market data updates
@@ -47,6 +46,7 @@ class Trader(Runnable):
 
     # general command
     COMMAND_INFO = 1
+    COMMAND_TRADER_FROZE_ASSET_QUANTITY = 2   # froze a free quantity of an asset that could not be used
 
     # order commands
     COMMAND_CLOSE_MARKET = 110                # close a managed or unmanaged position at market now
@@ -300,6 +300,8 @@ class Trader(Runnable):
         """
         if command_type == Trader.COMMAND_INFO:
             return self.cmd_trader_info(data)
+        elif command_type == Trader.COMMAND_TRADER_FROZE_ASSET_QUANTITY:
+            return self.cmd_trader_froze_asset_quantity(data)
         elif command_type == Trader.COMMAND_CLOSE_MARKET:
             return self.cmd_close_market(data)
         elif command_type == Trader.COMMAND_CLOSE_ALL_MARKET:
@@ -824,7 +826,24 @@ class Trader(Runnable):
 
     def on_asset_updated(self, asset_name, locked, free):
         # stream
-        self.notify_asset_update(self.timestamp, asset_name, free, locked, free+locked)
+        precision = None
+        price = None
+        quote = None
+
+        with self._mutex:
+            asset = self.__get_or_add_asset(asset_name)
+            if asset is not None:
+                precision = asset.precision
+                price = asset.price
+                quote = asset.quote
+
+        self.notify_asset_update(self.timestamp, asset_name, free, locked, free+locked, precision, price, quote)
+
+        # with self._mutex:
+        #     asset_balance = self._account.asset_balance
+        #     free_asset_balance = self._account.free_asset_balance
+
+        # self.notify_asset_update(self.timestamp, 'Spot', free_asset_balance, asset_balance-free_asset_balance, asset_balance)
 
     #
     # market slots
@@ -1493,6 +1512,12 @@ class Trader(Runnable):
         # info on the global trader instance
         pass
 
+    def cmd_trader_froze_asset_quantity(self, data):
+        """
+        @todo
+        """
+        pass
+
     def cmd_close_market(self, data):
         """Manually close a specified position at market now"""
         position_id = None
@@ -1609,13 +1634,14 @@ class Trader(Runnable):
                     'total': total,
                     'upnl': upnl,
                     'margin-level': margin_level,
+                    'precision': 2,  # @todo from account.currency_precision
                 }, timestamp)
 
                 self._balance_streamer.publish()
             except Exception as e:
                 logger.error(repr(e))
 
-    def notify_asset_update(self, timestamp, asset, free, locked, total, upnl=None, margin_level=None):
+    def notify_asset_update(self, timestamp, asset, free, locked, total, precision, price, quote):
         if self._balance_streamer:
             try:
                 self._balance_streamer.member('account-balance').update({
@@ -1624,11 +1650,15 @@ class Trader(Runnable):
                     'free': free,
                     'locked': locked,
                     'total': total,
-                    'upnl': upnl,
-                    'margin-level': margin_level,
+                    'upnl': None,
+                    'margin-level': None,
+                    'precision': precision,
+                    'price': price,
+                    'quote': quote,
                 }, timestamp)
 
                 self._balance_streamer.publish()
+
             except Exception as e:
                 logger.error(repr(e))
 

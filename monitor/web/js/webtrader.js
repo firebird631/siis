@@ -1102,6 +1102,7 @@ function fetch_history() {
 
         let trades = result['data'];
 
+        // naturally ordered
         for (let i = 0; i < trades.length; ++i) {
             let trade = trades[i];
             // window.historical_trades[trade['symbol'] + ':' + trade.id] = trade;
@@ -1138,8 +1139,8 @@ function fetch_history() {
                     'first-realized-exit-datetime': trade.frxot,
                     'last-realized-entry-datetime': trade.lreot,
                     'last-realized-exit-datetime': trade.lrxot,
-                    // 'entry-fees': trade.fees
-                    // 'exit-fees': self._stats['exit-fees'],
+                    'entry-fees': trade.fees * 0.5,  // 'entry-fees': trade.fees
+                    'exit-fees': trade.fees * 0.5,  // 'exit-fees': self._stats['exit-fees'],
                     'profit-loss': trade.rpnl,
                     'profit-loss-currency': trade.pnlcur,
                     'entry-order-type': trade.t,
@@ -1186,16 +1187,28 @@ function fetch_balances() {
 }
 
 function timestamp_to_time_str(timestamp) {
+    if (typeof(timestamp) === "number") {
+        timestamp *= 1000.0;
+    }
+
     let datetime = new Date(timestamp);
     return datetime.toLocaleTimeString("en-GB");
 }
 
 function timestamp_to_date_str(timestamp) {
+    if (typeof(timestamp) === "number") {
+        timestamp *= 1000.0;
+    }
+
     let datetime = new Date(timestamp);
     return datetime.toLocaleDateString("en-GB");
 }
 
 function timestamp_to_datetime_str(timestamp) {
+    if (typeof(timestamp) === "number") {
+        timestamp *= 1000.0;
+    }
+
     let datetime = new Date(timestamp);
     return datetime.toLocaleDateString("en-GB") + " " + datetime.toLocaleTimeString("fr-FR");
 }
@@ -1747,14 +1760,30 @@ function on_update_performances() {
 }
 
 function on_update_balances(symbol, asset, timestamp, data) {
+    console.log(data)
+
     if ($('div.performance-list-entries').css('display') != 'none') {
+        if (window.account_balances[asset]) {
+            // update the related asset
+            window.account_balances[asset].free = data.free;
+            window.account_balances[asset].locked = data.locked;
+            window.account_balances[asset].total = data.total;
+
+            window.account_balances[asset]['margin-level'] = data['margin-level'];
+            window.account_balances[asset].upnl = data.upnl;
+        } else {
+            // or insert
+            window.account_balances[asset] = data;
+
+            if (data.precision === undefined) {
+                window.account_balances[asset].precision = 8;
+            }
+        }
+
+        // and redraw
         let table = $('div.performance-list-entries table.account').find('tbody');
         table.empty();
 
-        // update the related asset
-        window.account_balances[asset] = data;
-
-        // and redraw
         for (let asset in window.account_balances) {
             let balance = window.account_balances[asset];
 

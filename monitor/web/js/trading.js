@@ -363,7 +363,9 @@ let on_active_trade_exit_message = function(market_id, trade_id, timestamp, valu
     remove_active_trade(market_id, trade_id, value);
 
     // insert to historical trades
-    add_historical_trade(market_id, value);
+    if (value['state'] == "closed") {
+        add_historical_trade(market_id, value);
+    }
 };
 
 //
@@ -451,6 +453,10 @@ function add_active_trade(market_id, trade) {
         .addClass(trade.direction == "long" ? 'fa-arrow-up' : 'fa-arrow-down');
 
     let trade_datetime = $('<span class="trade-datetime"></span>').text(timestamp_to_datetime_str(trade['entry-open-time']));
+    trade_datetime.attr('data-toggle', "tooltip");
+    trade_datetime.attr('data-placement', "top");
+    trade_datetime.attr('title', timestamp_to_datetime_str(trade['stats']['first-realized-entry-datetime']));
+
     let trade_order = $('<span class="trade-order"></span>').text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
  
     let trade_entry = $('<span class="trade-entry"></span>').text(trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
@@ -543,6 +549,12 @@ function update_active_trade(market_id, trade) {
 
     let trade_order = $('<span class="trade-order"></span>').text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
 
+    // order date, first trade date
+    let trade_datetime = $('<span class="trade-datetime"></span>').text(timestamp_to_datetime_str(trade['entry-open-time']));
+    trade_datetime.attr('data-toggle', "tooltip");
+    trade_datetime.attr('data-placement', "top");
+    trade_datetime.attr('title', timestamp_to_datetime_str(trade['stats']['first-realized-entry-datetime']));
+
     // entry
     let trade_entry = $('<span class="trade-entry"></span>').text(trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
     trade_entry.attr('data-toggle', "tooltip");
@@ -610,6 +622,7 @@ function update_active_trade(market_id, trade) {
         .css('width', '100%');
 
     // update
+    trade_elt.find('span.trade-datetime').replaceWith(trade_datetime);
     trade_elt.find('span.trade-order').replaceWith(trade_order);
     trade_elt.find('span.trade-entry').replaceWith(trade_entry);
     trade_elt.find('span.trade-exit').replaceWith(trade_exit);
@@ -681,7 +694,11 @@ function add_historical_trade(market_id, trade) {
         .addClass(trade.direction == "long" ? 'trade-long' : 'trade-short')
         .addClass(trade.direction == "long" ? 'fa-arrow-up' : 'fa-arrow-down');
 
-    let trade_datetime = $('<span class="trade-datetime"></span>').text(timestamp_to_datetime_str(trade['entry-open-time']*1000));
+    let trade_datetime = $('<span class="trade-datetime"></span>').text(timestamp_to_datetime_str(trade['entry-open-time']));
+    trade_datetime.attr('data-toggle', "tooltip");
+    trade_datetime.attr('data-placement', "top");
+    trade_datetime.attr('title', timestamp_to_datetime_str(trade['stats']['last-realized-exit-datetime']));
+
     let trade_order = $('<span class="trade-order"></span>').text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
  
     let trade_entry = $('<span class="trade-entry"></span>').text(trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
