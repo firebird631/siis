@@ -831,7 +831,7 @@ class Trader(Runnable):
         quote = None
 
         with self._mutex:
-            asset = self.__get_or_add_asset(asset_name)
+            asset = self.asset(asset_name)
             if asset is not None:
                 precision = asset.precision
                 price = asset.price
