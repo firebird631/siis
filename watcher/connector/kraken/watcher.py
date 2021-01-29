@@ -256,6 +256,10 @@ class KrakenWatcher(Watcher):
                     self._connector = None
 
                 self._ready = False
+                self._connecting = False
+
+                logger.debug("%s disconnected" % (self.name))
+
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())

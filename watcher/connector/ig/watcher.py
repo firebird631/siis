@@ -170,6 +170,9 @@ class IGWatcher(Watcher):
                 self._connector = None
                 self._lightstreamer = None
 
+                self._ready = False
+                self._connecting = False
+
         if self._connector and self._connector.connected and self._ready:
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
@@ -205,6 +208,9 @@ class IGWatcher(Watcher):
                     self._subscribed_ticks = {}
 
                 self._ready = False
+                self._connecting = False
+
+                logger.debug("%s disconnected" % (self.name))
 
             except Exception as e:
                 error_logger.error(repr(e))

@@ -157,6 +157,10 @@ class BinanceWatcher(Watcher):
                 logger.debug(repr(e))
                 error_logger.error(traceback.format_exc())
 
+                self._ready = False
+                self._connecting = False
+                self._connector = None
+
         if self._connector and self._connector.connected and self._ready:
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
@@ -178,6 +182,7 @@ class BinanceWatcher(Watcher):
                     self._user_data_handler = None
 
                 self._ready = False
+                self._connecting = False
 
                 logger.debug("%s disconnected" % (self.name))
 

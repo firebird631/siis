@@ -103,7 +103,7 @@ class MonitorService(Service):
     def ref_reactor(cls):
         cls.REACTOR += 1
         
-        logger.debug("Twisted Reactor Ref : %s ref=%s" % ("running" if reactor.running else "stopped", cls.REACTOR))
+        # logger.debug("Twisted Reactor Ref : %s ref=%s" % ("running" if reactor.running else "stopped", cls.REACTOR))
 
     @classmethod
     def set_reactor(cls, installSignalHandlers=False):
@@ -118,7 +118,7 @@ class MonitorService(Service):
                 error_logger.error(repr(e))
                 return
 
-        logger.debug("Twisted Reactor Set : %s ref=%s" % ("running" if reactor.running else "stopped", cls.REACTOR))
+        # logger.debug("Twisted Reactor Set : %s ref=%s" % ("running" if reactor.running else "stopped", cls.REACTOR))
 
     @classmethod
     def use_reactor(cls, installSignalHandlers=False):
@@ -136,7 +136,7 @@ class MonitorService(Service):
         else:
             cls.REACTOR += 1
 
-        logger.debug("Twisted Reactor Use : %s ref=%s" % ("running" if reactor.running else "stopped", cls.REACTOR))
+        # logger.debug("Twisted Reactor Use : %s ref=%s" % ("running" if reactor.running else "stopped", cls.REACTOR))
 
     @classmethod
     def release_reactor(cls):
@@ -150,7 +150,7 @@ class MonitorService(Service):
             except ReactorNotRunning:
                 pass
 
-        logger.debug("Twisted Reactor Release : %s ref=%s" % ("running" if reactor.running else "stopped", cls.REACTOR))
+        # logger.debug("Twisted Reactor Release : %s ref=%s" % ("running" if reactor.running else "stopped", cls.REACTOR))
 
     #
     # processing
