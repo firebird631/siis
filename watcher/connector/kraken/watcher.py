@@ -239,6 +239,10 @@ class KrakenWatcher(Watcher):
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
 
+                self._ready = False
+                self._connecting = False
+                self._connector = None
+
         if self._ready and self._connector and self._connector.connected:
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
 
@@ -1292,7 +1296,13 @@ class KrakenWatcher(Watcher):
         Update market info.
         """
         with self._mutex:
-            self.__prefetch_markets()
+            try:
+                self.__prefetch_markets()
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+                return
 
         for market_id in self._watched_instruments:
             market = self.fetch_market(market_id)
@@ -1362,7 +1372,7 @@ class KrakenWatcher(Watcher):
             candles = self._connector.get_historical_candles(market_id, interval, from_date, to_date)
         except Exception as e:
             logger.error("Watcher %s cannot retrieve candles %s on market %s" % (self.name, interval, market_id))
-            error_logger.error(traceback.format_exc())
+            traceback_logger.error(traceback.format_exc())
 
         count = 0
         

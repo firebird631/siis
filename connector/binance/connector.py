@@ -61,6 +61,7 @@ class Connector(object):
             self._ws.close()
             self._ws = None
 
+            # or could be called from ws.stop
             MonitorService.release_reactor()
 
         if self._session:
