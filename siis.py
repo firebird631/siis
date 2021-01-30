@@ -3,7 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Siis standard implementation of the application (application main)
 
-from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME
+from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME, APP_RELEASE
 
 import signal
 import threading
@@ -262,7 +262,7 @@ def application(argv):
                     options['profile'] = arg.split('=')[1]
 
                 elif arg == '--version':
-                    Terminal.inst().info('%s %s' % (APP_SHORT_NAME, '.'.join([str(x) for x in APP_VERSION])))
+                    Terminal.inst().info('%s %s release %s' % (APP_SHORT_NAME, '.'.join([str(x) for x in APP_VERSION]), APP_RELEASE))
                     sys.exit(0)
 
                 elif arg == '--help' or '-h':

@@ -5,7 +5,7 @@
 
 from terminal.command import Command
 
-from app.help import display_help, display_cli_help, display_command_help
+from app.help import display_help, display_cli_help, display_command_help, display_version
 
 
 class HelpCommand(Command):
@@ -43,6 +43,21 @@ class UserHelpCommand(Command):
             return True, []
         elif len(args) == 1:
             display_command_help(self._commands_handler, args[0])
+            return True, []
+
+        return False, None
+
+
+class VersionCommand(Command):
+
+    SUMMARY = "display version"
+
+    def __init__(self):
+        super().__init__('version', 'v')
+
+    def execute(self, args):
+        if not args:
+            display_version()
             return True, []
 
         return False, None
@@ -115,6 +130,9 @@ def register_general_commands(commands_handler):
     commands_handler.register(cmd)
 
     cmd = UserHelpCommand(commands_handler)
+    commands_handler.register(cmd)
+
+    cmd = VersionCommand()
     commands_handler.register(cmd)
 
     cmd = AliasCommand(commands_handler)

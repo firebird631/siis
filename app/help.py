@@ -3,11 +3,16 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Application help
 
-from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME
+from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME, APP_RELEASE
 
 from terminal.terminal import Terminal
 from random import randint
 from tools.tool import Tool
+
+
+def display_version():
+    Terminal.inst().message("%s : %s" % (APP_SHORT_NAME, APP_LONG_NAME), view='content')
+    Terminal.inst().message("%s : version %s release %s" % (APP_SHORT_NAME, '.'.join(map(lambda n : "%s" % n, APP_VERSION)), APP_RELEASE), view='content')
 
 
 def display_help(commands_handler, user_context=False):
