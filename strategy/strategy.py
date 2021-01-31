@@ -944,6 +944,10 @@ class Strategy(Runnable):
                     if self.check_watchers() and not self._preset:
                         self.preset()
 
+                    # need to recheck the trades
+                    if self._preset:
+                        pass  # @todo
+
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_DISCONNECTED:
                     # do we want to clean-up and wait connection signal to reinitiate ?
                     pass

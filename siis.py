@@ -818,6 +818,8 @@ def application(argv):
     view_service.terminate() if view_service else None
     notifier_service.terminate() if notifier_service else None
 
+    MonitorService.stop_reactor()
+
     Terminal.inst().info("Saving database...")
     Terminal.inst().flush() 
 

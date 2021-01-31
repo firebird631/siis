@@ -592,11 +592,12 @@ class HttpRestServer(object):
         factory = AllowedIPOnlyFactory(root)
         factory.sessionFactory = LongSession
 
-        MonitorService.ref_reactor()
-        self._listener = reactor.listenTCP(self._port, factory)
+        def listen(server, port, factory):
+            server._listener = reactor.listenTCP(port, factory)
+            if server._listener:
+                MonitorService.use_reactor(installSignalHandlers=False)
 
-        if self._listener:
-            MonitorService.set_reactor(installSignalHandlers=False)
+        reactor.callFromThread(listen, self, self._port, factory)      
 
     def stop(self):
         if self._listener:

@@ -164,6 +164,16 @@ class Asset(object):
             # market quote must be the same as the asset prefered quote
             return
 
+        if self.quantity <= 0.0 or self._price <= 0.0:
+            # empty quantity or undefined average entry price
+            self._profit_loss = 0.0
+            self._profit_loss_rate = 0.0
+
+            self._profit_loss_market = 0.0
+            self._profit_loss_market_rate = 0.0
+
+            return
+
         # delta price if closing at market
         delta_price = market.bid - self._price
 

@@ -84,6 +84,8 @@ class Watcher(Runnable):
         
         self._ready = False
         self._connecting = False
+        self._retry = 0
+        self._last_retry = 0
 
         self._signals = collections.deque()
 
@@ -517,7 +519,6 @@ class Watcher(Runnable):
 
         to_date = today
 
-        last_ticks = []
         last_ohlcs = {}
         current_ohlc = {}
 
@@ -569,7 +570,7 @@ class Watcher(Runnable):
             for generator in generators:              
                 candles = generator.generate_from_candles(last_ohlcs[generator.from_tf], False)
                 if candles:
-                    if 1: # self._store_ohlc: need to store initial-fetch to retrieve them from the strategy
+                    if 1:  # self._store_ohlc: need to store initial-fetch to retrieve them from the strategy
                         for c in candles:
                             self.store_candle(market_id, generator.to_tf, c)
 
@@ -578,7 +579,10 @@ class Watcher(Runnable):
                     # only the last as current
                     current_ohlc[generator.to_tf] = candles[-1]
 
-                elif generator.current:
+                if generator.current:
+                    if 1:  # self._store_ohlc: need to store initial-fetch to retrieve them from the strategy
+                        self.store_candle(market_id, generator.to_tf, generator.current)
+
                     current_ohlc[generator.to_tf] = generator.current
 
                 # remove consumed candles
@@ -598,7 +602,6 @@ class Watcher(Runnable):
             for k, ohlc in current_ohlc.items():
                 # set current OHLC
                 self._last_ohlc[market_id][k] = ohlc
-
 
     def fetch_ticks(self, market_id, tick_depth=None):
         """

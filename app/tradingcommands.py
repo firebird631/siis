@@ -908,9 +908,10 @@ class AssignCommand(Command):
         take_profit = 0.0
         quantity = 0.0
         timeframe = Instrument.TF_4HOUR
+        context = None
 
-        if len(args) < 5:
-            return False, "Missing parameters"
+        if len(args) < 2:
+            return False, "Missing parameters. Need at least entry price and quantiy"
 
         try:
             market_id = args[0]
@@ -919,7 +920,11 @@ class AssignCommand(Command):
                 if not value:
                     continue
 
-                if value.startswith("EP@"):
+                if value == 'L' or value == 'long':
+                    direction = 1
+                elif value == 'S' or value == 'short':
+                    direction = -1
+                elif value.startswith("EP@"):
                     entry_price = float(value[3:])
                 elif value.startswith("SL@"):
                     stop_loss = float(value[3:])
@@ -927,6 +932,8 @@ class AssignCommand(Command):
                     take_profit = float(value[3:])
                 elif value.startswith("'"):
                     timeframe = timeframe_from_str(value[1:])
+                elif value.startswith("-"):
+                    context = value[1:]
                 else:
                     quantity = float(value)
 
@@ -936,11 +943,17 @@ class AssignCommand(Command):
         if entry_price <= 0.0:
             return False, "Entry price must be specified"
 
-        if stop_loss and stop_loss > entry_price:
-            return False, "Stop-loss must be lesser than entry price"
+        if stop_loss:
+            if direction > 0 and stop_loss >= entry_price:
+                return False, "Stop-loss must be lesser than entry price"
+            elif direction < 0 and stop_loss <= entry_price:
+                return False, "Stop-loss must be greater than entry price"
 
-        if take_profit and take_profit < entry_price:
-            return False, "Take-profit must be greater than entry price"
+        if take_profit:
+            if direction > 0 and take_profit <= entry_price:
+                return False, "Take-profit must be greater than entry price"
+            elif direction < 0 and take_profit >= entry_price:
+                return False, "Take-profit must be lesser than entry price"
 
         if quantity <= 0.0:
             return False, "Quantity must be specified"
@@ -952,7 +965,8 @@ class AssignCommand(Command):
             'quantity': quantity,
             'stop-loss': stop_loss,
             'take-profit': take_profit,
-            'timeframe': timeframe
+            'timeframe': timeframe,
+            'context': context
         })
 
         return True, []

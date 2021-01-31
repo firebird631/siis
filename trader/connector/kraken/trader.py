@@ -454,25 +454,31 @@ class KrakenTrader(Trader):
 
         # and find related watched markets
         for qs in self._quotes:
-            if asset_name+qs in self._markets:
+            if asset_name+qs in self._watcher._instruments:
                 asset.add_market_id(asset_name+qs)
+
+            if asset_name+qs[1:] in self._watcher._instruments:
+                asset.add_market_id(asset_name+qs[1:])
+
+            if asset_name[1:]+qs[1:] in self._watcher._instruments:
+                asset.add_market_id(asset_name[1:]+qs[1:])
 
         # find the most appriopriate quote of an asset.
         quote_symbol = None
 
-        # @todo update
-        if asset.symbol == self._account.currency and self._watcher.has_instrument(asset.symbol+self._account.alt_currency):
-            # probably XXBTZUSD
-            quote_symbol = self._account.alt_currency
-        elif asset.symbol != self._account.currency and self._watcher.has_instrument(asset.symbol+self._account.currency):
-            # any pair based on XBT
-            quote_symbol = self._account.currency
-        else:
-            # others case but might not occurs often because most of the assets are expressed in BTC
-            for qs in self._quotes:
-                if self._watcher.has_instrument(asset.symbol+qs):
-                    quote_symbol = qs
-                    break
+        if asset.symbol != self._account.currency:
+            # any pair based on account base currency (ZEUR/ZUSD...)
+            if not quote_symbol and self._watcher.has_instrument(asset.symbol+self._account.currency):
+                # XXRPZEUR, XXBTZEUR, XLTCZEUR...
+                quote_symbol = self._account.currency
+
+            elif not quote_symbol and self._watcher.has_instrument(asset.symbol+self._account.currency[1:]):
+                # XTZEUR, SCEUR, TRXEUR...
+                quote_symbol = self._account.currency
+
+            elif not quote_symbol and self._watcher.has_instrument(asset.symbol[1:]+self._account.currency[1:]):
+                # XDGEUR...
+                quote_symbol = self._account.currency
 
         if not quote_symbol:
             if not asset.quote:
@@ -489,6 +495,7 @@ class KrakenTrader(Trader):
 
     def __fetch_assets(self):
         balances = self._watcher.connector.get_balances()
+        open_orders = self._watcher.connector.get_open_orders()
 
         for asset_name, balance in balances.items():
             asset = self.__get_or_add_asset(asset_name)
@@ -498,7 +505,7 @@ class KrakenTrader(Trader):
             if asset_info:
                 asset.precision = asset_info.get('decimals', 8)
 
-            # @todo how to distinct locked from free ?
+            # cannot distinct from locked to free, compute locked from active orders
             asset.set_quantity(0.0, float(balance))
 
     def __fetch_positions(self):

@@ -60,9 +60,8 @@ class ServerProtocol(WebSocketServerProtocol):
 
     @classmethod
     def close_all(cls, data):
-        payload = json.dumps({'reason': "bye"}, ensure_ascii=False).encode('utf8')
         for c in set(cls.connections):
-            reactor.callFromThread(cls.sendClose, c, payload)
+            reactor.callFromThread(cls.sendClose, c, 1000)  # normal close
 
 
 class AllowedIPOnlyFactory(WebSocketServerFactory):
@@ -96,12 +95,12 @@ class HttpWebSocketServer(object):
         factory.protocol.monitor_service = self._monitor_service
         factory.setProtocolOptions(maxConnections=5)
 
-        MonitorService.ref_reactor()
-        self._listener = reactor.listenTCP(self._port, factory)
-        # self._listener = reactor.listenSSL(self._port, factory, contextFactory)
+        def listen(server, port, factory):
+            server._listener = reactor.listenTCP(port, factory)
+            if server._listener:
+                MonitorService.use_reactor(installSignalHandlers=False)
 
-        if self._listener:
-            MonitorService.set_reactor(installSignalHandlers=False)
+        reactor.callFromThread(listen, self, self._port, factory)
 
     def publish(self, stream_category, stream_group, stream_name, content):
         # insert category, group and stream name
@@ -112,6 +111,8 @@ class HttpWebSocketServer(object):
         ServerProtocol.broadcast_message(content)
 
     def stop(self):
+        ServerProtocol.close_all(None)
+
         if self._listener:
             self._listener.stopListening()
             self._listener = None

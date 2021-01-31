@@ -839,12 +839,6 @@ class Trader(Runnable):
 
         self.notify_asset_update(self.timestamp, asset_name, free, locked, free+locked, precision, price, quote)
 
-        # with self._mutex:
-        #     asset_balance = self._account.asset_balance
-        #     free_asset_balance = self._account.free_asset_balance
-
-        # self.notify_asset_update(self.timestamp, 'Spot', free_asset_balance, asset_balance-free_asset_balance, asset_balance)
-
     #
     # market slots
     #
@@ -1040,11 +1034,11 @@ class Trader(Runnable):
                 if market.vol24h_quote:
                     # @todo could be configured
                     low = 0
-                    if market.quote in ('USD', 'EUR', 'ZEUR', 'ZUSD', 'USDT', 'PAX', 'USDC', 'USDS', 'BUSD', 'TUSD'):
+                    if market.quote in ('USD', 'EUR', 'ZEUR', 'ZUSD', 'ZCAD', 'ZJPY', 'USDT', 'PAX', 'DAI', 'USDC', 'USDS', 'BUSD', 'TUSD'):
                         low = 500000
-                    elif market.quote in ('BTC'):
+                    elif market.quote in ('BTC', 'XBT', 'XXBT'):
                         low = 100
-                    elif market.quote in ('ETH'):
+                    elif market.quote in ('ETH', 'XETH'):
                         low = 5000
                     elif market.quote in ('BNB'):
                         low = 50000
@@ -1071,8 +1065,7 @@ class Trader(Runnable):
         """
         Returns a table of any non empty assets.
         """
-        columns = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'Change %',
-                'P/L %s' % self.account.currency, 'P/L %s' % self.account.alt_currency)
+        columns = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'Change %', 'P/L')
         total_size = (len(columns), 0)
         data = []
 
@@ -1098,44 +1091,32 @@ class Trader(Runnable):
                 change = ""
                 change_percent = ""
                 profit_loss = ""
-                profit_loss_alt = ""
 
                 if market:
                     locked = market.format_quantity(asset.locked)
                     free = market.format_quantity(asset.free)
                     quantity = market.format_quantity(asset.quantity)
 
-                    base_exchange_rate = 1.0
+                    if market.bid and asset.price:
+                        change = market.format_price(market.bid - asset.price) + market.quote_display or market.quote
+                        change_percent = (market.bid - asset.price) / asset.price * 100.0 if asset.price else 0.0
 
-                    change = market.format_price(market.bid - asset.price) + market.quote_display or market.quote
-                    change_percent = (market.bid - asset.price) / asset.price * 100.0 if asset.price else 0.0
+                        if change_percent > 0.0:
+                            change_percent = Color.colorize("%.2f" % change_percent, Color.GREEN, style)
+                        elif change_percent < 0.0:
+                            change_percent = Color.colorize("%.2f" % change_percent, Color.RED, style)
+                        else:
+                            change_percent = "%.2f" % change_percent
 
-                    if change_percent > 0.0:
-                        change_percent = Color.colorize("%.2f" % change_percent, Color.GREEN, style)
-                    elif change_percent < 0.0:
-                        change_percent = Color.colorize("%.2f" % change_percent, Color.RED, style)
-                    else:
-                        change_percent = "%.2f" % change_percent
+                    if asset.quantity > 0.0:
+                        profit_loss = market.format_price(asset.profit_loss)
 
-                    quote_market = self.market(market.quote+self.account.currency)
-                    if quote_market:
-                        base_exchange_rate = 1.0 / quote_market.price if quote_market.price else 1.0
-
-                    profit_loss = market.format_price(asset.profit_loss) if market.quote == self.account.currency else ""
-                    profit_loss_alt = market.format_price(asset.profit_loss / base_exchange_rate) if market.quote == self.account.alt_currency else ""
-
-                    if asset.profit_loss > 0.0:
-                        if profit_loss:
-                            profit_loss = Color.colorize(profit_loss, Color.GREEN, style)
-
-                        if profit_loss_alt:
-                            profit_loss_alt = Color.colorize(profit_loss_alt, Color.GREEN, style)
-                    elif asset.profit_loss < 0.0:
-                        if profit_loss:
-                            profit_loss = Color.colorize(profit_loss, Color.RED, style)
-
-                        if profit_loss_alt:
-                            profit_loss_alt = Color.colorize(profit_loss_alt, Color.RED, style)
+                        if asset.profit_loss > 0.0:
+                            if profit_loss:
+                                profit_loss = Color.colorize(profit_loss, Color.GREEN, style)
+                        elif asset.profit_loss < 0.0:
+                            if profit_loss:
+                                profit_loss = Color.colorize(profit_loss, Color.RED, style)
                 else:
                     locked = "%.8f" % asset.locked
                     free = "%.8f" % asset.free
@@ -1146,11 +1127,10 @@ class Trader(Runnable):
                     locked,
                     free,
                     quantity,
-                    asset.format_price(asset.price) if asset.price else charmap.HOURGLASS,
-                    change or charmap.ROADBLOCK,
-                    change_percent or charmap.ROADBLOCK,
-                    profit_loss or charmap.ROADBLOCK,
-                    profit_loss_alt or charmap.ROADBLOCK,
+                    "%s%s" % (asset.format_price(asset.price), asset.quote) if asset.price else charmap.HOURGLASS,
+                    "%s%s" % (change, asset.quote) if change else '-',
+                    change_percent or '-',
+                    "%s%s" % (profit_loss, asset.quote) if profit_loss else '-',
                 )
 
                 data.append(row[0:1] + row[1+col_ofs:])

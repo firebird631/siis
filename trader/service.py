@@ -141,6 +141,12 @@ class TraderService(Service):
             else:
                 # live with real trader
                 inst_trader = Clazz(self)
+                preference = trader_config.get('preference', None)
+
+                if preference:
+                    # prefered currency if specified, usefull for some spots brokers
+                    inst_trader.account.set_currency(preference.get('currency', 'USD'), preference.get('currency-symbol', '$'))
+                    inst_trader.account.set_alt_currency(preference.get('alt-currency', 'USD'), preference.get('alt-currency-symbol', '$'))
 
                 if inst_trader.start():
                     self._trader = inst_trader
@@ -256,6 +262,10 @@ class TraderService(Service):
             if 'paper-mode' in profile_trader_config:
                 # paper-mode from profile overrides
                 user_trader_config['paper-mode'] = profile_trader_config['paper-mode']
+
+            if 'preference' in profile_trader_config:
+                # preference from profile overrides
+                user_trader_config['preference'] = profile_trader_config['preference']
 
             # keep overrided
             trader_config = user_trader_config

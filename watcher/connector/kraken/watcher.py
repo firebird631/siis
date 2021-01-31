@@ -37,7 +37,7 @@ class KrakenWatcher(Watcher):
     """
     Kraken market watcher using REST + WS.
 
-    @todo create order, cancel order, position info
+    @todo position info
     @todo contract_size, value_per_pip, base_exchange_rate (initials and updates)
     @todo fee from 30 day traded volume
     @todo order book WS
@@ -45,6 +45,11 @@ class KrakenWatcher(Watcher):
 
     BASE_QUOTE = "ZUSD"
     UPDATE_ASSET_BALANCE_DELAY = 60.0  # each minute
+    
+    USE_SPREAD = False  # use spread data in place of ticker (more faster and precise but wakeup a lot the listeners)
+    
+    RECONNECT_WINDOW = 10*60.0  # 10min of rolling window
+    MAX_RETRY_PER_WINDOW = 150  # 150 retry per rolling window
 
     TF_MAP = {
         60: 1,          # 1m
@@ -178,18 +183,14 @@ class KrakenWatcher(Watcher):
 
                             if ws_token and ws_token.get('token'):
                                 self._connector.ws.subscribe_private(
-                                    subscription={
-                                        'name': 'ownTrades',
-                                        'token': ws_token['token']
-                                    },
+                                    token=ws_token['token'],
+                                    subscription='ownTrades',
                                     callback=self.__on_own_trades
                                 )
 
                                 self._connector.ws.subscribe_private(
-                                    subscription={
-                                        'name': 'openOrders',
-                                        'token': ws_token['token']
-                                    },
+                                    token=ws_token['token'],
+                                    subscription='openOrders',
                                     callback=self.__on_open_orders
                                 )
 
@@ -206,20 +207,24 @@ class KrakenWatcher(Watcher):
                             if pairs:
                                 try:
                                     self._connector.ws.subscribe_public(
-                                        subscription={
-                                            'name': 'ticker'
-                                        },
+                                        subscription='ticker',
                                         pair=pairs,
                                         callback=self.__on_ticker_data
                                     )
 
                                     self._connector.ws.subscribe_public(
-                                        subscription={
-                                            'name': 'trade'
-                                        },
+                                        subscription='trade',
                                         pair=pairs,
                                         callback=self.__on_trade_data
                                     )
+
+                                    # market spread (order book of first level)
+                                    if KrakenWatcher.USE_SPREAD:
+                                        self._connector.ws.subscribe_public(
+                                            subscription='spread',
+                                            pair=pairs,
+                                            callback=self.__on_spread_data
+                                        )
 
                                     # @todo order book
 
@@ -372,26 +377,28 @@ class KrakenWatcher(Watcher):
 
             if pairs:
                 self._connector.ws.subscribe_public(
-                    subscription={
-                        'name': 'ticker'
-                    },
+                    subscription='ticker',
                     pair=pairs,
                     callback=self.__on_ticker_data
                 )
 
                 self._connector.ws.subscribe_public(
-                    subscription={
-                        'name': 'trade'
-                    },
+                    subscription='trade',
                     pair=pairs,
                     callback=self.__on_trade_data
                 )
 
+                # market spread (order book of first level)
+                if KrakenWatcher.USE_SPREAD:
+                    self._connector.ws.subscribe_public(
+                        subscription='spread',
+                        pair=pairs,
+                        callback=self.__on_spread_data
+                    )
+
                 if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
                     self._connector.ws.subscribe_public(
-                        subscription={
-                            'name': 'book'
-                        },
+                        subscription='book',
                         pair=pairs,
                         depth=order_book_depth,
                         callback=self.__on_depth_data
@@ -400,12 +407,15 @@ class KrakenWatcher(Watcher):
         return True
 
     def unsubscribe(self, market_id, timeframe):
-        with self._mutex:
-            if market_id in self._multiplex_handlers:
-                self._multiplex_handlers[market_id].close()
-                del self._multiplex_handlers[market_id]
+        # @todo because of watch list, and correct WS instrument name do for and for ticker/trade/spread/book
+        # with self._mutex:
+        #     if market_id in self._watched_instruments:
+        #         if market_id in instruments:
+        #             pair = instruments[market_id]['wsname']
+        #         self._connector.ws.unsubscribe_public(pair)
+        #         del self._watched_instruments[market_id]
 
-                return True
+        #         return True
 
         return False
 
@@ -448,18 +458,14 @@ class KrakenWatcher(Watcher):
 
         #     if ws_token and ws_token.get('token'):
         #         self._connector.ws.subscribe_private(
-        #             subscription={
-        #                 'name': 'ownTrades',
-        #                 'token': ws_token['token']
-        #             },
+        #             token=ws_token['token'],
+        #             subscription='ownTrades',
         #             callback=self.__on_own_trades
         #         )
 
         #         self._connector.ws.subscribe_private(
-        #             subscription={
-        #                 'name': 'openOrders',
-        #                 'token': ws_token['token']
-        #             },
+        #             token=ws_token['token'],
+        #             subscription='openOrders',
         #             callback=self.__on_open_orders
         #         )
 
@@ -592,7 +598,7 @@ class KrakenWatcher(Watcher):
                 market.fee_currency = instrument['fee_volume_currency']
 
             if quote_asset != self.BASE_QUOTE:
-                # from XXBTZUSD / XXBTZEUR ...
+                # from XXBTZUSD, XXBTZEUR, XETHZUSD ...
                 # @todo
                 pass
                 # if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
@@ -604,7 +610,7 @@ class KrakenWatcher(Watcher):
             else:
                 market.base_exchange_rate = 1.0
 
-            # @todo contract_size
+            # @todo contract_size and value_per_pip
             # market.contract_size = 1.0 / mid_price
             # market.value_per_pip = market.contract_size / mid_price
 
@@ -685,9 +691,14 @@ class KrakenWatcher(Watcher):
             # else:
             #     market.base_exchange_rate = 1.0
 
-            if bid > 0.0 and ask > 0.0:
-                market_data = (market_id, last_update_time > 0, last_update_time, bid, ask, None, None, None, vol24_base, vol24_quote)
+            if KrakenWatcher.USE_SPREAD:
+                # only update vol24h data
+                market_data = (market_id, None, None, None, None, None, None, None, vol24_base, vol24_quote)
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+            else:
+                if bid > 0.0 and ask > 0.0:
+                    market_data = (market_id, last_update_time > 0, last_update_time, bid, ask, None, None, None, vol24_base, vol24_quote)
+                    self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)           
 
         elif isinstance(data, dict):
             if not data.get('event'):
@@ -697,6 +708,38 @@ class KrakenWatcher(Watcher):
                 if data['status'] == "subscribed" and data['channelName'] == "ticker":
                     # @todo register channelID...
                     # {'channelID': 93, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'ticker'}}
+                    pass
+
+    def __on_spread_data(self, data):
+        if isinstance(data, list) and data[2] == "spread":
+            market_id = self._wsname_lookup.get(data[3])
+            base_asset, quote_asset = data[3].split('/')
+
+            if not market_id:
+                return
+
+            spread = data[1]
+
+            last_update_time = float(spread[2])
+
+            bid = float(spread[0])
+            ask = float(spread[1])
+
+            # 3 is bid volume
+            # 4 is ask volume
+
+            if bid > 0.0 and ask > 0.0:
+                market_data = (market_id, last_update_time > 0, last_update_time, bid, ask, None, None, None, None, None)
+                self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+
+        elif isinstance(data, dict):
+            if not data.get('event'):
+                return
+
+            if data['event'] == "subscriptionStatus":
+                if data['status'] == "subscribed" and data['channelName'] == "spread":
+                    # @todo register channelID...
+                    # {'channelID': 536, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'spread'}}
                     pass
 
     def __on_trade_data(self, data):

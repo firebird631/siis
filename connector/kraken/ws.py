@@ -1,24 +1,7 @@
-# coding=utf-8
-
-# Copyright 2019 Payward Inc.
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy of
-# this software and associated documentation files (the "Software"), to deal in
-# the Software without restriction, including without limitation the rights to
-# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-# of the Software, and to permit persons to whom the Software is furnished to do
-# so, subject to the following conditions:
-# 
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+# @date 2020-01-31
+# @author Frederic Scherma, All rights reserved without prejudices.
+# @license Copyright (c) 2020 Dream Overflow
+# Kraken Websocket connector.
 
 import traceback
 import threading
@@ -36,21 +19,75 @@ from monitor.service import MonitorService
 
 error_logger = logging.getLogger('siis.error.kraken.ws')
 traceback_logger = logging.getLogger('siis.traceback.kraken.ws')
+logger = logging.getLogger('siis.kraken.ws')
 
 
 class KrakenClientProtocol(WebSocketClientProtocol):
 
-    def __init__(self, factory, payload=None):
+    def __init__(self, factory):
         super().__init__()
         self.factory = factory
-        self.payload = payload
 
     def onOpen(self):
         self.factory.protocol_instance = self
 
     def onConnect(self, response):
-        if self.payload:
-            self.sendMessage(self.payload, isBinary=False)
+        subscriptions = self.factory.subscriptions
+        if subscriptions:
+            for subscription, pair in subscriptions.items():
+                if pair:
+                    data = {
+                        'event': 'subscribe',
+                        'subscription': {
+                            'name': subscription
+                        },
+                        'pair': list(pair)
+                    }
+
+                    payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+                    self.sendMessage(payload, isBinary=False)
+
+        # reset the delay after reconnecting
+        self.factory.resetDelay()
+
+    def onMessage(self, payload, isBinary):
+        if not isBinary:
+            try:
+                payload_obj = json.loads(payload.decode('utf8'))
+            except ValueError:
+                pass
+            else:
+                try:
+                    self.factory.callback(payload_obj)
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
+
+
+class KrakenPrivateClientProtocol(WebSocketClientProtocol):
+
+    def __init__(self, factory):
+        super().__init__()
+        self.factory = factory
+
+    def onOpen(self):
+        self.factory.protocol_instance = self
+
+    def onConnect(self, response):
+        subscriptions = self.factory.subscriptions
+        if subscriptions:
+            for subscription in subscriptions:
+                data = {
+                    'event': 'subscribe',
+                    'subscription': {
+                        'name': subscription,
+                        'token': self.factory.token
+                    }
+                }
+
+                payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+                self.sendMessage(payload, isBinary=False)
+
         # reset the delay after reconnecting
         self.factory.resetDelay()
 
@@ -80,11 +117,16 @@ class KrakenReconnectingClientFactory(ReconnectingClientFactory):
 
 class KrakenClientFactory(WebSocketClientFactory, KrakenReconnectingClientFactory):
 
-    def __init__(self, *args, payload=None, **kwargs):
+    def __init__(self, *args, subscription=None, pair=None, **kwargs):
         WebSocketClientFactory.__init__(self, *args, **kwargs)
         self.protocol_instance = None
         self.base_client = None
-        self.payload = payload
+
+        # active pairs
+        self.subscriptions = {}
+
+        if subscription and pair:
+            self.subscriptions[subscription] = set(pair)
 
     protocol = KrakenClientProtocol
     _reconnect_error_payload = {
@@ -103,7 +145,40 @@ class KrakenClientFactory(WebSocketClientFactory, KrakenReconnectingClientFactor
             self.callback(self._reconnect_error_payload)
 
     def buildProtocol(self, addr):
-        return KrakenClientProtocol(self, payload=self.payload)
+        return KrakenClientProtocol(self)
+
+
+class KrakenPrivateClientFactory(WebSocketClientFactory, KrakenReconnectingClientFactory):
+
+    def __init__(self, *args, token, subscription=None, **kwargs):
+        WebSocketClientFactory.__init__(self, *args, **kwargs)
+        self.protocol_instance = None
+        self.base_client = None
+
+        self.subscriptions = set()
+        self.token = token
+
+        if subscription:
+            self.subscriptions.add(subscription)
+
+    protocol = KrakenPrivateClientProtocol
+    _reconnect_error_payload = {
+        'e': 'error',
+        'm': 'Max reconnect retries reached'
+    }
+
+    def clientConnectionFailed(self, connector, reason):
+        self.retry(connector)
+        if self.retries > self.maxRetries:
+            self.callback(self._reconnect_error_payload)
+
+    def clientConnectionLost(self, connector, reason):
+        self.retry(connector)
+        if self.retries > self.maxRetries:
+            self.callback(self._reconnect_error_payload)
+
+    def buildProtocol(self, addr):
+        return KrakenPrivateClientProtocol(self)
 
 
 class KrakenSocketManager(threading.Thread):
@@ -122,12 +197,12 @@ class KrakenSocketManager(threading.Thread):
         self._user_listen_key = None
         self._user_callback = None
 
-    def _start_socket(self, id_, payload, callback):
+    def _start_socket(self, id_, subscription, pair, callback):
         if id_ in self._conns:
             return False
 
         factory_url = self.STREAM_URL
-        factory = KrakenClientFactory(factory_url, payload=payload)
+        factory = KrakenClientFactory(factory_url, subscription=subscription, pair=pair)
         factory.base_client = self
         factory.protocol = KrakenClientProtocol
         factory.callback = callback
@@ -135,18 +210,18 @@ class KrakenSocketManager(threading.Thread):
         self.factories[id_] = factory
         reactor.callFromThread(self.add_connection, id_, factory_url)
 
-    def _start_private_socket(self, id_, payload, callback):
+    def _start_private_socket(self, id_, token, subscription, callback):
         if id_ in self._private_conns:
             return False
 
         factory_url = self.PRIVATE_STREAM_URL
-        factory = KrakenClientFactory(factory_url, payload=payload)
+        factory = KrakenPrivateClientFactory(factory_url, token=token, subscription=subscription)
         factory.base_client = self
-        factory.protocol = KrakenClientProtocol
+        factory.protocol = KrakenPrivateClientProtocol
         factory.callback = callback
         factory.reconnect = True
         self.factories[id_] = factory
-        reactor.callFromThread(self.add_connection, id_, factory_url)
+        reactor.callFromThread(self.add_private_connection, id_, factory_url)
 
     def add_connection(self, id_, url):
         """
@@ -165,6 +240,64 @@ class KrakenSocketManager(threading.Thread):
         factory = self.factories[id_]
         options = ssl.optionsForClientTLS(hostname=hostname) # for TLS SNI
         self._conns[id_] = connectWS(factory, options)
+
+    def add_private_connection(self, id_, url):
+        """
+        Convenience function to connect and store the resulting
+        connector.
+        """
+        # factory = self.factories[id_]
+        # context_factory = ssl.ClientContextFactory()
+        # self._conns[id_] = connectWS(factory, context_factory)
+
+        if not url.startswith("wss://"):
+            raise ValueError("expected wss:// URL prefix")
+
+        hostname = url[6:]
+
+        factory = self.factories[id_]
+        options = ssl.optionsForClientTLS(hostname=hostname) # for TLS SNI
+        self._private_conns[id_] = connectWS(factory, options)
+
+    def send_subscribe(self, id_, subscription, pair):
+        factory = self.factories[id_]
+
+        if subscription and pair and factory:
+            if not subscription in factory.subscriptions:
+                factory.subscriptions[subscription] = set()
+
+            factory.subscriptions[subscription].update(pair)
+
+            if factory.protocol_instance:
+                data = {
+                    'event': 'subscribe',
+                    'subscription': {
+                        'name': subscription
+                    },
+                    'pair': pair
+                }
+
+                factory.protocol_instance.sendMessage(data, isBinary=False)
+
+    def send_unsubscribe(self, id_, subscription, pair):
+        factory = self.factories[id_]
+
+        if subscription and pair and factory:
+            if not subscription in factory.subscriptions:
+                factory.subscriptions[subscription] = set()
+
+            factory.subscriptions[subscription] = factory.subscriptions[subscription].difference(pair)
+
+            if factory.protocol_instance:
+                data = {
+                    'event': 'unsubscribe',
+                    'subscription': {
+                        'name': subscription
+                    },
+                    'pair': pair
+                }
+
+                factory.protocol_instance.sendMessage(data, isBinary=False)
 
     def stop_socket(self, conn_key):
         """Stop a websocket given the connection key
@@ -226,7 +359,20 @@ class KrakenSocketManager(threading.Thread):
 
 
 class WssClient(KrakenSocketManager):
-    """ Websocket client for Kraken """
+    """
+    Websocket client for Kraken.
+    
+    Public sockets are grouped by event (trade, ticker, spread, book),
+    then adding a subscription only create one socket per type, and share the same
+    accross the differents instruments pairs.
+
+    Private socket are grouped by event (ownTrades, myOrders) and are for any instruments pairs.
+
+    This mean a common case will use 2 privates socket plus from 1 to 4 public sockets.
+
+    # @todo request private might use the myOrders socket
+    # @todo add unsubscribe_public
+    """
 
     ###########################################################################
     # Kraken commands
@@ -246,26 +392,25 @@ class WssClient(KrakenSocketManager):
         finally:
             MonitorService.release_reactor()
 
-    def subscribe_public(self, pair, subscription, callback):
-        id_ = "_".join([subscription['name'], pair[0]])
-        data = {
-            'event': 'subscribe',
-            'subscription': subscription,
-            'pair': pair,
-        }
-        payload = json.dumps(data, ensure_ascii=False).encode('utf8')
-        return self._start_socket(id_, payload, callback)
+    def subscribe_public(self, subscription, pair, callback):
+        id_ = "_".join([subscription])
 
-    def subscribe_private(self, subscription, callback):
-        id_ = "_".join([subscription['name']])
-        data = {
-            'event': 'subscribe',
-            'subscription': subscription,
-        }
-        payload = json.dumps(data, ensure_ascii=False).encode('utf8')
-        return self._start_private_socket(id_, payload, callback)
+        if not id_ in self.factories:
+            self._start_socket(id_, subscription, pair, callback)
+        else:
+            reactor.callFromThread(self.send_subscribe, id_, subscription, pair)
 
-    def request(self, request, callback, **kwargs):
-        id_ = "_".join([request['event'], request['type']])
-        payload = json.dumps(request, ensure_ascii=False).encode('utf8')
-        return self._start_socket(id_, payload, callback, private=True)
+    def unsubscribe_public(self, subscription, pair):
+        id_ = "_".join([subscription])
+
+        if id_ in self.factories:
+            reactor.callFromThread(self.send_unsubscribe, id_, subscription, pair)
+
+    def subscribe_private(self, token, subscription, callback):
+        id_ = "_".join([subscription])
+
+        return self._start_private_socket(id_, token, subscription, callback)
+
+    # def request(self, request, callback, **kwargs):
+    #     id_ = "_".join([request['event'], request['type']])
+    #     return self._start_private_socket(id_, request, callback, private=True)

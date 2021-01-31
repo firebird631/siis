@@ -22,8 +22,8 @@ class KrakenAccount(Account):
 
     CURRENCY = "ZUSD"
     CURRENCY_SYMBOL = "$"
-    ALT_CURRENCY = "ZEUR"
-    ALT_CURRENCY_SYMBOL = "€"
+    ALT_CURRENCY = "XXBT"
+    ALT_CURRENCY_SYMBOL = "₿"
 
     UPDATE_TIMEOUT = 60
 

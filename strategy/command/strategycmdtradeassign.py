@@ -27,6 +27,7 @@ def cmd_trade_assign(strategy, strategy_trader, data):
     stop_loss = data.get('stop-loss', 0.0)
     take_profit = data.get('take-profit', 0.0)
     timeframe = data.get('timeframe', Instrument.TF_4HOUR)
+    context = data.get('context', None)
 
     if quantity <= 0.0:
         results['messages'].append("Missing or empty quantity.")
@@ -36,12 +37,24 @@ def cmd_trade_assign(strategy, strategy_trader, data):
         results['messages'].append("Invalid entry price.")
         results['error'] = True
 
-    if stop_loss and stop_loss > entry_price:
-        results['messages'].append("Stop-loss price must be lesser than entry price.")
-        results['error'] = True
+    if stop_loss:
+        if direction > 0 and stop_loss >= entry_price:
+            results['messages'].append("Stop-loss price must be lesser than entry price.")
+            results['error'] = True
+        elif direction < 0 and stop_loss <= entry_price:
+            results['messages'].append("Stop-loss price must be greater than entry price.")
+            results['error'] = True
 
-    if take_profit and take_profit < entry_price:
-        results['messages'].append("Take-profit price must be greater then entry price.")
+    if take_profit:
+        if direction > 0 and take_profit <= entry_price:
+            results['messages'].append("Take-profit price must be greater then entry price.")
+            results['error'] = True
+        elif direction < 0 and take_profit >= entry_price:
+            results['messages'].append("Take-profit price must be lesser then entry price.")
+            results['error'] = True
+
+    if direction != Order.LONG and direction != Order.SHORT:
+        results['messages'].append("Invalid direction.")
         results['error'] = True
 
     if direction != Order.LONG:
@@ -70,7 +83,7 @@ def cmd_trade_assign(strategy, strategy_trader, data):
     trade._entry_state = StrategyAssetTrade.STATE_FILLED
     trade._exit_state = StrategyAssetTrade.STATE_NEW
     
-    trade.dir = Order.LONG
+    trade.dir = direction
     trade.op = entry_price
     trade.oq = quantity
 
@@ -82,6 +95,14 @@ def cmd_trade_assign(strategy, strategy_trader, data):
     trade.aep = entry_price
 
     trade.e = quantity
+
+    if context:
+        if not strategy_trader.set_trade_context(trade, context):
+            # add an error result message
+            results['error'] = True
+            results['messages'].append("Rejected trade on %s:%s because the context was not found" % (strategy.identifier, strategy_trader.instrument.market_id))
+
+            return results
 
     strategy_trader.add_trade(trade)
 
