@@ -1,25 +1,23 @@
-###############
-# Discussions #
-###############
+#####################
+# OBJETS A RESOUDRE #
+#####################
 
 Limitations de IG des 10k candle/mois en fetch :
-    - selon la stratégie on en a besoin au moins de 47 à chaque démarrage pour se synchroniser,
-        - cela permet 21 démarrages par mois avec 10 symboles, ce qui est large même si on relance 1x ou 2 par semaine.
-    - besoin de synchro depuis les imports MT5 ou d'une autre source CFD
-        - ou mieux depuis une source data avec des volumes futures pour indices, metals, forex
+    - IG n'offre que les historique des commodities, des indices et des forex (et pas des actions)
+    - selon la stratégie on en a besoin au moins de 50 par timeframe par symbol à chaque démarrage pour se synchroniser,
 
 Distance et timeout-distance si en DIST doivent être supporté par distance_type et timeout_distance_type dans les methode de SL/TP et dynamiques.
 
 Bootstrap et Preprocess risque de se recouvrer dans certains cas :
-    - comment eviter cela si la stratégie execute les 2 méthodes ?
+    - comment éviter cela si la stratégie execute les 2 méthodes ?
     - le bootstrap devrait être retiré au profit d'une initialisation des signaux
         - utilisant le depth normal, pas d'history comme ça
             - on a bourricot, firebird et scalpspectre qui bootstrap
-                - bourricot : c'est juste pour détecter les pullback, ça peu se faire sans état
+                - bourricot : c'est juste pour détecter les pullback, ça peu se faire sans état, et pas utile pour les CVP
                 - scalpspectre : pas besoin car c'est pour du scalp et est abandonné
                 - firebird : pareil que pour bourricot on peu calculer les flags autrement
             => une méthode bootstrap mais qui ne rejout pas les candles :
-                - ce qui en plus évite les imprecisions de ce pseudo replay
+                - ce qui en plus évite les imprécisions de ce pseudo replay
 
 
 ############
@@ -27,18 +25,16 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 ############
 
 #116 kraken watcher et trader :
-    - fetch des positions (mais on l'a avec le WS)
-    - fetch des trades history (mais on l'a avec le WS)
-    - WS des trades/positions
-        - comment savoir si trade maker ou taker ?
-        - revoir que si besoin ownTrade pour signal TRADED
+    - fetch des positions ?
+    - fetch des trades history
+    - finir WS des positions (margin)
+    - comment savoir si trade maker ou taker ?
+    - revoir que si besoin ownTrade pour signal ORDER_TRADED
     - 'cumulative-commission-amount' pour les fees, seulement géré sur assettrade, mais devrait être supporté par les autres
-    - si on gere a sell les fee sur quote et qu'il manque en fiat... ça va rejeter, et si on laisse par defaut sur asset alors il faut 
-        bien que les calcules interne et arrondis soient bien calculés
+    - fee sur le quote à l'achat et à la revente sur spot
+    - calcule des qty locked par asset en fonction des ordres ouverts (attention aux arrondis)
 
-#112 Dans local reste 27 strategies a convertir vers le nouveau format (probablement certaines a supprimer)
-
-#113 Dans siis-lab reste 18 strategies a convertir vers le nouveau format (probablement certaines a supprimer)
+#113 En local dans dans siis-lab nettoyer les ancienne stratégies, ou convertir celles d'intérêts
 
 #24 Uniformiser l'order book (bitmex, binance, binancefutures, kraken)
     - avoir un object OrderBook facile à mettre à jour et à exploiter
@@ -58,9 +54,9 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
     - active alerts prefetch à la connexion, WS d'update et de delete (à chaque trigger countdown peu changer)
     - ticker WS, basé sur quoi ? trader ticker ? strategy instrument ?
         - plutôt sur le trader car pas besoin de surcharger encore le strategy trader
-    - recuperation des info des assets au démarrage avec les infos des markets et stratégies (precision, tick)
     - copy de signal (bouton)
-    - toggle audio et alt sound alerts + save conf locally
+    - toggle audio et alt sound alerts (et save conf)
+    - ordre historical qui semble pas bon à l'ouverture : pourtant trié par last executed exit trade timestamp.
 
 #108 Move from siis.py for the resting command part to command_handler
 
@@ -78,30 +74,31 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
         tout s'ajoute, mais si on a que cumulative-filled et avg-price alors remplacer les valeurs comme sur
         le trade d'entré va écraser les valeurs liées au trades de sorties précédents.
         - Exemple un take-profit limit, mais mettons la quantité n'est pas fully-filled, et finalement intervient
-            pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier orde)
+            pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier ordre)
     - Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
-
-#95 Parfois on a un problème de quantité d'asset sur le paper-trader.
-
+    
 #96 Valeur d'un pip pour les marchés BitMex => et corriger ainsi calcule uPnl.
     - Enfin même question avec BinanceFutures, calcule fait sur une supposition, mais par contre reste le prob pour le uPnl
 
 #75 TD9 countdown a debug et tester
+
+#118 Arrondit sur exit qty sur paper-trader dans certains cas en spot
+    - En spot on peu vérifier que que si écart de qty de sortie calculé avec entré <= a step-size on considère ok
 
 
 ##########
 # URGENT #
 ##########
 
-#117 Normalize les dumps de trades history (voir de active) pour la partie stats par trader et pour le fetch history
+#117 Normaliser les dumps de trades history (voir de active) pour la partie stats par trader et pour le fetch history
 
 #57 Vérification des trades au rechargement :
     - Cas des positions indépendante (CFD, future) : pas de soucis tant qu'on retrouve la position et les ordres
     - Cas des crypto margin: si on rate un trade event, on va perdre le compte : reprendre l'historique des trades, ça devient l'usine à gérer
     - Cas des crypto spot : pareil si on rate un trade event...
-    => On pourrait depuis le watcher récupérer à la connexion tout les TRADES
+    => On pourrait depuis le watcher récupérer à la connexion tout les TRADES depuis le dernier timestamp connu
         - On le fait déjà en fait sur binance pour les asset non vide (nouvellement non vide (valeur fetched) ou précédemment non vide (valeur stocké en DB))
-            - pour binance.com c'est un peu lent et ça consomme du crédit
+            - pour binance.com c'est un peu lent et ça consomme du crédit API
             - pour bitmex.com on a get_historical_trades(...)
             - pour ig.com pas de question à se poser on regarde l'état de la position, et éventuellement les ordres actifs qu'on a fetched
 
@@ -110,40 +107,18 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 
 
 #############
-# REFLEXION #
+# IMPORTANT #
 #############
-
-#111 Connecteur rapidapi-yahoo-finance pour récupérer stock, indices, forex quotes, et pouvoir le mapper à un autre broker example (ig.com)
-
-
-#######
-# TOP #
-#######
 
 #60 Gérer la partie locked sur le paper trader en mode asset
     - C'est à dire ne pas tout gérer en free, ce n'est pas super important au final car ça n'empêche pas le fonctionnement,
-        mais c'est pour être plus rigoureux.
-
-#110 Ajouter un fetcher rapidapi-morningstar pour récupérer les actions et indices intraday, D, W, M.
-    - Faire un mapping pour que cela puisse être utilisé depuis le watcher IG pour le prefetching
 
 
-########
-# LESS #
-########
+#########
+# BONUS #
+#########
 
 #85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, l'intérêt c'est d'avoir le trigger coté bot, pour ne pas bloquer les fonds coté broker
-
-#98 Fetcher, Watcher PyEX (mais c'est payant) => rapidapi-morningstar mais pas de WS
-
-#115 Fetcher, Watche polygon.io (99$ à 399$ / mois) => selon 1m ou tick, REST ou WS
-
-
-#########
-# OPTIM #
-#########
-
-#
 
 
 #########################
@@ -182,3 +157,13 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
     1) TP initial, on l'écarte tant que les bougies sont rouges
     2) Si verte que à partir du price epsilon sinon on la compte comme rouge
     3) On coupe si signal opposé sur la même timeframe
+
+
+#################
+## Data source ##
+#################
+
+- PyEX (mais c'est payant) => rapidapi-morningstar mais pas de WS
+- polygon.io (99$ à 399$ / mois) => selon 1m ou tick, REST ou WS
+- rapidapi-yahoo-finance pour récupérer stock, indices, forex quotes, mappinng à un autre broker (ig.com...) pour le prefetch
+- rapidapi-morningstar pour récupérer les actions et indices intraday, D, W, M, mappinng à un autre broker (ig.com...) pour le prefetch

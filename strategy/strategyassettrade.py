@@ -82,6 +82,8 @@ class StrategyAssetTrade(StrategyTrade):
             return False
 
     def remove(self, trader, instrument):
+        error = False
+
         if self.entry_oid:
             # cancel the remaining buy order
             if trader.cancel_order(self.entry_oid, instrument):
@@ -95,6 +97,8 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     # cancel a partially filled trade means it is then fully filled
                     self._entry_state = StrategyTrade.STATE_FILLED
+            else:
+                error = True
 
         if self.oco_oid:
             # cancel the oco sell order
@@ -112,6 +116,8 @@ class StrategyAssetTrade(StrategyTrade):
                     self._exit_state = StrategyTrade.STATE_FILLED
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+            else:
+                error = True
         else:
             if self.stop_oid:
                 # cancel the stop sell order
@@ -127,6 +133,8 @@ class StrategyAssetTrade(StrategyTrade):
                         self._exit_state = StrategyTrade.STATE_FILLED
                     else:
                         self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                else:
+                    error = True
 
             if self.limit_oid:
                 # cancel the sell limit order
@@ -142,6 +150,10 @@ class StrategyAssetTrade(StrategyTrade):
                         self._exit_state = StrategyTrade.STATE_FILLED
                     else:
                         self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                else:
+                    error = True
+
+        return not error
 
     def cancel_open(self, trader, instrument):
         if self.entry_oid:

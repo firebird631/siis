@@ -203,6 +203,16 @@ class StrategyTrader(object):
         """
         pass
 
+    def check_trades(self, timestamp):
+        """
+        Recheck actives or pending trades. Useful after a reconnection.
+        """
+        with self._mutex:
+            with self._trade_mutex:
+                for trade in self._trades:
+                    if trade.check(trader, self.instrument):
+                        pass  # @todo
+
     def terminate(self):
         """
         Delete any non realized trades (new or open) or remaining closed but not closing.
@@ -214,12 +224,15 @@ class StrategyTrader(object):
         with self._mutex:
             with self._trade_mutex:
                 for trade in self._trades:
-                    if trade.can_delete() or not trade.is_active() or trade.is_closed():
-                        mutated = True
-
+                    if trade.can_delete() or trade.is_closed() or not trade.is_active():
                         # cleanup if necessary before deleting the trade related refs
-                        trade.remove(trader, self.instrument)
+                        if trade.remove(trader, self.instrument):
+                            mutated = True
+                        else:
+                            # error during canceling orders, potential API or responsivity error : keep for persistence
+                            trades_list.append(trade)
                     else:
+                        # keep for persistence
                         trades_list.append(trade)
 
                 # updated trade list, the ones we would save
@@ -262,7 +275,7 @@ class StrategyTrader(object):
         """
         Load strategy trader state and regions.
         """
-        # data reserved
+        # trader data
         if 'affinity' in data and type(data['affinity']) is int:
             self._affinity = data['affinity']
 

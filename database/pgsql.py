@@ -662,84 +662,7 @@ class PgSql(Database):
                 with self._mutex:
                     self._pending_user_trader_select = uts + self._pending_user_trader_select
 
-    def process_ohlc(self):       
-        #
-        # select market ohlcs
-        #
-
-        with self._mutex:
-            mks = self._pending_ohlc_select
-            self._pending_ohlc_select = []
-
-        if mks:
-            try:
-                cursor = self._db.cursor()
-
-                for mk in mks:
-                    if mk[6]:
-                        # last n
-                        cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s""" % (mk[1], mk[2], mk[3]))
-                        count = int(cursor.fetchone()[0])
-                        offset = max(0, count - mk[6])
-
-                        # LIMIT should not be necessary then
-                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (
-                                            mk[1], mk[2], mk[3], mk[6], offset))
-                    elif mk[4] and mk[5]:
-                        # from to
-                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[4], mk[5]))
-                    elif mk[4]:
-                        # from to now
-                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[4]))
-                    elif mk[5]:
-                        # to now
-                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[5]))
-                    else:
-                        # all
-                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3]))
-
-                    rows = cursor.fetchall()
-
-                    ohlcs = []
-
-                    for row in rows:
-                        timestamp = float(row[0]) * 0.001  # to float second timestamp
-                        ohlc = Candle(timestamp, mk[3])
-
-                        ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
-
-                        ohlc.set_spread(float(row[5]))
-                        ohlc.set_volume(float(row[6]))
-
-                        if ohlc.timestamp >= Instrument.basetime(mk[3], time.time()):
-                            ohlc.set_consolidated(False)  # current
-
-                        ohlcs.append(ohlc)
-
-                    # notify
-                    mk[0].notify(Signal.SIGNAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
-            except self.psycopg2.OperationalError as e:
-                self.try_reconnect(e)
-
-                # retry the next time
-                with self._mutex:
-                    self._pending_ohlc_select = mks + self._pending_ohlc_select
-            except Exception as e:
-                self.on_error(e)
-
-                # retry the next time
-                with self._mutex:
-                    self._pending_ohlc_select = mks + self._pending_ohlc_select
-
+    def process_ohlc(self):
         #
         # insert market ohlcs
         #
@@ -849,6 +772,83 @@ class PgSql(Database):
                     self.on_error(e)
 
                 self._last_ohlc_clean = time.time()
+
+        #
+        # select market ohlcs, only after the inserts are processed
+        #
+
+        with self._mutex:
+            mks = self._pending_ohlc_select
+            self._pending_ohlc_select = []
+
+        if mks:
+            try:
+                cursor = self._db.cursor()
+
+                for mk in mks:
+                    if mk[6]:
+                        # last n
+                        cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s""" % (mk[1], mk[2], mk[3]))
+                        count = int(cursor.fetchone()[0])
+                        offset = max(0, count - mk[6])
+
+                        # LIMIT should not be necessary then
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (
+                                            mk[1], mk[2], mk[3], mk[6], offset))
+                    elif mk[4] and mk[5]:
+                        # from to
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3], mk[4], mk[5]))
+                    elif mk[4]:
+                        # from to now
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3], mk[4]))
+                    elif mk[5]:
+                        # to now
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3], mk[5]))
+                    else:
+                        # all
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3]))
+
+                    rows = cursor.fetchall()
+
+                    ohlcs = []
+
+                    for row in rows:
+                        timestamp = float(row[0]) * 0.001  # to float second timestamp
+                        ohlc = Candle(timestamp, mk[3])
+
+                        ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+
+                        ohlc.set_spread(float(row[5]))
+                        ohlc.set_volume(float(row[6]))
+
+                        if ohlc.timestamp >= Instrument.basetime(mk[3], time.time()):
+                            ohlc.set_consolidated(False)  # current
+
+                        ohlcs.append(ohlc)
+
+                    # notify
+                    mk[0].notify(Signal.SIGNAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
+            except self.psycopg2.OperationalError as e:
+                self.try_reconnect(e)
+
+                # retry the next time
+                with self._mutex:
+                    self._pending_ohlc_select = mks + self._pending_ohlc_select
+            except Exception as e:
+                self.on_error(e)
+
+                # retry the next time
+                with self._mutex:
+                    self._pending_ohlc_select = mks + self._pending_ohlc_select
 
     def on_error(self, e):
         logger.error(repr(e))  # + '\n' + e.pgerror)

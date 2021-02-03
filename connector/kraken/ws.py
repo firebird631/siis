@@ -277,7 +277,8 @@ class KrakenSocketManager(threading.Thread):
                     'pair': pair
                 }
 
-                factory.protocol_instance.sendMessage(data, isBinary=False)
+                payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+                factory.protocol_instance.sendMessage(payload, isBinary=False)
 
     def send_unsubscribe(self, id_, subscription, pair):
         factory = self.factories[id_]
@@ -297,7 +298,8 @@ class KrakenSocketManager(threading.Thread):
                     'pair': pair
                 }
 
-                factory.protocol_instance.sendMessage(data, isBinary=False)
+                payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+                factory.protocol_instance.sendMessage(payload, isBinary=False)
 
     def stop_socket(self, conn_key):
         """Stop a websocket given the connection key

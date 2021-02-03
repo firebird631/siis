@@ -820,10 +820,11 @@ def application(argv):
 
     MonitorService.stop_reactor()
 
-    Terminal.inst().info("Saving database...")
+    Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 
 
     Database.terminate()
+    Terminal.inst().info("Database done !")
 
     watchdog_service.terminate() if watchdog_service else None
 

@@ -334,8 +334,9 @@ class StrategyTrade(object):
     def remove(self, trader, instrument):
         """
         Remove the trade and related remaining orders.
+        @return True if all orders not longer exists.
         """
-        pass
+        return True
 
     def can_delete(self):
         """

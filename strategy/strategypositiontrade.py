@@ -91,6 +91,8 @@ class StrategyPositionTrade(StrategyTrade):
         """
         Remove the order, but doesn't close the position.
         """
+        error = False
+
         if self.create_oid:
             # cancel the remaining buy order
             if trader.cancel_order(self.create_oid, instrument):
@@ -102,6 +104,10 @@ class StrategyPositionTrade(StrategyTrade):
                 else:
                     # cancel a partially filled trade means it is then fully filled
                     self._entry_state = StrategyTrade.STATE_FILLED
+            else:
+                error = True
+
+        return not error
 
     def cancel_open(self, trader, instrument):
         if self.create_oid:

@@ -96,8 +96,10 @@ class StrategyMarginTrade(StrategyTrade):
 
     def remove(self, trader, instrument):
         """
-        Remove the order, but doesn't close the position.
+        Remove the orders, but doesn't close the position.
         """
+        error = False
+
         if self.create_oid:
             # cancel the remaining buy order
             if trader.cancel_order(self.create_oid, instrument):
@@ -109,6 +111,8 @@ class StrategyMarginTrade(StrategyTrade):
                 else:
                     # cancel a partially filled trade means it is then fully filled
                     self._entry_state = StrategyTrade.STATE_FILLED
+            else:
+                error = True
 
         if self.stop_oid:
             # cancel the stop order
@@ -124,6 +128,8 @@ class StrategyMarginTrade(StrategyTrade):
                     self._exit_state = StrategyTrade.STATE_FILLED
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+            else:
+                error = True
 
         if self.limit_oid:
             # cancel the limit order
@@ -139,6 +145,10 @@ class StrategyMarginTrade(StrategyTrade):
                     self._exit_state = StrategyTrade.STATE_FILLED
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+            else:
+                error = True
+
+        return not error
 
     def cancel_open(self, trader, instrument):
         if self.create_oid:

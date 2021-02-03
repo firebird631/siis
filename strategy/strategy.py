@@ -803,6 +803,7 @@ class Strategy(Runnable):
                         # load strategy-trader data
                         if strategy_trader:
                             with strategy_trader._mutex:
+                                # activity, trader-data, regions-data, alerts-data
                                 strategy_trader.set_activity(data[1])
                                 strategy_trader.loads(data[2], data[3], data[4])
 
@@ -941,12 +942,13 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_CONNECTED:
                     # initiate the strategy prefetch initial data, only once all watchers are ready
-                    if self.check_watchers() and not self._preset:
-                        self.preset()
+                    if self.check_watchers():
+                        if not self._preset:
+                            self.preset()
 
-                    # need to recheck the trades
-                    if self._preset:
-                        pass  # @todo
+                        # need to recheck the trades
+                        if self._preset:
+                            pass  # @todo
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_DISCONNECTED:
                     # do we want to clean-up and wait connection signal to reinitiate ?
