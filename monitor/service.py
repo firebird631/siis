@@ -178,8 +178,6 @@ class MonitorService(Service):
             if self._http:
                 self._http.stop()
 
-            self.release_reactor()
-
             if self._thread:
                 try:
                     self._thread.join()
@@ -195,8 +193,6 @@ class MonitorService(Service):
                     pass
 
                 self._thread_ws = None
-
-            self.release_reactor()
 
             self._http = None
             self._ws = None

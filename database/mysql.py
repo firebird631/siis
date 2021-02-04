@@ -612,7 +612,8 @@ class MySql(Database):
         # insert market ohlcs
         #
 
-        if time.time() - self._last_ohlc_flush >= 60 or len(self._pending_ohlc_insert) > 500:
+        if self._pending_ohlc_insert and (self._pending_ohlc_select or (len(self._pending_ohlc_insert) >= 500) or (time.time() - self._last_ohlc_flush >= 60)):
+            # some select could need of the last insert, or more than 500 pending insert, or last insert was 60 secondes past or more
             with self._mutex:
                 mkd = self._pending_ohlc_insert
                 self._pending_ohlc_insert = []
