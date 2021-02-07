@@ -47,7 +47,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
 
         if group:
             # filled first, and in alpha order
-            trades.sort(key=lambda x: x['sym'] if x['aeq'] <= 0 else ' '+x['sym'])
+            trades.sort(key=lambda x: x['sym'] if x['aep'] <= 0 else ' '+x['sym'])
         else:
             trades.sort(key=lambda x: x['eot'])
 

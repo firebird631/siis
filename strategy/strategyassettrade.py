@@ -539,8 +539,6 @@ class StrategyAssetTrade(StrategyTrade):
                 # else:  # @todo on quote or on base...
                 #     self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
 
-                logger.info("%s %s %s" % (filled, instrument.taker_fee, self._stats['entry-fees']))
-
                 # retains the trade timestamp
                 if not self._stats['first-realized-entry-timestamp']:
                     self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)

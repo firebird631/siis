@@ -29,6 +29,7 @@ class TradeView(TableView):
         strategy = self._strategy_service.strategy()
         if strategy:
             num = 0
+            num_actives_trades = 0
 
             try:
                 columns, table, total_size, num_actives_trades = trades_stats_table(strategy, *self.table_format(), quantities=True,
