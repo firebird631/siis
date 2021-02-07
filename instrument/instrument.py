@@ -1158,8 +1158,12 @@ class Instrument(object):
 
         if self.step_size > 0:
             precision = self._size_limits[3]
+            inv_step_size = 1.0 / self.step_size
+
+            # return max(round(int(quantity / self.step_size) * self.step_size, precision), self.min_size)
             # return max(round(self.step_size * round(quantity / self.step_size), precision), self.min_size)
-            return max(round(self.step_size * math.floor(quantity / self.step_size), precision), self.min_size)
+            # return max(round(self.step_size * math.floor(quantity / self.step_size), precision), self.min_size)
+            return max(truncate(round(quantity * inv_step_size) * self.step_size, precision), self.min_size)
 
         return quantity
 

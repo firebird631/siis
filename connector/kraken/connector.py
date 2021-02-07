@@ -7,6 +7,7 @@ import time
 import json
 import base64
 import requests
+import threading
 
 import urllib.parse
 import hashlib
@@ -23,11 +24,73 @@ import logging
 logger = logging.getLogger('siis.connector.kraken')
 
 
+class MaxConns(object):
+
+    __slots__ = '_count', '_max_conns', '_condition'
+
+    def __init__(self, max_conns):
+        self._count = 0
+        self._max_conns = max_conns
+        self._condition = threading.Condition()
+
+    def wait(self):
+        self._condition.acquire()
+        while self._count >= self._max_conns:
+            self._condition.wait()
+        self._count += 1
+        self._condition.release()
+
+    def done(self):
+        self._condition.acquire()
+        if self._count > 0:
+            self._count -= 1
+        self._condition.notify()
+        self._condition.release()
+
+
+class WaitingConns(object):
+
+    __slots__ = '_delay', '_next_ts', '_mutex'
+
+    def __init__(self, delay):
+        self._delay = delay
+        self._next_ts = 0.0
+        self._mutex = threading.Lock()
+
+    def wait(self):
+        self._mutex.acquire()
+        now = time.time()
+        if now < self._next_ts:
+            time.sleep(self._next_ts - now)
+        self._mutex.release()
+
+    def done(self):
+        self._mutex.acquire()
+        self._next_ts = time.time() + self._delay
+        self._mutex.release()
+
+
 class Connector(object):
     """
     Kraken.com HTTPS connector.
 
-    @todo Rate limit
+    Public API
+    ==========
+
+    The public endpoints are rate limited by IP address and currency pair for calls to Trades and OHLC, 
+    and by IP address only for calls to all other public endpoints.
+    Calling the public endpoints at a frequency of 1 per second (or less) would remain within the rate limits, 
+    but exceeding this frequency could cause the calls to be rate limited. If the rate limits are reached, 
+    additional calls would be restricted for a few seconds (or possibly longer if calls continue to be made while the rate limits are active).
+
+    Private API
+    ===========
+
+    Request limits are determined from cost associated with each API call. Clients can spend up to 500 every 10 seconds.
+    @ref https://support.kraken.com/hc/en-us/articles/206548367-What-are-the-API-rate-limits-
+    @ref https://support.kraken.com/hc/en-us/articles/360045239571
+
+    @todo Private rate limit by call cost but need a global lock for multiple call
     With max at 15 or 20 initial, decrease by 1 every 3 or 2 seconds.
     Order/cancel does not affect this counter.
     Trade history increase by 2, other by 2
@@ -85,6 +148,9 @@ class Connector(object):
     CANDLES_HISTORY_MAX_RETRY = 3
     TRADES_HISTORY_MAX_RETRY = 3
 
+    PUBLIC_QUERY_DELAY = 1.0
+    MAX_PUBLIC_CONNS = 5
+
     INTERVALS = {
         1: 60.0,        # 1m
         5: 300.0,
@@ -108,6 +174,11 @@ class Connector(object):
         self._base_url = "/"
         self._timeout = 7   
         self._retries = 0  # initialize counter
+
+        self._public_pairs_conn_conds = {}
+        self._public_conn_cond = MaxConns(Connector.MAX_PUBLIC_CONNS)
+
+        self._last_private_query_ts = 0
 
         self.__api_key = api_key
         self.__api_secret = api_secret
@@ -221,7 +292,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
-                        raise ValueError("Kraken historical trades\nMultiple failures after consecutives errors 502.")
+                        raise ValueError("Kraken historical trades : Multiple failures after consecutives errors 502.")
 
                     continue
                 else:
@@ -282,7 +353,7 @@ class Connector(object):
             else:
                 break
 
-            time.sleep(1.5)  # don't excess API usage limit
+            time.sleep(0.5)  # don't excess API usage limit (managed by query_public, but extra needed...)
 
     def get_historical_candles(self, symbol, interval, from_date, to_date=None, limit=None):
         """
@@ -319,7 +390,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.CANDLES_HISTORY_MAX_RETRY:
-                        raise ValueError("Kraken historical candles\nMultiple failures after consecutives errors 502.")
+                        raise ValueError("Kraken historical candles : Multiple failures after consecutives errors 502.")
 
                     continue
                 else:
@@ -649,7 +720,7 @@ class Connector(object):
             return {}
 
         if data['result']:
-            logger.info(data['result'])
+            # logger.info(data['result'])
             return data['result'].get('open', {})
 
         return {}
@@ -710,7 +781,23 @@ class Connector(object):
 
         urlpath = '/' + self._apiversion + '/public/' + method
 
-        return self._query(urlpath, data, timeout=timeout)
+        self._public_conn_cond.wait()
+
+        results = None
+
+        pair = data.get('pair', "")
+
+        if pair not in self._public_pairs_conn_conds:
+            self._public_pairs_conn_conds[pair] = WaitingConns(Connector.PUBLIC_QUERY_DELAY)
+
+        pair_cond = self._public_pairs_conn_conds[pair]
+        pair_cond.wait()
+        results = self._query(urlpath, data, timeout=timeout)
+        pair_cond.done()
+
+        self._public_conn_cond.done()
+
+        return results
 
     def query_private(self, method, data=None, timeout=None):
         """

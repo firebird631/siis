@@ -60,6 +60,8 @@ class StrategyTrader(object):
         self._activity = True
         self._affinity = 5          # based on a linear scale [0..10]
 
+        self._initialized = False   # initiate data before running
+
         self._limits = Limits()     # price and timestamp ranges
 
         self._preprocessing = 1     # 1 waited, 2 to 4 in progress, 0 normal

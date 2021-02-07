@@ -111,6 +111,7 @@ class Strategy(Runnable):
 
         self._setup_backtest = None
         self._setup_live = None
+        
         self._update_strategy = None
         self._async_update_strategy = None
 
@@ -715,6 +716,46 @@ class Strategy(Runnable):
         """
         return Instrument.TF_TICK
 
+    def send_initialize_strategy_trader(self, market_id):
+        """
+        Force to wakeup a strategy-trader. This could be useful when the market is sleeping and there is
+        a user operation to perform.
+        """
+        strategy_trader = self._strategy_traders.get(market_id)
+
+        if not strategy_trader:
+            return
+
+        signal = Signal(Signal.SOURCE_STRATEGY, self.identifier, Signal.SIGNAL_STRATEGY_INITIALIZE, market_id)
+
+        # and signal for an update
+        if self._condition.acquire(timeout=1.0):
+            self._condition.notify()
+            self._add_signal(signal)
+            self._condition.release()
+        else:
+            self._add_signal(signal)
+
+    def send_update_strategy_trader(self, market_id):
+        """
+        Force to wakeup a strategy-trader. This could be useful when the market is sleeping and there is
+        a user operation to perform.
+        """
+        strategy_trader = self._strategy_traders.get(market_id)
+
+        if not strategy_trader:
+            return
+
+        signal = Signal(Signal.SOURCE_STRATEGY, self.identifier, Signal.SIGNAL_STRATEGY_UPDATE, market_id)
+
+        # and signal for an update
+        if self._condition.acquire(timeout=1.0):
+            self._condition.notify()
+            self._add_signal(signal)
+            self._condition.release()
+        else:
+            self._add_signal(signal)
+
     def update(self):
         """
         Does not override this method. Internal update mecanism.
@@ -806,6 +847,18 @@ class Strategy(Runnable):
                                 # activity, trader-data, regions-data, alerts-data
                                 strategy_trader.set_activity(data[1])
                                 strategy_trader.loads(data[2], data[3], data[4])
+
+                elif signal.signal_type == Signal.SIGNAL_STRATEGY_INITIALIZE:
+                    # interest in initialize
+                    strategy_trader = self._strategy_traders.get(signal.data)
+                    if strategy_trader:
+                        do_update.add(strategy_trader)
+
+                elif signal.signal_type == Signal.SIGNAL_STRATEGY_UPDATE:
+                    # interest in force update
+                    strategy_trader = self._strategy_traders.get(signal.data)
+                    if strategy_trader:
+                        do_update.add(strategy_trader)
 
             elif signal.source == Signal.SOURCE_WATCHER:
                 if signal.signal_type == Signal.SIGNAL_TICK_DATA:
@@ -976,15 +1029,15 @@ class Strategy(Runnable):
                 if len(self._strategy_traders) >= 1:
                     # always aync update process
                     for strategy_trader in do_update:
-                        if strategy_trader.instrument.ready():
+                        if 1:  # strategy_trader.instrument.ready():
                             # parallelize jobs on workers
                             self.service.worker_pool.add_job(None, (self._async_update_strategy, (self, strategy_trader,)))
                 else:
                     # no parallelisation for single instrument
                     for strategy_trader in do_update:
-                        if strategy_trader.instrument.ready():
+                        if 1:  # strategy_trader.instrument.ready():
                             self._update_strategy(self, strategy_trader)
-
+            
         return True
 
     #
@@ -1053,13 +1106,9 @@ class Strategy(Runnable):
         self._last_done_ts = 0
         self._timestamp = 0
 
-    #
-    # setup and processing state and condition
-    #
-
     def ready(self):
         """
-        Must return True once the strategy is ready te begin.
+        Must return True once the strategy is ready te begin for the backtesting.
         Override only if necessary. This default implementation should suffise.
         """
         if self._preset and not self._prefetched:
@@ -1083,6 +1132,10 @@ class Strategy(Runnable):
         self._ready = self._running and self._preset and self._prefetched
 
         return self._ready
+
+    #
+    # setup and processing state and condition
+    #
 
     def finished(self):
         """

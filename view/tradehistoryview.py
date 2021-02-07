@@ -49,7 +49,7 @@ class TradeHistoryView(TableView):
 
             try:
                 columns, table, total_size = closed_trades_stats_table(strategy, *self.table_format(),
-                        quantities=True, percents=self._percent, datetime_format=self._datetime_format)
+                        quantities=True, percents=self._percent, group=self._group, datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]

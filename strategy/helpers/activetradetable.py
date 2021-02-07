@@ -19,7 +19,7 @@ logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
 
 
-def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, datetime_format='%y-%m-%d %H:%M:%S'):
+def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, group=False, datetime_format='%y-%m-%d %H:%M:%S'):
     """
     Returns a table of any active trades.
     """
@@ -31,6 +31,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
     columns = tuple(columns)
     total_size = (len(columns), 0)
     data = []
+    num_actives_trades = 0
 
     with strategy._mutex:
         trades = get_all_active_trades(strategy)
@@ -44,7 +45,12 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
 
         limit = offset + limit
 
-        trades.sort(key=lambda x: x['eot'])
+        if group:
+            # filled first, and in alpha order
+            trades.sort(key=lambda x: x['sym'] if x['aeq'] <= 0 else ' '+x['sym'])
+        else:
+            trades.sort(key=lambda x: x['eot'])
+
         trades = trades[offset:limit]
 
         for t in trades:
@@ -87,6 +93,9 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             else:
                 slpct = 0
                 tppct = 0
+
+            if aep > 0:
+                num_actives_trades += 1
 
             # pct from last exec open price
             if op and (t['s'] in ('new', 'opened', 'filling')):
@@ -140,4 +149,4 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
 
             data.append(row[0:4] + row[4+col_ofs:])
 
-    return columns[0:4] + columns[4+col_ofs:], data, total_size
+    return columns[0:4] + columns[4+col_ofs:], data, total_size, num_actives_trades

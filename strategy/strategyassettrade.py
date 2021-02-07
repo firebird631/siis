@@ -534,8 +534,12 @@ class StrategyAssetTrade(StrategyTrade):
                 # realized fees : in cumulated quote or compute from filled quantity and trade execution
                 if 'cumulative-commission-amount' in data:
                     self._stats['entry-fees'] = data['cumulative-commission-amount']
-                else:
-                    self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+                elif 'commission-amount' in data:
+                    self._stats['entry-fees'] += data['commission-amount']
+                # else:  # @todo on quote or on base...
+                #     self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+
+                logger.info("%s %s %s" % (filled, instrument.taker_fee, self._stats['entry-fees']))
 
                 # retains the trade timestamp
                 if not self._stats['first-realized-entry-timestamp']:
@@ -611,8 +615,10 @@ class StrategyAssetTrade(StrategyTrade):
                 # realized fees : in cumulated quote or compute from filled quantity and trade execution
                 if 'cumulative-commission-amount' in data:
                     self._stats['exit-fees'] = data['cumulative-commission-amount']
-                else:
-                    self._stats['exit-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+                elif 'commission-amount' in data:
+                    self._stats['exit-fees'] += data['commission-amount']
+                # else:  # @todo on quote or on base...
+                #     self._stats['exit-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
 
                 # retains the trade timestamp
                 if not self._stats['first-realized-exit-timestamp']:

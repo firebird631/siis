@@ -1591,7 +1591,7 @@ class Trader(Runnable):
                 if market:
                     assets.append(asset.symbol, market, asset.free)
                 else:
-                    Terminal.inst().error("No market found to sell all off asset %s..." % (asset.symbol, ))
+                    Terminal.inst().error("No market found to sell all for asset %s..." % (asset.symbol, ))
 
         for asset in assets:
             # @todo order

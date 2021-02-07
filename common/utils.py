@@ -153,7 +153,9 @@ def fix_thread_set_name():
 
 def truncate(number, digits):
     stepper = pow(10.0, digits)
-    return math.trunc(stepper * number) / stepper
+    # return math.trunc(stepper * number) / stepper
+    # round to avoid some issue in case of some values like 2.43427459 and digits = 8
+    return math.trunc(round(stepper * number)) / stepper
 
 
 def decimal_place(value):
