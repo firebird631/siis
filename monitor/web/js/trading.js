@@ -792,14 +792,14 @@ function on_change_take_profit_step() {
     if (mode == 'percent') {
         range = (range - 50) * 0.001;
 
-        take_profit_price = format_price(trade['symbol'], parseFloat(trade['take-profit-price']) * (1.0 + range));
+        take_profit_price = format_price(trade['market-id'], parseFloat(trade['take-profit-price']) * (1.0 + range));
 
         $('#modified_take_profit_range_relative').text((range*100).toFixed(2) + "%");
     } else if (mode == 'pip') {
         range = (range - 50);
-        let value_per_pip = window.markets[trade['symbol']]['value-per-pip'];
+        let value_per_pip = window.markets[trade['market-id']]['value-per-pip'];
 
-        take_profit_price = format_price(trade['symbol'], parseFloat(trade['take-profit-price']) + value_per_pip * range);
+        take_profit_price = format_price(trade['market-id'], parseFloat(trade['take-profit-price']) + value_per_pip * range);
 
         $('#modified_take_profit_range_relative').text(range + "pips");
     }
@@ -819,14 +819,14 @@ function on_change_stop_loss_step() {
     if (mode == 'percent') {
         range = (range - 50) * 0.001;
 
-        stop_loss_price = format_price(trade['symbol'], parseFloat(trade['stop-loss-price']) * (1.0 + range));
+        stop_loss_price = format_price(trade['market-id'], parseFloat(trade['stop-loss-price']) * (1.0 + range));
 
         $('#modified_stop_loss_range_relative').text((range*100).toFixed(2) + "%");
     } else if (mode == 'pip') {
         range = (range - 50);
-        let value_per_pip = window.markets[trade['symbol']]['value-per-pip'];
+        let value_per_pip = window.markets[trade['market-id']]['value-per-pip'];
 
-        stop_loss_price = format_price(trade['symbol'], parseFloat(trade['stop-loss-price']) + value_per_pip * range);
+        stop_loss_price = format_price(trade['market-id'], parseFloat(trade['stop-loss-price']) + value_per_pip * range);
 
         $('#modified_stop_loss_range_relative').text(range + "pips");
     }

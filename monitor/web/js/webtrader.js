@@ -1069,10 +1069,10 @@ function fetch_trades() {
 
         for (let i = 0; i < trades.length; ++i) {
             let trade = trades[i];
-            window.actives_trades[trade['symbol'] + ':' + trade.id] = trade;
+            window.actives_trades[trade['market-id'] + ':' + trade.id] = trade;
 
             // initial add
-            add_active_trade(trade['symbol'], trade);
+            add_active_trade(trade['market-id'], trade);
         }
     })
     .fail(function() {
@@ -1105,50 +1105,11 @@ function fetch_history() {
         // naturally ordered
         for (let i = 0; i < trades.length; ++i) {
             let trade = trades[i];
-            // window.historical_trades[trade['symbol'] + ':' + trade.id] = trade;
-            window.historical_trades[trade.mid + ':' + trade.id] = trade;
 
-            // convert dict members
-            trade = {
-                'version': 1.0,
-                'symbol': trade.mid,
-                'id': trade.id,
-                'timestamp': trade.eot,
-                'timeframe': trade.tf,
-                'direction': trade.d,
-                'state': trade.s,
-                'way': "exit",
-                'order-price': trade.l,
-                'order-qty': trade.q,
-                'filled-entry-qty': trade.e,
-                'filled-exit-qty': trade.x,
-                'take-profit-price': trade.tp,
-                'stop-loss-price': trade.sl,
-                'avg-entry-price': trade.aep,
-                'avg-exit-price': trade.axp,
-                'label': trade.label,
-                'entry-open-time': trade.eot,
-                'exit-open-time': trade.xot,
-                'profit-loss-pct': parseFloat((trade.pl * 100).toFixed(2)),
-                'stats': {
-                    'best-price': trade.b,
-                    'worst-price': trade.w,
-                    'best-datetime': trade.bt,
-                    'worst-datetime': trade.wt,
-                    'first-realized-entry-datetime': trade.freot,
-                    'first-realized-exit-datetime': trade.frxot,
-                    'last-realized-entry-datetime': trade.lreot,
-                    'last-realized-exit-datetime': trade.lrxot,
-                    'entry-fees': trade.fees * 0.5,  // 'entry-fees': trade.fees
-                    'exit-fees': trade.fees * 0.5,  // 'exit-fees': self._stats['exit-fees'],
-                    'profit-loss': trade.rpnl,
-                    'profit-loss-currency': trade.pnlcur,
-                    'entry-order-type': trade.t,
-                }
-            };
+            window.historical_trades[trade['market-id'] + ':' + trade.id] = trade;
 
             // initial add
-            add_historical_trade(trade['symbol'], trade);
+            add_historical_trade(trade['market-id'], trade);
         }
     })
     .fail(function() {
@@ -1187,6 +1148,10 @@ function fetch_balances() {
 }
 
 function timestamp_to_time_str(timestamp) {
+    if (timestamp == null || timestamp == undefined) {
+        return "";
+    }
+
     if (typeof(timestamp) === "number") {
         timestamp *= 1000.0;
     }
@@ -1196,6 +1161,10 @@ function timestamp_to_time_str(timestamp) {
 }
 
 function timestamp_to_date_str(timestamp) {
+    if (timestamp == null || timestamp == undefined) {
+        return "";
+    }
+
     if (typeof(timestamp) === "number") {
         timestamp *= 1000.0;
     }
@@ -1205,6 +1174,10 @@ function timestamp_to_date_str(timestamp) {
 }
 
 function timestamp_to_datetime_str(timestamp) {
+    if (timestamp == null || timestamp == undefined) {
+        return "";
+    }
+
     if (typeof(timestamp) === "number") {
         timestamp *= 1000.0;
     }
@@ -1637,7 +1610,7 @@ function on_update_performances() {
 
         for (let trade in window.actives_trades) {
             let at = window.actives_trades[trade];
-            let market_id = at['symbol'];
+            let market_id = at['market-id'];
 
             if (!(market_id in perfs)) {
                 perfs[market_id] = {
@@ -1657,7 +1630,7 @@ function on_update_performances() {
 
         for (let trade in window.historical_trades) {
             let ht = window.historical_trades[trade];
-            let market_id = ht['symbol'];
+            let market_id = ht['market-id'];
 
             if (!(market_id in perfs)) {
                 perfs[market_id] = {

@@ -106,6 +106,9 @@ def cmd_trade_assign(strategy, strategy_trader, data):
 
     strategy_trader.add_trade(trade)
 
+    # update strategy-trader
+    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+
     results['messages'].append("Assigned trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
 
     return results

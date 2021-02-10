@@ -41,6 +41,8 @@ class KrakenWatcher(Watcher):
     @todo contract_size, value_per_pip, base_exchange_rate (initials and updates)
     @todo fee from 30 day traded volume
     @todo order book WS
+
+    @ref WS 'status' online|maintenance|cancel_only|limit_only|post_only
     """
 
     BASE_QUOTE = "ZUSD"
@@ -786,11 +788,20 @@ class KrakenWatcher(Watcher):
             if not data.get('event'):
                 return
 
+            # if data['event'] == 'heartBeat':
+            #     self._ws_own_trades[]['ping'] = time.time()
+
             if data['event'] == "subscriptionStatus":
                 if data['status'] == "subscribed" and data['channelName'] == "trade":
                     # @todo register channelID...
                     # {'channelID': 93, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'trade'}}
+                    # self._ws_trades[]['subscribed'] = True
                     pass
+
+                elif data['status'] == "error":
+                    error_logger.error("trades subscriptionStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
+                # self._ws_trades[]['status'] = False
+                # self._reconnect_trade_ws = ...
 
     def __on_kline_data(self, data):
         pass

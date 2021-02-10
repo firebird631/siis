@@ -469,15 +469,12 @@ class StrategyTrader(object):
 
     def dumps_trades_history(self):
         """
-        Dumps the historical record of each historical trades.
+        Dumps the historical record of each historical trades. Not sorted.
         """
         results = []
 
         with self._mutex:
             results = self._stats['success'] + self._stats['failed'] + self._stats['roe']
-
-            # sort by last realized exit trade timestamp
-            results = sorted(results, key=lambda trade: trade['lrxot'])
 
         return results
 
@@ -634,55 +631,6 @@ class StrategyTrader(object):
                             self._stats['cont-loss'] = 0
                             self._stats['cont-win'] += 1
 
-                        # keep for historical @todo harmonize using this record (remove the next)
-                        # record = trade.dumps_notify_exit(timestamp, self)
-
-                        record = {
-                            'id': trade.id,
-                            'mid': self.instrument.market_id,
-                            'eot': trade.entry_open_time,
-                            'xot': trade.exit_open_time,
-                            'freot': trade.first_realized_entry_time,
-                            'frxot': trade.first_realized_exit_time,
-                            'lreot': trade.last_realized_entry_time,
-                            'lrxot': trade.last_realized_exit_time,
-                            'd': trade.direction_to_str(),
-                            't': trade.entry_order_type_to_str(),
-                            'l': self.instrument.format_price(trade.order_price),
-                            'q': self.instrument.format_quantity(trade.order_quantity),
-                            'e': self.instrument.format_quantity(trade.exec_entry_qty),
-                            'x': self.instrument.format_quantity(trade.exec_exit_qty),
-                            'tp': self.instrument.format_price(trade.take_profit),
-                            'sl': self.instrument.format_price(trade.stop_loss),
-                            'tf': timeframe_to_str(trade.timeframe),
-                            'aep': self.instrument.format_price(trade.entry_price),
-                            'axp': self.instrument.format_price(trade.exit_price),
-                            's': trade.state_to_str(),
-                            'b': self.instrument.format_price(trade.best_price()),
-                            'w': self.instrument.format_price(trade.worst_price()),
-                            'bt': trade.best_price_timestamp(),
-                            'wt': trade.worst_price_timestamp(),
-                            'pl': profit_loss,
-                            'fees': trade.entry_fees_rate() + trade.exit_fees_rate(),
-                            'c': trade.get_conditions(),
-                            'label': trade.label,
-                            'rpnl': self.instrument.format_price(trade.unrealized_profit_loss),  # once close its realized
-                            'pnlcur': trade.profit_loss_currency
-                        }
-
-                        if profit_loss < 0:
-                            self._stats['failed'].append(record)
-                        elif profit_loss > 0:
-                            self._stats['success'].append(record)
-                        else:
-                            self._stats['roe'].append(record)
-
-                        if self._reporting == StrategyTrader.REPORTING_VERBOSE:
-                            try:
-                                self.report(trade, False)
-                            except Exception as e:
-                                error_logger.error(str(e))
-
                         # notification exit reason if not reported
                         if not trade.exit_reason:
                             if trade.direction > 0:
@@ -696,7 +644,20 @@ class StrategyTrader(object):
                                 elif trade.exit_price >= trade.stop_loss and trade.stop_loss > 0:
                                     trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
 
-                        trade.pl = profit_loss
+                        record = trade.dumps_notify_exit(timestamp, self)
+
+                        if profit_loss < 0:
+                            self._stats['failed'].append(record)
+                        elif profit_loss > 0:
+                            self._stats['success'].append(record)
+                        else:
+                            self._stats['roe'].append(record)
+
+                        if self._reporting == StrategyTrader.REPORTING_VERBOSE:
+                            try:
+                                self.report(trade, False)
+                            except Exception as e:
+                                error_logger.error(str(e))
 
                         self.notify_trade_exit(timestamp, trade)
                     else:

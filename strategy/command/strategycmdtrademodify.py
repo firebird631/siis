@@ -47,6 +47,9 @@ def cmd_trade_modify(strategy, strategy_trader, data):
                         trade.modify_stop_loss(strategy.trader(), strategy_trader.instrument, data['stop-loss'])
                     else:
                         trade.sl = data['stop-loss']
+
+                    # update strategy-trader
+                    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
                 else:
                     results['error'] = True
                     results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)
@@ -58,6 +61,9 @@ def cmd_trade_modify(strategy, strategy_trader, data):
                         trade.modify_take_profit(strategy.trader(), strategy_trader.instrument, data['take-profit'])
                     else:
                         trade.tp = data['take-profit']
+
+                    # update strategy-trader
+                    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
                 else:
                     results['error'] = True
                     results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)

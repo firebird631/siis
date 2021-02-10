@@ -164,7 +164,7 @@ def display_welcome():
     Terminal.inst().info("Console", view='content-head')
     
     Terminal.inst().action("To type a command line, start with a ':', finally validate by <ENTER> or cancel with <ESC>.", view='content')
-    Terminal.inst().action("Enter command :help or :h for command details, and :quit :q to exit", view='content')
+    Terminal.inst().action("Enter command :help or :h for command details, and :quit or :q to exit", view='content')
 
     LOGO1 = """
    SSSSSSSSSSSSSSS IIIIIIIIIIIIIIIIIIII   SSSSSSSSSSSSSSS 

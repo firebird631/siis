@@ -45,6 +45,9 @@ def cmd_trade_clean(strategy, strategy_trader, data):
             # and the trade, don't keet it for history because unqualifiable
             strategy_trader.remove_trade(trade)
 
+            # update strategy-trader
+            strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+
             # add a success result message
             results['messages'].append("Force remove trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
         else:

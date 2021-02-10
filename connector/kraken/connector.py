@@ -125,6 +125,7 @@ class Connector(object):
         "EAuth:Rate limit exceeded"
         "EAuth:Too many requests"
         "EGeneral:Invalid arguments"
+        "EGeneral:Internal Error[:<code>]"
         "EOrder:Cannot open opposing position"
         "EOrder:Cannot open position"
         "EOrder:Insufficient funds (insufficient user funds)""

@@ -427,7 +427,10 @@ class HistoricalTradeRestAPI(resource.Resource):
             results['data'] = None
         else:
             # current active trade list
-            results['data'] = self._strategy_service.strategy().dumps_trades_history()
+            history_trades = self._strategy_service.strategy().dumps_trades_history()
+
+            # sort by last realized exit trade timestamp
+            results['data'] = sorted(history_trades, key=lambda trade: trade['stats']['last-realized-exit-datetime'])
 
         return json.dumps(results).encode("utf-8")
 

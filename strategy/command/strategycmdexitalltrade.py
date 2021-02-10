@@ -53,18 +53,24 @@ def cmd_strategy_exit_all_trade(strategy, data):
 
             results.append(result)
 
+        # update strategy-trader, can be multiple trade but on the same strategy-trader
+        if trades:
+            strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+
         return results
     else:
         Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (strategy.name, strategy.identifier), view='content')
 
         # retrieve any trades for any traders
         trades = []
+        markets_ids = set()
 
         with strategy._mutex:
             for market_id, strategy_trader in strategy._strategy_traders.items():
                 # if there is some trade, cancel or close them, else goes to the next trader
                 if strategy_trader.has_trades():
                     trades.extend([(strategy_trader.instrument.market_id, trade_id) for trade_id in strategy_trader.list_trades()])
+                    markets_ids.add(strategy_trader.instrument.market_id)
 
         # multi command
         results = []
@@ -86,5 +92,10 @@ def cmd_strategy_exit_all_trade(strategy, data):
                     Terminal.inst().message(message, view='content')
 
             results.append(result)
+
+        if trades:
+            for market_id in markets_ids:
+                # update strategy-trader, can be multiple trades on differents strategy-trader
+                strategy.send_update_strategy_trader(market_id)
 
         return results

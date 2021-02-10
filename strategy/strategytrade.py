@@ -709,7 +709,7 @@ class StrategyTrade(object):
     #
 
     def dump_timestamp(self, timestamp):
-        return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ') if timestamp else None
 
     def load_timestamp(self, datetime_str):
         if datetime_str:
@@ -1010,7 +1010,8 @@ class StrategyTrade(object):
             'app-name': strategy_trader.strategy.name,
             'app-id': strategy_trader.strategy.identifier,
             'timestamp': timestamp,
-            'symbol': strategy_trader.instrument.market_id,
+            'market-id': strategy_trader.instrument.market_id,
+            'symbol': strategy_trader.instrument.symbol,
             'way': "entry",
             'entry-timeout': timeframe_to_str(self._entry_timeout),
             'expiry': self._expiry,
@@ -1043,7 +1044,8 @@ class StrategyTrade(object):
             'app-name': strategy_trader.strategy.name,
             'app-id': strategy_trader.strategy.identifier,
             'timestamp': timestamp,
-            'symbol': strategy_trader.instrument.market_id,
+            'market-id': strategy_trader.instrument.market_id,
+            'symbol': strategy_trader.instrument.symbol,
             'way': "exit",
             'entry-timeout': timeframe_to_str(self._entry_timeout),
             'expiry': self._expiry,
@@ -1062,7 +1064,7 @@ class StrategyTrade(object):
             'exit-open-time': self.dump_timestamp(self.xot),
             'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
             'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
-            'profit-loss-pct': round(self.pl * 100.0, 2),
+            'profit-loss-pct': round((self.pl - self.entry_fees_rate() - self.exit_fees_rate()) * 100.0, 2),  # minus fees
             'num-exit-trades': len(self.exit_trades),
             'stats': {
                 'best-price': strategy_trader.instrument.format_price(self._stats['best-price']),
@@ -1075,9 +1077,10 @@ class StrategyTrade(object):
                 'last-realized-entry-datetime': self.dump_timestamp(self._stats['last-realized-entry-timestamp']),
                 'last-realized-exit-datetime': self.dump_timestamp(self._stats['last-realized-exit-timestamp']),
                 'profit-loss-currency': self._stats['profit-loss-currency'],
-                'profit-loss': self._stats['unrealized-profit-loss'],
+                'profit-loss': self._stats['unrealized-profit-loss'],  # @todo
                 'entry-fees': self._stats['entry-fees'],
                 'exit-fees': self._stats['exit-fees'],
+                'fees-pct': round((self.entry_fees_rate() + self.exit_fees_rate()) * 100.0, 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
                 'close-exec-price': strategy_trader.instrument.format_price(strategy_trader.instrument.close_exec_price(self.dir)),
             }
@@ -1094,7 +1097,8 @@ class StrategyTrade(object):
             'app-name': strategy_trader.strategy.name,
             'app-id': strategy_trader.strategy.identifier,
             'timestamp': timestamp,
-            'symbol': strategy_trader.instrument.market_id,
+            'market-id': strategy_trader.instrument.market_id,
+            'symbol': strategy_trader.instrument.symbol,
             'way': "update",
             'entry-timeout': timeframe_to_str(self._entry_timeout),
             'expiry': self._expiry,
@@ -1129,6 +1133,7 @@ class StrategyTrade(object):
                 'profit-loss': self._stats['unrealized-profit-loss'],
                 'entry-fees': self._stats['entry-fees'],
                 'exit-fees': self._stats['exit-fees'],
+                'fees-pct': round((self.entry_fees_rate() + self.exit_fees_rate()) * 100.0, 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
                 'close-exec-price': strategy_trader.instrument.format_price(strategy_trader.instrument.close_exec_price(self.dir)),
             }        

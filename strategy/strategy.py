@@ -855,7 +855,7 @@ class Strategy(Runnable):
                         do_update.add(strategy_trader)
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_UPDATE:
-                    # interest in force update
+                    # interest in force update (after modifying something on trader of trades)
                     strategy_trader = self._strategy_traders.get(signal.data)
                     if strategy_trader:
                         do_update.add(strategy_trader)
@@ -1289,7 +1289,7 @@ class Strategy(Runnable):
 
     def dumps_trades_history(self):
         """
-        Dumps trade records of any historical trades of any strategy traders.
+        Dumps trade records of any historical trades of any strategy traders. Not sorted.
         """
         trades = []
 

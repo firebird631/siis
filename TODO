@@ -82,9 +82,6 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 
 #75 TD9 countdown a debug et tester
 
-#118 Arrondit sur exit qty sur paper-trader dans certains cas en spot
-    - En spot on peu vérifier que que si écart de qty de sortie calculé avec entré <= a step-size on considère ok
-
 
 ##########
 # URGENT #

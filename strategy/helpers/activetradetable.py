@@ -37,6 +37,13 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
         trades = get_all_active_trades(strategy)
         total_size = (len(columns), len(trades))
 
+        # count actives trades for all trades with filled (partial or complete) quantity
+        for t in trades:
+            aep = float(t['aep'])
+
+            if aep > 0:
+                num_actives_trades += 1
+
         if offset is None:
             offset = 0
 
@@ -93,9 +100,6 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             else:
                 slpct = 0
                 tppct = 0
-
-            if aep > 0:
-                num_actives_trades += 1
 
             # pct from last exec open price
             if op and (t['s'] in ('new', 'opened', 'filling')):

@@ -55,6 +55,9 @@ def cmd_trade_exit(strategy, strategy_trader, data):
                 # add a success result message
                 results['messages'].append("Close trade %i on %s:%s at market price %s" % (
                     trade.id, strategy.identifier, strategy_trader.instrument.market_id, strategy_trader.instrument.format_price(price)))
+
+            # update strategy-trader
+            strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
         else:
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)

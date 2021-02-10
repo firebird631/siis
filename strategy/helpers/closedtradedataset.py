@@ -18,48 +18,9 @@ def get_closed_trades(strategy):
         try:
             for k, strategy_trader in strategy._strategy_traders.items():
                 with strategy_trader._mutex:
-                    def append_trade(market_id, symbol, trades, trade):
-                        trades.append({
-                            'mid': market_id,
-                            'sym': symbol,
-                            'id': trade['id'],
-                            'eot': trade['eot'],
-                            'xot': trade['xot'],
-                            'l': trade['l'],
-                            'lreot': trade['lreot'],
-                            'lrxot': trade['lrxot'],
-                            'freot': trade['freot'],
-                            'frxot': trade['frxot'],
-                            'd': trade['d'],
-                            'aep': trade['aep'],
-                            'axp': trade['axp'],
-                            'q': trade['q'],
-                            'e': trade['e'],
-                            'x': trade['e'],
-                            'tp': trade['tp'],
-                            'sl': trade['sl'],
-                            'pl': trade['pl'],
-                            'tf': trade['tf'],
-                            's': trade['s'],
-                            'c': trade['c'],
-                            'b': trade['b'],
-                            'bt': trade['bt'],
-                            'w': trade['w'],
-                            'wt': trade['wt'],
-                            'label': trade['label'],
-                            'fees': trade['fees'],
-                            'rpnl': trade['rpnl'],
-                            'pnlcur': trade['pnlcur']
-                        })
-
-                    for trade in strategy_trader._stats['success']:
-                        append_trade(strategy_trader.instrument.market_id, strategy_trader.instrument.symbol, results, trade)
-
-                    for trade in strategy_trader._stats['failed']:
-                        append_trade(strategy_trader.instrument.market_id, strategy_trader.instrument.symbol, results, trade)
-
-                    for trade in strategy_trader._stats['roe']:
-                        append_trade(strategy_trader.instrument.market_id, strategy_trader.instrument.symbol, results, trade)
+                    results += strategy_trader._stats['success']
+                    results += strategy_trader._stats['failed']
+                    results += strategy_trader._stats['roe']
 
         except Exception as e:
             error_logger.error(repr(e))
