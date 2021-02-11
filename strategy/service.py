@@ -326,7 +326,7 @@ class StrategyService(Service):
 
             if self._strategy:
                 strategy = self._strategy
-                if not strategy.running or not strategy.ready():
+                if not strategy.running or not strategy.backtest_ready():
                     go_ready = False
 
             if go_ready:

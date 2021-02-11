@@ -148,36 +148,13 @@ class KrakenTrader(Trader):
         if self._watcher is None or not self._watcher.connected:
             return True
 
-        # if KrakenTrader.REST_OR_WS:
-        #     # @todo need wait time
-        #     # account data update
-        #     with self._mutex:
-        #         try:
-        #             self.__fetch_account()
-        #             self.__fetch_assets()
-        #         except Exception as e:
-        #             error_logger.error(repr(e))
-        #             traceback_logger.error(traceback.format_exc())
-
-        #     # positions
-        #     with self._mutex:
-        #         try:
-        #             self.__fetch_positions()
-        #             now = time.time()
-        #             self._last_update = now
-        #         except Exception as e:
-        #             error_logger.error(repr(e))
-        #             traceback_logger.error(traceback.format_exc())
-
-        #     # orders
-        #     with self._mutex:
-        #         try:
-        #             self.__fetch_orders()
-        #             now = time.time()
-        #             self._last_update = now
-        #         except Exception as e:
-        #             error_logger.error(repr(e))
-        #             traceback_logger.error(traceback.format_exc())
+        # fetch account data each minute
+        with self._mutex:
+            try:
+                self.__fetch_account()
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
         return True
 

@@ -828,7 +828,7 @@ def application(argv):
 
     watchdog_service.terminate() if watchdog_service else None
 
-    Terminal.inst().info("Bye!")
+    Terminal.inst().info("Bye (could wait a little...) !")
     Terminal.inst().flush()
 
     Terminal.terminate()

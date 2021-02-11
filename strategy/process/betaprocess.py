@@ -381,15 +381,21 @@ def beta_async_update_strategy(strategy, strategy_trader):
     @note Thread-safe method.
     """
     if strategy_trader:
-        # process only if previous job was completed
-        process = False
+        if not strategy_trader._initialized:
+            initiate_strategy_trader(strategy, strategy_trader)
+            return
 
-        with strategy_trader._mutex:
-            if not strategy_trader._processing:
-                # can process
-                process = strategy_trader._processing = True
+        if not strategy_trader.instrument.ready():
+            # process only if instrument has data
+            return
 
-        if process:
+        if strategy_trader._processing:
+            # process only if previous job was completed
+            return
+
+        try:
+            strategy_trader._processing = True
+
             if strategy_trader._preprocessing > 0:
                 # first : preprocessing and data caching
                 beta_preprocess(strategy, strategy_trader)
@@ -402,9 +408,35 @@ def beta_async_update_strategy(strategy, strategy_trader):
                 # then : until process instrument update
                 strategy_trader.process(strategy.timestamp)
 
-            with strategy_trader._mutex:
-                # process complete
-                strategy_trader._processing = False
+        except Exception as e:
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
+
+        finally:
+            # process complete
+            strategy_trader._processing = False
+
+
+def initiate_strategy_trader(strategy, strategy_trader):
+    """
+    Do it async into the workers to avoid long blocking of the strategy thread.
+    """
+    now = datetime.now()
+
+    instrument = strategy_trader.instrument
+    try:
+        watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+        if watcher:
+            # update from last ticks
+            watcher.subscribe(instrument.market_id, None, -1, None)
+
+            # initialization processed, waiting for data be ready
+            strategy_trader._initialized = True
+
+    except Exception as e:
+        logger.error(repr(e))
+        logger.debug(traceback.format_exc())
+
 
 #
 # backtesting setup
@@ -414,9 +446,6 @@ def beta_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument.
     """
     Simple load history of trades, no OHLCs.
     """
-    trader = strategy.trader()
-
-    # preload data for any supported instruments
     for market_id, instrument in strategy._instruments.items():
         # retrieve the related price and volume watcher
         watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
@@ -430,6 +459,9 @@ def beta_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument.
 
         feeder.initialize(watcher.name, from_date, to_date)
 
+    # initialized state
+    for k, strategy_trader in strategy._strategy_traders.items():
+        strategy_traders._initialized = True
 
 #
 # live setup
@@ -439,6 +471,7 @@ def beta_setup_live(strategy):
     """
     Do it here dataset preload and other stuff before update be called.
     """
+    logger.info("In strategy %s retrieves states and previous trades..." % strategy.name)
 
     # load the strategy-traders and traders for this strategy/account
     trader = strategy.trader()
@@ -448,21 +481,5 @@ def beta_setup_live(strategy):
 
     Database.inst().load_user_traders(strategy.service, strategy, trader.name,
             trader.account.name, strategy.identifier)
-
-    # pre-feed in live mode only
-    logger.info("In strategy %s retrieves last data history..." % strategy.name)
-
-    now = datetime.now()
-
-    for market_id, instrument in strategy._instruments.items():
-        try:
-            watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
-            if watcher:
-                # update from last ticks
-                watcher.subscribe(instrument.symbol, None, -1, None)
-
-        except Exception as e:
-            logger.error(repr(e))
-            logger.debug(traceback.format_exc())
 
     logger.info("Strategy %s data retrieved" % strategy.name)

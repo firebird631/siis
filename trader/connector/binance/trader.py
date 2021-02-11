@@ -754,7 +754,7 @@ class BinanceTrader(Trader):
                     asset.update_profit_loss(market)
 
                     if quantity_deviation >= 0.001:
-                        # significant deviation...                          
+                        # significant deviation...
                         logger.debug("%s deviation of computed quantity for %s from %s but must be %s" % (
                             self._name ,asset_name, market.format_quantity(curr_qty), market.format_quantity(quantity)))
                 else:

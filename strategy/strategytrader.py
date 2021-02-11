@@ -150,6 +150,15 @@ class StrategyTrader(object):
         """
         self._affinity = affinity
 
+    def restart(self):
+        """
+        Needed on a reconnection to reset some states.
+        """
+        with self._mutex:
+            self._initialized = False
+            self._preprocessing = 1
+            self._bootstraping = 1
+
     #
     # pre-processing
     #
@@ -867,66 +876,6 @@ class StrategyTrader(object):
     # miscs
     #
 
-    def update_trailing_stop(self, trade, instrument, distance, local=True, distance_in_percent=True):
-        """
-        Update the stop price of a trade using a simple level distance or percent distance method.
-        @param local boolean True mean only modify the stop-loss price on this side,
-            not on the position or on the stop order
-
-        @note This method is not a way to process a stop, it mostly failed, close for nothing at a wrong price.
-        """
-        close_exec_price = instrument.close_exec_price(trade.direction)
-        stop_loss = trade.sl
-
-        if trade.direction > 0:
-            # long case
-            ratio = close_exec_price / trade.entry_price
-            sl_ratio = (trade.entry_price - trade.sl) / trade.entry_price
-            dist = (close_exec_price - trade.sl) / trade.entry_price
-            step = distance
-
-            if distance_in_percent:
-                # @todo
-                if dist > (sl_ratio + step):
-                    stop_loss = close_exec_price * (1.0 - distance)
-            else:
-                # @todo
-                pass
-
-            # # if dist > (sl_ratio + step):
-            # #     stop_loss = close_exec_price * (1.0 - sl_ratio)
-            # #     logger.debug("update SL from %s to %s" % (trade.sl, stop_loss))
-
-            # # # alternative @todo how to trigger
-            # # if ratio >= 1.10:
-            # #     stop_loss = max(trade.sl, close_exec_price - (close_exec_price/trade.entry_price*(close_exec_price-trade.entry_price)*0.33))
-
-            # # ultra large and based on the distance of the price
-            # # if dist > 0.25:
-            # #     stop_loss = trade.entry_price + (trade.entry_price * (dist * 0.5))
-
-        elif trade.direction < 0:
-            # short case
-            ratio = close_exec_price / trade.entry_price
-            sl_ratio = (trade.sl - trade.entry_price) / trade.entry_price
-            dist = (trade.sl - close_exec_price) / trade.entry_price
-            step = distance
-
-            if distance_in_percent:
-                # @todo
-                if dist > (sl_ratio - step):
-                    stop_loss = close_exec_price * (1.0 - distance)
-                pass
-            else:
-                # @todo
-                pass
-
-        if stop_loss != trade.sl:
-            if local:
-                trade.sl = stop_loss
-            else:
-                trade.modify_stop_loss(trader, instrument, stop_loss)
-
     def check_entry_canceled(self, trade):
         """
         Cancel entry if take-profit price is reached before filling the entry.
@@ -986,14 +935,6 @@ class StrategyTrader(object):
                     trade.exit_reason = trade.REASON_MARKET_TIMEOUT
 
                     return True
-
-        return False
-
-    def adjust_entry(self, trade, timeout):
-        # if trade.is_opened() and not trade.is_valid(timestamp, trade.timeframe):
-        #     # @todo re-adjust entry or cancel
-        #     Terminal.inst().info("Update order %s trade %s TODO" % (trade.id, self.instrument.market_id,), view='default')
-        #     continue
 
         return False
 
@@ -1081,7 +1022,7 @@ class StrategyTrader(object):
             'affinity': self._affinity,
             'bootstraping': self._bootstraping == 2,
             'preprocessing': self._preprocessing == 2,
-            'ready': self.instrument.ready(),
+            'ready': self._initialized and self.instrument.ready(),
             'members': [],
             'data': [],
             'num-modes': 1

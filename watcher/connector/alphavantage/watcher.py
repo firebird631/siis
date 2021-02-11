@@ -133,7 +133,7 @@ class AlphaVantageWatcher(Watcher):
             self.unlock()
 
         if self._ready:
-            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, (time.time(), None))
 
     @property
     def connector(self):

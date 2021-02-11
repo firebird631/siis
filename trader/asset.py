@@ -115,17 +115,8 @@ class Asset(object):
         if quote:
             self._quote = quote
 
-    def set_market_ids(self, market_ids):
-        """
-        Defines a list of compatibles markets identifiers.
-        """
-        self._market_ids = market_ids
-
     def add_market_id(self, market_id):
         self._market_ids.append(market_id)
-
-    def remove_market_id(self, market_id):
-        del self._market_ids[self.index(market_id)]
 
     @property
     def market_ids(self):

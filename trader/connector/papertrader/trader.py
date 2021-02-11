@@ -270,40 +270,32 @@ class PaperTrader(Trader):
                         locked = asset.locked
 
                         if free or locked:
-                            # asset price in quote
-                            if asset_name == self._account.alt_currency:
-                                # asset second currency
-                                market = self._markets.get(self._account.currency+self._account.alt_currency)
-                                base_price = 1.0 / market.price if market else 1.0
-                            elif asset_name != self._account.currency:
-                                # any asset except asscount currency
-                                market = self._markets.get(asset_name+self._account.currency)
-                                base_price = market.price if market else 1.0
-                            else:
-                                # asset account currency itself
-                                base_price = 1.0
-
-                            if asset.quote == self._account.alt_currency:
-                                # change from alt currency to primary currency
-                                market = self._markets.get(self._account.currency+self._account.alt_currency)
-                                base_exchange_rate = market.price if market else 1.0
-                            elif asset.quote == self._account.currency:
-                                # asset is account currency not change
+                            # found the last market price
+                            if asset.quote:
+                                price = 0.0
                                 base_exchange_rate = 1.0
-                            else:
-                                # change from quote to primary currency
-                                market = self._markets.get(asset.quote+self._account.currency)
-                                base_exchange_rate = 1.0 / market.price if market else 1.0
 
-                            balance += free * base_price + locked * base_price  # current total free+locked balance
-                            free_balance += free * base_price                   # current total free balance
+                                if asset.symbol == self._account._currency:
+                                    # as primary currency
+                                    price = 1.0
+                                    base_exchange_rate = 1.0
+                                else:
+                                    # from a know market
+                                    market_id = asset.market_ids[0] if asset.market_ids else asset_name+asset.quote
+                                    market = self._markets.get(market_id)
+                                    if market:
+                                        price = market.price / market.base_exchange_rate
+                                        base_exchange_rate = market.base_exchange_rate
 
-                            # current profit/loss at market
-                            profit_loss += asset.profit_loss_market / base_exchange_rate  # current total P/L in primary account currency
+                                if price:
+                                    balance += free * price + locked * price  # current total free+locked balance
+                                    free_balance += free * price              # current total free balance
+
+                                    # current total P/L in primary account currency
+                                    profit_loss += asset.profit_loss_market / base_exchange_rate
 
                     self.account.set_asset_balance(balance, free_balance)
                     self.account.set_unrealized_asset_profit_loss(profit_loss)
-
         else:
             with self._mutex:
                 # not updated uPNL then always reset            
@@ -784,14 +776,18 @@ class PaperTrader(Trader):
             ratio = 1.0
 
         if bid:
+            # defined and not 0
             market.bid = bid
+
         if ask:
+            # defined and not 0
             market.ask = ask
 
         if base_exchange_rate is not None:
             market.base_exchange_rate = base_exchange_rate
 
-        if last_update_time is not None:
+        if last_update_time:
+            # defined and not 0
             market.last_update_time = last_update_time
 
         if tradable is not None:

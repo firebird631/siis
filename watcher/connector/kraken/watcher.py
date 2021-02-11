@@ -251,7 +251,7 @@ class KrakenWatcher(Watcher):
                 self._connector = None
 
         if self._ready and self._connector and self._connector.connected:
-            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, (time.time(), None))
 
     def disconnect(self):
         super().disconnect()
@@ -484,10 +484,11 @@ class KrakenWatcher(Watcher):
             self.update_from_tick()
 
         #
-        # asset balances (each 1m) (only in real mode)
+        # sync fetching
         #
 
         if not self.service.paper_mode:
+            # asset balances (each 1m) (only in real mode)
             if time.time() - self._last_balance_update >= KrakenWatcher.UPDATE_ASSET_BALANCE_DELAY:
                 try:
                     self.update_assets_balances()
@@ -495,6 +496,9 @@ class KrakenWatcher(Watcher):
                     error_logger.error("update_assets_balances %s" % str(e))
                 finally:
                     self._last_balance_update = time.time()
+
+            # if no WS supported or activate fetch orders and positions manually and generate appropriates signals
+            # @todo
 
         #
         # market info update (each 4h)

@@ -194,17 +194,31 @@ def alpha_update_strategy(strategy, strategy_trader):
             initiate_strategy_trader(strategy, strategy_trader)
             return
 
-        if strategy_trader.instrument.ready():
+        if not strategy_trader.instrument.ready():
+            # process only if instrument has data
+            return
+
+        if strategy_trader._processing:
+            # process only if previous job was completed
+            return
+
+        try:
             strategy_trader._processing = True
 
             if strategy_trader._bootstraping > 0:
-                # second : bootstrap using preloaded data history
+                # first : bootstrap using preloaded data history
                 alpha_bootstrap(strategy, strategy_trader)
 
             else:
                 # then : until process instrument update
                 strategy_trader.process(strategy.timestamp)
 
+        except Exception as e:
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
+
+        finally:
+            # process complete
             strategy_trader._processing = False
 
 
@@ -281,11 +295,8 @@ def initiate_strategy_trader(strategy, strategy_trader):
 
 def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument.TF_TICK):
     """
-    Simple load history of OHLCs.
+    Simple load history of OHLCs, initialize all strategy traders here (sync).
     """
-    trader = strategy.trader()
-
-    # preload data for any supported instruments
     for market_id, instrument in strategy._instruments.items():
         # retrieve the related price and volume watcher
         watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
@@ -310,7 +321,10 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
 
             feeder.initialize(watcher.name, from_date, to_date)
 
-            # @todo set initialized state to True
+    # initialized state
+    for k, strategy_trader in strategy._strategy_traders.items():
+        strategy_traders._initialized = True
+
 
 #
 # live setup
@@ -320,9 +334,7 @@ def alpha_setup_live(strategy):
     """
     Do it here dataset preload and other stuff before update be called.
     """
-
-    # pre-feed in live mode only
-    logger.info("In strategy %s retrieves previous data..." % strategy.name)
+    logger.info("In strategy %s retrieves states and previous trades..." % strategy.name)
 
     # load the strategy-traders and traders for this strategy/account
     trader = strategy.trader()
@@ -336,29 +348,5 @@ def alpha_setup_live(strategy):
     for market_id, instrument in strategy._instruments.items():
         # wake-up all for initialization
         strategy.send_initialize_strategy_trader(market_id)
-
-    # now = datetime.now()
-
-    # for market_id, instrument in strategy._instruments.items():
-    #     try:
-    #         watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
-    #         if watcher:
-    #             tfs = {tf['timeframe']: tf['history'] for tf in strategy.parameters.get('timeframes', {}).values() if tf['timeframe'] > 0}
-    #             watcher.subscribe(instrument.market_id, tfs, None, None)
-
-    #             # query for most recent candles per timeframe
-    #             for k, timeframe in strategy.parameters.get('timeframes', {}).items():
-    #                 if timeframe['timeframe'] > 0:
-    #                     l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
-    #                     l_to = now
-
-    #                     watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
-
-    #                     # wait for this timeframe before processing
-    #                     instrument.want_timeframe(timeframe['timeframe'])
-
-    #     except Exception as e:
-    #         logger.error(repr(e))
-    #         logger.debug(traceback.format_exc())
 
     logger.info("Strategy %s data retrieved" % strategy.name)

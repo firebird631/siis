@@ -62,7 +62,7 @@ class DummyWatcher(Watcher):
                         self._ready = True
 
                     # now connected and signal
-                    self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+                    self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, (time.time(), None))
 
             if count > 10:
                 # no more than per loop

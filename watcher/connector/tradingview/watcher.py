@@ -129,7 +129,7 @@ class TradingViewWatcher(Watcher):
 			self._server = MyThread(self._host, self._port)
 			self._server.start()
 
-			self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+			self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, (time.time(), None))
 
 			logger.info("Started tradingview HTTP proxy listener")
 		except Exception as e:

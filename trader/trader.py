@@ -856,14 +856,18 @@ class Trader(Runnable):
             return
 
         if bid:
+            # defined and not 0
             market.bid = bid
+
         if ask:
+            # defined and not 0
             market.ask = ask
 
         if base_exchange_rate is not None:
             market.base_exchange_rate = base_exchange_rate
 
-        if last_update_time is not None:
+        if last_update_time:
+            # defined and not 0
             market.last_update_time = last_update_time
 
         if tradable is not None:
@@ -1047,6 +1051,17 @@ class Trader(Runnable):
                 else:
                     vol24h_quote = charmap.HOURGLASS
 
+                if market.last_update_time > 0:
+                    last_timestamp = datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S")
+
+                    if self.timestamp - market.last_update_time >= 60*15.0:
+                        # received ticker/depth not received within last 15mins
+                        last_timestamp = Color.colorize(last_timestamp, Color.RED, style)
+                    else:
+                        last_timestamp = Color.colorize(last_timestamp, Color.GREEN, style)
+                else:
+                    last_timestamp = charmap.HOURGLASS
+
                 row = (
                      market.market_id,
                      market.symbol,
@@ -1055,7 +1070,7 @@ class Trader(Runnable):
                      spread,
                      market.format_quantity(market.vol24h_base) if market.vol24h_base else charmap.HOURGLASS,
                      vol24h_quote,
-                     datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S") if market.last_update_time else charmap.HOURGLASS)
+                     last_timestamp)
 
                 data.append(row[0:2] + row[2+col_ofs:])
 
@@ -1086,7 +1101,8 @@ class Trader(Runnable):
 
             for asset in assets:
                 # use the most appropriate market
-                market = self.market(asset.symbol+asset.quote)
+                market_id = asset.market_ids[0] if asset.market_ids else asset.symbol+asset.quote
+                market = self._markets.get(market_id)
 
                 change = ""
                 change_percent = ""
@@ -1117,6 +1133,8 @@ class Trader(Runnable):
                         elif asset.profit_loss < 0.0:
                             if profit_loss:
                                 profit_loss = Color.colorize(profit_loss, Color.RED, style)
+
+                        profit_loss += market.quote_display or market.quote
                 else:
                     locked = "%.8f" % asset.locked
                     free = "%.8f" % asset.free
@@ -1128,9 +1146,9 @@ class Trader(Runnable):
                     free,
                     quantity,
                     "%s%s" % (asset.format_price(asset.price), asset.quote) if asset.price else charmap.HOURGLASS,
-                    "%s%s" % (change, asset.quote) if change else '-',
+                    change or '-',
                     change_percent or '-',
-                    "%s%s" % (profit_loss, asset.quote) if profit_loss else '-',
+                    profit_loss or '-',
                 )
 
                 data.append(row[0:1] + row[1+col_ofs:])
@@ -1142,7 +1160,7 @@ class Trader(Runnable):
         Returns a table of any followed markets.
         """
         columns = ('Broker', 'Account', 'Username', 'Email', 'Asset', 'Free Asset', 'Balance', 'Margin', 'Level', 'Net worth',
-                   'Risk limit', 'Unrealized P/L', 'Asset U. P/L', 'Asset U. P/L alt')
+                   'Risk limit', 'Unrealized P/L', 'Asset U. P/L')
         data = []
 
         with self._mutex:
@@ -1154,37 +1172,24 @@ class Trader(Runnable):
 
             limit = offset + limit
 
-            asset_balance = "%s (%s)" % (
-                self.account.format_price(self._account.asset_balance) + self.account.currency_display or self.account.currency,
-                self.account.format_price(self._account.asset_balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency)
+            asset_balance = self.account.format_price(self._account.asset_balance) + self.account.currency_display or self.account.currency
+            free_asset_balance = self.account.format_price(self._account.free_asset_balance) + self.account.currency_display or self.account.currency
+            balance = self.account.format_price(self._account.balance) + self.account.currency_display or self.account.currency
+            margin_balance = self.account.format_price(self._account.margin_balance) + self.account.currency_display or self.account.currency
+            net_worth = self.account.format_price(self._account.net_worth) + self.account.currency_display or self.account.currency
+            risk_limit = self.account.format_price(self._account.risk_limit) + self.account.currency_display or self.account.currency
+            upnl = self.account.format_price(self._account.profit_loss) + self.account.currency_display or self.account.currency
+            asset_upnl = self.account.format_price(self._account.asset_profit_loss) + self.account.currency_display or self.account.currency
 
-            free_asset_balance = "%s (%s)" % (
-                self.account.format_price(self._account.free_asset_balance) + self.account.currency_display or self.account.currency,
-                self.account.format_price(self._account.free_asset_balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency)
-
-            balance = "%s (%s)" % (
-                self.account.format_price(self._account.balance) + self.account.currency_display or self.account.currency,
-                self.account.format_price(self._account.balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency)
-
-            margin_balance = "%s (%s)" % (
-                self.account.format_price(self._account.margin_balance) + self.account.currency_display or self.account.currency,
-                self.account.format_price(self._account.margin_balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency)
-
-            net_worth = "%s (%s)" % (
-                self.account.format_price(self._account.net_worth) + self.account.currency_display or self.account.currency,
-                self.account.format_alt_price(self._account.net_worth * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency)
-
-            risk_limit = "%s (%s)" % (
-                self.account.format_price(self._account.risk_limit) + self.account.currency_display or self.account.currency,
-                self.account.format_price(self._account.risk_limit * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency)
-
-            upnl = "%s (%s)" % (
-                self.account.format_price(self._account.profit_loss) + self.account.currency_display or self.account.currency,
-                self.account.format_alt_price(self._account.profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency)
-
-            asset_upnl = "%s (%s)" % (
-                self.account.format_price(self._account.asset_profit_loss) + self.account.currency_display or self.account.currency,
-                self.account.format_alt_price(self._account.asset_profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency)
+            if self.account.currency != self.account.alt_currency and self._account.currency_ratio != 1.0 and self._account.currency_ratio > 0.0:
+                asset_balance += " (%s)" % self.account.format_price(self._account.asset_balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
+                free_asset_balance += " (%s)" % self.account.format_price(self._account.free_asset_balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
+                balance += " (%s)" % self.account.format_price(self._account.balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
+                margin_balance += " (%s)" % self.account.format_price(self._account.margin_balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
+                net_worth += " (%s)" % self.account.format_alt_price(self._account.net_worth * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
+                risk_limit += " (%s)" % self.account.format_price(self._account.risk_limit * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
+                upnl += " (%s)" % self.account.format_alt_price(self._account.profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
+                asset_upnl += " (%s)" % self.account.format_alt_price(self._account.asset_profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
 
             row = (
                 self.name,

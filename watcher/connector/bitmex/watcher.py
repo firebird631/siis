@@ -97,7 +97,7 @@ class BitMexWatcher(Watcher):
                 self._connector = None
 
         if self._connector and self._connector.connected and self._ready:
-            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, time.time())
+            self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, (time.time(), None))
 
     def disconnect(self):
         super().disconnect()

@@ -22,20 +22,13 @@ def get_or_add_asset(trader, asset_name, precision=8):
     asset = Asset(trader, asset_name, precision)
     asset.quote = trader._account.currency
 
-    if trader._watcher:
-        if trader._watcher.has_instrument(asset_name+trader._account.currency):
-            asset.quote = trader._account.currency
-        elif trader._watcher.has_instrument(asset_name+trader._account.alt_currency):
-            asset.quote = trader._account.alt_currency
-    else:
-        if trader.has_market(asset_name+trader._account.currency):
-            asset.quote = trader._account.currency
-        elif trader.has_market(asset_name+trader._account.alt_currency):
-            asset.quote = trader._account.alt_currency
-
     for k, market in trader._markets.items():
         if market.base == asset_name:
             asset.add_market_id(market.market_id)
+
+            if market.quote == asset.quote:
+                # found precision from usual market
+                asset.precision = market.size_precision
 
     trader._assets[asset_name] = asset
 

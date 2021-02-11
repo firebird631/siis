@@ -130,7 +130,7 @@ class MonitorService(Service):
         #         pass
 
         # logger.debug("Twisted Reactor Release : %s ref=%s" % ("running" if reactor.running else "stopped", cls.REACTOR))
-    
+
     @classmethod
     def stop_reactor(cls):
         cls.REACTOR = 0

@@ -38,7 +38,7 @@ class KrakenAccount(Account):
         self._alt_currency_display = KrakenAccount.ALT_CURRENCY_SYMBOL
 
         self._currency_precision = 2
-        self._alt_currency_precision = 2
+        self._alt_currency_precision = 8
 
         self._last_update = 0
 

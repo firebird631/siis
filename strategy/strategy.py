@@ -122,8 +122,8 @@ class Strategy(Runnable):
         # states and parameters
         #
 
-        self._preset = False       # True once instrument are setup
-        self._prefetched = False   # True once strategies are ready
+        self._preset = False       # True once instrument are setup in both modes
+        self._prefetched = False   # True once strategies are ready in backtesting mode
 
         self._watchers_conf = {}   # name of the followed watchers
         self._trader_conf = None   # name of the followed trader
@@ -310,8 +310,9 @@ class Strategy(Runnable):
         Terminal.inst().message("Running strategy %s - %s..." % (self._name, self._identifier), view='content')
 
         # watcher can be already ready in some cases, try it now
-        if self.check_watchers() and not self._preset:
-            self.preset()
+        if self.check_watchers():
+            if not self._preset:
+                self.preset()
 
     def post_run(self):
         Terminal.inst().message("Joining strategy %s - %s..." % (self._name, self._identifier), view='content')
@@ -461,13 +462,14 @@ class Strategy(Runnable):
                     if watcher.has_buy_sell_signals:
                         instrument.add_watcher(Watcher.WATCHER_BUY_SELL_SIGNAL, watcher)
 
-        self._preset = True
-
-        # now can setup backtest or live mode
+        # now can setup backtest or live mode global states and loads previous trades
         if self.service.backtesting:
             self._setup_backtest(self, self.service.from_date, self.service.to_date, self.service.timeframe)
         else:
             self._setup_live(self)
+
+        # one done once after startup and first connection
+        self._preset = True
 
     def start(self):
         if super().start():
@@ -995,12 +997,16 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_CONNECTED:
                     # initiate the strategy prefetch initial data, only once all watchers are ready
-                    if self.check_watchers():
-                        if not self._preset:
-                            self.preset()
+                    if signal.data[1]:
+                        if self.check_watchers():
+                            pass
+                    else:
+                        # any markets are affected
+                        if self.check_watchers():
+                            if not self._preset:
+                                self.preset()
 
-                        # need to recheck the trades
-                        if self._preset:
+                            # need to reinitialize and recheck the traces
                             pass  # @todo
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_DISCONNECTED:
@@ -1078,7 +1084,7 @@ class Strategy(Runnable):
         """
         trader = self.trader()
 
-        if not self.ready():
+        if not self.backtest_ready():
             return
 
         # processing timestamp
@@ -1106,7 +1112,7 @@ class Strategy(Runnable):
         self._last_done_ts = 0
         self._timestamp = 0
 
-    def ready(self):
+    def backtest_ready(self):
         """
         Must return True once the strategy is ready te begin for the backtesting.
         Override only if necessary. This default implementation should suffise.
@@ -1129,9 +1135,7 @@ class Strategy(Runnable):
 
                 self._prefetched = prefetched
 
-        self._ready = self._running and self._preset and self._prefetched
-
-        return self._ready
+        return self._running and self._preset and self._prefetched
 
     #
     # setup and processing state and condition
