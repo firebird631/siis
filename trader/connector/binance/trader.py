@@ -932,6 +932,7 @@ class BinanceTrader(Trader):
     @Trader.mutexed
     def on_asset_updated(self, asset_name, locked, free):
         asset = self.__get_or_add_asset(asset_name)
+        # @todo update as kraken trader
         if asset is not None:
             # significant deviation...
             if abs((locked+free)-asset.quantity) / ((locked+free) or 1.0) >= 0.001:

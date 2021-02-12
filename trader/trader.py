@@ -1080,7 +1080,7 @@ class Trader(Runnable):
         """
         Returns a table of any non empty assets.
         """
-        columns = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'Change %', 'P/L')
+        columns = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'Change %', 'P/L', 'Quote', 'Pref Market')
         total_size = (len(columns), 0)
         data = []
 
@@ -1101,7 +1101,7 @@ class Trader(Runnable):
 
             for asset in assets:
                 # use the most appropriate market
-                market_id = asset.market_ids[0] if asset.market_ids else asset.symbol+asset.quote
+                market_id = asset.market_ids[0] if asset.market_ids else asset.symbol+asset.quote if asset.quote else None
                 market = self._markets.get(market_id)
 
                 change = ""
@@ -1149,6 +1149,8 @@ class Trader(Runnable):
                     change or '-',
                     change_percent or '-',
                     profit_loss or '-',
+                    asset.quote or '-',
+                    asset.market_ids[0] if asset.market_ids else '-'
                 )
 
                 data.append(row[0:1] + row[1+col_ofs:])

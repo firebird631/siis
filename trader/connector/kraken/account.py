@@ -50,8 +50,8 @@ class KrakenAccount(Account):
             # its all what we have... nothing just our internal mapping
             self._name = connector.account_id
 
-            data = connector.get_account(self.CURRENCY)
-            alt_data = connector.get_account(self.ALT_CURRENCY)
+            data = connector.get_account(self._currency)
+            alt_data = connector.get_account(self._alt_currency)
 
             self._asset_balance = float(data.get('eb', '0.0'))
             self._balance = float(data.get('e', '0.0'))
@@ -85,9 +85,6 @@ class KrakenAccount(Account):
                     self._currency_ratio = alt_balance / self._asset_balance
 
             self._last_update = time.time()
-
-    def set_currency(self, currency, currency_display=""):
-        self._currency = currency
 
     def set_margin_balance(self, margin_balance):
         self._margin_balance = margin_balance

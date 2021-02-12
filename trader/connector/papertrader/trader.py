@@ -818,7 +818,7 @@ class PaperTrader(Trader):
             if self._assets:
                 # update profit/loss (informational) for each asset
                 for k, asset in self._assets.items():
-                    if asset.symbol == market.base and asset.quote == market.quote:
+                    if asset.symbol == market.base and asset.quote and asset.quote == market.quote:
                         asset.update_profit_loss(market)
 
             if self._positions:

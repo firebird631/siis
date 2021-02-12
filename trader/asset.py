@@ -26,7 +26,7 @@ class Asset(object):
         self._free = 0.0    # free quantity for trading
 
         self._price = 0.0   # last updated average price
-        self._quote = None  # quote symbol
+        self._quote = ""    # quote symbol
 
         self._last_update_time = 0.0
         self._last_trade_id = 0
@@ -115,8 +115,11 @@ class Asset(object):
         if quote:
             self._quote = quote
 
-    def add_market_id(self, market_id):
-        self._market_ids.append(market_id)
+    def add_market_id(self, market_id, prefered=False):
+        if prefered:
+            self._market_ids.insert(0, market_id)
+        else:
+            self._market_ids.append(market_id)
 
     @property
     def market_ids(self):

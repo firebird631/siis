@@ -46,7 +46,7 @@ class KrakenTrader(Trader):
         self._watcher = None
         self._account = KrakenAccount(self)
 
-        self._quotes = ("ZUSD", "ZEUR", "ZCAD", "ZJPY", "XXBT", "XETH")
+        self._quotes = ("ZUSD", "ZEUR", "ZCAD", "ZAUD", "ZJPY", "XXBT", "XETH")
 
         self._last_position_update = 0
         self._last_order_update = 0
@@ -166,7 +166,7 @@ class KrakenTrader(Trader):
 
     @Trader.mutexed
     def on_asset_updated(self, asset_name, locked, free):
-        asset = self.__get_or_add_asset(asset_name)
+        asset = self._assets.get(asset_name)
         if asset is not None:
             # significant deviation... @todo update qty after traded signal
             # if abs((locked+free)-asset.quantity) / ((locked+free) or 1.0) >= 0.001:
@@ -174,10 +174,10 @@ class KrakenTrader(Trader):
 
             asset.set_quantity(locked, free)
 
-            if asset.quote and asset.symbol != asset.quote:
-                prefered_market = self._markets.get(asset.symbol+asset.quote)
-                if prefered_market:
-                    asset.update_profit_loss(prefered_market)
+            market_id = asset.market_ids[0] if asset.market_ids else asset.symbol+asset.quote if asset.quote else None
+            market = self._markets.get(market_id)
+            if market:
+                asset.update_profit_loss(market)
 
             # store in database with the last update quantity
             Database.inst().store_asset((self._name, self.account.name,
@@ -422,68 +422,62 @@ class KrakenTrader(Trader):
     # protected
     #
 
-    def __get_or_add_asset(self, asset_name, precision=8):
-        if asset_name in self._assets:
-            return self._assets[asset_name]
-
-        asset = Asset(self, asset_name, precision)
-        self._assets[asset_name] = asset
-
-        # and find related watched markets
-        for qs in self._quotes:
-            if asset_name+qs in self._watcher._instruments:
-                asset.add_market_id(asset_name+qs)
-
-            if asset_name+qs[1:] in self._watcher._instruments:
-                asset.add_market_id(asset_name+qs[1:])
-
-            if asset_name[1:]+qs[1:] in self._watcher._instruments:
-                asset.add_market_id(asset_name[1:]+qs[1:])
-
-        # find the most appriopriate quote of an asset.
-        quote_symbol = None
-
-        if asset.symbol != self._account.currency:
-            # any pair based on account base currency (ZEUR/ZUSD...)
-            if not quote_symbol and self._watcher.has_instrument(asset.symbol+self._account.currency):
-                # XXRPZEUR, XXBTZEUR, XLTCZEUR...
-                quote_symbol = self._account.currency
-
-            elif not quote_symbol and self._watcher.has_instrument(asset.symbol+self._account.currency[1:]):
-                # XTZEUR, SCEUR, TRXEUR...
-                quote_symbol = self._account.currency
-
-            elif not quote_symbol and self._watcher.has_instrument(asset.symbol[1:]+self._account.currency[1:]):
-                # XDGEUR...
-                quote_symbol = self._account.currency
-
-        if not quote_symbol:
-            if not asset.quote:
-                logger.warning("No found quote for asset %s" % asset.symbol)
-
-            quote_symbol = asset.symbol
-
-        asset.quote = quote_symbol
-
-        return asset
-
     def __fetch_account(self):
         self._account.update(self._watcher.connector)
 
     def __fetch_assets(self):
+        assets = self._watcher.connector.assets()
         balances = self._watcher.connector.get_balances()
-        open_orders = self._watcher.connector.get_open_orders()
+        # open_orders = self._watcher.connector.get_open_orders()
+        instruments = self._watcher.connector.instruments()
+
+        for asset_name, data in assets.items():
+            if asset_name.endswith('.S') or asset_name.endswith('.M') or asset_name.endswith('.HOLD'):
+                continue
+
+            if asset_name == 'KFEE':
+                continue
+
+            asset = Asset(self, asset_name, data.get('decimals', 8))
+
+            for market_id, instrument in instruments.items():
+                if market_id.endswith('.d') or market_id.endswith('.S') or market_id.endswith('.M') or market_id.endswith('.HOLD'):
+                    continue
+
+                has_currency = False
+                has_alt_currency = False
+
+                # find related markets
+                if instrument.get('base', "") == asset_name:
+                    quote = instrument.get('quote', "")
+
+                    if quote == self._account.currency:
+                        asset.add_market_id(market_id, True)
+                        has_currency = True
+                    elif quote == self._account.alt_currency:
+                        asset.add_market_id(market_id)
+                        has_alt_currency = True
+
+                if has_currency:
+                    asset.quote = self._account.currency
+
+                if not asset.quote and has_alt_currency:
+                    asset.quote = self._account.alt_currency
+
+            self._assets[asset_name] = asset
+
+            if not asset.quote:
+                logger.warning("No found quote for asset %s" % asset.symbol)
 
         for asset_name, balance in balances.items():
-            asset = self.__get_or_add_asset(asset_name)
+            asset = self._assets.get(asset_name)
 
-            asset_info = self._watcher._assets.get(asset_name)
+            if asset:
+                # cannot distinct from locked to free, compute locked from active orders
+                asset.set_quantity(0.0, float(balance))
 
-            if asset_info:
-                asset.precision = asset_info.get('decimals', 8)
-
-            # cannot distinct from locked to free, compute locked from active orders
-            asset.set_quantity(0.0, float(balance))
+                # uses open orders to found the locked quantity
+                # @todo
 
     def __fetch_positions(self):
         open_positions = self._watcher.connector.get_open_positions()
@@ -499,7 +493,7 @@ class KrakenTrader(Trader):
                 self._positions = positions
 
     def __fetch_orders(self):
-        open_orders = self._watcher.connector.get_open_orders()  # userref=int
+        open_orders = self._watcher.connector.get_open_orders()
 
         orders = {}
 
@@ -521,7 +515,8 @@ class KrakenTrader(Trader):
                 order.set_order_id(order_id)
 
                 if data['userref']:
-                    order.set_ref_order_id(str(data['refid']))
+                    # userref is int
+                    order.set_ref_order_id(str(data['userref']))
 
                 # if data['refid']:
                 #     order.set_ref_order_id(data['refid'])

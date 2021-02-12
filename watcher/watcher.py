@@ -81,7 +81,7 @@ class Watcher(Runnable):
         self._authors = {}
         self._positions = {}
         self._watcher_type = watcher_type
-        
+
         self._ready = False
         self._connecting = False
         self._retry = 0
