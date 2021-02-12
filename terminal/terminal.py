@@ -961,8 +961,8 @@ class Terminal(object):
         else:
             height, width = 0, 0
 
-        w1 = int(width*0.9)
-        w2 = width-w1
+        w1 = width #  int(width*0.9)
+        # w2 = width-w1
 
         free_h = 4
         h1 = height - 2 - 2 - free_h
