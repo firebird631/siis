@@ -555,9 +555,9 @@ class KrakenTrader(Trader):
                 elif descr['ordertype'] == "market":
                     order.order_type = Order.ORDER_MARKET
 
-                # stop-loss-profit
+                # only have the order open timestamp
                 order.created_time = data['opentm']
-                order.transact_time = data['starttm']
+                order.transact_time = data['opentm']
 
                 if data['oflags']:
                     flags = data['oflags'].split(',')

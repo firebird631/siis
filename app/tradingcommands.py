@@ -1136,7 +1136,7 @@ class SellAllAssetCommand(Command):
         if len(args) == 1:
             market_id = args[1]
 
-        self._strategy_service.command(Trader.COMMAND_SELL_ALL_ASSET, {
+        self._trader_service.command(Trader.COMMAND_SELL_ALL_ASSET, {
             'market-id': market_id,
         })
 
@@ -1167,7 +1167,7 @@ class CancelAllOrderCommand(Command):
         if len(args) == 1:
             market_id = args[1]
 
-        self._strategy_service.command(Trader.COMMAND_CANCEL_ALL_ORDER, {
+        self._trader_service.command(Trader.COMMAND_CANCEL_ALL_ORDER, {
             'market-id': market_id,
         })
 

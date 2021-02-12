@@ -867,8 +867,9 @@ class KrakenWatcher(Watcher):
                 if not symbol:
                     continue
 
-                if trade_data.get('posstatus'):                   
-                    ref_order_id = trade_data['ordertxid']
+                if trade_data.get('posstatus'):
+                    order_id = trade_data['ordertxid']
+                    client_order_id = str(trade_data['userref']) if trade_data['userref'] else ""
                     position_id = trade_data['postxid']
 
                     self.__update_position_cache(position_id, trade_data)
@@ -916,7 +917,7 @@ class KrakenWatcher(Watcher):
                         # 'fully-filled':   # fully filled status else its partially
                     }
 
-                    # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
+                    # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
 
                     # position
                     # @todo
@@ -945,19 +946,19 @@ class KrakenWatcher(Watcher):
                     #     pass  # @todo
 
                     #     # position closed...
-                    #     # self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, ref_order_id))
-                    #     # self.service.notify(Signal.SIGNAL_POSITION_CLOSED, self.name, (symbol, position_data, ref_order_id))
+                    #     # self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, client_order_id))
+                    #     # self.service.notify(Signal.SIGNAL_POSITION_CLOSED, self.name, (symbol, position_data, client_order_id))
 
                     # elif posstatus == 'Opened':
                     #     pass  # @todo   
 
                     #     # position opened...
-                    #     # self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, ref_order_id))
-                    #     # self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (symbol, position_data, ref_order_id))
+                    #     # self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (symbol, position_data, client_order_id))
+                    #     # self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (symbol, position_data, client_order_id))
                 else:
                     # spot order traded (partial or full). for now we use the trade update message
                     order_id = trade_data['ordertxid']
-                    ref_order_id = None
+                    client_order_id = str(trade_data['userref']) if trade_data['userref'] else ""
                     timestamp = float(trade_data['time'])
 
                     price = None
@@ -978,8 +979,6 @@ class KrakenWatcher(Watcher):
                     else:
                         order_type = Order.ORDER_MARKET
 
-                    # @todo
-
                     order = {
                         'id': order_id,
                         'symbol': symbol,
@@ -997,7 +996,8 @@ class KrakenWatcher(Watcher):
                         # 'fully-filled':   # fully filled status else its partially
                     }
 
-                    # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, ref_order_id))
+                    # @todo
+                    # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
 
         elif isinstance(data, dict):
             if not data.get('event'):
@@ -1026,8 +1026,6 @@ class KrakenWatcher(Watcher):
     #
 
     def __set_order(self, symbol, order_id, order_data):
-        event_timestamp = float(order_data['opentm'])
-
         descr = order_data['descr']
 
         price = None
@@ -1076,7 +1074,6 @@ class KrakenWatcher(Watcher):
             leverage = 0
 
         executed = float(order_data.get('vol_exec', "0.0"))
-        transact_time = order_data['starttm']
         post_only = False
         commission_asset_is_quote = True
 
@@ -1103,7 +1100,7 @@ class KrakenWatcher(Watcher):
             'symbol': symbol,
             'direction': Order.LONG if descr['type'] == "buy" else Order.SHORT,
             'type': order_type,
-            'timestamp': event_timestamp,
+            'timestamp': time.time(),
             'quantity': float(order_data.get('vol', "0.0")),
             'price': price,
             'stop-price': stop_price,
@@ -1131,6 +1128,7 @@ class KrakenWatcher(Watcher):
             if cumulative_filled >= order_volume and not partial:
                 fully_filled = True
 
+            order['timestamp'] = time.time()  # no have this detail because its in ownTrades events
             order['exec-price'] = float(order_data['avg_price'])
             order['filled'] = filled_volume
             order['cumulative-filled'] = cumulative_filled
@@ -1247,6 +1245,7 @@ class KrakenWatcher(Watcher):
                     order = self.__set_order(symbol, order_id, order_data)
 
                     if opened:
+                        order['timestamp'] = float(order_data['opentm']) 
                         self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
 
                     if filled_volume > 0.0:
