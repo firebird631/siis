@@ -9,6 +9,7 @@ import sys
 import time
 import threading
 import platform
+import math
 
 import curses
 from curses.textpad import Textbox, rectangle
@@ -146,9 +147,9 @@ class View(object):
         self._border = border
         self._win = None
         self._dirty = False
-        self._need_nl = False
 
         self._rect = (-1, -1, 0, 0)
+        self._ratios = (1, 1, 1, 1)
         self._n = 0
 
         self._first_row = 0
@@ -166,13 +167,15 @@ class View(object):
             height, width = stdscr.getmaxyx()
 
             # std resolution if empty area (screen, tmux, daemon...)
-            if width <= 0:
+            if width < 80:
                 width = 80
 
-            if height <= 0:
+            if height < 25:
                 height = 25
 
             self._rect = (size[1] or height, size[0] or width, pos[1], pos[0])
+            self._ratios = (self._rect[0] / height, self._rect[1] / width, self._rect[2] / height, self._rect[3] / width)
+
             self._parent_size = (height, width)
 
             if 1: # window:
@@ -410,44 +413,66 @@ class View(object):
         When terminal size changes.
         @todo Have to reshape any of the views and redraw the actives.
         """
-        self._n = 0
-
-        self._first_row = 0
-        self._first_col = 0
-
-        self._table_first_row = 0
-        self._table_first_col = 0
-
-        self._win = None
-
         if self._parent_win:
-            height, width = self._parent_win.getmaxyx()
+            # coef from previous parent size
+            # hr = h / self._parent_size[0]
+            # wr = w / self._parent_size[1]
 
-            # std resolution if empty area (screen, tmux, daemon...)
-            if width <= 0:
-                width = 80
+            # # H, W, Y, X...
+            # new_rect = (
+            #     max(0, int(round(self._rect[0] * hr))),
+            #     max(0, int(round(self._rect[1] * wr))),
+            #     max(0, int(round(self._rect[2] * hr))),
+            #     max(0, int(round(self._rect[3] * wr)))
+            # )
 
-            if height <= 0:
-                height = 25
+            # resize based on initial shape ratios
+            new_rect = [
+                int(round(self._ratios[0] * h)),
+                int(round(self._ratios[1] * w)),
+                int(round(self._ratios[2] * h)),
+                int(round(self._ratios[3] * w)),
+            ]
 
-            hr = height / self._parent_size[0]
-            wr = width / self._parent_size[1]
+            # adjust to screen
+            if (new_rect[0] + new_rect[2]) >= h:
+                dh = h - (new_rect[0] + new_rect[2])
+                new_rect[0] -= dh
+                new_rect[2] += dh
 
-            self._parent_size = (height, width)
+            if (new_rect[1] + new_rect[3]) >= w:
+                dw = w - (new_rect[1] + new_rect[3])
+                new_rect[1] -= dw
+                new_rect[3] += dw
 
-            # H, W, Y, X...
-            self._rect = (
-                int(round(self._rect[0] * hr)),
-                int(round(self._rect[1] * wr)),
-                int(round(self._rect[2] * hr)),
-                int(round(self._rect[3] * wr))
-            )
+            new_win = None
 
-            if 1: # window:
-                self._win = curses.newwin(*self._rect)
-            else:
-                self._win = stdscr.subwin(*self._rect)
-                # self._win = stdscr.subpad(*self._rect)
+            try:
+                if 1: # window:
+                    new_win = curses.newwin(*new_rect)
+                else:
+                    new_win = stdscr.subwin(*new_rect)
+                    # new_win = stdscr.subpad(*new_rect)
+            except Exception as e:
+                error_logger.error(repr(e))
+
+            if not new_win:
+                return
+
+            # only replace if success
+            self._n = 0
+
+            self._first_row = 0
+            self._first_col = 0
+
+            self._table_first_row = 0
+            self._table_first_col = 0
+
+            self._parent_size = (h, w)
+            self._rect = tuple(new_rect)
+            self._win = new_win
+
+            self._dirty = True
 
             if self._mode == View.MODE_STREAM:
                 self._win.scrollok(0)
@@ -836,17 +861,17 @@ class Terminal(object):
             height, width = self._stdscr.getmaxyx()
 
             # std resolution if empty area (screen, tmux, daemon...)
-            if width <= 0:
+            if width < 80:
                 width = 80
 
-            if height <= 0:
+            if height < 25:
                 height = 25
 
         # to restore at terminate
         self._old_default = self._views
 
-        w1 = int(width*0.9)
-        w2 = width-w1
+        w1 = width # int(width*0.9)
+        # w2 = width-w1
 
         free_h = 4
         h1 = height - 2 - 2 - free_h
@@ -868,8 +893,8 @@ class Terminal(object):
             'debug': View('debug', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
 
             # right panel
-            'panel-head': View('panel-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 1), active=True),
-            'panel': View('panel', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w2, h1), active=True, border=True),
+            #'panel-head': View('panel-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 1), active=True),
+            #'panel': View('panel', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w2, h1), active=True, border=True),
 
             # bottom 
             'default': View('default', View.MODE_STREAM, self._stdscr, pos=(0, height-6), size=(width, free_h), active=True),
@@ -927,6 +952,12 @@ class Terminal(object):
 
         if self._stdscr:
             height, width = self._stdscr.getmaxyx()
+
+            if height < 25:
+                height = 25
+
+            if width < 80:
+                width = 80
         else:
             height, width = 0, 0
 
@@ -1208,8 +1239,15 @@ class Terminal(object):
         if self._query_reshape > 0 and time.time() > self._query_reshape + 0.5:
             height, width = self._stdscr.getmaxyx()
 
-            self._stdscr.clear()
+            # # std resolution if empty area (screen, tmux, daemon...)
+            if width < 80:
+                width = 80
+
+            if height < 25:
+                height = 25
+
             curses.resizeterm(height, width)
+            self._stdscr.clear()
 
             for k, view in self._views.items():
                 # reshape any views
@@ -1221,13 +1259,16 @@ class Terminal(object):
             self._views.get('command').redraw()
             self._views.get('status').redraw()
             self._views.get('notice').redraw()
-            self._views.get('panel').redraw()
-            self._views.get('panel-head').redraw()
+            # self._views.get('panel').redraw()
+            # self._views.get('panel-head').redraw()
 
             if self._active_content:
-                view = self._views.get(self._active_content)
-                if view:
-                    view.redraw()
+                content_view = self._views.get(self._active_content)
+                if content_view:
+                    content_view.redraw()
+                content_head_view = self._views.get(self._active_content+'-head')
+                if content_head_view:
+                    content_head_view.redraw()
 
             self._stdscr.refresh()
             self._query_reshape = -time.time() - 0.5

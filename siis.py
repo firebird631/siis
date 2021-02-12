@@ -752,21 +752,21 @@ def application(argv):
                 siis_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
 
-            # display advanced command only
-            if value_changed:
-                if value and value.startswith(':'):        
-                    Terminal.inst().message("Command: %s" % value[1:], view='command')
-                else:
-                    Terminal.inst().message("", view='command')
-
-            # clear input if no char hit during the last MAX_CMD_ALIVE
-            if value and not value.startswith(':'):
-                if (command_timeout > 0) and (time.time() - command_timeout >= MAX_CMD_ALIVE):
-                    value = None
-                    value_changed = True
-                    Terminal.inst().info("Current typing canceled", view='status')
-
             try:
+                # display advanced command only
+                if value_changed:
+                    if value and value.startswith(':'):        
+                        Terminal.inst().message("Command: %s" % value[1:], view='command')
+                    else:
+                        Terminal.inst().message("", view='command')
+
+                # clear input if no char hit during the last MAX_CMD_ALIVE
+                if value and not value.startswith(':'):
+                    if (command_timeout > 0) and (time.time() - command_timeout >= MAX_CMD_ALIVE):
+                        value = None
+                        value_changed = True
+                        Terminal.inst().info("Current typing canceled", view='status')
+
                 # display strategy tarding time (update max once per second)
                 if strategy_service.timestamp - prev_timestamp >= 1.0:
                     mode = "live"
@@ -794,12 +794,12 @@ def application(argv):
 
                 Terminal.inst().update()
 
-            except BaseException as e:
-                siis_logger.error(repr(e))
-                traceback_logger.error(traceback.format_exc())
+                # don't waste CPU time on main thread
+                time.sleep(LOOP_SLEEP)
 
-            # don't waste CPU time on main thread
-            time.sleep(LOOP_SLEEP)
+            except Exception as e:
+                siis_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())           
 
     finally:
         Terminal.inst().restore_term()
