@@ -946,7 +946,7 @@ class Trader(Runnable):
     # display views
     #
 
-    def markets_table(self, style='', offset=None, limit=None, col_ofs=None):
+    def markets_table(self, style='', offset=None, limit=None, col_ofs=None, group=None, ordering=None):
         """
         Returns a table of any followed markets.
         """
@@ -966,7 +966,7 @@ class Trader(Runnable):
 
             limit = offset + limit
 
-            markets.sort(key=lambda x: x.market_id)
+            markets.sort(key=lambda x: x.symbol, reverse=True if ordering else False)
             markets = markets[offset:limit]
 
             for market in markets:
@@ -1001,11 +1001,11 @@ class Trader(Runnable):
 
         return columns[0:2] + columns[2+col_ofs:], data, total_size
 
-    def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None, prev_timestamp=None):
+    def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None, prev_timestamp=None, group=None, ordering=None):
         """
         Returns a table of any followed markets tickers.
         """
-        columns = ('Market', 'Symbol', 'Bid', 'Ask', 'Spread', 'Vol24h base', 'Vol24h quote', 'Time')
+        columns = ('Market', 'Symbol', 'Mid', 'Bid', 'Ask', 'Spread', 'Vol24h base', 'Vol24h quote', 'Time')
         total_size = (len(columns), 0)
         data = []
 
@@ -1021,16 +1021,22 @@ class Trader(Runnable):
 
             limit = offset + limit
 
-            markets.sort(key=lambda x: x.market_id)
+            if group:
+                markets.sort(key=lambda x: -x.price, reverse=True if ordering else False)
+            else:
+                markets.sort(key=lambda x: x.symbol, reverse=True if ordering else False)
+
             markets = markets[offset:limit]
 
             for market in markets:
                 recent = market.recent(self.timestamp - 0.5 if not prev_timestamp else prev_timestamp)
                 if recent:
+                    mid = Color.colorize_updn(market.format_price(market.price), recent[2], market.price, style=style)
                     bid = Color.colorize_updn(market.format_price(market.bid), recent[1], market.bid, style=style)
                     ask = Color.colorize_updn(market.format_price(market.ask), recent[2], market.ask, style=style)
                     spread = Color.colorize_updn(market.format_spread(market.spread), market.spread, recent[2] - recent[1], style=style)
                 else:
+                    mid = market.format_price(market.price)
                     bid = market.format_price(market.bid)
                     ask = market.format_price(market.ask)
                     spread = market.format_spread(market.spread)
@@ -1054,9 +1060,11 @@ class Trader(Runnable):
                 if market.last_update_time > 0:
                     last_timestamp = datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S")
 
-                    if self.timestamp - market.last_update_time >= 60*15.0:
-                        # received ticker/depth not received within last 15mins
+                    # color ticker/depth since last receive (>15m, >30m)
+                    if self.timestamp - market.last_update_time > 60*30.0:
                         last_timestamp = Color.colorize(last_timestamp, Color.RED, style)
+                    elif self.timestamp - market.last_update_time > 60*15.0:
+                        last_timestamp = Color.colorize(last_timestamp, Color.ORANGE, style)
                     else:
                         last_timestamp = Color.colorize(last_timestamp, Color.GREEN, style)
                 else:
@@ -1065,6 +1073,7 @@ class Trader(Runnable):
                 row = (
                      market.market_id,
                      market.symbol,
+                     mid,
                      bid,
                      ask,
                      spread,
@@ -1076,7 +1085,7 @@ class Trader(Runnable):
 
         return columns[0:2] + columns[2+col_ofs:], data, total_size
 
-    def assets_table(self, style='', offset=None, limit=None, col_ofs=None, filter_low=True):
+    def assets_table(self, style='', offset=None, limit=None, col_ofs=None, filter_low=True, group=None, ordering=None):
         """
         Returns a table of any non empty assets.
         """
@@ -1096,7 +1105,11 @@ class Trader(Runnable):
 
             limit = offset + limit
 
-            assets.sort(key=lambda x: x.symbol)
+            if group:
+                assets.sort(key=lambda x: -x.quantity, reverse=True if ordering else False)
+            else:
+                assets.sort(key=lambda x: x.symbol, reverse=True if ordering else False)
+
             assets = assets[offset:limit]
 
             for asset in assets:

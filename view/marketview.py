@@ -35,7 +35,7 @@ class MarketView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.markets_table(*self.table_format())
+                columns, table, total_size = trader.markets_table(*self.table_format(), group=self._group, ordering=self._ordering)
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:

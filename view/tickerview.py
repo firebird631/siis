@@ -36,7 +36,7 @@ class TickerView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.markets_tickers_table(*self.table_format(), prev_timestamp=self._last_update)   
+                columns, table, total_size = trader.markets_tickers_table(*self.table_format(), prev_timestamp=self._last_update, group=self._group, ordering=self._ordering)   
                 self.table(columns, table, total_size)
                 num = total_size[1]
                 self._last_update = trader.timestamp

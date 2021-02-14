@@ -141,17 +141,50 @@ class ViewService(BaseService):
 
                 del self._views[view_id]
 
-    def toggle_percent(self):
-        with self._mutex:
-            for k, view in self._views.items():
-                view.toggle_percent()
+    def toggle_percent(self, active=True):
+        if active:
+            vt = Terminal.inst().active_content()
+            if vt:
+                view = self._views.get(vt.name)
+                if view:
+                    view.toggle_percent()
+        else:
+            with self._mutex:
+                for k, view in self._views.items():
+                    view.toggle_percent()
 
-    def toggle_group(self):
-        with self._mutex:
-            for k, view in self._views.items():
-                view.toggle_group()
+    def toggle_group(self, active=True):
+        if active:
+            vt = Terminal.inst().active_content()
+            if vt:
+                view = self._views.get(vt.name)
+                if view:
+                    view.toggle_group()
+        else:
+            with self._mutex:
+                for k, view in self._views.items():
+                    view.toggle_group()
 
-    def toggle_datetime_format(self):
-        with self._mutex:
-            for k, view in self._views.items():
-                view.toggle_datetime_format()
+    def toggle_order(self, active=True):
+        if active:
+            vt = Terminal.inst().active_content()
+            if vt:
+                view = self._views.get(vt.name)
+                if view:
+                    view.toggle_order()
+        else:
+            with self._mutex:
+                for k, view in self._views.items():
+                    view.toggle_order()
+
+    def toggle_datetime_format(self, active=True):
+        if active:
+            vt = Terminal.inst().active_content()
+            if vt:
+                view = self._views.get(vt.name)
+                if view:
+                    view.toggle_datetime_format()
+        else:
+            with self._mutex:
+                for k, view in self._views.items():
+                    view.toggle_datetime_format()

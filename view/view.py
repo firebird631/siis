@@ -29,8 +29,9 @@ class View(object):
         self._mutex = threading.RLock()  # reentrant locker
         self._item = 0  # in case of multiple item like more than a single strategy or trader
         self._refresh = 0
-        self._percent = False  # display percent for tables
-        self._group = False    # group by (depending of the view)
+        self._percent = False   # display percent for tables
+        self._group = False     # group by (depending of the view)
+        self._ordering = False  # default ordering, true alt ordering
         self._datetime_format = View.DATETIME_FORMATS[0]
 
     @property
@@ -119,6 +120,10 @@ class View(object):
 
     def toggle_group(self):
         self._group = not self._group
+        self._refresh = 0  # force refresh
+
+    def toggle_order(self):
+        self._ordering = not self._ordering
         self._refresh = 0  # force refresh
 
     def toggle_datetime_format(self):

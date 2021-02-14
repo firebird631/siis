@@ -731,6 +731,9 @@ def application(argv):
                                 elif value == ',':
                                     if view_service:
                                         view_service.toggle_group()
+                                elif value == ';':
+                                    if view_service:
+                                        view_service.toggle_order()
                                 elif value == '!':
                                     if view_service:
                                         view_service.toggle_datetime_format()
