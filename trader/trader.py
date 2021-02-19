@@ -192,6 +192,7 @@ class Trader(Runnable):
     def post_run(self):
         Terminal.inst().info("Joining trader %s..." % self._name)
         self.disconnect()
+        Terminal.inst().info("Trader %s stopped." % self._name)
 
     def post_update(self):
         if len(self._signals) > Trader.MAX_SIGNALS:

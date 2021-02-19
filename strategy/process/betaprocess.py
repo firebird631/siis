@@ -356,21 +356,44 @@ def beta_update_strategy(strategy, strategy_trader):
     @note Non thread-safe method.
     """
     if strategy_trader:
-        strategy_trader._processing = True
+        if not strategy_trader._initialized:
+            initiate_strategy_trader(strategy, strategy_trader)
+            return
 
-        if strategy_trader._preprocessing > 0:
-            # first : preprocessing and data caching
-            beta_preprocess(strategy, strategy_trader)
+        if not strategy_trader.instrument.ready():
+            # process only if instrument has data
+            return
 
-        elif strategy_trader._bootstraping > 0:
-            # second : bootstrap using preloaded data history
-            beta_bootstrap(strategy, strategy_trader)
+        if strategy_trader._processing:
+            # process only if previous job was completed
+            return
 
-        else:
-            # then : until process instrument update
-            strategy_trader.process(strategy.timestamp)
+        if not strategy_trader._checked:
+            # need to check existings trade orders, trade history and positions
+            strategy_trader.check_trades(strategy.timestamp)
 
-        strategy_trader._processing = False
+        try:
+            strategy_trader._processing = True
+
+            if strategy_trader._preprocessing > 0:
+                # first : preprocessing and data caching
+                beta_preprocess(strategy, strategy_trader)
+
+            elif strategy_trader._bootstraping > 0:
+                # second : bootstrap using preloaded data history
+                beta_bootstrap(strategy, strategy_trader)
+
+            else:
+                # then : until process instrument update
+                strategy_trader.process(strategy.timestamp)
+
+        except Exception as e:
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
+
+        finally:
+            # process complete
+            strategy_trader._processing = False
 
 
 def beta_async_update_strategy(strategy, strategy_trader):
@@ -481,5 +504,9 @@ def beta_setup_live(strategy):
 
     Database.inst().load_user_traders(strategy.service, strategy, trader.name,
             trader.account.name, strategy.identifier)
+
+    for market_id, instrument in strategy._instruments.items():
+        # wake-up all for initialization
+        strategy.send_initialize_strategy_trader(market_id)
 
     logger.info("Strategy %s data retrieved" % strategy.name)

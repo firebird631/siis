@@ -270,6 +270,7 @@ class Watcher(Runnable):
     def post_run(self):
         Terminal.inst().info("Joining watcher %s..." % self._name)
         self.disconnect()
+        Terminal.inst().info("Watcher %s stopped." % self._name)
 
     def update(self):
         """

@@ -202,6 +202,10 @@ def alpha_update_strategy(strategy, strategy_trader):
             # process only if previous job was completed
             return
 
+        if not strategy_trader._checked:
+            # need to check existings trade orders, trade history and positions
+            strategy_trader.check_trades(strategy.timestamp)
+
         try:
             strategy_trader._processing = True
 
@@ -276,10 +280,11 @@ def initiate_strategy_trader(strategy, strategy_trader):
                     l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                     l_to = now
 
-                    watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
-
                     # wait for this timeframe before processing
                     instrument.want_timeframe(timeframe['timeframe'])
+
+                    # fetch database
+                    watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
 
             # initialization processed, waiting for data be ready
             strategy_trader._initialized = True

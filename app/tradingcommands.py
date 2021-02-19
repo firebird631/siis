@@ -299,6 +299,22 @@ class LongCommand(Command):
                     method = 'limit'
                     limit_price = float(value[2:])
 
+                elif value.startswith("L+") or value.startswith("l+"):
+                    dist = int(value[2:])
+
+                    if dist < 1 or dist > 500:
+                        return False, "Bid depth must be from 1 to 500"
+
+                    method = 'best+%s' % dist
+
+                elif value.startswith("L-") or value.startswith("l-"):
+                    dist = int(value[2:])
+
+                    if dist < 1 or dist > 500:
+                        return False, "Ask depth must be from 1 to 500"
+
+                    method = 'best-%s' % dist
+
                 elif value.startswith("T@") or value.startswith("t@"):
                     method = 'trigger'
                     trigger_price = float(value[2:])
@@ -423,6 +439,22 @@ class ShortCommand(Command):
                 if value.startswith("L@") or value.startswith("l@"):
                     method = 'limit'
                     limit_price = float(value[2:])
+
+                elif value.startswith("L+") or value.startswith("l+"):
+                    dist = int(value[2:])
+
+                    if dist < 1 or dist > 500:
+                        return False, "Ask depth must be from 1 to 500"
+
+                    method = 'best+%s' % dist
+
+                elif value.startswith("L-") or value.startswith("l-"):
+                    dist = int(value[2:])
+
+                    if dist < 1 or dist > 500:
+                        return False, "Bid depth must be from 1 to 500"
+
+                    method = 'best-%s' % dist
 
                 elif value.startswith("T@") or value.startswith("t@"):
                     method = 'trigger'

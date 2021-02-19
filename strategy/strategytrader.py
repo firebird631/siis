@@ -61,6 +61,7 @@ class StrategyTrader(object):
         self._affinity = 5          # based on a linear scale [0..10]
 
         self._initialized = False   # initiate data before running
+        self._checked = False       # to be done after initialized, and connected
 
         self._limits = Limits()     # price and timestamp ranges
 
@@ -218,11 +219,25 @@ class StrategyTrader(object):
         """
         Recheck actives or pending trades. Useful after a reconnection.
         """
+        trader = self.strategy.trader()
+        mutated = False
+        trades_list = []
+
         with self._mutex:
             with self._trade_mutex:
                 for trade in self._trades:
-                    if trade.check(trader, self.instrument):
-                        pass  # @todo
+                    # check orders/position/quantity
+                    if not trade.check(trader, self.instrument):
+                        # remove the trade, the check returns True meaning no longer referenced by position, qty or any related orders
+                        mutated = True
+                    else:
+                        # keep the trade
+                        trades_list.append(trade)
+
+                if mutated:
+                    self._trades = trades_list
+
+        self._checked = True
 
     def terminate(self):
         """
@@ -366,11 +381,8 @@ class StrategyTrader(object):
             else:
                 error_logger.error("During loads, region checking error %s" % (r['name'],))
 
-        # check orders/position/quantity before adding
-        trader = self.strategy.trader()
-
-        if trade.check(trader, self.instrument):
-            self.add_trade(trade)
+        # add the trade, will be check on a next process
+        self.add_trade(trade)
 
     #
     # order/position slot

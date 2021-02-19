@@ -997,17 +997,37 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_CONNECTED:
                     # initiate the strategy prefetch initial data, only once all watchers are ready
-                    if signal.data[1]:
+                    market = signal.data[1]
+                    if market:
                         if self.check_watchers():
-                            pass
+                            strategy_trader = self._strategy_traders.get(signal.data[0])
+                            if strategy_trader:
+                                with strategy_trader._mutex:
+                                    # force to reinitialize
+                                    # @todo could be done only after a certain delay
+                                    # strategy_trader._initialized = False
+
+                                    # for the recheck the trades
+                                    strategy_trader._checked = False
+
+                                do_update.add(strategy_trader)
                     else:
-                        # any markets are affected
+                        # any markets are affected, only for initial after first connection
                         if self.check_watchers():
                             if not self._preset:
                                 self.preset()
 
                             # need to reinitialize and recheck the traces
-                            pass  # @todo
+                            for k, strategy_trader in self._strategy_traders.items():
+                                with strategy_trader._mutex:
+                                    # force to reinitialize
+                                    # @todo could be done only after a certain delay
+                                    # strategy_trader._initialized = False
+
+                                    # for the recheck the trades
+                                    strategy_trader._checked = False
+ 
+                                do_update.add(strategy_trader)
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_DISCONNECTED:
                     # do we want to clean-up and wait connection signal to reinitiate ?
