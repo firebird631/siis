@@ -198,13 +198,13 @@ def alpha_update_strategy(strategy, strategy_trader):
             # process only if instrument has data
             return
 
-        if strategy_trader._processing:
-            # process only if previous job was completed
-            return
-
         if not strategy_trader._checked:
             # need to check existings trade orders, trade history and positions
             strategy_trader.check_trades(strategy.timestamp)
+
+        if strategy_trader._processing:
+            # process only if previous job was completed
+            return
 
         try:
             strategy_trader._processing = True

@@ -142,6 +142,8 @@ class EntryExit(object):
             self.timeout_distance = float(timeout_distance)
             self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
 
+        self.max_trades = max(0, params.get('max-trades', 0))
+
     def compile(self, strategy_trader):
         if strategy_trader.is_timeframes_based:
             self.timeframe = strategy_trader.timeframes.get(self.timeframe)
@@ -321,8 +323,10 @@ class BaseSignal(StrategySignalContext):
         self.long_call = None
         self.short_call = None
 
-    def loads(self, strategy_trader, params):
-        pass
+        self.max_trades = 0  # >0 limit the number of trade for the context
+
+    def loads(self, strategy_trader, params):     
+        self.max_trades = max(0, params.get('max-trades', 0))
 
     def compile(self, strategy_trader):
         pass

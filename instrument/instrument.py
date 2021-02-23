@@ -1057,7 +1057,16 @@ class Instrument(object):
         """
         self._wanted.append(timeframe)
 
+    def is_want_timeframe(self, timeframe):
+        """
+        Check if a timeframe is wanted.
+        """
+        return timeframe in self._wanted
+
     def ack_timeframe(self, timeframe):
+        """
+        Clear wanted timeframe status and returns true if it was wanted.
+        """
         if timeframe in self._wanted:
             self._wanted.remove(timeframe)
             return True

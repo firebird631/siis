@@ -274,6 +274,7 @@ class MySql(Database):
                                     (*mi,))
 
                 self._db.commit()
+                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -291,9 +292,9 @@ class MySql(Database):
 
         if mis:
             try:
-                cursor = self._db.cursor()
-
                 for mi in mis:
+                    cursor = self._db.cursor()
+
                     cursor.execute("""SELECT symbol,
                                         market_type, unit_type, contract_type,
                                         trade_type, orders,
@@ -353,6 +354,8 @@ class MySql(Database):
                     else:
                         market_info = None
 
+                    cursor = None
+
                     # notify
                     mi[0].notify(Signal.SIGNAL_MARKET_INFO_DATA, mi[1], (mi[2], market_info))
             except Exception as e:
@@ -372,9 +375,9 @@ class MySql(Database):
 
         if mls:
             try:
-                cursor = self._db.cursor()
-
                 for m in mls:
+                    cursor = self._db.cursor()
+
                     cursor.execute("""SELECT market_id, symbol, base, quote FROM market WHERE broker_id = '%s'""" % (m[1],))
 
                     rows = cursor.fetchall()
@@ -383,6 +386,8 @@ class MySql(Database):
 
                     for row in rows:
                         market_list.append(row)
+
+                    cursor = None
 
                     # notify
                     m[0].notify(Signal.SIGNAL_MARKET_LIST_DATA, m[1], market_list)
@@ -413,6 +418,7 @@ class MySql(Database):
                             last_trade_id = VALUES(last_trade_id), timestamp = VALUES(timestamp), quantity = VALUES(quantity), price = VALUES(price), quote_symbol = VALUES(price)""", (*ua,))
 
                 self._db.commit()
+                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -430,9 +436,9 @@ class MySql(Database):
 
         if uas:
             try:
-                cursor = self._db.cursor()
-
                 for ua in uas:
+                    cursor = self._db.cursor()
+
                     cursor.execute("""SELECT asset_id, last_trade_id, timestamp, quantity, price, quote_symbol FROM asset
                         WHERE broker_id = '%s' AND account_id = '%s'""" % (ua[2], ua[3]))
 
@@ -448,6 +454,8 @@ class MySql(Database):
                         asset.set_quantity(0.0, float(row[3]))
 
                         assets.append(asset)
+
+                    cursor = None
 
                     # notify
                     ua[0].notify(Signal.SIGNAL_ASSET_DATA_BULK, ua[2], assets)
@@ -480,6 +488,7 @@ class MySql(Database):
                 cursor.execute(query)
 
                 self._db.commit()
+                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -497,9 +506,9 @@ class MySql(Database):
 
         if uts:
             try:
-                cursor = self._db.cursor()
-
                 for ut in uts:
+                    cursor = self._db.cursor()
+
                     cursor.execute("""SELECT market_id, trade_id, trade_type, data, operations FROM user_trade WHERE
                         broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s'""" % (ut[2], ut[3], ut[4]))
 
@@ -509,6 +518,8 @@ class MySql(Database):
 
                     for row in rows:
                         user_trades.append((row[0], row[1], row[2], json.loads(row[3]), json.loads(row[4])))
+
+                    cursor = None
 
                     # notify
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ut[4], user_trades)
@@ -537,6 +548,7 @@ class MySql(Database):
                         broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s'""" % (ut[0], ut[1], ut[2]))
 
                 self._db.commit()
+                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -568,6 +580,7 @@ class MySql(Database):
                 cursor.execute(query)
 
                 self._db.commit()
+                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -585,9 +598,9 @@ class MySql(Database):
 
         if uts:
             try:
-                cursor = self._db.cursor()
-
                 for ut in uts:
+                    cursor = self._db.cursor()
+
                     cursor.execute("""SELECT market_id, activity, data, regions, alerts FROM user_trader WHERE
                         broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s'""" % (ut[2], ut[3], ut[4]))
 
@@ -597,6 +610,8 @@ class MySql(Database):
 
                     for row in rows:
                         user_traders.append((row[0], row[1] > 0, json.loads(row[2]), json.loads(row[3]), json.loads(row[4])))
+
+                    cursor = None
 
                     # notify
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADER_LIST, ut[4], user_traders)
@@ -631,6 +646,7 @@ class MySql(Database):
                     cursor.execute(query)
 
                     self._db.commit()
+                    cursor = None
                 except Exception as e:
                     self.on_error(e)
 
@@ -662,6 +678,7 @@ class MySql(Database):
                 cursor.execute(query)
 
                 self._db.commit()
+                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -685,6 +702,7 @@ class MySql(Database):
                         cursor.execute("DELETE FROM ohlc WHERE timeframe <= %i AND timestamp < %i" % (timeframe, ts))
 
                     self._db.commit()
+                    cursor = None
                 except Exception as e:
                     self.on_error(e)
 
@@ -700,9 +718,9 @@ class MySql(Database):
 
         if mks:
             try:
-                cursor = self._db.cursor()
-
                 for mk in mks:
+                    cursor = self._db.cursor()
+
                     if mk[6]:
                         # last n
                         cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s""" % (mk[1], mk[2], mk[3]))
@@ -757,6 +775,8 @@ class MySql(Database):
 
                         ohlcs.append(ohlc)
 
+                    cursor = None
+
                     # notify
                     mk[0].notify(Signal.SIGNAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
             except Exception as e:
@@ -791,7 +811,9 @@ class MySql(Database):
             cursor = self._db.cursor()
             cursor.execute("DELETE FROM ohlc WHERE broker_id = '%s'" % (broker_id,))
             self._db.commit()
+            cursor = None
         else:
             cursor = self._db.cursor()
             cursor.execute("DELETE FROM ohlc WHERE broker_id = '%s' AND market_id = '%s'" % (broker_id, market_id))
             self._db.commit()
+            cursor = None

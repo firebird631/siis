@@ -1216,6 +1216,37 @@ class StrategyTrader(object):
 
         return result
 
+    def has_max_trades_by_context(self, max_trades, same_context=None):
+        """
+        @param max_trades Max simultaneous trades for this instrument.
+        @param context Compared context instance.
+        @param same_context_num 0 mean Allow multiple trade of the same context, else it define the max allowed.
+        """
+        result = False
+        same_context_num = same_context.max_trades if same_context else 0
+
+        if self._trades:
+            with self._trade_mutex:
+                if len(self._trades) >= max_trades:
+                    # no more than max simultaneous trades
+                    result = True
+
+                elif same_context and same_context_num > 0:
+                    for trade in self._trades:
+                        if trade.context == same_context:
+                            same_context_num -= 1
+                            if same_context_num <= 0:
+                                result = True
+                                break
+
+        if result:
+            msg = "Max trade reached for %s with %s or max reached for the context" % (self.instrument.symbol, max_trades)
+
+            # logger.warning(msg)
+            Terminal.inst().notice(msg, view='status')
+
+        return result
+
     #
     # notification
     #

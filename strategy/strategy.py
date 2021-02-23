@@ -889,15 +889,18 @@ class Strategy(Runnable):
                     # incoming bulk of history ticks
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
-                        # initials ticks loaded
                         with strategy_trader._mutex:
-                            strategy_trader.instrument.ack_timeframe(0)
+                            initial = strategy_trader.instrument.is_want_timeframe(0)
 
                         # insert the bulk of ticks into the instrument
                         if signal.data[1]:
                             with strategy_trader._mutex:
                                 # can accum before ready status
                                 strategy_trader.instrument.add_ticks(signal.data[1])
+
+                                if initial:
+                                    # ticks acquired
+                                    strategy_trader.instrument.ack_timeframe(0)
 
                                 do_update.add(strategy_trader)
 
@@ -906,7 +909,7 @@ class Strategy(Runnable):
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         with strategy_trader._mutex:
-                            initial = strategy_trader.instrument.ack_timeframe(signal.data[1])
+                            initial = strategy_trader.instrument.is_want_timeframe(signal.data[1])
 
                         # insert the bulk of candles into the instrument
                         if signal.data[2]:
@@ -921,11 +924,14 @@ class Strategy(Runnable):
                                 logger.debug("Retrieved %s OHLCs for %s in %s" % (len(signal.data[2]), instrument.market_id, timeframe_to_str(signal.data[1])))
 
                                 # append the current OHLC from the watcher on live mode
-                                if not self.service.backtesting:
-                                    with strategy_trader._mutex:
+                                with strategy_trader._mutex:
+                                    if not self.service.backtesting:
                                         instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).current_ohlc(instrument.market_id, signal.data[1]))
 
-                                strategy_trader.on_received_initial_candles(signal.data[1])                           
+                                    # timeframe acquired
+                                    instrument.ack_timeframe(signal.data[1])
+
+                                strategy_trader.on_received_initial_candles(signal.data[1])
 
                             do_update.add(strategy_trader)
 
@@ -1007,7 +1013,7 @@ class Strategy(Runnable):
                                     # @todo could be done only after a certain delay
                                     # strategy_trader._initialized = False
 
-                                    # for the recheck the trades
+                                    # force to recheck the trades
                                     strategy_trader._checked = False
 
                                 do_update.add(strategy_trader)
@@ -1024,7 +1030,7 @@ class Strategy(Runnable):
                                     # @todo could be done only after a certain delay
                                     # strategy_trader._initialized = False
 
-                                    # for the recheck the trades
+                                    # force to recheck the trades
                                     strategy_trader._checked = False
  
                                 do_update.add(strategy_trader)

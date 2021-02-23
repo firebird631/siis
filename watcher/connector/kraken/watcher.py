@@ -1423,6 +1423,8 @@ class KrakenWatcher(Watcher):
             # timestamp, bid, ask, last, volume, direction
             yield(trade)
 
+        logger.info("Watcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))
+
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         if timeframe not in self.TF_MAP:
             logger.error("Watcher %s does not support timeframe %s" % (self.name, timeframe_to_str(timeframe)))
