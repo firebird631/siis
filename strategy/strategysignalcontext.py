@@ -337,3 +337,13 @@ class BaseSignal(StrategySignalContext):
         }
 
         return result
+
+    def mode_to_str(self):
+        if self.mode == BaseSignal.MODE_NONE:
+            return 'none'
+        elif self.mode == BaseSignal.MODE_SIGNAL:
+            return 'signal'
+        elif self.mode == BaseSignal.MODE_TRADE:
+            return 'trade'
+        
+        return 'unknown'

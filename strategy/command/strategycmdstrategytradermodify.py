@@ -242,6 +242,32 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
 
             results['affinity'] = strategy_trader.affinity
 
+        elif action == "set-option":
+            option = data.get('option')
+            value = data.get('value')
+
+            if not option or type(option) is not str:
+                results['error'] = True
+                results['messages'].append("Option must be defined and valid")
+
+            if not value or type(value) not in (str, int, float):
+                results['error'] = True
+                results['messages'].append("Value must be defined and valid")
+
+            if results['error']:
+                return results
+
+            error = strategy_trader.check_option(option, value)
+
+            if error:
+                results['error'] = True
+                results['messages'].append(error)
+
+                return results
+
+            strategy_trader.set_option(option, value)
+            results['messages'].append("Modified strategy trader option %s for %s to %s" % (option, strategy_trader.instrument.market_id, value))
+
         else:
             results['error'] = True
             results['messages'].append("Invalid action")

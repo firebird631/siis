@@ -120,6 +120,121 @@ class StrategyTrader(object):
     def is_tickbars_based(self):
         return False
 
+    def check_option(self, option, value):
+        """
+        Check for a local option. Validate the option name and value format.
+        @return None or a str with the message of the error.
+        """
+        if option is None or type(option) is not str:
+            return "Invalid option"
+
+        if value is None or type(value) not in (int, float, str):
+            return "Invalid value"
+
+        keys = option.split('.')
+
+        for k in keys:
+            if not k:
+                return "Invalid option format"
+
+        if keys[0] not in ('max-trades', 'context', 'mode'):
+            return "Invalid option %s" % keys[0]
+
+        if keys[0] == 'context':
+            if len(keys) < 2:
+                return "Context must be named"
+
+            context = self.retrieve_context(keys[1])
+            if context is None:
+                return "Unknown context %s" % keys[1]
+
+            if len(keys) == 3:
+                if keys[2] not in ('max-trades', 'mode'):
+                    return "Invalid option %s" % keys[2]
+
+                if keys[2] == 'max-trades':
+                    try:
+                        v = int(value)
+                        if not 0 <= v <= 999:
+                            return "Value must be between 0..999"
+                    except ValueError:
+                        return "Value must be integer"
+
+                if keys[2] == 'mode':
+                    if value not in context.MODE:
+                        return "Unsupported value for mode"
+
+        elif keys[0] == 'max-trades':
+            try:
+                int(value)
+            except ValueError:
+                return "Value must be integer"
+
+        return None
+
+    def set_option(self, option, value):
+        """
+        Set for a local option. Validate the option name and value format and apply it.
+        @return True if the option was modified.
+        """
+        if option is None or type(option) is not str:
+            return False
+
+        if value is None or type(value) not in (int, float, str):
+            return False
+
+        keys = option.split('.')
+
+        for k in keys:
+            if not k:
+                return False
+
+        if keys[0] not in ('max-trades', 'context', 'mode'):
+            return False
+
+        if keys[0] == 'context':
+            if len(keys) < 2:
+                return False
+
+            context = self.retrieve_context(keys[1])
+            if context is None:
+                return False
+
+            if len(keys) == 3:
+                if keys[2] not in ('max-trades', 'mode'):
+                    return False
+
+                if keys[2] == 'max-trades':
+                    try:
+                        v = int(value)
+                        if 0 <= v <= 999:
+                            context.max_trades = v
+                            return True
+                        else:
+                            return False
+                    except ValueError:
+                        return False
+
+                if keys[2] == 'mode':
+                    if value not in context.MODE:
+                        return False
+
+                    context.mode = context.MODE[value]
+                    return True
+
+        elif keys[0] == 'max-trades':
+            try:
+                v = int(value)
+                if 0 <= v <= 999:
+                    self.max_trades = v
+                    return True
+                else:
+                    return False
+            except ValueError:
+                return False
+
+        return False
+
     #
     # processing
     #

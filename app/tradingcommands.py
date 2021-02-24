@@ -135,7 +135,7 @@ class InfoCommand(Command):
 
     def execute(self, args):
         if not args:
-            return False, "Missing parameters"
+            return False, "Missing parameters. Need at at least strategy or notifiers."
 
         if args[0] == 'strategy':
             if len(args) == 1:
@@ -174,7 +174,7 @@ class InfoCommand(Command):
         return args, 0
 
 
-class AffinityCommand(Command):
+class SetAffinityCommand(Command):
 
     SUMMARY = "<market-id> to modify the affinity per market."
 
@@ -184,23 +184,134 @@ class AffinityCommand(Command):
         self._strategy_service = strategy_service
 
     def execute(self, args):
-        if len(args) != 2:
-            return False, "Missing parameters"
+        if not args:
+            return False, "Missing parameters. Need at least affinity."
 
         action = "set-affinity"
+        market_id = None
+        affinity = 0
+
+        is_int = True
 
         try:
+            int(args[0])
+        except ValueError:
+            is_int = False
+
+        if is_int:
+            try:
+                affinity = int(args[0])
+            except ValueError:
+                return False, "Invalid affinity format"
+        else:
             market_id = args[0]
-            affinity = int(args[1])
 
-        except Exception:
-            return False, "Invalid parameters"
+            try:
+                affinity = int(args[1])
+            except ValueError:
+                return False, "Invalid affinity format"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
-            'market-id': market_id,
-            'affinity': affinity,
-            'action': action
-        })
+        if market_id:
+            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+                'market-id': market_id,
+                'action': action,
+                'affinity': affinity
+            })
+        else:
+            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
+                'action': action,
+                'affinity': affinity
+            })
+
+        return True, []
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            if len(args) == 1:
+                is_int = True
+
+                try:
+                    int(args[0])
+                except ValueError:
+                    is_int = False
+
+                if is_int:
+                    return args, 0
+
+            # instrument
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
+class SetOptionCommand(Command):
+
+    SUMMARY = "any or specify <market-id> to modify the option per market."
+
+    def __init__(self, strategy_service):
+        super().__init__('set-option', 'SETOPT')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if len(args) < 2 or len(args) > 3:
+            return False, "Missing parameters. Need at least option and value."
+
+        action = "set-option"
+        market_id = None
+        option = None
+        value = None
+
+        def convert_value(v):
+            if v is None:
+                # undefined
+                return None
+
+            if len(v) == 0:
+                # empty string
+                return ""
+
+            if '.' in v:
+                # float ?
+                try:
+                    return float(v)
+                except ValueError:
+                    return v
+
+            if v[0] in ('-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'):
+                #int ?
+                try:
+                    return int(v)
+                except ValueError:
+                    return v
+
+            # string
+            return v
+
+        if len(args) == 2:
+            option = args[0]
+            value = convert_value(args[1])
+
+        elif len(args) == 3:
+            market_id = args[0]
+            option = args[1]
+            value = convert_value(args[2])
+
+        if market_id:
+            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+                'market-id': market_id,
+                'action': action,
+                'option': option,
+                'value': value
+            })
+        else:
+            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
+                'action': action,
+                'option': option,
+                'value': value
+            })
 
         return True, []
 
@@ -214,7 +325,7 @@ class AffinityCommand(Command):
         return args, 0
 
 
-class FrozeAssetQuantityCommand(Command):
+class SetFrozenQuantityCommand(Command):
 
     SUMMARY = "<market-id> to modify the frozen quantity per asset."
 
@@ -1040,6 +1151,7 @@ class SetQuantityCommand(Command):
             return False, "Missing parameters"
 
         # ie: ":setquantity BTCUSDT 1000 1"
+        action = "set-quantity"
         market_id = None
         quantity = 0.0
         max_factor = 1
@@ -1088,13 +1200,13 @@ class SetQuantityCommand(Command):
         if market_id:
             self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
                 'market-id': market_id,
-                'action': "set-quantity",
+                'action': action,
                 'quantity': quantity,
                 'max-factor': max_factor
             })
         else:
             self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
-                'action': "set-quantity",
+                'action': action,
                 'quantity': quantity,
                 'max-factor': max_factor
             })
@@ -1250,8 +1362,9 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(InfoCommand(strategy_service, notifier_service))
     commands_handler.register(UserSaveCommand(strategy_service))
     commands_handler.register(SetQuantityCommand(strategy_service))
-    commands_handler.register(AffinityCommand(strategy_service))
-    commands_handler.register(FrozeAssetQuantityCommand(trader_service))
+    commands_handler.register(SetAffinityCommand(strategy_service))
+    commands_handler.register(SetOptionCommand(strategy_service))
+    commands_handler.register(SetFrozenQuantityCommand(trader_service))
 
     commands_handler.register(ReconnectCommand(watcher_service))
 
