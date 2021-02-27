@@ -141,6 +141,17 @@ class PgSql(Database):
                 alerts TEXT NOT NULL DEFAULT '[]',
                 UNIQUE(broker_id, account_id, market_id, strategy_id))""")
 
+        # closed trade table + index
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_closed_trade(
+                id SERIAL PRIMARY KEY,
+                broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+                strategy_id VARCHAR(255) NOT NULL,
+                timestamp BIGINT NOT NULL,
+                data TEXT NOT NULL DEFAULT '{}')""")
+
+        cursor.execute("""CREATE INDEX IF NOT EXISTS idx_user_closed_trade_all on user_closed_trade(broker_id, account_id, market_id, strategy_id)""")
+
         self._db.commit()
 
     def setup_ohlc_sql(self):
@@ -676,6 +687,40 @@ class PgSql(Database):
                 # retry the next time
                 with self._mutex:
                     self._pending_user_trader_select = uts + self._pending_user_trader_select
+
+        #
+        # insert user_closed_trade
+        #
+
+        with self._mutex:
+            uci = self._pending_user_closed_trade_insert
+            self._pending_user_closed_trade_insert = []
+
+        if uci:
+            try:
+                cursor = self._db.cursor()
+
+                query = ' '.join((
+                    "INSERT INTO user_closed_trade(broker_id, account_id, market_id, strategy_id, timestamp, data) VALUES",
+                    ','.join(["('%s', '%s', '%s', '%s', %i, '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], json.dumps(ut[5]).replace("'", "''")) for ut in uci])
+                ))
+
+                cursor.execute(query)
+
+                self._db.commit()
+                cursor = None
+            except self.psycopg2.OperationalError as e:
+                self.try_reconnect(e)
+
+                # retry the next time
+                with self._mutex:
+                    self._pending_user_closed_trade_insert = uci + self._pending_user_closed_trade_insert
+            except Exception as e:
+                self.on_error(e)
+
+                # retry the next time
+                with self._mutex:
+                    self._pending_user_closed_trade_insert = uci + self._pending_user_closed_trade_insert
 
     def process_ohlc(self):
         #

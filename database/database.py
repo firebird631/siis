@@ -136,6 +136,7 @@ class Database(object):
 
         self._pending_user_trader_insert = []
         self._pending_user_trader_select = []
+        self._pending_user_closed_trade_insert = []
 
         self._pending_liquidation_insert = []
 
@@ -630,6 +631,25 @@ class Database(object):
         """
         with self._mutex:
             self._pending_user_trader_select.append((service, strategy, broker_id, account_id, strategy_id))
+
+        with self._condition:
+            self._condition.notify()
+
+    def store_user_closed_trade(self, data):
+        """
+        @param data is a tuple or an array of tuples containing data in that order and format :
+            str broker_id (not empty)
+            str account_id (not empty)
+            str market_id (not empty)
+            str strategy_id (not empty)
+            integer timestamp (not empty)
+            dict data (to be json encoded)
+        """
+        with self._mutex:
+            if isinstance(data, list):
+                self._pending_user_closed_trade_insert.extend(data)
+            else:
+                self._pending_user_closed_trade_insert.append(data)
 
         with self._condition:
             self._condition.notify()

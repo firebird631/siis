@@ -6,6 +6,7 @@
 import pathlib
 import threading
 import time
+import traceback
 
 from datetime import datetime
 
@@ -29,6 +30,7 @@ from trader.order import Order
 import logging
 logger = logging.getLogger('siis.strategy.trader')
 error_logger = logging.getLogger('siis.error.strategy.trader')
+traceback_logger = logging.getLogger('siis.traceback.strategy.trader')
 
 
 class StrategyTrader(object):
@@ -341,13 +343,17 @@ class StrategyTrader(object):
         with self._mutex:
             with self._trade_mutex:
                 for trade in self._trades:
-                    # check orders/position/quantity
-                    if not trade.check(trader, self.instrument):
-                        # remove the trade, the check returns True meaning no longer referenced by position, qty or any related orders
-                        mutated = True
-                    else:
-                        # keep the trade
-                        trades_list.append(trade)
+                    try:
+                        # check orders/position/quantity
+                        if not trade.check(trader, self.instrument):
+                            # remove the trade, the check returns True meaning no longer referenced by position, qty or any related orders
+                            mutated = True
+                        else:
+                            # keep the trade
+                            trades_list.append(trade)
+                    except Exception as e:
+                        error_logger.error(repr(e))
+                        traceback_logger.error(traceback.format_exc())
 
                 if mutated:
                     self._trades = trades_list
@@ -801,6 +807,11 @@ class StrategyTrader(object):
                             trade.exit_reason = trade.REASON_CANCELED_TIMEOUT
 
                         self.notify_trade_exit(timestamp, trade)
+
+                    # store for history, only for real mode
+                    if not trader.paper_mode:
+                        Database.inst().store_user_closed_trade((trader.name, trader.account.name, self.instrument.market_id,
+                                self.strategy.identifier, timestamp, record))
 
             # recreate the list of trades
             if mutated:

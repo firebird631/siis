@@ -73,26 +73,24 @@ class MySql(Database):
 
         # market table
         cursor.execute("SHOW TABLES LIKE 'market'")
-        if len(cursor.fetchall()) > 0:
-            return
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS market(
-                id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, symbol VARCHAR(32) NOT NULL,
-                market_type INTEGER NOT NULL DEFAULT 0, unit_type INTEGER NOT NULL DEFAULT 0, contract_type INTEGER NOT NULL DEFAULT 0,
-                trade_type INTEGER NOT NULL DEFAULT 0, orders INTEGER NOT NULL DEFAULT 0,
-                base VARCHAR(32) NOT NULL, base_display VARCHAR(32) NOT NULL, base_precision VARCHAR(32) NOT NULL,
-                quote VARCHAR(32) NOT NULL, quote_display VARCHAR(32) NOT NULL, quote_precision VARCHAR(32) NOT NULL,
-                expiry VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL,
-                lot_size VARCHAR(32) NOT NULL, contract_size VARCHAR(32) NOT NULL, base_exchange_rate VARCHAR(32) NOT NULL,
-                value_per_pip VARCHAR(32) NOT NULL, one_pip_means VARCHAR(32) NOT NULL, margin_factor VARCHAR(32) NOT NULL DEFAULT '1.0',
-                min_size VARCHAR(32) NOT NULL, max_size VARCHAR(32) NOT NULL, step_size VARCHAR(32) NOT NULL,
-                min_notional VARCHAR(32) NOT NULL, max_notional VARCHAR(32) NOT NULL, step_notional VARCHAR(32) NOT NULL,
-                min_price VARCHAR(32) NOT NULL, max_price VARCHAR(32) NOT NULL, step_price VARCHAR(32) NOT NULL,
-                maker_fee VARCHAR(32) NOT NULL DEFAULT '0', taker_fee VARCHAR(32) NOT NULL DEFAULT '0',
-                maker_commission VARCHAR(32) NOT NULL DEFAULT '0', taker_commission VARCHAR(32) NOT NULL DEFAULT '0',
-                UNIQUE KEY(broker_id, market_id)) ENGINE=InnoDB""")
+        if len(cursor.fetchall()) <= 0:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS market(
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, symbol VARCHAR(32) NOT NULL,
+                    market_type INTEGER NOT NULL DEFAULT 0, unit_type INTEGER NOT NULL DEFAULT 0, contract_type INTEGER NOT NULL DEFAULT 0,
+                    trade_type INTEGER NOT NULL DEFAULT 0, orders INTEGER NOT NULL DEFAULT 0,
+                    base VARCHAR(32) NOT NULL, base_display VARCHAR(32) NOT NULL, base_precision VARCHAR(32) NOT NULL,
+                    quote VARCHAR(32) NOT NULL, quote_display VARCHAR(32) NOT NULL, quote_precision VARCHAR(32) NOT NULL,
+                    expiry VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL,
+                    lot_size VARCHAR(32) NOT NULL, contract_size VARCHAR(32) NOT NULL, base_exchange_rate VARCHAR(32) NOT NULL,
+                    value_per_pip VARCHAR(32) NOT NULL, one_pip_means VARCHAR(32) NOT NULL, margin_factor VARCHAR(32) NOT NULL DEFAULT '1.0',
+                    min_size VARCHAR(32) NOT NULL, max_size VARCHAR(32) NOT NULL, step_size VARCHAR(32) NOT NULL,
+                    min_notional VARCHAR(32) NOT NULL, max_notional VARCHAR(32) NOT NULL, step_notional VARCHAR(32) NOT NULL,
+                    min_price VARCHAR(32) NOT NULL, max_price VARCHAR(32) NOT NULL, step_price VARCHAR(32) NOT NULL,
+                    maker_fee VARCHAR(32) NOT NULL DEFAULT '0', taker_fee VARCHAR(32) NOT NULL DEFAULT '0',
+                    maker_commission VARCHAR(32) NOT NULL DEFAULT '0', taker_commission VARCHAR(32) NOT NULL DEFAULT '0',
+                    UNIQUE KEY(broker_id, market_id)) ENGINE=InnoDB""")
 
         self._db.commit()
 
@@ -101,48 +99,55 @@ class MySql(Database):
 
         # asset table
         cursor.execute("SHOW TABLES LIKE 'asset'")
-        if len(cursor.fetchall()) > 0:
-            return
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS asset(
-                id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, asset_id VARCHAR(255) NOT NULL,
-                last_trade_id VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL, 
-                quantity VARCHAR(32) NOT NULL, price VARCHAR(32) NOT NULL, quote_symbol VARCHAR(32) NOT NULL,
-                UNIQUE KEY(broker_id, account_id, asset_id)) ENGINE=InnoDB""")
+        if len(cursor.fetchall()) <= 0:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS asset(
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, asset_id VARCHAR(255) NOT NULL,
+                    last_trade_id VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL, 
+                    quantity VARCHAR(32) NOT NULL, price VARCHAR(32) NOT NULL, quote_symbol VARCHAR(32) NOT NULL,
+                    UNIQUE KEY(broker_id, account_id, asset_id)) ENGINE=InnoDB""")
 
         # trade table
         cursor.execute("SHOW TABLES LIKE 'user_trade'")
-        if len(cursor.fetchall()) > 0:
-            return
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_trade(
-                id SERIAL PRIMARY KEY,
-                broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
-                strategy_id VARCHAR(255) NOT NULL,
-                trade_id INTEGER NOT NULL,
-                trade_type INTEGER NOT NULL,
-                data TEXT NOT NULL DEFAULT '{}',
-                operations TEXT NOT NULL DEFAULT '{}',
-                UNIQUE KEY(broker_id, account_id, market_id, strategy_id, trade_id)) ENGINE=InnoDB""")
+        if len(cursor.fetchall()) <= 0:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_trade(
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+                    strategy_id VARCHAR(255) NOT NULL,
+                    trade_id INTEGER NOT NULL,
+                    trade_type INTEGER NOT NULL,
+                    data TEXT NOT NULL DEFAULT '{}',
+                    operations TEXT NOT NULL DEFAULT '{}',
+                    UNIQUE KEY(broker_id, account_id, market_id, strategy_id, trade_id)) ENGINE=InnoDB""")
 
         # trader table
         cursor.execute("SHOW TABLES LIKE 'user_trader'")
-        if len(cursor.fetchall()) > 0:
-            return
+        if len(cursor.fetchall()) <= 0:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_trader(
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+                    strategy_id VARCHAR(255) NOT NULL,
+                    activity INTEGER NOT NULL DEFAULT 1,
+                    data TEXT NOT NULL DEFAULT '{}',
+                    regions TEXT NOT NULL DEFAULT '[]',
+                    alerts TEXT NOT NULL DEFAULT '[]',
+                    UNIQUE KEY(broker_id, account_id, market_id, strategy_id)) ENGINE=InnoDB""")
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_trader(
-                id SERIAL PRIMARY KEY,
-                broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
-                strategy_id VARCHAR(255) NOT NULL,
-                activity INTEGER NOT NULL DEFAULT 1,
-                data TEXT NOT NULL DEFAULT '{}',
-                regions TEXT NOT NULL DEFAULT '[]',
-                alerts TEXT NOT NULL DEFAULT '[]',
-                UNIQUE KEY(broker_id, account_id, market_id, strategy_id)) ENGINE=InnoDB""")
+        # closed trade table
+        cursor.execute("SHOW TABLES LIKE 'user_closed_trade'")
+        if len(cursor.fetchall()) <= 0:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_closed_trade(
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+                    strategy_id VARCHAR(255) NOT NULL,
+                    timestamp BIGINT NOT NULL,
+                    data TEXT NOT NULL DEFAULT '{}')""")
+
+        # @todo index on user_closed_trade(broker_id, account_id, market_id, strategy_id)
 
         self._db.commit()
 
@@ -151,28 +156,28 @@ class MySql(Database):
 
         # ohlc table
         cursor.execute("SHOW TABLES LIKE 'ohlc'")
-        if len(cursor.fetchall()) > 0:
-            return
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS ohlc(
-                id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
-                timestamp BIGINT NOT NULL, timeframe INTEGER NOT NULL,
-                open VARCHAR(32) NOT NULL, high VARCHAR(32) NOT NULL, low VARCHAR(32) NOT NULL, close VARCHAR(32) NOT NULL,
-                spread VARCHAR(32) NOT NULL,
-                volume VARCHAR(48) NOT NULL,
-                UNIQUE KEY(broker_id, market_id, timestamp, timeframe)) ENGINE=InnoDB""")
+        if len(cursor.fetchall()) <= 0:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS ohlc(
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+                    timestamp BIGINT NOT NULL, timeframe INTEGER NOT NULL,
+                    open VARCHAR(32) NOT NULL, high VARCHAR(32) NOT NULL, low VARCHAR(32) NOT NULL, close VARCHAR(32) NOT NULL,
+                    spread VARCHAR(32) NOT NULL,
+                    volume VARCHAR(48) NOT NULL,
+                    UNIQUE KEY(broker_id, market_id, timestamp, timeframe)) ENGINE=InnoDB""")
 
         # liquidation table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS liquidation(
-                id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
-                timestamp BIGINT NOT NULL,
-                direction INTEGER NOT NULL,
-                price VARCHAR(32) NOT NULL,
-                quantity VARCHAR(32) NOT NULL) ENGINE=InnoDB""")
+        cursor.execute("SHOW TABLES LIKE 'liquidation'")
+        if len(cursor.fetchall()) <= 0:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS liquidation(
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+                    timestamp BIGINT NOT NULL,
+                    direction INTEGER NOT NULL,
+                    price VARCHAR(32) NOT NULL,
+                    quantity VARCHAR(32) NOT NULL) ENGINE=InnoDB""")
 
         self._db.commit()
 
@@ -621,6 +626,12 @@ class MySql(Database):
                 # retry the next time
                 with self._mutex:
                     self._pending_user_trader_select = uts + self._pending_user_trader_select
+
+        #
+        # insert user_closed_trade
+        #
+
+        # @todo
 
     def process_ohlc(self):
         #
