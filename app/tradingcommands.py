@@ -3,6 +3,8 @@
 # @license Copyright (c) 2018 Dream Overflow
 # terminal trading commands and registration
 
+import re
+
 from terminal.command import Command
 from strategy.strategy import Strategy
 from notifier.notifier import Notifier
@@ -250,6 +252,9 @@ class SetOptionCommand(Command):
 
     SUMMARY = "any or specify <market-id> to modify the option per market."
 
+    INTEGER_RE = re.compile(r'^[+-]{0,1}[0-9]+$')
+    FLOAT_RE = re.compile(r'(?i)^\s*[+-]?(?:inf(inity)?|nan|(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s*$')
+
     def __init__(self, strategy_service):
         super().__init__('set-option', 'SETOPT')
 
@@ -273,14 +278,14 @@ class SetOptionCommand(Command):
                 # empty string
                 return ""
 
-            if '.' in v:
+            if SetOptionCommand.FLOAT_RE.match(v) is not None:
                 # float ?
                 try:
                     return float(v)
                 except ValueError:
                     return v
 
-            if v[0] in ('-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'):
+            if SetOptionCommand.INTEGER_RE.match(v) is not None:
                 #int ?
                 try:
                     return int(v)
@@ -858,7 +863,7 @@ class ModifyStopLossCommand(Command):
     HELP = (
         "param1: market-id",
         "param2: trade-id",
-        "param3: stop-loss price",
+        "param3: stop-loss-price",
         "param4 (optionnal) : add force to create an order or modify the position, not only have a local value",
     )
    
@@ -875,6 +880,7 @@ class ModifyStopLossCommand(Command):
         trade_id = None
 
         action = 'stop-loss'
+        method = 'price'
         stop_loss = 0.0
         force = False
 
@@ -884,9 +890,46 @@ class ModifyStopLossCommand(Command):
 
         try:
             market_id = args[0]
-
             trade_id = int(args[1])
-            stop_loss = float(args[2])
+
+            if args[2].startswith('+'):
+                # plus relative price or %
+                if args[2].endswith('%'):
+                    method = 'price-add-percent'
+                    stop_loss = float(args[2][1:-1])
+                else:
+                    method = 'price-add-delta'
+                    stop_loss = float(args[2][1:])
+
+            elif args[2].startswith('-'):
+                # minus relative price or %
+                if args[2].endswith('%'):
+                    method = 'price-minus-percent'
+                    stop_loss = float(args[2][1:-1])
+                else:
+                    method = 'price-minus-delta'
+                    stop_loss = float(args[2][1:])
+
+            elif args[2].startswith("EP+") or args[2].startswith("ep+"):
+                # entry-price plus delta
+                if args[2].endswith('%'):
+                    method = 'breakeven-plus-percent'
+                    stop_loss = float(args[2][3:-1])
+                else:
+                    method = 'breakeven-plus-delta'
+                    stop_loss = float(args[2][3:])
+
+            elif args[2].startswith("EP-") or args[2].startswith("ep-"):
+                # entry-price minus delta
+                if args[2].endswith('%'):
+                    method = 'breakeven-minus-percent'
+                    stop_loss = float(args[2][3:-1])
+                else:
+                    method = 'breakeven-minus-delta'
+                    stop_loss = float(args[2][3:])
+
+            else:
+                stop_loss = float(args[2])
 
             if len(args) > 3:
                 # create an order or modify the position, else use default
@@ -899,6 +942,7 @@ class ModifyStopLossCommand(Command):
             'market-id': market_id,
             'trade-id': trade_id,
             'action': action,
+            'method': method,
             'stop-loss': stop_loss,
             'force': force
         })
@@ -920,7 +964,7 @@ class ModifyTakeProfitCommand(Command):
     HELP = (
         "param1: market-id",
         "param2: trade-id",
-        "param3: take-profit price",
+        "param3: take-profit-price",
         "param4 (optionnal) : add force to create an order or modify the position, not only have a local value",
     )
 
@@ -937,6 +981,7 @@ class ModifyTakeProfitCommand(Command):
         trade_id = None
 
         action = 'take-profit'
+        method = 'price'
         take_profit = 0.0
         force = False
 
@@ -946,9 +991,46 @@ class ModifyTakeProfitCommand(Command):
 
         try:
             market_id = args[0]
-
             trade_id = int(args[1])
-            take_profit = float(args[2])
+
+            if args[2].startswith('+'):
+                # plus relative price or %
+                if args[2].endswith('%'):
+                    method = 'price-add-percent'
+                    take_profit = float(args[2][1:-1])
+                else:
+                    method = 'price-add-delta'
+                    take_profit = float(args[2][1:])
+
+            elif args[2].startswith('-'):
+                # minus relative price or %
+                if args[2].endswith('%'):
+                    method = 'price-minus-percent'
+                    take_profit = float(args[2][1:-1])
+                else:
+                    method = 'price-minus-delta'
+                    take_profit = float(args[2][1:])
+
+            elif args[2].startswith("EP+") or args[2].startswith("ep+"):
+                # entry-price plus delta
+                if args[2].endswith('%'):
+                    method = 'breakeven-plus-percent'
+                    take_profit = float(args[2][3:-1])
+                else:
+                    method = 'breakeven-plus-delta'
+                    take_profit = float(args[2][3:])
+
+            elif args[2].startswith("EP-") or args[2].startswith("ep-"):
+                # entry-price minus delta
+                if args[2].endswith('%'):
+                    method = 'breakeven-minus-percent'
+                    take_profit = float(args[2][3:-1])
+                else:
+                    method = 'breakeven-minus-delta'
+                    take_profit = float(args[2][3:])
+
+            else:
+                take_profit = float(args[2])
 
             if len(args) > 3:
                 # create an order or modify the position, else use default
@@ -961,6 +1043,7 @@ class ModifyTakeProfitCommand(Command):
             'market-id': market_id,
             'trade-id': trade_id,
             'action': action,
+            'method': method,
             'take-profit': take_profit,
             'force': force
         })

@@ -42,7 +42,21 @@ def cmd_trade_modify(strategy, strategy_trader, data):
         if trade:
             # modify SL
             if action == 'stop-loss' and 'stop-loss' in data and type(data['stop-loss']) in (float, int):
-                if data['stop-loss'] > 0.0:
+                # method, default is a price
+                method = data.get('method', "price")
+
+                if method not in ("price", "price-add-percent", "price-minus-percent", "price-add-delta", "price-minus-delta",
+                        "breakeven-plus-percent", "breakeven-minus-percent", "breakeven-plus-delta", "breakeven-minus-delta"):
+
+                    results['error'] = True
+                    results['messages'].append("Stop-loss unsupported method on trade %i" % trade.id)
+
+                    return results
+
+                # @todo method 'price-add-percent', 'price-minus-percent', 'price-add-delta', 'price-minus-delta',
+                # 'breakeven-plus-percent, 'breakeven-minus-percent, 'breakeven-plus-delta', 'breakeven-minus-delta'
+                # @todo if price is 0 then delete the order
+                if method == "price" and data['stop-loss'] > 0.0:
                     if trade.has_stop_order() or data.get('force', False):
                         trade.modify_stop_loss(strategy.trader(), strategy_trader.instrument, data['stop-loss'])
                     else:
@@ -52,11 +66,25 @@ def cmd_trade_modify(strategy, strategy_trader, data):
                     strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
                 else:
                     results['error'] = True
-                    results['messages'].append("Take-profit must be greater than 0 on trade %i" % trade.id)
+                    results['messages'].append("Stop-loss must be greater than 0 on trade %i" % trade.id)
 
             # modify TP
             elif action == 'take-profit' and 'take-profit' in data and type(data['take-profit']) in (float, int):
-                if data['take-profit'] > 0.0:
+                # method, default is a price
+                method = data.get('method', "price")
+
+                if method not in ("price", "price-add-percent", "price-minus-percent", "price-add-delta", "price-minus-delta",
+                        "breakeven-plus-percent", "breakeven-minus-percent", "breakeven-plus-delta", "breakeven-minus-delta"):
+
+                    results['error'] = True
+                    results['messages'].append("Stop-loss unsupported method on trade %i" % trade.id)
+
+                    return results
+
+                # @todo method 'price-add-percent', 'price-minus-percent', 'price-add-delta', 'price-minus-delta',
+                # 'breakeven-plus-percent, 'breakeven-minus-percent, 'breakeven-plus-delta', 'breakeven-minus-delta'
+                # @todo if price is 0 then delete the order
+                if method == "price" and data['take-profit'] > 0.0:
                     if trade.has_limit_order() or data.get('force', False):
                         trade.modify_take_profit(strategy.trader(), strategy_trader.instrument, data['take-profit'])
                     else:

@@ -5,6 +5,7 @@
     "port": 6363,
     "allowdeny": "allow",
     "list": ["127.0.0.1"],
+    "permissions": "full",
     "api-key": "e4f7d47e832e115df640ec3b1c95a417c2f26286",
     "api-secret": "49b8012c68251d6c1ced3f48dd5b3a8d7f9210e7",
     "_comment": "changes the port and replace the api-key and api-secret with your generated version, using bash: date --rfc-3339=ns | sha1sum | awk '{print $1}'"

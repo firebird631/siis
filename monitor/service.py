@@ -36,6 +36,10 @@ class MonitorService(Service):
 
     REACTOR = 0  # global twisted reactor ref counter
 
+    PERM_NONE = 0
+    PERM_VIEW = 1
+    PERM_FULL = 2
+
     def __init__(self, options):
         super().__init__("monitor", options)
 
@@ -87,6 +91,16 @@ class MonitorService(Service):
             self._allowed_ips = None
         elif allowdeny == "deny":
             self._denied_ips = self._monitoring_config.get('list', [])
+
+        # permissions
+        permissions = self._monitoring_config.get('permissions', "full")
+
+        if permissions == "full":
+            self._permissions = MonitorService.PERM_FULL
+        elif permissions == "view":
+            self._permissions = MonitorService.PERM_VIEW
+        else:
+            self._permissions = MonitorService.PERM_NONE
 
         self._client_ws_auth_token = {}
 
@@ -154,6 +168,9 @@ class MonitorService(Service):
 
                 self._http = HttpRestServer(self._host, self._port, self.__api_key, self.__api_secret, self, self._strategy_service, self._trader_service)
                 self._ws = HttpWebSocketServer(self._host, self._port+1, self)
+
+                if self._permissions == MonitorService.PERM_VIEW:
+                    self._http.set_view_only()
 
                 HttpRestServer.ALLOWED_IPS = copy.copy(self._allowed_ips)
                 HttpRestServer.DENIED_IPS = copy.copy(self._denied_ips)

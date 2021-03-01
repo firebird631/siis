@@ -557,6 +557,25 @@ class HttpRestServer(object):
         self._strategy_service = strategy_service
         self._trader_service = trader_service
 
+        self._perm_view = True
+        self._perm_manage_trade = True
+
+    def set_view_only(self):
+        self._perm_view = True
+        self._perm_manage_trade = False
+
+    def set_all_perms(self):
+        self._perm_view = True
+        self._perm_manage_trade = True
+
+    @property
+    def can_view_perm(self):
+        return self._perm_view
+
+    @property
+    def can_manage_trade(self):
+        return self._perm_manage_trade
+
     def start(self):
         root = static.File("monitor/web")
         api = resource.Resource()
