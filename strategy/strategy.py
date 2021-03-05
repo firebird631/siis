@@ -42,6 +42,7 @@ from strategy.command.strategycmdmodifyall import cmd_strategy_trader_modify_all
 from strategy.command.strategycmdstrategytraderinfo import cmd_strategy_trader_info
 from strategy.command.strategycmdstrategytradermodify import cmd_strategy_trader_modify
 from strategy.command.strategycmdstrategytraderstream import cmd_strategy_trader_stream
+from strategy.command.strategycmdstrategytraderrestart import cmd_strategy_trader_restart
 
 from strategy.command.strategycmdtradeassign import cmd_trade_assign
 from strategy.command.strategycmdtradeclean import cmd_trade_clean
@@ -86,6 +87,7 @@ class Strategy(Runnable):
     COMMAND_TRADER_INFO = 21
     COMMAND_TRADER_STREAM = 22
     COMMAND_TRADER_MODIFY_ALL = 23
+    COMMAND_TRADER_RESTART = 24
 
     def __init__(self, name,
             strategy_service, watcher_service, trader_service,
@@ -1011,10 +1013,10 @@ class Strategy(Runnable):
                                 with strategy_trader._mutex:
                                     # force to reinitialize
                                     # @todo could be done only after a certain delay
-                                    # strategy_trader._initialized = False
+                                    # strategy_trader._initialized = 1
 
                                     # force to recheck the trades
-                                    strategy_trader._checked = False
+                                    strategy_trader._checked = 1
 
                                 do_update.add(strategy_trader)
                     else:
@@ -1028,10 +1030,10 @@ class Strategy(Runnable):
                                 with strategy_trader._mutex:
                                     # force to reinitialize
                                     # @todo could be done only after a certain delay
-                                    # strategy_trader._initialized = False
+                                    # strategy_trader._initialized = 1
 
                                     # force to recheck the trades
-                                    strategy_trader._checked = False
+                                    strategy_trader._checked = 1
  
                                 do_update.add(strategy_trader)
 
@@ -1365,6 +1367,9 @@ class Strategy(Runnable):
             return self.strategy_trader_command("info", data, cmd_strategy_trader_info)
         elif command_type == Strategy.COMMAND_TRADER_STREAM:
             return self.strategy_trader_command("stream", data, cmd_strategy_trader_stream)
+        elif command_type == Strategy.COMMAND_TRADER_RESTART:
+            return self.strategy_trader_command("restart", data, cmd_strategy_trader_restart)
+
         elif command_type == Strategy.COMMAND_TRADER_MODIFY_ALL:
             return cmd_strategy_trader_modify_all(self, data)
 

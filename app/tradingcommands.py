@@ -892,43 +892,35 @@ class ModifyStopLossCommand(Command):
             market_id = args[0]
             trade_id = int(args[1])
 
-            if args[2].startswith('+'):
-                # plus relative price or %
+            if args[2].startswith('+') or args[2].startswith('-'):
+                # last value relative delta price or %
                 if args[2].endswith('%'):
-                    method = 'price-add-percent'
+                    method = 'delta-percent'
+                    stop_loss = float(args[2][:-1])
+                else:
+                    method = 'delta-price'
+                    stop_loss = float(args[2])
+
+            elif args[2].startswith("EP") or args[2].startswith("ep"):
+                # entry-price relative delta price or %
+                if args[2].endswith('%'):
+                    method = 'entry-delta-percent'
+                    stop_loss = float(args[2][2:-1])
+                else:
+                    method = 'entry-delta-price'
+                    stop_loss = float(args[2][2:])
+
+            elif args[2].startswith("M") or args[2].startswith("m"):
+                # market-price relative delta price or %
+                if args[2].endswith('%'):
+                    method = 'market-delta-percent'
                     stop_loss = float(args[2][1:-1])
                 else:
-                    method = 'price-add-delta'
+                    method = 'market-delta-price'
                     stop_loss = float(args[2][1:])
-
-            elif args[2].startswith('-'):
-                # minus relative price or %
-                if args[2].endswith('%'):
-                    method = 'price-minus-percent'
-                    stop_loss = float(args[2][1:-1])
-                else:
-                    method = 'price-minus-delta'
-                    stop_loss = float(args[2][1:])
-
-            elif args[2].startswith("EP+") or args[2].startswith("ep+"):
-                # entry-price plus delta
-                if args[2].endswith('%'):
-                    method = 'breakeven-plus-percent'
-                    stop_loss = float(args[2][3:-1])
-                else:
-                    method = 'breakeven-plus-delta'
-                    stop_loss = float(args[2][3:])
-
-            elif args[2].startswith("EP-") or args[2].startswith("ep-"):
-                # entry-price minus delta
-                if args[2].endswith('%'):
-                    method = 'breakeven-minus-percent'
-                    stop_loss = float(args[2][3:-1])
-                else:
-                    method = 'breakeven-minus-delta'
-                    stop_loss = float(args[2][3:])
 
             else:
+                # absolute price
                 stop_loss = float(args[2])
 
             if len(args) > 3:
@@ -993,41 +985,32 @@ class ModifyTakeProfitCommand(Command):
             market_id = args[0]
             trade_id = int(args[1])
 
-            if args[2].startswith('+'):
-                # plus relative price or %
+            if args[2].startswith('+') or args[2].startswith('-'):
+                # last value relative delta price or %
                 if args[2].endswith('%'):
-                    method = 'price-add-percent'
+                    method = 'delta-percent'
+                    take_profit = float(args[2][:-1])
+                else:
+                    method = 'delta-price'
+                    take_profit = float(args[2])
+
+            elif args[2].startswith("EP") or args[2].startswith("ep"):
+                # entry-price relative delta price or %
+                if args[2].endswith('%'):
+                    method = 'entry-delta-percent'
+                    take_profit = float(args[2][2:-1])
+                else:
+                    method = 'entry-delta-price'
+                    take_profit = float(args[2][2:])
+
+            elif args[2].startswith("M") or args[2].startswith("m"):
+                # market-price relative delta price or %
+                if args[2].endswith('%'):
+                    method = 'market-delta-percent'
                     take_profit = float(args[2][1:-1])
                 else:
-                    method = 'price-add-delta'
+                    method = 'market-delta-price'
                     take_profit = float(args[2][1:])
-
-            elif args[2].startswith('-'):
-                # minus relative price or %
-                if args[2].endswith('%'):
-                    method = 'price-minus-percent'
-                    take_profit = float(args[2][1:-1])
-                else:
-                    method = 'price-minus-delta'
-                    take_profit = float(args[2][1:])
-
-            elif args[2].startswith("EP+") or args[2].startswith("ep+"):
-                # entry-price plus delta
-                if args[2].endswith('%'):
-                    method = 'breakeven-plus-percent'
-                    take_profit = float(args[2][3:-1])
-                else:
-                    method = 'breakeven-plus-delta'
-                    take_profit = float(args[2][3:])
-
-            elif args[2].startswith("EP-") or args[2].startswith("ep-"):
-                # entry-price minus delta
-                if args[2].endswith('%'):
-                    method = 'breakeven-minus-percent'
-                    take_profit = float(args[2][3:-1])
-                else:
-                    method = 'breakeven-minus-delta'
-                    take_profit = float(args[2][3:])
 
             else:
                 take_profit = float(args[2])
@@ -1361,7 +1344,7 @@ class SellAllAssetCommand(Command):
         market_id = None
 
         if len(args) == 1:
-            market_id = args[1]
+            market_id = args[0]
 
         self._trader_service.command(Trader.COMMAND_SELL_ALL_ASSET, {
             'market-id': market_id,
@@ -1381,6 +1364,7 @@ class SellAllAssetCommand(Command):
 class CancelAllOrderCommand(Command):
 
     SUMMARY = "to cancel any orders, immediately (for a specified market or any)"
+    CHOICES = ("spot-entry", "spot-exit", "spot", "margin-entry", "margin-exit", "margin", "entry", "exit")
     
     def __init__(self, trader_service):
         super().__init__('!rmallorder', '!CAO')
@@ -1388,14 +1372,45 @@ class CancelAllOrderCommand(Command):
         self._trader_service = trader_service
 
     def execute(self, args):
-        # ie: ":sellall BTCUSDT"
+        # ie: ":!rmallorder BTCUSDT"
         market_id = None
+        options = set()
+        arg_offset = 0
 
-        if len(args) == 1:
-            market_id = args[1]
+        if len(args) >= 1:
+            # specific market
+            trader = self._trader_service.trader()
+            if trader:
+                if args[0] in trader.symbols_ids():
+                    market_id = args[0]
+                    arg_offset += 1
+
+        for arg in args[arg_offset:]:
+            if arg not in CancelAllOrderCommand.CHOICES:
+                return False, "Unsupported option %s" % arg
+
+            if arg == "spot":
+                options.add("spot-entry")
+                options.add("spot-exit")
+
+            if arg == "margin":
+                options.add("margin-entry")
+                options.add("margin-exit")
+
+            if arg == "entry":
+                options.add("spot-entry")
+                options.add("margin-entry")
+
+            if arg == "exit":
+                options.add("spot-exit")
+                options.add("margin-exit")
+
+            else:
+                options.add(arg)
 
         self._trader_service.command(Trader.COMMAND_CANCEL_ALL_ORDER, {
             'market-id': market_id,
+            'options': tuple(options)
         })
 
         return True, []
@@ -1404,7 +1419,9 @@ class CancelAllOrderCommand(Command):
         if len(args) <= 1:
             trader = self._trader_service.trader()
             if trader:
-                return self.iterate(0, trader.symbols_ids(), args, tab_pos, direction)
+                return self.iterate(0, list(CancelAllOrderCommand.CHOICES) + trader.symbols_ids(), args, tab_pos, direction)
+        elif len(args) > 1:
+            return self.iterate(len(args)-1, CancelAllOrderCommand.CHOICES, args, tab_pos, direction)
 
         return args, 0
 
@@ -1435,6 +1452,40 @@ class ReconnectCommand(Command):
         return args, 0
 
 
+class RestartCommand(Command):
+
+    SUMMARY = "to force to restart an instrument of the strategy"
+
+    def __init__(self, strategy_service):
+        super().__init__('restart', 'REST')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        # will force to try to restart an instrument
+        if len(args) < 1:
+            return False, "Missing parameters"
+
+        if len(args) > 1:
+            return False, "Only one parameter is allowed"
+
+        market_id = args[0]
+
+        self._strategy_service.command(Strategy.COMMAND_TRADER_RESTART, {
+            'market-id': market_id,
+        })
+
+        return True, "Force restart for strategy on instrument %s" % args[0]
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service, monitor_service, notifier_service):
     #
     # global
@@ -1450,6 +1501,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(SetFrozenQuantityCommand(trader_service))
 
     commands_handler.register(ReconnectCommand(watcher_service))
+    commands_handler.register(RestartCommand(strategy_service))
 
     #
     # order

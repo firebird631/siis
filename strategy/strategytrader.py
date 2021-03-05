@@ -62,8 +62,8 @@ class StrategyTrader(object):
         self._activity = True
         self._affinity = 5          # based on a linear scale [0..10]
 
-        self._initialized = False   # initiate data before running
-        self._checked = False       # to be done after initialized, and connected
+        self._initialized = 1       # initiate data before running, 1 waited, 2 in progress, 0 normal
+        self._checked = 1           # check trades/orders/positions, 1 waited, 2 in progress, 0 normal
 
         self._limits = Limits()     # price and timestamp ranges
 
@@ -273,7 +273,8 @@ class StrategyTrader(object):
         Needed on a reconnection to reset some states.
         """
         with self._mutex:
-            self._initialized = False
+            self._initialized = 1
+            self._checked = 1
             self._preprocessing = 1
             self._bootstraping = 1
 
@@ -336,11 +337,18 @@ class StrategyTrader(object):
         """
         Recheck actives or pending trades. Useful after a reconnection.
         """
-        trader = self.strategy.trader()
-        mutated = False
-        trades_list = []
-
         with self._mutex:
+            if self._checked == 2:
+                # already in progess
+                return
+
+            # process
+            self._checked = 2
+
+            trader = self.strategy.trader()
+            mutated = False
+            trades_list = []
+
             with self._trade_mutex:
                 for trade in self._trades:
                     try:
@@ -358,7 +366,8 @@ class StrategyTrader(object):
                 if mutated:
                     self._trades = trades_list
 
-        self._checked = True
+            # done
+            self._checked = 0
 
     def terminate(self):
         """
@@ -1158,9 +1167,11 @@ class StrategyTrader(object):
             'market-id': self.instrument.market_id,
             'activity': self._activity,
             'affinity': self._affinity,
+            'initialized': self._initialized == 0,
+            'checked': self._checked == 0,
+            'ready': self._initialized == 0 and self._checked == 0 and self.instrument.ready(),
             'bootstraping': self._bootstraping == 2,
             'preprocessing': self._preprocessing == 2,
-            'ready': self._initialized and self.instrument.ready(),
             'members': [],
             'data': [],
             'num-modes': 1

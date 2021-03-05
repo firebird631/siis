@@ -714,6 +714,14 @@ class PaperTrader(Trader):
 
         return positions
 
+    def order_info(self, order_id, market_or_instrument):
+        if not order_id or not market_or_instrument:
+            return None
+
+        # @todo see from kraken
+
+        return None
+
     def set_market(self, market):
         """
         Set market info object. Used during backtesting.

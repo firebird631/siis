@@ -190,17 +190,16 @@ def alpha_update_strategy(strategy, strategy_trader):
     @note Non thread-safe method.
     """
     if strategy_trader:
-        if not strategy_trader._initialized:
+        if strategy_trader._initialized == 1:
             initiate_strategy_trader(strategy, strategy_trader)
-            return
 
-        if not strategy_trader.instrument.ready():
-            # process only if instrument has data
-            return
-
-        if not strategy_trader._checked:
+        if strategy_trader._checked == 1:
             # need to check existings trade orders, trade history and positions
             strategy_trader.check_trades(strategy.timestamp)
+
+        if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.instrument.ready():
+            # process only if instrument has data
+            return
 
         if strategy_trader._processing:
             # process only if previous job was completed
@@ -234,37 +233,52 @@ def alpha_async_update_strategy(strategy, strategy_trader):
     @note Thread-safe method.
     """
     if strategy_trader:
-        if not strategy_trader._initialized:
+        if strategy_trader._initialized == 1:
             initiate_strategy_trader(strategy, strategy_trader)
+
+        if strategy_trader._checked == 1:
+            # need to check existings trade orders, trade history and positions
+            strategy_trader.check_trades(strategy.timestamp)
+
+        if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.instrument.ready():
+            # process only if instrument has data
             return
 
-        if strategy_trader.instrument.ready():
+        if strategy_trader._processing:
             # process only if previous job was completed
-            process = False
+            return
 
-            with strategy_trader._mutex:
-                if not strategy_trader._processing:
-                    # can process
-                    process = strategy_trader._processing = True
+        try:
+            strategy_trader._processing = True
 
-            if process:
-                if strategy_trader._bootstraping > 0:
-                    # second : bootstrap using preloaded data history
-                    alpha_bootstrap(strategy, strategy_trader)
+            if strategy_trader._bootstraping > 0:
+                # first : bootstrap using preloaded data history
+                alpha_bootstrap(strategy, strategy_trader)
 
-                else:
-                    # then : until process instrument update
-                    strategy_trader.process(strategy.timestamp)
+            else:
+                # then : until process instrument update
+                strategy_trader.process(strategy.timestamp)
 
-                with strategy_trader._mutex:
-                    # process complete
-                    strategy_trader._processing = False
+        except Exception as e:
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
+
+        finally:
+            # process complete
+            strategy_trader._processing = False
 
 
 def initiate_strategy_trader(strategy, strategy_trader):
     """
     Do it async into the workers to avoid long blocking of the strategy thread.
     """
+    with strategy_trader._mutex:
+        if strategy_trader._initialized != 1:
+            # only if waiting for initialize
+            return
+
+        strategy_trader._initialized = 2
+
     now = datetime.now()
 
     instrument = strategy_trader.instrument
@@ -287,7 +301,8 @@ def initiate_strategy_trader(strategy, strategy_trader):
                     watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
 
             # initialization processed, waiting for data be ready
-            strategy_trader._initialized = True
+            with strategy_trader._mutex:
+                strategy_trader._initialized = 0
 
     except Exception as e:
         logger.error(repr(e))
@@ -328,8 +343,8 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
 
     # initialized state
     for k, strategy_trader in strategy._strategy_traders.items():
-        strategy_traders._initialized = True
-
+        with strategy_traders._mutex:
+            strategy_traders._initialized = 0
 
 #
 # live setup

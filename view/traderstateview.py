@@ -65,7 +65,7 @@ class TraderStateView(TableView):
     def on_key_pressed(self, key):
         super().on_key_pressed(key)
 
-        if key == 'KEY_STAB' or key == 'KEY_BTAB':
+        if (key == 'KEY_STAB' or key == 'KEY_BTAB') and Terminal.inst().mode == Terminal.MODE_DEFAULT:
             self.toggle_update_freq()
         elif key == 'KEY_LEFT':
             self.prev_instrument()

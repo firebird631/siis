@@ -83,7 +83,7 @@ class Order(Keyed):
     @property
     def quantity(self):
         return self._quantity
-    
+
     @property
     def executed(self):
         return self._executed

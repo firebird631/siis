@@ -24,6 +24,8 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 # EN COURS #
 ############
 
+#118 Commande de fusion et split des trades pour un instrument donné (à réfléchir)
+
 #116 kraken watcher et trader :
     - fetch des positions ?
     - fetch des trades history
@@ -42,13 +44,10 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 
 #100 active regions view
 
-#102 trade_quantity in percent of account, ou plutôt en % de risque sur le compte
-
 #103 WebTrader
     - gérer affinity par market (+ streaming de change car il peut être produit depuis le term ou un autre client)
     - charting OHLC et ticks (streaming) + performance
     - goto charting historique sur un trade passé
-    - normalizer trade history avec le dump exit pour la partie terminal
     - details trade avec modal
     - session expiry message to renew
     - active alerts prefetch à la connexion, WS d'update et de delete (à chaque trigger countdown peu changer)
@@ -56,7 +55,6 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
         - plutôt sur le trader car pas besoin de surcharger encore le strategy trader
     - copy de signal (bouton)
     - toggle audio et alt sound alerts (et save conf)
-    - ordre historical qui semble pas bon à l'ouverture : pourtant trié par last executed exit trade timestamp.
 
 #108 Move from siis.py for the resting command part to command_handler
 
@@ -87,8 +85,6 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 # URGENT #
 ##########
 
-#117 Normaliser les dumps de trades history (voir de active) pour la partie stats par trader et pour le fetch history
-
 #57 Vérification des trades au rechargement :
     - Cas des positions indépendante (CFD, future) : pas de soucis tant qu'on retrouve la position et les ordres
     - Cas des crypto margin: si on rate un trade event, on va perdre le compte : reprendre l'historique des trades, ça devient l'usine à gérer
@@ -98,9 +94,10 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
             - pour binance.com c'est un peu lent et ça consomme du crédit API
             - pour bitmex.com on a get_historical_trades(...)
             - pour ig.com pas de question à se poser on regarde l'état de la position, et éventuellement les ordres actifs qu'on a fetched
+            - pour kraken.com trade_history et order_info
 
 #63 Mode backup urgency :
-    - Instance démarré à coté pour fermer les trades en profit et se fermer une fois tous les trades fermé
+    - Instance démarrée à coté pour fermer les trades en profit et se fermer une fois tous les trades fermés
 
 
 #############

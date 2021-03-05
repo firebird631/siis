@@ -45,16 +45,14 @@ def cmd_trade_modify(strategy, strategy_trader, data):
                 # method, default is a price
                 method = data.get('method', "price")
 
-                if method not in ("price", "price-add-percent", "price-minus-percent", "price-add-delta", "price-minus-delta",
-                        "breakeven-plus-percent", "breakeven-minus-percent", "breakeven-plus-delta", "breakeven-minus-delta"):
+                if method not in ("price", "delta-percent", "delta-price", "entry-delta-percent", "entry-delta-price", "market-delta-percent", "market-delta-price"):
 
                     results['error'] = True
                     results['messages'].append("Stop-loss unsupported method on trade %i" % trade.id)
 
                     return results
 
-                # @todo method 'price-add-percent', 'price-minus-percent', 'price-add-delta', 'price-minus-delta',
-                # 'breakeven-plus-percent, 'breakeven-minus-percent, 'breakeven-plus-delta', 'breakeven-minus-delta'
+                # @todo others methods
                 # @todo if price is 0 then delete the order
                 if method == "price" and data['stop-loss'] > 0.0:
                     if trade.has_stop_order() or data.get('force', False):
@@ -73,16 +71,14 @@ def cmd_trade_modify(strategy, strategy_trader, data):
                 # method, default is a price
                 method = data.get('method', "price")
 
-                if method not in ("price", "price-add-percent", "price-minus-percent", "price-add-delta", "price-minus-delta",
-                        "breakeven-plus-percent", "breakeven-minus-percent", "breakeven-plus-delta", "breakeven-minus-delta"):
+                if method not in ("price", "delta-percent", "delta-price", "entry-delta-percent", "entry-delta-price", "market-delta-percent", "market-delta-price"):
 
                     results['error'] = True
                     results['messages'].append("Stop-loss unsupported method on trade %i" % trade.id)
 
                     return results
 
-                # @todo method 'price-add-percent', 'price-minus-percent', 'price-add-delta', 'price-minus-delta',
-                # 'breakeven-plus-percent, 'breakeven-minus-percent, 'breakeven-plus-delta', 'breakeven-minus-delta'
+                # @todo others methods
                 # @todo if price is 0 then delete the order
                 if method == "price" and data['take-profit'] > 0.0:
                     if trade.has_limit_order() or data.get('force', False):

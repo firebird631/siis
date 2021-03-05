@@ -356,17 +356,16 @@ def beta_update_strategy(strategy, strategy_trader):
     @note Non thread-safe method.
     """
     if strategy_trader:
-        if not strategy_trader._initialized:
+        if strategy_trader._initialized == 1:
             initiate_strategy_trader(strategy, strategy_trader)
-            return
 
-        if not strategy_trader.instrument.ready():
-            # process only if instrument has data
-            return
-
-        if not strategy_trader._checked:
+        if strategy_trader._checked == 1:
             # need to check existings trade orders, trade history and positions
             strategy_trader.check_trades(strategy.timestamp)
+
+        if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.instrument.ready():
+            # process only if instrument has data
+            return
 
         if strategy_trader._processing:
             # process only if previous job was completed
@@ -404,11 +403,14 @@ def beta_async_update_strategy(strategy, strategy_trader):
     @note Thread-safe method.
     """
     if strategy_trader:
-        if not strategy_trader._initialized:
+        if strategy_trader._initialized == 1:
             initiate_strategy_trader(strategy, strategy_trader)
-            return
 
-        if not strategy_trader.instrument.ready():
+        if strategy_trader._checked == 1:
+            # need to check existings trade orders, trade history and positions
+            strategy_trader.check_trades(strategy.timestamp)
+
+        if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.instrument.ready():
             # process only if instrument has data
             return
 
@@ -444,6 +446,13 @@ def initiate_strategy_trader(strategy, strategy_trader):
     """
     Do it async into the workers to avoid long blocking of the strategy thread.
     """
+    with strategy_trader._mutex:
+        if strategy_trader._initialized != 1:
+            # only if waiting for initialize
+            return
+
+        strategy_trader._initialized = 2
+
     now = datetime.now()
 
     instrument = strategy_trader.instrument
@@ -454,7 +463,8 @@ def initiate_strategy_trader(strategy, strategy_trader):
             watcher.subscribe(instrument.market_id, None, -1, None)
 
             # initialization processed, waiting for data be ready
-            strategy_trader._initialized = True
+            with strategy_trader._mutex:
+                strategy_trader._initialized = 0
 
     except Exception as e:
         logger.error(repr(e))
@@ -484,7 +494,8 @@ def beta_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument.
 
     # initialized state
     for k, strategy_trader in strategy._strategy_traders.items():
-        strategy_traders._initialized = True
+        with strategy_traders._mutex:
+            strategy_traders._initialized = 0
 
 #
 # live setup

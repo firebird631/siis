@@ -431,6 +431,12 @@ class Trader(Runnable):
         """
         return False
 
+    def order_info(self, order_id, market_or_instrument):
+        """
+        Retrieve the detail of an order.
+        """
+        return None
+
     #
     # global accessors
     #
@@ -1572,14 +1578,46 @@ class Trader(Runnable):
     def cmd_cancel_all_order(self, data):
         orders = []
 
+        # None or a specific market only
+        market_id = data.get('market-id')
+        options = data.get('options')
+
         with self._mutex:
             for k, order in self._orders.items():
                 market = self.market(order.symbol)
 
-                if market:
-                   orders.append((order.order_id, market))                        
-                else:
+                if market is None:
                     Terminal.inst().error("No market found to cancel order %s..." % (order.order_id, ))
+                    continue
+
+                if market_id and market_id != market.market_id:
+                    # ignored market-id
+                    continue
+
+                if options:
+                    # ("spot-entry", "spot-exit", "margin-entry", "margin-exit")
+                    accept = False
+
+                    if "spot-entry" in options:
+                        if market.has_spot and order.direction > 0:
+                            accept = True
+
+                    if "spot-exit" in options:
+                        if market.has_spot and order.direction < 0:
+                            accept = True
+
+                    if "margin-entry" in options:
+                        if market.has_margin and not order.reduce_only and not order.close_only:
+                            accept = True
+
+                    if "margin-exit" in options:
+                        if market.has_margin and order.reduce_only or order.close_only:
+                            accept = True
+
+                    if not accept:
+                        continue               
+
+                orders.append((order.order_id, market))
 
         for order in orders:
             # query cancel order

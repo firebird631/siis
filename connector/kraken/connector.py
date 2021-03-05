@@ -726,6 +726,38 @@ class Connector(object):
 
         return {}
 
+    def get_orders_info(self, txids=None, userref=None, trades=False):
+        # trades = whether or not to include trades in output (optional.  default = false)
+        # userref = restrict results to given user reference id (optional)
+        # txid = comma delimited list of transaction ids to query info about (50 maximum)
+        if not txids:
+            return {}
+
+        params = {
+            'txid': ','.join(txids)
+        }
+
+        if trades:
+            params['trades'] = True
+
+        if userref:
+            params['userref'] = userref
+
+        data = self.query_private('QueryOrders', params)
+
+        if data['error']:
+            logger.error("query orders info: %s" % ', '.join(data['error']))
+            return {}
+
+        if data['result']:
+            return data['result']
+
+        return {}
+
+    #
+    # internal
+    #
+
     def _query(self, urlpath, data, headers=None, timeout=None):
         """
         Low-level query handling.

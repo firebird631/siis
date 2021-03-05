@@ -418,6 +418,77 @@ class KrakenTrader(Trader):
 
             return positions
 
+    def order_info(self, order_id, market_or_instrument):
+        if not order_id or not market_or_instrument:
+            return None
+
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to retrieve order info because of missing connector" % (self.name,))
+            return None
+
+        results = self._watcher.connector.get_orders_info(self, txids=[order_id])
+
+        if results and order_id in results:
+            order_data = results[order_id]
+
+            try:
+                descr = order_data['descr']
+                symbol = self._watcher.market_alias(descr['pair'])
+                market = self.market(symbol)
+
+                if not market:
+                    return None
+
+                if order_data['status'] == 'open':
+                    status = 'opened'
+                elif order_data['status'] == 'pending':
+                    status = 'pending'
+                elif order_data['status'] == 'closed':
+                    status = 'closed'
+                elif order_data['status'] == 'deleted':
+                    status = 'deleted'
+                elif order_data['status'] == 'canceled':
+                    status = 'canceled'
+                else:
+                    status = ""
+
+                if order_data['userref']:
+                    # userref is int
+                    order_ref_id = str(order_data['userref'])
+
+                # @todo like in watcher WS
+
+                # trades = array of trade ids related to order (if trades info requested and data available)
+
+                order_info = {
+                    'id': order_id,
+                    'symbol': symbol,
+                    'status': status,
+                    'ref-id': order_ref_id,
+                    'direction': Order.LONG if descr['type'] == "buy" else Order.SHORT,
+                    'type': order_type,
+                    # 'timestamp': event_timestamp,
+                    # 'quantity': float(order_data.get('vol', "0.0")),
+                    # 'price': price,
+                    # 'stop-price': stop_price,
+                    # 'time-in-force': time_in_force,
+                    # 'post-only': post_only,
+                    # 'close-only': ,
+                    # 'reduce-only': ,
+                    'stop-loss': None,
+                    'take-profit': None
+                }
+
+                return order_info
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+                return None
+
+        return None
+
     #
     # protected
     #
