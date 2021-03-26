@@ -351,6 +351,7 @@ function on_breakeven_trade(elt) {
 let on_active_trade_entry_message = function(market_id, trade_id, timestamp, value) {
     // insert into active trades
     add_active_trade(market_id, value);
+    update_status_trades();
 };
 
 let on_active_trade_update_message = function(market_id, trade_id, timestamp, value) {
@@ -366,7 +367,32 @@ let on_active_trade_exit_message = function(market_id, trade_id, timestamp, valu
     if (value['state'] == "closed") {
         add_historical_trade(market_id, value);
     }
+
+    update_status_trades();
 };
+
+function update_status_trades() {
+    $('#total_trades').text(Object.keys(actives_trades).length);
+    $('#closed_trades').text(Object.keys(historical_trades).length);
+}
+
+function update_status_pnl() {
+    let pending = 0;
+    let actives = 0;
+
+    for (let trade_id in actives_trades) {
+        let trade = actives_trades[trade_id];
+
+        if (trade['filled-entry-qty'] == 0) {
+            pending += 1;
+        } else {
+            actives += 1;
+        }
+    }
+
+    $('#active_trades').text(actives);
+    $('#pending_trades').text(pending);
+}
 
 //
 // trades list functions
@@ -576,8 +602,9 @@ function update_active_trade(market_id, trade) {
     let trade_upnl = $('<span class="trade-upnl"></span>').text(format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
 
     // fees
-    let fees = format_quote_price(trade.stats['entry-fees'] + trade.stats['exit-fees']);
+    let fees = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
     let trade_fees = $('<span class="trade-fees"></span>').text(fees);
+    trade_fees.attr('title', (trade.stats['fees-pct']).toFixed(2) + '%');
 
     // stop-loss
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);  // + UP/DN buttons
@@ -710,8 +737,9 @@ function add_historical_trade(market_id, trade) {
     let trade_percent = $('<span class="trade-percent"></span>').text(trade['profit-loss-pct'] +'%');   
     let trade_pnl = $('<span class="trade-pnl"></span>').text(format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
 
-    let fees = format_quote_price(trade.stats['entry-fees'] + trade.stats['exit-fees']);
+    let fees = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
     let trade_fees = $('<span class="trade-fees"></span>').text(fees);
+    trade_fees.attr('title', (trade.stats['fees-pct']).toFixed(2) + '%');
 
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);
     trade_stop_loss.attr('data-toggle', "tooltip");

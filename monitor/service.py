@@ -37,8 +37,37 @@ class MonitorService(Service):
     REACTOR = 0  # global twisted reactor ref counter
 
     PERM_NONE = 0
-    PERM_VIEW = 1
-    PERM_FULL = 2
+    PERM_DEBUG = 1
+    PERM_ADMIN = 2
+    
+    PERM_STRATEGY_VIEW = 4
+    PERM_STRATEGY_CLEAN_TRADE = 8
+    PERM_STRATEGY_CLOSE_TRADE = 16
+    PERM_STRATEGY_MODIFY_TRADE = 32
+    PERM_STRATEGY_OPEN_TRADE = 64
+    PERM_STRATEGY_TRADER = 128
+    PERM_STRATEGY_CHART = 256
+
+    PERM_TRADER_BALANCE_VIEW = 512
+    PERM_TRADER_ORDER_POSITION_VIEW = 1024
+    PERM_TRADER_CANCEL_ORDER = 2048
+    PERM_TRADER_CLOSE_POSITION = 4096
+
+    PERMISSIONS = {
+        'debug': PERM_STRATEGY_VIEW,
+        'admin': PERM_ADMIN,
+        'strategy-view': PERM_STRATEGY_VIEW,
+        'strategy-clean-trade': PERM_STRATEGY_CLEAN_TRADE,
+        'strategy-close-trade': PERM_STRATEGY_CLOSE_TRADE,
+        'strategy-modify-trade': PERM_STRATEGY_MODIFY_TRADE,
+        'strategy-open-trade': PERM_STRATEGY_OPEN_TRADE,
+        'strategy-trader': PERM_STRATEGY_TRADER,
+        'strategy-chart': PERM_STRATEGY_CHART,
+        'trader-balance-view': PERM_TRADER_BALANCE_VIEW,
+        'trader-order-position-view': PERM_TRADER_ORDER_POSITION_VIEW,
+        'trader-cancel-order': PERM_TRADER_CANCEL_ORDER,
+        'trader-close-position': PERM_TRADER_CLOSE_POSITION,
+    }
 
     def __init__(self, options):
         super().__init__("monitor", options)
@@ -93,14 +122,16 @@ class MonitorService(Service):
             self._denied_ips = self._monitoring_config.get('list', [])
 
         # permissions
-        permissions = self._monitoring_config.get('permissions', "full")
+        self._permissions = 0
 
-        if permissions == "full":
-            self._permissions = MonitorService.PERM_FULL
-        elif permissions == "view":
-            self._permissions = MonitorService.PERM_VIEW
-        else:
-            self._permissions = MonitorService.PERM_NONE
+        permissions = self._monitoring_config.get('permissions', (
+            "strategy-view", "strategy-open-trade", "strategy-close-trade", "strategy-modify-trade",
+            "strategy-trader",
+            "trader-balance-view"))
+
+        for perm in permissions:
+            if perm in MonitorService.PERMISSIONS:
+                self._permissions |= MonitorService.PERMISSIONS[perm]
 
         self._client_ws_auth_token = {}
 
@@ -108,6 +139,66 @@ class MonitorService(Service):
         self._watcher_service = watcher_service
         self._trader_service = trader_service
         self._strategy_service = strategy_service
+
+    #
+    # permissions
+    #
+
+    @property
+    def permissions(self):
+        return self._permissions
+
+    @property
+    def has_debug_perm(self):
+        return self._permissions & MonitorService.PERM_DEBUG == MonitorService.PERM_DEBUG
+
+    @property
+    def has_admin_perm(self):
+        return self._permissions & MonitorService.PERM_ADMIN == MonitorService.PERM_ADMIN
+
+    @property
+    def has_strategy_view_perm(self):
+        return self._permissions & MonitorService.PERM_STRATEGY_VIEW == MonitorService.PERM_STRATEGY_VIEW
+
+    @property
+    def has_strategy_trader_perm(self):
+        return self._permissions & MonitorService.PERM_STRATEGY_TRADER == MonitorService.PERM_STRATEGY_TRADER
+
+    @property
+    def has_strategy_open_trade_perm(self):
+        return self._permissions & MonitorService.PERM_STRATEGY_OPEN_TRADE == MonitorService.PERM_STRATEGY_OPEN_TRADE
+
+    @property
+    def has_strategy_close_trade_perm(self):
+        return self._permissions & MonitorService.PERM_STRATEGY_CLOSE_TRADE == MonitorService.PERM_STRATEGY_CLOSE_TRADE
+
+    @property
+    def has_strategy_modify_trade_perm(self):
+        return self._permissions & MonitorService.PERM_STRATEGY_MODIFY_TRADE == MonitorService.PERM_STRATEGY_MODIFY_TRADE
+
+    @property
+    def has_strategy_clean_trade_perm(self):
+        return self._permissions & MonitorService.PERM_STRATEGY_CLEAN_TRADE == MonitorService.PERM_STRATEGY_CLEAN_TRADE
+
+    @property
+    def has_strategy_chart_perm(self):
+        return self._permissions & MonitorService.PERM_STRATEGY_CHART == MonitorService.PERM_STRATEGY_CHART
+
+    @property
+    def has_trader_balance_view_perm(self):
+        return self._permissions & MonitorService.PERM_TRADER_BALANCE_VIEW == MonitorService.PERM_TRADER_BALANCE_VIEW
+
+    def permissions_str(self):
+        """
+        Returns an array with the permissions string.
+        """
+        permissions = []
+
+        for str, v in MonitorService.PERMISSIONS.items():
+            if self._permissions & v == v:
+                permissions.append(str)
+
+        return permissions
 
     #
     # twisted reactor
@@ -166,11 +257,10 @@ class MonitorService(Service):
                 from .http.httprestserver import HttpRestServer
                 from .http.httpwsserver import HttpWebSocketServer
 
-                self._http = HttpRestServer(self._host, self._port, self.__api_key, self.__api_secret, self, self._strategy_service, self._trader_service)
-                self._ws = HttpWebSocketServer(self._host, self._port+1, self)
+                self._http = HttpRestServer(self._host, self._port, self.__api_key, self.__api_secret,
+                        self, self._strategy_service, self._trader_service, self._watcher_service)
 
-                if self._permissions == MonitorService.PERM_VIEW:
-                    self._http.set_view_only()
+                self._ws = HttpWebSocketServer(self._host, self._port+1, self)
 
                 HttpRestServer.ALLOWED_IPS = copy.copy(self._allowed_ips)
                 HttpRestServer.DENIED_IPS = copy.copy(self._denied_ips)

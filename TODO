@@ -27,13 +27,12 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 #118 Commande de fusion et split des trades pour un instrument donné (à réfléchir)
 
 #116 kraken watcher et trader :
-    - fetch des positions ?
-    - fetch des trades history
+    - fetch des positions
+    - fetch des trades history et calcule des prix d'entré moyen par asset
     - finir WS des positions (margin)
     - comment savoir si trade maker ou taker ?
     - revoir que si besoin ownTrade pour signal ORDER_TRADED
-    - 'cumulative-commission-amount' pour les fees, seulement géré sur assettrade, mais devrait être supporté par les autres
-    - fee sur le quote à l'achat et à la revente sur spot
+    - 'cumulative-commission-amount' pour les fees à gérer sur indmargintrade
     - calcule des qty locked par asset en fonction des ordres ouverts (attention aux arrondis)
 
 #113 En local dans dans siis-lab nettoyer les ancienne stratégies, ou convertir celles d'intérêts

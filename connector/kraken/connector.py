@@ -96,8 +96,8 @@ class Connector(object):
     Trade history increase by 2, other by 2
 
     # https://api.kraken.com/0/private/ClosedOrders
-    # https://api.kraken.com/0/private/QueryOrders
     # https://api.kraken.com/0/private/QueryTrades
+    # https://api.kraken.com/0/private/TradeVolume
 
     # @ref REST https://www.kraken.com/features/api
     # @ref WSS https://www.kraken.com/en-us/features/websocket-api

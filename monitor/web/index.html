@@ -73,9 +73,6 @@
       <source src="audio/entry.mp3" type="audio/mp3">
 </audio>
 
-<div class="header-menu">
-</div>
-
 <div class="modal fade" id="authentification" tabindex="-1" role="dialog" aria-labelledby="authentification" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
@@ -187,6 +184,29 @@
 
 
 <div class="main">
+    <div class="container-fluid status">
+      <div id="conn_state" title="HTTP Status"></div>
+      <div id="ws_state" title="WS Status"></div>
+      <div id="strategy_state" title="Strategy"></div>
+      <div id="trader_state" title="Trader"></div>
+      <div id="watcher1_state" title="watcher1 : unused"></div>
+      <div id="watcher2_state" title="watcher2 : unused"></div>
+      <div id="watcher3_state" title="watcher3 : unused"></div>
+      <div id="watcher4_state" title="watcher4 : unused"></div>
+      <div id="watcher5_state" title="watcher5 : unused"></div>
+      <div id="state_values">
+        <span id="toggle_status_stats"> [X] </span>
+        <span> | </span>Trades : <span id="total_trades" class="state-value">0</span>
+        <span> | </span>Actives : <span id="active_trades" class="state-value">0</span>
+        <span> | </span>Pending : <span id="pending_trades" class="state-value">0</span>
+        <span> | </span>Closed : <span id="closed_trades" class="state-value">0</span>
+        <span> | </span>uPnL : <span id="upln_pct" class="state-value">0.00%</span> : <span id="upln_value" class="state-value">0.00</span>
+        <span> | </span>rPnL : <span id="rpln_pct" class="state-value">0.00%</span> : <span id="rpln_value" class="state-value">0.00</span>
+        <span> | </span>rPnL24h : <span id="rpln24h_pct" class="state-value">0.00%</span> : <span id="rpln24h_value" class="state-value">0.00</span>
+        <span> | </span>
+      </div>
+    </div>
+
     <div class="container-fluid charts">
         <div class="chart-buttons">
         </div>
@@ -256,6 +276,7 @@
     <div id="notifications"></div>
 
     <div class="row trade-list">
+        <span id="trade_list_sizer" class="btn btn-default" title="Maximize/Restore"></span>
         <div class="trade-list-menu">
             <p class="sub-menu">
                 <a class="btn btn-default menu-btn" id="list_active_trades" view="active-trade-list-entries" href="#"><span class="fa fa-crosshairs"></span>&nbsp;Actives trades</a>

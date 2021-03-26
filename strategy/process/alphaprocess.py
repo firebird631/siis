@@ -46,12 +46,13 @@ def alpha_bootstrap(strategy, strategy_trader):
     Process the bootstrap of the strategy trader until complete using the preloaded OHLCs.
     Any received updates are ignored until the bootstrap is completed.
     """
-    if strategy_trader._bootstraping == 2:
-        # in progress
-        return
+    with strategy_trader._mutex:
+        if strategy_trader._bootstraping != 1:
+            # only if waiting for bootstraping
+            return
 
-    # bootstraping in progress, avoid live until complete
-    strategy_trader._bootstraping = 2
+        # bootstraping in progress, suspend live until complete
+        strategy_trader._bootstraping = 2
 
     try:
         if strategy_trader.is_timeframes_based:
@@ -62,8 +63,9 @@ def alpha_bootstrap(strategy, strategy_trader):
         error_logger.error(repr(e))
         traceback_logger.error(traceback.format_exc())
 
-    # bootstraping done, can now branch to live
-    strategy_trader._bootstraping = 0
+    with strategy_trader._mutex:
+        # bootstraping done, can now branch to live
+        strategy_trader._bootstraping = 0
 
 
 def timeframe_based_bootstrap(strategy, strategy_trader):
@@ -208,7 +210,7 @@ def alpha_update_strategy(strategy, strategy_trader):
         try:
             strategy_trader._processing = True
 
-            if strategy_trader._bootstraping > 0:
+            if strategy_trader._bootstraping == 1:
                 # first : bootstrap using preloaded data history
                 alpha_bootstrap(strategy, strategy_trader)
 
@@ -251,7 +253,7 @@ def alpha_async_update_strategy(strategy, strategy_trader):
         try:
             strategy_trader._processing = True
 
-            if strategy_trader._bootstraping > 0:
+            if strategy_trader._bootstraping == 1:
                 # first : bootstrap using preloaded data history
                 alpha_bootstrap(strategy, strategy_trader)
 
@@ -288,21 +290,27 @@ def initiate_strategy_trader(strategy, strategy_trader):
             tfs = {tf['timeframe']: tf['history'] for tf in strategy.parameters.get('timeframes', {}).values() if tf['timeframe'] > 0}
             watcher.subscribe(instrument.market_id, tfs, None, None)
 
-            # query for most recent candles per timeframe
+            time.sleep(1.0)
+
+            # wait for timeframes before query
+            for k, timeframe in strategy.parameters.get('timeframes', {}).items():
+                if timeframe['timeframe'] > 0:
+                    instrument.want_timeframe(timeframe['timeframe'])
+
+            # query for most recent candles per timeframe from the database
             for k, timeframe in strategy.parameters.get('timeframes', {}).items():
                 if timeframe['timeframe'] > 0:
                     l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
-                    l_to = now
+                    l_to = None  # now
 
-                    # wait for this timeframe before processing
-                    instrument.want_timeframe(timeframe['timeframe'])
-
-                    # fetch database
                     watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
 
             # initialization processed, waiting for data be ready
             with strategy_trader._mutex:
                 strategy_trader._initialized = 0
+
+        # wake-up
+        strategy.send_update_strategy_trader(instrument.market_id)
 
     except Exception as e:
         logger.error(repr(e))
@@ -321,16 +329,18 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
         # retrieve the related price and volume watcher
         watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
         if watcher:
-            # query an history of candles per timeframe
+            # wait for timeframes before query
             for k, timeframe in strategy.parameters.get('timeframes', {}).items():
                 if timeframe['timeframe'] > 0:
-                    # preload some previous candles
+                    instrument.want_timeframe(timeframe['timeframe'])
+
+            # query for most recent candles per timeframe from the database
+            for k, timeframe in strategy.parameters.get('timeframes', {}).items():
+                if timeframe['timeframe'] > 0:
                     l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                     l_to = from_date - timedelta(seconds=1)
-                    watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
 
-                    # wait for this timeframe before processing
-                    instrument.want_timeframe(timeframe['timeframe'])
+                    watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
 
             # create a feeder per instrument and fetch ticks and candles + ticks
             feeder = StrategyDataFeeder(strategy, instrument.market_id, [], True)

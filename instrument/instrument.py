@@ -710,7 +710,8 @@ class Instrument(object):
                     if c.timestamp > candles[-1].timestamp:
                         if not candles[-1].ended:
                             # remove the last candle if was not consolidated
-                            candles.pop(-1)
+                            # candles.pop(-1)
+                            candles[-1].set_consolidated(True)
 
                         candles.append(c)
 
@@ -747,7 +748,9 @@ class Instrument(object):
                 if candle.timestamp > candles[-1].timestamp:
                     if not candles[-1].ended:
                         # replace the last candle if was not consolidated
-                        candles[-1] = candle
+                        # candles[-1] = candle
+                        candles[-1].set_consolidated(True)
+                        candles.append(candle)
                     else:
                         candles.append(candle)
 

@@ -6,6 +6,7 @@
 import time
 import threading
 import hashlib
+import traceback
 
 from datetime import datetime
 
@@ -153,7 +154,7 @@ class TraderStateView(TableView):
                 with self._mutex:
                     self._market_id = instruments_ids[0]
                     self._refresh = 0.0
-                
+
                 return
 
             with self._mutex:
@@ -191,7 +192,7 @@ class TraderStateView(TableView):
 
         if report_mode >= strategy_trader_state.get('num-modes', 1):
             with self._mutex:
-                # refreh with mode
+                # refresh with mode
                 self._report_mode = strategy_trader_state.get('num-modes', 1) - 1
                 strategy_trader_state = get_strategy_trader_state(strategy, market_id, report_mode)
 
@@ -254,24 +255,26 @@ class TraderStateView(TableView):
 
                 reported_activity = False
                 reported_bootstraping = False
+                reported_ready = False
+                reported_affinity = False
+
+                try:
+                    columns, table, total_size = self.trader_state_table(strategy, *self.table_format())
+                    self.table(columns, table, total_size)
+                    num = total_size[1]
+                except Exception as e:
+                    error_logger.error(str(traceback.format_exc()))
+                    error_logger.error(str(e))
 
                 with self._mutex:
+                    # get updated state
                     market_id = self._market_id
                     report_mode = self._report_mode
-                    
+
                     reported_activity = self._reported_activity
                     reported_bootstraping = self._reported_bootstraping
                     reported_ready = self._reported_ready
                     reported_affinity = self._reported_affinity
-
-                    try:
-                        columns, table, total_size = self.trader_state_table(strategy, *self.table_format())
-                        self.table(columns, table, total_size)
-                        num = total_size[1]
-                    except Exception as e:
-                        import traceback
-                        error_logger.error(str(traceback.format_exc()))
-                        error_logger.error(str(e))
 
                 state = " - ".join((
                     "active" if reported_activity else "disabled",

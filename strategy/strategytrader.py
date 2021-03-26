@@ -338,34 +338,30 @@ class StrategyTrader(object):
         Recheck actives or pending trades. Useful after a reconnection.
         """
         with self._mutex:
-            if self._checked == 2:
-                # already in progess
+            if self._checked != 1:
+                # only if waiting to check trades
                 return
 
             # process
             self._checked = 2
 
-            trader = self.strategy.trader()
-            mutated = False
-            trades_list = []
+        trader = self.strategy.trader()
 
+        if not trader.paper_mode:
+            # do not process in paper-mode
             with self._trade_mutex:
                 for trade in self._trades:
                     try:
                         # check orders/position/quantity
                         if not trade.check(trader, self.instrument):
-                            # remove the trade, the check returns True meaning no longer referenced by position, qty or any related orders
-                            mutated = True
-                        else:
-                            # keep the trade
-                            trades_list.append(trade)
+                            # if error try to repair it else stay in error status
+                            trade.repair(trader, self.instrument)
+
                     except Exception as e:
                         error_logger.error(repr(e))
                         traceback_logger.error(traceback.format_exc())
 
-                if mutated:
-                    self._trades = trades_list
-
+        with self._mutex:
             # done
             self._checked = 0
 
@@ -1170,8 +1166,8 @@ class StrategyTrader(object):
             'initialized': self._initialized == 0,
             'checked': self._checked == 0,
             'ready': self._initialized == 0 and self._checked == 0 and self.instrument.ready(),
-            'bootstraping': self._bootstraping == 2,
-            'preprocessing': self._preprocessing == 2,
+            'bootstraping': self._bootstraping > 1,
+            'preprocessing': self._preprocessing > 1,
             'members': [],
             'data': [],
             'num-modes': 1

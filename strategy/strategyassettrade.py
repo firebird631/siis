@@ -738,60 +738,119 @@ class StrategyAssetTrade(StrategyTrade):
         return True
 
     def check(self, trader, instrument):
-        # @todo check refered orders exists and depending of try to found the current state
-        # @todo it could be complicated to 
-        if self.entry_oid or self.entry_ref_oid:
-            if self.entry_oid:
-                order = trader.get_order(self.entry_oid)
+        error = False
+        
+        #
+        # entry
+        #
+
+        if self.entry_oid:
+            data = trader.order_info(self.entry_oid, instrument)
+
+            if data:
+                if data['cumulative-filled'] > self.e or data['fully-filled']:
+                    self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                if data['status'] in ('closed', 'deleted'):
+                    self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                elif data['status'] in ('expired', 'canceled'):
+                    self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
             else:
-                order = trader.find_order(self.entry_ref_oid)
+                # cannot retrieve the order, wrong id
+                error = True
 
-            if order:
-                # order still exists
-                pass
+                # no longer entry order
+                self.entry_oid = None
+                self.entry_ref_oid = None
 
-            # retrieve related trades
-            trades = []  # trader.trade_history(self.entry_oid)  # find order related trades history
-            # get_my_trades 
-            for trade in trades:
-                pass
-                # if trade[''] check symbol, order-id or ref-oid
-                # then compute qty, timestamp, price (and direction)
-                # @todo and the same for stop/limit
+                # entry order error status
+                self._entry_state = StrategyTrade.STATE_ERROR
 
-            # check for free asset quantity
-            # if not trader.has_quantity(asset_name, self.x - self.e):
-            #     return False  # or exception ?
+        #
+        # exit
+        #
 
-        if self.oco_oid or self.oco_ref_oid:
+        if self.oco_oid:
             # have an OCO order
-            if self.oco_oid:
-                order = trader.get_order(self.oco_oid)
+            data = trader.order_info(self.oco_oid, instrument)
+
+            if data:
+                if data['cumulative-filled'] > self.x or data['fully-filled']:
+                    self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                if data['status'] in ('closed', 'deleted'):
+                    self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                elif data['status'] in ('expired', 'canceled'):
+                    self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
             else:
-                order = trader.find_order(self.oco_ref_oid)
+                # cannot retrieve the order, wrong id
+                error = True
 
-            if order:
-                # order still exists
-                pass
+                # no longer OCO order
+                self.oco_oid = None
+                self.oco_ref_oid = None
+
+                # exit order error status
+                self._exit_state = StrategyTrade.STATE_ERROR
         else:
-            if self.stop_oid or self.stop_ref_oid:
-                if self.stop_oid:
-                    order = trader.get_order(self.stop_oid)
+            if self.stop_oid:
+                data = trader.order_info(self.stop_oid, instrument)
+
+                if data:
+                    if data['cumulative-filled'] > self.x or data['fully-filled']:
+                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                    if data['status'] in ('closed', 'deleted'):
+                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                    elif data['status'] in ('expired', 'canceled'):
+                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
                 else:
-                    order = trader.find_order(self.stop_ref_oid)
+                    # cannot retrieve the order, wrong id
+                    error = True
 
-                if order:
-                    # order still exists
-                    pass
+                    # no longer stop order
+                    self.stop_oid = None
+                    self.stop_ref_oid = None
 
-            if self.limit_oid or self.limit_ref_oid:
-                if self.limit_oid:
-                    order = trader.get_order(self.limit_oid)
+                    # exit order error status
+                    self._exit_state = StrategyTrade.STATE_ERROR
+
+            if self.limit_oid:
+                data = trader.order_info(self.limit_oid, instrument)
+
+                if data:
+                    if data['cumulative-filled'] > self.x or data['fully-filled']:
+                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                    if data['status'] in ('closed', 'deleted'):
+                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                    elif data['status'] in ('expired', 'canceled'):
+                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
                 else:
-                    order = trader.find_order(self.limit_ref_oid)
+                    # cannot retrieve the order, wrong id
+                    error = True
 
-                if order:
-                    # order still exists
-                    pass
+                    # no longer stop order
+                    self.limit_oid = None
+                    self.limit_ref_oid = None
 
-        return True
+                    # exit order error status
+                    self._exit_state = StrategyTrade.STATE_ERROR
+
+        return not error
+
+    def repair(self, trader, instrument):
+        # @todo fix the trade
+        # is entry or exit in error
+        # if entry is partially filled or none
+        # - if none state canceled entry, none exit
+        # - if qty check free size and create an exit order if min notional...
+        # if exit in error
+        # - if entry qty > 0 recreate exit order if min notional...
+        # if no min notional, free qty... let the error status
+
+        return False

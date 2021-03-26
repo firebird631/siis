@@ -85,6 +85,7 @@ class AuthRestAPI(resource.Resource):
                 'auth-token': None,
                 'ws-auth-token': None,
                 'session': "",
+                'permissions': []
             }).encode("utf-8")
 
         session = request.getSession()
@@ -99,11 +100,14 @@ class AuthRestAPI(resource.Resource):
             self.sessions.add(session.uid)
             session.notifyOnExpire(lambda: self._expired(session.uid))
 
+        permissions = self._monitor_service.permissions_str()
+
         return json.dumps({
             'error': False,
             'auth-token': auth_token,
             'ws-auth-token': ws_auth_token,
             'session': session.uid.decode('utf-8'),
+            'permissions': permissions
         }).encode("utf-8")
 
     def render_DELETE(self, request):
@@ -160,15 +164,20 @@ def check_ws_auth_token(monitor_service, request):
 class StrategyInfoRestAPI(resource.Resource):
     isLeaf = False
 
-    def __init__(self, strategy_service, trader_service):
+    def __init__(self, monitor_service, strategy_service, trader_service):
         super().__init__()
 
         self._strategy_service = strategy_service
         self._trader_service = trader_service
 
+        self._allow_view = monitor_service.has_strategy_view_perm
+
     def render_GET(self, request):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_view:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         uri = request.uri.decode("utf-8").split('/')
 
@@ -262,11 +271,13 @@ class StrategyInfoRestAPI(resource.Resource):
 class InstrumentRestAPI(resource.Resource):
     isLeaf = True
 
-    def __init__(self, strategy_service, trader_service):
+    def __init__(self, monitor_service, strategy_service, trader_service):
         super().__init__()
 
         self._strategy_service = strategy_service
         self._trader_service = trader_service
+
+        self._allow_trader = monitor_service.has_strategy_trader_perm
 
     def render_GET(self, request):
         if not check_auth_token(request):
@@ -282,6 +293,9 @@ class InstrumentRestAPI(resource.Resource):
     def render_POST(self, request):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_trader:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         results = {
             'messages': [],
@@ -308,6 +322,9 @@ class InstrumentRestAPI(resource.Resource):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
+        if not self._allow_trader:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
         results = {}
 
         # @todo remove an instrument and watcher subscription
@@ -318,16 +335,25 @@ class InstrumentRestAPI(resource.Resource):
 class StrategyTradeRestAPI(resource.Resource):
     isLeaf = True
 
-    def __init__(self, strategy_service, trader_service):
+    def __init__(self, monitor_service, strategy_service, trader_service):
         super().__init__()
 
         self._strategy_service = strategy_service
         self._trader_service = trader_service
 
+        self._allow_view = monitor_service.has_strategy_view_perm
+        self._allow_open_trade = monitor_service.has_strategy_open_trade_perm
+        self._allow_close_trade = monitor_service.has_strategy_close_trade_perm
+        self._allow_modify_trade = monitor_service.has_strategy_modify_trade_perm
+        self._allow_clean_trade = monitor_service.has_strategy_clean_trade_perm
+
     def render_GET(self, request):
         # list active trade or trade specific
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_view:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         trade_id = -1
 
@@ -366,14 +392,27 @@ class StrategyTradeRestAPI(resource.Resource):
             command = content.get('command', "")
 
             if command == "trade-entry":
+                if not self._allow_open_trade:
+                    return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
                 results = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
+
             elif command == "trade-modify":
+                if not self._allow_modify_trade:
+                    return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
                 results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, content)
+
             elif command == "trade-clean":
+                if not self._allow_clean_trade:
+                    return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
                 results = self._strategy_service.command(Strategy.COMMAND_TRADE_CLEAN, content)
+
             else:
                 results['messages'].append("Missing command.")
                 results['error'] = True
+
         except Exception as e:
             logger.debug(e)
 
@@ -382,6 +421,9 @@ class StrategyTradeRestAPI(resource.Resource):
     def render_DELETE(self, request):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_close_trade:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         results = {
             'messages': [],
@@ -398,15 +440,20 @@ class StrategyTradeRestAPI(resource.Resource):
 class HistoricalTradeRestAPI(resource.Resource):
     isLeaf = True
 
-    def __init__(self, strategy_service, trader_service):
+    def __init__(self, monitor_service, strategy_service, trader_service):
         super().__init__()
 
         self._strategy_service = strategy_service
         self._trader_service = trader_service
 
+        self._allow_view = monitor_service.has_strategy_view_perm
+
     def render_GET(self, request):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_view:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         trade_id = -1
 
@@ -438,14 +485,19 @@ class HistoricalTradeRestAPI(resource.Resource):
 class TraderRestAPI(resource.Resource):
     isLeaf = False
 
-    def __init__(self, trader_service):
+    def __init__(self, monitor_service, trader_service):
         super().__init__()
 
         self._trader_service = trader_service
 
+        self._allow_view = monitor_service.has_strategy_view_perm
+
     def render_GET(self, request):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_view:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         uri = request.uri.decode("utf-8").split('/')
 
@@ -478,15 +530,20 @@ class TraderRestAPI(resource.Resource):
 class Charting(resource.Resource):
     isLeaf = True
 
-    def __init__(self, strategy_service, trader_service):
+    def __init__(self, monitor_service, strategy_service, trader_service):
         super().__init__()
 
         self._strategy_service = strategy_service
         self._trader_service = trader_service
 
+        self._allow_chart = monitor_service.has_strategy_chart_perm
+
     def render_GET(self, request):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_chart:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         uri = request.uri.split('/')
         result = {}
@@ -503,6 +560,9 @@ class Charting(resource.Resource):
     def render_POST(self, request):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_chart:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         results = {
             'messages': [],
@@ -526,6 +586,46 @@ class Charting(resource.Resource):
         return json.dumps(results).encode("utf-8")
 
 
+class StatusInfoRestAPI(resource.Resource):
+    isLeaf = True
+
+    def __init__(self, monitor_service, strategy_service, trader_service, watcher_service):
+        super().__init__()
+
+        self._strategy_service = strategy_service
+        self._trader_service = trader_service
+        self._watcher_service = watcher_service
+
+    def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        trader_data = {
+            'name': self._trader_service.trader().name,
+            'connected': self._trader_service.trader().connected,
+        }
+
+        watchers_data = []
+        watchers_ids = self._watcher_service.watchers_ids()
+
+        for watcher_id in watchers_ids:
+            watcher = self._watcher_service.watcher(watcher_id)
+            watchers_data.append({
+                    'name': watcher.name,
+                    'connected': watcher.connected,
+                })
+
+        results = {
+            'error': False,
+            'messages': [],
+            'data': {
+                'trader': trader_data,
+                'watchers': watchers_data
+            }
+        }
+
+        return json.dumps(results).encode("utf-8")
+
 
 class AllowedIPOnlyFactory(server.Site):
 
@@ -544,7 +644,7 @@ class HttpRestServer(object):
     ALLOWED_IPS = None
     DENIED_IPS = None
 
-    def __init__(self, host, port, api_key, api_secret, monitor_service, strategy_service, trader_service):
+    def __init__(self, host, port, api_key, api_secret, monitor_service, strategy_service, trader_service, watcher_service):
         self._listener = None
 
         self._host = host
@@ -556,25 +656,7 @@ class HttpRestServer(object):
         self._monitor_service = monitor_service
         self._strategy_service = strategy_service
         self._trader_service = trader_service
-
-        self._perm_view = True
-        self._perm_manage_trade = True
-
-    def set_view_only(self):
-        self._perm_view = True
-        self._perm_manage_trade = False
-
-    def set_all_perms(self):
-        self._perm_view = True
-        self._perm_manage_trade = True
-
-    @property
-    def can_view_perm(self):
-        return self._perm_view
-
-    @property
-    def can_manage_trade(self):
-        return self._perm_manage_trade
+        self._watcher_service = watcher_service
 
     def start(self):
         root = static.File("monitor/web")
@@ -588,28 +670,31 @@ class HttpRestServer(object):
         api_v1.putChild(b"auth", AuthRestAPI(self._monitor_service, self.__api_key, self.__api_secret))
 
         # strategy
-        strategy_api = StrategyInfoRestAPI(self._strategy_service, self._trader_service)
+        strategy_api = StrategyInfoRestAPI(self._monitor_service, self._strategy_service, self._trader_service)
         api_v1.putChild(b"strategy", strategy_api)
 
-        instrument_api = InstrumentRestAPI(self._strategy_service, self._trader_service)
+        instrument_api = InstrumentRestAPI(self._monitor_service, self._strategy_service, self._trader_service)
         strategy_api.putChild(b"instrument", instrument_api)
 
-        trade_api = StrategyTradeRestAPI(self._strategy_service, self._trader_service)
+        trade_api = StrategyTradeRestAPI(self._monitor_service, self._strategy_service, self._trader_service)
         strategy_api.putChild(b"trade", trade_api)
 
-        historical_trade_api = HistoricalTradeRestAPI(self._strategy_service, self._trader_service)
+        historical_trade_api = HistoricalTradeRestAPI(self._monitor_service, self._strategy_service, self._trader_service)
         strategy_api.putChild(b"historical", historical_trade_api)
 
         # trader
-        trader_api = TraderRestAPI(self._trader_service)
+        trader_api = TraderRestAPI(self._monitor_service, self._trader_service)
         api_v1.putChild(b"trader", trader_api)
 
         # monitor
         monitor_api = resource.Resource()
         api_v1.putChild(b"monitor", monitor_api)
 
+        status_api = StatusInfoRestAPI(self._monitor_service, self._strategy_service, self._trader_service, self._watcher_service)
+        monitor_api.putChild(b"status", status_api)
+
         # charting
-        strategy_api.putChild(b"chart", Charting(self._strategy_service, self._trader_service))
+        strategy_api.putChild(b"chart", Charting(self._monitor_service, self._strategy_service, self._trader_service))
 
         factory = AllowedIPOnlyFactory(root)
         factory.sessionFactory = LongSession

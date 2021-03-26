@@ -410,7 +410,7 @@ def application(argv):
     monitor_service = MonitorService(options)
     view_service = ViewService(options)
     notifier_service = NotifierService(options)
-    watcher_service = WatcherService(options)
+    watcher_service = WatcherService(monitor_service, options)
     trader_service = TraderService(watcher_service, monitor_service, options)
     strategy_service = StrategyService(watcher_service, trader_service, monitor_service, options)
 

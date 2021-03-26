@@ -18,7 +18,7 @@ from trader.order import Order
 from trader.position import Position
 from trader.market import Market
 
-from monitor.streamable import Streamable, StreamMemberSerie, StreamMemberFloatSerie, StreamMemberTraderBalance
+from monitor.streamable import Streamable, StreamMemberSerie, StreamMemberInt, StreamMemberFloatSerie, StreamMemberTraderBalance
 from common.runnable import Runnable
 
 from terminal.terminal import Terminal, Color
@@ -76,6 +76,7 @@ class Trader(Runnable):
         self._signals = collections.deque()  # filtered received signals
 
         self._streamable = None
+        self._heartbeat = 0
         self._balance_streamer = None
 
         # listen to its service
@@ -86,13 +87,16 @@ class Trader(Runnable):
 
     def setup_streaming(self):
         self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_TRADER, "status", self.name)
+        self._streamable.add_member(StreamMemberInt('ping'))
+        self._streamable.add_member(StreamMemberInt('conn'))
 
         # account asset/margin balance streams
         self._balance_streamer = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.name, self.name)
         self._balance_streamer.add_member(StreamMemberTraderBalance('account-balance'))
 
     def stream(self):
-        self._streamable.publish()
+        if self._streamable:
+            self._streamable.publish()
 
     @property
     def account(self):
@@ -201,6 +205,16 @@ class Trader(Runnable):
                 self.name, Trader.MAX_SIGNALS), view='status')
 
         # streaming
+        try:
+            now = time.time()
+            if now - self._heartbeat >= 1.0:
+                if self._streamable:
+                    self._streamable.member('ping').update(int(now*1000))
+
+                self._heartbeat = now
+        except Exception as e:
+            error_logger.error(repr(e))
+
         self.stream()
 
     def update(self):
@@ -570,10 +584,18 @@ class Trader(Runnable):
         logger.info(msg)
         Terminal.inst().info(msg, view='content')
 
+        # stream connectivity status
+        if self._streamable:
+            self._streamable.member('conn').update(1)
+
     def on_watcher_disconnected(self, watcher_name):
         msg = "Trader %s lossing %s watcher connection." % (self.name, watcher_name)
         logger.warning(msg)
         Terminal.inst().info(msg, view='content')
+
+        # stream connectivity status
+        if self._streamable:
+            self._streamable.member('conn').update(-1)
 
     #
     # account slots

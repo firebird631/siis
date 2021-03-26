@@ -718,7 +718,7 @@ class PaperTrader(Trader):
         if not order_id or not market_or_instrument:
             return None
 
-        # @todo see from kraken
+        # @todo see from kraken, but not very useful in paper-mode
 
         return None
 

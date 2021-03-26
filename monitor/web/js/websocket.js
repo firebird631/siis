@@ -7,7 +7,7 @@ const STREAM_STRATEGY_INFO = 5;
 const STREAM_STRATEGY_TRADE = 6;
 const STREAM_STRATEGY_ALERT = 7;
 const STREAM_STRATEGY_SIGNAL = 8;
-
+const STREAM_WATCHER = 9;
 
 function read_value(data) {
     if (data.t == "b") {
@@ -136,11 +136,15 @@ function on_ws_message(data) {
 
     } else if (data.c == STREAM_TRADER) {
         // trader status
-        let symbol = data.s;
-
         let value = read_value(data);
 
-        if (value && data.t == 'tk') {
+        if (value && data.g == 'status' && data.n == 'ping') {
+            set_svc_update_timestamp('trader', data.s, value);
+
+        } else if (value && data.g == 'status' && data.n == 'conn') {
+            set_conn_update_state('trader', data.s, value);
+
+        } else if (value && data.t == 'tk') {
             // update ticker
             on_update_ticker(data.s, value.id, data.b*1000, value);
 
@@ -149,33 +153,37 @@ function on_ws_message(data) {
             on_update_balances(data.s, value.asset, data.b*1000, value);
         }
 
+    } else if (data.c == STREAM_WATCHER) {
+        // strategy info
+        let value = read_value(data);
+
+        if (value && data.g == 'status' && data.n == 'ping') {
+            set_svc_update_timestamp('watcher', data.s, value);
+
+        } else if (value && data.g == 'status' && data.n == 'conn') {
+            set_conn_update_state('watcher', data.s, value);
+        }
+
     } else if (data.c == STREAM_STRATEGY) {
         // strategy info
-        let strategy = data.g;
-        let symbol = data.s;
+        let value = read_value(data);
 
-        // @todo
+        if (value && data.g == 'status' && data.n == 'ping') {
+            set_svc_update_timestamp('strategy', data.s, value);
+        }
 
     } else if (data.c == STREAM_STRATEGY_CHART) {
         // strategy trader chart data
-        let strategy = data.g;
-        let symbol = data.s;
-
         // @todo
 
     } else if (data.c == STREAM_STRATEGY_INFO) {
         // strategy trader performance
-        let strategy = data.g;
-        let symbol = data.s;
-
         // @todo
 
     } else if (data.c == STREAM_STRATEGY_TRADE) {
         // strategy trader trade
-        let strategy = data.g;
-        let symbol = data.s;
-
         let value = read_value(data);
+
         if (value && data.t == 'to') {
             // active trade insert
             on_active_trade_entry_message(data.s, value.id, data.b*1000, value);
@@ -189,20 +197,16 @@ function on_ws_message(data) {
 
     } else if (data.c == STREAM_STRATEGY_ALERT) {
         // strategy trader alert
-        let strategy = data.g;
-        let symbol = data.s;
-
         let value = read_value(data);
+
         if (value && data.t == 'sa') {
             on_strategy_alert(data.s, value.id, data.b*1000, value);
         }
 
     } else if (data.c == STREAM_STRATEGY_SIGNAL) {
         // strategy trader signal
-        let strategy = data.g;
-        let symbol = data.s;
-
         let value = read_value(data);
+
         if (value && data.t == 'ts') {
             on_strategy_signal(data.s, value.id, data.b*1000, value);
         }

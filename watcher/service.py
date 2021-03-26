@@ -23,8 +23,10 @@ logger = logging.getLogger('siis.service.watcher')
 
 class WatcherService(Service):
 
-    def __init__(self, options):
+    def __init__(self, monitor_service, options):
         super().__init__("watcher", options)
+
+        self._monitor_service = monitor_service
 
         self._watchers = {}
 
@@ -58,6 +60,10 @@ class WatcherService(Service):
 
         # paper mode options to subscribe only to public part of data
         self._paper_mode = options.get('paper-mode', False)
+
+    @property
+    def monitor_service(self):
+        return self._monitor_service
 
     def create_fetcher(self, options, watcher_name):
         fetcher = self._fetchers_config.get(watcher_name)

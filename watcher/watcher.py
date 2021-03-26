@@ -18,6 +18,8 @@ from database.database import Database
 from instrument.instrument import Instrument, Candle
 from instrument.candlegenerator import CandleGenerator
 
+from monitor.streamable import Streamable, StreamMemberInt
+
 import logging
 logger = logging.getLogger('siis.watcher')
 error_logger = logging.getLogger('siis.error.watcher')
@@ -94,6 +96,9 @@ class Watcher(Runnable):
 
         self._data_streams = {}
 
+        self._streamable = None
+        self._heartbeat = 0
+
         self._store_ohlc = service.store_ohlc        # default never store OHLC to DB storage
         self._store_trade = service.store_trade      # default never store trade/tick/quote during watching
         self._initial_fetch = service.initial_fetch  # default never fetch history of OHLC at connection
@@ -105,6 +110,18 @@ class Watcher(Runnable):
 
         # listen to its service
         self.service.add_listener(self)
+
+        # streaming
+        self.setup_streaming()
+
+    def setup_streaming(self):
+        self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_WATCHER, "status", self.name)
+        self._streamable.add_member(StreamMemberInt('ping'))
+        self._streamable.add_member(StreamMemberInt('conn'))
+
+    def stream(self):
+        if self._streamable:
+            self._streamable.publish()
 
     @property
     def watcher_type(self):
@@ -152,6 +169,10 @@ class Watcher(Runnable):
     @initial_fetch.setter
     def initial_fetch(self, value):
         self._initial_fetch = value
+
+    def stream_connection_status(self, status):
+        if self._streamable:
+            self._streamable.member('conn').update(1 if status else -1)
 
     #
     # instruments
@@ -242,8 +263,7 @@ class Watcher(Runnable):
         Return current OHLC for a specific market-id and timeframe or None.
         """
         if market_id in self._last_ohlc:
-            if timeframe in self._last_ohlc[market_id]:
-                return self._last_ohlc[market_id][timeframe]
+            return self._last_ohlc[market_id].get(timeframe)
 
         return None
 
@@ -277,6 +297,20 @@ class Watcher(Runnable):
         Nothing by default but must return True.
         """
         return True
+
+    def post_update(self):
+        # streaming
+        try:
+            now = time.time()
+            if now - self._heartbeat >= 1.0:
+                if self._streamable:
+                    self._streamable.member('ping').update(int(now*1000))
+
+                self._heartbeat = now
+        except Exception as e:
+            error_logger.error(repr(e))
+
+        self.stream()
 
     @property
     def name(self):

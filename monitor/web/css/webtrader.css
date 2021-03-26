@@ -106,15 +106,28 @@ div.profiles {
 
 div.trade-list {
     border-top: 2px solid gray;
-    height: calc(25vh - 2px);
-    max-height: calc(25vh - 2px);
+    height: calc(25vh - 2px - 15px);
+    max-height: calc(25vh - 2px - 15px);
     margin: 0px;
+}
 
+#trade_list_sizer {
+    width: 35px;
+    height: 15px;
+    position: absolute;
+    margin-left: 50%;
+    margin-right: 50%;
+    margin-top: -7px;
+    background: gray;
+}
+
+#trade_list_sizer:hover {
+    background: #EBBA19;
 }
 
 div.trade-list-context {
     overflow-y: scroll;
-    height: calc(25vh - 2px);
+    height: calc(25vh - 2px - 15px);
 }
 
 input.stop-loss-price, input.take-profit-price, input.entry-price {
@@ -209,6 +222,134 @@ div.list-entries > table > tbody > tr:nth-child(odd) {
     right: 50px;
     top: 50px;
     width: 300px;
+}
+
+div.status {
+    height: 15px;
+    border-bottom: 1px solid gray;
+}
+
+#toggle_status_stats:hover {
+    cursor: pointer;
+}
+
+#conn_state {
+    display: block;
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 10px;
+    height: 10px;
+    border: 0px solid gray;
+    border-radius: 8px;
+    background: gray;
+}
+
+#ws_state {
+    display: block;
+    position: absolute;
+    left: 20px;
+    top: 1px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid gray;
+    border-radius: 8px;
+    background: gray;
+}
+
+#strategy_state {
+    display: block;
+    position: absolute;
+    left: 35px;
+    top: 1px;
+    width: 10px;
+    height: 10px;
+    border: 0px solid gray;
+    border-radius: 8px;
+    background: gray;
+}
+
+#trader_state {
+    display: block;
+    position: absolute;
+    left: 50px;
+    top: 1px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid gray;
+    border-radius: 8px;
+    background: gray;
+}
+
+#watcher1_state {
+    display: block;
+    position: absolute;
+    left: 65px;
+    top: 1px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid gray;
+    border-radius: 8px;
+    background: gray;
+}
+
+#watcher2_state {
+    display: block;
+    position: absolute;
+    left: 80px;
+    top: 1px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid gray;
+    border-radius: 8px;
+    background: gray;
+}
+
+#watcher3_state {
+    display: block;
+    position: absolute;
+    left: 95px;
+    top: 1px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid gray;
+    border-radius: 8px;
+    background: gray;
+}
+
+#watcher4_state {
+    display: block;
+    position: absolute;
+    left: 110px;
+    top: 1px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid gray;
+    border-radius: 8px;
+    background: gray;
+}
+
+#watcher5_state {
+    display: block;
+    position: absolute;
+    left: 125px;
+    top: 1px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid gray;
+    border-radius: 8px;
+    background: gray;
+}
+
+#state_values {
+    display: block;
+    position: absolute;
+    left: 140px;
+    top: -2px;
+}
+
+#state_values {
+    font-size: 0.75em;
 }
 
 div.active-trade-list-entries {

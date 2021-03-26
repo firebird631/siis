@@ -49,6 +49,7 @@ class StrategyTrade(object):
     STATE_OPENED = 4
     STATE_PARTIALLY_FILLED = 5
     STATE_FILLED = 6
+    STATE_ERROR = 7
 
     ERROR = -1
     REJECTED = 0
@@ -609,6 +610,9 @@ class StrategyTrade(object):
         elif self._entry_state == StrategyTrade.STATE_FILLED:
             # entry order completed
             return 'filled'
+        elif self._entry_state == StrategyTrade.STATE_ERROR or self._exit_state == StrategyTrade.STATE_ERROR:
+            # order entry or exit error
+            return 'error'
         else:
             # any others case meaning pending state
             return 'waiting'
@@ -656,6 +660,8 @@ class StrategyTrade(object):
             return 'partially-filled'
         elif trade_state == StrategyTrade.STATE_FILLED:
             return 'filled'
+        elif trade_state == StrategyTrade.STATE_ERROR:
+            return 'error'
         else:
             return "undefined"
 
@@ -675,6 +681,8 @@ class StrategyTrade(object):
             return StrategyTrade.STATE_PARTIALLY_FILLED
         elif trade_type == 'filled':
             return StrategyTrade.STATE_FILLED
+        elif trade_type == 'error':
+            return StrategyTrade.STATE_ERROR
         else:
             return StrategyTrade.STATE_UNDEFINED
 
@@ -821,6 +829,13 @@ class StrategyTrade(object):
     def check(self, trader, instrument):
         """
         Check refered orders and positions exists and quantities too.
+        @return True if success.
+        """
+        return False
+
+    def repair(self, trader, instrument):
+        """
+        Try to repair a trade with an error during retrieving some of its parts (orders, quantity, position).
         @return True if success.
         """
         return False

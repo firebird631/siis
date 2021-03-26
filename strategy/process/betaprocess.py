@@ -71,12 +71,13 @@ def beta_preprocess(strategy, strategy_trader):
     """
     Load previous cached data and compute missing part of data, cache them.
     """
-    if strategy_trader._preprocessing >= 2:
-        # in progress
-        return
+    with strategy_trader._mutex:
+        if strategy_trader._preprocessing >= 2:
+            # in progress
+            return
 
-    # preprocessing in progress, avoid live until complete
-    strategy_trader._preprocessing = 2
+        # preprocessing in progress, avoid live until complete
+        strategy_trader._preprocessing = 2
 
     # @todo non blocking preprocessing       
     instrument = strategy_trader.instrument       
@@ -103,7 +104,9 @@ def beta_preprocess(strategy, strategy_trader):
 
                 logger.debug("%s preprocess missing of trade data, abord %s..." % (instrument.market_id, strategy.timestamp))
 
-                strategy_trader._preprocessing = 0
+                with strategy_trader._mutex:
+                    strategy_trader._preprocessing = 0
+
                 return
 
                 strategy_trader._preprocess_streamer = get_tick_streamer(
@@ -150,7 +153,8 @@ def beta_preprocess(strategy, strategy_trader):
                 # now limits are computed, reset for the next step
                 strategy_trader._preprocess_streamer.reset()
 
-            strategy_trader._preprocessing = 3
+            with strategy_trader._mutex:
+                strategy_trader._preprocessing = 3
 
         if strategy_trader._preprocessing == 3:
             logger.debug("%s preprocess load cache, now is %s..." % (instrument.market_id, strategy.timestamp))
@@ -165,8 +169,9 @@ def beta_preprocess(strategy, strategy_trader):
 
             strategy_trader.preprocess_load_cache(from_date, to_date)
 
-            # now can update using more recents data
-            strategy_trader._preprocessing = 4
+            with strategy_trader._mutex:
+                # now can update using more recents data
+                strategy_trader._preprocessing = 4
 
         if strategy_trader._preprocessing == 4:
             logger.debug("%s preprocess update, now is %s..." % (instrument.market_id, strategy.timestamp))
@@ -185,8 +190,9 @@ def beta_preprocess(strategy, strategy_trader):
 
                 strategy_trader._preprocess_streamer = None
 
-            # now can store in cache news and updated results
-            strategy_trader._preprocessing = 5
+            with strategy_trader._mutex:
+                # now can store in cache news and updated results
+                strategy_trader._preprocessing = 5
 
         if strategy_trader._preprocessing == 5:
             try:
@@ -197,8 +203,9 @@ def beta_preprocess(strategy, strategy_trader):
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
 
-            # now preprocessing is done
-            strategy_trader._preprocessing = 0
+            with strategy_trader._mutex:
+                # now preprocessing is done
+                strategy_trader._preprocessing = 0
 
             logger.debug("%s preprocess done, now is %s" % (instrument.market_id, strategy.timestamp))
 
@@ -212,12 +219,13 @@ def beta_bootstrap(strategy, strategy_trader):
     Process the bootstrap of the strategy trader until complete using the preloaded OHLCs.
     Any received updates are ignored until the bootstrap is completed.
     """
-    if strategy_trader._bootstraping == 2:
-        # in progress
-        return
+    with strategy_trader._mutex:
+        if strategy_trader._bootstraping == 2:
+            # in progress
+            return
 
-    # bootstraping in progress, avoid live until complete
-    strategy_trader._bootstraping = 2
+        # bootstraping in progress, avoid live until complete
+        strategy_trader._bootstraping = 2
 
     try:
         if strategy_trader.is_timeframes_based:
@@ -228,8 +236,9 @@ def beta_bootstrap(strategy, strategy_trader):
         error_logger.error(repr(e))
         traceback_logger.error(traceback.format_exc())
 
-    # bootstraping done, can now branch to live
-    strategy_trader._bootstraping = 0
+    with strategy_trader._mutex:
+        # bootstraping done, can now branch to live
+        strategy_trader._bootstraping = 0
 
 
 def timeframe_based_bootstrap(strategy, strategy_trader):
@@ -465,6 +474,9 @@ def initiate_strategy_trader(strategy, strategy_trader):
             # initialization processed, waiting for data be ready
             with strategy_trader._mutex:
                 strategy_trader._initialized = 0
+
+        # wake-up
+        strategy.send_update_strategy_trader(instrument.market_id)
 
     except Exception as e:
         logger.error(repr(e))

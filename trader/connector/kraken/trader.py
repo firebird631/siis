@@ -168,10 +168,6 @@ class KrakenTrader(Trader):
     def on_asset_updated(self, asset_name, locked, free):
         asset = self._assets.get(asset_name)
         if asset is not None:
-            # significant deviation... @todo update qty after traded signal
-            # if abs((locked+free)-asset.quantity) / ((locked+free) or 1.0) >= 0.001:
-            #     logger.debug("%s deviation of computed quantity for %s from %s but must be %s" % (self._name, asset_name, asset.quantity, (locked+free)))
-
             asset.set_quantity(locked, free)
 
             market_id = asset.market_ids[0] if asset.market_ids else asset.symbol+asset.quote if asset.quote else None
@@ -439,16 +435,28 @@ class KrakenTrader(Trader):
                 if not market:
                     return None
 
+                price = None
+                stop_price = None
+                completed = False
+                order_ref_id = ""
+                event_timestamp = float(order_data['lastupdated']) if 'lastupdated' in order_data else float(order_data['opentm'])
+
                 if order_data['status'] == 'open':
                     status = 'opened'
                 elif order_data['status'] == 'pending':
                     status = 'pending'
                 elif order_data['status'] == 'closed':
                     status = 'closed'
+                    completed = True
+                    if 'closetm' in order_data:
+                        event_timestamp = float(order_data['closetm'])
                 elif order_data['status'] == 'deleted':
                     status = 'deleted'
                 elif order_data['status'] == 'canceled':
                     status = 'canceled'
+                elif order_data['status'] == 'expired':
+                    status = 'canceled'
+                    # completed = True ? and on watcher WS...
                 else:
                     status = ""
 
@@ -456,9 +464,80 @@ class KrakenTrader(Trader):
                     # userref is int
                     order_ref_id = str(order_data['userref'])
 
-                # @todo like in watcher WS
+                if descr['ordertype'] == "limit":
+                    order_type = Order.ORDER_LIMIT
+                    price = float(descr['price']) if 'price' in descr else None
+
+                elif descr['ordertype'] == "stop-loss":
+                    order_type = Order.ORDER_STOP
+                    stop_price = float(descr['price']) if 'price' in descr else None
+
+                elif descr['ordertype'] == "take-profit":
+                    order_type = Order.ORDER_TAKE_PROFIT
+                    top_price = float(descr['price']) if 'price' in descr else None
+
+                elif descr['ordertype'] == "stop-loss-limit":
+                    order_type = Order.ORDER_STOP_LIMIT
+                    price = float(descr['price2']) if 'price2' in descr else None
+                    stop_price = float(descr['price']) if 'price' in descr else None
+
+                elif descr['ordertype'] == "take-profit-limit":
+                    order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    price = float(descr['price2']) if 'price2' in descr else None
+                    stop_price = float(descr['price']) if 'price' in descr else None
+
+                elif descr['ordertype'] == "market":
+                    order_type = Order.ORDER_MARKET
+
+                else:
+                    order_type = Order.ORDER_MARKET
+
+                time_in_force = Order.TIME_IN_FORCE_GTC
+
+                if order_data['expiretm'] is not None and order_data['expiretm'] > 0:
+                    time_in_force = Order.TIME_IN_FORCE_GTD
+                    expiry = float(order_data['expiretm'])
+
+                if descr['leverage'] is not None and descr['leverage'] != 'none':
+                    margin_trade = True
+                    leverage = int(descr['leverage'])
+                else:
+                    margin_trade = False
+                    leverage = 0
+
+                post_only = False
+                commission_asset_is_quote = True
+
+                if order_data['oflags']:
+                    flags = order_data['oflags'].split(',')
+               
+                    if 'fcib' in flags:
+                        # fee in base currency
+                        commission_asset_is_quote = False
+
+                    elif 'fciq' in flags:
+                        # fee in quote currency:
+                        commission_asset_is_quote = True
+
+                    if 'post' in flags:
+                        post_only = True
+
+                cumulative_filled = float(order_data['vol_exec'])
+                order_volume = float(order_data['vol'])
+                partial = False
+                fully_filled = completed
+
+                if order_data['misc']:
+                    misc = order_data['misc'].split(',')
+
+                    if 'partial' in misc:
+                        partial = True
+
+                if cumulative_filled >= order_volume and not partial:
+                    fully_filled = True
 
                 # trades = array of trade ids related to order (if trades info requested and data available)
+                trades = []
 
                 order_info = {
                     'id': order_id,
@@ -467,16 +546,21 @@ class KrakenTrader(Trader):
                     'ref-id': order_ref_id,
                     'direction': Order.LONG if descr['type'] == "buy" else Order.SHORT,
                     'type': order_type,
-                    # 'timestamp': event_timestamp,
-                    # 'quantity': float(order_data.get('vol', "0.0")),
-                    # 'price': price,
-                    # 'stop-price': stop_price,
-                    # 'time-in-force': time_in_force,
-                    # 'post-only': post_only,
+                    'timestamp': event_timestamp,
+                    'avg-price': float(order_data['avg_price']),
+                    'quantity': order_volume,
+                    'cumulative-filled': cumulative_filled,
+                    'cumulative-commission-amount': float(order_data['fee']),
+                    'price': price,
+                    'stop-price': stop_price,
+                    'time-in-force': time_in_force,
+                    'post-only': post_only,
                     # 'close-only': ,
                     # 'reduce-only': ,
                     'stop-loss': None,
-                    'take-profit': None
+                    'take-profit': None,
+                    'fully-filled': fully_filled
+                    # 'trades': trades
                 }
 
                 return order_info

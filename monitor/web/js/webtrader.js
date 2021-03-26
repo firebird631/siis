@@ -1,7 +1,7 @@
 // @todo auto-reconnect
 
 $(window).ready(function() {
-    CURRENCIES = ['EUR', 'USD', 'ZEUR', 'ZUSD', 'CAD', 'ZCAD'];
+    CURRENCIES = ['EUR', 'ZEUR', 'USD', 'ZUSD', 'CAD', 'ZCAD', 'JPY', 'ZJPY', 'CHF', 'ZCHF'];
 
     window.server = {
         'protocol': 'http:',
@@ -14,7 +14,17 @@ $(window).ready(function() {
         'delay': 1000,
         'retry': false,
         'ws': false,
-        'connected': false
+        'connected': false,
+        'permissions': [],
+        'updates': {
+            'strategy': {'name': "", 'svc_timestamp': 0, 'svc_delta': 0, 'svc_last': 0, 'conn_state': 0, 'conn_timestamp': 0},
+            'trader': {'name': "", 'svc_timestamp': 0, 'svc_delta': 0, 'svc_last': 0, 'conn_state': 0, 'conn_timestamp': 0},
+            'watcher1': {'name': "", 'svc_timestamp': 0, 'svc_delta': 0, 'svc_last': 0, 'conn_state': 0, 'conn_timestamp': 0},
+            'watcher2': {'name': "", 'svc_timestamp': 0, 'svc_delta': 0, 'svc_last': 0, 'conn_state': 0, 'conn_timestamp': 0},
+            'watcher3': {'name': "", 'svc_timestamp': 0, 'svc_delta': 0, 'svc_last': 0, 'conn_state': 0, 'conn_timestamp': 0},
+            'watcher4': {'name': "", 'svc_timestamp': 0, 'svc_delta': 0, 'svc_last': 0, 'conn_state': 0, 'conn_timestamp': 0},
+            'watcher5': {'name': "", 'svc_timestamp': 0, 'svc_delta': 0, 'svc_last': 0, 'conn_state': 0, 'conn_timestamp': 0}
+        }
     };
 
     window.ws = null;
@@ -481,7 +491,9 @@ $(window).ready(function() {
     $('#list_active_trades').css('background', 'chocolate');
 
     $('#list_performances').on('click', function(e) {
-        on_update_performances();
+        if (server.permissions.indexOf("trader-balance-view") != -1) {
+            on_update_performances();
+        }
     });
 
     $('#authentification').on('shown.bs.modal', function () {
@@ -555,6 +567,15 @@ $(window).ready(function() {
         on_change_take_profit_step(); 
     });
 
+    $('#trade_list_sizer').dblclick(function(e) {
+        let elt = $('div.trade-list');
+        if (elt.attr('view-mode') == 'maximized') {
+            restore_trade_list_view();
+        } else {
+            maximize_trade_list_view();
+        }
+    });
+
     //
     // session init
     //
@@ -590,6 +611,7 @@ $(window).ready(function() {
             window.server['auth-token'] = result['auth-token'];
             window.server['ws-auth-token'] = result['ws-auth-token'];
             window.server['session'] = result['session'];
+            window.server['permissions'] = result['permissions'];
 
             if (window.server['ws-port'] != null) {
                 start_ws();
@@ -599,7 +621,11 @@ $(window).ready(function() {
             window.server['retry'] = false;
             window.server['delay'] = 0;
 
-            fetch_strategy();
+            fetch_status();
+
+            if (server.permissions.indexOf("strategy-view") != -1) {
+                fetch_strategy();
+            }
 
             $('#authentification').modal('hide');
 
@@ -607,6 +633,7 @@ $(window).ready(function() {
             $("div.historical-trade-list-entries ul").empty();
 
             notify({'message': "Connected", 'type': 'success'});
+            set_conn_state(1);
 
             // store api-key into a cookie
             setCookie('identifier', api_key, 15);
@@ -628,6 +655,7 @@ $(window).ready(function() {
             }
 
             notify({'message': "Unable to obtain an auth-token !", 'type': 'error'});
+            set_conn_state(-1);
 
             // @todo reconnect
         });
@@ -655,7 +683,15 @@ $(window).ready(function() {
             },
         })
         .done(function(result) {
+            if (result['error'] || !result['auth-token']) {
+                notify({'message': "Rejected authentication", 'type': 'error'});
+                return;
+            }
+
             window.server['auth-token'] = result['auth-token'];
+            window.server['ws-auth-token'] = result['ws-auth-token'];
+            window.server['session'] = result['session'];
+            window.server['permissions'] = result['permissions'];
 
             if (window.server['ws-port'] != null) {
                 start_ws();
@@ -665,9 +701,19 @@ $(window).ready(function() {
             window.server['retry'] = false;
             window.server['delay'] = 0;
 
-            fetch_strategy();
+            fetch_status();
+
+            if (server.permissions.indexOf("strategy-view") != -1) {
+                fetch_strategy();
+            }
 
             $('#authentification').modal('hide');
+
+            $("div.active-trade-list-entries ul").empty();
+            $("div.historical-trade-list-entries ul").empty();
+
+            notify({'message': "Connected", 'type': 'success'});
+            set_conn_state(1);
 
             // store identifier into a cookie
             setCookie('identifier', identifier, 15);
@@ -689,6 +735,7 @@ $(window).ready(function() {
             }
 
             notify({'message': "Unable to obtain an auth-token !", 'title': 'Authentication"', 'type': 'error'});
+            set_conn_state(-1);
 
             // @todo reconnect
         });
@@ -708,17 +755,24 @@ $(window).ready(function() {
         ws.onopen = function(event) {
             window.server['ws'] = true;
             console.log("WS opened");
+
+            set_ws_ping_state(1);
         };
 
         ws.onclose = function(event) {
             window.server['ws'] = false;
             console.log("WS closed by peer !");
 
+            set_ws_ping_state(-1);
+            set_conn_state(-1); // @todo should try a ping but probably unreachable
+            reset_states();
+
             // @todo reconnect if lost
         };
 
         ws.onmessage = function (event) {
             on_ws_message(JSON.parse(event.data));
+            // rcv_ws_data();
         }
     }
 
@@ -744,6 +798,32 @@ $(window).ready(function() {
     simple_connect = function(api_key) {
         return siis_connect(api_key, window.location.hostname, parseInt(window.location.port), ws_port=parseInt(window.location.port)+1);
     }
+
+    // update ping
+    function update_states() {
+        let types = ['strategy', 'trader', 'watcher1', 'watcher2', 'watcher3', 'watcher4' ,'watcher5'];
+        for (let type in types) {
+            let id = types[type];
+            let update = window.server['updates'][id];
+
+            if (update.svc_delta > 10000) {
+                set_svc_state(id, -1);
+            } else if (update.svc_delta > 2000) {
+                set_svc_state(id, 0);
+            } else if (update.svc_delta > 0) {
+                set_svc_state(id, 1);
+            }
+
+            set_svc_conn_state(id, update.conn_state)
+        }
+
+        // update status bar
+        update_status_pnl();
+
+        setTimeout(update_states, 1000);
+    }
+
+    update_states();
 });
 
 //
@@ -919,6 +999,45 @@ function base_url() {
     return server['protocol'] + "//" + server['host'] + ':' + server['port'] + "/api/v1";
 };
 
+function fetch_status() {
+    let endpoint = "monitor/status";
+    let url = base_url() + '/' + endpoint;
+
+    $.ajax({
+        type: "GET",
+        url: url,
+        headers: {
+            'TWISTED_SESSION': server.session,
+            'Authorization': "Bearer " + server['auth-token'],
+        },
+        dataType: 'json',
+        contentType: 'application/json'
+    })
+    .done(function(result) {
+        // trader status
+        let trader = result['data']['trader'];
+
+        set_conn_update_state('trader', trader.name, trader.connected ? 1 : -1);
+
+        // watchers status
+        let watchers = result['data']['watchers'];
+
+        for (let i = 0; i < watchers.length; ++i) {
+            let watcher = watchers[i];
+            set_conn_update_state('watcher', watcher.name, watcher.connected ? 1 : -1);
+        }
+
+        // unused watchers slots
+        for (let i = 0; i < 5; ++i) {
+            let update = window.server['updates']['watcher' + (i+1)];
+            if (update.name == "") {
+                let nid = '#watcher' + (i+1) + '_state';
+                $(nid).css('display', 'none');
+            }
+        }
+    });   
+}
+
 function fetch_strategy() {
     let endpoint = "strategy";
     let url = base_url() + '/' + endpoint;
@@ -1033,10 +1152,52 @@ function fetch_strategy() {
             }
         }
 
-        setup_traders();
-        fetch_trades();
-        fetch_history();
-        fetch_balances();
+        if (server.permissions.indexOf("strategy-open-trade") != -1) {
+            setup_traders();
+        } else {
+            // hide the traders
+            maximize_trade_list_view();
+
+            // don't allow restore
+            $('#trade_list_sizer').remove();
+        }
+
+        if (server.permissions.indexOf("strategy-trader") != -1) {
+            // @todo traders options
+        } else {
+            // @todo trader must not have play/pause, modify quantity, modify affinity
+        }
+
+        if (server.permissions.indexOf("strategy-view") != -1) {
+            fetch_trades();
+            fetch_history();
+        } else {
+            // remove menu
+            $('#list_active_trades').remove();
+            $('#list_historical_trades').remove();
+        }
+
+        if (server.permissions.indexOf("trader-balance-view") != -1) {
+            fetch_balances();
+        } else {
+            // remove menu
+            $('#list_performances').remove();
+        }
+
+        // @todo manage permissions
+        // "debug"
+        // "admin"
+
+        // "strategy-clean-trade"
+        // "strategy-close-trade"
+        // "strategy-modify-trade"
+        
+        // "strategy-chart"
+        
+        // "trader-order-position-view"
+        // "trader-cancel-order"
+        // "trader-close-position"
+
         // fetch_alerts();
         // fetch_signals();
     })
@@ -1074,6 +1235,8 @@ function fetch_trades() {
             // initial add
             add_active_trade(trade['market-id'], trade);
         }
+
+        update_status_trades();
     })
     .fail(function() {
         notify({'message': "Unable to obtains actives trades !", 'title': 'fetching"', 'type': 'error'});
@@ -1111,6 +1274,8 @@ function fetch_history() {
             // initial add
             add_historical_trade(trade['market-id'], trade);
         }
+
+        update_status_trades();
     })
     .fail(function() {
         notify({'message': "Unable to obtains historicals trades !", 'title': 'fetching"', 'type': 'error'});
@@ -1724,10 +1889,14 @@ function on_update_performances() {
 
         // update every half-second until displayed
         // @todo remove after using WS implementation
-        setTimeout(fetch_balances, 500);
+        if (server.permissions.indexOf("trader-balance-view") != -1) {
+            setTimeout(fetch_balances, 500);
+        }
 
         if (window.server['ws']) {
-            setTimeout(on_update_performances, 500);
+            if (server.permissions.indexOf("trader-balance-view") != -1) {
+                setTimeout(on_update_performances, 500);
+            }
         }
     }
 }
@@ -1821,3 +1990,164 @@ function on_update_ticker(market_id, market_id, timestamp, ticker) {
     // update spread
     window.tickers[market_id].spread = ticker.ask - ticker.bid;
 }
+
+function maximize_trade_list_view() {
+    let trade_list = $('div.trade-list');
+    trade_list.attr('view-mode', 'maximized')
+        .css('height', 'calc(100vh - 15px)')
+        .css('max-height', 'calc(100vh - 15px)');
+
+    trade_list.children('div.trade-list-context')
+        .css('height', 'calc(100%)');
+
+    let traders = $('div.traders');
+    traders.css('height', '0px');
+}
+
+function restore_trade_list_view() {
+    let trade_list = $('div.trade-list');
+    trade_list.attr('view-mode', 'initial')
+        .css('height', 'calc(25vh - 2px - 15px)')
+        .css('max-height', 'calc(25vh - 2px - 15px)');
+
+    trade_list.children('div.trade-list-context')
+        .css('height', 'calc(25vh - 2px - 15px)');
+
+    let traders = $('div.traders');
+    traders.css('height', '75vh');
+}
+
+function set_conn_state(state) {
+    if (state > 0) {
+        $('#conn_state').css('background', 'green');
+    } else if (state < 0) {
+        $('#conn_state').css('background', 'red');
+    } else if (state == 0) {
+        $('#conn_state').css('background', 'orange');
+    }
+}
+
+function set_ws_ping_state(state) {
+    if (state > 0) {
+        $('#ws_state').css('background', 'green');
+    } else if (state < 0) {
+        $('#ws_state').css('background', 'red');
+    } else if (state == 0) {
+        $('#ws_state').css('background', 'orange');
+    }
+}
+
+function find_watcher_slot(name) {
+    for (let i = 0; i < 5; ++i) {
+        let update = window.server['updates']['watcher' + (i+1)];
+        if (update.name == "") {
+            return 'watcher' + (i+1);
+        }
+
+        if (update.name == name) {
+            return 'watcher' + (i+1);
+        }
+    }
+
+    // no free slot
+    return "";
+}
+
+function set_svc_update_timestamp(type, name, timestamp) {
+    let now = Date.now();
+
+    if (type == "watcher") {
+        type = find_watcher_slot(name);
+
+        if (type == "") {
+            // no free slot
+            return;
+        }
+    }
+
+    let update = window.server['updates'][type];
+    let delta = update.svc_timestamp > 0 ? now - update.svc_timestamp : 0;
+
+    if (update.name == "") {
+        update.name = name;
+
+        let nid = '#' + type + '_state';
+
+        $(nid).attr('title', type + ': ' + update.name);
+    }
+
+    update.svc_timestamp = timestamp;
+    update.svc_delta = delta;
+    update.svc_last = now;
+}
+
+function set_conn_update_state(type, name, state) {
+    let now = Date.now();
+
+    if (type == "watcher") {
+        type = find_watcher_slot(name);
+
+        if (type == "") {
+            // no free slot
+            return;
+        }
+    }
+
+    let update = window.server['updates'][type];
+
+    if (update.name == "") {
+        update.name = name;
+
+        let nid = '#' + type + '_state';
+        $(nid).attr('title', type + ': ' + update.name);
+    }
+
+    update.conn_state = state;
+    update.conn_timestamp = now;
+}
+
+function set_svc_state(type, svc_state) {
+    let nid = '#' + type + '_state';
+
+    if (svc_state > 0) {
+        $(nid).css('background', 'green');
+    } else if (svc_state < 0) {
+        $(nid).css('background', 'red');
+    } else if (svc_state == 0) {
+        $(nid).css('background', 'orange');
+    }
+}
+
+function set_svc_conn_state(type, conn_state) {
+    let nid = '#' + type + '_state';
+
+    if (conn_state > 0) {
+        $(nid).css('border-color', 'green');
+    } else if (conn_state < 0) {
+        $(nid).css('border-color', 'red');
+    } else if (conn_state == 0) {
+        // $(nid).css('border-color', 'orange');
+        $(nid).css('border-color', 'gray');
+    }
+}
+
+function reset_states() {
+    for (let type in window.server['updates']) {
+        let update = window.server['updates'][type];
+
+        update = {'name': "", 'svc_timestamp': 0, 'svc_delta': 0, 'svc_last': 0, 'conn_state': 0, 'conn_timestamp': 0};
+
+        let nid = '#' + type + '_state';
+        $(nid).css('background', 'gray');
+        $(nid).css('border-color', 'gray');
+        $(nid).attr('title', type + ': ' + update.name)
+    }
+}
+
+// function rcv_ws_data() {
+//     $('#ws_state').css('border-color', 'green');
+
+//     setTimeout(function() {
+//         $('#ws_state').css('border-color', 'gray');
+//     }, 500);
+// }

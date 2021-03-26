@@ -29,6 +29,7 @@ class Streamable(object):
     STREAM_STRATEGY_TRADE = 6
     STREAM_STRATEGY_ALERT = 7
     STREAM_STRATEGY_SIGNAL = 8
+    STREAM_WATCHER = 9
 
     def __init__(self, monitor_service, stream_category, stream_group, stream_name):
         self._monitor_service = monitor_service

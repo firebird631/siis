@@ -251,6 +251,7 @@ class KrakenWatcher(Watcher):
                 self._connector = None
 
         if self._ready and self._connector and self._connector.connected:
+            self.stream_connection_status(True)
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, (time.time(), None))
 
     def disconnect(self):
@@ -264,6 +265,8 @@ class KrakenWatcher(Watcher):
 
                 self._ready = False
                 self._connecting = False
+
+                self.stream_connection_status(False)
 
                 logger.debug("%s disconnected" % (self.name))
 

@@ -53,6 +53,8 @@ from strategy.command.strategycmdtrademodify import cmd_trade_modify
 
 from strategy.command.strategycmdtraderinfo import cmd_trader_info
 
+from monitor.streamable import Streamable, StreamMemberInt
+
 import logging
 logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
@@ -146,6 +148,9 @@ class Strategy(Runnable):
 
         self._cpu_load = 0.0   # global CPU for all the instruments managed by a strategy
         self._overload_timestamp = 0.0
+
+        self._streamable = None
+        self._heartbeat = 0
 
         self._condition = threading.Condition()
 
@@ -311,6 +316,8 @@ class Strategy(Runnable):
     def pre_run(self):
         Terminal.inst().message("Running strategy %s - %s..." % (self._name, self._identifier), view='content')
 
+        self.setup_streaming()
+
         # watcher can be already ready in some cases, try it now
         if self.check_watchers():
             if not self._preset:
@@ -318,6 +325,8 @@ class Strategy(Runnable):
 
     def post_run(self):
         Terminal.inst().message("Joining strategy %s - %s..." % (self._name, self._identifier), view='content')
+
+        self.close_streaming()
 
     def post_update(self):
         # load of the strategy
@@ -331,11 +340,18 @@ class Strategy(Runnable):
             if self._overload_timestamp == 0.0:
                 self._overload_timestamp = now
 
-            elif time.time() - self._overload_timestamp > Strategy.MAX_SIGNALS_DELAY:
+            elif now - self._overload_timestamp > Strategy.MAX_SIGNALS_DELAY:
                 Terminal.inst().warning("Strategy %s has more than %s waiting signals for the last %i seconds !" % (
                     self.name, Strategy.MAX_SIGNALS, Strategy.MAX_SIGNALS_DELAY), view='debug')
 
                 self._overload_timestamp = now
+
+    def setup_streaming(self):
+        self._streamable = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY, "status", self.name)
+        self._streamable.add_member(StreamMemberInt('ping'))
+
+    def close_streaming(self):
+        self._streamable = None
 
     def ping(self, timeout):
         if self._condition.acquire(timeout=timeout):
@@ -772,6 +788,9 @@ class Strategy(Runnable):
             while (not len(self._signals) and not self._ping):
                 self._condition.wait(1.0)
 
+                # ping on stream
+                self.stream_ping()
+
             self._condition.release()
 
         # with self._condition:
@@ -1063,16 +1082,26 @@ class Strategy(Runnable):
                 if len(self._strategy_traders) >= 1:
                     # always aync update process
                     for strategy_trader in do_update:
-                        if 1:  # strategy_trader.instrument.ready():
-                            # parallelize jobs on workers
-                            self.service.worker_pool.add_job(None, (self._async_update_strategy, (self, strategy_trader,)))
+                        # parallelize jobs on workers
+                        self.service.worker_pool.add_job(None, (self._async_update_strategy, (self, strategy_trader,)))
                 else:
                     # no parallelisation for single instrument
                     for strategy_trader in do_update:
-                        if 1:  # strategy_trader.instrument.ready():
-                            self._update_strategy(self, strategy_trader)
+                        self._update_strategy(self, strategy_trader)
             
         return True
+
+    def stream_ping(self):
+        try:
+            now = time.time()
+            if now - self._heartbeat >= 1.0:
+                if self._streamable:
+                    self._streamable.member('ping').update(int(now*1000))
+                    self._streamable.publish()
+
+                self._heartbeat = now
+        except Exception as e:
+            error_logger.error(repr(e))
 
     #
     # backtesting

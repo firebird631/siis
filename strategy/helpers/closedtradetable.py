@@ -32,7 +32,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
     data = []
 
     def localize_datetime(dt):
-        return datetime.strptime(dt, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).astimezone().strftime(datetime_format)
+        return datetime.strptime(dt, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).astimezone().strftime(datetime_format) if dt else "-"
 
     with strategy._mutex:
         closed_trades = get_closed_trades(strategy)
