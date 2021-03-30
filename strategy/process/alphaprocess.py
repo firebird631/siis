@@ -290,6 +290,7 @@ def initiate_strategy_trader(strategy, strategy_trader):
             tfs = {tf['timeframe']: tf['history'] for tf in strategy.parameters.get('timeframes', {}).values() if tf['timeframe'] > 0}
             watcher.subscribe(instrument.market_id, tfs, None, None)
 
+            # wait to DB commit
             time.sleep(1.0)
 
             # wait for timeframes before query

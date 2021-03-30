@@ -229,7 +229,7 @@ div.status {
     border-bottom: 1px solid gray;
 }
 
-#toggle_status_stats:hover {
+#toggle_trades_status:hover, #toggle_perf_status:hover {
     cursor: pointer;
 }
 

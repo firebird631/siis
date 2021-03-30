@@ -1494,7 +1494,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(PlayCommand(strategy_service, notifier_service))
     commands_handler.register(PauseCommand(strategy_service, notifier_service))
     commands_handler.register(InfoCommand(strategy_service, notifier_service))
-    commands_handler.register(UserSaveCommand(strategy_service))
+    # commands_handler.register(UserSaveCommand(strategy_service))
     commands_handler.register(SetQuantityCommand(strategy_service))
     commands_handler.register(SetAffinityCommand(strategy_service))
     commands_handler.register(SetOptionCommand(strategy_service))

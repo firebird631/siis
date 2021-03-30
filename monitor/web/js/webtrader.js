@@ -15,7 +15,15 @@ $(window).ready(function() {
         'retry': false,
         'ws': false,
         'connected': false,
-        'permissions': [],
+        'permissions': [
+            "trader-balance-view",
+            "strategy-view",
+            "strategy-open-trade",
+            "strategy-clean-trade",
+            "strategy-close-trade",
+            "strategy-modify-trade",
+            "strategy-trader"
+        ],
         'updates': {
             'strategy': {'name': "", 'svc_timestamp': 0, 'svc_delta': 0, 'svc_last': 0, 'conn_state': 0, 'conn_timestamp': 0},
             'trader': {'name': "", 'svc_timestamp': 0, 'svc_delta': 0, 'svc_last': 0, 'conn_state': 0, 'conn_timestamp': 0},
@@ -93,10 +101,18 @@ $(window).ready(function() {
     window.strategy = {};
     window.actives_trades = {};
     window.historical_trades = {};
+    window.pending_trades = [];
     window.alerts = {};
     window.signals = {};
     window.charts = {};
     window.account_balances = {};
+
+    window.stats = {
+        'upnl': 0.0,
+        'upnlpct': 0.0,
+        'rpnl': 0.0,
+        'rpnlpct': 0.0
+    };
 
     window.audio = {
         'enabled': true,
@@ -576,6 +592,14 @@ $(window).ready(function() {
         }
     });
 
+    $('#toggle_trades_status').on('click', function(elt) {
+        $('#trades_status').toggle();
+    });
+
+    $('#toggle_perf_status').on('click', function(elt) {
+        $('#perf_status').toggle();
+    });
+
     //
     // session init
     //
@@ -611,7 +635,10 @@ $(window).ready(function() {
             window.server['auth-token'] = result['auth-token'];
             window.server['ws-auth-token'] = result['ws-auth-token'];
             window.server['session'] = result['session'];
-            window.server['permissions'] = result['permissions'];
+
+            if (result['permissions']) {
+                window.server['permissions'] = result['permissions'];
+            }
 
             if (window.server['ws-port'] != null) {
                 start_ws();
@@ -691,7 +718,10 @@ $(window).ready(function() {
             window.server['auth-token'] = result['auth-token'];
             window.server['ws-auth-token'] = result['ws-auth-token'];
             window.server['session'] = result['session'];
-            window.server['permissions'] = result['permissions'];
+
+            if (result['permissions']) {
+                window.server['permissions'] = result['permissions'];
+            }
 
             if (window.server['ws-port'] != null) {
                 start_ws();
@@ -1191,9 +1221,9 @@ function fetch_strategy() {
         // "strategy-clean-trade"
         // "strategy-close-trade"
         // "strategy-modify-trade"
-        
+
         // "strategy-chart"
-        
+
         // "trader-order-position-view"
         // "trader-cancel-order"
         // "trader-close-position"
@@ -1764,7 +1794,10 @@ function on_update_performances() {
         let table = $('div.performance-list-entries table.performance').find('tbody');
         table.empty();
 
+        let active_total_sum_pct = 0.0;
         let active_total_sum = 0.0;
+        
+        let history_total_sum_pct = 0.0;
         let history_total_sum = 0.0;
 
         let success_sum = 0;
@@ -1789,7 +1822,9 @@ function on_update_performances() {
 
             if (!isNaN(at['profit-loss-pct'])) {
                 perfs[market_id].active += at['profit-loss-pct'];
-                active_total_sum += at['profit-loss-pct'];
+                
+                active_total_sum_pct += at['profit-loss-pct'];
+                active_total_sum += at.stats['profit-loss'];
             }
         }
 
@@ -1820,7 +1855,9 @@ function on_update_performances() {
                 }
 
                 perfs[market_id].history += ht['profit-loss-pct'];
-                history_total_sum += ht['profit-loss-pct'];
+
+                history_total_sum_pct += ht['profit-loss-pct'];
+                history_total_sum += ht.stats['profit-loss']
             }
         }
 
@@ -1845,8 +1882,8 @@ function on_update_performances() {
 
         let row_entry = $('<tr class="performance-entry"></tr>');
         row_entry.append($('<td class="performance-symbol">Total</td>'));
-        row_entry.append($('<td class="performance-percent-active">' + active_total_sum.toFixed(2) + '%</td>'));
-        row_entry.append($('<td class="performance-percent-history">' + history_total_sum.toFixed(2) + '%</td>'));
+        row_entry.append($('<td class="performance-percent-active">' + active_total_sum_pct.toFixed(2) + '%</td>'));
+        row_entry.append($('<td class="performance-percent-history">' + history_total_sum_pct.toFixed(2) + '%</td>'));
         row_entry.append($('<td class="performance-success">' + success_sum + '</td>'));
         row_entry.append($('<td class="performance-failed">' + failed_sum + '</td>'));
         row_entry.append($('<td class="performance-roe">' + roe_sum + '</td>'));
@@ -1887,8 +1924,13 @@ function on_update_performances() {
             table.append(row_entry);
         }
 
-        // update every half-second until displayed
-        // @todo remove after using WS implementation
+        window.stats['upnlpct'] = active_total_sum_pct;
+        window.stats['upnl'] = active_total_sum;
+
+        window.stats['rpnlpct'] = history_total_sum_pct;
+        window.stats['rpnl'] = history_total_sum;
+
+        // update every half-second until displayed or @todo remove after using WS implementation
         if (server.permissions.indexOf("trader-balance-view") != -1) {
             setTimeout(fetch_balances, 500);
         }
