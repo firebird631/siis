@@ -278,17 +278,17 @@ class SetOptionCommand(Command):
                 # empty string
                 return ""
 
-            if SetOptionCommand.FLOAT_RE.match(v) is not None:
-                # float ?
-                try:
-                    return float(v)
-                except ValueError:
-                    return v
-
             if SetOptionCommand.INTEGER_RE.match(v) is not None:
                 #int ?
                 try:
                     return int(v)
+                except ValueError:
+                    return v
+
+            if SetOptionCommand.FLOAT_RE.match(v) is not None:
+                # float ?
+                try:
+                    return float(v)
                 except ValueError:
                     return v
 

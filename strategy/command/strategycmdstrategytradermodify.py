@@ -250,9 +250,17 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
                 results['error'] = True
                 results['messages'].append("Option must be defined and valid")
 
-            if not value or type(value) not in (str, int, float):
+            if value is None:
                 results['error'] = True
-                results['messages'].append("Value must be defined and valid")
+                results['messages'].append("Value must be defined")
+
+            if value is not None and type(value) not in (str, int, float):
+                results['error'] = True
+                results['messages'].append("Value must be a valid string, integer or decimal")
+
+            if value is not None and type(value) is str and not value:
+                results['error'] = True
+                results['messages'].append("Value cannot be empty")
 
             if results['error']:
                 return results

@@ -569,7 +569,7 @@ function add_active_trade(market_id, trade) {
     // fees
     let fees = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
     let trade_fees = $('<span class="trade-fees"></span>').text(fees);
-    trade_fees.attr('title', (trade.stats['fees-pct']).toFixed(2) + '%');
+    trade_fees.attr('title', (trade.stats['fees-pct'] || 0.0).toFixed(2) + '%');
 
     // stop-loss
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);  // + UP/DN buttons
@@ -682,7 +682,7 @@ function update_active_trade(market_id, trade) {
     // fees
     let fees = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
     let trade_fees = $('<span class="trade-fees"></span>').text(fees);
-    trade_fees.attr('title', (trade.stats['fees-pct']).toFixed(2) + '%');
+    trade_fees.attr('title', (trade.stats['fees-pct'] || 0.0).toFixed(2) + '%');
 
     // stop-loss
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);  // + UP/DN buttons
@@ -817,7 +817,7 @@ function add_historical_trade(market_id, trade) {
 
     let fees = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
     let trade_fees = $('<span class="trade-fees"></span>').text(fees);
-    trade_fees.attr('title', (trade.stats['fees-pct']).toFixed(2) + '%');
+    trade_fees.attr('title', (trade.stats['fees-pct'] || 0.0).toFixed(2) + '%');
 
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);
     trade_stop_loss.attr('data-toggle', "tooltip");
