@@ -73,3 +73,13 @@ CREATE TABLE IF NOT EXISTS liquidation(
     direction INTEGER NOT NULL,
     price VARCHAR(32) NOT NULL,
     quantity VARCHAR(32) NOT NULL) ENGINE=InnoDB;
+
+-- user_closed_trade
+CREATE TABLE IF NOT EXISTS user_closed_trade(
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+    strategy_id VARCHAR(255) NOT NULL,
+    timestamp BIGINT NOT NULL,
+    data TEXT NOT NULL DEFAULT '{}') ENGINE=InnoDB;
+
+-- @todo index on user_closed_trade(broker_id, account_id, market_id, strategy_id)
