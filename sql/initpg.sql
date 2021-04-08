@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS market(
 CREATE TABLE IF NOT EXISTS asset(
     id SERIAL PRIMARY KEY,
     broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, asset_id VARCHAR(255) NOT NULL,
-    last_trade_id VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL,
+    last_trade_id VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL, 
     quantity VARCHAR(32) NOT NULL, price VARCHAR(32) NOT NULL, quote_symbol VARCHAR(32) NOT NULL,
     UNIQUE(broker_id, account_id, asset_id));
 
@@ -43,28 +43,6 @@ CREATE TABLE IF NOT EXISTS ohlc(
     volume VARCHAR(48) NOT NULL,
     UNIQUE(broker_id, market_id, timestamp, timeframe));
 
--- user_trade
-CREATE TABLE IF NOT EXISTS user_trade(
-    id SERIAL PRIMARY KEY,
-    broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL,
-    appliance_id VARCHAR(255) NOT NULL,
-    trade_id INTEGER NOT NULL,
-    trade_type INTEGER NOT NULL,
-    data TEXT NOT NULL DEFAULT '{}',
-    operations TEXT NOT NULL DEFAULT '{}',
-    UNIQUE(broker_id, account_id, market_id, appliance_id, trade_id));
-
--- user_trader
-CREATE TABLE IF NOT EXISTS user_trader(
-    id SERIAL PRIMARY KEY,
-    broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
-    appliance_id VARCHAR(255) NOT NULL,
-    activity INTEGER NOT NULL DEFAULT 1,
-    data TEXT NOT NULL DEFAULT '{}',
-    regions TEXT NOT NULL DEFAULT '[]',
-    alerts TEXT NOT NULL DEFAULT '[]',
-    UNIQUE(broker_id, account_id, market_id, appliance_id));
-
 -- liquidation
 CREATE TABLE IF NOT EXISTS liquidation(
     id SERIAL PRIMARY KEY,
@@ -73,6 +51,28 @@ CREATE TABLE IF NOT EXISTS liquidation(
     direction INTEGER NOT NULL,
     price VARCHAR(32) NOT NULL,
     quantity VARCHAR(32) NOT NULL);
+
+-- user_trade
+CREATE TABLE IF NOT EXISTS user_trade(
+    id SERIAL PRIMARY KEY,
+    broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+    strategy_id VARCHAR(255) NOT NULL,
+    trade_id INTEGER NOT NULL,
+    trade_type INTEGER NOT NULL,
+    data TEXT NOT NULL DEFAULT '{}',
+    operations TEXT NOT NULL DEFAULT '{}',
+    UNIQUE(broker_id, account_id, market_id, strategy_id, trade_id));
+
+-- user_trader
+CREATE TABLE IF NOT EXISTS user_trader(
+    id SERIAL PRIMARY KEY,
+    broker_id VARCHAR(255) NOT NULL, account_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+    strategy_id VARCHAR(255) NOT NULL,
+    activity INTEGER NOT NULL DEFAULT 1,
+    data TEXT NOT NULL DEFAULT '{}',
+    regions TEXT NOT NULL DEFAULT '[]',
+    alerts TEXT NOT NULL DEFAULT '[]',
+    UNIQUE(broker_id, account_id, market_id, strategy_id));
 
 -- user_closed_trade
 CREATE TABLE IF NOT EXISTS user_closed_trade(
