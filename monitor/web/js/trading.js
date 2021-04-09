@@ -351,7 +351,11 @@ function on_breakeven_trade(elt) {
 let on_active_trade_entry_message = function(market_id, trade_id, timestamp, value) {
     // insert into active trades
     add_active_trade(market_id, value);
-    
+
+    if (value['filled-entry-qty'] <= 0.0) {
+        window.pending_trades.push(key);
+    }
+
     // update global counters
     update_status_trades();
 };
@@ -360,7 +364,7 @@ let on_active_trade_update_message = function(market_id, trade_id, timestamp, va
     // update into active trades
     update_active_trade(market_id, value);
 
-    // remove from pending trades
+    // remove from pending trades once the entry quantity is filled
     let idx = window.pending_trades.indexOf(trade_id);
     if (idx >= 0 && value['filled-entry-qty'] > 0.0) {
         window.pending_trades.splice(idx, 1);
@@ -377,6 +381,12 @@ let on_active_trade_exit_message = function(market_id, trade_id, timestamp, valu
     // insert to historical trades
     if (value['state'] == "closed") {
         add_historical_trade(market_id, value);
+    }
+
+    // remove from pending trades
+    let idx = window.pending_trades.indexOf(trade_id);
+    if (idx >= 0) {
+        window.pending_trades.splice(idx, 1);
     }
 
     // update global counters
@@ -630,10 +640,6 @@ function add_active_trade(market_id, trade) {
     trade_take_profit_chg.on('click', on_modify_active_trade_take_profit);
 
     window.actives_trades[key] = trade;
-
-    if (trade['filled-entry-qty'] <= 0.0) {
-        window.pending_trades.push(key);
-    }
 
     audio_notify('entry');
 };
