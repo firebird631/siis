@@ -807,16 +807,16 @@ class StrategyTrader(object):
                                 error_logger.error(str(e))
 
                         self.notify_trade_exit(timestamp, trade)
+
+                        # store for history, only for real mode
+                        if not trader.paper_mode:
+                            Database.inst().store_user_closed_trade((trader.name, trader.account.name, self.instrument.market_id,
+                                    self.strategy.identifier, timestamp, record))
                     else:
                         if not trade.exit_reason:
                             trade.exit_reason = trade.REASON_CANCELED_TIMEOUT
 
                         self.notify_trade_exit(timestamp, trade)
-
-                    # store for history, only for real mode
-                    if not trader.paper_mode:
-                        Database.inst().store_user_closed_trade((trader.name, trader.account.name, self.instrument.market_id,
-                                self.strategy.identifier, timestamp, record))
 
             # recreate the list of trades
             if mutated:
