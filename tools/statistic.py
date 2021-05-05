@@ -212,7 +212,7 @@ class Statistic(Tool):
         self._total_perf_pct += rpnl_pct
 
         entry_size = float(data['filled-entry-qty']) * float(data['avg-entry-price'])
-        exit_size = float(data['filled-exit-qty-qty']) * float(data['avg-exit-price'])
+        exit_size = float(data['filled-exit-qty']) * float(data['avg-exit-price'])
 
         realized_profit = exit_size - entry_size - fees
         self._total_perf += realized_profit
