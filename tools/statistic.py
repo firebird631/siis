@@ -271,6 +271,7 @@ class Statistic(Tool):
         # 'trade' type : 'asset', 'margin', 'ind-margin', 'position', 'undefined'
 
         row = (
+            data['symbol'],
             data['id'],
             data['trade'],
             # @todo
@@ -307,7 +308,8 @@ class Statistic(Tool):
             f = open(filename + "_perf.csv", 'wt')
 
             for r in self._report:
-                f.write('\t'.join(r) + '\n')
+                row = (r[0], "%i" % r[1], r[2])
+                f.write('\t'.join(row) + '\n')
 
             f.close()
             f = None
@@ -340,7 +342,8 @@ class Statistic(Tool):
 
     def write_log(self):
         for r in self._report:
-            print('\t'.join(r))
+            row = (r[0], "%i" % r[1], r[2])
+            print('\t'.join(row))
 
         for t, r in self._intervals.items():
             formatted_price = "{:0.0{}f}{}".format(r[3], self._currency_precision, self._currency)
