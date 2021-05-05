@@ -165,6 +165,9 @@ def application(argv):
                 elif arg == '--clean':
                     # use the cleaner
                     options['tool'] = "cleaner"
+                elif arg == '--statistics':
+                    # use the statistics
+                    options['tool'] = "statistics"
                 elif arg.startswith("--tool="):
                     # use a named tool
                     options['tool'] = arg.split('=')[1]
@@ -265,7 +268,7 @@ def application(argv):
                     Terminal.inst().info('%s %s release %s' % (APP_SHORT_NAME, '.'.join([str(x) for x in APP_VERSION]), APP_RELEASE))
                     sys.exit(0)
 
-                elif arg == '--help' or '-h':
+                elif arg == '--help' or arg == '-h':
                     display_cli_help()
                     sys.exit(0)
             else:
@@ -288,7 +291,7 @@ def application(argv):
             from tools.binarizer import do_binarizer
             do_binarizer(options)
         else:
-            display_cli_help()
+            sys.exit(-1)
 
         sys.exit(0)
 
@@ -298,7 +301,7 @@ def application(argv):
             from tools.fetcher import do_fetcher
             do_fetcher(options)
         else:
-            display_cli_help()
+            sys.exit(-1)
 
         sys.exit(0)
 
@@ -308,7 +311,7 @@ def application(argv):
             from tools.optimizer import do_optimizer
             do_optimizer(options)
         else:
-            display_cli_help()
+            sys.exit(-1)
 
         sys.exit(0)
 
@@ -318,7 +321,7 @@ def application(argv):
             from tools.rebuilder import do_rebuilder
             do_rebuilder(options)
         else:
-            display_cli_help()
+            sys.exit(-1)
 
         sys.exit(0)
 
@@ -328,7 +331,7 @@ def application(argv):
             from tools.exporter import do_exporter
             do_exporter(options)
         else:
-            display_cli_help()
+            sys.exit(-1)
 
         sys.exit(0)
 
@@ -338,7 +341,7 @@ def application(argv):
             from tools.importer import do_importer
             do_importer(options)
         else:
-            display_cli_help()
+            sys.exit(-1)
 
         sys.exit(0)
 
@@ -355,7 +358,6 @@ def application(argv):
             tool = ToolClazz(options)
 
             if not tool.check_options(options):
-                display_cli_help()
                 sys.exit(-1)
 
             if ToolClazz.need_identity():

@@ -215,6 +215,46 @@ class PgSql(Database):
 
         return None
 
+    def get_user_closed_trades(self, broker_id, account_id, strategy_id, from_date, to_date, market_id=None):
+        if not broker_id or not account_id or not strategy_id:
+            return None
+
+        if not from_date or not to_date:
+            return None
+
+        user_closed_trades = []
+
+        cursor = self._db.cursor()
+
+        from_time = int(from_date.timestamp() * 1000)
+        to_time = int(to_date.timestamp() * 1000)
+
+        if market_id:
+            if type(market_id) is str:
+                cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
+                                WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND market_id = '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
+                                    broker_id, account_id, strategy_id, market_id, from_time, to_time))
+            elif type(market_id) is list or type(market_id) is tuple:
+                cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
+                                WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND market_id IN '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
+                                    broker_id, account_id, strategy_id, market_id, from_time, to_time))
+            else:
+                return None
+        else:
+            cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
+                            WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
+                                broker_id, account_id, strategy_id, from_time, to_time))
+
+        rows = cursor.fetchall()
+
+        for row in rows:
+            user_closed_trades.append((row[0], float(row[1]) * 0.001, json.loads(row[2])))
+
+        self._db.commit()
+        cursor = None
+
+        return user_closed_trades
+
     #
     # Processing
     #

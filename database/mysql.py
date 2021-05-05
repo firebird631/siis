@@ -216,6 +216,10 @@ class MySql(Database):
 
         return None
 
+    def get_user_closed_trades(self, broker_id, account_id, strategy_id, from_date, to_date, market_id=None):
+        # @todo
+        return None
+
     #
     # Processing
     #

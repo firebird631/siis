@@ -503,6 +503,13 @@ class Database(object):
         """Load and return only the last found and most recent stored OHLC from a specific timeframe."""
         return None
 
+    def get_user_closed_trades(self, broker_id, account_id, strategy_id, from_date, to_date, market_id=None):
+        """
+        Sync load and return the user closed trades for an account and strategy identifier and a period of date
+        Optional market_id.
+        """
+        return None
+
     #
     # Tick and ohlc streamer
     #

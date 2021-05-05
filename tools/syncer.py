@@ -8,7 +8,7 @@ import logging
 import traceback
 
 from tools.tool import Tool
-    
+
 from terminal.terminal import Terminal
 from database.database import Database
 
