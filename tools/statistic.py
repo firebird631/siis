@@ -200,17 +200,21 @@ class Statistic(Tool):
         data = trade[2]
         stats = data['stats']
 
+        rpnl_pct = float(data['profit-loss-pct'])
+
         #
         # global
         #
 
+        fees = stats['entry-fees'] + stats['exit-fees']
+
         # self._total_perf += stats['profit-loss']
-        self._total_perf_pct += data['profit-loss-pct']
+        self._total_perf_pct += rpnl_pct
 
-        entry_size = data['filled-entry-qty'] * data['avg-entry-price']
-        exit_size = data['filled-exit-qty-qty'] * data['avg-exit-price']
+        entry_size = float(data['filled-entry-qty']) * float(data['avg-entry-price'])
+        exit_size = float(data['filled-exit-qty-qty']) * float(data['avg-exit-price'])
 
-        realized_profit = exit_size - entry_size
+        realized_profit = exit_size - entry_size - fees
         self._total_perf += realized_profit
 
         #
@@ -218,7 +222,7 @@ class Statistic(Tool):
         #
 
         self._interval_perf += realized_profit
-        self._interval_perf_pct += data['profit-loss-pct']
+        self._interval_perf_pct += rpnl_pct
 
         #
         # record
