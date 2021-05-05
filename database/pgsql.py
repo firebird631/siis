@@ -226,8 +226,8 @@ class PgSql(Database):
 
         cursor = self._db.cursor()
 
-        from_time = int(from_date.timestamp() * 1000)
-        to_time = int(to_date.timestamp() * 1000)
+        from_time = int(from_date.timestamp())  # * 1000)
+        to_time = int(to_date.timestamp())  # * 1000)
 
         if market_id:
             if type(market_id) is str:
@@ -248,7 +248,8 @@ class PgSql(Database):
         rows = cursor.fetchall()
 
         for row in rows:
-            user_closed_trades.append((row[0], float(row[1]) * 0.001, json.loads(row[2])))
+            ts = float(row[1])  # * 0.001
+            user_closed_trades.append((row[0], ts, json.loads(row[2])))
 
         self._db.commit()
         cursor = None
@@ -740,6 +741,7 @@ class PgSql(Database):
             try:
                 cursor = self._db.cursor()
 
+                # timestamp is stored in second integer and not in int(ut[4] * 1000.0)
                 query = ' '.join((
                     "INSERT INTO user_closed_trade(broker_id, account_id, market_id, strategy_id, timestamp, data) VALUES",
                     ','.join(["('%s', '%s', '%s', '%s', %i, '%s')" % (ut[0], ut[1], ut[2], ut[3], ut[4], json.dumps(ut[5]).replace("'", "''")) for ut in uci])

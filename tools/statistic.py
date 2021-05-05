@@ -111,16 +111,19 @@ class Statistic(Tool):
 
         if not strategy:
             logger.error("Missing strategy")
+            return False
 
         trader = self._profile_config.get('trader', {})
 
         if not trader:
             logger.error("Missing trader")
+            return False
 
         trader_id = trader.get('name')
 
         if not trader_id:
             logger.error("Missing trader name")
+            return False
 
         identity = self.identity(trader_id)
 
@@ -132,9 +135,11 @@ class Statistic(Tool):
 
         if not strategy_name:
             logger.error("Missing strategy name")
+            return False
 
         if not strategy_id:
             logger.error("Missing strategy identifier")
+            return False
 
         timeframe = timeframe_from_str(options.get('timeframe'))
 
