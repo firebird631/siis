@@ -1351,12 +1351,12 @@ class StrategyTrader(object):
 
     def has_max_trades_by_context(self, max_trades, same_context=None):
         """
-        @param max_trades Max simultaneous trades for this instrument.
+        @param max_trades Max simultaneous trades for this instrument or 0.
         @param context Compared context instance.
-        @param same_context_num 0 mean Allow multiple trade of the same context, else it define the max allowed.
+        @param same_context_num Allow 0, 1 or many trades of the same context.
+        @return True if a max is reached.
         """
         result = False
-        same_context_num = same_context.max_trades if same_context else 0
 
         if self._trades:
             with self._trade_mutex:
@@ -1364,13 +1364,20 @@ class StrategyTrader(object):
                     # no more than max simultaneous trades
                     result = True
 
-                elif same_context and same_context_num > 0:
-                    for trade in self._trades:
-                        if trade.context == same_context:
-                            same_context_num -= 1
-                            if same_context_num <= 0:
-                                result = True
-                                break
+                elif same_context:
+                    if same_context.max_trades <= 0:
+                        # not trades allowed for this context
+                        result = True
+                    else:
+                        # count trade base on the same context
+                        same_context_num = 0
+
+                        for trade in self._trades:
+                            if trade.context == same_context:
+                                same_context_num += 1
+                                if same_context_num >= same_context.max_trades:
+                                    result = True
+                                    break
 
         if result:
             msg = "Max trade reached for %s with %s or max reached for the context" % (self.instrument.symbol, max_trades)
