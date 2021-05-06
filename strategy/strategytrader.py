@@ -1379,6 +1379,10 @@ class StrategyTrader(object):
                                     result = True
                                     break
 
+        elif max_trades <= 0 or (same_context and same_context.max_trades <= 0):
+            # not trades allowed
+            result = True
+
         if result:
             msg = "Max trade reached for %s with %s or max reached for the context" % (self.instrument.symbol, max_trades)
 
