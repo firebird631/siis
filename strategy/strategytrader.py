@@ -60,7 +60,7 @@ class StrategyTrader(object):
 
         self._mutex = threading.RLock()  # activity, global locker, region locker, instrument locker
         self._activity = True
-        self._affinity = 5          # based on a linear scale [0..10]
+        self._affinity = 5          # based on a linear scale [0..100]
 
         self._initialized = 1       # initiate data before running, 1 waited, 2 in progress, 0 normal
         self._checked = 1           # check trades/orders/positions, 1 waited, 2 in progress, 0 normal

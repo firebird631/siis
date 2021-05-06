@@ -229,9 +229,9 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
                 results['error'] = True
                 results['messages'].append("Invalid affinity")
 
-            if not 0 <= affinity <= 10:
+            if not 0 <= affinity <= 100:
                 results['error'] = True
-                results['messages'].append("Affinity must be between 0 and 10 inclusive")
+                results['messages'].append("Affinity must be between 0 and 100 inclusive")
 
             if results['error']:
                 return results
