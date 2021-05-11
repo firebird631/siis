@@ -766,15 +766,24 @@ class Trader(Runnable):
 
     @Runnable.mutexed
     def on_order_opened(self, market_id, order_data, ref_order_id):
+        """
+        @param market_id str Unique market identifier
+        @param order_data dict Normalized object
+        @param ref_order_id valid str or None
+        """
         market = self._markets.get(market_id)
         if market is None:
             # not interested by this market
             return
 
         if order_data['id'] not in self._orders:
-            # some are inserted during create_order result
+            # or could be sometimes be added previously during create_order process at success result
             order = Order(self, order_data['symbol'])
             order.set_order_id(order_data['id'])
+
+            if ref_order_id:
+                # if a reference order id is defined, take it
+                order.set_ref_order_id(ref_order_id)
 
             order.created_time = order_data['timestamp']
 
@@ -798,6 +807,11 @@ class Trader(Runnable):
 
     @Runnable.mutexed
     def on_order_updated(self, market_id, order_data, ref_order_id):
+        """
+        @param market_id str Unique market identifier
+        @param order_data dict Normalized object
+        @param ref_order_id valid str or None
+        """
         market = self._markets.get(market_id)
         if market is None:
             # not interested by this market
@@ -816,20 +830,39 @@ class Trader(Runnable):
 
     @Runnable.mutexed
     def on_order_deleted(self, market_id, order_id, ref_order_id):
+        """
+        @param market_id str Unique market identifier
+        @param order_id str Unique order identifier
+        @param ref_order_id valid str or None
+        """
         if order_id in self._orders:
             del self._orders[order_id]
 
     @Runnable.mutexed
     def on_order_rejected(self, market_id, ref_order_id):
+        """
+        @param market_id str Unique market identifier
+        @param ref_order_id valid str
+        """
         pass
 
     @Runnable.mutexed
     def on_order_canceled(self, market_id, order_id, ref_order_id):
+        """
+        @param market_id str Unique market identifier
+        @param order_id str Unique order identifier
+        @param ref_order_id valid str or None
+        """
         if order_id in self._orders:
             del self._orders[order_id]
 
     @Runnable.mutexed
     def on_order_traded(self, market_id, order_data, ref_order_id):
+        """
+        @param market_id str Unique market identifier
+        @param order_data dict Normalized object, with updated values
+        @param ref_order_id valid str or None
+        """
         order = self._orders.get(order_data['id'])
         if order:
             # update executed qty (depending of the implementation filled or cumulative-filled or both are present)
@@ -1449,7 +1482,8 @@ class Trader(Runnable):
 
         return columns[0:4] + columns[4+col_ofs:], data, total_size
 
-    def active_orders_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, datetime_format='%y-%m-%d %H:%M:%S'):
+    def active_orders_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, datetime_format='%y-%m-%d %H:%M:%S',
+            group=None, ordering=None):
         """
         Returns a table of any active orders.
         """
@@ -1477,7 +1511,11 @@ class Trader(Runnable):
 
                 limit = offset + limit
 
-                orders.sort(key=lambda x: x['ct'])
+                if group:
+                    orders.sort(key=lambda x: x['sym'] + str(x['ct']), reverse=True if ordering else False)
+                else:
+                    orders.sort(key=lambda x: x['ct'], reverse=True if ordering else False)
+
                 orders = orders[offset:limit]
 
                 for t in orders:

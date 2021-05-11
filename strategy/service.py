@@ -301,14 +301,21 @@ class StrategyService(Service):
             # and save state to database
             if not self.backtesting and (strategy.trader() and not strategy.trader().paper_mode):
                 try:
+                    Terminal.inst().info("Terminate strategy...")
                     strategy.terminate()
+
+                    Terminal.inst().info("Save strategy...")
                     strategy.save()
                 except Exception as e:
                     error_logger.error(repr(e))
                     error_logger.error(traceback.format_exc())
 
+            Terminal.inst().info("Strategy terminated.")
+
         # terminate the worker pool
+        Terminal.inst().info("Stopping strategy worker pool...")
         self._worker_pool.stop()
+        Terminal.inst().info("Strategy worker pool stopped.")
 
         self._strategy = None
 

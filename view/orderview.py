@@ -35,7 +35,9 @@ class OrderView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.active_orders_table(*self.table_format(), quantities=True)
+                columns, table, total_size = trader.active_orders_table(*self.table_format(),
+                    quantities=True, datetime_format=self._datetime_format, group=self._group, ordering=self._ordering)
+
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
