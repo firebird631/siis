@@ -39,6 +39,8 @@ def get_all_active_trades(strategy):
         label: trade label
         upnl: trade unrealized profit loss
         pnlcur: trade profit loss currency
+        fees: total fees rate (entry+exit)
+        leop : last exec open price
     """
     results = []
     trader = strategy.trader()

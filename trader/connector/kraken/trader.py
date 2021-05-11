@@ -422,7 +422,7 @@ class KrakenTrader(Trader):
             error_logger.error("Trader %s refuse to retrieve order info because of missing connector" % (self.name,))
             return None
 
-        results = self._watcher.connector.get_orders_info(self, txids=[order_id])
+        results = self._watcher.connector.get_orders_info(txids=[order_id])
 
         if results and order_id in results:
             order_data = results[order_id]
