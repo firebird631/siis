@@ -352,7 +352,7 @@ let on_active_trade_entry_message = function(market_id, trade_id, timestamp, val
     // insert into active trades
     add_active_trade(market_id, value);
 
-    if (float(value['filled-entry-qty']) <= 0.0) {
+    if (parseFloat(value['filled-entry-qty']) <= 0.0) {
         let key = market_id + ':' + trade_id;
         window.pending_trades.push(key);
     }
@@ -367,7 +367,7 @@ let on_active_trade_update_message = function(market_id, trade_id, timestamp, va
 
     // remove from pending trades once the entry quantity is filled
     let idx = window.pending_trades.indexOf(trade_id);
-    if (idx >= 0 && float(value['filled-entry-qty']) > 0.0) {
+    if (idx >= 0 && parseFloat(value['filled-entry-qty']) > 0.0) {
         window.pending_trades.splice(idx, 1);
 
         // and update global counters
@@ -569,7 +569,7 @@ function add_active_trade(market_id, trade) {
     let trade_percent = $('<span class="trade-percent"></span>');
     let trade_upnl = $('<span class="trade-upnl"></span>');
 
-    if (float(trade['filled-entry-qty']) > 0.0) {
+    if (parseFloat(trade['filled-entry-qty']) > 0.0) {
         trade_percent.text(trade['profit-loss-pct'] + '%');
         trade_upnl.text(format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
     } else {
@@ -678,7 +678,7 @@ function update_active_trade(market_id, trade) {
     let trade_percent = $('<span class="trade-percent"></span>');
     let trade_upnl = $('<span class="trade-upnl"></span>');
 
-    if (float(trade['filled-entry-qty']) > 0.0) {
+    if (parseFloat(trade['filled-entry-qty']) > 0.0) {
         trade_percent.text(trade['profit-loss-pct'] + '%');
         trade_upnl.text(format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
     } else {
@@ -759,7 +759,7 @@ function remove_active_trade(market_id, trade_id, trade) {
     if (trade['profit-loss-pct'] > 0.0) {
         audio_notify('win');
     } else {
-        if (float(trade['filled-entry-qty']) <= 0) {
+        if (parseFloat(trade['filled-entry-qty']) <= 0) {
             audio_notify('timeout');
         } else {
             audio_notify('loose');
@@ -1161,10 +1161,10 @@ function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X") {
         }
 
         totals[asset_name].ids.push(at.id);
-        totals[asset_name].quantity += float(at['filled-entry-qty']) - float(at['filled-exit-qty']);
+        totals[asset_name].quantity += parseFloat(at['filled-entry-qty']) - parseFloat(at['filled-exit-qty']);
 
-        if (float(at['avg-entry-price']) > 0) {
-            avg_slot_size += float(at['order-qty']) * float(at['avg-entry-price']);
+        if (parseFloat(at['avg-entry-price']) > 0) {
+            avg_slot_size += parseFloat(at['order-qty']) * parseFloat(at['avg-entry-price']);
             avg_slot_count += 1;
 
             totals[asset_name].actives += 1;
