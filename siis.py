@@ -166,8 +166,11 @@ def application(argv):
                     # use the cleaner
                     options['tool'] = "cleaner"
                 elif arg == '--statistics':
-                    # use the statistics
+                    # use the statistics tool
                     options['tool'] = "statistics"
+                elif arg == '--history':
+                    # use the history tool
+                    options['tool'] = "history"
                 elif arg.startswith("--tool="):
                     # use a named tool
                     options['tool'] = arg.split('=')[1]

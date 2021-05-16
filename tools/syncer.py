@@ -70,12 +70,12 @@ class Syncer(Tool):
 
     def run(self, options):
         Terminal.inst().info("Starting watcher's service...")
-        self._watcher_service = WatcherService(options)
+        self._watcher_service = WatcherService(None, options)
 
         markets = options['market'].split(',')
 
         watcher = self._watcher_service.create_watcher(options, options['broker'], markets)
-        if watcher:           
+        if watcher:
             watcher.initial_fetch = options.get('initial-fetch', False)
 
             watcher.connect()

@@ -1215,4 +1215,6 @@ function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X") {
     console.log("Total missing actives trades (approximation) : " + total_missing_trades);
     console.log("Average trade size : " + avg_slot_size);
     console.log("Approximating notional of missing trades : " + total_missing_trades * avg_slot_size);
+
+    return diffs;
 }

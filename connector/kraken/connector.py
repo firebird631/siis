@@ -95,7 +95,6 @@ class Connector(object):
     Order/cancel does not affect this counter.
     Trade history increase by 2, other by 2
 
-    # https://api.kraken.com/0/private/ClosedOrders
     # https://api.kraken.com/0/private/QueryTrades
     # https://api.kraken.com/0/private/TradeVolume
 
@@ -148,6 +147,7 @@ class Connector(object):
 
     CANDLES_HISTORY_MAX_RETRY = 3
     TRADES_HISTORY_MAX_RETRY = 3
+    ORDER_HISTORY_MAX_RETRY = 3
 
     PUBLIC_QUERY_DELAY = 1.5
     MAX_PUBLIC_CONNS = 5
@@ -564,6 +564,80 @@ class Connector(object):
             return data['result'].get('open', {})
 
         return {}
+
+    def get_closed_orders(self, from_date, to_date=None, trades=False, userref=None):
+        # trades = inclure les trades ou non dans la requête (facultatif. par défaut = faux) 
+        # userref = restreindre les résultats à un identifiant de référence utilisateur donné (facult
+        params = {}
+
+        if trades:
+            params['trades'] = True
+
+        if userref:
+            params['userref'] = userref
+
+        last_datetime = from_date.timestamp() - 1.0 if from_date else 0.0  # minus 1 sec else will not have from current
+        to_ts = to_date.timestamp() if to_date else time.time()
+        retry_count = 0
+
+        if from_date:
+            params['start'] = last_datetime
+
+        if to_date:
+            params['end'] = to_ts
+
+        params['ofs'] = 0
+
+        while 1:
+            try:
+                results = self.query_private('ClosedOrders', params)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 502:
+                    # bad gateway service, retry for 3 times delayed by 5 seconds
+                    time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.ORDER_HISTORY_MAX_RETRY:
+                        raise ValueError("Kraken historical orders : Multiple failures after consecutives errors 502.")
+
+                    continue
+                else:
+                    raise ValueError("Kraken historical orders : %s !" % e.response.status_code)
+
+            if results.get('error', []):
+                if results['error'][0] == "EAPI:Rate limit exceeded":
+                    time.sleep(5.0)
+                    continue
+
+                elif results['error'][0] == "EService:Busy":
+                    time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.ORDER_HISTORY_MAX_RETRY:
+                        raise ValueError("Kraken historical orders : %s !" % '\n'.join(results['error']))
+
+                    continue
+                else:
+                    raise ValueError("Kraken historical orders : %s !" % '\n'.join(results['error']))
+
+            orders = results.get('result', {}).get('closed', {})
+
+            for order_id, data in orders.items():
+                dt = data['closetm']
+
+                if to_ts and dt > to_ts:
+                    break
+
+                data['orderid'] = order_id
+
+                yield data
+
+                last_datetime = dt
+
+            if len(orders) < 50:
+                break
+
+            params['ofs'] += len(orders)
 
     def get_trades_history(self, trade_type='all', start_date=None, end_date=None):
         """

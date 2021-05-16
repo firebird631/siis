@@ -78,7 +78,7 @@ error_logger = logging.getLogger('siis.error.tools.fetcher')
 
 #     def run(self, options):
 #         Terminal.inst().info("Starting watcher's service...")
-#         self._watcher_service = WatcherService(options)
+#         self._watcher_service = WatcherService(None, options)
 
 #         markets = options['market'].split(',')
 

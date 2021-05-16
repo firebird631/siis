@@ -420,3 +420,30 @@ class Fetcher(object):
             str(market.min_price), str(market.max_price), str(market.tick_price),  # price limits
             str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))  # fees
         )
+
+    #
+    # order history
+    #
+
+    def fetch_orders_history(self, from_date, to_date, market_id=None):
+        """
+        Retrieve the historical orders data for a certain a period of date.
+        @param market_id Specific name of the market or any
+        @param from_date
+        @param to_date
+        """
+        orders = []
+
+        try:
+            orders = self.fetch_historical_orders(from_date, to_date, market_id)
+        except Exception as e:
+            logger.error(repr(e))
+            return None
+
+        return orders
+
+    def fetch_historical_orders(self, from_date, to_date, market_id=None):
+        """
+        Private implementation.
+        """
+        return []
