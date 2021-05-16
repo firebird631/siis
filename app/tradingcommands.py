@@ -1426,6 +1426,45 @@ class CancelAllOrderCommand(Command):
         return args, 0
 
 
+class CancelOrderCommand(Command):
+
+    SUMMARY = "<market-id> <order-id> to cancel a specific order, immediately"
+
+    def __init__(self, trader_service):
+        super().__init__('!rmorder', '!RMO')
+
+        self._trader_service = trader_service
+
+    def execute(self, args):
+        # ie: ":!rmorder BTCUSDT xxx-yyy-zzz"
+        market_id = None
+        options = set()
+        arg_offset = 0
+
+        if len(args) != 2:
+            return False, "Missing parameters"
+
+        market_id = args[0]
+        order_id = args[1]
+
+        self._trader_service.command(Trader.COMMAND_CANCEL_ORDER, {
+            'market-id': market_id,
+            'order-id': order_id
+        })
+
+        return True, []
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            trader = self._trader_service.trader()
+            if trader:
+                return self.iterate(0, list(CancelAllOrderCommand.CHOICES) + trader.symbols_ids(), args, tab_pos, direction)
+        elif len(args) > 1:
+            return self.iterate(len(args)-1, CancelAllOrderCommand.CHOICES, args, tab_pos, direction)
+
+        return args, 0
+
+
 class ReconnectCommand(Command):
 
     SUMMARY = "to force to reconnect"
@@ -1504,7 +1543,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(RestartCommand(strategy_service))
 
     #
-    # order
+    # strategy, order operations
     #
 
     commands_handler.register(LongCommand(strategy_service))
@@ -1515,7 +1554,13 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(AssignCommand(strategy_service))
 
     #
-    # trade operations
+    # strategy multi-trade operations
+    #
+
+    commands_handler.register(CloseAllTradeCommand(strategy_service))
+
+    #
+    # strategy, trade operations
     #
 
     commands_handler.register(CleanCommand(strategy_service))
@@ -1524,10 +1569,15 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(DynamicStopLossOperationCommand(strategy_service))
 
     #
+    # trader order operation
+    #
+
+    commands_handler.register(CancelOrderCommand(trader_service))
+
+    #
     # multi-trades operations
     #
 
-    commands_handler.register(CloseAllTradeCommand(strategy_service))
     commands_handler.register(SellAllAssetCommand(trader_service))
     commands_handler.register(CancelAllOrderCommand(trader_service))
     # commands_handler.register(CloseAllPositionCommand(trader_service))

@@ -353,6 +353,7 @@ let on_active_trade_entry_message = function(market_id, trade_id, timestamp, val
     add_active_trade(market_id, value);
 
     if (value['filled-entry-qty'] <= 0.0) {
+        let key = market_id + ':' + trade_id;
         window.pending_trades.push(key);
     }
 
@@ -1127,4 +1128,80 @@ function on_details_historical_trade(elt) {
     let key = retrieve_trade_key(elt);
 
     // @todo
+}
+
+function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X") {
+    let diffs = {};
+    let totals = {};
+    let avg_slot_size = 0;
+    let avg_slot_count = 0;
+
+    for (let trade in window.actives_trades) {
+        let at = window.actives_trades[trade];
+        let market_id = at['market-id'];
+
+        if (!market_id.endsWith(currency)) {
+            continue
+        };
+
+        let asset_name = market_id.slice(0, -currency.length);
+
+        if (asset_name.length > 3 && asset_name[asset_name.length-1] == currency_prefix) {
+            asset_name = asset_name.slice(0, -1);
+        }
+
+        if (!(asset_name in window.account_balances)) {
+            if ((asset_prefix + asset_name) in window.account_balances) {
+                asset_name = asset_prefix + asset_name;
+            }
+        }
+
+        if (!(asset_name in totals)) {
+            totals[asset_name] = {'ids': [], 'quantity': 0.0};
+        }
+
+        totals[asset_name].ids.push(at.id);
+        totals[asset_name].quantity += at['filled-entry-qty'] - at['filled-exit-qty'];
+
+        if (at['avg-entry-price'] > 0) {
+            avg_slot_size += at['order-qty'] * at['avg-entry-price'];
+            avg_slot_count += 1;
+        }
+    }
+
+    if (avg_slot_count > 0) {
+       avg_slot_size /= avg_slot_count;
+    }
+
+    // make diff
+    for (let asset_name in window.account_balances) {
+        let asset = window.account_balances[asset_name];
+
+        if (asset.type == 'asset' && (asset_name in totals)) {
+            let total = totals[asset_name];
+            let diff = asset.total - total.quantity;
+            let avg_qty = total.quantity / total.ids.length;
+            let threshold = avg_qty * 0.1;
+
+            if (diff > 0 && total.quantity > 0.0) {
+                if (diff > threshold) {
+                    let count = diff / avg_qty;
+                    let est_ep = (Math.round(count) * avg_slot_size) / diff;
+
+                    diffs[asset_name] = {
+                        'total-quantity': total.quantity,
+                        'trades-count': total.ids.length,
+                        'diff': diff,
+                        'count': Math.round(count),
+                        'count-delta': count - Math.round(count),
+                        'count-delta-pct': ((count - Math.round(count)) * 100).toFixed(2),
+                        'estimated-entry-price': est_ep
+                    };
+                }
+            }
+        }
+    }
+
+    // console.log(totals);
+    console.log(diffs);
 }
