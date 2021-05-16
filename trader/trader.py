@@ -53,6 +53,7 @@ class Trader(Runnable):
     COMMAND_CLOSE_ALL_MARKET = 111            # close any positions of this account at market now
     COMMAND_CANCEL_ALL_ORDER = 112            # cancel any pending orders
     COMMAND_SELL_ALL_ASSET = 113              # sell any quantity of asset at market price
+    COMMAND_CANCEL_ORDER = 114                # cancel a specific order
 
     def __init__(self, name, service):
         super().__init__("td-%s" % name)
@@ -325,6 +326,8 @@ class Trader(Runnable):
             return self.cmd_cancel_all_order(data)
         elif command_type == Trader.COMMAND_SELL_ALL_ASSET:
             return self.cmd_sell_all_asset(data)
+        elif command_type == Trader.COMMAND_CANCEL_ORDER:
+            return self.cmd_cancel_order(data)
 
         return None
 
@@ -1717,6 +1720,24 @@ class Trader(Runnable):
             pass
             # self.create_order(order, asset[1])
             # Terminal.inst().action("Create order %s to sell all of %s on %s..." % (order.order_id, asset[0], asset[1].market_id))
+
+    def cmd_cancel_order(self, data):
+        orders = []
+
+        market_id = data.get('market-id')
+        order_id = data.get('order-id')
+
+        market = self.market(market_id)
+
+        if market is None:
+            Terminal.inst().error("No market found to cancel order %s..." % (order_id, ))
+
+        # query cancel order
+        try:
+            self.cancel_order(order_id, market)
+            Terminal.inst().action("Cancel order %s..." % (order_id, ))
+        except Exception as e:
+            error_logger.error(repr(e))
 
     #
     # stream
