@@ -20,6 +20,9 @@ import logging
 logger = logging.getLogger('siis.tools.history')
 error_logger = logging.getLogger('siis.tools.error.history')
 
+READ_DEBUG_CACHE = 0
+WRITE_DEBUG_CACHE = 1
+
 
 class History(Tool):
     """
@@ -133,24 +136,26 @@ class History(Tool):
             open_orders = []
 
             try:
-                if 1:
+                if READ_DEBUG_CACHE:
                     with open('c.tmp', 'rt') as f:
                         closed_orders = json.loads(f.read())
                 else:
                     closed_orders = fetcher.fetch_closed_orders(options.get('from'), options.get('to'))
-                    with open('c.tmp', 'wt') as f:
-                       f.write(json.dumps(closed_orders))
+                    if WRITE_DEBUG_CACHE:
+                        with open('c.tmp', 'wt') as f:
+                        f.write(json.dumps(closed_orders))
             except Exception as e:
                 error_logger.error("fetch_closed_orders : " + str(e))
 
             try:
-                if 1:
+                if READ_DEBUG_CACHE:
                     with open('o.tmp', 'rt') as f:
                         open_orders = json.loads(f.read())
                 else:
                     open_orders = fetcher.fetch_open_orders()
-                    with open('o.tmp', 'wt') as f:
-                       f.write(json.dumps(open_orders))
+                    if WRITE_DEBUG_CACHE:
+                        with open('o.tmp', 'wt') as f:
+                            f.write(json.dumps(open_orders))
             except Exception as e:
                 error_logger.error("fetch_open_oders : " + str(e))
 

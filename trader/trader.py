@@ -1579,17 +1579,40 @@ class Trader(Runnable):
     #
 
     def cmd_trader_info(self, data):
-        # info on the global trader instance
-        pass
+        """
+        Info on the global trader instance.
+        """
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        # @todo
+
+        return results
 
     def cmd_trader_froze_asset_quantity(self, data):
         """
-        @todo
+        ...
         """
-        pass
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        # @todo
+
+        return results
 
     def cmd_close_market(self, data):
-        """Manually close a specified position at market now"""
+        """
+        Manually close a specified position at market now.
+        """
+        results = {
+            'messages': [],
+            'error': False
+        }
+
         position_id = None
         direction = 0
         quantity = 0.0
@@ -1617,8 +1640,17 @@ class Trader(Runnable):
         else:
             Terminal.inst().error("No position found to close for key %s" % (data['key'], ))
 
+        return results
+
     def cmd_close_all_market(self, data):
-        """Manually close any positions related to this account/trader at market now"""
+        """
+        Manually close any positions related to this account/trader at market now.
+        """
+        results = {
+            'messages': [],
+            'error': False
+        }
+
         positions = []
 
         with self._mutex:
@@ -1638,7 +1670,14 @@ class Trader(Runnable):
             except Exception as e:
                 error_logger.error(repr(e))
 
+        return results
+
     def cmd_cancel_all_order(self, data):
+        results = {
+            'messages': [],
+            'error': False
+        }
+
         orders = []
 
         # None or a specific market only
@@ -1690,36 +1729,63 @@ class Trader(Runnable):
             except Exception as e:
                 error_logger.error(repr(e))
 
+        return results
+
     def cmd_sell_all_asset(self, data):
+        results = {
+            'messages': [],
+            'error': False
+        }
+
         assets = []
 
         with self._mutex:
-            for k, asset in self._assets.items():
-                # query create order to sell any asset quantity
-                # try over the primary currency, then over the alt one
-                # user could have to to it in two phase
-                market = None
+            try:
+                for k, asset in self._assets.items():
+                    # query create order to sell any asset quantity
+                    # try over the primary currency, then over the alt one
+                    # user could have to to it in two phase
+                    market = None
 
-                for market_id in asset.market_ids:
-                    m = self.market(asset.market_ids)
+                    if k == self._account.currency:
+                        # don't sell account currency
+                        continue
 
-                    if m.quote == self._account.currency:
-                        market = m  # first choice
-                        break
+                    for market_id in asset.market_ids:
+                        m = self.market(market_id)
 
-                    elif m.quote == self._account.alt_currency:
-                        market = m  # second choice
+                        if m.quote == self._account.currency:
+                            market = m  # first choice
+                            break
 
-                if market:
-                    assets.append(asset.symbol, market, asset.free)
-                else:
-                    Terminal.inst().error("No market found to sell all for asset %s..." % (asset.symbol, ))
+                        # elif m.quote == self._account.alt_currency:
+                        #     market = m  # second choice
 
-        for asset in assets:
-            # @todo order
-            pass
-            # self.create_order(order, asset[1])
-            # Terminal.inst().action("Create order %s to sell all of %s on %s..." % (order.order_id, asset[0], asset[1].market_id))
+                    if market:
+                        assets.append((asset.symbol, market, asset.free))
+                    else:
+                        Terminal.inst().error("No market found to sell all for asset %s..." % (asset.symbol, ))
+
+                for asset in assets:
+                    market = asset[1]
+
+                    order = Order(self, market.market_id)
+                    order.direction = Order.SHORT
+                    order.order_type = Order.ORDER_MARKET
+                    order.quantity = asset[2]
+
+                    # generated a reference order id
+                    self.set_ref_order_id(order)
+
+                    if self.create_order(order, market):
+                        Terminal.inst().action("Create order %s to sell all of %s on %s..." % (order.order_id, asset[0], market.market_id))
+                    else:
+                        Terminal.inst().action("Rejetect order to sell all of %s on %s..." % (asset[0], market.market_id))
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+        return results
 
     def cmd_cancel_order(self, data):
         orders = []
