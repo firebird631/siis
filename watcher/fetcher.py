@@ -422,28 +422,22 @@ class Fetcher(object):
         )
 
     #
-    # order history
+    # fetch orders
     #
 
-    def fetch_orders_history(self, from_date, to_date, market_id=None):
+    def fetch_closed_orders(self, from_date, to_date):
         """
         Retrieve the historical orders data for a certain a period of date.
         @param market_id Specific name of the market or any
         @param from_date
         @param to_date
+        @return list of dict or None if error
         """
-        orders = []
+        return None
 
-        try:
-            orders = self.fetch_historical_orders(from_date, to_date, market_id)
-        except Exception as e:
-            logger.error(repr(e))
-            return None
-
-        return orders
-
-    def fetch_historical_orders(self, from_date, to_date, market_id=None):
+    def fetch_open_orders(self):
         """
-        Private implementation.
+        Retrieve the active orders data for a certain a period of date.
+        @return list of dict or None if error
         """
-        return []
+        return None

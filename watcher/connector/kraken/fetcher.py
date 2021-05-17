@@ -8,6 +8,8 @@ import time
 import traceback
 import math
 
+from datetime import datetime
+
 from common.utils import timeframe_to_str
 from trader.order import Order
 
@@ -243,7 +245,7 @@ class KrakenFetcher(Fetcher):
             error_logger.error(traceback.format_exc())
 
         count = 0
-        
+
         for candle in candles:
             count += 1
             # store (timestamp, open, high, low, close, spread, volume)
@@ -252,154 +254,314 @@ class KrakenFetcher(Fetcher):
 
         logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe_to_str(timeframe)))
 
-    def fetch_historical_orders(self, from_date, to_date, market_id=None):
-        orders = self._connector.get_closed_orders(from_date, to_date)
+    def fetch_closed_orders(self, from_date, to_date):
         results = []
 
-        for order_data in orders:
-            # normalize data
-            order_id = order_data['orderid']
-            descr = order_data['descr']
+        try:
+            orders = self._connector.get_closed_orders(from_date, to_date)
 
-            symbol = descr['pair']
+            for order_data in orders:
+                # normalize data
+                order_id = order_data['orderid']
+                descr = order_data['descr']
 
-            price = None
-            stop_price = None
-            completed = False
-            order_ref_id = ""
-            event_timestamp = float(order_data['lastupdated']) if 'lastupdated' in order_data else float(order_data['opentm'])
+                symbol = descr['pair']
 
-            if order_data['status'] == 'open':
-                status = 'opened'
-            elif order_data['status'] == 'pending':
-                status = 'pending'
-            elif order_data['status'] == 'closed':
-                status = 'closed'
-                completed = True
-                if 'closetm' in order_data:
-                    event_timestamp = float(order_data['closetm'])
-            elif order_data['status'] == 'deleted':
-                status = 'deleted'
-            elif order_data['status'] == 'canceled':
-                status = 'canceled'
-            elif order_data['status'] == 'expired':
-                status = 'canceled'
-                # completed = True ? and on watcher WS...
-            else:
-                status = ""
+                price = None
+                stop_price = None
+                completed = False
+                order_ref_id = ""
+                event_timestamp = float(order_data['opentm'])
 
-            if order_data['userref']:
-                # userref is int
-                order_ref_id = str(order_data['userref'])
+                if order_data['status'] == 'closed':
+                    status = 'closed'
+                    completed = True
+                    # if 'closetm' in order_data:
+                    #     event_timestamp = float(order_data['closetm'])
+                elif order_data['status'] == 'deleted':
+                    status = 'deleted'
+                elif order_data['status'] == 'canceled':
+                    status = 'canceled'
+                elif order_data['status'] == 'expired':
+                    status = 'canceled'
+                    # completed = True ? and on watcher WS...
+                else:
+                    status = ""
 
-            if descr['ordertype'] == "limit":
-                order_type = Order.ORDER_LIMIT
-                price = float(descr['price']) if 'price' in descr else None
+                if order_data['userref']:
+                    # userref is int
+                    order_ref_id = str(order_data['userref'])
 
-            elif descr['ordertype'] == "stop-loss":
-                order_type = Order.ORDER_STOP
-                stop_price = float(descr['price']) if 'price' in descr else None
+                if descr['ordertype'] == "limit":
+                    order_type = "limit"
+                    price = descr['price'] if 'price' in descr else None
 
-            elif descr['ordertype'] == "take-profit":
-                order_type = Order.ORDER_TAKE_PROFIT
-                top_price = float(descr['price']) if 'price' in descr else None
+                elif descr['ordertype'] == "stop-loss":
+                    order_type = "stop-loss"
+                    stop_price = descr['price'] if 'price' in descr else None
 
-            elif descr['ordertype'] == "stop-loss-limit":
-                order_type = Order.ORDER_STOP_LIMIT
-                price = float(descr['price2']) if 'price2' in descr else None
-                stop_price = float(descr['price']) if 'price' in descr else None
+                elif descr['ordertype'] == "take-profit":
+                    order_type = "take-profit"
+                    top_price = descr['price'] if 'price' in descr else None
 
-            elif descr['ordertype'] == "take-profit-limit":
-                order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-                price = float(descr['price2']) if 'price2' in descr else None
-                stop_price = float(descr['price']) if 'price' in descr else None
+                elif descr['ordertype'] == "stop-loss-limit":
+                    order_type = "stop-loss-limit"
+                    price = descr['price2'] if 'price2' in descr else None
+                    stop_price = descr['price'] if 'price' in descr else None
 
-            elif descr['ordertype'] == "market":
-                order_type = Order.ORDER_MARKET
+                elif descr['ordertype'] == "take-profit-limit":
+                    order_type = "take-profit-limit"
+                    price = descr['price2'] if 'price2' in descr else None
+                    stop_price = descr['price'] if 'price' in descr else None
 
-            else:
-                order_type = Order.ORDER_MARKET
+                elif descr['ordertype'] == "market":
+                    order_type = "market"
 
-            time_in_force = Order.TIME_IN_FORCE_GTC
+                else:
+                    order_type = "market"
 
-            if order_data['expiretm'] is not None and order_data['expiretm'] > 0:
-                time_in_force = Order.TIME_IN_FORCE_GTD
-                expiry = float(order_data['expiretm'])
+                time_in_force = "GTC"
 
-            if descr['leverage'] is not None and descr['leverage'] != 'none':
-                margin_trade = True
-                leverage = int(descr['leverage'])
-            else:
-                margin_trade = False
-                leverage = 0
+                if order_data['expiretm'] is not None and order_data['expiretm'] > 0:
+                    time_in_force = "GTD"
+                    expiry = float(order_data['expiretm'])
 
-            post_only = False
-            commission_asset_is_quote = True
+                if descr['leverage'] is not None and descr['leverage'] != 'none':
+                    margin_trade = True
+                    leverage = int(descr['leverage'])
+                else:
+                    margin_trade = False
+                    leverage = 0
 
-            if order_data['oflags']:
-                flags = order_data['oflags'].split(',')
-           
-                if 'fcib' in flags:
-                    # fee in base currency
-                    commission_asset_is_quote = False
+                post_only = False
+                commission_asset_is_quote = True
 
-                elif 'fciq' in flags:
-                    # fee in quote currency:
-                    commission_asset_is_quote = True
+                if order_data['oflags']:
+                    flags = order_data['oflags'].split(',')
+               
+                    if 'fcib' in flags:
+                        # fee in base currency
+                        commission_asset_is_quote = False
 
-                if 'post' in flags:
-                    post_only = True
+                    elif 'fciq' in flags:
+                        # fee in quote currency:
+                        commission_asset_is_quote = True
 
-            cumulative_filled = float(order_data['vol_exec'])
-            order_volume = float(order_data['vol'])
-            partial = False
-            fully_filled = completed
+                    if 'post' in flags:
+                        post_only = True
 
-            if order_data['misc']:
-                misc = order_data['misc'].split(',')
+                cumulative_filled = order_data['vol_exec']
+                order_volume = order_data['vol']
+                partial = False
+                fully_filled = completed
 
-                if 'partial' in misc:
-                    partial = True
+                if order_data['misc']:
+                    misc = order_data['misc'].split(',')
 
-            if cumulative_filled >= order_volume and not partial:
-                fully_filled = True
+                    if 'partial' in misc:
+                        partial = True
 
-            # trades = array of trade ids related to order (if trades info requested and data available)
-            trades = []
+                if float(cumulative_filled) >= float(order_volume) and not partial:
+                    fully_filled = True
 
-            # reverse the market-id
-            market_id = None
+                # trades = array of trade ids related to order (if trades info requested and data available)
+                trades = []
 
-            for mid, instr in self._instruments.items():
-                if instr['altname'] == symbol:
-                    market_id = mid
-                    break
+                # reverse the market-id
+                market_id = None
 
-            order_info = {
-                'id': order_id,
-                'symbol': symbol,
-                'market-id': market_id,
-                'status': status,
-                'ref-id': order_ref_id,
-                'direction': Order.LONG if descr['type'] == "buy" else Order.SHORT,
-                'type': order_type,
-                'timestamp': event_timestamp,
-                'avg-price': float(order_data['avg_price']) if 'avg_price' in order_data else None,
-                'quantity': order_volume,
-                'cumulative-filled': cumulative_filled,
-                'cumulative-commission-amount': float(order_data['fee']),
-                'price': price,
-                'stop-price': stop_price,
-                'time-in-force': time_in_force,
-                'post-only': post_only,
-                # 'close-only': ,
-                # 'reduce-only': ,
-                'stop-loss': None,
-                'take-profit': None,
-                'fully-filled': fully_filled
-                # 'trades': trades
-            }
+                for mid, instr in self._instruments.items():
+                    if instr['altname'] == symbol:
+                        market_id = mid
+                        break
 
-            results.append(order_info)
+                order_info = {
+                    'id': order_id,
+                    'symbol': symbol,
+                    'market-id': market_id,
+                    'status': status,
+                    'ref-id': order_ref_id,
+                    'direction': descr['type'],  # buy/sell
+                    'type': order_type,  # limit, market
+                    'mode': "margin" if margin_trade else "spot",
+                    'timestamp': datetime.utcfromtimestamp(event_timestamp).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                    'avg-price': order_data['price'] if 'price' in order_data else "none",
+                    'quantity': order_volume,
+                    'cumulative-filled': cumulative_filled,
+                    'cumulative-commission-amount': order_data['fee'],
+                    'price': price or "none",
+                    'stop-price': stop_price or "none",
+                    'time-in-force': time_in_force,
+                    'post-only': ("%s" % post_only).lower(),
+                    'close-only': "none",
+                    'reduce-only': "none",
+                    'stop-loss': "none",
+                    'take-profit': "none",
+                    'fully-filled': ("%s" % fully_filled).lower(),
+                    'trades': "none"  # trades
+                }
+
+                results.append(order_info)
+
+        except Exception as e:
+            logger.error(repr(e))
+            return None
+
+        return results
+
+    def fetch_open_orders(self):
+        results = []
+
+        try:
+            orders = self._connector.get_open_orders()
+
+            for order_id, order_data in orders.items():
+                # normalize data
+                descr = order_data['descr']
+                symbol = descr['pair']
+
+                # reverse the market-id
+                market_id = None
+
+                for mid, instr in self._instruments.items():
+                    if instr['altname'] == symbol:
+                        market_id = mid
+                        break
+
+                price = None
+                stop_price = None
+                completed = False
+                order_ref_id = ""
+                event_timestamp = float(order_data['opentm'])
+
+                if order_data['status'] == 'open':
+                    status = 'opened'
+                elif order_data['status'] == 'pending':
+                    status = 'pending'
+                elif order_data['status'] == 'closed':
+                    status = 'closed'
+                    completed = True
+                    if 'closetm' in order_data:
+                        event_timestamp = float(order_data['closetm'])
+                elif order_data['status'] == 'deleted':
+                    status = 'deleted'
+                elif order_data['status'] == 'canceled':
+                    status = 'canceled'
+                elif order_data['status'] == 'expired':
+                    status = 'canceled'
+                    # completed = True ? and on watcher WS...
+                else:
+                    status = ""
+
+                if order_data['userref']:
+                    # userref is int
+                    order_ref_id = str(order_data['userref'])
+
+                if descr['ordertype'] == "limit":
+                    order_type = "limit"
+                    price = descr['price'] if 'price' in descr else None
+
+                elif descr['ordertype'] == "stop-loss":
+                    order_type = "stop-loss"
+                    stop_price = descr['price'] if 'price' in descr else None
+
+                elif descr['ordertype'] == "take-profit":
+                    order_type = "take-profit"
+                    top_price = descr['price'] if 'price' in descr else None
+
+                elif descr['ordertype'] == "stop-loss-limit":
+                    order_type = "stop-loss-limit"
+                    price = descr['price2'] if 'price2' in descr else None
+                    stop_price = descr['price'] if 'price' in descr else None
+
+                elif descr['ordertype'] == "take-profit-limit":
+                    order_type = "take-profit-limit"
+                    price = descr['price2'] if 'price2' in descr else None
+                    stop_price = descr['price'] if 'price' in descr else None
+
+                elif descr['ordertype'] == "market":
+                    order_type = "market"
+
+                else:
+                    order_type = "market"
+
+                time_in_force = "GTC"
+
+                if order_data['expiretm'] is not None and order_data['expiretm'] > 0:
+                    time_in_force = "GTD"
+                    expiry = float(order_data['expiretm'])
+
+                if descr['leverage'] is not None and descr['leverage'] != 'none':
+                    margin_trade = True
+                    leverage = int(descr['leverage'])
+                else:
+                    margin_trade = False
+                    leverage = 0
+
+                post_only = False
+                commission_asset_is_quote = True
+
+                if order_data['oflags']:
+                    flags = order_data['oflags'].split(',')
+               
+                    if 'fcib' in flags:
+                        # fee in base currency
+                        commission_asset_is_quote = False
+
+                    elif 'fciq' in flags:
+                        # fee in quote currency:
+                        commission_asset_is_quote = True
+
+                    if 'post' in flags:
+                        post_only = True
+
+                cumulative_filled = order_data['vol_exec']
+                order_volume = order_data['vol']
+                partial = False
+                fully_filled = completed
+
+                if order_data['misc']:
+                    misc = order_data['misc'].split(',')
+
+                    if 'partial' in misc:
+                        partial = True
+
+                if float(cumulative_filled) >= float(order_volume) and not partial:
+                    fully_filled = True
+
+                # trades = array of trade ids related to order (if trades info requested and data available)
+                trades = []
+
+                order_info = {
+                    'id': order_id,
+                    'symbol': symbol,
+                    'market-id': market_id,
+                    'status': status,
+                    'ref-id': order_ref_id,
+                    'direction': descr['type'],  # buy/sell
+                    'type': order_type,  # limit, market
+                    'mode': "margin" if margin_trade else "spot",
+                    'timestamp': datetime.utcfromtimestamp(event_timestamp).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                    'avg-price': order_data['price'] if 'price' in order_data else "none",
+                    'quantity': order_volume,
+                    'cumulative-filled': cumulative_filled,
+                    'cumulative-commission-amount': order_data['fee'],
+                    'price': price or "none",
+                    'stop-price': stop_price or "none",
+                    'time-in-force': time_in_force,
+                    'post-only': ("%s" % post_only).lower(),
+                    'close-only': "none",
+                    'reduce-only': "none",
+                    'stop-loss': "none",
+                    'take-profit': "none",
+                    'fully-filled': ("%s" % fully_filled).lower(),
+                    'trades': "none"  # trades
+                }
+
+                results.append(order_info)
+
+        except Exception as e:
+            logger.error(repr(e))
+            return None
 
         return results

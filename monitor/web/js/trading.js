@@ -1130,6 +1130,15 @@ function on_details_historical_trade(elt) {
     // @todo
 }
 
+/**
+ * Check any trades and match with assets quantities
+ * If some asset quantity remains then try to detect the average entry price and number of missing slot
+ * using an average slot size based on last data.
+ * Report console log analysis results.
+ * @param currency str Currency asset to use.
+ * @apram currency_prefix str In some case an additional currency prefix to match between asset symbol and market ids.
+ * @return object Per asset an object with details.
+ */
 function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X") {
     let diffs = {};
     let totals = {};
@@ -1181,31 +1190,68 @@ function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X") {
     for (let asset_name in window.account_balances) {
         let asset = window.account_balances[asset_name];
 
-        if (asset.type == 'asset' && (asset_name in totals)) {
-            let total = totals[asset_name];
-            let diff = asset.total - total.quantity;
-            let avg_qty = total.quantity / total.actives;
-            let threshold = avg_qty * 0.1;
+        if (asset.type == 'asset') {
+            if (asset_name in totals) {
+                let total = totals[asset_name];
+                let diff = asset.total - total.quantity;
+                let avg_qty = total.quantity / total.actives;
+                let threshold = avg_qty * 0.1;
 
-            if (diff > 0 && total.quantity > 0.0) {
-                if (diff > threshold) {
-                    let count = diff / avg_qty;
-                    let est_ep = (Math.round(count) * avg_slot_size) / diff;
+                if (diff > 0 && total.quantity > 0.0) {
+                    if (diff > threshold) {
+                        let count = diff / avg_qty;
+                        let est_ep = (Math.round(count) * avg_slot_size) / diff;
 
-                    diffs[asset_name] = {
-                        'asset-quantity': asset.total,
-                        'trades-quantity': total.quantity,
-                        'trades-count': total.ids.length,
-                        'active-trades-count': total.actives,
-                        'pending-trades-count': total.ids.length - total.actives,
-                        'quantity-diff': diff,
-                        'num-missing-slots': Math.round(count),
-                        'approximation': count - Math.round(count),
-                        'approximation-pct': ((count - Math.round(count)) * 100).toFixed(2),
-                        'estimated-entry-price': est_ep
-                    };
+                        diffs[asset_name] = {
+                            'asset-quantity': asset.total,
+                            'trades-quantity': total.quantity,
+                            'trades-count': total.ids.length,
+                            'active-trades-count': total.actives,
+                            'pending-trades-count': total.ids.length - total.actives,
+                            'quantity-diff': diff,
+                            'num-missing-slots': Math.round(count),
+                            'approximation': count - Math.round(count),
+                            'approximation-pct': ((count - Math.round(count)) * 100).toFixed(2),
+                            'estimated-entry-price': est_ep
+                        };
 
-                    total_missing_trades += Math.round(count)
+                        total_missing_trades += Math.round(count)
+                    }
+                }
+            } else if (CURRENCIES.indexOf(asset_name) < 0) {
+                // not a currency 
+                let diff = asset.total;
+                let market = null;
+
+                if ((asset_name + currency) in window.markets) {
+                    market = window.markets[asset_name + currency];
+                } else if ((asset_prefix+asset_name + currency_prefix+currency) in window.markets) {
+                    market = window.markets[asset_prefix+asset_name + currency_prefix+currency];
+                }
+
+                let avg_qty =  avg_slot_size / (market ? market.mid : 1.0);
+                let threshold = avg_qty * 0.1;
+
+                if (diff > 0) {
+                    if (diff > threshold) {
+                        let count = diff / avg_qty;
+                        let est_ep = (Math.round(count) * avg_slot_size) / diff;
+
+                        diffs[asset_name] = {
+                            'asset-quantity': asset.total,
+                            'trades-quantity': 0,
+                            'trades-count': 0,
+                            'active-trades-count': 0,
+                            'pending-trades-count': 0,
+                            'quantity-diff': diff,
+                            'num-missing-slots': Math.round(count),
+                            'approximation': count - Math.round(count),
+                            'approximation-pct': ((count - Math.round(count)) * 100).toFixed(2),
+                            'estimated-entry-price': est_ep
+                        };
+
+                        total_missing_trades += Math.round(count)
+                    }
                 }
             }
         }

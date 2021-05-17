@@ -325,7 +325,7 @@ class Statistic(Tool):
             f = open(filename + "_intervals.csv", 'wt')
 
             # header
-            row = ("from_utc", "to_utc", "realized_pnl_pct", "realized_pnl", "currency")
+            row = ("from", "to", "realized_pnl_pct", "realized_pnl", "currency")
             f.write('\t'.join(row) + '\n')
 
             for t, r in self._intervals.items():
