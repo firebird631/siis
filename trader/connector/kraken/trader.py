@@ -547,7 +547,7 @@ class KrakenTrader(Trader):
                     'direction': Order.LONG if descr['type'] == "buy" else Order.SHORT,
                     'type': order_type,
                     'timestamp': event_timestamp,
-                    'avg-price': float(order_data['avg_price']),
+                    'avg-price': float(order_data['price']),
                     'quantity': order_volume,
                     'cumulative-filled': cumulative_filled,
                     'cumulative-commission-amount': float(order_data['fee']),
