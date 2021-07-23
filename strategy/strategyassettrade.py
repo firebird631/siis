@@ -761,11 +761,11 @@ class StrategyAssetTrade(StrategyTrade):
                 error = True
 
                 # no longer entry order
-                self.entry_oid = None
-                self.entry_ref_oid = None
+                #self.entry_oid = None
+                #self.entry_ref_oid = None
 
                 # entry order error status
-                self._entry_state = StrategyTrade.STATE_ERROR
+                #self._entry_state = StrategyTrade.STATE_ERROR
 
         #
         # exit
@@ -789,11 +789,11 @@ class StrategyAssetTrade(StrategyTrade):
                 error = True
 
                 # no longer OCO order
-                self.oco_oid = None
-                self.oco_ref_oid = None
+                #self.oco_oid = None
+                #self.oco_ref_oid = None
 
                 # exit order error status
-                self._exit_state = StrategyTrade.STATE_ERROR
+                #self._exit_state = StrategyTrade.STATE_ERROR
         else:
             if self.stop_oid:
                 data = trader.order_info(self.stop_oid, instrument)
@@ -812,11 +812,11 @@ class StrategyAssetTrade(StrategyTrade):
                     error = True
 
                     # no longer stop order
-                    self.stop_oid = None
-                    self.stop_ref_oid = None
+                    #self.stop_oid = None
+                    #self.stop_ref_oid = None
 
                     # exit order error status
-                    self._exit_state = StrategyTrade.STATE_ERROR
+                    #self._exit_state = StrategyTrade.STATE_ERROR
 
             if self.limit_oid:
                 data = trader.order_info(self.limit_oid, instrument)
@@ -835,11 +835,11 @@ class StrategyAssetTrade(StrategyTrade):
                     error = True
 
                     # no longer stop order
-                    self.limit_oid = None
-                    self.limit_ref_oid = None
+                    #self.limit_oid = None
+                    #self.limit_ref_oid = None
 
                     # exit order error status
-                    self._exit_state = StrategyTrade.STATE_ERROR
+                    #self._exit_state = StrategyTrade.STATE_ERROR
 
         return not error
 
