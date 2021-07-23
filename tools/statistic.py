@@ -277,10 +277,10 @@ class Statistic(Tool):
             data['direction'],
             data['avg-entry-price'],
             data['filled-entry-qty'],
-            data['first-realized-entry-datetime'],
+            data['stats']['first-realized-entry-datetime'],
             data['avg-exit-price'],
             data['filled-exit-qty'],
-            data['last-realized-exit-datetime']
+            data['stats']['last-realized-exit-datetime']
         )
 
         self._report.append(row)
