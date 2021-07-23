@@ -274,7 +274,13 @@ class Statistic(Tool):
             data['symbol'],
             data['id'],
             data['trade'],
-            # @todo
+            data['direction'],
+            data['avg-entry-price'],
+            data['filled-entry-qty'],
+            data['first-realized-entry-datetime'],
+            data['avg-exit-price'],
+            data['filled-exit-qty'],
+            data['last-realized-exit-datetime']
         )
 
         self._report.append(row)
@@ -308,7 +314,7 @@ class Statistic(Tool):
             f = open(filename + "_perf.csv", 'wt')
 
             for r in self._report:
-                row = (r[0], "%i" % r[1], r[2])
+                row = (r[0], "%i" % r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9])
                 f.write('\t'.join(row) + '\n')
 
             f.close()
@@ -342,7 +348,7 @@ class Statistic(Tool):
 
     def write_log(self):
         for r in self._report:
-            row = (r[0], "%i" % r[1], r[2])
+            row = (r[0], "%i" % r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9])
             print('\t'.join(row))
 
         for t, r in self._intervals.items():
