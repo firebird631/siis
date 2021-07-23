@@ -121,6 +121,7 @@ def application(argv):
         'log-name': 'siis.log',
         'monitor': False,
         'monitor-port': None,
+        'verbose': False
     }
 
     # create initial siis data structure if necessary
@@ -140,6 +141,10 @@ def application(argv):
                 if arg == '--paper-mode':
                     # livemode but in paper-mode
                     options['paper-mode'] = True            
+
+                elif arg == '--verbose':
+                    # verbose display for tools
+                    options['verbose'] = True
 
                 elif arg == '--fetch':
                     # use the fetcher
