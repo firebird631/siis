@@ -122,7 +122,7 @@ def terminate(code=0):
     sys.exit(code)
 
 
-def do_fetcher(monitor_service, options):
+def do_fetcher(options):
     Terminal.inst().info("Starting SIIS fetcher using %s identity..." % options['identity'])
     Terminal.inst().flush()
 
@@ -133,7 +133,7 @@ def do_fetcher(monitor_service, options):
     # want speedup the database inserts
     Database.inst().enable_fetch_mode()
 
-    watcher_service = WatcherService(monitor_service, options)
+    watcher_service = WatcherService(None, options)
     fetcher = watcher_service.create_fetcher(options, options['broker'])
 
     timeframe = -1
