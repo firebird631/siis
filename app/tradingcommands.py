@@ -1301,7 +1301,7 @@ class SetQuantityCommand(Command):
 
 class CloseAllTradeCommand(Command):
 
-    SUMMARY = "to close any current position and trade (and a specified market or any)"
+    SUMMARY = "to close any current positions and trades (on a specified market or any)"
     
     def __init__(self, strategy_service):
         super().__init__('!closeall', '!CA')
@@ -1330,9 +1330,39 @@ class CloseAllTradeCommand(Command):
         return args, 0
 
 
+class CancelAllPendingTradeCommand(Command):
+    SUMMARY = "to cancel any pending trades, having empty realized quantity (on a specified market or any)"
+
+    def __init__(self, strategy_service):
+        super().__init__('!cancelall', '!CCA')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        # ie: ":cancelall BTCUSDT"
+        market_id = None
+
+        if len(args) == 1:
+            market_id = args[0]
+
+        self._strategy_service.command(Strategy.COMMAND_TRADE_CANCEL_ALL_PENDING, {
+            'market-id': market_id,
+        })
+
+        return True, []
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 class SellAllAssetCommand(Command):
 
-    SUMMARY = "to sell at market, immediately any quantity availables of free assets (for a specified market or any)"
+    SUMMARY = "to sell at market, immediately any quantity available of free assets (for a specified market or any)"
     
     def __init__(self, trader_service):
         super().__init__('!sellall', '!SA')
@@ -1558,6 +1588,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     #
 
     commands_handler.register(CloseAllTradeCommand(strategy_service))
+    commands_handler.register(CancelAllPendingTradeCommand(strategy_service))
 
     #
     # strategy, trade operations

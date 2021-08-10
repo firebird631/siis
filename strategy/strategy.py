@@ -3,18 +3,14 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy base model and implementation
 
-import os
 import threading
 import time
 import collections
-import traceback
-
-from datetime import datetime, timedelta
 
 from terminal.terminal import Terminal
 
 from common.runnable import Runnable
-from common.utils import timeframe_to_str, timeframe_from_str, UTC
+from common.utils import timeframe_to_str, timeframe_from_str
 from config.utils import merge_parameters
 
 from common.signal import Signal
@@ -22,22 +18,13 @@ from instrument.instrument import Instrument
 
 from watcher.watcher import Watcher
 
-from trader.market import Market
-from trader.order import Order
-
-from strategy.indicator.models import Limits
-
-from strategy.strategyassettrade import StrategyAssetTrade
-from strategy.strategymargintrade import StrategyMarginTrade
-from strategy.strategypositiontrade import StrategyPositionTrade
-from strategy.strategyindmargintrade import StrategyIndMarginTrade
-
 from database.database import Database
 
 from strategy.process import alphaprocess
 
 from strategy.command.strategycmdexitalltrade import cmd_strategy_exit_all_trade
 from strategy.command.strategycmdmodifyall import cmd_strategy_trader_modify_all
+from strategy.command.strategycmdcancelallpendingtrade import cmd_strategy_cancel_all_pending_trade
 
 from strategy.command.strategycmdstrategytraderinfo import cmd_strategy_trader_info
 from strategy.command.strategycmdstrategytradermodify import cmd_strategy_trader_modify
@@ -77,6 +64,7 @@ class Strategy(Runnable):
 
     COMMAND_INFO = 1
     COMMAND_TRADE_EXIT_ALL = 2  # close any trade for any market or only for a specific market-id
+    COMMAND_TRADE_CANCEL_ALL_PENDING = 3  # cancel any trade with empty realized quantity for any market or only for a specific market-id
 
     COMMAND_TRADE_ENTRY = 10    # manually create a new trade
     COMMAND_TRADE_MODIFY = 11   # modify an existing trade
@@ -1376,6 +1364,8 @@ class Strategy(Runnable):
 
         elif command_type == Strategy.COMMAND_TRADE_EXIT_ALL:
             return cmd_strategy_exit_all_trade(self, data)
+        elif command_type == Strategy.COMMAND_TRADE_CANCEL_ALL_PENDING:
+            return cmd_strategy_cancel_all_pending_trade(self, data)
 
         elif command_type == Strategy.COMMAND_TRADE_ENTRY:
             return self.trade_command("entry", data, cmd_trade_entry)
