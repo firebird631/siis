@@ -278,6 +278,13 @@ class StrategyTrader(object):
             self._preprocessing = 1
             self._bootstraping = 1
 
+    def recheck(self):
+        """
+        Query for recheck any trades of the trader.
+        """
+        with self._mutex:
+            self._checked = 1
+
     #
     # pre-processing
     #
@@ -353,9 +360,11 @@ class StrategyTrader(object):
                 for trade in self._trades:
                     try:
                         # check orders/position/quantity
-                        if not trade.check(trader, self.instrument):
-                            # if error try to repair it else stay in error status
+                        if trade.check(trader, self.instrument) == 0:
+                            # try to repair it else stay in check status
                             trade.repair(trader, self.instrument)
+
+                        time.sleep(1.0)  # do not saturate API
 
                     except Exception as e:
                         error_logger.error(repr(e))

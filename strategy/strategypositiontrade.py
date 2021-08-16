@@ -533,13 +533,13 @@ class StrategyPositionTrade(StrategyTrade):
 
     def check(self, trader, instrument):
         #
-        # order and position existancy
+        # order and position
         #
 
         # entry state
         if self._entry_state in (self.STATE_NEW, self.STATE_REJECTED):
             # never opened, no long exists
-            return False
+            return 0
 
         position = None
         create_order = None
@@ -586,9 +586,9 @@ class StrategyPositionTrade(StrategyTrade):
 
         elif self._exit_state == self.STATE_FILLED: 
             # was already filled... might not occurs but check for it
-            return position or create_order
+            return 1  # position or create_order
 
         # qty/avg price/timestamp update if possible
         # @todo
 
-        return position or create_order
+        return 1  # position or create_order

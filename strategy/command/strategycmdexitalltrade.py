@@ -7,6 +7,7 @@ from terminal.terminal import Terminal
 
 from .strategycmdtradeexit import cmd_trade_exit
 
+
 def cmd_strategy_exit_all_trade(strategy, data):
     # manually trade modify a trade or any trades (add/remove an operation)
     market_id = data.get('market-id')
@@ -95,7 +96,7 @@ def cmd_strategy_exit_all_trade(strategy, data):
 
         if trades:
             for market_id in markets_ids:
-                # update strategy-trader, can be multiple trades on differents strategy-trader
+                # update strategy-trader, can be multiple trades on different strategy-trader
                 strategy.send_update_strategy_trader(market_id)
 
         return results

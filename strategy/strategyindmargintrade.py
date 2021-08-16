@@ -693,4 +693,4 @@ class StrategyIndMarginTrade(StrategyTrade):
 
     def check(self, trader, instrument):
         # @todo
-        return False
+        return 1

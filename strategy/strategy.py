@@ -30,6 +30,7 @@ from strategy.command.strategycmdstrategytraderinfo import cmd_strategy_trader_i
 from strategy.command.strategycmdstrategytradermodify import cmd_strategy_trader_modify
 from strategy.command.strategycmdstrategytraderstream import cmd_strategy_trader_stream
 from strategy.command.strategycmdstrategytraderrestart import cmd_strategy_trader_restart
+from strategy.command.strategycmdstrategytraderrecheck import cmd_strategy_trader_recheck, cmd_strategy_trader_recheck_all
 
 from strategy.command.strategycmdtradeassign import cmd_trade_assign
 from strategy.command.strategycmdtradeclean import cmd_trade_clean
@@ -37,6 +38,7 @@ from strategy.command.strategycmdtradeentry import cmd_trade_entry
 from strategy.command.strategycmdtradeexit import cmd_trade_exit
 from strategy.command.strategycmdtradeinfo import cmd_trade_info
 from strategy.command.strategycmdtrademodify import cmd_trade_modify
+from strategy.command.strategycmdtradecheck import cmd_trade_check
 
 from strategy.command.strategycmdtraderinfo import cmd_trader_info
 
@@ -72,12 +74,15 @@ class Strategy(Runnable):
     COMMAND_TRADE_INFO = 13     # get and display manual trade info (such as listing operations)
     COMMAND_TRADE_ASSIGN = 14   # manually assign a quantity to a new trade
     COMMAND_TRADE_CLEAN = 15    # remove/clean an existing trade without filling the remaining quantity or in case of management issue
+    COMMAND_TRADE_CHECK = 16    # recheck a trade status
 
     COMMAND_TRADER_MODIFY = 20
     COMMAND_TRADER_INFO = 21
     COMMAND_TRADER_STREAM = 22
     COMMAND_TRADER_MODIFY_ALL = 23
     COMMAND_TRADER_RESTART = 24
+    COMMAND_TRADER_RECHECK = 25
+    COMMAND_TRADER_RECHECK_ALL = 26
 
     def __init__(self, name,
             strategy_service, watcher_service, trader_service,
@@ -1379,6 +1384,8 @@ class Strategy(Runnable):
             return self.trade_command("info", data, cmd_trade_info)
         elif command_type == Strategy.COMMAND_TRADE_ASSIGN:
             return self.trade_command("assign", data, cmd_trade_assign)
+        elif command_type == Strategy.COMMAND_TRADE_CHECK:
+            return self.trade_command("check", data, cmd_trade_check)
 
         elif command_type == Strategy.COMMAND_TRADER_MODIFY:
             return self.strategy_trader_command("modify", data, cmd_strategy_trader_modify)
@@ -1388,9 +1395,13 @@ class Strategy(Runnable):
             return self.strategy_trader_command("stream", data, cmd_strategy_trader_stream)
         elif command_type == Strategy.COMMAND_TRADER_RESTART:
             return self.strategy_trader_command("restart", data, cmd_strategy_trader_restart)
+        elif command_type == Strategy.COMMAND_TRADER_RECHECK:
+            return self.strategy_trader_command("recheck", data, cmd_strategy_trader_recheck)
 
         elif command_type == Strategy.COMMAND_TRADER_MODIFY_ALL:
             return cmd_strategy_trader_modify_all(self, data)
+        elif command_type == Strategy.COMMAND_TRADER_RECHECK_ALL:
+            return cmd_strategy_trader_recheck_all(self, data)
 
         return None
 

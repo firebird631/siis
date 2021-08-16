@@ -75,6 +75,7 @@ class EntryExit(object):
         self.multi = False
         self.orientation = BaseSignal.ORIENTATION_UP
         self.timeout = 0.0
+        self.max_trades = 0
 
         self.distance = 0.0
         self.distance_type = BaseSignal.PRICE_NONE
@@ -106,7 +107,7 @@ class EntryExit(object):
         
         self.depth = params.get('depth', 1)
         self.multi = params.get('multi', False)
-        self.orientation = BaseSignal.ORIENTATION.get(params.get('orientation',BaseSignal.ORIENTATION_UP))
+        self.orientation = BaseSignal.ORIENTATION.get(params.get('orientation', BaseSignal.ORIENTATION_UP))
 
         distance = params.get('distance', "0.0")
 
@@ -134,7 +135,7 @@ class EntryExit(object):
 
         elif timeout_distance.endswith('pip'):
             # in pips from entry price or limit price
-            self.timeout_distance = float(timeout_distance[:-3]) * strategy.instrument.one_pip_means
+            self.timeout_distance = float(timeout_distance[:-3]) * strategy_trader.instrument.one_pip_means
             self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
 
         else:

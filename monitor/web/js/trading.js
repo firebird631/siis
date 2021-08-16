@@ -368,7 +368,7 @@ let on_active_trade_update_message = function(market_id, trade_id, timestamp, va
     // remove from pending trades once the entry quantity is filled
     let idx = window.pending_trades.indexOf(trade_id);
     if (idx >= 0 && parseFloat(value['filled-entry-qty']) > 0.0) {
-        window.pending_trades.splice(idx, 1);
+        window.pending_trades = window.pending_trades.splice(idx, 1);
 
         // and update global counters
         update_status_trades();
@@ -387,7 +387,7 @@ let on_active_trade_exit_message = function(market_id, trade_id, timestamp, valu
     // remove from pending trades
     let idx = window.pending_trades.indexOf(trade_id);
     if (idx >= 0) {
-        window.pending_trades.splice(idx, 1);
+        window.pending_trades = window.pending_trades.splice(idx, 1);
     }
 
     // update global counters
@@ -395,9 +395,9 @@ let on_active_trade_exit_message = function(market_id, trade_id, timestamp, valu
 };
 
 function update_status_trades() {
-    let total_trades = Object.keys(actives_trades).length;
-    let pending = Object.keys(pending_trades).length;
-    let historical = Object.keys(historical_trades).length;
+    let total_trades = Object.keys(window.actives_trades).length;
+    let historical = Object.keys(window.historical_trades).length;
+    let pending = window.pending_trades.length;
 
     $('#total_trades').text(total_trades);
     $('#closed_trades').text(historical);
@@ -1130,6 +1130,10 @@ function on_details_historical_trade(elt) {
     // @todo
 }
 
+/////////////////////
+// Helpers Scripts //
+/////////////////////
+
 /**
  * Check any trades and match with assets quantities
  * If some asset quantity remains then try to detect the average entry price and number of missing slot
@@ -1263,4 +1267,70 @@ function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X") {
     console.log("Approximating notional of missing trades : " + total_missing_trades * avg_slot_size);
 
     return diffs;
+}
+
+/**
+ *
+ */
+function compute_all_avg_entry_price() {
+    for (let mid in window.markets) {
+        let market = window.markets[mid];
+
+        let qty = 0.0;
+        let price = 0.0;
+        let tp_price = 0.0;
+        let tp_pct = 0.0;
+
+        for (let t in actives_trades) {
+            let trade = actives_trades[t];
+
+            if (trade['market-id'] != mid) {
+                continue;
+            }
+
+            let trade_qty = parseFloat(trade['filled-entry-qty']);
+
+            if (trade_qty <= 0) {
+                continue;
+            }
+
+            qty += trade_qty;
+            price += parseFloat(trade['avg-entry-price']) * trade_qty;
+            tp_price += parseFloat(trade['take-profit-price']) * trade_qty;
+        }
+
+        if (qty > 0 && price > 0) {
+            price /= qty;
+            tp_price /= qty;
+            tp_pct = (tp_price - price) / price * 100;
+            price_pct = (market['mid'] - price) / price * 100;
+
+            console.log(market['symbol'] + ' / avg-entry-price=' + format_quote_price(mid, price) + '(' + price_pct.toFixed(2) + '%) / qty=' + qty + ' / tp=' + format_quote_price(mid, tp_price) + '(' + tp_pct.toFixed(2) + '%)');
+        }
+    }
+}
+
+/**
+ *
+ */
+function trade_validation(asset, currency, zero_count) {
+    let qty = 0.0;
+    zero_count = zero_count || false;
+
+    for (var t in window.actives_trades) {
+        let trade = window.actives_trades[t];
+        let trade_qty = parseFloat(trade['filled-entry-qty'];
+
+        if (!zero_count && trade_qty <= 0) {
+            continue;
+        }
+
+        if (trade['market-id'] == asset+currency) {
+            console.log(trade['id'] + ' EP@' + trade['avg-entry-price'] + ' date=' + trade['stats']['first-realized-entry-datetime'], ' TP@' + trade['take-profit-price']);
+            // console.log(trade)
+            qty += trade_qty;
+        }
+    }
+
+    console.log('qty=' + qty + ' / asset=' + window.account_balances[asset]['total']);
 }

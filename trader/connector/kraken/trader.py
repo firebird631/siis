@@ -422,7 +422,13 @@ class KrakenTrader(Trader):
             error_logger.error("Trader %s refuse to retrieve order info because of missing connector" % (self.name,))
             return None
 
-        results = self._watcher.connector.get_orders_info(txids=[order_id])
+        results = None
+
+        try:
+            results = self._watcher.connector.get_orders_info(txids=[order_id])
+        except Exception:
+            # None as error
+            return None
 
         if results and order_id in results:
             order_data = results[order_id]
@@ -569,9 +575,13 @@ class KrakenTrader(Trader):
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
 
+                # error during processing
                 return None
 
-        return None
+        # empty means success returns but does not exists
+        return {
+            'id': None
+        }
 
     #
     # protected

@@ -198,6 +198,10 @@ class StrategyInfoRestAPI(resource.Resource):
                 'strategy': strategy_name,
                 'market-id': market_id,
                 'symbol': instr.symbol,
+                'base': instr.base,       # base or asset
+                'quote': instr.quote,
+                'currency': instr.currency,
+                'tradeable': instr.tradeable,
                 'value-per-pip': instr.value_per_pip,
                 'price-limits': instr._price_limits,
                 'notional-limits': instr._notional_limits,
@@ -206,7 +210,22 @@ class StrategyInfoRestAPI(resource.Resource):
                 'ask': instr.market_ask,
                 'mid': instr.market_price,
                 'spread': instr.market_spread,
-                'profiles': profiles
+                'last-update-time': instr.last_update_time,
+                'profiles': profiles,
+                'sessions': {
+                    'evening': instr.evening_session,
+                    'overnight': instr.overnight_session,
+                    'week': instr.week_session
+                },
+                'trade': {
+                    'quantity': instr.trade_quantity,
+                    'max-factor': instr.trade_max_factor,
+                    'quantity-mode': instr.trade_quantity_mode
+                },
+                'volumes': {
+                    'base': instr.vol24h_base,
+                    'quote': instr.vol24h_quote
+                }
             }
 
             contexts_ids = self._strategy_service.strategy().contexts_ids(market_id)

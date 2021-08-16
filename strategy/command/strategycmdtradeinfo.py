@@ -37,9 +37,16 @@ def cmd_trade_info(strategy, strategy_trader, data):
                     break
 
         if trade:
-            results['messages'].append("Trade %i, list %i operations:" % (trade.id, len(trade.operations)))
+            # common
+            results['messages'].append("Trade %i on %s :" % (trade.id, strategy_trader.instrument.symbol))
 
-            # @todo or as table using operation.parameters() dict
+            # details
+            results['messages'] += trade.info_report(strategy_trader)
+
+            # operations
+            results['messages'].append("Has %i operations:" % (len(trade.operations),))
+
+            # @todo could be returned as a table
             for operation in trade.operations:
                 results['messages'].append(" - #%i: %s" % (operation.id, operation.str_info()))
         else:

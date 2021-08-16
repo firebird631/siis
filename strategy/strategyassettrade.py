@@ -34,6 +34,8 @@ class StrategyAssetTrade(StrategyTrade):
         self.limit_ref_oid = None
         self.oco_ref_oid = None
 
+        self._use_oco = False
+
         self.entry_oid = None   # related entry buy order id
         self.stop_oid = None    # related exit sell stop order id
         self.limit_oid = None   # related exit sell limit order id
@@ -738,7 +740,7 @@ class StrategyAssetTrade(StrategyTrade):
         return True
 
     def check(self, trader, instrument):
-        error = False
+        result = 1
         
         #
         # entry
@@ -747,25 +749,29 @@ class StrategyAssetTrade(StrategyTrade):
         if self.entry_oid:
             data = trader.order_info(self.entry_oid, instrument)
 
-            if data:
-                if data['cumulative-filled'] > self.e or data['fully-filled']:
-                    self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
-
-                if data['status'] in ('closed', 'deleted'):
-                    self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
-
-                elif data['status'] in ('expired', 'canceled'):
-                    self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
-            else:
-                # cannot retrieve the order, wrong id
-                error = True
-
-                # no longer entry order
-                #self.entry_oid = None
-                #self.entry_ref_oid = None
+            if data is None:
+                # API error, do nothing need retry
+                result = -1
 
                 # entry order error status
-                #self._entry_state = StrategyTrade.STATE_ERROR
+                # self._entry_state = StrategyTrade.STATE_ERROR
+            else:
+                if data['id'] is None:
+                    # cannot retrieve the order, wrong id
+                    result = 0
+
+                    # no longer entry order
+                    self.entry_oid = None
+                    self.entry_ref_oid = None
+                else:
+                    if data['cumulative-filled'] > self.e or data['fully-filled']:
+                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                    if data['status'] in ('closed', 'deleted'):
+                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                    elif data['status'] in ('expired', 'canceled'):
+                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
 
         #
         # exit
@@ -775,73 +781,85 @@ class StrategyAssetTrade(StrategyTrade):
             # have an OCO order
             data = trader.order_info(self.oco_oid, instrument)
 
-            if data:
-                if data['cumulative-filled'] > self.x or data['fully-filled']:
-                    self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
-
-                if data['status'] in ('closed', 'deleted'):
-                    self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
-
-                elif data['status'] in ('expired', 'canceled'):
-                    self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
-            else:
-                # cannot retrieve the order, wrong id
-                error = True
-
-                # no longer OCO order
-                #self.oco_oid = None
-                #self.oco_ref_oid = None
+            if data is None:
+                # API error, do nothing need retry
+                result = -1
 
                 # exit order error status
-                #self._exit_state = StrategyTrade.STATE_ERROR
+                # self._exit_state = StrategyTrade.STATE_ERROR
+            else:
+                if data['id'] is None:
+                    # cannot retrieve the order, wrong id
+                    result = 0
+
+                    # no longer OCO order
+                    self.oco_oid = None
+                    self.oco_ref_oid = None
+                else:
+                    if data['cumulative-filled'] > self.x or data['fully-filled']:
+                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                    if data['status'] in ('closed', 'deleted'):
+                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                    elif data['status'] in ('expired', 'canceled'):
+                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
         else:
             if self.stop_oid:
                 data = trader.order_info(self.stop_oid, instrument)
 
-                if data:
-                    if data['cumulative-filled'] > self.x or data['fully-filled']:
-                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
-
-                    if data['status'] in ('closed', 'deleted'):
-                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
-
-                    elif data['status'] in ('expired', 'canceled'):
-                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
-                else:
-                    # cannot retrieve the order, wrong id
-                    error = True
-
-                    # no longer stop order
-                    #self.stop_oid = None
-                    #self.stop_ref_oid = None
+                if data is None:
+                    # API error, do nothing need retry
+                    result = -1
 
                     # exit order error status
-                    #self._exit_state = StrategyTrade.STATE_ERROR
+                    # self._exit_state = StrategyTrade.STATE_ERROR
+                else:
+                    if data['id'] is None:
+                        # cannot retrieve the order, wrong id
+                        result = 0
+
+                        # no longer stop order
+                        self.stop_oid = None
+                        self.stop_ref_oid = None
+                    else:
+                        if data['cumulative-filled'] > self.x or data['fully-filled']:
+                            self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                        if data['status'] in ('closed', 'deleted'):
+                            self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                        elif data['status'] in ('expired', 'canceled'):
+                            self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
 
             if self.limit_oid:
                 data = trader.order_info(self.limit_oid, instrument)
 
-                if data:
-                    if data['cumulative-filled'] > self.x or data['fully-filled']:
-                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
-
-                    if data['status'] in ('closed', 'deleted'):
-                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
-
-                    elif data['status'] in ('expired', 'canceled'):
-                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
-                else:
-                    # cannot retrieve the order, wrong id
-                    error = True
-
-                    # no longer stop order
-                    #self.limit_oid = None
-                    #self.limit_ref_oid = None
+                if data is None:
+                    # API error, do nothing need retry
+                    result = -1
 
                     # exit order error status
-                    #self._exit_state = StrategyTrade.STATE_ERROR
+                    # self._exit_state = StrategyTrade.STATE_ERROR
+                else:
+                    if data['id'] is None:
+                        # cannot retrieve the order, wrong id
+                        result = 0
 
-        return not error
+                        # no longer stop order
+                        self.limit_oid = None
+                        self.limit_ref_oid = None
+                    else:
+                        if data['cumulative-filled'] > self.x or data['fully-filled']:
+                            self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                        if data['status'] in ('closed', 'deleted'):
+                            self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                        elif data['status'] in ('expired', 'canceled'):
+                            self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+
+        return result
 
     def repair(self, trader, instrument):
         # @todo fix the trade
@@ -854,3 +872,13 @@ class StrategyAssetTrade(StrategyTrade):
         # if no min notional, free qty... let the error status
 
         return False
+
+    def info_report(self, strategy_trader):
+        data = super().info_report(strategy_trader)
+
+        return data + (
+            'Entry order id / ref : %s / %s' % (self.entry_oid, self.entry_ref_oid),
+            'Stop order id / ref : %s / %s' % (self.stop_oid, self.stop_ref_oid),
+            'Limit order id / ref : %s / %s' % (self.limit_oid, self.limit_ref_oid),
+            'OCO order id / ref : %s / %s' % (self.oco_oid, self.oco_ref_oid)
+        )

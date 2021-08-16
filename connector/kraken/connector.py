@@ -935,7 +935,7 @@ class Connector(object):
             'API-Sign': self._sign(data, urlpath)
         }
 
-        return self._query(urlpath, data, headers, timeout = timeout)
+        return self._query(urlpath, data, headers, timeout=timeout)
 
     def _nonce(self):
         """

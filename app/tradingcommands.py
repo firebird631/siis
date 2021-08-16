@@ -857,6 +857,59 @@ class RemoveOperationCommand(Command):
         return args, 0
 
 
+class CheckTradeCommand(Command):
+    SUMMARY = "to manually recheck a trade"
+    HELP = (
+        "param1: market-id",
+        "param2: trade-id",
+        "param3: optional 'repair'"
+    )
+
+    def __init__(self, strategy_service):
+        super().__init__('check-trade', 'CHKT')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if not args:
+            return False, "Missing parameters"
+
+        market_id = None
+        trade_id = None
+
+        repair = False
+
+        # ie ":CHKT EURUSD 4"
+        if len(args) < 2:
+            return False, "Missing parameters"
+
+        try:
+            market_id = args[0]
+
+            trade_id = int(args[1])
+
+            if len(args) > 2:
+                repair = args[2] == "repair"
+        except Exception:
+            return False, "Invalid parameters"
+
+        self._strategy_service.command(Strategy.COMMAND_TRADE_CHECK, {
+            'market-id': market_id,
+            'trade-id': trade_id,
+            'repair': repair
+        })
+
+        return True, []
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 class ModifyStopLossCommand(Command):
 
     SUMMARY = "to manually modify the stop-loss of a trade"
@@ -1521,6 +1574,39 @@ class ReconnectCommand(Command):
         return args, 0
 
 
+class RecheckCommand(Command):
+    SUMMARY = "to force to recheck any trades"
+
+    def __init__(self, strategy_service):
+        super().__init__('recheck', 'RECHK')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        # will force to recheck trades
+        if len(args) > 1:
+            return False, "Invalid parameters"
+
+        if len(args) == 1:
+            self._strategy_service.command(Strategy.COMMAND_TRADER_RECHECK, {
+                'market-id': args[0]
+            })
+
+            return True, "Force to recheck any trades for %s" % args[0]
+
+        self._strategy_service.command(Strategy.COMMAND_TRADER_RECHECK_ALL, {})
+
+        return True, "Force to recheck any trades for any markets"
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 class RestartCommand(Command):
 
     SUMMARY = "to force to restart an instrument of the strategy"
@@ -1571,6 +1657,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
 
     commands_handler.register(ReconnectCommand(watcher_service))
     commands_handler.register(RestartCommand(strategy_service))
+    commands_handler.register(RecheckCommand(strategy_service))
 
     #
     # strategy, order operations
@@ -1598,6 +1685,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(TradeInfoCommand(strategy_service))
     commands_handler.register(RemoveOperationCommand(strategy_service))
     commands_handler.register(DynamicStopLossOperationCommand(strategy_service))
+    commands_handler.register(CheckTradeCommand(strategy_service))
 
     #
     # trader order operation

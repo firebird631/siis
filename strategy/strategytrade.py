@@ -828,10 +828,10 @@ class StrategyTrade(object):
 
     def check(self, trader, instrument):
         """
-        Check refered orders and positions exists and quantities too.
-        @return True if success.
+        Check orders and positions exists and quantities too.
+        @return 1 if success, 0 if need repair, -1 if error.
         """
-        return False
+        return 1
 
     def repair(self, trader, instrument):
         """
@@ -1151,5 +1151,49 @@ class StrategyTrade(object):
                 'fees-pct': round((self.entry_fees_rate() + self.exit_fees_rate()) * 100.0, 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
                 'close-exec-price': strategy_trader.instrument.format_price(strategy_trader.instrument.close_exec_price(self.dir)),
-            }        
+            }
         }
+
+    def info_report(self, strategy_trader):
+        phrase = [self.direction_to_str(), strategy_trader.instrument.symbol]
+
+        if self.op:
+            if self._stats['entry-order-type'] == Order.ORDER_LIMIT:
+                phrase.append("L@%s" % strategy_trader.instrument.format_price(self.op))
+            elif self._stats['entry-order-type'] == Order.ORDER_STOP:
+                # @todo with trigger command
+                phrase.append("T@%s" % strategy_trader.instrument.format_price(self.op))
+
+        if self.sl:
+            phrase.append("SL@%s" % strategy_trader.instrument.format_price(self.sl))
+
+        if self.tp:
+            phrase.append("TP@%s" % strategy_trader.instrument.format_price(self.tp))
+
+        if self._timeframe:
+            phrase.append("'%s" % timeframe_to_str(self._timeframe))
+
+        if self._label:
+            phrase.append("-%s" % self._label)
+
+        if self._expiry:
+            phrase.append("/%s" % self._expiry)
+
+        phrase.append(strategy_trader.instrument.format_quantity(self.oq))
+        # @todo leverage for phrase command
+
+        return (
+            "Trade %s id %s info on %s. Opened %s." % (self.trade_type_to_str(), self.id, strategy_trader.instrument.symbol, self.dump_timestamp(self.eot)),
+            "Timeframe %s, Label %s , Entry timeout %s, Expiry %s, %s, Status %s." % (timeframe_to_str(self._timeframe), self._label, timeframe_to_str(self._entry_timeout), self._expiry or "Never", "Manual" if self._user_trade else "Auto", self.state_to_str()),
+            "Command %s" % phrase
+            # specialize for add row with detail such as orders or positions ids
+        )
+
+        # 'avg-entry-price': strategy_trader.instrument.format_price(self.aep),
+        # 'avg-exit-price': strategy_trader.instrument.format_price(self.axp),
+        # 'entry-open-time': self.dump_timestamp(self.eot),
+        # 'exit-open-time': self.dump_timestamp(self.xot),
+        # 'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
+        # 'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
+        # 'profit-loss-pct': round(self.estimate_profit_loss(strategy_trader.instrument) * 100.0, 2),
+        # 'num-exit-trades': len(self.exit_trades),

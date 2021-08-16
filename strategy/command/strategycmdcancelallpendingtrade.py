@@ -97,7 +97,7 @@ def cmd_strategy_cancel_all_pending_trade(strategy, data):
 
         if trades:
             for market_id in markets_ids:
-                # update strategy-trader, can be multiple trades on differents strategy-trader
+                # update strategy-trader, can be multiple trades on different strategy-trader
                 strategy.send_update_strategy_trader(market_id)
 
         return results
