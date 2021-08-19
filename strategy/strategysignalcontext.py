@@ -39,7 +39,7 @@ class StrategySignalContext(object):
     def dumps(self):
         return {}
 
-    def loads(self, data):
+    def loads(self, strategy_trader, params):
         pass
 
 
@@ -102,7 +102,7 @@ class EntryExit(object):
             raise ValueError("Undefined or unsupported 'timeframe' value for %s" % self.name())
 
         if params.get('timeout'):
-            # optionnal timeout
+            # optional timeout
             self.timeout = timeframe_from_str(params.get('timeout', ""))
         
         self.depth = params.get('depth', 1)
@@ -304,6 +304,8 @@ class BaseSignal(StrategySignalContext):
     }
 
     def __init__(self, name):
+        super().__init__()
+
         self.name = name
         self.mode = BaseSignal.MODE_NONE
         self.min_profit = 0.0
@@ -326,7 +328,7 @@ class BaseSignal(StrategySignalContext):
 
         self.max_trades = 0  # >0 limit the number of trade for the context
 
-    def loads(self, strategy_trader, params):     
+    def loads(self, strategy_trader, params):
         self.max_trades = max(0, params.get('max-trades', 0))
 
     def compile(self, strategy_trader):

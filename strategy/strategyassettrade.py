@@ -4,7 +4,6 @@
 # Strategy trade for asset.
 
 from common.signal import Signal
-from database.database import Database
 
 from trader.order import Order
 from .strategytrade import StrategyTrade
@@ -23,8 +22,8 @@ class StrategyAssetTrade(StrategyTrade):
     @todo support of OCO order (modify_sl/tp) if available from market or a specialized model
     """
 
-    __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', 'entry_oid', 'stop_oid', 'limit_oid', 'oco_oid', \
-                'stop_order_qty', 'limit_order_qty', '_use_oco'
+    __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', 'entry_oid', 'stop_oid', \
+                'limit_oid', 'oco_oid', 'stop_order_qty', 'limit_order_qty', '_use_oco'
 
     def __init__(self, timeframe):
         super().__init__(StrategyTrade.TRADE_BUY_SELL, timeframe)
@@ -44,7 +43,8 @@ class StrategyAssetTrade(StrategyTrade):
         self.stop_order_qty = 0.0
         self.limit_order_qty = 0.0
 
-    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None, use_oco=False):
+    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss,
+             leverage=1.0, hedging=None, use_oco=False):
         """
         Buy an asset.
         """
@@ -394,13 +394,13 @@ class StrategyAssetTrade(StrategyTrade):
         return self.NOTHING_TO_DO
 
     def has_stop_order(self):
-        return self.stop_oid != None and self.stop_oid != ""
+        return self.stop_oid is not None and self.stop_oid != ""
 
     def has_limit_order(self):
-        return self.limit_oid != None and self.limit_oid != ""
+        return self.limit_oid is not None and self.limit_oid != ""
 
     def has_oco_order(self):
-        return self.oco_oid != None and self.oco_oid != ""
+        return self.oco_oid is not None and self.oco_oid != ""
 
     def support_both_order(self):
         if self.has_oco_order():
@@ -445,10 +445,12 @@ class StrategyAssetTrade(StrategyTrade):
                 self._dirty = False
 
     def is_target_order(self, order_id, ref_order_id):
-        if order_id and (order_id == self.entry_oid or order_id == self.stop_oid or order_id == self.limit_oid or order_id == self.oco_oid):
+        if order_id and (order_id == self.entry_oid or order_id == self.stop_oid or
+                         order_id == self.limit_oid or order_id == self.oco_oid):
             return True
 
-        if ref_order_id and (ref_order_id == self.entry_ref_oid or ref_order_id == self.stop_ref_oid or ref_order_id == self.limit_ref_oid or ref_order_id == self.oco_ref_oid):
+        if ref_order_id and (ref_order_id == self.entry_ref_oid or ref_order_id == self.stop_ref_oid or
+                             ref_order_id == self.limit_ref_oid or ref_order_id == self.oco_ref_oid):
             return True
 
         return False
@@ -493,7 +495,7 @@ class StrategyAssetTrade(StrategyTrade):
         elif signal_type == Signal.SIGNAL_ORDER_TRADED:
             # update the trade quantity
             if (data['id'] == self.entry_oid) and ('filled' in data or 'cumulative-filled' in data):
-                # a single order for the entry, then its OK and prefered to uses cumulative-filled and avg-price
+                # a single order for the entry, then its OK and preferred to uses cumulative-filled and avg-price
                 # because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     filled = data['cumulative-filled'] - self.e  # compute filled qty
@@ -530,7 +532,8 @@ class StrategyAssetTrade(StrategyTrade):
                 #
 
                 if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
-                    # commission asset is itself, have to reduce it from filled, done after status determination because of the qty reduced by the fee
+                    # commission asset is itself, have to reduce it from filled, done after status determination
+                    # because of the qty reduced by the fee
                     self.e = instrument.adjust_quantity(self.e - data.get('commission-amount', 0.0))
 
                 # realized fees : in cumulated quote or compute from filled quantity and trade execution
@@ -558,7 +561,8 @@ class StrategyAssetTrade(StrategyTrade):
                     self.entry_oid = None
                     self.entry_ref_oid = None
 
-            elif (data['id'] == self.limit_oid or data['id'] == self.stop_oid) and ('filled' in data or 'cumulative-filled' in data):
+            elif ((data['id'] == self.limit_oid or data['id'] == self.stop_oid) and
+                  ('filled' in data or 'cumulative-filled' in data)):
                 # @warning on the exit side, normal case will have a single order, but possibly to have a 
                 # partial limit TP, plus remaining in market
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -582,7 +586,8 @@ class StrategyAssetTrade(StrategyTrade):
                 #     # average exit price
                 #     self.axp = data['avg-price']
 
-                # cumulative filled exit qty (commented because in case of partial in limit + remaining in stop or market)
+                # cumulative filled exit qty
+                # commented because in case of partial in limit + remaining in stop or market
                 # if data.get('cumulative-filled') is not None:
                 #     self.x = data.get('cumulative-filled')
                 # else:

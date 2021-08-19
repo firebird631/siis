@@ -18,18 +18,19 @@ class StrategyTrade(object):
     """
     Strategy trade base abstract class. A trade is related to entry and and one or many exit order.
     It can be created from an automated or manual signal, and having some initial conditions, timeframe, expiry,
-    and they are managed according to the policy of a strategy trade manager, or from some other operations added manually
-    for semi-automated trading.
+    and they are managed according to the policy of a strategy trade manager, or from some other operations added
+    manually for semi-automated trading.
 
-    It can only have on entry order. The exit works on the entried quantity. When the entry order is not fully filled,
+    It can only have on entry order. The exit works with the entry quantity. When the entry order is not fully filled,
     the exit order are later adjusted.
 
     @todo Take care to do not try to serialize objects from extra dict.
     """
 
-    __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', '_next_operation_id', \
-                'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', 'pl', '_stats', 'last_tp_ot', 'last_stop_ot', \
-                'exit_trades', '_label', '_entry_timeout', '_expiry', '_dirty', '_extra', 'context'
+    __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', \
+                '_next_operation_id', 'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', \
+                'pl', '_stats', 'last_tp_ot', 'last_stop_ot', 'exit_trades', '_label', '_entry_timeout', '_expiry', \
+                '_dirty', '_extra', 'context'
 
     VERSION = "1.0.0"
 
@@ -57,10 +58,10 @@ class StrategyTrade(object):
     NOTHING_TO_DO = 2
 
     REASON_NONE = 0
-    REASON_TAKE_PROFIT_MARKET = 1   # take-profit market hitted
-    REASON_TAKE_PROFIT_LIMIT = 2    # take-profit limit hitted
-    REASON_STOP_LOSS_MARKET = 3     # stop-loss market hitted
-    REASON_STOP_LOSS_LIMIT = 4      # stop-loss limit hitted
+    REASON_TAKE_PROFIT_MARKET = 1   # take-profit market hit
+    REASON_TAKE_PROFIT_LIMIT = 2    # take-profit limit hit
+    REASON_STOP_LOSS_MARKET = 3     # stop-loss market hit
+    REASON_STOP_LOSS_LIMIT = 4      # stop-loss limit hit
     REASON_CLOSE_MARKET = 5         # exit signal at market
     REASON_CANCELED_TIMEOUT = 6     # canceled after a timeout expiration delay
     REASON_CANCELED_TARGETED = 7    # canceled before entering because take-profit price reached before entry price
@@ -72,12 +73,18 @@ class StrategyTrade(object):
         self._entry_state = StrategyTrade.STATE_NEW
         self._exit_state = StrategyTrade.STATE_NEW
         self._closing = False
-        self._dirty = False        # flag set when the quantity of the entry trade increase and then the exit orders must be updated
+
+        # flag set when the quantity of the entry trade increase and then the exit orders must be updated
+        self._dirty = False
 
         self._timeframe = timeframe  # timeframe that have given this trade
 
-        self._operations = []      # list containing the operation to process during the trade for semi-automated trading
-        self._user_trade = False   # true if the user is responsible of the TP & SL adjustement else (default) strategy manage it
+        # list containing the operation to process during the trade for semi-automated trading
+        self._operations = []
+
+        # true if the user is responsible of the TP & SL adjustment else (default) strategy manage it
+        self._user_trade = False
+
         self._label = ""           # trade label(must be few chars)
         self._entry_timeout = 0    # expiration delay in seconds of the entry
         self._expiry = 0           # expiration delay in seconds or 0 if never
@@ -99,8 +106,9 @@ class StrategyTrade(object):
         self.eot = 0     # entry order opened timestamp
         self.xot = 0     # exit order opened timestamp
 
+        # a correctly closed trade must have x == f with f <= q and q > 0
         self.e = 0.0     # current filled entry quantity
-        self.x = 0.0     # current filled exit quantity (a correctly closed trade must have x == f with f <= q and q > 0)
+        self.x = 0.0     # current filled exit quantity
 
         self.pl = 0.0    # once closed profit/loss in percent (valid once partially or fully closed)
 
@@ -109,7 +117,7 @@ class StrategyTrade(object):
         self.last_stop_ot = [0, 0]
         self.last_tp_ot = [0, 0]
 
-        self.context = None  # reference to an object concerning the context of the trade (ref from StrategySignal.context)
+        self.context = None  # reference to an object concerning the context of the trade from StrategySignal.context
 
         self._stats = {
             'best-price': 0.0,
@@ -315,7 +323,8 @@ class StrategyTrade(object):
     # processing
     #
 
-    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
+    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss,
+             leverage=1.0, hedging=None):
         """
         Order to open a position or to buy an asset.
 
@@ -352,7 +361,8 @@ class StrategyTrade(object):
             # entry rejected
             return True
 
-        if (self._entry_state == StrategyTrade.STATE_CANCELED or self._entry_state == StrategyTrade.STATE_DELETED) and self.e <= 0:
+        if ((self._entry_state == StrategyTrade.STATE_CANCELED or
+             self._entry_state == StrategyTrade.STATE_DELETED) and self.e <= 0):
             # entry canceled or deleted and empty
             return True
 
@@ -365,7 +375,8 @@ class StrategyTrade(object):
         if self._exit_state == StrategyTrade.STATE_FILLED:
             return False
 
-        return self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED or self._entry_state == StrategyTrade.STATE_FILLED
+        return (self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED or
+                self._entry_state == StrategyTrade.STATE_FILLED)
 
     def is_opened(self):
         """
@@ -389,7 +400,8 @@ class StrategyTrade(object):
         """
         Is entry order in progress.
         """
-        return self._entry_state == StrategyTrade.STATE_OPENED or self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED
+        return (self._entry_state == StrategyTrade.STATE_OPENED or
+                self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED)
 
     def is_closing(self):
         """
@@ -409,7 +421,8 @@ class StrategyTrade(object):
 
         @note created timestamp t must be valid else it will timeout every time.
         """
-        return (self._entry_state == StrategyTrade.STATE_OPENED) and (self.e == 0) and (self.eot > 0) and timeout > 0.0 and ((timestamp - self.eot) >= timeout)
+        return ((self._entry_state == StrategyTrade.STATE_OPENED) and (self.e == 0) and (self.eot > 0) and
+                timeout > 0.0 and ((timestamp - self.eot) >= timeout))
 
     def is_trade_timeout(self, timestamp):
         """
@@ -417,10 +430,9 @@ class StrategyTrade(object):
 
         @note created timestamp t must be valid else it will timeout every time.
         """
-        return (
-                (self._entry_state in (StrategyTrade.STATE_PARTIALLY_FILLED, StrategyTrade.STATE_FILLED)) and
-                (self._expiry > 0.0) and (self.e > 0) and (self.eot > 0) and (timestamp > 0.0) and ((timestamp - self.eot) >= self._expiry)
-            )
+        return ((self._entry_state in (StrategyTrade.STATE_PARTIALLY_FILLED, StrategyTrade.STATE_FILLED)) and
+                (self._expiry > 0.0) and (self.e > 0) and (self.eot > 0) and (timestamp > 0.0) and
+                ((timestamp - self.eot) >= self._expiry))
 
     def is_duration_timeout(self, timestamp, duration):
         """
@@ -428,29 +440,27 @@ class StrategyTrade(object):
 
         @note created timestamp t must be valid else it will timeout every time.
         """
-        return (
-                (self._entry_state in (StrategyTrade.STATE_PARTIALLY_FILLED, StrategyTrade.STATE_FILLED)) and
-                (duration > 0.0) and (self.e > 0) and (self.eot > 0) and (timestamp > 0.0) and ((timestamp - self.eot) >= duration)
-            )
+        return ((self._entry_state in (StrategyTrade.STATE_PARTIALLY_FILLED, StrategyTrade.STATE_FILLED)) and
+                (duration > 0.0) and (self.e > 0) and (self.eot > 0) and (timestamp > 0.0) and
+                ((timestamp - self.eot) >= duration))
 
     def is_valid(self, timestamp, validity):
         """
         Return true if the trade is not expired (signal still acceptable) and entry quantity not fully filled.
         """
-        return (
-                ((self._entry_state == StrategyTrade.STATE_OPENED or self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED) and
-                (validity > 0.0) and (timestamp > 0.0) and ((timestamp - self.entry_open_time) <= validity))
-            )
+        return (((self._entry_state == StrategyTrade.STATE_OPENED or
+                  self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED) and
+                 (validity > 0.0) and (timestamp > 0.0) and ((timestamp - self.entry_open_time) <= validity)))
 
     def cancel_open(self, trader, instrument):
         """
-        Cancel the entiere or remaining open order.
+        Cancel the entire or remaining open order.
         """
         return False
 
     def cancel_close(self, trader, instrument):
         """
-        Cancel the entiere or remaining close order.
+        Cancel the entire or remaining close order.
         """
         return False
 
@@ -508,7 +518,7 @@ class StrategyTrade(object):
         and max change per count duration in seconds.
         """
         if self.last_tp_ot[0] <= 0 or self.last_tp_ot[1] <= 0:
-            # never modified, acccept
+            # never modified, accept
             return True
 
         if timestamp - self.last_tp_ot[0] >= timeout:
@@ -527,7 +537,7 @@ class StrategyTrade(object):
         and max change per count duration in seconds.
         """
         if self.last_stop_ot[0] <= 0 or self.last_stop_ot[1] <= 0:
-            # never modified, acccept
+            # never modified, accept
             return True
 
         if timestamp - self.last_stop_ot[0] >= timeout:
@@ -669,19 +679,19 @@ class StrategyTrade(object):
     def trade_state_from_str(self, trade_state):
         if trade_state == 'new':
             return StrategyTrade.STATE_NEW
-        elif trade_type == 'rejected':
+        elif trade_state == 'rejected':
             return StrategyTrade.STATE_REJECTED
-        elif trade_type == 'deleted':
+        elif trade_state == 'deleted':
             return StrategyTrade.STATE_DELETED
-        elif trade_type == 'canceled':
+        elif trade_state == 'canceled':
             return StrategyTrade.STATE_CANCELED
-        elif trade_type == 'opened':
+        elif trade_state == 'opened':
             return StrategyTrade.STATE_OPENED
-        elif trade_type == 'partially-filled':
+        elif trade_state == 'partially-filled':
             return StrategyTrade.STATE_PARTIALLY_FILLED
-        elif trade_type == 'filled':
+        elif trade_state == 'filled':
             return StrategyTrade.STATE_FILLED
-        elif trade_type == 'error':
+        elif trade_state == 'error':
             return StrategyTrade.STATE_ERROR
         else:
             return StrategyTrade.STATE_UNDEFINED
@@ -713,7 +723,7 @@ class StrategyTrade(object):
         return order_type_to_str(self._stats['entry-order-type'])
 
     #
-    # presistance
+    # persistence
     #
 
     def dump_timestamp(self, timestamp):
@@ -727,13 +737,13 @@ class StrategyTrade(object):
 
     def dumps(self):
         """
-        Override this method to make a dumps for the persistance.
+        Override this method to make a dumps for the persistence.
         @return dict with at least as defined in this method.
         """
         return {
             'version': self.version(),
             'id': self.id,
-            'trade': self._trade_type,  #  self.trade_type_to_str(),
+            'trade': self._trade_type,  # self.trade_type_to_str(),
             'entry-timeout': self._entry_timeout,  # self.timeframe_to_str(self._entry_timeout),
             'expiry': self._expiry,
             'entry-state': self._entry_state,  # self.trade_state_to_str(self._entry_state),
@@ -764,7 +774,7 @@ class StrategyTrade(object):
 
     def loads(self, data, strategy_trader, context_builder=None):
         """
-        Override this method to make a loads for the persistance model.
+        Override this method to make a loads for the persistence model.
         @return True if success.
         """
         self.id = data.get('id', -1)
@@ -942,9 +952,12 @@ class StrategyTrade(object):
         Return the estimate fees rate for the exit order.
         """
         # count the exit fees related to limit order type
-        if self._stats['take-profit-order-type'] in (Order.ORDER_LIMIT, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT_LIMIT):
+        if self._stats['take-profit-order-type'] in (Order.ORDER_LIMIT, Order.ORDER_STOP_LIMIT,
+                                                     Order.ORDER_TAKE_PROFIT_LIMIT):
             return instrument.maker_fee
-        elif self._stats['take-profit-order-type'] in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT):
+
+        elif self._stats['take-profit-order-type'] in (Order.ORDER_MARKET, Order.ORDER_STOP,
+                                                       Order.ORDER_TAKE_PROFIT):
             return instrument.taker_fee
 
         return 0.0
@@ -955,8 +968,9 @@ class StrategyTrade(object):
 
     def set(self, key, value):
         """
-        Add a key:value paire in the extra member dict of the trade.
-        It allow to add you internal trade data, states you want to keep during the live of the trade and even in persistency
+        Add a key:value pair in the extra member dict of the trade.
+        It allow to add you internal trade data, states you want to keep during the live of the trade and even in
+        persistence.
         """
         self._extra[key] = value
 
@@ -976,7 +990,7 @@ class StrategyTrade(object):
     @property
     def operations(self):
         """
-        List all pending/peristants operations
+        List all pending/persistent operations
         """
         return self._operations
 
@@ -1044,7 +1058,8 @@ class StrategyTrade(object):
             'entry-open-time': self.dump_timestamp(self.eot),
             'stats': {
                 'entry-order-type': order_type_to_str(self._stats['entry-order-type']),
-                'close-exec-price': strategy_trader.instrument.format_price(strategy_trader.instrument.close_exec_price(self.dir)),
+                'close-exec-price': strategy_trader.instrument.format_price(
+                    strategy_trader.instrument.close_exec_price(self.dir)),
             }
         }
 
@@ -1079,7 +1094,8 @@ class StrategyTrade(object):
             'exit-open-time': self.dump_timestamp(self.xot),
             'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
             'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
-            'profit-loss-pct': round((self.pl - self.entry_fees_rate() - self.exit_fees_rate()) * 100.0, 2),  # minus fees
+            # minus fees
+            'profit-loss-pct': round((self.pl - self.entry_fees_rate() - self.exit_fees_rate()) * 100.0, 2),
             'num-exit-trades': len(self.exit_trades),
             'stats': {
                 'best-price': strategy_trader.instrument.format_price(self._stats['best-price']),
@@ -1097,7 +1113,8 @@ class StrategyTrade(object):
                 'exit-fees': self._stats['exit-fees'],
                 'fees-pct': round((self.entry_fees_rate() + self.exit_fees_rate()) * 100.0, 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
-                'close-exec-price': strategy_trader.instrument.format_price(strategy_trader.instrument.close_exec_price(self.dir)),
+                'close-exec-price': strategy_trader.instrument.format_price(
+                    strategy_trader.instrument.close_exec_price(self.dir)),
             }
         }
 
@@ -1150,7 +1167,8 @@ class StrategyTrade(object):
                 'exit-fees': self._stats['exit-fees'],
                 'fees-pct': round((self.entry_fees_rate() + self.exit_fees_rate()) * 100.0, 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
-                'close-exec-price': strategy_trader.instrument.format_price(strategy_trader.instrument.close_exec_price(self.dir)),
+                'close-exec-price': strategy_trader.instrument.format_price(
+                    strategy_trader.instrument.close_exec_price(self.dir)),
             }
         }
 
@@ -1183,9 +1201,17 @@ class StrategyTrade(object):
         # @todo leverage for phrase command
 
         return (
-            "Trade %s id %s info on %s. Opened %s." % (self.trade_type_to_str(), self.id, strategy_trader.instrument.symbol, self.dump_timestamp(self.eot)),
-            "Timeframe %s, Label %s , Entry timeout %s, Expiry %s, %s, Status %s." % (timeframe_to_str(self._timeframe), self._label, timeframe_to_str(self._entry_timeout), self._expiry or "Never", "Manual" if self._user_trade else "Auto", self.state_to_str()),
-            "Command %s" % phrase
+            "Trade info - %s - id %s - on %s. Opened %s." % (self.trade_type_to_str(),
+                                                             self.id,
+                                                             strategy_trader.instrument.symbol,
+                                                             self.dump_timestamp(self.eot)),
+            "Timeframe %s, Label %s, Entry timeout %s, Expiry %s, %s, Status %s." % (
+                timeframe_to_str(self._timeframe),
+                self._label,
+                timeframe_to_str(self._entry_timeout),
+                self._expiry or "Never",
+                "Manual-Trade" if self._user_trade else "Auto-Trade", self.state_to_str()),
+            "Command %s" % ' '.join(phrase)
             # specialize for add row with detail such as orders or positions ids
         )
 
