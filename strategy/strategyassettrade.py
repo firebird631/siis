@@ -391,7 +391,18 @@ class StrategyAssetTrade(StrategyTrade):
                     self.entry_ref_oid = None
                     self.entry_oid = None
                 else:
-                    return self.ERROR
+                    data = trader.order_info(self.entry_oid, instrument)
+
+                    if data is None:
+                        # API error, do nothing need retry
+                        return self.ERROR
+
+                    elif data['id'] is None:
+                        # cannot retrieve the order, wrong id, no entry order
+                        self.entry_ref_oid = None
+                        self.entry_oid = None
+                    else:
+                        return self.ERROR
 
             if self.limit_oid:
                 # cancel the sell limit order
