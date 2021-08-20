@@ -197,7 +197,19 @@ class StrategyAssetTrade(StrategyTrade):
                     self.limit_oid = None
                     self.limit_order_qty = 0.0
                 else:
-                    return self.ERROR
+                    data = trader.order_info(self.limit_oid, instrument)
+
+                    if data is None:
+                        # API error, do nothing need retry
+                        return self.ERROR
+
+                    elif data['id'] is None:
+                        # cannot retrieve the order, wrong id, no limit order
+                        self.limit_ref_oid = None
+                        self.limit_oid = None
+                        self.limit_order_qty = 0.0
+                    else:
+                        return self.ERROR
 
             if self.stop_oid:
                 # cancel the sell stop order (only one or the other)
@@ -208,7 +220,19 @@ class StrategyAssetTrade(StrategyTrade):
                     self.stop_oid = None
                     self.stop_order_qty = 0.0
                 else:
-                    return self.ERROR
+                    data = trader.order_info(self.stop_oid, instrument)
+
+                    if data is None:
+                        # API error, do nothing need retry
+                        return self.ERROR
+
+                    elif data['id'] is None:
+                        # cannot retrieve the order, wrong id, no stop order
+                        self.stop_ref_oid = None
+                        self.stop_oid = None
+                        self.stop_order_qty = 0.0
+                    else:
+                        return self.ERROR
 
             if self.x >= self.e:
                 # all entry qty is filled
@@ -269,7 +293,19 @@ class StrategyAssetTrade(StrategyTrade):
                     self.stop_oid = None
                     self.stop_order_qty = 0.0
                 else:
-                    return self.ERROR
+                    data = trader.order_info(self.stop_oid, instrument)
+
+                    if data is None:
+                        # API error, do nothing need retry
+                        return self.ERROR
+
+                    elif data['id'] is None:
+                        # cannot retrieve the order, wrong id, no stop order
+                        self.stop_ref_oid = None
+                        self.stop_oid = None
+                        self.stop_order_qty = 0.0
+                    else:
+                        return self.ERROR
 
             if self.limit_oid:
                 # cancel the sell limit order (only one or the other)
@@ -280,7 +316,19 @@ class StrategyAssetTrade(StrategyTrade):
                     self.limit_oid = None
                     self.limit_order_qty = 0.0
                 else:
-                    return self.ERROR
+                    data = trader.order_info(self.limit_oid, instrument)
+
+                    if data is None:
+                        # API error, do nothing need retry
+                        return self.ERROR
+
+                    elif data['id'] is None:
+                        # cannot retrieve the order, wrong id, no limit order
+                        self.limit_ref_oid = None
+                        self.limit_oid = None
+                        self.limit_order_qty = 0.0
+                    else:
+                        return self.ERROR
 
             if self.x >= self.e:
                 # all entry qty is filled
@@ -321,6 +369,7 @@ class StrategyAssetTrade(StrategyTrade):
 
     def modify_oco(self, trader, instrument, limit_price, stop_price):
         # @todo
+
         return self.REJECTED
 
     def close(self, trader, instrument):
@@ -351,7 +400,19 @@ class StrategyAssetTrade(StrategyTrade):
                     self.limit_oid = None
                     self.limit_order_qty = 0.0
                 else:
-                    return self.ERROR
+                    data = trader.order_info(self.limit_oid, instrument)
+
+                    if data is None:
+                        # API error, do nothing need retry
+                        return self.ERROR
+
+                    elif data['id'] is None:
+                        # cannot retrieve the order, wrong id, no limit order
+                        self.limit_ref_oid = None
+                        self.limit_oid = None
+                        self.limit_order_qty = 0.0
+                    else:
+                        return self.ERROR
 
             if self.stop_oid:
                 # cancel the sell stop order and create a new one
@@ -360,7 +421,19 @@ class StrategyAssetTrade(StrategyTrade):
                     self.stop_oid = None
                     self.stop_order_qty = 0.0
                 else:
-                    return self.ERROR
+                    data = trader.order_info(self.stop_oid, instrument)
+
+                    if data is None:
+                        # API error, do nothing need retry
+                        return self.ERROR
+
+                    elif data['id'] is None:
+                        # cannot retrieve the order, wrong id, no stop order
+                        self.stop_ref_oid = None
+                        self.stop_oid = None
+                        self.stop_order_qty = 0.0
+                    else:
+                        return self.ERROR
 
             if self.x >= self.e:
                 # all qty is filled
@@ -390,8 +463,6 @@ class StrategyAssetTrade(StrategyTrade):
                 # rejected
                 self.stop_ref_oid = None
                 return self.REJECTED
-
-        return self.NOTHING_TO_DO
 
     def has_stop_order(self):
         return self.stop_oid is not None and self.stop_oid != ""
