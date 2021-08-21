@@ -201,15 +201,15 @@ class Statistic(Tool):
         return True
 
     def find_interval(self, trade):
-        if not trade:
+        if not trade or not trade[1] or not trade[2]:
             return None
 
-        stats = trade[2]
+        stats = trade[2].get('stats')
 
         if not stats:
             return None
 
-        if 'last-realized-exit-datetime' in trade[2]['stats'] and trade[2]['stats']['last-realized-exit-datetime']:
+        if 'last-realized-exit-datetime' in stats and stats['last-realized-exit-datetime']:
             trade_exit_dt = datetime.strptime(stats['last-realized-exit-datetime'],
                                               '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC())
         else:
