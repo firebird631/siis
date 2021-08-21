@@ -157,12 +157,13 @@ class Statistic(Tool):
         # generate intervals
         t = from_date
         while t <= to_date:
-            self._intervals[t.timestamp()] = (
+            self._intervals[t.timestamp()] = [
                 t,
                 (t + timedelta(seconds=timeframe-1.0)),
                 0.0,  # price
                 0.0,  # percent
-                self._currency,)
+                self._currency
+            ]
 
             t += timedelta(seconds=timeframe)
 
@@ -173,30 +174,14 @@ class Statistic(Tool):
             # add each trade and insert it into its interval
             self.add_trade(trade, interval)
 
-        # from_interval = from_date.timestamp()
-        # to_interval = from_interval + timeframe
-
-        # for trade in user_closed_trades:
-        #     if trade[1] >= to_interval:
-        #         # next interval of aggregation
-        #         from_interval = to_interval
-        #         to_interval = from_interval + timeframe
-        #
-        #         self.finalize_aggregate(from_interval, to_interval)
-        #
-        #     self.add_trade(trade)
-
-        # last aggregate
-        # self.finalize_aggregate(from_interval, to_interval)
-
         if options.get('filename'):
             self.write_report(options.get('filename'))
         else:
             self.write_log()
 
-        formated_total_perf = "{:0.0{}f}{}".format(self._total_perf, self._currency_precision, self._currency)
+        formatted_total_perf = "{:0.0{}f}{}".format(self._total_perf, self._currency_precision, self._currency)
 
-        print("Total performance : %.2f%% %s" % (self._total_perf_pct, formated_total_perf))
+        print("Total performance : %.2f%% %s" % (self._total_perf_pct, formatted_total_perf))
 
         return True
 
@@ -310,23 +295,6 @@ class Statistic(Tool):
         )
 
         self._report.append(row)
-
-    def finalize_aggregate(self, from_interval, to_interval):
-        # @todo insert empty interval
-
-        # compute last interval
-        interval = (
-            datetime.fromtimestamp(from_interval, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%SZ'),
-            datetime.fromtimestamp(to_interval-1.0, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%SZ'),
-            self._interval_perf_pct,
-            self._interval_perf,
-            self._currency
-        )
-
-        self._intervals[from_interval] = interval
-
-        self._interval_perf = 0.0
-        self._interval_perf_pct = 0.0
 
     def write_report(self, filename):
         if not filename:
