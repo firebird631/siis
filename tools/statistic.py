@@ -150,7 +150,8 @@ class Statistic(Tool):
         if 'market' in options:
             market_id = options['market'].split(',')
 
-        user_closed_trades = Database.inst().get_user_closed_trades(trader_id, account_id, strategy_id, from_date, to_date, market_id)
+        user_closed_trades = Database.inst().get_user_closed_trades(trader_id, account_id, strategy_id,
+                                                                    from_date, to_date, market_id)
 
         if user_closed_trades is None:
             logger.error("Unable to retrieve some historical user trades")
@@ -172,7 +173,14 @@ class Statistic(Tool):
             t += timedelta(seconds=timeframe)
 
         for trade in user_closed_trades:
-            if trade[1] >= to_interval:
+            if (trade[2] and 'stats' in trade[2] and 'last-realized-exit-timestamp' in trade[2]['stats'] and
+                    trade[2]['stats']['last-realized-exit-timestamp']):
+                trade_exit_ts = datetime.strptime(trade[2]['stats']['last-realized-exit-timestamp'],
+                                                  '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC()).timestamp()
+            else:
+                trade_exit_ts = trade[1]
+
+            if trade_exit_ts >= to_interval:
                 # next interval of aggregation
                 from_interval = to_interval
                 to_interval = from_interval + timeframe
