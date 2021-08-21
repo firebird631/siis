@@ -158,11 +158,11 @@ class Statistic(Tool):
         t = from_date
         while t <= to_date:
             self._intervals[t.timestamp()] = (
-                t.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                (t + timedelta(seconds=timeframe-1.0)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                t,
+                (t + timedelta(seconds=timeframe-1.0)),
                 0.0,  # price
                 0.0,  # percent
-                self._currency)
+                self._currency,)
 
             t += timedelta(seconds=timeframe)
 
@@ -204,15 +204,19 @@ class Statistic(Tool):
         if not trade:
             return None
 
-        if (trade[2] and 'stats' in trade[2] and 'last-realized-exit-datetime' in trade[2]['stats'] and
-                trade[2]['stats']['last-realized-exit-datetime']):
-            trade_exit_ts = datetime.strptime(trade[2]['stats']['last-realized-exit-datetime'],
-                                              '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).timestamp()
+        stats = trade[2]
+
+        if not stats:
+            return None
+
+        if 'last-realized-exit-datetime' in trade[2]['stats'] and trade[2]['stats']['last-realized-exit-datetime']:
+            trade_exit_dt = datetime.strptime(stats['last-realized-exit-datetime'],
+                                              '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC())
         else:
-            trade_exit_ts = trade[1]
+            trade_exit_dt = datetime.fromtimestamp(trade[1], tz=UTC())
 
         for ts, agg in self._intervals.items():
-            if agg[0] >= trade_exit_ts <= agg[1]:
+            if agg[0] >= trade_exit_dt <= agg[1]:
                 return agg
 
         return None
@@ -359,7 +363,8 @@ class Statistic(Tool):
             for t, r in self._intervals.items():
                 formatted_price = "{:0.0{}f}".format(r[3], self._currency_precision)
 
-                row = (r[0], r[1], "%.2f" % r[2], formatted_price, self._currency)
+                row = (r[0].strftime('%Y-%m-%dT%H:%M:%SZ'), r[1].strftime('%Y-%m-%dT%H:%M:%SZ'),
+                       "%.2f" % r[2], formatted_price, self._currency)
                 f.write('\t'.join(row) + '\n')
 
             f.close()
@@ -376,7 +381,8 @@ class Statistic(Tool):
         for t, r in self._intervals.items():
             formatted_price = "{:0.0{}f}{}".format(r[3], self._currency_precision, self._currency)
 
-            row = (r[0], r[1], "%.2f%%" % r[2], formatted_price)
+            row = (r[0].strftime('%Y-%m-%dT%H:%M:%SZ'), r[1].strftime('%Y-%m-%dT%H:%M:%SZ'),
+                   "%.2f%%" % r[2], formatted_price)
             print('\t'.join(row))
 
     def terminate(self, options):
