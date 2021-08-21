@@ -139,8 +139,8 @@ class Statistic(Tool):
 
         timeframe = timeframe_from_str(options.get('timeframe'))
 
-        from_date = self._from_date.replace(timezone=UTC())
-        to_date = self._to_date.replace(timezone=UTC())
+        from_date = self._from_date.replace(tzinfo=UTC())
+        to_date = self._to_date.replace(tzinfo=UTC())
 
         market_id = None
 
