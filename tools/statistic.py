@@ -311,7 +311,7 @@ class Statistic(Tool):
 
         try:
             f = open(filename + "_perf.csv", 'wt')
-x
+
             for r in self._report:
                 row = (r[0], "%i" % r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9])
                 f.write('\t'.join(row) + '\n')
