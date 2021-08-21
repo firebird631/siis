@@ -4,7 +4,6 @@
 # Statistic tools
 
 import sys
-import logging
 import traceback
 
 from datetime import datetime, timedelta
@@ -277,10 +276,10 @@ class Statistic(Tool):
             data['direction'],
             data['avg-entry-price'],
             data['filled-entry-qty'],
-            data['stats']['first-realized-entry-datetime'],
+            data['stats']['first-realized-entry-datetime'] or "",
             data['avg-exit-price'],
             data['filled-exit-qty'],
-            data['stats']['last-realized-exit-datetime']
+            data['stats']['last-realized-exit-datetime'] or ""
         )
 
         self._report.append(row)
@@ -312,7 +311,7 @@ class Statistic(Tool):
 
         try:
             f = open(filename + "_perf.csv", 'wt')
-
+x
             for r in self._report:
                 row = (r[0], "%i" % r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9])
                 f.write('\t'.join(row) + '\n')
