@@ -176,7 +176,7 @@ class Statistic(Tool):
             if (trade[2] and 'stats' in trade[2] and 'last-realized-exit-datetime' in trade[2]['stats'] and
                     trade[2]['stats']['last-realized-exit-datetime']):
                 trade_exit_ts = datetime.strptime(trade[2]['stats']['last-realized-exit-datetime'],
-                                                  '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC()).timestamp()
+                                                  '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).timestamp()
             else:
                 trade_exit_ts = trade[1]
 
