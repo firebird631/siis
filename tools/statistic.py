@@ -173,9 +173,9 @@ class Statistic(Tool):
             t += timedelta(seconds=timeframe)
 
         for trade in user_closed_trades:
-            if (trade[2] and 'stats' in trade[2] and 'last-realized-exit-timestamp' in trade[2]['stats'] and
-                    trade[2]['stats']['last-realized-exit-timestamp']):
-                trade_exit_ts = datetime.strptime(trade[2]['stats']['last-realized-exit-timestamp'],
+            if (trade[2] and 'stats' in trade[2] and 'last-realized-exit-datetime' in trade[2]['stats'] and
+                    trade[2]['stats']['last-realized-exit-datetime']):
+                trade_exit_ts = datetime.strptime(trade[2]['stats']['last-realized-exit-datetime'],
                                                   '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC()).timestamp()
             else:
                 trade_exit_ts = trade[1]
