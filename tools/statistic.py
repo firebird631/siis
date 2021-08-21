@@ -60,9 +60,6 @@ class Statistic(Tool):
         self._total_perf = 0.0
         self._total_perf_pct = 0.0
 
-        self._interval_perf = 0.0
-        self._interval_perf_pct = 0.0
-
         self._worst_upnl = 0.0
         self._best_upnl = 0.0
 
@@ -142,8 +139,8 @@ class Statistic(Tool):
 
         timeframe = timeframe_from_str(options.get('timeframe'))
 
-        from_date = self._from_date
-        to_date = self._to_date
+        from_date = self._from_date.replace(tz=UTC())
+        to_date = self._to_date.replace(tz=UTC())
 
         market_id = None
 
@@ -157,40 +154,40 @@ class Statistic(Tool):
             logger.error("Unable to retrieve some historical user trades")
             return False
 
-        from_interval = from_date.timestamp()
-        to_interval = from_interval + timeframe
-
         # generate intervals
         t = from_date
         while t <= to_date:
             self._intervals[t.timestamp()] = (
                 t.strftime('%Y-%m-%dT%H:%M:%SZ'),
                 (t + timedelta(seconds=timeframe-1.0)).strftime('%Y-%m-%dT%H:%M:%SZ'),
-                0.0,
-                0.0,
+                0.0,  # price
+                0.0,  # percent
                 self._currency)
 
             t += timedelta(seconds=timeframe)
 
         for trade in user_closed_trades:
-            if (trade[2] and 'stats' in trade[2] and 'last-realized-exit-datetime' in trade[2]['stats'] and
-                    trade[2]['stats']['last-realized-exit-datetime']):
-                trade_exit_ts = datetime.strptime(trade[2]['stats']['last-realized-exit-datetime'],
-                                                  '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).timestamp()
-            else:
-                trade_exit_ts = trade[1]
+            # found the related interval for the last exit timestamp
+            interval = self.find_interval(trade)
 
-            if trade_exit_ts >= to_interval:
-                # next interval of aggregation
-                from_interval = to_interval
-                to_interval = from_interval + timeframe
+            # add each trade and insert it into its interval
+            self.add_trade(trade, interval)
 
-                self.finalize_aggregate(from_interval, to_interval)
+        # from_interval = from_date.timestamp()
+        # to_interval = from_interval + timeframe
 
-            self.add_trade(trade)
+        # for trade in user_closed_trades:
+        #     if trade[1] >= to_interval:
+        #         # next interval of aggregation
+        #         from_interval = to_interval
+        #         to_interval = from_interval + timeframe
+        #
+        #         self.finalize_aggregate(from_interval, to_interval)
+        #
+        #     self.add_trade(trade)
 
         # last aggregate
-        self.finalize_aggregate(from_interval, to_interval)
+        # self.finalize_aggregate(from_interval, to_interval)
 
         if options.get('filename'):
             self.write_report(options.get('filename'))
@@ -203,7 +200,24 @@ class Statistic(Tool):
 
         return True
 
-    def add_trade(self, trade):
+    def find_interval(self, trade):
+        if not trade:
+            return None
+
+        if (trade[2] and 'stats' in trade[2] and 'last-realized-exit-datetime' in trade[2]['stats'] and
+                trade[2]['stats']['last-realized-exit-datetime']):
+            trade_exit_ts = datetime.strptime(trade[2]['stats']['last-realized-exit-datetime'],
+                                              '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).timestamp()
+        else:
+            trade_exit_ts = trade[1]
+
+        for ts, agg in self._intervals.items():
+            if agg[0] >= trade_exit_ts <= agg[1]:
+                return agg
+
+        return None
+
+    def add_trade(self, trade, interval):
         data = trade[2]
         stats = data['stats']
 
@@ -228,8 +242,9 @@ class Statistic(Tool):
         # interval
         #
 
-        self._interval_perf += realized_profit
-        self._interval_perf_pct += rpnl_pct
+        if interval:
+            interval[3] += realized_profit
+            interval[2] += rpnl_pct
 
         #
         # record
