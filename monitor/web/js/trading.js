@@ -1319,7 +1319,7 @@ function trade_validation(asset, currency, zero_count) {
 
     for (var t in window.actives_trades) {
         let trade = window.actives_trades[t];
-        let trade_qty = parseFloat(trade['filled-entry-qty'];
+        let trade_qty = parseFloat(trade['filled-entry-qty']);
 
         if (!zero_count && trade_qty <= 0) {
             continue;
