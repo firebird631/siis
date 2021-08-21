@@ -73,6 +73,10 @@ class AllowedIPOnlyFactory(WebSocketServerFactory):
         if HttpRestServer.ALLOWED_IPS and addr.host in HttpRestServer.ALLOWED_IPS:
             return super().buildProtocol(addr)
 
+        if HttpRestServer.ALLOWED_IPS is None and HttpRestServer.DENIED_IPS is None:
+            # allow any
+            return super().buildProtocol(addr)
+
         return None
 
 
