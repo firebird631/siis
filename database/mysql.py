@@ -11,10 +11,12 @@ import copy
 import traceback
 import pathlib
 
+from importlib import import_module
+
 from watcher.service import WatcherService
 from common.signal import Signal
 
-from instrument.instrument import Candle
+from instrument.instrument import Instrument, Candle
 
 from trader.market import Market
 from trader.asset import Asset
@@ -46,7 +48,7 @@ class MySql(Database):
             logger.error(repr(e))
 
     def connect(self, config):
-        if 'siis' in config and self.MySQLdb
+        if 'siis' in config and self.MySQLdb:
             self._conn_params = {
                 'db': config['siis'].get('name', 'siis'),
                 'host': config['siis'].get('host', 'localhost'),

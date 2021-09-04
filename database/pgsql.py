@@ -842,7 +842,7 @@ class PgSql(Database):
 
                 self._db.commit()
                 cursor = None
-            except psycopg2.OperationalError as e:
+            except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
 
                 # retry the next time
@@ -872,7 +872,7 @@ class PgSql(Database):
 
                     self._db.commit()
                     cursor = None
-                except psycopg2.OperationalError as e:
+                except self.psycopg2.OperationalError as e:
                     self.try_reconnect(e)
                 except Exception as e:
                     self.on_error(e)

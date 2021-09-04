@@ -1050,7 +1050,7 @@ class Strategy(Runnable):
                                 do_update.add(strategy_trader)
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_DISCONNECTED:
-                    # do we want to clean-up and wait connection signal to reinitiate ?
+                    # do we want to clean-up and wait connection signal to reinitialize ?
                     pass
 
                 elif Signal.SIGNAL_POSITION_OPENED <= signal.signal_type <= Signal.SIGNAL_POSITION_AMENDED:
