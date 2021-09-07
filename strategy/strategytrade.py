@@ -467,12 +467,14 @@ class StrategyTrade(object):
     def modify_take_profit(self, trader, instrument, limit_price):
         """
         Create/modify the take-order limit order or position limit.
+        A limit_price of 0 remove an existing order.
         """
         return self.NOTHING_TO_DO
 
     def modify_stop_loss(self, trader, instrument, stop_price):
         """
         Create/modify the stop-loss taker order or position limit.
+        A stop_price of 0 remove an existing order.
         """
         return self.NOTHING_TO_DO
 

@@ -827,7 +827,7 @@ class RemoveOperationCommand(Command):
         action = 'del-op'
         operation_id = None        
 
-        # ie ":SL EURUSD 1 5"
+        # ie ":D EURUSD 1 5"
         if len(args) < 3:
             return False, "Missing parameters"
 
@@ -917,7 +917,7 @@ class ModifyStopLossCommand(Command):
         "param1: market-id",
         "param2: trade-id",
         "param3: stop-loss-price",
-        "param4 (optionnal) : add force to create an order or modify the position, not only have a local value",
+        "param4 (optional) : add force to create an order or modify the position, not only have a local value",
     )
    
     def __init__(self, strategy_service):
@@ -949,7 +949,7 @@ class ModifyStopLossCommand(Command):
                 # last value relative delta price or %
                 if args[2].endswith('%'):
                     method = 'delta-percent'
-                    stop_loss = float(args[2][:-1])
+                    stop_loss = float(args[2][:-1]) * 0.01
                 else:
                     method = 'delta-price'
                     stop_loss = float(args[2])
@@ -958,7 +958,7 @@ class ModifyStopLossCommand(Command):
                 # entry-price relative delta price or %
                 if args[2].endswith('%'):
                     method = 'entry-delta-percent'
-                    stop_loss = float(args[2][2:-1])
+                    stop_loss = float(args[2][2:-1]) * 0.01
                 else:
                     method = 'entry-delta-price'
                     stop_loss = float(args[2][2:])
@@ -967,7 +967,7 @@ class ModifyStopLossCommand(Command):
                 # market-price relative delta price or %
                 if args[2].endswith('%'):
                     method = 'market-delta-percent'
-                    stop_loss = float(args[2][1:-1])
+                    stop_loss = float(args[2][1:-1]) * 0.01
                 else:
                     method = 'market-delta-price'
                     stop_loss = float(args[2][1:])
@@ -1010,7 +1010,7 @@ class ModifyTakeProfitCommand(Command):
         "param1: market-id",
         "param2: trade-id",
         "param3: take-profit-price",
-        "param4 (optionnal) : add force to create an order or modify the position, not only have a local value",
+        "param4 (optional) : add force to create an order or modify the position, not only have a local value",
     )
 
     def __init__(self, strategy_service):
@@ -1042,7 +1042,7 @@ class ModifyTakeProfitCommand(Command):
                 # last value relative delta price or %
                 if args[2].endswith('%'):
                     method = 'delta-percent'
-                    take_profit = float(args[2][:-1])
+                    take_profit = float(args[2][:-1]) * 0.01
                 else:
                     method = 'delta-price'
                     take_profit = float(args[2])
@@ -1051,7 +1051,7 @@ class ModifyTakeProfitCommand(Command):
                 # entry-price relative delta price or %
                 if args[2].endswith('%'):
                     method = 'entry-delta-percent'
-                    take_profit = float(args[2][2:-1])
+                    take_profit = float(args[2][2:-1]) * 0.01
                 else:
                     method = 'entry-delta-price'
                     take_profit = float(args[2][2:])
@@ -1060,7 +1060,7 @@ class ModifyTakeProfitCommand(Command):
                 # market-price relative delta price or %
                 if args[2].endswith('%'):
                     method = 'market-delta-percent'
-                    take_profit = float(args[2][1:-1])
+                    take_profit = float(args[2][1:-1]) * 0.01
                 else:
                     method = 'market-delta-price'
                     take_profit = float(args[2][1:])

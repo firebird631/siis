@@ -268,6 +268,9 @@ class StrategyAssetTrade(StrategyTrade):
                     self.limit_order_qty = 0.0
 
                     return self.REJECTED
+            else:
+                # remove take-profit
+                self.tp = 0.0
 
             return self.NOTHING_TO_DO
 
@@ -364,6 +367,9 @@ class StrategyAssetTrade(StrategyTrade):
                     self.stop_order_qty = 0.0
 
                     return self.REJECTED
+            else:
+                # remove stop-loss
+                self.sl = 0.0
 
             return self.NOTHING_TO_DO
 

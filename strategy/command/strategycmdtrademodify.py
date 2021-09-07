@@ -45,6 +45,7 @@ def cmd_trade_modify(strategy, strategy_trader, data):
                 # method, default is a price
                 method = data.get('method', "price")
 
+                # @todo does take care of the trade direction in case of short to negate the value ? see for TP too
                 if method not in ("price", "delta-percent", "delta-price", "entry-delta-percent", "entry-delta-price",
                                   "market-delta-percent", "market-delta-price"):
 
@@ -53,41 +54,52 @@ def cmd_trade_modify(strategy, strategy_trader, data):
 
                     return results
 
-                # @todo others methods
                 if method == "delta-percent" and data['stop-loss'] != 0.0:
-                    pass
+                    stop_loss_price = trade.sl * (1.0 + data['stop-loss'])
 
                 elif method == "delta-price" and data['stop-loss'] != 0.0:
-                    pass
+                    stop_loss_price = trade.sl + data['stop-loss']
 
                 elif method == "entry-delta-percent":
-                    pass
+                    stop_loss_price = trade.aep * (1.0 + data['stop-loss'])
 
                 elif method == "entry-delta-price":
-                    pass
+                    stop_loss_price = trade.aep + data['stop-loss']
 
                 elif method == "market-delta-percent" and data['stop-loss'] != 0.0:
-                    pass
+                    stop_loss_price = strategy_trader.instrument.close_exec_price(
+                        trade.direction) * (1.0 + data['stop-loss'])
 
                 elif method == "market-delta-price" and data['stop-loss'] != 0.0:
-                    pass
+                    stop_loss_price = strategy_trader.instrument.close_exec_price(
+                        trade.direction) + data['stop-loss']
 
-                elif method == "price" and data['stop-loss'] > 0.0:
-                    if trade.has_stop_order() or data.get('force', False):
-                        trade.modify_stop_loss(strategy.trader(), strategy_trader.instrument, data['stop-loss'])
-                    else:
-                        trade.sl = data['stop-loss']
-
-                    # update strategy-trader
-                    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
-
-                elif method == "price" and data['stop-loss'] == 0.0:
-                    # @todo if price is 0 then delete the order
-                    pass
+                elif method == "price" and data['stop-loss'] >= 0.0:
+                    stop_loss_price = data['stop-loss']
 
                 else:
                     results['error'] = True
                     results['messages'].append("Stop-loss invalid method or value for trade %i" % trade.id)
+
+                    return results
+
+                # apply
+                if stop_loss_price < 0.0:
+                    results['error'] = True
+                    results['messages'].append("Stop-loss price is negative for trade %i" % trade.id)
+
+                    return results
+                else:
+                    if stop_loss_price == 0.0:
+                        results['messages'].append("Remove stop-loss for trade %i" % trade.id)
+
+                    if trade.has_stop_order() or data.get('force', False):
+                        trade.modify_stop_loss(strategy.trader(), strategy_trader.instrument, stop_loss_price)
+                    else:
+                        trade.sl = stop_loss_price
+
+                    # update strategy-trader
+                    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
 
             # modify TP
             elif action == 'take-profit' and 'take-profit' in data and type(data['take-profit']) in (float, int):
@@ -102,41 +114,52 @@ def cmd_trade_modify(strategy, strategy_trader, data):
 
                     return results
 
-                # @todo others methods
                 if method == "delta-percent" and data['take-profit'] != 0.0:
-                    pass
+                    take_profit_price = trade.tp * (1.0 + data['take-profit'])
 
                 elif method == "delta-price" and data['take-profit'] != 0.0:
-                    pass
+                    take_profit_price = trade.tp + data['take-profit']
 
                 elif method == "entry-delta-percent":
-                    pass
+                    take_profit_price = trade.aep * (1.0 + data['take-profit'])
 
                 elif method == "entry-delta-price":
-                    pass
+                    take_profit_price = trade.aep + data['take-profit']
 
                 elif method == "market-delta-percent" and data['take-profit'] != 0.0:
-                    pass
+                    take_profit_price = strategy_trader.instrument.close_exec_price(
+                        trade.direction) * (1.0 + data['take-profit'])
 
                 elif method == "market-delta-price" and data['take-profit'] != 0.0:
-                    pass
+                    take_profit_price = strategy_trader.instrument.close_exec_price(
+                        trade.direction) + data['take-profit']
 
-                if method == "price" and data['take-profit'] > 0.0:
-                    if trade.has_limit_order() or data.get('force', False):
-                        trade.modify_take_profit(strategy.trader(), strategy_trader.instrument, data['take-profit'])
-                    else:
-                        trade.tp = data['take-profit']
-
-                    # update strategy-trader
-                    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
-
-                elif method == "price" and data['take-profit'] == 0.0:
-                    # @todo if price is 0 then delete the order
-                    pass
+                elif method == "price" and data['take-profit'] >= 0.0:
+                    take_profit_price = 0.0
 
                 else:
                     results['error'] = True
                     results['messages'].append("Take-profit invalid method or value for trade %i" % trade.id)
+
+                    return results
+
+                # apply
+                if take_profit_price < 0.0:
+                    results['error'] = True
+                    results['messages'].append("Take-profit price is negative for trade %i" % trade.id)
+
+                    return results
+                else:
+                    if take_profit_price == 0.0:
+                        results['messages'].append("Remove take-profit for trade %i" % trade.id)
+
+                    if trade.has_limit_order() or data.get('force', False):
+                        trade.modify_take_profit(strategy.trader(), strategy_trader.instrument, take_profit_price)
+                    else:
+                        trade.tp = take_profit_price
+
+                    # update strategy-trader
+                    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
 
             # add operation
             elif action == 'add-op':
