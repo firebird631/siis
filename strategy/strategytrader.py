@@ -165,9 +165,34 @@ class StrategyTrader(object):
                     except ValueError:
                         return "Value must be integer"
 
-                if keys[2] == 'mode':
+                elif keys[2] == 'mode':
                     if value not in context.MODE:
                         return "Unsupported value for mode"
+
+            elif len(keys) == 4:
+                if keys[2] not in ('stop-loss', 'dynamic-stop-loss', 'take-profit', 'dynamic-take-profit'):
+                    return "Invalid option %s" % keys[2]
+
+                if keys[3] not in ('type', 'distance', 'timeframe', 'direction'):
+                    return "Invalid dynamic-stop-loss option %s" % keys[3]
+
+                if keys[2] == 'stop-loss':
+                    if keys[3] == 'distance':
+                        try:
+                            v = float(value)
+                            if v <= -100:
+                                return "Distance for stop-loss must not exceed 100%"
+                        except ValueError:
+                            return "Distance for stop-loss must be a float"
+
+                elif keys[2] == 'dynamic-stop-loss':
+                    if keys[3] == 'distance':
+                        try:
+                            v = float(value)
+                            if v <= -100:
+                                return "Distance for dynamic-stop-loss must not exceed 100%"
+                        except ValueError:
+                            return "Distance for dynamic-stop-loss must be a float"
 
         elif keys[0] == 'max-trades':
             try:
@@ -220,12 +245,52 @@ class StrategyTrader(object):
                     except ValueError:
                         return False
 
-                if keys[2] == 'mode':
+                elif keys[2] == 'mode':
                     if value not in context.MODE:
                         return False
 
                     context.mode = context.MODE[value]
                     return True
+
+                elif len(keys) == 4:
+                    if keys[2] not in ('stop-loss', 'dynamic-stop-loss', 'take-profit', 'dynamic-take-profit'):
+                        return False
+
+                    if keys[3] not in ('type', 'distance', 'timeframe', 'direction'):
+                        return False
+
+                    if keys[2] == 'stop-loss':
+                        if keys[3] == 'distance':
+                            try:
+                                v = float(value)
+                                if v <= -100:
+                                    return False
+
+                                if not hasattr(context, 'stop_loss'):
+                                    return False
+
+                                # @todo apply
+
+                                return True
+
+                            except ValueError:
+                                return False
+
+                    elif keys[2] == 'dynamic-stop-loss':
+                        if keys[3] == 'distance':
+                            try:
+                                v = float(value)
+                                if v <= -100:
+                                    return False
+
+                                if not hasattr(context, 'dynamic_stop_loss'):
+                                    return False
+
+                                # @todo apply
+
+                                return True
+                            except ValueError:
+                                return False
 
         elif keys[0] == 'max-trades':
             try:
@@ -333,12 +398,11 @@ class StrategyTrader(object):
         """
         pass
 
-    def process(self, timeframe, timestamp):
+    def process(self, timestamp):
         """
         Override this method to do her all the strategy work.
         You must call the update_trades method during the process in way to manage the trades.
 
-        @param timeframe Update timeframe unit.
         @param timestamp Current timestamp (or in backtest the processed time in past).
         """
         pass

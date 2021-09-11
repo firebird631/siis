@@ -7,7 +7,7 @@ from datetime import datetime
 from common.signal import Signal
 
 from trader.order import Order, order_type_to_str
-from common.utils import timeframe_to_str, direction_to_str
+from common.utils import timeframe_to_str, direction_to_str, direction_from_str
 
 from instrument.instrument import Instrument
 
@@ -21,11 +21,11 @@ class StrategySignal(object):
     The signal is either an entry, either an exit.
     The direction of the signal is complementary to its type.
 
-    Thats mean a long entry or exit always return a long direction (1).
+    Means a long entry or exit always return a long direction (1).
     And so a short entry or exit always return a short direction (-1).
 
     The order direction can be determined by condition or by multiplying signal * dir.
-    Exemple a short exit signal is -1 * -1 = 1 (a long order).
+    Example a short exit signal is -1 * -1 = 1 (a long order).
 
     But note the proper way to exit a trade/position is to use the trade.close method, and
     not to directly create an order.
@@ -53,7 +53,7 @@ class StrategySignal(object):
         self.dir = 0       # signal direction
 
         self.p = 0.0       # signal price / possible entry-price
-        self.sl = 0.0      # possible stop-loss pricce
+        self.sl = 0.0      # possible stop-loss price
         self.tp = 0.0      # primary possible take profit price
 
         self.quantity = 0  # define quantity, if 0 default configured value is used
@@ -62,7 +62,7 @@ class StrategySignal(object):
         self.expiry = 0.0          # trade expiration if in profit after this delay
 
         self.label = ""      # signal label
-        self.context = None  # can be any object inherited from StrategySignalContext (will be setted as reference to the trade)
+        self.context = None  # can be any object inherited from StrategySignalContext (will be set as ref to trade)
 
         self.order_type = Order.ORDER_MARKET
 
@@ -227,8 +227,9 @@ class StrategySignal(object):
 
     def set(self, key, value):
         """
-        Add a key:value paire in the extra member dict of the signal.
-        It allow to add you internal trade data, states you want to keep during the live of the trade and even in persistency
+        Add a key:value pair in the extra member dict of the signal.
+        It allow to add you internal trade data, states you want to keep during the live of the trade and
+        even in persistence
         """
         self._extra[key] = value
 
@@ -257,7 +258,6 @@ class StrategySignal(object):
     #
     # dumps for notify/history
     #
-
 
     def dump_timestamp(self, timestamp, v1=False):
         if v1:
