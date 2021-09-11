@@ -62,6 +62,8 @@ class StrategyTrader(object):
         self._activity = True
         self._affinity = 5          # based on a linear scale [0..100]
 
+        self.max_trades = 0
+
         self._initialized = 1       # initiate data before running, 1 waited, 2 in progress, 0 normal
         self._checked = 1           # check trades/orders/positions, 1 waited, 2 in progress, 0 normal
 
@@ -84,7 +86,7 @@ class StrategyTrader(object):
         self._next_region_id = 1
 
         self._alerts = []
-        self._next_alert_id= 1
+        self._next_alert_id = 1
 
         self._global_streamer = None
         self._trade_entry_streamer = None
@@ -94,6 +96,7 @@ class StrategyTrader(object):
         self._alert_streamer = None
 
         self._reporting = StrategyTrader.REPORTING_NONE
+        self._report_filename = None
 
         self._stats = {
             'perf': 0.0,       # initial
@@ -104,8 +107,8 @@ class StrategyTrader(object):
             'failed': [],      # failed terminated trades
             'success': [],     # success terminated trades
             'roe': [],         # return to equity trades
-            'cont-win': 0,     # contigous win trades
-            'cont-loss': 0,    # contigous loss trades
+            'cont-win': 0,     # contiguous win trades
+            'cont-loss': 0,    # contiguous loss trades
         }
 
         self._trade_context_builder = None
@@ -390,7 +393,7 @@ class StrategyTrader(object):
                         if trade.remove(trader, self.instrument):
                             mutated = True
                         else:
-                            # error during canceling orders, potential API or responsivity error : keep for persistence
+                            # error during canceling orders, potential API or response error : keep for persistence
                             trades_list.append(trade)
                     else:
                         # keep for persistence
@@ -401,12 +404,12 @@ class StrategyTrader(object):
                     self._trades = trades_list
 
     #
-    # persistance
+    # persistence
     #
 
     def save(self):
         """
-        Trader and trades persistance (might occurs only for live mode on real accounts).
+        Trader and trades persistence (might occurs only for live mode on real accounts).
         @note Must be called only after terminate.
         """
         trader = self.strategy.trader()
@@ -440,7 +443,7 @@ class StrategyTrader(object):
         if 'affinity' in data and type(data['affinity']) is int:
             self._affinity = data['affinity']
 
-        # instanciates the regions
+        # instantiates the regions
         for r in regions:
             if r['name'] in self.strategy.service.regions:
                 try:
@@ -457,11 +460,11 @@ class StrategyTrader(object):
             else:
                 error_logger.error("During loads, unsupported region %s" % (r['name'],))
 
-        # instanciates the alerts
+        # instantiate the alerts
         for a in alerts:
             if a['name'] in self.strategy.service.alerts:
                 try:
-                    # instanciate the alert
+                    # instantiate the alert
                     alert = self.strategy.service.alerts[a['name']](0, 0)
                     alert.loads(a)
 
@@ -478,9 +481,9 @@ class StrategyTrader(object):
         """
         Load a strategy trader trade and its operations.
         @todo Need to check the validity of the trade :
-            - existings orders, create, sell, limit, stop, position
+            - existing orders, create, sell, limit, stop, position
             - and eventually the free margin, asset quantity
-        There is many scenarii where the trade state changed, trade executed, order modified or canceled...
+        There is many scenarios where the trade state changed, trade executed, order modified or canceled...
         """
         trade = None
 
@@ -494,7 +497,7 @@ class StrategyTrader(object):
         elif trade_type == StrategyTrade.TRADE_IND_MARGIN:
             trade = StrategyIndMarginTrade(0)
         else:
-            error_logger.error("During loads, usupported trade type %i" % (trade_type,))
+            error_logger.error("During loads, unsupported trade type %i" % (trade_type,))
             return
 
         trade.loads(data, self, self._trade_context_builder)
@@ -510,11 +513,11 @@ class StrategyTrader(object):
                         # append the operation to the trade
                         trade.add_operation(operation)
                     else:
-                        error_logger.error("During loads, operation checking error %s" % (op_name,))
+                        error_logger.error("During loads, trade operation checking error %s" % (op['name'],))
                 except Exception as e:
                     error_logger.error(repr(e))
             else:
-                error_logger.error("During loads, region checking error %s" % (r['name'],))
+                error_logger.error("During loads, trade operation checking error %s" % (op['name'],))
 
         # add the trade, will be check on a next process
         self.add_trade(trade)
@@ -601,7 +604,7 @@ class StrategyTrader(object):
 
     def list_trades(self):
         """
-        List of ids of pendings and actives trades.
+        List of ids of pending and actives trades.
         """
         results = []
 
@@ -613,7 +616,7 @@ class StrategyTrader(object):
 
     def dumps_trades_update(self):
         """
-        Dumps the update notify state of each existings trades.
+        Dumps the update notify state of each existing trades.
         """
         results = []
 
@@ -714,7 +717,8 @@ class StrategyTrader(object):
                 # margin trade
                 #
 
-                elif trade.trade_type in (StrategyTrade.TRADE_MARGIN, StrategyTrade.TRADE_POSITION, StrategyTrade.TRADE_IND_MARGIN):
+                elif trade.trade_type in (StrategyTrade.TRADE_MARGIN, StrategyTrade.TRADE_POSITION,
+                                          StrategyTrade.TRADE_IND_MARGIN):
                     # process only on active trades
                     if not trade.is_active():
                         # @todo timeout if not filled before condition...
@@ -736,12 +740,14 @@ class StrategyTrader(object):
                     # potential order exec close price
                     close_exec_price = self.instrument.close_exec_price(trade.direction)
 
-                    if (trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (trade.direction < 0 and close_exec_price <= trade.tp)) and not trade.has_limit_order():
+                    if (trade.tp > 0) and ((trade.direction > 0 and close_exec_price >= trade.tp) or (
+                            trade.direction < 0 and close_exec_price <= trade.tp)) and not trade.has_limit_order():
                         # close in profit at market (taker fee)
                         if trade.close(trader, self.instrument) > 0:
                             trade.exit_reason = trade.REASON_TAKE_PROFIT_MARKET
 
-                    elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_stop_order():
+                    elif (trade.sl > 0) and ((trade.direction > 0 and close_exec_price <= trade.sl) or (
+                            trade.direction < 0 and close_exec_price >= trade.sl)) and not trade.has_stop_order():
                         # close a long or a short position at stop-loss level at market (taker fee)
                         if trade.close(trader, self.instrument) > 0:
                             trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
@@ -768,10 +774,13 @@ class StrategyTrader(object):
                         # realized profit/loss
                         profit_loss = trade.profit_loss - trade.entry_fees_rate() - trade.exit_fees_rate()
 
-                        best_pl = (trade.best_price() - trade.entry_price if trade.direction > 0 else trade.entry_price - trade.best_price()) / trade.entry_price
-                        worst_pl = (trade.worst_price() - trade.entry_price if trade.direction > 0 else trade.entry_price - trade.worst_price()) / trade.entry_price
+                        best_pl = (trade.best_price() - trade.entry_price if trade.direction > 0 else
+                                   trade.entry_price - trade.best_price()) / trade.entry_price
 
-                        # perf sommed here it means that its not done during partial closing
+                        worst_pl = (trade.worst_price() - trade.entry_price if trade.direction > 0 else
+                                    trade.entry_price - trade.worst_price()) / trade.entry_price
+
+                        # perf summed here it means that its not done during partial closing
                         if profit_loss != 0.0:
                             self._stats['perf'] += profit_loss
                             self._stats['best'] = max(self._stats['best'], profit_loss)
@@ -819,8 +828,9 @@ class StrategyTrader(object):
 
                         # store for history, only for real mode
                         if not trader.paper_mode:
-                            Database.inst().store_user_closed_trade((trader.name, trader.account.name, self.instrument.market_id,
-                                    self.strategy.identifier, timestamp, record))
+                            Database.inst().store_user_closed_trade((trader.name, trader.account.name,
+                                                                     self.instrument.market_id,
+                                                                     self.strategy.identifier, timestamp, record))
                     else:
                         if not trade.exit_reason:
                             trade.exit_reason = trade.REASON_CANCELED_TIMEOUT
@@ -921,7 +931,8 @@ class StrategyTrader(object):
 
     def check_regions(self, timestamp, bid, ask, signal, allow=True):
         """
-        Compare a signal to defined regions if somes are defineds.
+        Compare a signal to defined regions if some are defined.
+        @param timestamp Current timestamp.
         @param signal StrategySignal to check with any regions.
         @param bid float Last instrument bid price
         @param ask float Last instrument ask price
@@ -989,13 +1000,15 @@ class StrategyTrader(object):
 
     def check_alerts(self, timestamp, bid, ask, timeframes):
         """
-        Compare timeframes indicators values to defined alerts if somes are defined.
+        Compare timeframes indicators values to defined alerts if some are defined.
+        @param timestamp Current timestamp.
         @param bid float Last instrument bid price
         @param ask float Last instrument ask price
         @param timeframes list of TimeframeBasedSub to check with any alerts.
 
         @note Thread-safe method.
-        @note If the alert is triggered, it still keep alive until the next check_alerts call, even if its a one shot alert.
+        @note If the alert is triggered, it still keep alive until the next check_alerts call,
+              even if its a one shot alert.
         """
         if self._alerts:
             mutated = False
@@ -1025,7 +1038,7 @@ class StrategyTrader(object):
             return None
 
     #
-    # miscs
+    # misc
     #
 
     def check_entry_canceled(self, trade):
@@ -1071,8 +1084,10 @@ class StrategyTrader(object):
         trade_profit_loss = trade.profit_loss
 
         if trade_profit_loss >= 0.0:
-            if trade.context and trade.context.take_profit and trade.context.take_profit.timeout > 0 and trade.context.take_profit.timeout_distance != 0.0:
-                if trade.is_duration_timeout(timestamp, trade.context.take_profit.timeout) and trade_profit_loss < trade.context.take_profit.timeout_distance:
+            if (trade.context and trade.context.take_profit and trade.context.take_profit.timeout > 0 and
+                    trade.context.take_profit.timeout_distance != 0.0):
+                if (trade.is_duration_timeout(timestamp, trade.context.take_profit.timeout) and
+                        trade_profit_loss < trade.context.take_profit.timeout_distance):
                     trader = self.strategy.trader()
                     trade.close(trader, self.instrument)
                     trade.exit_reason = trade.REASON_MARKET_TIMEOUT
@@ -1080,8 +1095,10 @@ class StrategyTrader(object):
                     return True
 
         elif trade_profit_loss < 0.0:
-            if trade.context and trade.context.stop_loss and trade.context.stop_loss.timeout > 0 and trade.context.stop_loss.timeout_distance != 0.0:
-                if trade.is_duration_timeout(timestamp, trade.context.stop_loss.timeout) and -trade_profit_loss > trade.context.stop_loss.timeout_distance:
+            if (trade.context and trade.context.stop_loss and trade.context.stop_loss.timeout > 0 and
+                    trade.context.stop_loss.timeout_distance != 0.0):
+                if (trade.is_duration_timeout(timestamp, trade.context.stop_loss.timeout) and
+                        -trade_profit_loss > trade.context.stop_loss.timeout_distance):
                     trader = self.strategy.trader()
                     trade.close(trader, self.instrument)
                     trade.exit_reason = trade.REASON_MARKET_TIMEOUT
@@ -1093,14 +1110,14 @@ class StrategyTrader(object):
     def retrieve_context(self, name):
         """
         Return a trade context object. Used by set_trade_context.
-        Must be overrided.
+        Must be override.
         """
         return None
 
     def apply_trade_context(self, trade, context):
         """
-        Apply a trade context to a valide trade.
-        Must be overrided.
+        Apply a trade context to a valid trade.
+        Must be override.
         """
         if not trade or not context:
             return False
@@ -1109,8 +1126,8 @@ class StrategyTrader(object):
 
     def set_trade_context(self, trade, name):
         """
-        Apply a trade context to a valide trade.
-        Must be overrided.
+        Apply a trade context to a valid trade.
+        Must be override.
         """
         if not trade or not name:
             return False
@@ -1125,14 +1142,14 @@ class StrategyTrader(object):
     def contexts_ids(self):
         """
         Returns the list of context ids.
-        Must be overrided.
+        Must be override.
         """
         return []
 
     def dumps_context(self, context_id):
         """
         Returns a dict with the normalized contexts details or None if don't exists.
-        Must be overrided.
+        Must be override.
         """
         return None
 
@@ -1143,28 +1160,28 @@ class StrategyTrader(object):
     def create_chart_streamer(self, timeframe):
         """
         Create a streamer for the chart at a specific timeframe.
-        Must be overrided.
+        Must be override.
         """
         return None
 
     def subscribe_stream(self, timeframe):
         """
         Use or create a specific streamer.
-        Must be overrided.
+        Must be override.
         """
         return False
 
     def unsubscribe_stream(self, timeframe):
         """
         Delete a specific streamer when no more subscribers.
-        Must be overrided.
+        Must be override.
         """
         return False
 
     def report_state(self, mode=0):
         """
         Collect the state of the strategy trader (instant) and return a dataset.
-        Default only return a basic dataset, it must be overrided per strategy.
+        Default only return a basic dataset, it must be override per strategy.
 
         @param mode integer Additional report context.
         """
@@ -1198,7 +1215,7 @@ class StrategyTrader(object):
                 try:
                     report_path.mkdir(parents=True)
                 except Exception as e:
-                    error_logger(repr(e))
+                    error_logger.error(repr(e))
                     return None
 
                 return report_path
@@ -1271,7 +1288,7 @@ class StrategyTrader(object):
             if trader.has_quantity(self.instrument.quote, trade_quantity or self.instrument.trade_quantity):
                 quantity = self.instrument.adjust_quantity(trade_quantity / price)  # and adjusted to 0/max/step
             else:
-                msg = "Not enought free quote asset %s, has %s but need %s" % (
+                msg = "Not enough free quote asset %s, has %s but need %s" % (
                     self.instrument.quote,
                     self.instrument.format_quantity(trader.asset(self.instrument.quote).free),
                     self.instrument.format_quantity(trade_quantity))
@@ -1303,7 +1320,7 @@ class StrategyTrader(object):
         if trader.has_margin(self.instrument.market_id, trade_quantity, price):
             quantity = trade_quantity
         else:
-            msg = "Not enought free margin %s, has %s but need %s" % (
+            msg = "Not enough free margin %s, has %s but need %s" % (
                 self.instrument.quote, self.instrument.format_quantity(trader.account.margin_balance),
                 self.instrument.format_quantity(original_quantity))
 
@@ -1351,7 +1368,8 @@ class StrategyTrader(object):
                                 break
 
         if result:
-            msg = "Max trade reached for %s with %s or max reached for the timeframe" % (self.instrument.symbol, max_trades)
+            msg = "Max trade reached for %s with %s or max reached for the timeframe" % (self.instrument.symbol,
+                                                                                         max_trades)
 
             # logger.warning(msg)
             Terminal.inst().notice(msg, view='status')
@@ -1361,8 +1379,7 @@ class StrategyTrader(object):
     def has_max_trades_by_context(self, max_trades, same_context=None):
         """
         @param max_trades Max simultaneous trades for this instrument or 0.
-        @param context Compared context instance.
-        @param same_context_num Allow 0, 1 or many trades of the same context.
+        @param same_context
         @return True if a max is reached.
         """
         result = False
@@ -1393,7 +1410,8 @@ class StrategyTrader(object):
             result = True
 
         if result:
-            msg = "Max trade reached for %s with %s or max reached for the context" % (self.instrument.symbol, max_trades)
+            msg = "Max trade reached for %s with %s or max reached for the context" % (self.instrument.symbol,
+                                                                                       max_trades)
 
             # logger.warning(msg)
             Terminal.inst().notice(msg, view='status')
