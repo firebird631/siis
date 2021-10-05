@@ -3,6 +3,9 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy command trader modify
 
+from common.utils import timeframe_from_str
+
+
 def cmd_strategy_trader_modify(strategy, strategy_trader, data):
     """
     Modify a strategy-trader state, a region or an alert.
@@ -47,7 +50,7 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
             if not results['error']:
                 if region_name in strategy.service.regions:
                     try:
-                        # instanciate the region
+                        # instantiate the region
                         region = strategy.service.regions[region_name](created, stage, direction, timeframe)
 
                         if expiry:
@@ -107,7 +110,7 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
             if not results['error']:
                 if alert_name in strategy.service.alerts:
                     try:
-                        # instanciate the alert
+                        # instantiate the alert
                         alert = strategy.service.alerts[alert_name](created, timeframe)
                         alert.set_countdown(countdown)
 

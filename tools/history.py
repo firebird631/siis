@@ -21,7 +21,7 @@ logger = logging.getLogger('siis.tools.history')
 error_logger = logging.getLogger('siis.tools.error.history')
 
 READ_DEBUG_CACHE = 0
-WRITE_DEBUG_CACHE = 1
+WRITE_DEBUG_CACHE = 0
 
 
 class History(Tool):

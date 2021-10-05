@@ -15,6 +15,7 @@ from instrument.instrument import Instrument
 
 # @todo ClosePositionCommand, CloseAllPositionCommand
 
+
 class PlayCommand(Command):
 
     SUMMARY = "[strategy,notifiers] <empty,notifier-id]> <market-id> to enable strategy-trader(s) or notifiers(s)."

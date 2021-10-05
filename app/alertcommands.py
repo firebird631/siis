@@ -30,6 +30,44 @@ class PriceCrossAlertCommand(Command):
 
         self._strategy_service = strategy_service
 
+    def parse_datetime(self, formatted):
+        if formatted:
+            try:
+                result = None
+                use_utc = False
+
+                if formatted.endswith('Z'):
+                    formatted = formatted.rstrip('Z')
+                    use_utc = True
+
+                if 'T' in formatted:
+                    if formatted.count(':') == 2:
+                        if formatted.count('.') == 1:
+                            result = datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S.%f')
+                        else:
+                            result = datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S')
+                    elif formatted.count(':') == 1:
+                        result = datetime.strptime(formatted, '%Y-%m-%dT%H:%M')
+                    elif formatted.count(':') == 0:
+                        result = datetime.strptime(formatted, '%Y-%m-%dT%H')
+                else:
+                    if formatted.count('-') == 2:
+                        result = datetime.strptime(formatted, '%Y-%m-%d')
+                    elif formatted.count('-') == 1:
+                        result = datetime.strptime(formatted, '%Y-%m')
+                    elif formatted.count('-') == 0:
+                        result = datetime.strptime(formatted, '%Y')
+
+                if result:
+                    if use_utc:
+                        result = result.replace(tzinfo=UTC())
+
+                    return result
+            except:
+                return None
+
+        return None
+
     def execute(self, args):
         if not args:
             return False, "Missing parameters"
@@ -64,9 +102,9 @@ class PriceCrossAlertCommand(Command):
                     price = float(value[1:])
                 elif value == "bid":
                     price_src = Alert.PRICE_SRC_BID
-                elif value == "asj":
-                    price_src = Alert.PRICE_SRC_ASK
                 elif value == "ask":
+                    price_src = Alert.PRICE_SRC_ASK
+                elif value == "ofr":
                     price_src = Alert.PRICE_SRC_ASK
                 elif value == "mid":
                     price_src = Alert.PRICE_SRC_MID
@@ -79,10 +117,10 @@ class PriceCrossAlertCommand(Command):
                 elif value.startswith('@'):
                     # expiry
                     if 'T' in value:
-                        # as local datetime
-                        expiry = datetime.strptime(value[1:], '%Y-%m-%dT%H:%M:%S').timestamp()  # .replace(tzinfo=UTC())
+                        # parse a local or UTC datetime
+                        expiry = self.parse_datetime(value[1:]).timestamp()
                     else:
-                        # relative to now
+                        # parse a duration in seconds, relative to now
                         duration = timeframe_from_str(value[1:])
                         expiry = created + duration
 

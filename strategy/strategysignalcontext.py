@@ -75,7 +75,6 @@ class EntryExit(object):
         self.multi = False
         self.orientation = BaseSignal.ORIENTATION_UP
         self.timeout = 0.0
-        self.max_trades = 0
 
         self.distance = 0.0
         self.distance_type = BaseSignal.PRICE_NONE
@@ -104,10 +103,10 @@ class EntryExit(object):
         if params.get('timeout'):
             # optional timeout
             self.timeout = timeframe_from_str(params.get('timeout', ""))
-        
+
         self.depth = params.get('depth', 1)
         self.multi = params.get('multi', False)
-        self.orientation = BaseSignal.ORIENTATION.get(params.get('orientation', BaseSignal.ORIENTATION_UP))
+        self.orientation = BaseSignal.ORIENTATION.get(params.get('orientation', 'up'))
 
         distance = params.get('distance', "0.0")
 
@@ -143,7 +142,62 @@ class EntryExit(object):
             self.timeout_distance = float(timeout_distance)
             self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
 
-        self.max_trades = max(0, params.get('max-trades', 0))
+    def modify_distance(self, strategy_trader, distance):
+        if type(distance) is str and distance.endswith('%'):
+            # in percent from entry price or limit price
+            self.distance = float(distance[:-1]) * 0.01
+            self.distance_type = BaseSignal.PRICE_FIXED_PCT
+
+        elif type(distance) is str and distance.endswith('pip'):
+            # in pips from entry price or limit price
+            self.distance = float(distance[:-3]) * strategy_trader.instrument.one_pip_means
+            self.distance_type = BaseSignal.PRICE_FIXED_DIST
+
+        else:
+            # in price from entry price or limit price
+            self.distance = float(distance)
+            self.distance_type = BaseSignal.PRICE_FIXED_DIST
+
+    def modify_timeout_distance(self, strategy_trader, timeout_distance):
+        if type(timeout_distance) is str and timeout_distance.endswith('%'):
+            # in percent from entry price or limit price
+            self.timeout_distance = float(timeout_distance[:-1]) * 0.01
+            self.timeout_distance_type = BaseSignal.PRICE_FIXED_PCT
+
+        elif type(timeout_distance) is str and timeout_distance.endswith('pip'):
+            # in pips from entry price or limit price
+            self.timeout_distance = float(timeout_distance[:-3]) * strategy_trader.instrument.one_pip_means
+            self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
+
+        else:
+            # in price from entry price or limit price
+            self.timeout_distance = float(timeout_distance)
+            self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
+
+    def modify_orientation(self, orientation):
+        self.orientation = BaseSignal.ORIENTATION.get(orientation)
+
+    def distance_to_str(self, strategy_trader):
+        if self.distance_type == BaseSignal.PRICE_FIXED_PCT:
+            return "%.2f%%" % (self.distance * 100.0)
+        elif self.distance_type == BaseSignal.PRICE_FIXED_DIST:
+            return strategy_trader.instrument.format_price(self.distance)
+        else:
+            return strategy_trader.instrument.format_price(self.distance)
+
+    def timeout_distance_to_str(self, strategy_trader):
+        if self.timeout_distance_type == BaseSignal.PRICE_FIXED_PCT:
+            return "%.2f%%" % (self.timeout_distance * 100.0)
+        elif self.timeout_distance_type == BaseSignal.PRICE_FIXED_DIST:
+            return strategy_trader.instrument.format_price(self.timeout_distance)
+        else:
+            return strategy_trader.instrument.format_price(self.timeout_distance)
+
+    def orientation_to_str(self):
+        return BaseSignal.ORIENTATION_FROM_STR_MAP.get(self.orientation)
+
+    def type_to_str(self):
+        return BaseSignal.PRICE_FROM_STR_MAP.get(self.type)
 
     def compile(self, strategy_trader):
         if strategy_trader.is_timeframes_based:
@@ -287,6 +341,8 @@ class BaseSignal(StrategySignalContext):
         'vol-sr': PRICE_VOL_SR,
     }
 
+    PRICE_FROM_STR_MAP = {v: k for k, v in PRICE.items()}
+
     ORIENTATION_UP = 1
     ORIENTATION_DN = -1
     ORIENTATION_BOTH = 0
@@ -301,6 +357,12 @@ class BaseSignal(StrategySignalContext):
         'low': ORIENTATION_DN,
         'lower': ORIENTATION_DN,
         'both': ORIENTATION_BOTH
+    }
+
+    ORIENTATION_FROM_STR_MAP = {
+        ORIENTATION_UP: 'up',
+        ORIENTATION_DN: 'down',
+        ORIENTATION_BOTH: 'both'
     }
 
     def __init__(self, name):

@@ -173,26 +173,48 @@ class StrategyTrader(object):
                 if keys[2] not in ('stop-loss', 'dynamic-stop-loss', 'take-profit', 'dynamic-take-profit'):
                     return "Invalid option %s" % keys[2]
 
-                if keys[3] not in ('type', 'distance', 'timeframe', 'direction'):
+                if keys[3] not in ('distance', 'orientation', 'depth', 'multi', 'timeout-distance'):
                     return "Invalid dynamic-stop-loss option %s" % keys[3]
 
-                if keys[2] == 'stop-loss':
-                    if keys[3] == 'distance':
-                        try:
-                            v = float(value)
+                if keys[3] == 'distance':
+                    try:
+                        if type(value) is str and value.endswith('%'):
+                            v = float(value[:-1])
                             if v <= -100:
-                                return "Distance for stop-loss must not exceed 100%"
-                        except ValueError:
-                            return "Distance for stop-loss must be a float"
+                                return "Distance must not exceed 100%"
+                        elif type(value) is str and value.endswith('pip'):
+                            v = float(value[:-3])
+                        else:
+                            v = float(value)
+                    except ValueError:
+                        return "Distance must be a float with an optional suffix '%' or 'pip'"
 
-                elif keys[2] == 'dynamic-stop-loss':
-                    if keys[3] == 'distance':
-                        try:
-                            v = float(value)
+                elif keys[3] == 'timeout-distance':
+                    try:
+                        if type(value) is str and value.endswith('%'):
+                            v = float(value[:-1])
                             if v <= -100:
-                                return "Distance for dynamic-stop-loss must not exceed 100%"
-                        except ValueError:
-                            return "Distance for dynamic-stop-loss must be a float"
+                                return "Timeout distance must not exceed 100%"
+                        elif type(value) is str and value.endswith('pip'):
+                            v = float(value[:-3])
+                        else:
+                            v = float(value)
+                    except ValueError:
+                        return "Timeout distance must be a float with an optional suffix '%' or 'pip'"
+
+                elif keys[3] == "multi":
+                    if value not in (0, 1):
+                        return "Multi must be 0 or 1"
+
+                elif keys[3] == "depth":
+                    try:
+                        v = int(value)
+                    except ValueError:
+                        return "Depth must be an integer"
+
+                elif keys[3] == "orientation":
+                    if value not in ('up', 'upper', 'high', 'higher', 'dn', 'down', 'low', 'lower', 'both'):
+                        return "Orientation must be one of 'up', 'upper', 'high', 'higher', 'dn', 'down', 'low', 'lower', 'both'"
 
         elif keys[0] == 'max-trades':
             try:
@@ -252,45 +274,113 @@ class StrategyTrader(object):
                     context.mode = context.MODE[value]
                     return True
 
-                elif len(keys) == 4:
-                    if keys[2] not in ('stop-loss', 'dynamic-stop-loss', 'take-profit', 'dynamic-take-profit'):
+            elif len(keys) == 4:
+                if keys[2] not in ('stop-loss', 'dynamic-stop-loss', 'take-profit', 'dynamic-take-profit'):
+                    return False
+
+                if keys[3] not in ('distance', 'orientation', 'depth', 'multi', 'timeout-distance'):
+                    return False
+
+                # retrieve the related target
+                ex_entry_exit = None
+
+                if keys[2] == 'stop-loss':
+                    if not hasattr(context, 'stop_loss'):
                         return False
 
-                    if keys[3] not in ('type', 'distance', 'timeframe', 'direction'):
+                    ex_entry_exit = context.stop_loss
+
+                if keys[2] == 'dynamic-stop-loss':
+                    if not hasattr(context, 'dynamic_stop_loss'):
                         return False
 
-                    if keys[2] == 'stop-loss':
-                        if keys[3] == 'distance':
-                            try:
-                                v = float(value)
-                                if v <= -100:
-                                    return False
+                    ex_entry_exit = context.dynamic_stop_loss
 
-                                if not hasattr(context, 'stop_loss'):
-                                    return False
+                if keys[2] == 'take-profit':
+                    if not hasattr(context, 'take_profit'):
+                        return False
 
-                                # @todo apply
+                    ex_entry_exit = context.take_profit
 
-                                return True
+                if keys[2] == 'dynamic-take-profit':
+                    if not hasattr(context, 'dynamic_take_profit'):
+                        return False
 
-                            except ValueError:
+                    ex_entry_exit = context.dynamic_take_profit
+
+                if not ex_entry_exit:
+                    return False
+
+                # update value
+                if keys[3] == 'distance':
+                    try:
+                        if type(value) is str and value.endswith('%'):
+                            v = float(value[:-1])
+                            if v <= -100:
                                 return False
+                        elif type(value) is str and value.endswith('pip'):
+                            v = float(value[:-3])
+                        else:
+                            v = float(value)
+                    except ValueError:
+                        return False
 
-                    elif keys[2] == 'dynamic-stop-loss':
-                        if keys[3] == 'distance':
-                            try:
-                                v = float(value)
-                                if v <= -100:
-                                    return False
+                    if not hasattr(ex_entry_exit, 'modify_distance'):
+                        return False
 
-                                if not hasattr(context, 'dynamic_stop_loss'):
-                                    return False
+                    ex_entry_exit.modify_distance(self, value)
+                    return True
 
-                                # @todo apply
-
-                                return True
-                            except ValueError:
+                elif keys[3] == 'timeout-distance':
+                    try:
+                        if type(value) is str and value.endswith('%'):
+                            v = float(value[:-1])
+                            if v <= -100:
                                 return False
+                        elif type(value) is str and value.endswith('pip'):
+                            v = float(value[:-3])
+                        else:
+                            v = float(value)
+                    except ValueError:
+                        return False
+
+                    if not hasattr(ex_entry_exit, 'modify_timeout_distance'):
+                        return False
+
+                    ex_entry_exit.modify_timeout_distance(self, value)
+                    return True
+
+                elif keys[3] == "multi":
+                    if value not in (0, 1):
+                        return False
+
+                    if not hasattr(ex_entry_exit, 'multi'):
+                        return False
+
+                    ex_entry_exit.multi = True if value else False
+                    return True
+
+                elif keys[3] == "depth":
+                    try:
+                        v = int(value)
+                    except ValueError:
+                        return False
+
+                    if not hasattr(ex_entry_exit, 'depth'):
+                        return False
+
+                    ex_entry_exit.depth = v
+                    return True
+
+                elif keys[3] == "orientation":
+                    if value not in ('up', 'upper', 'high', 'higher', 'dn', 'down', 'low', 'lower', 'both'):
+                        return False
+
+                    if not hasattr(ex_entry_exit, 'modify_orientation'):
+                        return False
+
+                    ex_entry_exit.modify_orientation(value)
+                    return True
 
         elif keys[0] == 'max-trades':
             try:
@@ -511,7 +601,7 @@ class StrategyTrader(object):
         for r in regions:
             if r['name'] in self.strategy.service.regions:
                 try:
-                    # instanciate the region
+                    # instantiate the region
                     region = self.strategy.service.regions[r['name']](0, 0, 0, 0)
                     region.loads(r)
 
