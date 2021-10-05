@@ -3,6 +3,8 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Base strategy take profit methods
 
+import numpy as np
+
 from strategy.strategysignalcontext import BaseSignal
 
 
@@ -44,7 +46,8 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return 0.0
 
         elif data.take_profit.type == data.PRICE_ATR_SR:
-            atr_take_profit = search_atrsr(direction, data.take_profit.timeframe, data.take_profit.orientation, data.take_profit.depth, entry_price, price_epsilon)
+            atr_take_profit = search_atrsr(direction, data.take_profit.timeframe, data.take_profit.orientation,
+                                           data.take_profit.depth, entry_price, price_epsilon)
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
@@ -136,7 +139,8 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return 0.0
 
         elif data.take_profit.type == data.PRICE_ATR_SR:
-            atr_take_profit =  search_atrsr(direction, data.take_profit.timeframe, data.take_profit.orientation, data.take_profit.depth, entry_price, price_epsilon)
+            atr_take_profit =  search_atrsr(direction, data.take_profit.timeframe, data.take_profit.orientation,
+                                            data.take_profit.depth, entry_price, price_epsilon)
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
@@ -292,7 +296,8 @@ def dynamic_take_profit_fixed_dist_short(timeframe, last_price, curr_take_profit
     return take_profit
 
 
-def dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price, depth, orientation, price_epsilon=0.0):
+def dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price, depth,
+                                   orientation, price_epsilon=0.0):
     # search in short direction because be want a price lower than actual take-profit loss but we keep it only if higher than current close price
     take_profit = search_atrsr(-1, timeframe, orientation, depth, curr_take_profit_price, price_epsilon)
 
@@ -310,7 +315,8 @@ def dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price
     # return 0.0
 
 
-def dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_price, depth, orientation, price_epsilon=0.0):
+def dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_price, depth,
+                                    orientation, price_epsilon=0.0):
     # reverse explaination of the long version (revert orientation)
     take_profit = search_atrsr(1, timeframe, -orientation, depth, curr_take_profit_price, price_epsilon)
 
@@ -328,7 +334,8 @@ def dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_pric
     # return 0.0
 
 
-def dynamic_take_profit_cur_atrsr_long(timeframe, entry_price, last_price, curr_take_profit_price, depth, orientation, price_epsilon=0.0):
+def dynamic_take_profit_cur_atrsr_long(timeframe, entry_price, last_price, curr_take_profit_price, depth,
+                                       orientation, price_epsilon=0.0):
     take_profit = 0.0
 
     if timeframe.atrsr and len(timeframe.atrsr._tup):
@@ -341,7 +348,8 @@ def dynamic_take_profit_cur_atrsr_long(timeframe, entry_price, last_price, curr_
     return 0.0
 
 
-def dynamic_take_profit_cur_atrsr_short(timeframe, entry_price, last_price, curr_take_profit_price, depth, orientation, price_epsilon=0.0):
+def dynamic_take_profit_cur_atrsr_short(timeframe, entry_price, last_price, curr_take_profit_price, depth,
+                                        orientation, price_epsilon=0.0):
     take_profit = 0.0
 
     if timeframe.atrsr and len(timeframe.atrsr._tdn):
@@ -354,19 +362,33 @@ def dynamic_take_profit_cur_atrsr_short(timeframe, entry_price, last_price, curr
     return 0.0
 
 
-def dynamic_take_profit(direction, method, timeframe, entry_price, last_price, curr_take_profit_price, depth=1, orientation=0, price_epsilon=0.0, distance=0.0):
+def dynamic_take_profit_volume_sr_long(timeframe, last_price, curr_take_profit_price):
+    # @todo
+    return 0.0
+
+
+def dynamic_take_profit_volume_sr_short(timeframe, last_price, curr_take_profit_price):
+    # @todo
+    return 0.0
+
+
+def dynamic_take_profit(direction, method, timeframe, entry_price, last_price, curr_take_profit_price, depth=1,
+                        orientation=0, price_epsilon=0.0, distance=0.0):
     if direction > 0:
         if method == BaseSignal.PRICE_NONE:
             return 0.0
 
         elif method == BaseSignal.PRICE_ATR_SR:
-            return dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price, depth, orientation, price_epsilon)
+            return dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price, depth,
+                                                  orientation, price_epsilon)
 
         elif method == BaseSignal.PRICE_CUR_ATR_SR:
-            return dynamic_take_profit_cur_atrsr_long(timeframe, entry_price, last_price, curr_take_profit_price, depth, orientation, price_epsilon)
+            return dynamic_take_profit_cur_atrsr_long(timeframe, entry_price, last_price, curr_take_profit_price,
+                                                      depth, orientation, price_epsilon)
 
         elif method == BaseSignal.PRICE_BOLLINGER:
-            return dynamic_take_profit_fixed_bollinger_long(timeframe, last_price, curr_take_profit_price, price_epsilon)
+            return dynamic_take_profit_fixed_bollinger_long(timeframe, last_price, curr_take_profit_price,
+                                                            price_epsilon)
 
         elif method == BaseSignal.PRICE_FIXED_PCT and distance > 0.0:
             return dynamic_take_profit_fixed_pct_long(timeframe, last_price, curr_take_profit_price, distance)
@@ -374,23 +396,32 @@ def dynamic_take_profit(direction, method, timeframe, entry_price, last_price, c
         elif method == BaseSignal.PRICE_FIXED_DIST and distance > 0.0:
             return dynamic_take_profit_fixed_dist_long(timeframe, last_price, curr_take_profit_price, distance)
 
+        elif method == BaseSignal.PRICE_VOL_SR:
+            return dynamic_take_profit_volume_sr_long(timeframe, last_price, curr_take_profit_price)
+
     elif direction < 0:
         if method == BaseSignal.PRICE_NONE:
             return 0.0
 
         elif method == BaseSignal.PRICE_ATR_SR:
-            return dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_price, depth, orientation, price_epsilon)
+            return dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_price, depth,
+                                                   orientation, price_epsilon)
 
         elif method == BaseSignal.PRICE_CUR_ATR_SR:
-            return dynamic_take_profit_cur_atrsr_short(timeframe, entry_price, last_price, curr_take_profit_price, depth, orientation, price_epsilon)
+            return dynamic_take_profit_cur_atrsr_short(timeframe, entry_price, last_price, curr_take_profit_price,
+                                                       depth, orientation, price_epsilon)
 
         elif method == BaseSignal.PRICE_BOLLINGER:
-            return dynamic_take_profit_fixed_bollinger_short(timeframe, last_price, curr_take_profit_price, price_epsilon)
+            return dynamic_take_profit_fixed_bollinger_short(timeframe, last_price, curr_take_profit_price,
+                                                             price_epsilon)
 
         elif method == BaseSignal.PRICE_FIXED_PCT and distance > 0.0:
             return dynamic_take_profit_fixed_pct_short(timeframe, last_price, curr_take_profit_price, distance)
 
         elif method == BaseSignal.PRICE_FIXED_DIST and distance > 0.0:
             return dynamic_take_profit_fixed_dist_short(timeframe, last_price, curr_take_profit_price, distance)
+
+        elif method == BaseSignal.PRICE_VOL_SR:
+            return dynamic_take_profit_volume_sr_short(timeframe, last_price, curr_take_profit_price)
 
     return 0.0

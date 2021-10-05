@@ -3,6 +3,8 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Base strategy stop loss methods
 
+import numpy as np
+
 from strategy.strategysignalcontext import BaseSignal
 
 
@@ -225,7 +227,8 @@ def dynamic_stop_loss_fixed_dist_short(timeframe, last_price, curr_stop_loss_pri
 
 
 def dynamic_stop_loss_atrsr_long(timeframe, last_price, curr_stop_loss_price, depth, orientation, price_epsilon=0.0):
-    # # search in long direction because be want a price greater than actual stop loss but we keep it only if lesser than current close price
+    # search in long direction because be want a price greater than actual stop loss but we keep it only
+    # if lesser than current close price
     # stop_loss = search_atrsr(1, timeframe, orientation, depth, curr_stop_loss_price, price_epsilon)
 
     # if stop_loss < last_price - price_epsilon:
@@ -243,7 +246,7 @@ def dynamic_stop_loss_atrsr_long(timeframe, last_price, curr_stop_loss_price, de
 
 
 def dynamic_stop_loss_atrsr_short(timeframe, last_price, curr_stop_loss_price, depth, orientation, price_epsilon=0.0):
-    # # reverse explaination of the long version
+    # reverse explanation of the long version
     # stop_loss = search_atrsr(-1, timeframe, -orientation, depth, curr_stop_loss_price, price_epsilon)
 
     # if stop_loss > last_price + price_epsilon:
@@ -304,7 +307,7 @@ def dynamic_stop_loss_fixed_hma_long(timeframe, last_price, curr_stop_loss_price
     stop_loss = 0.0
 
     if timeframe.hma and timeframe.hma.hmas is not None and len(timeframe.hma.hmas) > 0:
-        if 1:#timeframe.last_closed:
+        if 1:  # timeframe.last_closed:
             p = timeframe.hma.hmas[-1]
 
             if p > curr_stop_loss_price and p < last_price - price_epsilon:
@@ -317,7 +320,7 @@ def dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_pric
     stop_loss = 0.0
 
     if timeframe.hma and timeframe.hma.hmas is not None and len(timeframe.hma.hmas) > 0:
-        if 1:#timeframe.last_closed:
+        if 1:  # timeframe.last_closed:
             p = timeframe.hma.hmas[-1]
 
             if p < curr_stop_loss_price and p > last_price + price_epsilon:
@@ -326,16 +329,29 @@ def dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_pric
     return stop_loss
 
 
-def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, curr_stop_loss_price, depth=1, orientation=0, price_epsilon=0.0, distance=0.0):
+def dynamic_stop_loss_volume_sr_long(timeframe, last_price, curr_stop_loss_price):
+    # @todo
+    return 0.0
+
+
+def dynamic_stop_loss_volume_sr_short(timeframe, last_price, curr_stop_loss_price):
+    # @todo
+    return 0.0
+
+
+def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, curr_stop_loss_price, depth=1,
+                      orientation=0, price_epsilon=0.0, distance=0.0):
     if direction > 0:
         if method == BaseSignal.PRICE_NONE:
             return 0.0
 
         elif method == BaseSignal.PRICE_ATR_SR:
-            return dynamic_stop_loss_atrsr_long(timeframe, last_price, curr_stop_loss_price, depth, orientation, price_epsilon)
+            return dynamic_stop_loss_atrsr_long(timeframe, last_price, curr_stop_loss_price, depth, orientation,
+                                                price_epsilon)
 
         elif method == BaseSignal.PRICE_CUR_ATR_SR:
-            return dynamic_stop_loss_cur_atrsr_long(timeframe, entry_price, last_price, curr_stop_loss_price, depth, orientation, price_epsilon)
+            return dynamic_stop_loss_cur_atrsr_long(timeframe, entry_price, last_price, curr_stop_loss_price, depth,
+                                                    orientation, price_epsilon)
 
         elif method == BaseSignal.PRICE_BOLLINGER:
             return dynamic_stop_loss_fixed_bollinger_long(timeframe, last_price, curr_stop_loss_price, price_epsilon)
@@ -349,15 +365,20 @@ def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, cur
         elif method == BaseSignal.PRICE_HMA and distance > 0.0:
             return dynamic_stop_loss_fixed_hma_long(timeframe, last_price, curr_stop_loss_price, price_epsilon)
 
+        elif method == BaseSignal.PRICE_VOL_SR:
+            return dynamic_stop_loss_volume_sr_long(timeframe, last_price, curr_stop_loss_price)
+
     elif direction < 0:
         if method == BaseSignal.PRICE_NONE:
             return 0.0
 
         elif method == BaseSignal.PRICE_ATR_SR:
-            return dynamic_stop_loss_atrsr_short(timeframe, last_price, curr_stop_loss_price, depth, orientation, price_epsilon)
+            return dynamic_stop_loss_atrsr_short(timeframe, last_price, curr_stop_loss_price, depth, orientation,
+                                                 price_epsilon)
 
         elif method == BaseSignal.PRICE_CUR_ATR_SR:
-            return dynamic_stop_loss_cur_atrsr_short(timeframe, entry_price, last_price, curr_stop_loss_price, depth, orientation, price_epsilon)
+            return dynamic_stop_loss_cur_atrsr_short(timeframe, entry_price, last_price, curr_stop_loss_price, depth,
+                                                     orientation, price_epsilon)
 
         elif method == BaseSignal.PRICE_BOLLINGER:
             return dynamic_stop_loss_fixed_bollinger_short(timeframe, last_price, curr_stop_loss_price, price_epsilon)
@@ -370,5 +391,8 @@ def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, cur
 
         elif method == BaseSignal.PRICE_HMA:
             return dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_price, price_epsilon)
+
+        elif method == BaseSignal.PRICE_VOL_SR:
+            return dynamic_stop_loss_volume_sr_short(timeframe, last_price, curr_stop_loss_price)
 
     return 0.0
