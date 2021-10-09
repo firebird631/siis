@@ -116,7 +116,7 @@ class AuthRestAPI(resource.Resource):
         return json.dumps({}).encode("utf-8")
 
     def _expired(self, uid):
-        # cleanup here or could disconnnect related websocket
+        # cleanup here or could disconnect related websocket
         self.sessions.remove(uid)
 
 

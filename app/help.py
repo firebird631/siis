@@ -117,6 +117,8 @@ def display_cli_help():
     Terminal.inst().message("  --prefetch Alias for --initial-fetch.")
     Terminal.inst().message("  --store-ohlc Write OHLCs to DB. Default not stored.")
     Terminal.inst().message("  --store-trade Write tick/trade/quote to filesystem. Default not stored.")
+    Terminal.inst().message("  --monitor Enable Web monitor HTTP socket and WebSocket. Default port is 8080. Websocket port is +1.")
+    Terminal.inst().message("  --monitor-port Override the default or configured monitor HTTP port. Websocket is +1.")
     Terminal.inst().message("")
     Terminal.inst().message("Tools :")
     Terminal.inst().message("  --tool=<tool-name> Execute a specific tool.")

@@ -4,23 +4,15 @@
 # service worker for web monitoring
 
 import copy
-import json
-import time, datetime
+import logging
 import threading
-import traceback
-import collections
 
 from twisted.internet import reactor
 from twisted.internet.error import ReactorAlreadyRunning, ReactorNotRunning
+
 from common.service import Service
-
-from monitor.streamable import Streamable
-
-from strategy.strategy import Strategy
-
 from config import utils
 
-import logging
 logger = logging.getLogger('siis.monitor')
 error_logger = logging.getLogger('siis.error.monitor')
 traceback_logger = logging.getLogger('siis.traceback.monitor')
@@ -35,6 +27,7 @@ class MonitorService(Service):
     MODE_HTTP_WEBSOCKET = 1
 
     REACTOR = 0  # global twisted reactor ref counter
+    REACTOR_THREAD = None  # global twisted reactor thread
 
     PERM_NONE = 0
     PERM_DEBUG = 1
@@ -101,7 +94,7 @@ class MonitorService(Service):
         self._host = self._monitoring_config.get('host', '127.0.0.1')
         self._port = self._monitoring_config.get('port', '8080')
 
-        # port can be overrided by command line --monitor-port= arg
+        # port can be override by command line --monitor-port= arg
         if options.get('monitor-port'):
             self._port = options['monitor-port']
 
@@ -209,7 +202,10 @@ class MonitorService(Service):
         if cls.REACTOR == 0 and not reactor.running:
             try:
                 logger.debug("Twisted Reactor Use : Starting...")
-                reactor.run(installSignalHandlers=installSignalHandlers)
+
+                # start a reactor thread
+                cls.REACTOR_THREAD = threading.Thread(target=reactor.run, args=(installSignalHandlers,)).start()
+                # reactor.run(installSignalHandlers=installSignalHandlers)
                 cls.REACTOR += 1
             except ReactorAlreadyRunning:
                 # Ignore error about reactor already running
@@ -230,7 +226,11 @@ class MonitorService(Service):
         # if cls.REACTOR == 0 and reactor.running:
         #     logger.debug("Twisted Reactor Stopping...")
         #     try:
-        #         reactor.stop()
+        #         reactor.callFromThread(reactor.stop)
+        #
+        #         if cls.REACTOR_THREAD:
+        #             cls.REACTOR_THREAD.join()
+        #             cls.REACTOR_THREAD = None
         #     except ReactorNotRunning:
         #         pass
 
@@ -243,7 +243,11 @@ class MonitorService(Service):
         if reactor.running:
             logger.debug("Twisted Reactor Stopping...")
             try:
-                reactor.stop()
+                reactor.callFromThread(reactor.stop)
+
+                if cls.REACTOR_THREAD:
+                    cls.REACTOR_THREAD.join()
+                    cls.REACTOR_THREAD = None
             except ReactorNotRunning:
                 pass
 

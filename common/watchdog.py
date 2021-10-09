@@ -44,7 +44,7 @@ class WatchdogService(Service):
     def remove_service(self, service):
         with self._mutex:
             if service and service in self._services:
-                self._service.remove(service)
+                self._services.remove(service)
 
     def run_watchdog(self):
         for service in self._services:
@@ -58,17 +58,18 @@ class WatchdogService(Service):
 
                 for k, d in self._pending.items():
                     if now - d[0] > WatchdogService.PING_TIMEOUT:
-                        error_logger.fatal("Pid %s not joinable : %s for %s seconds !" % (k, d[1] or "undefined", WatchdogService.PING_TIMEOUT))
+                        error_logger.fatal("Pid %s not reachable : %s for %s seconds !" % (
+                            k, d[1] or "undefined", WatchdogService.PING_TIMEOUT))
                         rm_it.append(k)
 
                         # self.notify(Signal.SIGNAL_WATCHDOG_TIMEOUT, k, (k, d[1] or "undefined", WatchdogService.PING_TIMEOUT))
 
                 if rm_it:
                     for it in rm_it:
-                        # don't want continous signal
+                        # don't want continuous signal
                         del self._pending[it]
 
-        # autorestart
+        # auto-restart
         self._timer = threading.Timer(WatchdogService.TIMER_DELAY, self.run_watchdog)
         self._timer.name = "watchdog"
         self._timer.start()
@@ -91,7 +92,7 @@ class WatchdogService(Service):
                 del self._pending[pid]
 
     def service_timeout(self, service, msg):
-        error_logger.fatal("Service %s not joinable : %s !" % (service, msg))
+        error_logger.fatal("Service %s not reachable : %s !" % (service, msg))
         # self.notify(Signal.SIGNAL_WATCHDOG_UNREACHABLE, k, (service, msg))
 
     def gen_pid(self, ident):
