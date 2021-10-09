@@ -298,7 +298,8 @@ def dynamic_take_profit_fixed_dist_short(timeframe, last_price, curr_take_profit
 
 def dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price, depth,
                                    orientation, price_epsilon=0.0):
-    # search in short direction because be want a price lower than actual take-profit loss but we keep it only if higher than current close price
+    # search in short direction because be want a price lower than actual take-profit loss but we keep it
+    # only if higher than current close price
     take_profit = search_atrsr(-1, timeframe, orientation, depth, curr_take_profit_price, price_epsilon)
 
     if take_profit > last_price + price_epsilon:
@@ -317,7 +318,7 @@ def dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price
 
 def dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_price, depth,
                                     orientation, price_epsilon=0.0):
-    # reverse explaination of the long version (revert orientation)
+    # reverse explanation of the long version (revert orientation)
     take_profit = search_atrsr(1, timeframe, -orientation, depth, curr_take_profit_price, price_epsilon)
 
     if take_profit < last_price - price_epsilon:

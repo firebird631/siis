@@ -93,7 +93,7 @@ class KrakenWatcher(Watcher):
         self._ws_own_trades = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
         self._ws_open_orders = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
 
-        self._last_ws_hearbeat = 0.0
+        self._last_ws_heartbeat = 0.0
 
         self._got_orders_init_snapshot = False
         self._got_trades_init_snapshot = False
@@ -109,7 +109,7 @@ class KrakenWatcher(Watcher):
                 self._ready = False
                 self._connecting = True
 
-                # initial snapshot and cahe for WS
+                # initial snapshot and cache for WS
                 self._got_orders_init_snapshot = False
                 self._got_trades_init_snapshot = False
 
@@ -121,7 +121,7 @@ class KrakenWatcher(Watcher):
                 self._ws_own_trades = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
                 self._ws_open_orders = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
 
-                self._last_ws_hearbeat = 0.0
+                self._last_ws_heartbeat = 0.0
 
                 identity = self.service.identity(self._name)
 
@@ -174,12 +174,9 @@ class KrakenWatcher(Watcher):
                         try:
                             self._connector.ws.start()
                         except RuntimeError:
-                            logger.debug("%s WS already started..." % (self.name))
+                            logger.debug("%s WS already started..." % self.name)
 
-                        #
                         # user data only in real mode
-                        #
-
                         if not self.service.paper_mode:
                             ws_token = self._connector.get_ws_token()
 
@@ -198,7 +195,7 @@ class KrakenWatcher(Watcher):
 
                         # retry the previous subscriptions
                         if self._watched_instruments:
-                            logger.debug("%s re-subscribe to markets..." % (self.name))
+                            logger.debug("%s re-subscribe to markets..." % self.name)
 
                             pairs = []
 
@@ -230,7 +227,7 @@ class KrakenWatcher(Watcher):
 
                                     # @todo order book
 
-                                    logger.debug("%s re-subscribe to markets successed" % (self.name))
+                                    logger.debug("%s re-subscribe to markets succeed" % self.name)
 
                                 except Exception as e:
                                     error_logger.error(repr(e))
@@ -240,7 +237,7 @@ class KrakenWatcher(Watcher):
                         self._ready = True
                         self._connecting = False
 
-                        logger.debug("%s connection successed" % (self.name))
+                        logger.debug("%s connection succeed" % self.name)
 
             except Exception as e:
                 error_logger.error(repr(e))
@@ -268,7 +265,7 @@ class KrakenWatcher(Watcher):
 
                 self.stream_connection_status(False)
 
-                logger.debug("%s disconnected" % (self.name))
+                logger.debug("%s disconnected" % self.name)
 
             except Exception as e:
                 error_logger.error(repr(e))
@@ -378,7 +375,7 @@ class KrakenWatcher(Watcher):
             pairs = []
 
             # live data
-            pairs.append(instrument['wsname'])    
+            pairs.append(instrument['wsname'])
 
             if pairs:
                 self._connector.ws.subscribe_public(
@@ -455,28 +452,42 @@ class KrakenWatcher(Watcher):
             return False
 
         # disconnected for user socket in real mode, and auto-reconnect failed
-        # if self._reconnect_user_ws and not self.service.paper_mode:
-        #     ws_token = self._connector.get_ws_token()
+        # mostly in case of EGeneral:Internal Error or ESession:Invalid session
+        if self._reconnect_user_ws and not self.service.paper_mode:
+            with self._mutex:
+                try:
+                    self._connector.ws.stop_private_socket('ownTrades')
+                    self._connector.ws.stop_private_socket('openOrders')
 
-        #     self._connector.ws.stop_private_socket('ownTrades')
-        #     self._connector.ws.stop_private_socket('openOrders')
+                    self._reconnect_user_ws = False
 
-        #     if ws_token and ws_token.get('token'):
-        #         self._connector.ws.subscribe_private(
-        #             token=ws_token['token'],
-        #             subscription='ownTrades',
-        #             callback=self.__on_own_trades
-        #         )
+                    self._ws_own_trades = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
+                    self._ws_open_orders = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
 
-        #         self._connector.ws.subscribe_private(
-        #             token=ws_token['token'],
-        #             subscription='openOrders',
-        #             callback=self.__on_open_orders
-        #         )
+                    ws_token = self._connector.get_ws_token()
 
-        #     self._reconnect_user_ws = False
+                    if ws_token and ws_token.get('token'):
+                        self._connector.ws.subscribe_private(
+                            token=ws_token['token'],
+                            subscription='ownTrades',
+                            callback=self.__on_own_trades
+                        )
 
-        # disconnected for instruments socket in real mode, and auto-reconnect failed
+                        self._connector.ws.subscribe_private(
+                            token=ws_token['token'],
+                            subscription='openOrders',
+                            callback=self.__on_open_orders
+                        )
+
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
+
+                    # @todo could need a delay
+                    # @todo could need to send a connected signal
+                    self._reconnect_user_ws = True
+
+        # disconnected for instruments socket, and auto-reconnect failed
         # @todo reconnect instruments if necessary
 
         #
@@ -846,7 +857,7 @@ class KrakenWatcher(Watcher):
     def __on_own_trades(self, data):
         if isinstance(data, list) and data[1] == "ownTrades":
             if not self._got_trades_init_snapshot:
-                # ignore the initial snapshot (got them throught REST api), but keep open positions for the cache
+                # ignore the initial snapshot (got them through REST api), but keep open positions for the cache
                 for entry in data[0]:
                     # only single object per entry
                     trade_id, trade_data = next(iter(entry.items()))

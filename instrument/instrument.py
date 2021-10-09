@@ -276,9 +276,12 @@ class Instrument(object):
     __slots__ = '_watchers', '_market_id', '_symbol', '_alias', '_tradeable', '_currency', \
                 '_trade_quantity', '_trade_max_factor', '_trade_quantity_mode', '_leverage', \
                 '_market_bid', '_market_ask', '_last_update_time', \
-                '_vol24h_base', '_vol24h_quote', '_fees', '_size_limits', '_price_limits', '_notional_limits', \
-                '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', '_base', '_quote', '_trade', '_orders', '_hedging', '_expiry', \
-                '_value_per_pip', '_one_pip_means', '_evening_session', '_overnight_session', '_week_session'
+                '_vol24h_base', '_vol24h_quote', '_fees', \
+                '_size_limits', '_price_limits', '_notional_limits', \
+                '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', \
+                '_base', '_quote', '_trade', '_orders', \
+                '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', \
+                '_evening_session', '_overnight_session', '_week_session'
 
     def __init__(self, market_id, symbol, alias=None):
         self._watchers = {}
@@ -325,9 +328,14 @@ class Instrument(object):
         self._one_pip_means = 1.0
         self._value_per_pip = 1.0
 
-        self._evening_session = (0.0, 24*60*60.0-0.001)  # evening session from 00h00m00s000ms to 23h59m59s999ms in UTC
-        self._overnight_session = None  # no overnight session by default else a tuple of two durations in seconds
-        self._week_session = None       # no week session mean every day markets, else a tuple of two float timedelta in seconds
+        # evening session from 00h00m00s000ms to 23h59m59s999ms in UTC
+        self._evening_session = (0.0, 24*60*60.0-0.001)
+
+        # no overnight session by default else a tuple of two durations in seconds
+        self._overnight_session = None
+
+        # no week session mean every day markets, else a tuple of two float timedelta in seconds
+        self._week_session = None
 
         self._wanted = []  # list of wanted timeframe before be ready (its only for initialization)
 
@@ -473,6 +481,14 @@ class Instrument(object):
     @trade_quantity_mode.setter
     def trade_quantity_mode(self, trade_quantity_mode):
         self._trade_quantity_mode = trade_quantity_mode
+
+    def trade_quantity_mode_to_str(self):
+        if self._trade_quantity_mode == Instrument.TRADE_QUANTITY_DEFAULT:
+            return "default"
+        elif self._trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
+            return "quote-to-base"
+        else:
+            return "unknown"
 
     #
     # market session

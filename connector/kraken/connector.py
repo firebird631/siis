@@ -16,7 +16,7 @@ import hmac
 from datetime import datetime, timedelta
 from common.utils import UTC
 
-from monitor.service import MonitorService
+from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME, APP_RELEASE
 
 from .ws import WssClient
 
@@ -118,6 +118,7 @@ class Connector(object):
         "Subscription ohlc requires interval"
 
     Private WS errors :
+        "EAPI:Invalid nonce"
         "EAccount:Invalid permissions"
         "EAuth:Account temporary disabled"
         "EAuth:Account unconfirmed"
@@ -142,6 +143,7 @@ class Connector(object):
         "EService:Market in limit_only mode"
         "EService:Market in post_only mode"
         "EService:Unavailable"
+        "ESession:Invalid session"
         "ETrade:Invalid request"
     """
 
@@ -191,10 +193,11 @@ class Connector(object):
         # Prepare HTTPS session
         if self._session is None:
             self._session = requests.Session()
-            self._session.headers.update({'user-agent': 'siis-' + '1.0'})
+            self._session.headers.update({'user-agent': "%s-%s" % (APP_SHORT_NAME,
+                                                                   '.'.join([str(x) for x in APP_VERSION]))})
 
         if self._ws is None and use_ws:
-            # only subscribe to avalaibles instruments
+            # only subscribe to available instruments
             self._ws = WssClient(self.__api_key, self.__api_secret)
 
     def disconnect(self):
@@ -269,7 +272,7 @@ class Connector(object):
 
     def get_historical_trades(self, symbol, from_date, to_date=None, limit=None):
         """
-        @note Per chunck of 1000.
+        @note Per chunk of 1000.
         """
         params = {
             'pair': symbol,
@@ -293,7 +296,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
-                        raise ValueError("Kraken historical trades : Multiple failures after consecutives errors 502.")
+                        raise ValueError("Kraken historical trades : Multiple failures after consecutive errors 502.")
 
                     continue
                 else:
@@ -391,7 +394,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.CANDLES_HISTORY_MAX_RETRY:
-                        raise ValueError("Kraken historical candles : Multiple failures after consecutives errors 502.")
+                        raise ValueError("Kraken historical candles : Multiple failures after consecutive errors 502.")
 
                     continue
                 else:
@@ -566,8 +569,8 @@ class Connector(object):
         return {}
 
     def get_closed_orders(self, from_date, to_date=None, trades=False, userref=None):
-        # trades = inclure les trades ou non dans la requête (facultatif. par défaut = faux) 
-        # userref = restreindre les résultats à un identifiant de référence utilisateur donné (facult
+        # trades = inclure les trades ou non dans la requete (facultatif. par defaut = faux)
+        # userref = restreindre les resultats à un identifiant de référence utilisateur donne (facultatif)
         params = {}
 
         if trades:
@@ -641,7 +644,8 @@ class Connector(object):
 
     def get_trades_history(self, trade_type='all', start_date=None, end_date=None):
         """
-        @note Unless otherwise stated, costs, fees, prices, and volumes are in the asset pair's scale, not the currency's scale.
+        @note Unless otherwise stated, costs, fees, prices, and volumes are in the asset pair's scale,
+            not the currency's scale.
         @note Times given by trade tx ids are more accurate than unix timestamps.
         """
         # type = type of trade (optional)
@@ -687,12 +691,12 @@ class Connector(object):
         #     net = net profit/loss of closed portion of position (quote currency, quote currency scale)
         #     trades = list of closing trades for position (if available)
 
-        if data['error']:
-            logger.error("query trades history: %s" % ', '.join(data['error']))
+        if result['error']:
+            logger.error("query trades history: %s" % ', '.join(result['error']))
             return {}
 
-        if data['result']:
-            return data['result'].get('trades', {})
+        if result['result']:
+            return result['result'].get('trades', {})
 
         return {}
 

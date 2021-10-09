@@ -13,7 +13,6 @@ import logging
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
 from twisted.internet import reactor, ssl
 from twisted.internet.protocol import ReconnectingClientFactory
-from twisted.internet.error import ReactorAlreadyRunning
 
 from monitor.service import MonitorService
 
@@ -238,7 +237,7 @@ class KrakenSocketManager(threading.Thread):
         hostname = url[6:]
 
         factory = self.factories[id_]
-        options = ssl.optionsForClientTLS(hostname=hostname) # for TLS SNI
+        options = ssl.optionsForClientTLS(hostname=hostname)  # for TLS SNI
         self._conns[id_] = connectWS(factory, options)
 
     def add_private_connection(self, id_, url):
@@ -256,14 +255,14 @@ class KrakenSocketManager(threading.Thread):
         hostname = url[6:]
 
         factory = self.factories[id_]
-        options = ssl.optionsForClientTLS(hostname=hostname) # for TLS SNI
+        options = ssl.optionsForClientTLS(hostname=hostname)  # for TLS SNI
         self._private_conns[id_] = connectWS(factory, options)
 
     def send_subscribe(self, id_, subscription, pair):
         factory = self.factories[id_]
 
         if subscription and pair and factory:
-            if not subscription in factory.subscriptions:
+            if subscription not in factory.subscriptions:
                 factory.subscriptions[subscription] = set()
 
             factory.subscriptions[subscription].update(pair)
@@ -284,7 +283,7 @@ class KrakenSocketManager(threading.Thread):
         factory = self.factories[id_]
 
         if subscription and pair and factory:
-            if not subscription in factory.subscriptions:
+            if subscription not in factory.subscriptions:
                 factory.subscriptions[subscription] = set()
 
             factory.subscriptions[subscription] = factory.subscriptions[subscription].difference(pair)
@@ -366,7 +365,7 @@ class WssClient(KrakenSocketManager):
     
     Public sockets are grouped by event (trade, ticker, spread, book),
     then adding a subscription only create one socket per type, and share the same
-    accross the differents instruments pairs.
+    across the different instruments pairs.
 
     Private socket are grouped by event (ownTrades, myOrders) and are for any instruments pairs.
 
@@ -397,7 +396,7 @@ class WssClient(KrakenSocketManager):
     def subscribe_public(self, subscription, pair, callback):
         id_ = "_".join([subscription])
 
-        if not id_ in self.factories:
+        if id_ not in self.factories:
             self._start_socket(id_, subscription, pair, callback)
         else:
             reactor.callFromThread(self.send_subscribe, id_, subscription, pair)
