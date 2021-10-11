@@ -115,6 +115,15 @@ class Command(object):
 
         return args, tab_pos
 
+    def manage_results(self, results, message=None):
+        if results is None or 'error' not in results:
+            return False, "Invalid command results"
+
+        if results['error']:
+            return False, results['messages']
+
+        return True, results['messages'] + message if message else results['messages']
+
 
 class CommandsHandler(object):
     """

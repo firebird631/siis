@@ -12,6 +12,7 @@ from strategy.strategypositiontrade import StrategyPositionTrade
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
 
 import logging
+
 logger = logging.getLogger('siis.strategy.cmd.tradeentry')
 error_logger = logging.getLogger('siis.error.strategy.cmd.tradeentry')
 
@@ -47,7 +48,8 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         results['error'] = True
 
     if method not in ('market', 'limit', 'limit-percent', 'trigger', 'best-1', 'best+1', 'best-2', 'best+2'):
-        results['messages'].append("Invalid price method (market, limit, limit-percent, trigger, best-1, best+1, best-1, best+2.")
+        results['messages'].append("Invalid price method (market, limit, limit-percent, trigger, best-1, best+1, "
+                                   "best-1, best+2.")
         results['error'] = True
 
     if method in ('limit', 'limit-percent') and not limit_price:
@@ -78,7 +80,8 @@ def cmd_trade_entry(strategy, strategy_trader, data):
     elif method == 'best-2':
         # limit as first maker price + current spread : second ask price in long, second bid price in short
         order_type = Order.ORDER_LIMIT
-        limit_price = strategy_trader.instrument.open_exec_price(direction) + strategy_trader.instrument.market_spread * direction
+        limit_price = strategy_trader.instrument.open_exec_price(direction) + \
+            strategy_trader.instrument.market_spread * direction
 
     elif method == 'best+1':
         # limit as first maker price : first bid price in long, first ask price in short
@@ -88,7 +91,8 @@ def cmd_trade_entry(strategy, strategy_trader, data):
     elif method == 'best+2':
         # limit as first maker price + current spread : second bid price in long, second ask price in short
         order_type = Order.ORDER_LIMIT
-        limit_price = strategy_trader.instrument.open_exec_price(direction, True) - strategy_trader.instrument.market_spread * direction
+        limit_price = strategy_trader.instrument.open_exec_price(direction, True) - \
+            strategy_trader.instrument.market_spread * direction
 
     else:
         order_type = Order.ORDER_MARKET
@@ -112,52 +116,63 @@ def cmd_trade_entry(strategy, strategy_trader, data):
 
         # adjust max quantity according to free asset of quote, and convert in asset base quantity
         if trader.has_asset(strategy_trader.instrument.quote):
-            qty = strategy_trader.instrument.trade_quantity*quantity_rate
+            qty = strategy_trader.instrument.trade_quantity * quantity_rate
 
             if trader.has_quantity(strategy_trader.instrument.quote, qty):
                 order_quantity = strategy_trader.instrument.adjust_quantity(qty / price)  # and adjusted to 0/max/step
             else:
                 results['error'] = True
-                results['messages'].append("Not enought free quote asset %s, has %s but need %s" % (
-                        strategy_trader.instrument.quote,
-                        strategy_trader.instrument.format_quantity(trader.asset(strategy_trader.instrument.quote).free),
-                        strategy_trader.instrument.format_quantity(qty)))
+                results['messages'].append("Not enough free quote asset %s, has %s but need %s" % (
+                    strategy_trader.instrument.quote,
+                    strategy_trader.instrument.format_quantity(trader.asset(strategy_trader.instrument.quote).free),
+                    strategy_trader.instrument.format_quantity(qty)))
 
     elif strategy_trader.instrument.has_margin and strategy_trader.instrument.has_position:
         trade = StrategyPositionTrade(timeframe)
 
         if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
+            order_quantity = strategy_trader.instrument.adjust_quantity(
+                strategy_trader.instrument.trade_quantity * quantity_rate / price)
         else:
-            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+            order_quantity = strategy_trader.instrument.adjust_quantity(
+                strategy_trader.instrument.trade_quantity * quantity_rate)
 
         if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
             results['error'] = True
-            results['messages'].append("Not enought margin, need %s" % (trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
+            results['messages'].append("Not enough margin, need %s" % (
+                trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
 
     elif strategy_trader.instrument.has_margin and strategy_trader.instrument.indivisible_position:
         trade = StrategyIndMarginTrade(timeframe)
 
         if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
+            order_quantity = strategy_trader.instrument.adjust_quantity(
+                strategy_trader.instrument.trade_quantity * quantity_rate / price)
         else:
-            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+            order_quantity = strategy_trader.instrument.adjust_quantity(
+                strategy_trader.instrument.trade_quantity * quantity_rate)
 
         if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
             results['error'] = True
-            results['messages'].append("Not enought margin, need %s" % (trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
+            results['messages'].append("Not enough margin, need %s" % (trader.get_needed_margin(
+                strategy_trader.instrument.market_id, order_quantity, price),))
 
-    elif strategy_trader.instrument.has_margin and not strategy_trader.instrument.indivisible_position and not strategy_trader.instrument.has_position:
+    elif (strategy_trader.instrument.has_margin and not strategy_trader.instrument.indivisible_position and
+          not strategy_trader.instrument.has_position):
+
         trade = StrategyMarginTrade(timeframe)
 
         if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate/price)
+            order_quantity = strategy_trader.instrument.adjust_quantity(
+                strategy_trader.instrument.trade_quantity * quantity_rate / price)
         else:
-            order_quantity = strategy_trader.instrument.adjust_quantity(strategy_trader.instrument.trade_quantity*quantity_rate)
+            order_quantity = strategy_trader.instrument.adjust_quantity(
+                strategy_trader.instrument.trade_quantity * quantity_rate)
 
         if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
             results['error'] = True
-            results['messages'].append("Not enought margin, need %s" % (trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
+            results['messages'].append("Not enough margin, need %s" % (
+                trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
 
     else:
         results['error'] = True
@@ -184,9 +199,11 @@ def cmd_trade_entry(strategy, strategy_trader, data):
 
     elif stop_loss_price_mode == "pip":
         if direction > 0:
-            stop_loss = strategy_trader.instrument.adjust_price(order_price - stop_loss * strategy_trader.instrument.value_per_pip)
+            stop_loss = strategy_trader.instrument.adjust_price(order_price - stop_loss *
+                                                                strategy_trader.instrument.value_per_pip)
         elif direction < 0:
-            stop_loss = strategy_trader.instrument.adjust_price(order_price + stop_loss * strategy_trader.instrument.value_per_pip)
+            stop_loss = strategy_trader.instrument.adjust_price(order_price + stop_loss *
+                                                                strategy_trader.instrument.value_per_pip)
 
     if take_profit_price_mode == "percent":
         if direction > 0:
@@ -196,9 +213,11 @@ def cmd_trade_entry(strategy, strategy_trader, data):
 
     elif take_profit_price_mode == "pip":
         if direction > 0:
-            take_profit = strategy_trader.instrument.adjust_price(order_price + take_profit * strategy_trader.instrument.value_per_pip)
+            take_profit = strategy_trader.instrument.adjust_price(order_price + take_profit *
+                                                                  strategy_trader.instrument.value_per_pip)
         elif direction < 0:
-            take_profit = strategy_trader.instrument.adjust_price(order_price - take_profit * strategy_trader.instrument.value_per_pip)
+            take_profit = strategy_trader.instrument.adjust_price(order_price - take_profit *
+                                                                  strategy_trader.instrument.value_per_pip)
 
     #
     # check stop-loss and take-profit and reject if not consistent
@@ -206,39 +225,45 @@ def cmd_trade_entry(strategy, strategy_trader, data):
 
     if stop_loss < 0.0:
         results['error'] = True
-        results['messages'].append("Rejected trade on %s:%s because the stop-loss is negative" % (strategy.identifier, strategy_trader.instrument.market_id))
+        results['messages'].append("Rejected trade on %s:%s because the stop-loss is negative" % (
+            strategy.identifier, strategy_trader.instrument.market_id))
 
         return results
 
     if take_profit < 0.0:
         results['error'] = True
-        results['messages'].append("Rejected trade on %s:%s because the take-profit is negative" % (strategy.identifier, strategy_trader.instrument.market_id))
+        results['messages'].append("Rejected trade on %s:%s because the take-profit is negative" % (
+            strategy.identifier, strategy_trader.instrument.market_id))
 
         return results
 
     if direction > 0:
         if stop_loss > 0.0 and stop_loss > order_price:
             results['error'] = True
-            results['messages'].append("Rejected trade on %s:%s because the stop-loss is above the entry price" % (strategy.identifier, strategy_trader.instrument.market_id))
+            results['messages'].append("Rejected trade on %s:%s because the stop-loss is above the entry price" % (
+                strategy.identifier, strategy_trader.instrument.market_id))
 
             return results
 
         if take_profit > 0.0 and take_profit < order_price:
             results['error'] = True
-            results['messages'].append("Rejected trade on %s:%s because the take-profit is below the entry price" % (strategy.identifier, strategy_trader.instrument.market_id))
+            results['messages'].append("Rejected trade on %s:%s because the take-profit is below the entry price" % (
+                strategy.identifier, strategy_trader.instrument.market_id))
 
             return results
 
     elif direction < 0:
         if stop_loss > 0.0 and stop_loss < order_price:
             results['error'] = True
-            results['messages'].append("Rejected trade on %s:%s because the stop-loss is below the entry price" % (strategy.identifier, strategy_trader.instrument.market_id))
+            results['messages'].append("Rejected trade on %s:%s because the stop-loss is below the entry price" % (
+                strategy.identifier, strategy_trader.instrument.market_id))
 
             return results
 
         if take_profit > 0.0 and take_profit > order_price:
             results['error'] = True
-            results['messages'].append("Rejected trade on %s:%s because the take-profit is above the entry price" % (strategy.identifier, strategy_trader.instrument.market_id))
+            results['messages'].append("Rejected trade on %s:%s because the take-profit is above the entry price" % (
+                strategy.identifier, strategy_trader.instrument.market_id))
 
             return results
 
@@ -247,14 +272,15 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         trade.set_user_trade()
 
         if entry_timeout:
-            # entry timeout expiration defined (could be overrided by trade context if specified)
+            # entry timeout expiration defined (could be override by trade context if specified)
             trade.entry_timeout = entry_timeout
 
         if context:
             if not strategy_trader.set_trade_context(trade, context):
                 # add an error result message
                 results['error'] = True
-                results['messages'].append("Rejected trade on %s:%s because the context was not found" % (strategy.identifier, strategy_trader.instrument.market_id))
+                results['messages'].append("Rejected trade on %s:%s because the context was not found" % (
+                    strategy.identifier, strategy_trader.instrument.market_id))
 
                 return results
 
@@ -271,12 +297,14 @@ def cmd_trade_entry(strategy, strategy_trader, data):
             strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
 
             # add a success result message
-            results['messages'].append("Created trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
+            results['messages'].append("Created trade %i on %s:%s" % (trade.id, strategy.identifier,
+                                                                      strategy_trader.instrument.market_id))
         else:
             strategy_trader.remove_trade(trade)
 
             # add an error result message
             results['error'] = True
-            results['messages'].append("Rejected trade on %s:%s" % (strategy.identifier, strategy_trader.instrument.market_id))
+            results['messages'].append("Rejected trade on %s:%s" % (strategy.identifier,
+                                                                    strategy_trader.instrument.market_id))
 
     return results

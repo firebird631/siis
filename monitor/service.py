@@ -244,12 +244,16 @@ class MonitorService(Service):
             logger.debug("Twisted Reactor Stopping...")
             try:
                 reactor.callFromThread(reactor.stop)
-
-                if cls.REACTOR_THREAD:
-                    cls.REACTOR_THREAD.join()
-                    cls.REACTOR_THREAD = None
             except ReactorNotRunning:
                 pass
+
+            if cls.REACTOR_THREAD:
+                try:
+                    cls.REACTOR_THREAD.join()
+                except:
+                    pass
+
+                cls.REACTOR_THREAD = None
 
     #
     # processing

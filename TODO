@@ -93,7 +93,6 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
             - pour binance.com c'est un peu lent et ça consomme du crédit API
             - pour bitmex.com on a get_historical_trades(...)
             - pour ig.com pas de question à se poser on regarde l'état de la position, et éventuellement les ordres actifs qu'on a fetched
-            - pour kraken.com trade_history et order_info
 
 #63 Mode backup urgency :
     - Instance démarrée à coté pour fermer les trades en profit et se fermer une fois tous les trades fermés
@@ -112,6 +111,9 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 #########
 
 #85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, l'intérêt c'est d'avoir le trigger coté bot, pour ne pas bloquer les fonds coté broker
+
+#117 A chaque fois que un espace (separateur de parametre) est inséré, lors d'une commande, proposer l'entrée suivante
+    de HELP de la commande, en fonction de l'index
 
 
 #########################

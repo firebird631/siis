@@ -175,7 +175,7 @@ class EntryExit(object):
             self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
 
     def modify_orientation(self, orientation):
-        self.orientation = BaseSignal.ORIENTATION.get(orientation)
+        self.orientation = BaseSignal.ORIENTATION.get(orientation, BaseSignal.ORIENTATION_UP)
 
     def distance_to_str(self, strategy_trader):
         if self.distance_type == BaseSignal.PRICE_FIXED_PCT:
@@ -365,6 +365,29 @@ class BaseSignal(StrategySignalContext):
         ORIENTATION_BOTH: 'both'
     }
 
+    TRADE_QUANTITY_NORMAL = 0                # use normal trade quantity from the instrument
+    TRADE_QUANTITY_SPECIFIC = 1              # use the context defined quantity, not the one from the instrument
+    TRADE_QUANTITY_REINVEST_MAX_LAST = 2     # reuse the last exited quantity for the next trades
+    TRADE_QUANTITY_INC_STEP = 3              # at each exit increase the quantity of a fixed size
+    # for any of the strategy-traders, share the total amount and increment by step of specified value
+    TRADE_QUANTITY_GLOBAL_SHARE = 4
+
+    TRADE_QUANTITY = {
+        'normal': TRADE_QUANTITY_NORMAL,
+        'specific': TRADE_QUANTITY_SPECIFIC,
+        'reinvest-max-last': TRADE_QUANTITY_REINVEST_MAX_LAST,
+        'increment-step': TRADE_QUANTITY_INC_STEP,
+        'global-share': TRADE_QUANTITY_GLOBAL_SHARE
+    }
+
+    TRADE_QUANTITY_FROM_STR_MAP = {
+        TRADE_QUANTITY_NORMAL: 'normal',
+        TRADE_QUANTITY_SPECIFIC: 'specific',
+        TRADE_QUANTITY_REINVEST_MAX_LAST: 'reinvest-max-last',
+        TRADE_QUANTITY_INC_STEP: 'increment-step',
+        TRADE_QUANTITY_GLOBAL_SHARE: 'global-share'
+    }
+
     def __init__(self, name):
         super().__init__()
 
@@ -390,6 +413,10 @@ class BaseSignal(StrategySignalContext):
 
         self.max_trades = 0  # >0 limit the number of trade for the context
 
+        self.trade_quantity_type = BaseSignal.TRADE_QUANTITY_NORMAL  # mode
+        self.trade_quantity = 0.0       # last realized max trade exit quantity or specific value
+        self.trade_quantity_step = 0.0  # step of increment
+
     def loads(self, strategy_trader, params):
         self.max_trades = max(0, params.get('max-trades', 0))
 
@@ -403,6 +430,47 @@ class BaseSignal(StrategySignalContext):
 
         return result
 
+    def compute_quantity(self, instrument):
+        if self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_NORMAL:
+            return instrument.trade_quantity
+        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_SPECIFIC:
+            return self.trade_quantity
+        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_REINVEST_MAX_LAST:
+            return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
+        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_INC_STEP:
+            return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
+        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_GLOBAL_SHARE:
+            return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
+        else:
+            return 0.0
+
+    def update_quantity(self, instrument, trade_quantity):
+        if self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_REINVEST_MAX_LAST:
+            if self.trade_quantity <= 0.0:
+                # initialize to instrument quantity
+                self.trade_quantity = self.trade_quantity
+
+            if trade_quantity > self.trade_quantity:
+                self.trade_quantity = trade_quantity
+
+        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_INC_STEP:
+            if self.trade_quantity <= 0.0:
+                # initialize to instrument quantity
+                self.trade_quantity = instrument.trade_quantity
+
+            if self.trade_quantity_step > 0.0:
+                # add the increment by one step
+                self.trade_quantity += self.trade_quantity_step
+
+        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_GLOBAL_SHARE:
+            if self.trade_quantity <= 0.0:
+                # initialize to instrument quantity
+                self.trade_quantity = instrument.trade_quantity
+
+            if trade_quantity > self.trade_quantity:
+                # set the new trade global share quantity
+                self.trade_quantity = trade_quantity
+
     def mode_to_str(self):
         if self.mode == BaseSignal.MODE_NONE:
             return 'none'
@@ -412,3 +480,30 @@ class BaseSignal(StrategySignalContext):
             return 'trade'
         
         return 'unknown'
+
+    def trade_quantity_type_to_str(self):
+        return BaseSignal.TRADE_QUANTITY_FROM_STR_MAP.get(self.trade_quantity_type)
+
+    def modify_trade_quantity_type(self, trade_quantity_type, value=0.0):
+        """
+        @param trade_quantity_type str String trade quantity type.
+        @param value trade quantity for specific type, or step value
+        """
+        trade_quantity_type = BaseSignal.TRADE_QUANTITY.get(trade_quantity_type)
+
+        if trade_quantity_type == BaseSignal.TRADE_QUANTITY_NORMAL:
+            self.trade_quantity = 0.0
+
+        elif trade_quantity_type == BaseSignal.TRADE_QUANTITY_SPECIFIC:
+            if value >= 0.0:
+                self.trade_quantity = value
+
+        elif trade_quantity_type == BaseSignal.TRADE_QUANTITY_INC_STEP:
+            if value > 0.0:
+                self.trade_quantity_step = value
+
+        elif trade_quantity_type == BaseSignal.TRADE_QUANTITY_GLOBAL_SHARE:
+            if value > 0.0:
+                self.trade_quantity_step = value
+
+        self.trade_quantity_type = trade_quantity_type

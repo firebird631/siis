@@ -135,7 +135,7 @@ def cmd_trade_modify(strategy, strategy_trader, data):
                         trade.direction) + data['take-profit']
 
                 elif method == "price" and data['take-profit'] >= 0.0:
-                    take_profit_price = 0.0
+                    take_profit_price = data['take-profit']
 
                 else:
                     results['error'] = True

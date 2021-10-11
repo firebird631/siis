@@ -11,6 +11,7 @@ from strategy.strategymargintrade import StrategyMarginTrade
 from strategy.strategypositiontrade import StrategyPositionTrade
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
 
+
 def cmd_trade_assign(strategy, strategy_trader, data):
     """
     Assign a free quantity of an asset to a newly created trade according data on given strategy_trader.
@@ -64,7 +65,7 @@ def cmd_trade_assign(strategy, strategy_trader, data):
     trader = strategy.trader()
 
     if not trader.has_quantity(strategy_trader.instrument.base, quantity):
-        results['messages'].append("No enought free asset quantity.")
+        results['messages'].append("No enough free asset quantity.")
         results['error'] = True
 
     # @todo trade type
@@ -100,7 +101,8 @@ def cmd_trade_assign(strategy, strategy_trader, data):
         if not strategy_trader.set_trade_context(trade, context):
             # add an error result message
             results['error'] = True
-            results['messages'].append("Rejected trade on %s:%s because the context was not found" % (strategy.identifier, strategy_trader.instrument.market_id))
+            results['messages'].append("Rejected trade on %s:%s because the context was not found" % (
+                strategy.identifier, strategy_trader.instrument.market_id))
 
             return results
 
@@ -109,6 +111,7 @@ def cmd_trade_assign(strategy, strategy_trader, data):
     # update strategy-trader
     strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
 
-    results['messages'].append("Assigned trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
+    results['messages'].append("Assigned trade %i on %s:%s" % (
+        trade.id, strategy.identifier, strategy_trader.instrument.market_id))
 
     return results

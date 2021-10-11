@@ -13,12 +13,17 @@ from trader.trader import Trader
 from common.utils import timeframe_from_str
 from instrument.instrument import Instrument
 
+
 # @todo ClosePositionCommand, CloseAllPositionCommand
 
 
 class PlayCommand(Command):
-
-    SUMMARY = "[strategy,notifiers] <empty,notifier-id]> <market-id> to enable strategy-trader(s) or notifiers(s)."
+    SUMMARY = "[strategy|notifiers] <empty,notifier-id> <market-id> to enable strategy-trader(s) or notifiers(s)."
+    HELP = (
+        "param1: [strategy|notifier]",
+        "param2: <notifier-id> for notifier only",
+        "param3: <market-id> for strategy only (optional)",
+    )
 
     def __init__(self, strategy_service, notifier_service):
         super().__init__('play', None)
@@ -43,7 +48,7 @@ class PlayCommand(Command):
 
         elif args[0] == 'notifiers':
             if len(args) == 1:
-                self.notifier_service.set_activity(True)
+                self._notifier_service.set_activity(True)
                 return True, "Activated all notifiers"
 
             elif len(args) == 2:
@@ -72,8 +77,12 @@ class PlayCommand(Command):
 
 
 class PauseCommand(Command):
-
-    SUMMARY = "[strategy,notifiers] <empty,notifier-id]> <market-id> to disable strategy-trader(s) or notifiers(s)."
+    SUMMARY = "[strategy|notifiers] <notifier-id> <market-id> to disable strategy-trader(s) or notifiers(s)."
+    HELP = (
+        "param1: [strategy|notifier]",
+        "param2: <notifier-id> for notifier only",
+        "param3: <market-id> for strategy only (optional)",
+    )
 
     def __init__(self, strategy_service, notifier_service):
         super().__init__('pause', None)
@@ -98,9 +107,9 @@ class PauseCommand(Command):
 
         elif args[0] == 'notifiers':
             if len(args) == 1:
-                self.notifier_service.set_activity(False)
+                self._notifier_service.set_activity(False)
                 return True, "Paused all notifiers"
-                
+
             elif len(args) == 2:
                 notifier = self._notifier_service.notifier(args[1])
                 if notifier:
@@ -127,8 +136,12 @@ class PauseCommand(Command):
 
 
 class InfoCommand(Command):
-
-    SUMMARY = "[strategy,trader,notifiers] <empty,notifier-id]> <market-id> to get info on strategy-trader(s), trader or notifier(s)."
+    SUMMARY = "[strategy|notifiers] <notifier-id> <market-id> to get info on strategy-trader(s), trader or notifier(s)."
+    HELP = (
+        "param1: [strategy|notifier]",
+        "param2: <notifier-id> for notifier only",
+        "param3: <market-id> for strategy only (optional)",
+    )
 
     def __init__(self, strategy_service, notifier_service):
         super().__init__('info', None)
@@ -178,8 +191,11 @@ class InfoCommand(Command):
 
 
 class SetAffinityCommand(Command):
-
-    SUMMARY = "<market-id> to modify the affinity per market."
+    SUMMARY = "<market-id> [0..100] to modify the affinity per market."
+    HELP = (
+        "param1: <market-id> for specific (optional)",
+        "param2: <affinity> 0..100 integer",
+    )
 
     def __init__(self, strategy_service):
         super().__init__('set-affinity', 'SETAFF')
@@ -250,8 +266,12 @@ class SetAffinityCommand(Command):
 
 
 class SetOptionCommand(Command):
-
     SUMMARY = "any or specify <market-id> to modify the option per market."
+    HELP = (
+        "param1: <market-id> for specific (optional)",
+        "param2: <name.of.the.parameter> String of the parameter separated by dot",
+        "param3: <value> Value of the parameter (integer, decimal or string)",
+    )
 
     INTEGER_RE = re.compile(r'^[+-]{0,1}[0-9]+$')
     FLOAT_RE = re.compile(r'(?i)^\s*[+-]?(?:inf(inity)?|nan|(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s*$')
@@ -280,7 +300,7 @@ class SetOptionCommand(Command):
                 return ""
 
             if SetOptionCommand.INTEGER_RE.match(v) is not None:
-                #int ?
+                # int ?
                 try:
                     return int(v)
                 except ValueError:
@@ -332,8 +352,11 @@ class SetOptionCommand(Command):
 
 
 class SetFrozenQuantityCommand(Command):
-
-    SUMMARY = "<market-id> to modify the frozen quantity per asset."
+    SUMMARY = "<asset-name> to modify the frozen quantity per asset."
+    HELP = (
+        "param1: <asset-name> Asset name",
+        "param2: <quantity> Quantity",
+    )
 
     def __init__(self, trader_service):
         super().__init__('set-frozen', 'SETFRZ')
@@ -372,8 +395,21 @@ class SetFrozenQuantityCommand(Command):
 
 
 class LongCommand(Command):
-
     SUMMARY = "to manually create to a new trade in LONG direction"
+    HELP = (
+        "param1: <market-id>",
+        "param2: [l|L][@|+|-]<entry-price> Use @ for a limit, + or - for order book depth, " \
+        "else enter at market (optional)",
+        "param3: [sl|SL][@|%|!]<stop-loss-price> @ for a stop, % for distance in percent below " \
+        "market or limit price, ! for distance in pips below market or limit price (optional)",
+        "param4: [tp|TP][@|%|!]<take-profit-price> @ for a limit, % for distance in percent above " \
+        "market or limit price, ! for distance in pips above market or limit price (optional)",
+        "param5: [']<timeframe> Related timeframe (1m, 4h, 1d...) (optional)",
+        "param6: [-]<context-id> Related context identifier to manage the trade (optional)",
+        "param7: [*]<decimal> or <decimal>% Quantity rate factor or rate in percent (optional)",
+        "param8: [/]<timeframe> Entry timeout timeframe (1m, 4h, 1d..) (optional)",
+        "param9: [x]<decimal> Manual leverage if supported (optional)",
+    )
 
     def __init__(self, strategy_service):
         super().__init__('long', 'L')
@@ -384,7 +420,7 @@ class LongCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        # ie: ":long BTCUSDT L@8500 SL@8300 TP@9600 1.0"
+        # ie: ":long BTCUSDT L@8500 SL%5 TP@9600"
         market_id = None
 
         # direction base on command name
@@ -482,7 +518,7 @@ class LongCommand(Command):
             return False, "Take-profit must be greater than limit price"
 
         if quantity_rate <= 0.0:
-            return False, "Quantity must be non empty"
+            return False, "Quantity rate must be greater than zero"
 
         self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, {
             'market-id': market_id,
@@ -513,9 +549,22 @@ class LongCommand(Command):
 
 
 class ShortCommand(Command):
-
     SUMMARY = "to manually create to a new trade in SHORT direction"
-   
+    HELP = (
+        "param1: <market-id>",
+        "param2: [l|L][@|+|-]<entry-price> Use @ for a limit, + or - for order book depth, " \
+        "else enter at market (optional)",
+        "param3: [sl|SL][@|%|!]<stop-loss-price> @ for a stop, % for distance in percent above market or " \
+        "limit price, ! for distance in pips above market price (optional)",
+        "param4: [tp|TP][@|%|!]<take-profit-price> @ for a limit, % for distance in percent below market or " \
+        " limit price, ! for distance in pips below market or limit price (optional)",
+        "param5: [']<timeframe> Related timeframe (1m, 4h, 1d...) (optional)",
+        "param6: [-]<context-id> Related context identifier to manage the trade (optional)",
+        "param7: [*]<decimal> or <decimal>% Quantity rate factor or rate in percent (optional)",
+        "param8: [/]<timeframe> Entry timeout timeframe (1m, 4h, 1d..) (optional)",
+        "param9: [x]<decimal> Manual leverage if supported (optional)",
+    )
+
     def __init__(self, strategy_service):
         super().__init__('short', 'S')
 
@@ -616,7 +665,7 @@ class ShortCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        if limit_price and stop_loss and stop_loss_price_mode == "price"  and stop_loss < limit_price:
+        if limit_price and stop_loss and stop_loss_price_mode == "price" and stop_loss < limit_price:
             return False, "Stop-loss must be greater than limit price"
 
         if limit_price and take_profit and take_profit_price_mode == "price" and take_profit > limit_price:
@@ -654,8 +703,11 @@ class ShortCommand(Command):
 
 
 class CloseCommand(Command):
-
     SUMMARY = "to manually close a managed trade at market or limit"
+    HELP = (
+        "param1: <market-id> Market identifier",
+        "param2: <trade-id> Trade identifier",
+    )
 
     def __init__(self, strategy_service):
         super().__init__('close', 'C')
@@ -699,8 +751,12 @@ class CloseCommand(Command):
 
 
 class CleanCommand(Command):
-
-    SUMMARY = "to manually force to remove a managed trade and all its related orders without reducing its remaining quantity"
+    SUMMARY = "to manually force to remove a managed trade and all its related orders without reducing its " \
+              "remaining quantity"
+    HELP = (
+        "param1: <market-id> Market identifier",
+        "param2: <trade-id> Trade identifier",
+    )
 
     def __init__(self, strategy_service):
         super().__init__('clean-trade', 'CT')
@@ -744,13 +800,12 @@ class CleanCommand(Command):
 
 
 class DynamicStopLossOperationCommand(Command):
-    
     SUMMARY = "to manually add a dynamic-stop-loss operation on a trade"
     HELP = (
-        "param1: market-id",
-        "param2: trade-id",
-        "param3: trigger-price",
-        "param4: stop-loss-price"
+        "param1: <market-id> Market identifier",
+        "param2: <trade-id> Trade identifier",
+        "param3: <trigger-price> Trigger price",
+        "param4: <stop-loss-price> Stop-loss price",
     )
 
     def __init__(self, strategy_service):
@@ -806,11 +861,11 @@ class DynamicStopLossOperationCommand(Command):
 
 
 class RemoveOperationCommand(Command):
-
     SUMMARY = "to manually remove an operation from a trade"
     HELP = (
-        "param1: market-id",
-        "param2: trade-id"
+        "param1: <market-id> Market identifier",
+        "param2: <trade-id> Trade identifier"
+        "param3: <operation-id> Operation identifier"
     )
 
     def __init__(self, strategy_service):
@@ -826,7 +881,7 @@ class RemoveOperationCommand(Command):
         trade_id = None
 
         action = 'del-op'
-        operation_id = None        
+        operation_id = None
 
         # ie ":D EURUSD 1 5"
         if len(args) < 3:
@@ -836,7 +891,7 @@ class RemoveOperationCommand(Command):
             market_id = args[0]
 
             trade_id = int(args[1])
-            operation_id = int(args[2])   
+            operation_id = int(args[2])
         except Exception:
             return False, "Invalid parameters"
 
@@ -861,9 +916,9 @@ class RemoveOperationCommand(Command):
 class CheckTradeCommand(Command):
     SUMMARY = "to manually recheck a trade"
     HELP = (
-        "param1: market-id",
-        "param2: trade-id",
-        "param3: optional 'repair'"
+        "param1: <market-id> Market identifier",
+        "param2: <trade-id> Trade identifier",
+        "param3: [repair] To repair as possible the trade (optional)",
     )
 
     def __init__(self, strategy_service):
@@ -912,15 +967,15 @@ class CheckTradeCommand(Command):
 
 
 class ModifyStopLossCommand(Command):
-
     SUMMARY = "to manually modify the stop-loss of a trade"
     HELP = (
-        "param1: market-id",
-        "param2: trade-id",
-        "param3: stop-loss-price",
-        "param4 (optional) : add force to create an order or modify the position, not only have a local value",
+        "param1: <market-id> Market identifier",
+        "param2: <trade-id> Trade identifier",
+        "param3: [ep|m|EP|M][+|-]<stop-loss-price><%> EP: relative to entry-price, M to market-price, " \
+        "else to last stop price, + or - for relative change, in price or percent",
+        "param4: [force] to force to realize the order if none (optional)",
     )
-   
+
     def __init__(self, strategy_service):
         super().__init__('stop-loss', 'SL')
 
@@ -1005,13 +1060,13 @@ class ModifyStopLossCommand(Command):
 
 
 class ModifyTakeProfitCommand(Command):
-
     SUMMARY = "to manually modify the take-profit of a trade"
     HELP = (
-        "param1: market-id",
-        "param2: trade-id",
-        "param3: take-profit-price",
-        "param4 (optional) : add force to create an order or modify the position, not only have a local value",
+        "param1: <market-id> Market identifier",
+        "param2: <trade-id> Trade identifier",
+        "param3: [ep|m|EP|M][+|-]<take-profit-price><%> EP: relative to entry-price, M to market-price, " \
+        "else to last take-profit price, + or - for relative change, in price or percent",
+        "param4: [force] to force to realize the order if none (optional)",
     )
 
     def __init__(self, strategy_service):
@@ -1086,7 +1141,7 @@ class ModifyTakeProfitCommand(Command):
         })
 
         return True, []
-    
+
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
             strategy = self._strategy_service.strategy()
@@ -1097,11 +1152,10 @@ class ModifyTakeProfitCommand(Command):
 
 
 class TradeInfoCommand(Command):
-
-    SUMMARY = "to get operation info of a specific trade"
+    SUMMARY = "to get operations info of a specific trade"
     HELP = (
-        "param1: market-id",
-        "param2: trade-id"
+        "param1: <market-id> Market identifier",
+        "param2: <trade-id> Trade identifier",
     )
 
     def __init__(self, strategy_service):
@@ -1149,8 +1203,17 @@ class TradeInfoCommand(Command):
 
 
 class AssignCommand(Command):
-
     SUMMARY = "to manually assign a quantity of asset to a new trade in LONG direction"
+    HELP = (
+        "param1: <market-id> Market identifier",
+        "param2: [L|S|long|short] Direction (optional) (default long)",
+        "param3: [EP@]<entry-price>",
+        "param4: [SL@]<stop-loss-price> (optional)",
+        "param5: [TP@]<take-profit-price> (optional)",
+        "param6: [']<timeframe> (optional)",
+        "param7: [-]<context-id> (optional)",
+        "last: <quantity>",
+    )
 
     def __init__(self, strategy_service):
         super().__init__('assign', 'AS')
@@ -1174,7 +1237,7 @@ class AssignCommand(Command):
         context = None
 
         if len(args) < 2:
-            return False, "Missing parameters. Need at least entry price and quantiy"
+            return False, "Missing parameters. Need at least entry price and quantity"
 
         try:
             market_id = args[0]
@@ -1244,7 +1307,6 @@ class AssignCommand(Command):
 
 
 class UserSaveCommand(Command):
-
     # @todo
     SUMMARY = "to save user data now (strategy traders states, options, regions, trades)"
 
@@ -1258,9 +1320,12 @@ class UserSaveCommand(Command):
 
 
 class SetQuantityCommand(Command):
-
     SUMMARY = "to change the traded quantity and scale factor per any or specific market"
-    
+    HELP = (
+        "param1: <market-id> Market identifier (optional)",
+        "param2: <quantity> Quantity base size",
+    )
+
     def __init__(self, strategy_service):
         super().__init__('set-quantity', 'SETQTY')
 
@@ -1354,9 +1419,11 @@ class SetQuantityCommand(Command):
 
 
 class CloseAllTradeCommand(Command):
-
     SUMMARY = "to close any current positions and trades (on a specified market or any)"
-    
+    HELP = (
+        "param1: <market-id> Market identifier (optional)",
+    )
+
     def __init__(self, strategy_service):
         super().__init__('!closeall', '!CA')
 
@@ -1386,6 +1453,9 @@ class CloseAllTradeCommand(Command):
 
 class CancelAllPendingTradeCommand(Command):
     SUMMARY = "to cancel any pending trades, having empty realized quantity (on a specified market or any)"
+    HELP = (
+        "param1: <market-id> Market identifier (optional)",
+    )
 
     def __init__(self, strategy_service):
         super().__init__('!cancelall', '!CCA')
@@ -1415,9 +1485,11 @@ class CancelAllPendingTradeCommand(Command):
 
 
 class SellAllAssetCommand(Command):
-
     SUMMARY = "to sell at market, immediately any quantity available of free assets (for a specified market or any)"
-    
+    HELP = (
+        "param1: <market-id> Market identifier (optional)",
+    )
+
     def __init__(self, trader_service):
         super().__init__('!sellall', '!SA')
 
@@ -1446,10 +1518,13 @@ class SellAllAssetCommand(Command):
 
 
 class CancelAllOrderCommand(Command):
-
     SUMMARY = "to cancel any orders, immediately (for a specified market or any)"
+    HELP = (
+        "param1: <market-id> Market identifier (optional)",
+    )
+
     CHOICES = ("spot-entry", "spot-exit", "spot", "margin-entry", "margin-exit", "margin", "entry", "exit")
-    
+
     def __init__(self, trader_service):
         super().__init__('!rmallorder', '!CAO')
 
@@ -1503,16 +1578,20 @@ class CancelAllOrderCommand(Command):
         if len(args) <= 1:
             trader = self._trader_service.trader()
             if trader:
-                return self.iterate(0, list(CancelAllOrderCommand.CHOICES) + trader.symbols_ids(), args, tab_pos, direction)
+                return self.iterate(0, list(CancelAllOrderCommand.CHOICES) + trader.symbols_ids(), args, tab_pos,
+                                    direction)
         elif len(args) > 1:
-            return self.iterate(len(args)-1, CancelAllOrderCommand.CHOICES, args, tab_pos, direction)
+            return self.iterate(len(args) - 1, CancelAllOrderCommand.CHOICES, args, tab_pos, direction)
 
         return args, 0
 
 
 class CancelOrderCommand(Command):
-
     SUMMARY = "<market-id> <order-id> to cancel a specific order, immediately"
+    HELP = (
+        "param1: <market-id> Market identifier",
+        "param2: <order-id> Order identifier",
+    )
 
     def __init__(self, trader_service):
         super().__init__('!rmorder', '!RMO')
@@ -1542,17 +1621,17 @@ class CancelOrderCommand(Command):
         if len(args) <= 1:
             trader = self._trader_service.trader()
             if trader:
-                return self.iterate(0, list(CancelAllOrderCommand.CHOICES) + trader.symbols_ids(), args, tab_pos, direction)
+                return self.iterate(0, list(CancelAllOrderCommand.CHOICES) + trader.symbols_ids(), args, tab_pos,
+                                    direction)
         elif len(args) > 1:
-            return self.iterate(len(args)-1, CancelAllOrderCommand.CHOICES, args, tab_pos, direction)
+            return self.iterate(len(args) - 1, CancelAllOrderCommand.CHOICES, args, tab_pos, direction)
 
         return args, 0
 
 
 class ReconnectCommand(Command):
-
     SUMMARY = "to force to reconnect"
-    
+
     def __init__(self, watcher_service):
         super().__init__('reconnect', 'RECON')
 
@@ -1608,8 +1687,69 @@ class RecheckCommand(Command):
         return args, 0
 
 
-class RestartCommand(Command):
+class SetGlobalShareCommand(Command):
+    SUMMARY = "to enable, disable or configure the global share mode"
+    HELP = (
+        "param1: [on|off] Enable or disable for any strategy-traders",
+        "param2: <step-size> step size",
+        "param3: <context-id> related context identifier or any (optional)",
+    )
 
+    def __init__(self, strategy_service):
+        super().__init__('set-global-share', 'SGS')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if len(args) < 1:
+            return False, "Missing parameters"
+
+        if len(args) > 3:
+            return False, "Invalid parameters"
+
+        if args[0] not in ('on', 'off'):
+            return False, "First parameter must be 'on' or 'off'"
+
+        action = 'global-share' if args[0] == 'on' else 'normal'
+        context = None
+        step = 0.0
+
+        if action == 'global-share':
+            if len(args) < 2:
+                return False, "Step value must be specified"
+
+            try:
+                step = float(args[1])
+            except ValueError:
+                return False, "Value must be decimal"
+
+            if len(args) == 3:
+                context = args[2]
+
+        elif action == 'normal':
+            if len(args) == 2:
+                context = args[1]
+
+        results = self._strategy_service.command(Strategy.COMMAND_QUANTITY_GLOBAL_SHARE, {
+            'action': action,
+            'context': context,
+            'step': step
+        })
+
+        return self.manage_results(results,
+                                   "Modify global share for context %s" % context if context else
+                                   "Modify global share for any contexts")
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, ('on', 'off'), args, tab_pos, direction)
+
+        return args, 0
+
+
+class RestartCommand(Command):
     SUMMARY = "to force to restart an instrument of the strategy"
 
     def __init__(self, strategy_service):
@@ -1642,7 +1782,8 @@ class RestartCommand(Command):
         return args, 0
 
 
-def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service, monitor_service, notifier_service):
+def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service, monitor_service,
+                              notifier_service):
     #
     # global
     #
@@ -1659,6 +1800,8 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(ReconnectCommand(watcher_service))
     commands_handler.register(RestartCommand(strategy_service))
     commands_handler.register(RecheckCommand(strategy_service))
+
+    commands_handler.register(SetGlobalShareCommand(strategy_service))
 
     #
     # strategy, order operations

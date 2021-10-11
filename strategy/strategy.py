@@ -25,12 +25,14 @@ from strategy.process import alphaprocess
 from strategy.command.strategycmdexitalltrade import cmd_strategy_exit_all_trade
 from strategy.command.strategycmdmodifyall import cmd_strategy_trader_modify_all
 from strategy.command.strategycmdcancelallpendingtrade import cmd_strategy_cancel_all_pending_trade
+from strategy.command.strategycmdsetglobalshare import cmd_strategy_set_global_share
 
 from strategy.command.strategycmdstrategytraderinfo import cmd_strategy_trader_info
 from strategy.command.strategycmdstrategytradermodify import cmd_strategy_trader_modify
 from strategy.command.strategycmdstrategytraderstream import cmd_strategy_trader_stream
 from strategy.command.strategycmdstrategytraderrestart import cmd_strategy_trader_restart
-from strategy.command.strategycmdstrategytraderrecheck import cmd_strategy_trader_recheck, cmd_strategy_trader_recheck_all
+from strategy.command.strategycmdstrategytraderrecheck import cmd_strategy_trader_recheck, \
+    cmd_strategy_trader_recheck_all
 
 from strategy.command.strategycmdtradeassign import cmd_trade_assign
 from strategy.command.strategycmdtradeclean import cmd_trade_clean
@@ -66,14 +68,15 @@ class Strategy(Runnable):
 
     COMMAND_INFO = 1
     COMMAND_TRADE_EXIT_ALL = 2  # close any trade for any market or only for a specific market-id
-    COMMAND_TRADE_CANCEL_ALL_PENDING = 3  # cancel any trade with empty realized quantity for any market or only for a specific market-id
+    COMMAND_TRADE_CANCEL_ALL_PENDING = 3  # cancel any trade with empty realized quantity for any markets or specific
+    COMMAND_QUANTITY_GLOBAL_SHARE = 4     # global share quantity
 
     COMMAND_TRADE_ENTRY = 10    # manually create a new trade
     COMMAND_TRADE_MODIFY = 11   # modify an existing trade
     COMMAND_TRADE_EXIT = 12     # exit (or eventually cancel if not again filled) an existing trade
     COMMAND_TRADE_INFO = 13     # get and display manual trade info (such as listing operations)
     COMMAND_TRADE_ASSIGN = 14   # manually assign a quantity to a new trade
-    COMMAND_TRADE_CLEAN = 15    # remove/clean an existing trade without filling the remaining quantity or in case of management issue
+    COMMAND_TRADE_CLEAN = 15    # remove an existing trade without filling remaining quantity neither exiting
     COMMAND_TRADE_CHECK = 16    # recheck a trade status
 
     COMMAND_TRADER_MODIFY = 20
@@ -85,10 +88,10 @@ class Strategy(Runnable):
     COMMAND_TRADER_RECHECK_ALL = 26
 
     def __init__(self, name,
-            strategy_service, watcher_service, trader_service,
-            strategy_trader_clazz,
-            options, default_parameters=None, user_parameters=None,
-            processor=alphaprocess):
+                 strategy_service, watcher_service, trader_service,
+                 strategy_trader_clazz,
+                 options, default_parameters=None, user_parameters=None,
+                 processor=alphaprocess):
 
         super().__init__("st-%s" % name)
 
@@ -302,7 +305,7 @@ class Strategy(Runnable):
             # retrieve the watcher instance
             watcher = self._watcher_service.watcher(watcher_name)
             if watcher is None or not watcher.connected or not watcher.ready:
-               return False
+                return False
 
         return True
 
@@ -352,21 +355,25 @@ class Strategy(Runnable):
             self._condition.notify()
             self._condition.release()
         else:
-            Terminal.inst().action("Unable to join strategy %s - %s for %s seconds" % (self._name, self._identifier, timeout,), view='content')
+            Terminal.inst().action("Unable to join strategy %s - %s for %s seconds" % (
+                self._name, self._identifier, timeout,), view='content')
 
     def watchdog(self, watchdog_service, timeout):
         if self._condition.acquire(timeout=timeout):
-            self._ping = (watchdog_service.gen_pid(self._thread.name if self._thread else "unknown"), watchdog_service, False)
+            self._ping = (watchdog_service.gen_pid(self._thread.name if self._thread else "unknown"),
+                          watchdog_service, False)
             self._condition.notify()
             self._condition.release()
         else:
             watchdog_service.service_timeout(self._thread.name if self._thread else "unknown",
-                    "Unable to join appaliance %s - %s for %s seconds" % (self._name, self._identifier, timeout))
+                                             "Unable to join appliance %s - %s for %s seconds" % (
+                                                 self._name, self._identifier, timeout))
 
     def pong(self, timestamp, pid, watchdog_service, msg):
         if msg:
             # display strategy activity
-            Terminal.inst().action("Strategy worker %s - %s is alive %s" % (self._name, self._identifier, msg), view='content')
+            Terminal.inst().action("Strategy worker %s - %s is alive %s" % (
+                self._name, self._identifier, msg), view='content')
 
         if watchdog_service:
             watchdog_service.service_pong(pid, timestamp, msg)
@@ -396,8 +403,10 @@ class Strategy(Runnable):
                 logger.error("Watcher %s not found during strategy initialize" % watcher_name)
                 continue
 
-            # help with watcher matching method, symbols match to the broker market-id or string mapping with placeholder
-            strategy_symbols = watcher.matching_symbols_set(watcher_conf.get('symbols'), watcher.available_instruments())
+            # help with watcher matching method, symbols match to the broker market-id or
+            # string mapping with placeholder
+            strategy_symbols = watcher.matching_symbols_set(watcher_conf.get('symbols'),
+                                                            watcher.available_instruments())
 
             # create an instrument per mapped symbol where to locally store received data
             for symbol in strategy_symbols:
@@ -447,7 +456,8 @@ class Strategy(Runnable):
                             instrument.set_quote(market.quote)
 
                             instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
-                            instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
+                            instrument.set_notional_limits(market.min_notional, market.max_notional,
+                                                           market.step_notional)
                             instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
 
                             instrument.set_fees(market.maker_fee, market.taker_fee)
@@ -566,7 +576,7 @@ class Strategy(Runnable):
             if instrument.get('market-id', '') == symbol:
                 return instrument
 
-            # wildchar mapping of the instrument name
+            # wildcard mapping of the instrument name
             if k.startswith('*'):
                 if symbol.endswith(k[1:]):
                     return instrument
@@ -587,10 +597,12 @@ class Strategy(Runnable):
             for k, instrument in self._instruments.items():
                 names.append(instrument.market_id)
 
-                if instrument.symbol and instrument.symbol != instrument.market_id and instrument.symbol != instrument.alias:
+                if (instrument.symbol and instrument.symbol != instrument.market_id and
+                        instrument.symbol != instrument.alias):
                     names.append(instrument.symbol)
 
-                if instrument.alias and instrument.alias != instrument.market_id and instrument.alias != instrument.symbol:
+                if (instrument.alias and instrument.alias != instrument.market_id and
+                        instrument.alias != instrument.symbol):
                     names.append(instrument.alias)
 
             names.sort()
@@ -655,7 +667,8 @@ class Strategy(Runnable):
 
         # or look with mapping of the name
         for k, instr in self._instruments.items():
-            if symbol_or_market_id == instr.market_id or symbol_or_market_id == instr.symbol or symbol_or_market_id == instr.alias:
+            if (symbol_or_market_id == instr.market_id or symbol_or_market_id == instr.symbol or
+                    symbol_or_market_id == instr.alias):
                 return instr
 
         return None
@@ -778,7 +791,7 @@ class Strategy(Runnable):
 
         if self._condition.acquire(timeout=1.0):
             # running cancel wait, ping too, normal case is a signal to process
-            while (not len(self._signals) and not self._ping):
+            while not len(self._signals) and not self._ping:
                 self._condition.wait(1.0)
 
                 # ping on stream
@@ -803,7 +816,8 @@ class Strategy(Runnable):
                     market = signal.data[1]
 
                     if market and strategy_trader:
-                        # in backtesting mode set the market object to the paper trader directly because there is no watcher
+                        # in backtesting mode set the market object to the paper trader directly because
+                        # there is no watcher
                         if self.service.backtesting:
                             trader = self.trader_service.trader()
                             if trader:
@@ -823,7 +837,8 @@ class Strategy(Runnable):
                                 instrument.set_quote(market.quote)
 
                                 instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
-                                instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
+                                instrument.set_notional_limits(market.min_notional, market.max_notional,
+                                                               market.step_notional)
                                 instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
 
                                 instrument.set_fees(market.maker_fee, market.taker_fee)
@@ -935,12 +950,14 @@ class Strategy(Runnable):
                             if initial:
                                 instrument = strategy_trader.instrument
 
-                                logger.debug("Retrieved %s OHLCs for %s in %s" % (len(signal.data[2]), instrument.market_id, timeframe_to_str(signal.data[1])))
+                                logger.debug("Retrieved %s OHLCs for %s in %s" % (
+                                    len(signal.data[2]), instrument.market_id, timeframe_to_str(signal.data[1])))
 
                                 # append the current OHLC from the watcher on live mode
                                 with strategy_trader._mutex:
                                     if not self.service.backtesting:
-                                        instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).current_ohlc(instrument.market_id, signal.data[1]))
+                                        instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+                                                              .current_ohlc(instrument.market_id, signal.data[1]))
 
                                     # timeframe acquired
                                     instrument.ack_timeframe(signal.data[1])
@@ -1073,12 +1090,12 @@ class Strategy(Runnable):
             # normal processing
             if do_update:
                 if len(self._strategy_traders) >= 1:
-                    # always aync update process
+                    # always async update process
                     for strategy_trader in do_update:
                         # parallelize jobs on workers
                         self.service.worker_pool.add_job(None, (self._async_update_strategy, (self, strategy_trader,)))
                 else:
-                    # no parallelisation for single instrument
+                    # no parallelization for single instrument
                     for strategy_trader in do_update:
                         self._update_strategy(self, strategy_trader)
             
@@ -1119,7 +1136,7 @@ class Strategy(Runnable):
 
             # the feeder update the instrument price data, so use them directly
             trader.on_update_market(instrument.market_id, True, instrument.last_update_time,
-                    instrument.market_bid, instrument.market_ask, None)
+                                    instrument.market_bid, instrument.market_ask, None)
 
         # update strategy as necessary
         if updated:
@@ -1128,7 +1145,7 @@ class Strategy(Runnable):
     def backtest_update(self, timestamp, total_ts):
         """
         Process the backtesting update, for any instrument feeds candles to instruments and does the necessary updates.
-        Override only if necessary. This default implementation should suffise.
+        Override only if necessary. This default implementation should suffice.
 
         The strategy_trader list here is not mutexed, because it backtesting context we never could add or remove one.
         """
@@ -1150,7 +1167,7 @@ class Strategy(Runnable):
             # sync before continue
             count_down.wait()
         else:
-            # no parallelisation below 4 instruments
+            # no parallelization below 4 instruments
             for market_id, strategy_trader in self._strategy_traders.items():
                 self.backtest_update_instrument(trader, strategy_trader, timestamp)
 
@@ -1165,7 +1182,7 @@ class Strategy(Runnable):
     def backtest_ready(self):
         """
         Must return True once the strategy is ready te begin for the backtesting.
-        Override only if necessary. This default implementation should suffise.
+        Override only if necessary. This default implementation should suffice.
         """
         if self._preset and not self._prefetched:
             with self._mutex:
@@ -1371,6 +1388,8 @@ class Strategy(Runnable):
             return cmd_strategy_exit_all_trade(self, data)
         elif command_type == Strategy.COMMAND_TRADE_CANCEL_ALL_PENDING:
             return cmd_strategy_cancel_all_pending_trade(self, data)
+        elif command_type == Strategy.COMMAND_QUANTITY_GLOBAL_SHARE:
+            return cmd_strategy_set_global_share(self, data)
 
         elif command_type == Strategy.COMMAND_TRADE_ENTRY:
             return self.trade_command("entry", data, cmd_trade_entry)
@@ -1419,7 +1438,8 @@ class Strategy(Runnable):
             strategy_trader = self._strategy_traders.get(market_id)
 
         if strategy_trader:
-            Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (label, self.name, self.identifier, market_id), view='content')
+            Terminal.inst().notice("Strategy trader %s for strategy %s - %s %s" % (
+                label, self.name, self.identifier, market_id), view='content')
 
             # retrieve the trade and apply the modification
             result = func(self, strategy_trader, data)
@@ -1451,7 +1471,8 @@ class Strategy(Runnable):
             strategy_trader = self._strategy_traders.get(market_id)
 
         if strategy_trader:
-            Terminal.inst().notice("Trade %s for strategy %s - %s" % (label, self.name, self.identifier), view='content')
+            Terminal.inst().notice("Trade %s for strategy %s - %s" % (
+                label, self.name, self.identifier), view='content')
 
             # retrieve the trade and apply the modification
             result = func(self, strategy_trader, data)
