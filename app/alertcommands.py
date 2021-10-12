@@ -127,7 +127,7 @@ class PriceCrossAlertCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'market-id': market_id,
             'action': action,
             'alert': alert,
@@ -141,7 +141,7 @@ class PriceCrossAlertCommand(Command):
             'cancelation': cancelation
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -181,13 +181,13 @@ class RemoveAlertCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'market-id': market_id,
             'action': action,
             'alert-id': alert_id
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -226,17 +226,15 @@ class AlertInfoCommand(Command):
             except Exception:
                 return False, "Invalid parameters"
 
-            self._strategy_service.command(Strategy.COMMAND_TRADER_INFO, {
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_INFO, {
                 'market-id': market_id,
                 'detail': 'alert',
                 'alert-id': alert_id
             })
 
-            return True, []
+            return self.manage_results(results)
         else:
             return False, "Missing or invalid parameters"
-
-        return False, None
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:

@@ -20,11 +20,11 @@ class RangeRegionCommand(Command):
     SUMMARY = "to manually add a range region on a strategy"
     HELP = (":range-region <market-id> <low> <high>",
             "optional parameters:",
-            "- C@<price> : cancelation price",
-            "- @<timestamp|duration> : expiry",
-            "- '<timeframe> : timeframe",
-            "- L|l|long|LONG|S|s|short|SHORT : direction",
-            "- E|e|entry|ENTRY|X|x|exit|EXIT : stage")
+            "- [C]@<price> : cancelation price",
+            "- [@]<timestamp|duration> : expiry",
+            "- [']<timeframe> : timeframe",
+            "- [L|l|long|LONG|S|s|short|SHORT] : direction",
+            "- [E|e|entry|ENTRY|X|x|exit|EXIT] : stage")
     
     def __init__(self, strategy_service):
         super().__init__('range-region', 'RR')
@@ -85,7 +85,7 @@ class RangeRegionCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'market-id': market_id,
             'action': action,
             'region': reg,
@@ -99,7 +99,7 @@ class RangeRegionCommand(Command):
             'cancelation': cancelation
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -115,11 +115,11 @@ class TrendRegionCommand(Command):
     SUMMARY = "to manually add a trend region on a strategy"
     HELP = (":trend-region <market-id> <low-a> <high-a> <low-b> <high-b>",
             "optional parameters:",
-            "- C@<price> : cancelation price",
-            "- @<timestamp|duration> : expiry",
-            "- '<timeframe> : timeframe",
-            "- L|l|long|LONG|S|s|short|SHORT : direction",
-            "- E|e|entry|ENTRY|X|x|exit|EXIT : stage")
+            "- [C@]<price> : cancelation price",
+            "- [@]<timestamp|duration> : expiry",
+            "- [']<timeframe> : timeframe",
+            "- [L|l|long|LONG|S|s|short|SHORT] : direction",
+            "- [E|e|entry|ENTRY|X|x|exit|EXIT] : stage")
 
     def __init__(self, strategy_service):
         super().__init__('trend-region', 'TR')
@@ -185,7 +185,7 @@ class TrendRegionCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'market-id': market_id,
             'action': action,
             'region': reg,
@@ -201,7 +201,7 @@ class TrendRegionCommand(Command):
             'cancelation': cancelation
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -241,13 +241,13 @@ class RemoveRegionCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
             'market-id': market_id,
             'action': action,
             'region-id': region_id
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -286,17 +286,15 @@ class RegionInfoCommand(Command):
             except Exception:
                 return False, "Invalid parameters"
 
-            self._strategy_service.command(Strategy.COMMAND_TRADER_INFO, {
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_INFO, {
                 'market-id': market_id,
                 'detail': 'region',
                 'region-id': region_id
             })
 
-            return True, []
+            return self.manage_results(results)
         else:
             return False, "Missing or invalid parameters"
-
-        return False, None
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:

@@ -69,4 +69,5 @@ class Service(BaseService):
         if self._mutex.acquire(timeout=timeout):
             self._mutex.release()
         else:
-            watchdog_service.service_timeout(self.name, "Unable to join service %s for %s seconds" % (self.name, timeout))
+            watchdog_service.service_timeout(self.name, "Unable to join service %s for %s seconds" % (
+                self.name, timeout))

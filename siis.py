@@ -55,7 +55,8 @@ def signal_handler(sig, frame):
         Terminal.inst().action('Tip command :q<ENTER> to exit !', view='status')
 
 
-def terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service):
+def terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+              view_service, notifier_service):
     if watcher_service:
         watcher_service.terminate()
     if trader_service:
@@ -273,7 +274,8 @@ def application(argv):
                     options['profile'] = arg.split('=')[1]
 
                 elif arg == '--version':
-                    Terminal.inst().info('%s %s release %s' % (APP_SHORT_NAME, '.'.join([str(x) for x in APP_VERSION]), APP_RELEASE))
+                    Terminal.inst().info('%s %s release %s' % (
+                        APP_SHORT_NAME, '.'.join([str(x) for x in APP_VERSION]), APP_RELEASE))
                     sys.exit(0)
 
                 elif arg == '--help' or arg == '-h':
@@ -369,7 +371,8 @@ def application(argv):
                 sys.exit(-1)
 
             if ToolClazz.need_identity():
-                Terminal.inst().info("Starting SIIS %s using %s identity..." % (options.get('tool'), options['identity']))
+                Terminal.inst().info("Starting SIIS %s using %s identity..." % (
+                    options.get('tool'), options['identity']))
             else:
                 Terminal.inst().info("Starting SIIS %s..." % options.get('tool'))
 
@@ -430,7 +433,8 @@ def application(argv):
         watchdog_service.start(options)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+                  view_service, notifier_service)
         sys.exit(-1)
 
     # monitoring service
@@ -438,11 +442,12 @@ def application(argv):
         Terminal.inst().info("Starting monitor service...")
         try:
             monitor_service.setup(watcher_service, trader_service, strategy_service)
-            monitor_service.start()
+            monitor_service.start(options)
             watchdog_service.add_service(monitor_service)
         except Exception as e:
             Terminal.inst().error(str(e))
-            terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+            terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+                      view_service, notifier_service)
             sys.exit(-1)
 
     # notifier service
@@ -450,7 +455,8 @@ def application(argv):
         notifier_service.start(options)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+                  view_service, notifier_service)
         sys.exit(-1)
 
     # view service
@@ -458,7 +464,8 @@ def application(argv):
         watchdog_service.add_service(view_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+                  view_service, notifier_service)
         sys.exit(-1)
 
     # database manager
@@ -467,7 +474,8 @@ def application(argv):
         Database.inst().setup(options)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+                  view_service, notifier_service)
         sys.exit(-1)
 
     # watcher service
@@ -477,17 +485,19 @@ def application(argv):
         watchdog_service.add_service(watcher_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+                  view_service, notifier_service)
         sys.exit(-1)
 
     # trader service
-    Terminal.inst().info("Starting trader service...")
+    Terminal.inst().message("Starting trader service...")
     try:
         trader_service.start(options)
         watchdog_service.add_service(trader_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+                  view_service, notifier_service)
         sys.exit(-1)
 
     # want to display desktop notification and update views
@@ -500,16 +510,17 @@ def application(argv):
     watcher_service.add_listener(trader_service)
 
     # strategy service
-    Terminal.inst().info("Starting strategy service...")
+    Terminal.inst().message("Starting strategy service...")
     try:
         strategy_service.start(options)
         watchdog_service.add_service(strategy_service)
     except Exception as e:
         Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+                  view_service, notifier_service)
         sys.exit(-1)
 
-    # wan't to be notifier of system errors
+    # want to be notifier of system errors
     watchdog_service.add_listener(notifier_service)
 
     # strategy service listen to watcher service
@@ -532,18 +543,20 @@ def application(argv):
 
     # cli commands registration
     register_general_commands(commands_handler)
-    register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service, monitor_service, notifier_service)
+    register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service,
+                              monitor_service, notifier_service)
     register_region_commands(commands_handler, strategy_service)
     register_alert_commands(commands_handler, strategy_service)
 
     # # setup and start the monitor service
     # monitor_service.setup(watcher_service, trader_service, strategy_service)
     # try:
-    #     monitor_service.start()
+    #     monitor_service.start(options)
     #     watchdog_service.add_service(monitor_service)
     # except Exception as e:
     #     Terminal.inst().error(str(e))
-    #     terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+    #     terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+    #               view_service, notifier_service)
     #     sys.exit(-1)
 
     Terminal.inst().message("Running main loop...")
@@ -557,7 +570,8 @@ def application(argv):
             setup_default_views(view_service, watcher_service, trader_service, strategy_service)
         except Exception as e:
             Terminal.inst().error(str(e))
-            terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service, view_service, notifier_service)
+            terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+                      view_service, notifier_service)
             sys.exit(-1)
 
     display_welcome()
@@ -580,7 +594,7 @@ def application(argv):
                 key = Terminal.inst().key()
 
                 if c:
-                    # split the commande line
+                    # split the command line
                     args = [arg for arg in (value[1:].split(' ') if value and value.startswith(':') else []) if arg]
                     if value and value[-1] == ' ':
                         args.append('')
@@ -599,7 +613,7 @@ def application(argv):
                         value_changed = True
                         command_timeout = 0
 
-                    # split the commande line
+                    # split the command line
                     args = [arg for arg in (value[1:].split(' ') if value and value.startswith(':') else []) if arg]
                     if value and value[-1] == ' ':
                         args.append('')
@@ -608,7 +622,7 @@ def application(argv):
                     args = commands_handler.process_key(key, args, Terminal.inst().mode == Terminal.MODE_COMMAND)
 
                     if args:
-                        # regen the updated commande ligne
+                        # regen the updated command line
                         value = ":" + ' '.join(args)
                         value_changed = True
                         command_timeout = 0
@@ -649,10 +663,12 @@ def application(argv):
                                     target = value[3:]
 
                                     if target == "all" or target == "ALL":
-                                        Terminal.inst().action("Send close to market command for any positions", view='status')
+                                        Terminal.inst().action("Send close to market command for any positions",
+                                                               view='status')
                                         trader_service.command(Trader.COMMAND_CLOSE_ALL_MARKET, {})
                                     else:
-                                        Terminal.inst().action("Send close to market command for position %s" % (target,), view='status')
+                                        Terminal.inst().action("Send close to market command for position %s" % (
+                                            target,), view='status')
                                         trader_service.command(Trader.COMMAND_CLOSE_MARKET, {'key': target})
 
                             # clear command value
@@ -727,14 +743,17 @@ def application(argv):
                                     # toggle play/pause on backtesting
                                     if strategy_service.backtesting:
                                         result = strategy_service.toggle_play_pause()
-                                        Terminal.inst().notice("Backtesting now %s" % ("play" if result else "paused"), view='status')
+                                        Terminal.inst().notice("Backtesting now %s" % (
+                                            "play" if result else "paused"), view='status')
 
                                 elif value == 'a':
                                     if notifier_service:
-                                        notifier_service.command(Notifier.COMMAND_TOGGLE, {'notifier': "desktop", 'value': "audible"})
+                                        notifier_service.command(Notifier.COMMAND_TOGGLE, {
+                                            'notifier': "desktop", 'value': "audible"})
                                 elif value == 'n':
                                     if notifier_service:
-                                        notifier_service.command(Notifier.COMMAND_TOGGLE, {'notifier': "desktop", 'value': "popup"})
+                                        notifier_service.command(Notifier.COMMAND_TOGGLE, {
+                                            'notifier': "desktop", 'value': "popup"})
                                 elif value == '%':
                                     if view_service:
                                         view_service.toggle_percent()
@@ -788,7 +807,8 @@ def application(argv):
                     elif trader_service.paper_mode:
                         mode = "paper-mode"
 
-                    Terminal.inst().message("%s - %s" % (mode, datetime.fromtimestamp(strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='notice')
+                    Terminal.inst().message("%s - %s" % (mode, datetime.fromtimestamp(
+                        strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='notice')
                     prev_timestamp = strategy_service.timestamp
 
                 # synchronous operations here

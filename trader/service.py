@@ -96,7 +96,7 @@ class TraderService(Service):
             return
 
         if trader_config.get("status") is not None and trader_config.get("status") == "load":
-            # retrieve the classname and instanciate it
+            # retrieve the classname and instantiate it
             parts = trader_config.get('classpath').split('.')
 
             module = __import__('.'.join(parts[:-1]), None, locals(), [parts[-1],], 0)
@@ -108,13 +108,16 @@ class TraderService(Service):
                 paper_mode = trader_config.get('paper-mode', None)
 
                 if paper_mode:
-                    inst_trader.account.set_currency(paper_mode.get('currency', 'USD'), paper_mode.get('currency-symbol', '$'))
-                    inst_trader.account.set_alt_currency(paper_mode.get('alt-currency', 'USD'), paper_mode.get('alt-currency-symbol', '$'))
+                    inst_trader.account.set_currency(paper_mode.get('currency', 'USD'),
+                                                     paper_mode.get('currency-symbol', '$'))
+                    inst_trader.account.set_alt_currency(paper_mode.get('alt-currency', 'USD'),
+                                                         paper_mode.get('alt-currency-symbol', '$'))
 
                     # initial fund or asset
                     if paper_mode.get('type', 'margin') == 'margin':
                         inst_trader.account.account_type = inst_trader.account.TYPE_MARGIN
-                        inst_trader.account.initial(paper_mode.get('initial', 1000.0), inst_trader.account.currency, inst_trader.account.currency_display)
+                        inst_trader.account.initial(paper_mode.get('initial', 1000.0), inst_trader.account.currency,
+                                                    inst_trader.account.currency_display)
 
                     elif paper_mode.get('type', 'margin') == 'asset':
                         inst_trader.account.account_type = inst_trader.account.TYPE_ASSET
@@ -128,7 +131,8 @@ class TraderService(Service):
 
                         for asset in assets:
                             if asset.get('base') and asset.get('quote') and asset.get('initial'):
-                                inst_trader.create_asset(asset['base'], asset['initial'], paper_mode.get('price', 0.0), asset['quote'], asset.get('precision', 8))
+                                inst_trader.create_asset(asset['base'], asset['initial'], paper_mode.get('price', 0.0),
+                                                         asset['quote'], asset.get('precision', 8))
 
                 if self.backtesting:
                     # no auto-update -> no thread : avoid time deviation
@@ -136,7 +140,7 @@ class TraderService(Service):
 
                 elif self._paper_mode:
                     # live but in paper-mode -> thread
-                    if inst_trader.start():
+                    if inst_trader.start(options):
                         self._trader = inst_trader
             else:
                 # live with real trader
@@ -144,11 +148,13 @@ class TraderService(Service):
                 preference = trader_config.get('preference', None)
 
                 if preference:
-                    # prefered currency if specified, usefull for some spots brokers
-                    inst_trader.account.set_currency(preference.get('currency', 'USD'), preference.get('currency-symbol', '$'))
-                    inst_trader.account.set_alt_currency(preference.get('alt-currency', 'USD'), preference.get('alt-currency-symbol', '$'))
+                    # preferred currency if specified, useful for some spots brokers
+                    inst_trader.account.set_currency(preference.get('currency', 'USD'),
+                                                     preference.get('currency-symbol', '$'))
+                    inst_trader.account.set_alt_currency(preference.get('alt-currency', 'USD'),
+                                                         preference.get('alt-currency-symbol', '$'))
 
-                if inst_trader.start():
+                if inst_trader.start(options):
                     self._trader = inst_trader
 
     def terminate(self):

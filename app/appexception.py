@@ -10,7 +10,7 @@ class AppException(Exception):
         self.message = message
 
     def __str__(self):
-        return 'AppException : %s' % (self.message)
+        return 'AppException : %s' % self.message
 
 
 class CommandHandlerException(AppException):

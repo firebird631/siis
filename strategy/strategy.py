@@ -492,8 +492,8 @@ class Strategy(Runnable):
         # one done once after startup and first connection
         self._preset = True
 
-    def start(self):
-        if super().start():
+    def start(self, options):
+        if super().start(options):
             # reset data
             self.reset()
 
@@ -527,7 +527,7 @@ class Strategy(Runnable):
 
     def save(self):
         """
-        For each strategy-trader finalize to be done only in live mode.
+        For each strategy-trader save to be done only in live mode.
         """
         with self._mutex:
             if not self.service.backtesting and not self.trader().paper_mode:
@@ -1444,14 +1444,14 @@ class Strategy(Runnable):
             # retrieve the trade and apply the modification
             result = func(self, strategy_trader, data)
 
-            if result:
-                if result['error']:
-                    Terminal.inst().info(result['messages'][0], view='status')
-                else:
-                    Terminal.inst().info("Done", view='status')
-
-                for message in result['messages']:
-                    Terminal.inst().message(message, view='content')
+            # if result:
+            #     if result['error']:
+            #         Terminal.inst().info(result['messages'][0], view='status')
+            #     else:
+            #         Terminal.inst().info("Done", view='status')
+            #
+            #     for message in result['messages']:
+            #         Terminal.inst().message(message, view='content')
 
             return result
 
@@ -1477,16 +1477,16 @@ class Strategy(Runnable):
             # retrieve the trade and apply the modification
             result = func(self, strategy_trader, data)
 
-            if result:
-                if result['error']:
-                    Terminal.inst().info(result['messages'][0], view='status')
-                else:
-                    Terminal.inst().info("Done", view='status')
+            # if result:
+            #     if result['error']:
+            #         Terminal.inst().info(result['messages'][0], view='status')
+            #     else:
+            #         Terminal.inst().info("Done", view='status')
+            #
+            #     for message in result['messages']:
+            #         Terminal.inst().message(message, view='content')
 
-                for message in result['messages']:
-                    Terminal.inst().message(message, view='content')
-
-                return result
+            return result
 
         return None
 

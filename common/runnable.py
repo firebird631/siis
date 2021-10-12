@@ -37,7 +37,7 @@ class Runnable(object):
     def thread(self):
         return self._thread
 
-    def start(self):
+    def start(self, options):
         if not self._running:
             self._running = True
             try:

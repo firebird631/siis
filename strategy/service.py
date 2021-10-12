@@ -145,7 +145,7 @@ class StrategyService(Service):
         # indicators
         for k, indicator in self._indicators_config.items():
             if indicator.get("status") is not None and indicator.get("status") == "load":
-                # retrieve the classname and instanciate it
+                # retrieve the classname and instantiate it
                 parts = indicator.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -159,7 +159,7 @@ class StrategyService(Service):
         # tradeops
         for k, tradeop in self._tradeops_config.items():
             if tradeop.get("status") is not None and tradeop.get("status") == "load":
-                # retrieve the classname and instanciate it
+                # retrieve the classname and instantiate it
                 parts = tradeop.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -173,7 +173,7 @@ class StrategyService(Service):
         # regions
         for k, region in self._regions_config.items():
             if region.get("status") is not None and region.get("status") == "load":
-                # retrieve the classname and instanciate it
+                # retrieve the classname and instantiate it
                 parts = region.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -187,7 +187,7 @@ class StrategyService(Service):
         # alerts
         for k, alert in self._alerts_config.items():
             if alert.get("status") is not None and alert.get("status") == "load":
-                # retrieve the classname and instanciate it
+                # retrieve the classname and instantiate it
                 parts = alert.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -204,7 +204,7 @@ class StrategyService(Service):
                 continue
 
             if strategy.get("status") is not None and strategy.get("status") == "load":
-                # retrieve the classname and instanciate it
+                # retrieve the classname and instantiate it
                 parts = strategy.get('classpath', "strategy.strategy.Strategy").split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -251,7 +251,7 @@ class StrategyService(Service):
             Terminal.inst().error("Strategy %s already started" % self._strategy.name)
             return
 
-        # overrided strategy parameters
+        # override strategy parameters
         parameters = strategy_profile.get('parameters', {})
 
         if not strategy_profile or not strategy_profile.get('name'):
@@ -263,15 +263,20 @@ class StrategyService(Service):
             return
 
         strategy_inst = strategy[0](
-                strategy_profile['name'],  # strategy name
-                self, self.watcher_service, self.trader_service,  # services
-                strategy[1],  #  strategy trader clazz
-                self._profile_config, default_parameters=strategy[2], user_parameters=parameters,  # options, default param, user params
-                processor=strategy[3])  # strategy processor module
+                # strategy name
+                strategy_profile['name'],
+                # services
+                self, self.watcher_service, self.trader_service,
+                # strategy trader clazz
+                strategy[1],
+                # options, default param, user params
+                self._profile_config, default_parameters=strategy[2], user_parameters=parameters,
+                # strategy processor module
+                processor=strategy[3])
 
         strategy_inst.set_identifier(strategy_profile.get('id', strategy_profile['name']))
 
-        if strategy_inst.start():
+        if strategy_inst.start(options):
             self._strategy = strategy_inst
         else:
             error_logger.error("Unable to start strategy name %s. Ignored !" % strategy_profile['name'])
@@ -399,7 +404,8 @@ class StrategyService(Service):
 
                         self.end_ts = time.time()
 
-                self._timestep_thread = TimeStepThread(self, self._begin_ts, self._end_ts, self._timestep, self._timeframe, self._time_factor)
+                self._timestep_thread = TimeStepThread(self, self._begin_ts, self._end_ts, self._timestep,
+                                                       self._timeframe, self._time_factor)
                 self._timestep_thread.setDaemon(True)
                 self._timestep_thread.start()
 
@@ -470,7 +476,7 @@ class StrategyService(Service):
         return self._indicators.get(name)
 
     def strategy(self):
-        """Return the instancied strategy"""
+        """Return the instanced strategy"""
         return self._strategy
 
     def strategy_name(self):

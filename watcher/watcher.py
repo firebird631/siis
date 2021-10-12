@@ -284,13 +284,13 @@ class Watcher(Runnable):
             self._signals.append(signal)
 
     def pre_run(self):
-        Terminal.inst().info("Running watcher %s..." % self._name)
+        Terminal.inst().message("Running watcher %s..." % self._name)
         self.connect()
 
     def post_run(self):
-        Terminal.inst().info("Joining watcher %s..." % self._name)
+        Terminal.inst().message("Joining watcher %s..." % self._name)
         self.disconnect()
-        Terminal.inst().info("Watcher %s stopped." % self._name)
+        Terminal.inst().message("Watcher %s stopped." % self._name)
 
     def update(self):
         """

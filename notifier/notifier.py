@@ -56,7 +56,7 @@ class Notifier(Runnable):
         self._playpause = activity
 
     def start(self, options):
-        return super().start()
+        return super().start(options)
 
     def stop(self):
         # want to leave now
@@ -75,17 +75,17 @@ class Notifier(Runnable):
         pass
 
     def pre_run(self):
-        Terminal.inst().info("Running notifier %s - %s..." % (self._name, self._identifier), view='content')
+        Terminal.inst().message("Running notifier %s - %s..." % (self._name, self._identifier), view='content')
 
     def post_run(self):
-        Terminal.inst().info("Joining notifier %s - %s..." % (self._name, self._identifier), view='content')
+        Terminal.inst().message("Joining notifier %s - %s..." % (self._name, self._identifier), view='content')
 
     def pre_update(self):
         self.wait_signal()
 
     def process_signal(self, signal):
         """
-        To be overrided
+        To be override
         """
         pass
 

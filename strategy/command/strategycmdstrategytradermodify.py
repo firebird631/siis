@@ -210,11 +210,13 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
 
             if quantity > 0.0 and strategy_trader.instrument.trade_quantity != quantity:
                 strategy_trader.instrument.trade_quantity = quantity
-                results['messages'].append("Modified trade quantity for %s to %s" % (strategy_trader.instrument.market_id, quantity))
+                results['messages'].append("Modified trade quantity for %s to %s" % (
+                    strategy_trader.instrument.market_id, quantity))
 
             if max_factor > 0 and strategy_trader.instrument.trade_max_factor != max_factor:
                 strategy_trader.instrument.trade_max_factor = max_factor
-                results['messages'].append("Modified trade quantity max factor for %s to %s" % (strategy_trader.instrument.market_id, max_factor))
+                results['messages'].append("Modified trade quantity max factor for %s to %s" % (
+                    strategy_trader.instrument.market_id, max_factor))
 
             results['quantity'] = strategy_trader.instrument.trade_quantity
             results['max-factor'] = strategy_trader.instrument.trade_max_factor
@@ -241,7 +243,8 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
 
             if strategy_trader.affinity != affinity:
                 strategy_trader.affinity = affinity
-                results['messages'].append("Modified strategy trader affinity for %s to %s" % (strategy_trader.instrument.market_id, affinity))
+                results['messages'].append("Modified strategy trader affinity for %s to %s" % (
+                    strategy_trader.instrument.market_id, affinity))
 
             results['affinity'] = strategy_trader.affinity
 
@@ -277,7 +280,8 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
                 return results
 
             strategy_trader.set_option(option, value)
-            results['messages'].append("Modified strategy trader option %s for %s to %s" % (option, strategy_trader.instrument.market_id, value))
+            results['messages'].append("Modified strategy trader option %s for %s to %s" % (
+                option, strategy_trader.instrument.market_id, value))
 
         else:
             results['error'] = True

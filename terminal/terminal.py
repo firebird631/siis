@@ -10,6 +10,7 @@ import time
 import threading
 import platform
 import math
+import termios, fcntl
 
 import curses
 from curses.textpad import Textbox, rectangle
@@ -33,16 +34,16 @@ class Color(object):
     LIGHTRED = '\033[31m;1m'  # '\\9'
 
     UTERM_COLORS_MAP = {
-        WHITE: '\\0',     # white (normal)
-        RED: '\\1',       # red
-        ORANGE: '\\2',    # orange
-        YELLOW: '\\3',    # yellow
-        BLUE: '\\4',      # blue
-        GREEN: '\\5',     # green
-        PURPLE: '\\6',    # purple
-        CYAN: '\\7',      # cyan
-        HIGHLIGHT: '\\8', # hightlight
-        LIGHTRED: '\\9',  # light-red
+        WHITE: '\\0',      # white (normal)
+        RED: '\\1',        # red
+        ORANGE: '\\2',     # orange
+        YELLOW: '\\3',     # yellow
+        BLUE: '\\4',       # blue
+        GREEN: '\\5',      # green
+        PURPLE: '\\6',     # purple
+        CYAN: '\\7',       # cyan
+        HIGHLIGHT: '\\8',  # highlight
+        LIGHTRED: '\\9',   # light-red
     }
 
     FROM_INT = (
@@ -135,7 +136,8 @@ class View(object):
     #     colorama.Fore.WHITE + colorama.Style.BRIGHT,  # Terminal.HIGHLIGHT
     # ]
 
-    def __init__(self, name, mode=MODE_STREAM, stdscr=None, pos=(0, 0), size=(80, 25), active=True, right_align=False, border=False, bg=None, window=False):
+    def __init__(self, name, mode=MODE_STREAM, stdscr=None, pos=(0, 0), size=(80, 25), active=True,
+                 right_align=False, border=False, bg=None, window=False):
         self._name = name
         self._mode = mode
         self._active = active
@@ -178,7 +180,7 @@ class View(object):
 
             self._parent_size = (height, width)
 
-            if 1: # window:
+            if 1:  # window:
                 self._win = curses.newwin(*self._rect)
             else:
                 self._win = stdscr.subwin(*self._rect)
@@ -304,7 +306,7 @@ class View(object):
                     next_is_color = False
 
                     if ord('0') <= ord(c) <= ord('9'):
-                        color = Color.color(int(c))  #  View.UTERM_COLORS[int(c)]
+                        color = Color.color(int(c))  # View.UTERM_COLORS[int(c)]
                     else:
                         buf += '\\'
                 elif xp < 200: # self.width:
@@ -448,7 +450,7 @@ class View(object):
             new_win = None
 
             try:
-                if 1: # window:
+                if 1:  # window:
                     new_win = curses.newwin(*new_rect)
                 else:
                     new_win = stdscr.subwin(*new_rect)
@@ -636,44 +638,44 @@ class View(object):
     # table
     #
 
-    def draw_table(self, dataframe):
-        """
-        Display a table with a header header and a body,
-        """
-        if not dataframe:
-            return
-
-        HEADER_SIZE = 3
-
-        # count rows
-        data_rows = len(next(iter(dataframe.values())))
-
-        # count columns
-        num_columns = len(dataframe)
-        num_rows = min(self.height - HEADER_SIZE - 1, data_rows)
-
-        if self._table_first_row >= num_rows:
-            self._table_first_row = 0
-
-        if self._table_first_col >= num_columns:
-            self._table_first_col = 0
-      
-        df = {}
-
-        n = 0
-        for k, v in dataframe.items():
-            # ignore first columns
-            if n >= self._table_first_col:
-                # rows offset:limit
-                df[k] = v[self._table_first_row:self._table_first_row+num_rows]
-                n += 1
-
-        # self._cur_table = (len(columns), len(data))
-
-        table = tabulate(df, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
-
-        # draw the table
-        self.draw('', table)
+    # def draw_table(self, dataframe):
+    #     """
+    #     Display a table with a header header and a body,
+    #     """
+    #     if not dataframe:
+    #         return
+    #
+    #     HEADER_SIZE = 3
+    #
+    #     # count rows
+    #     data_rows = len(next(iter(dataframe.values())))
+    #
+    #     # count columns
+    #     num_columns = len(dataframe)
+    #     num_rows = min(self.height - HEADER_SIZE - 1, data_rows)
+    #
+    #     if self._table_first_row >= num_rows:
+    #         self._table_first_row = 0
+    #
+    #     if self._table_first_col >= num_columns:
+    #         self._table_first_col = 0
+    #
+    #     df = {}
+    #
+    #     n = 0
+    #     for k, v in dataframe.items():
+    #         # ignore first columns
+    #         if n >= self._table_first_col:
+    #             # rows offset:limit
+    #             df[k] = v[self._table_first_row:self._table_first_row+num_rows]
+    #             n += 1
+    #
+    #     # self._cur_table = (len(columns), len(data))
+    #
+    #     table = tabulate(df, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
+    #
+    #     # draw the table
+    #     self.draw('', table)
 
     def draw_table(self, columns, data, total_size=None):
         """
@@ -708,7 +710,7 @@ class View(object):
 
         table = tabulate(data, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
 
-        # replace color espace code before drawing
+        # replace color space code before drawing
         for k, v in Color.UTERM_COLORS_MAP.items():
             table = table.replace(k, v)
 
@@ -730,7 +732,7 @@ class View(object):
 
     def table_scroll_cols(self, n):
         """
-        Scroll n columnes (positive or negative) from current first columns.
+        Scroll n columns (positive or negative) from current first columns.
         """
         self._table_first_col += n
 
@@ -802,6 +804,9 @@ class Terminal(object):
         self._mode = Terminal.MODE_DEFAULT
         self._query_reshape = 0.0
 
+        self.oldterm = None
+        self.oldflags = None
+
     def upgrade(self):
         self.setup_term(True)
         self._direct_draw = False
@@ -813,13 +818,13 @@ class Terminal(object):
         if not self._fd and not use_ncurses:
             fd = sys.stdin.fileno()
 
-            oldterm = termios.tcgetattr(fd)
+            self.oldterm = termios.tcgetattr(fd)
             newattr = termios.tcgetattr(fd)
             newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
             termios.tcsetattr(fd, termios.TCSANOW, newattr)
 
-            oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
+            self.oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
+            fcntl.fcntl(fd, fcntl.F_SETFL, self.oldflags | os.O_NONBLOCK)
 
             self._fd = fd
 
@@ -882,26 +887,45 @@ class Terminal(object):
 
         self._views = {
             # top
+            # top left 1 half row
             'info': View('info', View.MODE_BLOCK, self._stdscr, pos=(0, 0), size=(width//2, 1), active=True),
-            'help': View('help', View.MODE_BLOCK, self._stdscr, pos=(width//2, 0), size=(width//2, 1), active=True, right_align=True),
+
+            # top right 1 half row
+            'help': View('help', View.MODE_BLOCK, self._stdscr, pos=(width//2, 0), size=(width//2, 1),
+                         active=True, right_align=True),
 
             # body
+            # 1 row for a title/description, for main content
             'content-head': View('content-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 1), active=True),
-            'content': View('content', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=True, border=True),
+            # remain is body
+            'content': View('content', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1),
+                            active=True, border=True),
 
+            # same place as content, but another view for debug content
             'debug-head': View('debug-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 1), active=False),
-            'debug': View('debug', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1), active=False, border=True),
+            'debug': View('debug', View.MODE_STREAM, self._stdscr, pos=(0, 2), size=(w1, h1),
+                          active=False, border=True),
 
-            # right panel
-            #'panel-head': View('panel-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 1), active=True),
-            #'panel': View('panel', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w2, h1), active=True, border=True),
+            # right panel (disable)
+            # 'panel-head': View('panel-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w2, 1), active=True),
+            # 'panel': View('panel', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w2, h1), active=True,
+            #               border=True),
 
-            # bottom 
-            'default': View('default', View.MODE_STREAM, self._stdscr, pos=(0, height-6), size=(width, free_h), active=True),
+            # bottom
+            # bottom 4 rows
+            'default': View('default', View.MODE_STREAM, self._stdscr, pos=(0, height-6), size=(width, free_h),
+                            active=True),
 
-            'command': View('command', View.MODE_BLOCK, self._stdscr, pos=(0, height-2), size=(width, 1), active=True, window=True),
+            # bottom 1 row
+            'command': View('command', View.MODE_BLOCK, self._stdscr, pos=(0, height-2), size=(width, 1),
+                            active=True, window=True),
+
+            # bottom left 1 half row
             'status': View('status', View.MODE_BLOCK, self._stdscr, pos=(0, height-1), size=(width//2, 1), active=True),
-            'notice': View('notice', View.MODE_BLOCK, self._stdscr, pos=(width//2+1, height-1), size=(width//2, 1), active=True, right_align=True),
+
+            # bottom right 1 half row
+            'notice': View('notice', View.MODE_BLOCK, self._stdscr, pos=(width//2+1, height-1), size=(width//2, 1),
+                           active=True, right_align=True),
         }
 
         self._views['default']._content = old_default_content
@@ -917,8 +941,8 @@ class Terminal(object):
 
     def restore_term(self):
         if self._fd:
-            termios.tcsetattr(self._fd, termios.TCSAFLUSH, oldterm)
-            fcntl.fcntl(self._fd, fcntl.F_SETFL, oldflags)
+            termios.tcsetattr(self._fd, termios.TCSAFLUSH, self.oldterm)
+            fcntl.fcntl(self._fd, fcntl.F_SETFL, self.oldflags)
 
         if self._stdscr:
             curses.nocbreak()
@@ -961,7 +985,7 @@ class Terminal(object):
         else:
             height, width = 0, 0
 
-        w1 = width #  int(width*0.9)
+        w1 = width  # int(width*0.9)
         # w2 = width-w1
 
         free_h = 4
@@ -980,7 +1004,7 @@ class Terminal(object):
 
     def destroy_content_view(self, name):
         if name in ('content', 'debug'):
-            # system views, undeletable
+            # system views, un-deletable
             return
 
         # a content view has a head view
@@ -1007,13 +1031,13 @@ class Terminal(object):
 
     def clear(self):
         if self._fd and not self._stdscr:
-            if platform.system()=="Windows":
+            if platform.system() == "Windows":
                 os.system('cls')
             else:  # Linux and Mac
                 # print("\033c")
                 print(chr(27) + "[2J", end='')
         elif self._stdscr:
-            self._win.erase()
+            self._stdscr.clear()
 
     def style(self):
         if self._stdscr and not self._direct_draw:
@@ -1146,7 +1170,7 @@ class Terminal(object):
                         self._query_reshape = time.time() + 0.5
 
                 # shift + keys arrows for table navigation only in default mode (ch == curses.KEY_SUP)
-                elif (c == 'KEY_SR' or c == 'j'):
+                elif c == 'KEY_SR' or c == 'j':
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
@@ -1157,7 +1181,7 @@ class Terminal(object):
                                 view.table_scroll_row(-1)
 
                     self._key = c
-                elif (c == 'KEY_SF' or c == 'k'):
+                elif c == 'KEY_SF' or c == 'k':
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
@@ -1168,14 +1192,14 @@ class Terminal(object):
                                 view.table_scroll_row(1)
 
                     self._key = c
-                elif (c == 'KEY_SLEFT' or c == 'h'):
+                elif c == 'KEY_SLEFT' or c == 'h':
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:
                             view.table_scroll_cols(-1)
 
                     self._key = c
-                elif (c == 'KEY_SRIGHT' or c == 'l'):
+                elif c == 'KEY_SRIGHT' or c == 'l':
                     if self._active_content and self._mode == Terminal.MODE_DEFAULT:
                         view = self._views.get(self._active_content)
                         if view:

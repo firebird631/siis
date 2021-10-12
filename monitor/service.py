@@ -259,14 +259,14 @@ class MonitorService(Service):
     # processing
     #
 
-    def start(self):
+    def start(self, options):
         if self._monitoring:
             if self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
                 from .http.httprestserver import HttpRestServer
                 from .http.httpwsserver import HttpWebSocketServer
 
                 self._http = HttpRestServer(self._host, self._port, self.__api_key, self.__api_secret,
-                        self, self._strategy_service, self._trader_service, self._watcher_service)
+                                            self, self._strategy_service, self._trader_service, self._watcher_service)
 
                 self._ws = HttpWebSocketServer(self._host, self._port+1, self)
 

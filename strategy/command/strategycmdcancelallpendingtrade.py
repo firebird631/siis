@@ -25,7 +25,8 @@ def cmd_strategy_cancel_all_pending_trade(strategy, data):
             strategy_trader = strategy._strategy_traders.get(market_id)
 
     if strategy_trader and strategy_trader.has_trades():
-        Terminal.inst().notice("Multi trade cancel for strategy %s - %s" % (strategy.name, strategy.identifier), view='content')
+        Terminal.inst().notice("Multi trade cancel for strategy %s - %s" % (strategy.name, strategy.identifier),
+                               view='content')
 
         # retrieve any trades
         trades = []
@@ -61,7 +62,8 @@ def cmd_strategy_cancel_all_pending_trade(strategy, data):
 
         return results
     else:
-        Terminal.inst().notice("Multi trade cancel for strategy %s - %s" % (strategy.name, strategy.identifier), view='content')
+        Terminal.inst().notice("Multi trade cancel for strategy %s - %s" % (strategy.name, strategy.identifier),
+                               view='content')
 
         # retrieve any trades for any traders
         trades = []

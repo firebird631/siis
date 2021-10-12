@@ -47,14 +47,16 @@ def cmd_trade_exit(strategy, strategy_trader, data):
                 trade.cancel_open(trader, strategy_trader.instrument)
 
                 # add a success result message
-                results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
+                results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, strategy.identifier,
+                                                                         strategy_trader.instrument.market_id))
             else:
                 # close or cancel
                 trade.close(trader, strategy_trader.instrument)
 
                 # add a success result message
                 results['messages'].append("Close trade %i on %s:%s at market price %s" % (
-                    trade.id, strategy.identifier, strategy_trader.instrument.market_id, strategy_trader.instrument.format_price(price)))
+                    trade.id, strategy.identifier, strategy_trader.instrument.market_id,
+                    strategy_trader.instrument.format_price(price)))
 
             # update strategy-trader
             strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)

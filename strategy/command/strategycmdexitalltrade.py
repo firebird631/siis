@@ -21,10 +21,11 @@ def cmd_strategy_exit_all_trade(strategy, data):
             instrument = strategy.find_instrument(market_id)
             market_id = instrument.market_id if instrument else None
 
-            strategy_trader = self._strategy_traders.get(market_id)
+            strategy_trader = strategy._strategy_traders.get(market_id)
 
     if strategy_trader and strategy_trader.has_trades():
-        Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (strategy.name, strategy.identifier), view='content')
+        Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (
+            strategy.name, strategy.identifier), view='content')
 
         # retrieve any trades
         trades = []
@@ -60,7 +61,8 @@ def cmd_strategy_exit_all_trade(strategy, data):
 
         return results
     else:
-        Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (strategy.name, strategy.identifier), view='content')
+        Terminal.inst().notice("Multi trade exit for strategy %s - %s" % (
+            strategy.name, strategy.identifier), view='content')
 
         # retrieve any trades for any traders
         trades = []

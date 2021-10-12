@@ -125,7 +125,7 @@ class WatcherService(Service):
                 continue
 
             if watcher.get("status") is not None and watcher.get("status") == "load":
-                # retrieve the classname and instanciate it
+                # retrieve the classname and instantiate it
                 parts = watcher.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -137,7 +137,7 @@ class WatcherService(Service):
                 else:
                     inst_watcher = Clazz(self)
 
-                if inst_watcher.start():
+                if inst_watcher.start(options):
                     self._watchers[k] = inst_watcher
 
     def terminate(self):

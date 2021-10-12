@@ -28,7 +28,7 @@ class AndroidNotifier(Notifier):
     """
     Android Firebase push notifier.
 
-    @todo Strategey alert notifications
+    @todo Strategy alert notifications
     """
 
     def __init__(self, identifier, service, options):
@@ -67,7 +67,8 @@ class AndroidNotifier(Notifier):
 
     def start(self, options):
         if self._backtesting:
-            logger.warning("Notifier %s - %s : signals not started because of backtesting !" % (self.name, self.identifier))
+            logger.warning("Notifier %s - %s : signals not started because of backtesting !" % (
+                self.name, self.identifier))
             return False
         elif self._auth_key and self._channels.get('signals'):
             return super().start(options)

@@ -1,12 +1,7 @@
 # @date 2019-10-02
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Service responsible of the differents configured and enabled notifiers.
-
-import json
-import time, datetime
-import threading
-import base64, hashlib
+# Service responsible of the different configured and enabled notifiers.
 
 from importlib import import_module
 
@@ -73,7 +68,7 @@ class NotifierService(Service):
                 continue
 
             if notifier.get("status") is not None and notifier.get("status") in ("load", "enabled"):
-                # retrieve the classname and instanciate it
+                # retrieve the classname and instantiate it
                 parts = notifier.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -99,7 +94,7 @@ class NotifierService(Service):
                 continue
 
             if notifier_conf.get("status") is not None and notifier_conf.get("status") in ("enabled", "load"):
-                # retrieve the classname and instanciate it
+                # retrieve the classname and instantiate it
                 if not notifier_conf.get('name'):
                     logger.error("Invalid notifier configuration for %s. Ignored !" % k)
 
@@ -161,14 +156,14 @@ class NotifierService(Service):
 
         notifier_config = {}
 
-        for k, profile_notifer_config in notifiers_profile.items():
-            if not profile_notifer_config.get('name'):
+        for k, profile_notifier_config in notifiers_profile.items():
+            if not profile_notifier_config.get('name'):
                 error_logger.error("Invalid configuration for notifier %s. Ignored !" % k)
 
-            user_notifier_config = utils.load_config(options, 'notifiers/' + profile_notifer_config.get('name'))
+            user_notifier_config = utils.load_config(options, 'notifiers/' + profile_notifier_config.get('name'))
             if user_notifier_config:
-                # keep overrided
-                notifier_config[k] = utils.merge_parameters(user_notifier_config, profile_notifer_config)
+                # keep override
+                notifier_config[k] = utils.merge_parameters(user_notifier_config, profile_notifier_config)
 
         return notifier_config
 

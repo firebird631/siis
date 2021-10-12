@@ -13,7 +13,6 @@ from trader.trader import Trader
 from common.utils import timeframe_from_str
 from instrument.instrument import Instrument
 
-
 # @todo ClosePositionCommand, CloseAllPositionCommand
 
 
@@ -231,18 +230,18 @@ class SetAffinityCommand(Command):
                 return False, "Invalid affinity format"
 
         if market_id:
-            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
                 'market-id': market_id,
                 'action': action,
                 'affinity': affinity
             })
         else:
-            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
                 'action': action,
                 'affinity': affinity
             })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -326,20 +325,20 @@ class SetOptionCommand(Command):
             value = convert_value(args[2])
 
         if market_id:
-            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
                 'market-id': market_id,
                 'action': action,
                 'option': option,
                 'value': value
             })
         else:
-            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
                 'action': action,
                 'option': option,
                 'value': value
             })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -376,13 +375,13 @@ class SetFrozenQuantityCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._trader_service.command(Trader.COMMAND_TRADER_FROZE_ASSET_QUANTITY, {
+        results = self._trader_service.command(Trader.COMMAND_TRADER_FROZE_ASSET_QUANTITY, {
             'asset': asset_name,
             'quantity': quantity,
             'action': action
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -520,7 +519,7 @@ class LongCommand(Command):
         if quantity_rate <= 0.0:
             return False, "Quantity rate must be greater than zero"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, {
             'market-id': market_id,
             'direction': direction,
             'limit-price': limit_price,
@@ -537,7 +536,7 @@ class LongCommand(Command):
             'context': context
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -674,7 +673,7 @@ class ShortCommand(Command):
         if quantity_rate <= 0.0:
             return False, "Quantity must be non empty"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, {
             'market-id': market_id,
             'direction': direction,
             'limit-price': limit_price,
@@ -691,7 +690,7 @@ class ShortCommand(Command):
             'context': context
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -733,13 +732,13 @@ class CloseCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, {
             'market-id': market_id,
             'trade-id': trade_id,
             'action': action
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -782,13 +781,13 @@ class CleanCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_CLEAN, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_CLEAN, {
             'market-id': market_id,
             'trade-id': trade_id,
             'action': action
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -840,7 +839,7 @@ class DynamicStopLossOperationCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
             'market-id': market_id,
             'trade-id': trade_id,
             'action': action,
@@ -849,7 +848,7 @@ class DynamicStopLossOperationCommand(Command):
             'stop-loss': stop_loss
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -895,14 +894,14 @@ class RemoveOperationCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
             'market-id': market_id,
             'trade-id': trade_id,
             'action': action,
             'operation-id': operation_id
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -949,13 +948,13 @@ class CheckTradeCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_CHECK, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_CHECK, {
             'market-id': market_id,
             'trade-id': trade_id,
             'repair': repair
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1039,7 +1038,7 @@ class ModifyStopLossCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
             'market-id': market_id,
             'trade-id': trade_id,
             'action': action,
@@ -1048,7 +1047,7 @@ class ModifyStopLossCommand(Command):
             'force': force
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1131,7 +1130,7 @@ class ModifyTakeProfitCommand(Command):
         except Exception:
             return False, "Invalid parameters"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
             'market-id': market_id,
             'trade-id': trade_id,
             'action': action,
@@ -1140,7 +1139,7 @@ class ModifyTakeProfitCommand(Command):
             'force': force
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1182,16 +1181,14 @@ class TradeInfoCommand(Command):
             except Exception:
                 return False, "Invalid parameters"
 
-            self._strategy_service.command(Strategy.COMMAND_TRADE_INFO, {
+            results = self._strategy_service.command(Strategy.COMMAND_TRADE_INFO, {
                 'market-id': market_id,
                 'trade-id': trade_id
             })
 
-            return True, []
+            return self.manage_results(results)
         else:
             return False, "Missing or invalid parameters"
-
-        return False, None
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1284,7 +1281,7 @@ class AssignCommand(Command):
         if quantity <= 0.0:
             return False, "Quantity must be specified"
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_ASSIGN, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_ASSIGN, {
             'market-id': market_id,
             'direction': direction,
             'entry-price': entry_price,
@@ -1295,7 +1292,7 @@ class AssignCommand(Command):
             'context': context
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1307,7 +1304,7 @@ class AssignCommand(Command):
 
 
 class UserSaveCommand(Command):
-    # @todo
+
     SUMMARY = "to save user data now (strategy traders states, options, regions, trades)"
 
     def __init__(self, strategy_service):
@@ -1316,7 +1313,13 @@ class UserSaveCommand(Command):
         self._strategy_service = strategy_service
 
     def execute(self, args):
-        return False
+        try:
+            self._strategy_service.strategy().save()
+        except Exception as e:
+            return False, repr(e)
+
+        return True, "Successfully saved strategy data for %s - %s" % (
+            self._strategy_service.strategy().name, self._strategy_service.strategy().identifier)
 
 
 class SetQuantityCommand(Command):
@@ -1383,20 +1386,20 @@ class SetQuantityCommand(Command):
             return False, "Invalid max factor, must be greater than zero"
 
         if market_id:
-            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
                 'market-id': market_id,
                 'action': action,
                 'quantity': quantity,
                 'max-factor': max_factor
             })
         else:
-            self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
                 'action': action,
                 'quantity': quantity,
                 'max-factor': max_factor
             })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1436,11 +1439,11 @@ class CloseAllTradeCommand(Command):
         if len(args) == 1:
             market_id = args[0]
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT_ALL, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT_ALL, {
             'market-id': market_id,
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1469,11 +1472,11 @@ class CancelAllPendingTradeCommand(Command):
         if len(args) == 1:
             market_id = args[0]
 
-        self._strategy_service.command(Strategy.COMMAND_TRADE_CANCEL_ALL_PENDING, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_CANCEL_ALL_PENDING, {
             'market-id': market_id,
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1502,11 +1505,11 @@ class SellAllAssetCommand(Command):
         if len(args) == 1:
             market_id = args[0]
 
-        self._trader_service.command(Trader.COMMAND_SELL_ALL_ASSET, {
+        results = self._trader_service.command(Trader.COMMAND_SELL_ALL_ASSET, {
             'market-id': market_id,
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1567,12 +1570,12 @@ class CancelAllOrderCommand(Command):
             else:
                 options.add(arg)
 
-        self._trader_service.command(Trader.COMMAND_CANCEL_ALL_ORDER, {
+        results = self._trader_service.command(Trader.COMMAND_CANCEL_ALL_ORDER, {
             'market-id': market_id,
             'options': tuple(options)
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1610,12 +1613,12 @@ class CancelOrderCommand(Command):
         market_id = args[0]
         order_id = args[1]
 
-        self._trader_service.command(Trader.COMMAND_CANCEL_ORDER, {
+        results = self._trader_service.command(Trader.COMMAND_CANCEL_ORDER, {
             'market-id': market_id,
             'order-id': order_id
         })
 
-        return True, []
+        return self.manage_results(results)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1674,9 +1677,9 @@ class RecheckCommand(Command):
 
             return True, "Force to recheck any trades for %s" % args[0]
 
-        self._strategy_service.command(Strategy.COMMAND_TRADER_RECHECK_ALL, {})
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_RECHECK_ALL, {})
 
-        return True, "Force to recheck any trades for any markets"
+        return self.manage_results(results, "Force to recheck any trades for any markets")
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1736,9 +1739,10 @@ class SetGlobalShareCommand(Command):
             'step': step
         })
 
-        return self.manage_results(results,
-                                   "Modify global share for context %s" % context if context else
-                                   "Modify global share for any contexts")
+        ok_message = "Modify global share for context %s" % context if context else "Modify global share for any " \
+                                                                                    "contexts "
+
+        return self.manage_results(results, ok_message)
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1767,11 +1771,11 @@ class RestartCommand(Command):
 
         market_id = args[0]
 
-        self._strategy_service.command(Strategy.COMMAND_TRADER_RESTART, {
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_RESTART, {
             'market-id': market_id,
         })
 
-        return True, "Force restart for strategy on instrument %s" % args[0]
+        return self.manage_results(results, "Force restart for strategy on instrument %s" % args[0])
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -1782,8 +1786,8 @@ class RestartCommand(Command):
         return args, 0
 
 
-def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service, monitor_service,
-                              notifier_service):
+def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service,
+                              monitor_service, notifier_service):
     #
     # global
     #
@@ -1791,7 +1795,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(PlayCommand(strategy_service, notifier_service))
     commands_handler.register(PauseCommand(strategy_service, notifier_service))
     commands_handler.register(InfoCommand(strategy_service, notifier_service))
-    # commands_handler.register(UserSaveCommand(strategy_service))
+    commands_handler.register(UserSaveCommand(strategy_service))
     commands_handler.register(SetQuantityCommand(strategy_service))
     commands_handler.register(SetAffinityCommand(strategy_service))
     commands_handler.register(SetOptionCommand(strategy_service))

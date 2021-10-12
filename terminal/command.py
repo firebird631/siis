@@ -5,7 +5,8 @@
 
 import json
 
-from app.appexception import CommandHandlerException, CommandException, CommandAutocompleteException, CommandParseException, CommandExecException
+from app.appexception import CommandHandlerException, CommandException, CommandAutocompleteException, \
+    CommandParseException, CommandExecException
 from terminal.terminal import Terminal
 
 import logging
@@ -115,14 +116,62 @@ class Command(object):
 
         return args, tab_pos
 
-    def manage_results(self, results, message=None):
-        if results is None or 'error' not in results:
+    def manage_results(self, results, ok_message=None):
+        if results is None:
             return False, "Invalid command results"
 
-        if results['error']:
-            return False, results['messages']
+        if type(results) is dict:
+            # single results
+            if 'error' not in results:
+                return False, "Invalid command results format"
 
-        return True, results['messages'] + message if message else results['messages']
+            if results['error']:
+                return False, results.get('messages', "")
+
+            if ok_message:
+                return True, results.get('messages', []) + ok_message
+            else:
+                return True, results.get('messages', "")
+
+        elif type(results) in (tuple, list):
+            # multiples-results
+            messages = []
+            succeed = 0
+            failed = 0
+
+            for r in results:
+                if r is None:
+                    failed += 1
+                    messages.append("Invalid command results")
+                    continue
+
+                if 'error' not in r:
+                    failed += 1
+                    messages.append("Invalid command results format")
+                    continue
+
+                if r['error']:
+                    # partial error
+                    failed += 1
+                    messages += r.get('messages', [])
+                else:
+                    # partial success
+                    succeed += 1
+                    messages += r.get('messages', [])
+
+            if succeed > 0 and failed > 0:
+                messages.append("Partially succeed %i, failed %i" % (succeed, failed))
+                messages.append(ok_message)
+            elif succeed > 0 and failed == 0:
+                messages.append("Fully succeed %i" % succeed)
+                messages.append(ok_message)
+            elif succeed == 0 and failed > 0:
+                messages.append("Fully failed %i" % failed)
+
+            return not failed, messages
+
+        else:
+            return False, "Invalid command results"
 
 
 class CommandsHandler(object):
@@ -135,7 +184,7 @@ class CommandsHandler(object):
     @todo For the command name (first arguments) if erase some characters,
         then it is not able to auto complete until ESC key is pressed.
         But have to move accelerator into command and move the complete code of 
-        input to this object, then disinct more finely command or direct mode.
+        input to this object, then distinct more finely command or direct mode.
     """
 
     def __init__(self):
@@ -187,22 +236,22 @@ class CommandsHandler(object):
 
     def register(self, command):
         """
-        Register a new command with unique id, optionnal alias and optionnal accelerator.
+        Register a new command with unique id, optional alias and optional accelerator.
         """
         if not command.name:
-            raise CommandHandlerException("Missing command name")
+            raise CommandHandlerException("", "Missing command name")
 
         if command.name in self._commands:
-            raise CommandException(command.name, "Already registred")
+            raise CommandException(command.name, "Already registered")
 
         if command.name in self._alias:
             raise CommandException(command.name, "Must not refers to a registered alias")
 
         if command.alias and command.alias in self._alias:
-            raise CommandException(command.name, "Alias %s already registred" % (command.alias,))
+            raise CommandException(command.name, "Alias %s already registered" % (command.alias,))
 
         if command.accelerator and command.accelerator in self._accelerators:
-            raise CommandException(command.name, "Accelerator %s already registred" % (command.accelerator,))
+            raise CommandException(command.name, "Accelerator %s already registered" % (command.accelerator,))
 
         if command.alias and command.alias in self._commands:
             raise CommandException(command.name, "Alias %s must not refers to another command" % (command.alias,))
@@ -221,23 +270,28 @@ class CommandsHandler(object):
         If the msgs list if None a default message is displayed as an error or an action.
         If the msgs is a str it is displayed as an error or an action.
         If the msgs is a list or a tuple the messages will be displayed in console.
-        If the msgs is an empty list it will display nothing more than the command could have already displayed internally.
+        If the msgs is an empty list it will display nothing more than the command could have already
+        displayed internally.
         """
         if msgs is None:
             if success:
                 Terminal.inst().action("Command %s done" % command_name, view='status')
+                Terminal.inst().action("Command %s done" % command_name, view='content')
             else:
                 Terminal.inst().error("Command %s failed" % command_name, view='status')
+                Terminal.inst().error("Command %s failed" % command_name, view='content')
         else:
             if success:
                 if type(msgs) == str:
                     Terminal.inst().action(msgs, view='status')
+                    Terminal.inst().action(msgs, view='content')
                 elif type(msgs) == list or type(msgs) == tuple:
                     for msg in msgs:
                         Terminal.inst().info(msg, view='content')
             else:
                 if type(msgs) == str:
                     Terminal.inst().error(msgs, view='status')
+                    Terminal.inst().error(msgs, view='content')
                 elif type(msgs) == list or type(msgs) == tuple:
                     for msg in msgs:
                         Terminal.inst().error(msg, view='content')

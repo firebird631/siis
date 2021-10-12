@@ -618,8 +618,9 @@ class StrategyTrader(object):
                     ops_data = [operation.dumps() for operation in trade.operations]
 
                     # store per trade
-                    Database.inst().store_user_trade((trader.name, trader.account.name, self.instrument.market_id,
-                            self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
+                    Database.inst().store_user_trade((
+                        trader.name, trader.account.name, self.instrument.market_id,
+                        self.strategy.identifier, trade.id, trade.trade_type, t_data, ops_data))
 
             # dumps of trader data, regions and alerts
             trader_data = {
@@ -629,8 +630,9 @@ class StrategyTrader(object):
             regions_data = [region.dumps() for region in self._regions]
             alerts_data = [alert.dumps() for alert in self._alerts]
 
-            Database.inst().store_user_trader((trader.name, trader.account.name, self.instrument.market_id,
-                    self.strategy.identifier, self.activity, trader_data, regions_data, alerts_data))
+            Database.inst().store_user_trader((
+                trader.name, trader.account.name, self.instrument.market_id,
+                self.strategy.identifier, self.activity, trader_data, regions_data, alerts_data))
 
     def loads(self, data, regions, alerts):
         """

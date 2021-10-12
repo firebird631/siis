@@ -16,9 +16,8 @@ from common.signal import Signal
 
 from trader.order import Order
 from trader.position import Position
-from trader.market import Market
 
-from monitor.streamable import Streamable, StreamMemberSerie, StreamMemberInt, StreamMemberFloatSerie, StreamMemberTraderBalance
+from monitor.streamable import Streamable, StreamMemberInt, StreamMemberTraderBalance
 from common.runnable import Runnable
 
 from terminal.terminal import Terminal, Color
@@ -62,6 +61,8 @@ class Trader(Runnable):
         self._service = service 
         self._account = None
 
+        self._watcher = None
+
         self._activity = True  # trading activity
 
         self._orders = {}
@@ -92,7 +93,8 @@ class Trader(Runnable):
         self._streamable.add_member(StreamMemberInt('conn'))
 
         # account asset/margin balance streams
-        self._balance_streamer = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.name, self.name)
+        self._balance_streamer = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE,
+                                            self.name, self.name)
         self._balance_streamer.add_member(StreamMemberTraderBalance('account-balance'))
 
     def stream(self):
@@ -191,13 +193,13 @@ class Trader(Runnable):
     #
 
     def pre_run(self):
-        Terminal.inst().info("Running trader %s..." % self._name)
+        Terminal.inst().message("Running trader %s..." % self._name)
         self.connect()
 
     def post_run(self):
-        Terminal.inst().info("Joining trader %s..." % self._name)
+        Terminal.inst().message("Joining trader %s..." % self._name)
         self.disconnect()
-        Terminal.inst().info("Trader %s stopped." % self._name)
+        Terminal.inst().message("Trader %s stopped." % self._name)
 
     def post_update(self):
         if len(self._signals) > Trader.MAX_SIGNALS:
@@ -224,7 +226,8 @@ class Trader(Runnable):
         Thread safe method.
         """
 
-        # performed async, but in case of backtesting update is called synchronously to avoid time derivation of the two processes.
+        # performed async, but in case of backtesting update is called synchronously to avoid time derivation
+        # of the two processes.
         if self.service.backtesting:
             return True
 
@@ -284,7 +287,8 @@ class Trader(Runnable):
                 break
 
         #
-        # commands processing @deprecated was used to do not have the possibility to trigger manually a social copy signal (expiration)
+        # commands processing
+        # @deprecated was used to do not have the possibility to trigger manually a social copy signal (expiration)
         #
 
         if self._commands:
@@ -303,7 +307,7 @@ class Trader(Runnable):
 
     def _purge_commands(self):
         """
-        Purge olders commands.
+        Purge older commands.
         Not trade safe method.
         """
         if len(self._commands) > Trader.MAX_COMMANDS_QUEUE:
@@ -340,7 +344,8 @@ class Trader(Runnable):
             if self.connected:
                 Terminal.inst().action("Trader worker %s is alive %s" % (self._name, msg), view='content')
             else:
-                Terminal.inst().action("Trader worker %s is alive but waiting for (re)connection %s" % (self._name, msg), view='content')
+                Terminal.inst().action("Trader worker %s is alive but waiting for (re)connection %s" % (
+                    self._name, msg), view='content')
 
         if watchdog_service:
             watchdog_service.service_pong(pid, timestamp, msg)
@@ -395,7 +400,7 @@ class Trader(Runnable):
     def set_ref_order_id(self, order):
         """
         Generate a new reference order id to be setup before calling create order, else a default one wil be generated.
-        Generating it before is a prefered way to correctly manange order in strategy.
+        Generating it before is a preferred way to correctly manange order in strategy.
         @param order A valid or on to set the ref order id.
         @note If the given order already have a ref order id no change is made.
         """
@@ -570,7 +575,8 @@ class Trader(Runnable):
             # signal of interest
             self._signals.append(signal)
 
-        elif signal.source == Signal.SOURCE_TRADER:  # in fact it comes from the DB service but request in self trader name
+        elif signal.source == Signal.SOURCE_TRADER:
+            # in fact it comes from the DB service but request in self trader name
             if signal.signal_type not in (Signal.SIGNAL_ASSET_DATA, Signal.SIGNAL_ASSET_DATA_BULK):
                 # non interested by others signals
                 return 
@@ -583,18 +589,14 @@ class Trader(Runnable):
     #
 
     def on_watcher_connected(self, watcher_name):
-        msg = "Trader %s joined %s watcher connection." % (self.name, watcher_name)
-        logger.info(msg)
-        Terminal.inst().info(msg, view='content')
+        logger.info("Trader %s joined %s watcher connection." % (self.name, watcher_name))
 
         # stream connectivity status
         if self._streamable:
             self._streamable.member('conn').update(1)
 
     def on_watcher_disconnected(self, watcher_name):
-        msg = "Trader %s lossing %s watcher connection." % (self.name, watcher_name)
-        logger.warning(msg)
-        Terminal.inst().info(msg, view='content')
+        logger.warning("Trader %s loosing %s watcher connection." % (self.name, watcher_name))
 
         # stream connectivity status
         if self._streamable:
@@ -822,7 +824,7 @@ class Trader(Runnable):
 
         order = self._orders.get(order_data['id'])
         if order:
-            # update price, stop-price, stop-loss, take-profit, quantity if necessarry
+            # update price, stop-price, stop-loss, take-profit, quantity if necessary
             order.quantity = order_data['quantity']
 
             order.price = order_data.get('price')
@@ -995,7 +997,8 @@ class Trader(Runnable):
                 price = self._watcher.price_history(market_id, timestamp)
 
             if price is None:
-                logger.warning("Trader %s cannot found price history for %s at %s" % (self._name, market_id, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
+                logger.warning("Trader %s cannot found price history for %s at %s" % (
+                    self._name, market_id, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
         else:
             # last price
             market = self.market(market_id)
@@ -1015,7 +1018,9 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets.
         """
-        columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip', 'Lot', 'Contract', 'Min Size', 'Max Size', 'Step Size', 'Min Price', 'Max Price', 'Step Price', 'Min Notional', 'Max Notional', 'Step Notional', 'Leverage')
+        columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip',
+                   'Lot', 'Contract', 'Min Size', 'Max Size', 'Step Size', 'Min Price', 'Max Price', 'Step Price',
+                   'Min Notional', 'Max Notional', 'Step Notional', 'Leverage')
         total_size = (len(columns), 0)
         data = []
 
@@ -1035,7 +1040,8 @@ class Trader(Runnable):
             markets = markets[offset:limit]
 
             for market in markets:
-                status = Color.colorize_cond("Open" if market.is_open else "Close", market.is_open, style=style, true=Color.GREEN, false=Color.RED)
+                status = Color.colorize_cond("Open" if market.is_open else "Close", market.is_open, style=style,
+                                             true=Color.GREEN, false=Color.RED)
 
                 row = (
                     market.market_id,
@@ -1066,7 +1072,8 @@ class Trader(Runnable):
 
         return columns[0:2] + columns[2+col_ofs:], data, total_size
 
-    def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None, prev_timestamp=None, group=None, ordering=None):
+    def markets_tickers_table(self, style='', offset=None, limit=None, col_ofs=None, prev_timestamp=None,
+                              group=None, ordering=None):
         """
         Returns a table of any followed markets tickers.
         """
@@ -1109,7 +1116,8 @@ class Trader(Runnable):
                 if market.vol24h_quote:
                     # @todo could be configured
                     low = 0
-                    if market.quote in ('USD', 'EUR', 'ZEUR', 'ZUSD', 'ZCAD', 'ZJPY', 'USDT', 'PAX', 'DAI', 'USDC', 'USDS', 'BUSD', 'TUSD'):
+                    if market.quote in ('USD', 'EUR', 'ZEUR', 'ZUSD', 'ZCAD', 'ZJPY', 'USDT', 'PAX', 'DAI',
+                                        'USDC', 'USDS', 'BUSD', 'TUSD'):
                         low = 500000
                     elif market.quote in ('BTC', 'XBT', 'XXBT'):
                         low = 100
@@ -1118,7 +1126,8 @@ class Trader(Runnable):
                     elif market.quote in ('BNB'):
                         low = 50000
 
-                    vol24h_quote = Color.colorize_cond("%.2f" % market.vol24h_quote, market.vol24h_quote < low, style=style, true=Color.YELLOW, false=Color.WHITE)
+                    vol24h_quote = Color.colorize_cond("%.2f" % market.vol24h_quote, market.vol24h_quote < low,
+                                                       style=style, true=Color.YELLOW, false=Color.WHITE)
                 else:
                     vol24h_quote = charmap.HOURGLASS
 
@@ -1397,11 +1406,13 @@ class Trader(Runnable):
 
         return results
 
-    def positions_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, datetime_format='%y-%m-%d %H:%M:%S'):
+    def positions_stats_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False,
+                              percents=False, datetime_format='%y-%m-%d %H:%M:%S'):
         """
         Returns a table of any active positions.
         """
-        columns = ['Symbol', '#', charmap.ARROWUPDN, 'x', 'P/L(%)', 'SL', 'TP', 'TR', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'UPNL', 'Cost', 'Margin', 'Key']
+        columns = ['Symbol', '#', charmap.ARROWUPDN, 'x', 'P/L(%)', 'SL', 'TP', 'TR', 'Entry date', 'Avg EP',
+                   'Exit date', 'Avg XP', 'UPNL', 'Cost', 'Margin', 'Key']
 
         if quantities:
             columns += ['Qty']
@@ -1427,7 +1438,8 @@ class Trader(Runnable):
                 positions = positions[offset:limit]
 
                 for t in positions:
-                    direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+                    direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN,
+                                                    t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
                     aep = float(t['aep']) if t['aep'] else 0.0
                     sl = float(t['sl']) if t['sl'] else 0.0
@@ -1485,8 +1497,8 @@ class Trader(Runnable):
 
         return columns[0:4] + columns[4+col_ofs:], data, total_size
 
-    def active_orders_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, datetime_format='%y-%m-%d %H:%M:%S',
-            group=None, ordering=None):
+    def active_orders_table(self, style='', offset=None, limit=None, col_ofs=None, quantities=False,
+                            percents=False, datetime_format='%y-%m-%d %H:%M:%S', group=None, ordering=None):
         """
         Returns a table of any active orders.
         """
@@ -1780,7 +1792,7 @@ class Trader(Runnable):
                     if self.create_order(order, market):
                         Terminal.inst().action("Create order %s to sell all of %s on %s..." % (order.order_id, asset[0], market.market_id))
                     else:
-                        Terminal.inst().action("Rejetect order to sell all of %s on %s..." % (asset[0], market.market_id))
+                        Terminal.inst().action("Rejected order to sell all of %s on %s..." % (asset[0], market.market_id))
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())

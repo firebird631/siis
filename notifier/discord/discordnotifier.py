@@ -17,6 +17,7 @@ from config import utils
 
 from trader.position import Position
 from notifier.discord.webhooks import send_to_discord
+from notifier.notifierexception import NotifierException
 
 from common.signal import Signal
 
@@ -31,7 +32,7 @@ class DiscordNotifier(Notifier):
     """
     Discord notifier for webhooks.
     @todo Active and history tables but this will need at least a timer or usage of API to delete the previous table.
-    @todo Strategey alert notifications
+    @todo Strategy alert notifications
     """
 
     def __init__(self, identifier, service, options):
@@ -69,7 +70,8 @@ class DiscordNotifier(Notifier):
 
     def start(self, options):
         if self._backtesting:
-            logger.warning("Notifier %s - %s : signals not started because of backtesting !" % (self.name, self.identifier))
+            logger.warning("Notifier %s - %s : signals not started because of backtesting !" % (
+                self.name, self.identifier))
             return False
         elif self._webhooks.get('signals'):
             # only of signals webhook is defined
@@ -79,10 +81,12 @@ class DiscordNotifier(Notifier):
                 if re.match(self._url_re, url) is None:
                     raise NotifierException(self.name, self.identifier, "Malformed webhook url %s" % url)
 
-            logger.info("Notifier %s - %s : signals webhook found and valid, start it..." % (self.name, self.identifier))
+            logger.info("Notifier %s - %s : signals webhook found and valid, start it..." % (
+                self.name, self.identifier))
             return super().start(options)
         else:
-            logger.warning("Notifier %s - %s : signals webhook not found, not started !" % (self.name, self.identifier))
+            logger.warning("Notifier %s - %s : signals webhook not found, not started !" % (
+                self.name, self.identifier))
             return False
 
     def terminate(self):
