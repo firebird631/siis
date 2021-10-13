@@ -88,6 +88,8 @@ class StrategyTrader(object):
         self._alerts = []
         self._next_alert_id = 1
 
+        self._scheduled_actions = []
+
         self._global_streamer = None
         self._trade_entry_streamer = None
         self._trade_update_streamer = None
@@ -625,6 +627,7 @@ class StrategyTrader(object):
             # dumps of trader data, regions and alerts
             trader_data = {
                 'affinity': self._affinity,
+                # @todo context data
             }
 
             regions_data = [region.dumps() for region in self._regions]
@@ -641,6 +644,9 @@ class StrategyTrader(object):
         # trader data
         if 'affinity' in data and type(data['affinity']) is int:
             self._affinity = data['affinity']
+
+        # contexts data
+        # @todo
 
         # instantiates the regions
         for r in regions:
@@ -679,9 +685,6 @@ class StrategyTrader(object):
     def loads_trade(self, trade_id, trade_type, data, operations):
         """
         Load a strategy trader trade and its operations.
-        @todo Need to check the validity of the trade :
-            - existing orders, create, sell, limit, stop, position
-            - and eventually the free margin, asset quantity
         There is many scenarios where the trade state changed, trade executed, order modified or canceled...
         """
         trade = None
@@ -1047,6 +1050,12 @@ class StrategyTrader(object):
 
                 self._trades = trades_list
 
+        #
+        # actions
+        #
+
+        self.process_action()
+
     def on_received_liquidation(self, liquidation):
         """
         Receive a trade liquidation (not user trade, global).
@@ -1235,6 +1244,36 @@ class StrategyTrader(object):
         else:
             # no alerts
             return None
+
+    #
+    # actions
+    #
+
+    def schedule_action(self, action):
+        """
+        Add a future action to process at the next update.
+        """
+        if action:
+            with self._mutex:
+                self._scheduled_actions.append(action)
+
+    def process_action(self):
+        """
+        Perform the scheduled actions at update.
+        """
+        scheduled_actions = None
+
+        with self._mutex:
+            if self._scheduled_actions:
+                scheduled_actions = self._scheduled_actions
+                self._scheduled_actions = []
+
+        if scheduled_actions:
+            for action in scheduled_actions:
+                try:
+                    action.process(self)
+                except Exception as e:
+                    error_logger.error(repr(e))
 
     #
     # misc

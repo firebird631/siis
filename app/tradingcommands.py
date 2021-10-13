@@ -397,11 +397,11 @@ class LongCommand(Command):
     SUMMARY = "to manually create to a new trade in LONG direction"
     HELP = (
         "param1: <market-id>",
-        "param2: [l|L][@|+|-]<entry-price> Use @ for a limit, + or - for order book depth, " \
+        "param2: [l|L][@|+|-]<entry-price> Use @ for a limit, + or - for order book depth, "
         "else enter at market (optional)",
-        "param3: [sl|SL][@|%|!]<stop-loss-price> @ for a stop, % for distance in percent below " \
+        "param3: [sl|SL][@|%|!]<stop-loss-price> @ for a stop, % for distance in percent below "
         "market or limit price, ! for distance in pips below market or limit price (optional)",
-        "param4: [tp|TP][@|%|!]<take-profit-price> @ for a limit, % for distance in percent above " \
+        "param4: [tp|TP][@|%|!]<take-profit-price> @ for a limit, % for distance in percent above "
         "market or limit price, ! for distance in pips above market or limit price (optional)",
         "param5: [']<timeframe> Related timeframe (1m, 4h, 1d...) (optional)",
         "param6: [-]<context-id> Related context identifier to manage the trade (optional)",
@@ -551,12 +551,12 @@ class ShortCommand(Command):
     SUMMARY = "to manually create to a new trade in SHORT direction"
     HELP = (
         "param1: <market-id>",
-        "param2: [l|L][@|+|-]<entry-price> Use @ for a limit, + or - for order book depth, " \
+        "param2: [l|L][@|+|-]<entry-price> Use @ for a limit, + or - for order book depth, "
         "else enter at market (optional)",
-        "param3: [sl|SL][@|%|!]<stop-loss-price> @ for a stop, % for distance in percent above market or " \
+        "param3: [sl|SL][@|%|!]<stop-loss-price> @ for a stop, % for distance in percent above market or "
         "limit price, ! for distance in pips above market price (optional)",
-        "param4: [tp|TP][@|%|!]<take-profit-price> @ for a limit, % for distance in percent below market or " \
-        " limit price, ! for distance in pips below market or limit price (optional)",
+        "param4: [tp|TP][@|%|!]<take-profit-price> @ for a limit, % for distance in percent below market or "
+        "limit price, ! for distance in pips below market or limit price (optional)",
         "param5: [']<timeframe> Related timeframe (1m, 4h, 1d...) (optional)",
         "param6: [-]<context-id> Related context identifier to manage the trade (optional)",
         "param7: [*]<decimal> or <decimal>% Quantity rate factor or rate in percent (optional)",
@@ -1338,14 +1338,16 @@ class SetQuantityCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        # ie: ":setquantity BTCUSDT 1000 1"
+        # ie: ":setquantity BTCUSDT 1000"
         action = "set-quantity"
         market_id = None
         quantity = 0.0
-        max_factor = 1
 
         if len(args) < 1:
             return False, "Missing parameters"
+
+        if len(args) > 2:
+            return False, "Too many parameters"
 
         is_float = True
 
@@ -1359,12 +1361,6 @@ class SetQuantityCommand(Command):
                 quantity = float(args[0])
             except ValueError:
                 return False, "Invalid quantity format"
-
-            if len(args) == 2:
-                try:
-                    max_factor = int(args[1])
-                except ValueError:
-                    return False, "Invalid scale factor value"
         else:
             market_id = args[0]
 
@@ -1373,30 +1369,19 @@ class SetQuantityCommand(Command):
             except ValueError:
                 return False, "Invalid quantity format"
 
-            if len(args) == 3:
-                try:
-                    max_factor = int(args[2])
-                except ValueError:
-                    return False, "Invalid scale factor value"
-
         if quantity <= 0.0:
             return False, "Invalid quantity, must be greater than zero"
-
-        if max_factor < 1:
-            return False, "Invalid max factor, must be greater than zero"
 
         if market_id:
             results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, {
                 'market-id': market_id,
                 'action': action,
-                'quantity': quantity,
-                'max-factor': max_factor
+                'quantity': quantity
             })
         else:
             results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY_ALL, {
                 'action': action,
-                'quantity': quantity,
-                'max-factor': max_factor
+                'quantity': quantity
             })
 
         return self.manage_results(results)

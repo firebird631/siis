@@ -274,7 +274,7 @@ class Instrument(object):
     TRADE_QUANTITY_QUOTE_TO_BASE = 1
 
     __slots__ = '_watchers', '_market_id', '_symbol', '_alias', '_tradeable', '_currency', \
-                '_trade_quantity', '_trade_max_factor', '_trade_quantity_mode', '_leverage', \
+                '_trade_quantity', '_trade_quantity_mode', '_leverage', \
                 '_market_bid', '_market_ask', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', \
                 '_size_limits', '_price_limits', '_notional_limits', \
@@ -302,7 +302,6 @@ class Instrument(object):
         self._currency = "USD"
 
         self._trade_quantity = 0.0
-        self._trade_max_factor = 1
         self._trade_quantity_mode = Instrument.TRADE_QUANTITY_DEFAULT
 
         self._leverage = 1.0  # 1 / margin_factor
@@ -464,15 +463,6 @@ class Instrument(object):
     def trade_quantity(self, quantity):
         if quantity > 0.0:
             self._trade_quantity = quantity
-
-    @property
-    def trade_max_factor(self):
-        return self._trade_max_factor
-
-    @trade_max_factor.setter
-    def trade_max_factor(self, max_factor):
-        if max_factor >= 1:
-            self._trade_max_factor = max_factor
 
     @property
     def trade_quantity_mode(self):

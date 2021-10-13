@@ -219,7 +219,6 @@ class StrategyInfoRestAPI(resource.Resource):
                 },
                 'trade': {
                     'quantity': instr.trade_quantity,
-                    'max-factor': instr.trade_max_factor,
                     'quantity-mode': instr.trade_quantity_mode
                 },
                 'volumes': {

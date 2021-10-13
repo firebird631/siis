@@ -183,7 +183,6 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
 
         elif action == "set-quantity":
             quantity = 0.0
-            max_factor = 1
 
             try:
                 quantity = float(data.get('quantity', -1))
@@ -191,35 +190,19 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
                 results['error'] = True
                 results['messages'].append("Invalid quantity")
 
-            try:
-                max_factor = int(data.get('max-factor', 1))
-            except Exception:
-                results['error'] = True
-                results['messages'].append("Invalid max factor")
-
             if quantity < 0.0:
                 results['error'] = True
                 results['messages'].append("Quantity must be greater than zero")
 
-            if max_factor <= 0:
-                results['error'] = True
-                results['messages'].append("Max factor must be greater than zero")
-
             if results['error']:
                 return results
 
-            if quantity > 0.0 and strategy_trader.instrument.trade_quantity != quantity:
+            if 0.0 < quantity != strategy_trader.instrument.trade_quantity:
                 strategy_trader.instrument.trade_quantity = quantity
                 results['messages'].append("Modified trade quantity for %s to %s" % (
                     strategy_trader.instrument.market_id, quantity))
 
-            if max_factor > 0 and strategy_trader.instrument.trade_max_factor != max_factor:
-                strategy_trader.instrument.trade_max_factor = max_factor
-                results['messages'].append("Modified trade quantity max factor for %s to %s" % (
-                    strategy_trader.instrument.market_id, max_factor))
-
             results['quantity'] = strategy_trader.instrument.trade_quantity
-            results['max-factor'] = strategy_trader.instrument.trade_max_factor
 
         #
         # affinity

@@ -332,7 +332,7 @@ class Strategy(Runnable):
         if len(self._signals) > Strategy.MAX_SIGNALS:
             now = time.time()
 
-            # but noly after a delay
+            # but only after a delay
             if self._overload_timestamp == 0.0:
                 self._overload_timestamp = now
 
@@ -429,7 +429,6 @@ class Strategy(Runnable):
                                 alias=mapped_instrument.get('alias'))
 
                         instrument.trade_quantity = mapped_instrument.get('size', 0.0)
-                        instrument.trade_max_factor = mapped_instrument.get('max-factor', 1)
 
                         trade_qty_mode = mapped_instrument.get('size-mode', None)
                         if trade_qty_mode:
@@ -784,7 +783,7 @@ class Strategy(Runnable):
 
     def update(self):
         """
-        Does not override this method. Internal update mecanism.
+        Does not override this method. Internal update mechanism.
         """
         if not self._running:
             return False
@@ -1338,6 +1337,16 @@ class Strategy(Runnable):
         strategy_trader = self._strategy_traders.get(data[0])
         if strategy_trader:
             strategy_trader.order_signal(signal_type, data)
+
+    #
+    # handlers
+    #
+
+    def add_handler(self, handler):
+        pass
+
+    def remove_handler(self, model, context):
+        pass
 
     #
     # helpers

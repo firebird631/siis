@@ -34,6 +34,8 @@ def cmd_strategy_set_global_share(strategy, data):
             results['messages'].append("Step must be great than zero when setting global share for %s" %
                                        strategy.identifier)
         else:
+            contexts = set()
+
             with strategy._mutex:
                 for market_id, strategy_trader in strategy._strategy_traders.items():
                     if context:
@@ -43,6 +45,9 @@ def cmd_strategy_set_global_share(strategy, data):
                         if ctx is not None:
                             ctx_cnt += 1
                             apply_to_context(ctx, True, step)
+
+                            if context not in contexts:
+                                contexts.add(context)
                     else:
                         context_ids = strategy_trader.contexts_ids()
 
@@ -53,7 +58,16 @@ def cmd_strategy_set_global_share(strategy, data):
                             if ctx is not None:
                                 apply_to_context(ctx, True, step)
 
+                                if context_id not in contexts:
+                                    contexts.add(context_id)
+
+            for context_id in contexts:
+                handler = GlobalShareHandler(context_id)
+                strategy.add_handler(handler)
+
     elif action == 'normal':
+        contexts = set()
+
         with strategy._mutex:
             for market_id, strategy_trader in strategy._strategy_traders.items():
                 if context:
@@ -63,6 +77,9 @@ def cmd_strategy_set_global_share(strategy, data):
                     if ctx is not None:
                         ctx_cnt += 1
                         apply_to_context(ctx, False)
+
+                        if context not in contexts:
+                            contexts.add(context)
                 else:
                     context_ids = strategy_trader.contexts_ids()
 
@@ -72,6 +89,12 @@ def cmd_strategy_set_global_share(strategy, data):
 
                         if ctx is not None:
                             apply_to_context(ctx, False)
+
+                            if context_id not in contexts:
+                                contexts.add(context_id)
+
+        for context_id in contexts:
+            strategy.remove_handler(GlobalShareHandler, context_id)
     else:
         # add an error result message
         results['error'] = True
@@ -79,7 +102,6 @@ def cmd_strategy_set_global_share(strategy, data):
 
     if context and not ctx_cnt:
         # add an error result message
-        print("toto")
         results['error'] = True
         results['messages'].append("Unknown context %s when setting global share for %s" % (
             context, strategy.identifier))

@@ -83,9 +83,8 @@ def cmd_strategy_trader_modify_all(strategy, data):
     #
 
     if action == "set-quantity":
-        # modify quantity/max-factor on any traders on the strategy
+        # modify quantity on any traders on the strategy
         quantity = 0.0
-        max_factor = 1
 
         # test values before to avoid multiple times the error
         try:
@@ -94,19 +93,9 @@ def cmd_strategy_trader_modify_all(strategy, data):
             results['error'] = True
             results['messages'].append("Invalid quantity")
 
-        try:
-            max_factor = int(data.get('max-factor', 1))
-        except Exception:
-            results['error'] = True
-            results['messages'].append("Invalid max factor")
-
         if quantity < 0.0:
             results['error'] = True
             results['messages'].append("Quantity must be greater than zero")
-
-        if max_factor <= 0:
-            results['error'] = True
-            results['messages'].append("Max factor must be greater than zero")
 
         if results['error']:
             return results

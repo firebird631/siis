@@ -9,7 +9,7 @@ from common.utils import timeframe_to_str, timeframe_from_str
 
 class Region(object):
     """
-    Startegy trade region base class.
+    Strategy trade region base class.
 
     @todo Could use market price formatter here in dumps and parameters methods
     """
@@ -137,7 +137,7 @@ class Region(object):
             return False
 
         if self._timeframe > 0 and signal.timeframe != self._timeframe:
-            # timeframe missmatch
+            # timeframe mismatch
             return False
 
         return self.test(timestamp, signal)
@@ -199,7 +199,7 @@ class Region(object):
 
     def dumps(self):
         """
-        Override this method and add specific parameters for dumps parameters for persistance model.
+        Override this method and add specific parameters for dumps parameters for persistence model.
         """
         return {
             'version': self.version(),  # str version (M.m.s)
@@ -215,7 +215,7 @@ class Region(object):
 
     def loads(self, data):
         """
-        Override this method and add specific parameters for loads parameters from persistance model.
+        Override this method and add specific parameters for loads parameters from persistence model.
         """
         self._id = data.get('id', -1)
         self._created = data.get('created', 0)  # datetime.strptime(data.get('created', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
@@ -255,11 +255,11 @@ class Region(object):
             return "both"
 
     def direction_from_str(self, direction_str):
-        if stage_str == "long":
+        if direction_str == "long":
             return Region.LONG
-        elif stage_str == "short":
+        elif direction_str == "short":
             return Region.SHORT
-        elif stage_str == "both":
+        elif direction_str == "both":
             return Region.BOTH
         else:
             return Region.BOTH

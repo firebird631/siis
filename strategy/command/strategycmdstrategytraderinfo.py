@@ -38,7 +38,8 @@ def cmd_strategy_trader_info(strategy, strategy_trader, data):
                         break
 
                 if region:
-                    results['messages'].append("Stragegy trader %s region details:" % strategy_trader.instrument.market_id)
+                    results['messages'].append("Strategy trader %s region details:" %
+                                               strategy_trader.instrument.market_id)
                     results['messages'].append(" - #%i: %s" % (region.id, region.str_info()))
                 else:
                     results['error'] = True
@@ -60,15 +61,14 @@ def cmd_strategy_trader_info(strategy, strategy_trader, data):
 
         elif not detail or detail == "details":
             # no specific detail
-            results['messages'].append("Stragegy trader %s details:" % strategy_trader.instrument.market_id)
+            results['messages'].append("Strategy trader %s details:" % strategy_trader.instrument.market_id)
 
             # status
             results['messages'].append("Activity : %s" % ("enabled" if strategy_trader.activity else "disabled"))
 
             # quantity
-            results['messages'].append("Trade quantity : %s, max factor is x%s, mode is %s" % (
+            results['messages'].append("Trade quantity : %s, mode is %s" % (
                 strategy_trader.instrument.trade_quantity,
-                strategy_trader.instrument.trade_max_factor,
                 strategy_trader.instrument.trade_quantity_mode_to_str()
             ))
 
