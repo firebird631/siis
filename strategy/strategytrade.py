@@ -112,7 +112,7 @@ class StrategyTrade(object):
 
         self.pl = 0.0    # once closed profit/loss in percent (valid once partially or fully closed)
 
-        self.exit_trades = {}  # contain each executed exit trades {<orderId< : (<qty<, <price>)}
+        self.exit_trades = {}  # contain each executed exit trades {<orderId> : (<qty>, <price>)}
 
         self.last_stop_ot = [0, 0]
         self.last_tp_ot = [0, 0]

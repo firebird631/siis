@@ -88,7 +88,7 @@ class StrategyTrader(object):
         self._alerts = []
         self._next_alert_id = 1
 
-        self._scheduled_actions = []
+        self._handler = None  # shared handler, only one can be installed
 
         self._global_streamer = None
         self._trade_entry_streamer = None
@@ -1051,10 +1051,10 @@ class StrategyTrader(object):
                 self._trades = trades_list
 
         #
-        # actions
+        # shared or local handler
         #
 
-        self.process_action()
+        self.process_handler()
 
     def on_received_liquidation(self, liquidation):
         """
@@ -1249,31 +1249,33 @@ class StrategyTrader(object):
     # actions
     #
 
-    def schedule_action(self, action):
+    def install_handler(self, handler):
         """
-        Add a future action to process at the next update.
+        Add a trade handler to be executed at each update, can be shared between many strategy-traders.
         """
-        if action:
+        if handler:
             with self._mutex:
-                self._scheduled_actions.append(action)
+                if handler != self._handler:
+                    self._handler = handler
 
-    def process_action(self):
-        """
-        Perform the scheduled actions at update.
-        """
-        scheduled_actions = None
+                    # update setup
+                    handler.install(self)
 
+    def uninstall_handler(self, name):
         with self._mutex:
-            if self._scheduled_actions:
-                scheduled_actions = self._scheduled_actions
-                self._scheduled_actions = []
+            if self._handler and self._handler.name == name:
+                self._handler.uninstall(self)
+                self._handler = None
 
-        if scheduled_actions:
-            for action in scheduled_actions:
-                try:
-                    action.process(self)
-                except Exception as e:
-                    error_logger.error(repr(e))
+    def process_handler(self):
+        """
+        Perform the installed handler.
+        """
+        if self._handler:
+            try:
+                self._handler.process(self)
+            except Exception as e:
+                error_logger.error(repr(e))
 
     #
     # misc

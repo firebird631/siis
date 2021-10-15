@@ -3,6 +3,8 @@
 # @license Copyright (c) 2021 Dream Overflow
 # Strategy command set global share for any traders
 
+from strategy.handler.handler import ReinvestGainHandler
+
 
 def cmd_strategy_set_global_share(strategy, data):
     """
@@ -14,96 +16,75 @@ def cmd_strategy_set_global_share(strategy, data):
     }
 
     action = data.get('action')
+    trade_quantity = data.get('trade-quantity', 0.0)
     step = data.get('step', 0.0)
-    context = data.get('context', None)
+    context_id = data.get('context')
+
+    if not context_id:
+        results['error'] = True
+        results['messages'].append("Context identifier must be specified for %s" % strategy.identifier)
+
+        return results
 
     ctx_cnt = 0
 
-    def apply_to_context(local_context, status, step_value=0.0):
+    def apply_to_context(local_context, status):
         if status:
             # on => global-share mode,
-            local_context.modify_trade_quantity_type('global-share', step_value)
+            local_context.modify_trade_quantity_type('global-share', step)
+            local_context.update_quantity(strategy_trader.instrument, trade_quantity)
         else:
             # off => normal mode, instrument quantity
             local_context.modify_trade_quantity_type('normal', 0.0)
 
     if action == 'global-share':
-        if step <= 0.0:
+        if not step or step <= 0.0:
             # add an error result message
             results['error'] = True
             results['messages'].append("Step must be great than zero when setting global share for %s" %
                                        strategy.identifier)
-        else:
-            contexts = set()
 
-            with strategy._mutex:
-                for market_id, strategy_trader in strategy._strategy_traders.items():
-                    if context:
-                        # retrieve context
-                        ctx = strategy_trader.retrieve_context(context)
+            return results
 
-                        if ctx is not None:
-                            ctx_cnt += 1
-                            apply_to_context(ctx, True, step)
+        if not trade_quantity or trade_quantity <= 0.0:
+            # add an error result message
+            results['error'] = True
+            results['messages'].append("Trade quantity must be great than zero when setting global share for %s" %
+                                       strategy.identifier)
 
-                            if context not in contexts:
-                                contexts.add(context)
-                    else:
-                        context_ids = strategy_trader.contexts_ids()
+            return results
 
-                        for context_id in context_ids:
-                            # retrieve context
-                            ctx = strategy_trader.retrieve_context(context_id)
-
-                            if ctx is not None:
-                                apply_to_context(ctx, True, step)
-
-                                if context_id not in contexts:
-                                    contexts.add(context_id)
-
-            for context_id in contexts:
-                handler = GlobalShareHandler(context_id)
-                strategy.add_handler(handler)
-
-    elif action == 'normal':
-        contexts = set()
+        handler = ReinvestGainHandler(context_id, trade_quantity, step)
 
         with strategy._mutex:
             for market_id, strategy_trader in strategy._strategy_traders.items():
-                if context:
-                    # retrieve context
-                    ctx = strategy_trader.retrieve_context(context)
+                # retrieve context
+                ctx = strategy_trader.retrieve_context(context_id)
 
-                    if ctx is not None:
-                        ctx_cnt += 1
-                        apply_to_context(ctx, False)
+                if ctx is not None:
+                    ctx_cnt += 1
+                    apply_to_context(ctx, True)
+                    strategy_trader.install_handler(handler)
 
-                        if context not in contexts:
-                            contexts.add(context)
-                else:
-                    context_ids = strategy_trader.contexts_ids()
+    elif action == 'normal':
+        with strategy._mutex:
+            for market_id, strategy_trader in strategy._strategy_traders.items():
+                # retrieve context
+                ctx = strategy_trader.retrieve_context(context_id)
 
-                    for context_id in context_ids:
-                        # retrieve context
-                        ctx = strategy_trader.retrieve_context(context_id)
-
-                        if ctx is not None:
-                            apply_to_context(ctx, False)
-
-                            if context_id not in contexts:
-                                contexts.add(context_id)
-
-        for context_id in contexts:
-            strategy.remove_handler(GlobalShareHandler, context_id)
+                if ctx is not None:
+                    ctx_cnt += 1
+                    apply_to_context(ctx, False)
+                    strategy_trader.uninstall_handler(ReinvestGainHandler.name)
     else:
         # add an error result message
         results['error'] = True
         results['messages'].append("Invalid action for set global share for %s" % strategy.identifier)
 
-    if context and not ctx_cnt:
+    if not ctx_cnt:
         # add an error result message
         results['error'] = True
         results['messages'].append("Unknown context %s when setting global share for %s" % (
-            context, strategy.identifier))
+            context_id, strategy.identifier))
 
     return results

@@ -128,10 +128,18 @@ class Command(object):
             if results['error']:
                 return False, results.get('messages', "")
 
+            messages = results.get('messages')
+
             if ok_message:
-                return True, results.get('messages', []) + ok_message
-            else:
-                return True, results.get('messages', "")
+                if messages:
+                    if type(messages) in (list, tuple):
+                        return True, messages + [ok_message]
+                    elif type(messages) is str:
+                        return True, [messages] + [ok_message]
+
+                return True, ok_message
+
+            return True, messages
 
         elif type(results) in (tuple, list):
             # multiples-results

@@ -1146,7 +1146,7 @@ class Strategy(Runnable):
         Process the backtesting update, for any instrument feeds candles to instruments and does the necessary updates.
         Override only if necessary. This default implementation should suffice.
 
-        The strategy_trader list here is not mutexed, because it backtesting context we never could add or remove one.
+        The strategy_trader list here is not mutex, because it backtesting context we never could add or remove one.
         """
         trader = self.trader()
 
@@ -1161,7 +1161,8 @@ class Strategy(Runnable):
 
             for market_id, strategy_trader in self._strategy_traders.items():
                 # parallelize jobs on workers
-                self.service.worker_pool.add_job(count_down, (self.backtest_update_instrument, (trader, strategy_trader, timestamp)))
+                self.service.worker_pool.add_job(count_down, (
+                    self.backtest_update_instrument, (trader, strategy_trader, timestamp)))
 
             # sync before continue
             count_down.wait()
@@ -1310,7 +1311,8 @@ class Strategy(Runnable):
                     return
 
             # if len(self._signals) > Strategy.MAX_SIGNALS:
-            #     # from the watcher (in live) so then ignore some of those message, the others ones are too important to be ignored
+            #     # from the watcher (in live) so then ignore some of those message, the others ones
+            #     # are too important to be ignored
             #     if signal.signal_type in (Signal.SIGNAL_TICK_DATA, Signal.SIGNAL_MARKET_DATA):
             #         return
 
@@ -1337,16 +1339,6 @@ class Strategy(Runnable):
         strategy_trader = self._strategy_traders.get(data[0])
         if strategy_trader:
             strategy_trader.order_signal(signal_type, data)
-
-    #
-    # handlers
-    #
-
-    def add_handler(self, handler):
-        pass
-
-    def remove_handler(self, model, context):
-        pass
 
     #
     # helpers

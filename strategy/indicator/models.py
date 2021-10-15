@@ -5,12 +5,13 @@
 
 from dataclasses import dataclass, field
 
+
 @dataclass
 class Limits:
     """
     TA limits
     """
-    
+
     from_timestamp: float = 0.0
     last_timestamp: float = 0.0
     min_price: float = 0.0

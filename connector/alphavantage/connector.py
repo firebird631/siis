@@ -12,7 +12,7 @@ from datetime import datetime
 from instrument.instrument import Instrument
 from common.utils import UTC
 
-from terminal.terminal import Terminal
+from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME, APP_RELEASE
 
 import logging
 logger = logging.getLogger('siis.connector.alphavantage')
@@ -64,7 +64,8 @@ class Connector(object):
 		if self._session is None:
 			self._session = requests.Session()
 
-			self._session.headers.update({'user-agent': 'siis-' + '0.2'})
+			self._session.headers.update({'user-agent': "%s-%s" % (
+				APP_SHORT_NAME, '.'.join([str(x) for x in APP_VERSION]))})
 			self._session.headers.update({'content-type': 'application/text'})
 
 	@property

@@ -85,10 +85,6 @@ class Indicator(object):
     @property
     def name(self):
         return self._name
-    
-    @property
-    def indicator_type(self):
-        return self._indicator_type
 
     @property
     def last_timestamp(self):

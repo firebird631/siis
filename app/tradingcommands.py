@@ -1679,8 +1679,9 @@ class SetGlobalShareCommand(Command):
     SUMMARY = "to enable, disable or configure the global share mode"
     HELP = (
         "param1: [on|off] Enable or disable for any strategy-traders",
-        "param2: <step-size> step size",
-        "param3: <context-id> related context identifier or any (optional)",
+        "param2: <context-id> related context identifier must be specified",
+        "param3: <trade-quantity> initial trade quantity",
+        "param4: <step-size> step size",
     )
 
     def __init__(self, strategy_service):
@@ -1692,40 +1693,52 @@ class SetGlobalShareCommand(Command):
         if len(args) < 1:
             return False, "Missing parameters"
 
-        if len(args) > 3:
-            return False, "Invalid parameters"
+        if len(args) > 4:
+            return False, "Too many parameters"
 
         if args[0] not in ('on', 'off'):
             return False, "First parameter must be 'on' or 'off'"
 
         action = 'global-share' if args[0] == 'on' else 'normal'
-        context = None
+        context = args[1]
+        trade_quantity = 0.0
         step = 0.0
 
         if action == 'global-share':
-            if len(args) < 2:
-                return False, "Step value must be specified"
+            if len(args) < 4:
+                return False, "Missing parameters"
 
             try:
-                step = float(args[1])
+                trade_quantity = float(args[2])
             except ValueError:
-                return False, "Value must be decimal"
+                return False, "Trade quantity value must be decimal"
 
-            if len(args) == 3:
-                context = args[2]
+            if trade_quantity <= 0:
+                return False, "Trade quantity value must be greater than zero"
+
+            try:
+                step = float(args[3])
+            except ValueError:
+                return False, "Step value must be decimal"
+
+            if step <= 0:
+                return False, "Step value must be greater than zero"
 
         elif action == 'normal':
             if len(args) == 2:
                 context = args[1]
 
+        if not context:
+            return False, "Context must be specified"
+
         results = self._strategy_service.command(Strategy.COMMAND_QUANTITY_GLOBAL_SHARE, {
             'action': action,
             'context': context,
+            'trade-quantity': trade_quantity,
             'step': step
         })
 
-        ok_message = "Modify global share for context %s" % context if context else "Modify global share for any " \
-                                                                                    "contexts "
+        ok_message = "Modify global share for context %s" % context
 
         return self.manage_results(results, ok_message)
 

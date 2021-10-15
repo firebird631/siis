@@ -65,7 +65,8 @@ class BaseVolumeProfileIndicator(Indicator):
 
     def setup_range(self, instrument, min_price, max_price):
         self._range = (min_price, max_price)
-        self._bins = tuple(instrument.adjust_price(price) for price in np.exp(np.arange(np.log(min_price), np.log(max_price), self._sensibility * 0.01)))
+        self._bins = tuple(instrument.adjust_price(price) for price in np.exp(
+            np.arange(np.log(min_price), np.log(max_price), self._sensibility * 0.01)))
 
     @property
     def length(self):
@@ -103,13 +104,14 @@ class BaseVolumeProfileIndicator(Indicator):
         if vp is None:
             return
 
-        vp.poc = VolumeProfile.find_poc(vp)
+        vp.poc = BaseVolumeProfileIndicator.find_poc(vp)
 
         # volumes arranged by price
-        volumes_by_price = VolumeProfile.sort_volumes_by_price(vp)
+        volumes_by_price = BaseVolumeProfileIndicator.sort_volumes_by_price(vp)
 
         # find peaks and valley
-        vp.peaks, vp.valleys = VolumeProfile.basic_peaks_and_valleys_detection(self._bins, self._sensibility, vp)
+        vp.peaks, vp.valleys = BaseVolumeProfileIndicator.basic_peaks_and_valleys_detection(
+            self._bins, self._sensibility, vp)
 
     #
     # internal computing
@@ -140,7 +142,7 @@ class BaseVolumeProfileIndicator(Indicator):
         prev = 0.0
 
         for b in self._bins:
-            if price < b and price >= prev:
+            if b > price >= prev:
                 return prev
 
             prev = b
@@ -383,7 +385,8 @@ class CompositeVolumeProfile(object):
     Then the cumulated duration is timeframe x length.
     """
 
-    __slots__ = '_timeframe', '_length', '_use_current', '_vp', '_volume_profile', '_last_timestamp', '_last_base_timestamp'
+    __slots__ = '_timeframe', '_length', '_use_current', '_vp', '_volume_profile', \
+                '_last_timestamp', '_last_base_timestamp'
 
     def __init__(self, timeframe, length, volume_profile, use_current=True):
         self._timeframe = timeframe
@@ -399,12 +402,13 @@ class CompositeVolumeProfile(object):
 
     @property
     def vp(self):
-        self._vp
+        return self._vp
 
     def is_update_needed(self, timestamp, partial_update=True):
         """
         Returns True of the close timestamp was reached.
 
+        @param timestamp Current timestamp.
         @param partial_update If True it will return True at each intermediate volume profile realized,
             else it will wait for the length of new volumes profiles completed.
         """
@@ -415,7 +419,7 @@ class CompositeVolumeProfile(object):
 
     def composite(self, timestamp):
         """
-        Build a composite profile of length, enventually use the current volume profile in addiction.
+        Build a composite profile of length, eventually use the current volume profile in addiction.
         """
         if self._volume_profile is None or not self._volume_profile.vps:
             return
@@ -448,7 +452,7 @@ class CompositeVolumeProfile(object):
 
             self._last_base_timestamp = volume_profile.current.timestamp
 
-        cvp._finalize(volume_profile, cvp)
+        self._finalize(volume_profile, cvp)
 
         self._last_timestamp = timestamp
 
@@ -466,10 +470,11 @@ class CompositeVolumeProfile(object):
         if vp is None:
             return
 
-        vp.poc = VolumeProfile.find_poc(vp)
+        vp.poc = BaseVolumeProfileIndicator.find_poc(vp)
 
         # volumes arranged by price
-        volumes_by_price = VolumeProfile.sort_volumes_by_price(vp)
+        volumes_by_price = BaseVolumeProfileIndicator.sort_volumes_by_price(vp)
 
         # find peaks and valley
-        vp.peaks, vp.valleys = VolumeProfile.basic_peaks_and_valleys_detection(volume_profile.bins, volume_profile.sensibility, vp)
+        vp.peaks, vp.valleys = BaseVolumeProfileIndicator.basic_peaks_and_valleys_detection(
+            volume_profile.bins, volume_profile.sensibility, vp)
