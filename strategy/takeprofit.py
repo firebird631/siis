@@ -5,7 +5,7 @@
 
 import numpy as np
 
-from strategy.strategysignalcontext import BaseSignal
+from strategy.strategytradercontextbase import StrategyTraderContext
 
 
 def search_std_atrsr(direction, timeframe, orientation, depth, price, epsilon=0.0):
@@ -376,53 +376,53 @@ def dynamic_take_profit_volume_sr_short(timeframe, last_price, curr_take_profit_
 def dynamic_take_profit(direction, method, timeframe, entry_price, last_price, curr_take_profit_price, depth=1,
                         orientation=0, price_epsilon=0.0, distance=0.0):
     if direction > 0:
-        if method == BaseSignal.PRICE_NONE:
+        if method == StrategyTraderContext.PRICE_NONE:
             return 0.0
 
-        elif method == BaseSignal.PRICE_ATR_SR:
+        elif method == StrategyTraderContext.PRICE_ATR_SR:
             return dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price, depth,
                                                   orientation, price_epsilon)
 
-        elif method == BaseSignal.PRICE_CUR_ATR_SR:
+        elif method == StrategyTraderContext.PRICE_CUR_ATR_SR:
             return dynamic_take_profit_cur_atrsr_long(timeframe, entry_price, last_price, curr_take_profit_price,
                                                       depth, orientation, price_epsilon)
 
-        elif method == BaseSignal.PRICE_BOLLINGER:
+        elif method == StrategyTraderContext.PRICE_BOLLINGER:
             return dynamic_take_profit_fixed_bollinger_long(timeframe, last_price, curr_take_profit_price,
                                                             price_epsilon)
 
-        elif method == BaseSignal.PRICE_FIXED_PCT and distance > 0.0:
+        elif method == StrategyTraderContext.PRICE_FIXED_PCT and distance > 0.0:
             return dynamic_take_profit_fixed_pct_long(timeframe, last_price, curr_take_profit_price, distance)
 
-        elif method == BaseSignal.PRICE_FIXED_DIST and distance > 0.0:
+        elif method == StrategyTraderContext.PRICE_FIXED_DIST and distance > 0.0:
             return dynamic_take_profit_fixed_dist_long(timeframe, last_price, curr_take_profit_price, distance)
 
-        elif method == BaseSignal.PRICE_VOL_SR:
+        elif method == StrategyTraderContext.PRICE_VOL_SR:
             return dynamic_take_profit_volume_sr_long(timeframe, last_price, curr_take_profit_price)
 
     elif direction < 0:
-        if method == BaseSignal.PRICE_NONE:
+        if method == StrategyTraderContext.PRICE_NONE:
             return 0.0
 
-        elif method == BaseSignal.PRICE_ATR_SR:
+        elif method == StrategyTraderContext.PRICE_ATR_SR:
             return dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_price, depth,
                                                    orientation, price_epsilon)
 
-        elif method == BaseSignal.PRICE_CUR_ATR_SR:
+        elif method == StrategyTraderContext.PRICE_CUR_ATR_SR:
             return dynamic_take_profit_cur_atrsr_short(timeframe, entry_price, last_price, curr_take_profit_price,
                                                        depth, orientation, price_epsilon)
 
-        elif method == BaseSignal.PRICE_BOLLINGER:
+        elif method == StrategyTraderContext.PRICE_BOLLINGER:
             return dynamic_take_profit_fixed_bollinger_short(timeframe, last_price, curr_take_profit_price,
                                                              price_epsilon)
 
-        elif method == BaseSignal.PRICE_FIXED_PCT and distance > 0.0:
+        elif method == StrategyTraderContext.PRICE_FIXED_PCT and distance > 0.0:
             return dynamic_take_profit_fixed_pct_short(timeframe, last_price, curr_take_profit_price, distance)
 
-        elif method == BaseSignal.PRICE_FIXED_DIST and distance > 0.0:
+        elif method == StrategyTraderContext.PRICE_FIXED_DIST and distance > 0.0:
             return dynamic_take_profit_fixed_dist_short(timeframe, last_price, curr_take_profit_price, distance)
 
-        elif method == BaseSignal.PRICE_VOL_SR:
+        elif method == StrategyTraderContext.PRICE_VOL_SR:
             return dynamic_take_profit_volume_sr_short(timeframe, last_price, curr_take_profit_price)
 
     return 0.0

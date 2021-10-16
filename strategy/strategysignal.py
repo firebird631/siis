@@ -4,7 +4,6 @@
 # Strategy signal
 
 from datetime import datetime
-from common.signal import Signal
 
 from trader.order import Order, order_type_to_str
 from common.utils import timeframe_to_str, direction_to_str, direction_from_str

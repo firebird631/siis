@@ -1,12 +1,12 @@
 # @date 2019-01-13
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
-# Strategy signal context
+# Strategy trader context
 
 from common.utils import timeframe_from_str
 
 
-class StrategySignalContextBuilder(object):
+class StrategyTraderContextBuilder(object):
     """
     To be implemented by strategy to have specific context trade persistence.
     """
@@ -16,7 +16,7 @@ class StrategySignalContextBuilder(object):
         return None
 
 
-class StrategySignalContext(object):
+class StrategyTraderContextBase(object):
     """
     Base model for any signal/trade context.
     """
@@ -69,29 +69,29 @@ class EntryExit(object):
             return "undefined"
 
     def __init__(self):
-        self.type = BaseSignal.PRICE_NONE
+        self.type = StrategyTraderContext.PRICE_NONE
         self.timeframe = "15m"
         self.depth = 1
         self.multi = False
-        self.orientation = BaseSignal.ORIENTATION_UP
+        self.orientation = StrategyTraderContext.ORIENTATION_UP
         self.timeout = 0.0
 
         self.distance = 0.0
-        self.distance_type = BaseSignal.PRICE_NONE
+        self.distance_type = StrategyTraderContext.PRICE_NONE
 
         self.timeout_distance = 0.0
-        self.timeout_distance_type = BaseSignal.PRICE_NONE
+        self.timeout_distance_type = StrategyTraderContext.PRICE_NONE
 
     def loads(self, strategy_trader, params):
-        if 'type' not in params or params.get('type') not in BaseSignal.PRICE:
+        if 'type' not in params or params.get('type') not in StrategyTraderContext.PRICE:
             raise ValueError("Undefined or unsupported 'type' value for %s" % self.name())
 
-        self.type = BaseSignal.PRICE.get(params['type'])
+        self.type = StrategyTraderContext.PRICE.get(params['type'])
         self.timeframe = timeframe_from_str(params.get('timeframe', "t"))
 
         # ATR SR need orientation and depth parameters
-        if self.type in (BaseSignal.PRICE_ATR_SR,):
-            if 'orientation' not in params or params.get('orientation') not in BaseSignal.ORIENTATION:
+        if self.type in (StrategyTraderContext.PRICE_ATR_SR,):
+            if 'orientation' not in params or params.get('orientation') not in StrategyTraderContext.ORIENTATION:
                 raise ValueError("Undefined or unsupported 'orientation' value for %s" % self.name())
 
             if 'depth' not in params:
@@ -106,98 +106,98 @@ class EntryExit(object):
 
         self.depth = params.get('depth', 1)
         self.multi = params.get('multi', False)
-        self.orientation = BaseSignal.ORIENTATION.get(params.get('orientation', 'up'))
+        self.orientation = StrategyTraderContext.ORIENTATION.get(params.get('orientation', 'up'))
 
         distance = params.get('distance', "0.0")
 
         if distance.endswith('%'):
             # in percent from entry price or limit price
             self.distance = float(distance[:-1]) * 0.01
-            self.distance_type = BaseSignal.PRICE_FIXED_PCT
+            self.distance_type = StrategyTraderContext.PRICE_FIXED_PCT
 
         elif distance.endswith('pip'):
             # in pips from entry price or limit price
             self.distance = float(distance[:-3]) * strategy_trader.instrument.one_pip_means
-            self.distance_type = BaseSignal.PRICE_FIXED_DIST
+            self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
         else:
             # in price from entry price or limit price
             self.distance = float(distance)
-            self.distance_type = BaseSignal.PRICE_FIXED_DIST
+            self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
         timeout_distance = params.get('timeout-distance', "0.0")
 
         if timeout_distance.endswith('%'):
             # in percent from entry price or limit price
             self.timeout_distance = float(timeout_distance[:-1]) * 0.01
-            self.timeout_distance_type = BaseSignal.PRICE_FIXED_PCT
+            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_PCT
 
         elif timeout_distance.endswith('pip'):
             # in pips from entry price or limit price
             self.timeout_distance = float(timeout_distance[:-3]) * strategy_trader.instrument.one_pip_means
-            self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
+            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
         else:
             # in price from entry price or limit price
             self.timeout_distance = float(timeout_distance)
-            self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
+            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
     def modify_distance(self, strategy_trader, distance):
         if type(distance) is str and distance.endswith('%'):
             # in percent from entry price or limit price
             self.distance = float(distance[:-1]) * 0.01
-            self.distance_type = BaseSignal.PRICE_FIXED_PCT
+            self.distance_type = StrategyTraderContext.PRICE_FIXED_PCT
 
         elif type(distance) is str and distance.endswith('pip'):
             # in pips from entry price or limit price
             self.distance = float(distance[:-3]) * strategy_trader.instrument.one_pip_means
-            self.distance_type = BaseSignal.PRICE_FIXED_DIST
+            self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
         else:
             # in price from entry price or limit price
             self.distance = float(distance)
-            self.distance_type = BaseSignal.PRICE_FIXED_DIST
+            self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
     def modify_timeout_distance(self, strategy_trader, timeout_distance):
         if type(timeout_distance) is str and timeout_distance.endswith('%'):
             # in percent from entry price or limit price
             self.timeout_distance = float(timeout_distance[:-1]) * 0.01
-            self.timeout_distance_type = BaseSignal.PRICE_FIXED_PCT
+            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_PCT
 
         elif type(timeout_distance) is str and timeout_distance.endswith('pip'):
             # in pips from entry price or limit price
             self.timeout_distance = float(timeout_distance[:-3]) * strategy_trader.instrument.one_pip_means
-            self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
+            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
         else:
             # in price from entry price or limit price
             self.timeout_distance = float(timeout_distance)
-            self.timeout_distance_type = BaseSignal.PRICE_FIXED_DIST
+            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
     def modify_orientation(self, orientation):
-        self.orientation = BaseSignal.ORIENTATION.get(orientation, BaseSignal.ORIENTATION_UP)
+        self.orientation = StrategyTraderContext.ORIENTATION.get(orientation, StrategyTraderContext.ORIENTATION_UP)
 
     def distance_to_str(self, strategy_trader):
-        if self.distance_type == BaseSignal.PRICE_FIXED_PCT:
+        if self.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
             return "%.2f%%" % (self.distance * 100.0)
-        elif self.distance_type == BaseSignal.PRICE_FIXED_DIST:
+        elif self.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
             return strategy_trader.instrument.format_price(self.distance)
         else:
             return strategy_trader.instrument.format_price(self.distance)
 
     def timeout_distance_to_str(self, strategy_trader):
-        if self.timeout_distance_type == BaseSignal.PRICE_FIXED_PCT:
+        if self.timeout_distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
             return "%.2f%%" % (self.timeout_distance * 100.0)
-        elif self.timeout_distance_type == BaseSignal.PRICE_FIXED_DIST:
+        elif self.timeout_distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
             return strategy_trader.instrument.format_price(self.timeout_distance)
         else:
             return strategy_trader.instrument.format_price(self.timeout_distance)
 
     def orientation_to_str(self):
-        return BaseSignal.ORIENTATION_FROM_STR_MAP.get(self.orientation)
+        return StrategyTraderContext.ORIENTATION_FROM_STR_MAP.get(self.orientation)
 
     def type_to_str(self):
-        return BaseSignal.PRICE_FROM_STR_MAP.get(self.type)
+        return StrategyTraderContext.PRICE_FROM_STR_MAP.get(self.type)
 
     def compile(self, strategy_trader):
         if strategy_trader.is_timeframes_based:
@@ -313,7 +313,7 @@ class EXBreakeven(EntryExit):
         return result
 
 
-class BaseSignal(StrategySignalContext):
+class StrategyTraderContext(StrategyTraderContextBase):
 
     PRICE_NONE = 0
     PRICE_FIXED_PCT = 1
@@ -392,7 +392,7 @@ class BaseSignal(StrategySignalContext):
         super().__init__()
 
         self.name = name
-        self.mode = BaseSignal.MODE_NONE
+        self.mode = StrategyTraderContext.MODE_NONE
         self.min_profit = 0.0
         self.compiled = False
 
@@ -413,7 +413,7 @@ class BaseSignal(StrategySignalContext):
 
         self.max_trades = 0  # >0 limit the number of trade for the context
 
-        self.trade_quantity_type = BaseSignal.TRADE_QUANTITY_NORMAL  # mode
+        self.trade_quantity_type = StrategyTraderContext.TRADE_QUANTITY_NORMAL  # mode
         self.trade_quantity = 0.0       # last realized max trade exit quantity or specific value
         self.trade_quantity_step = 0.0  # step of increment
 
@@ -431,81 +431,69 @@ class BaseSignal(StrategySignalContext):
         return result
 
     def compute_quantity(self, instrument):
-        if self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_NORMAL:
+        if self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_NORMAL:
             return instrument.trade_quantity
-        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_SPECIFIC:
+        elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_SPECIFIC:
             return self.trade_quantity
-        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_REINVEST_MAX_LAST:
+        elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_REINVEST_MAX_LAST:
             return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
-        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_INC_STEP:
+        elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_INC_STEP:
             return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
-        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_GLOBAL_SHARE:
+        elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_GLOBAL_SHARE:
             return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
         else:
             return 0.0
 
-    def update_quantity(self, instrument, trade_quantity):
-        if self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_REINVEST_MAX_LAST:
-            if self.trade_quantity <= 0.0:
-                # initialize to instrument quantity
-                self.trade_quantity = self.trade_quantity
-
-            if trade_quantity > self.trade_quantity:
-                self.trade_quantity = trade_quantity
-
-        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_INC_STEP:
-            if self.trade_quantity <= 0.0:
-                # initialize to instrument quantity
-                self.trade_quantity = instrument.trade_quantity
-
-            if self.trade_quantity_step > 0.0:
-                # add the increment by one step
-                self.trade_quantity += self.trade_quantity_step
-
-        elif self.trade_quantity_type == BaseSignal.TRADE_QUANTITY_GLOBAL_SHARE:
-            if self.trade_quantity <= 0.0:
-                # initialize to instrument quantity
-                self.trade_quantity = instrument.trade_quantity
-
-            if trade_quantity > self.trade_quantity:
-                # set the new trade global share quantity
-                self.trade_quantity = trade_quantity
-
     def mode_to_str(self):
-        if self.mode == BaseSignal.MODE_NONE:
+        if self.mode == StrategyTraderContext.MODE_NONE:
             return 'none'
-        elif self.mode == BaseSignal.MODE_SIGNAL:
+        elif self.mode == StrategyTraderContext.MODE_SIGNAL:
             return 'signal'
-        elif self.mode == BaseSignal.MODE_TRADE:
+        elif self.mode == StrategyTraderContext.MODE_TRADE:
             return 'trade'
         
         return 'unknown'
 
     def trade_quantity_type_to_str(self):
-        return BaseSignal.TRADE_QUANTITY_FROM_STR_MAP.get(self.trade_quantity_type)
+        return StrategyTraderContext.TRADE_QUANTITY_FROM_STR_MAP.get(self.trade_quantity_type)
 
-    def modify_trade_quantity_type(self, trade_quantity_type, value=0.0):
+    def modify_trade_quantity_type(self, instrument, trade_quantity_type, value=0.0):
         """
+        @param instrument
         @param trade_quantity_type str String trade quantity type.
         @param value trade quantity for specific type, or step value
         """
-        trade_quantity_type = BaseSignal.TRADE_QUANTITY.get(trade_quantity_type)
+        trade_quantity_type = StrategyTraderContext.TRADE_QUANTITY.get(trade_quantity_type)
 
-        if trade_quantity_type == BaseSignal.TRADE_QUANTITY_NORMAL:
+        if trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_NORMAL:
             self.trade_quantity = 0.0
             self.trade_quantity_step = 0.0
+            self.trade_quantity_type = trade_quantity_type
 
-        elif trade_quantity_type == BaseSignal.TRADE_QUANTITY_SPECIFIC:
+        elif trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_SPECIFIC:
             if value >= 0.0:
                 self.trade_quantity = value
                 self.trade_quantity_step = 0.0
+                self.trade_quantity_type = trade_quantity_type
 
-        elif trade_quantity_type == BaseSignal.TRADE_QUANTITY_INC_STEP:
+        elif trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_INC_STEP:
+            if value > 0.0:
+                if self.trade_quantity <= 0.0:
+                    # initialize
+                    self.trade_quantity = instrument.trade_quantity
+
+                self.trade_quantity_step = value
+                self.trade_quantity_type = trade_quantity_type
+
+        elif trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_GLOBAL_SHARE:
             if value > 0.0:
                 self.trade_quantity_step = value
+                self.trade_quantity_type = trade_quantity_type
 
-        elif trade_quantity_type == BaseSignal.TRADE_QUANTITY_GLOBAL_SHARE:
-            if value > 0.0:
-                self.trade_quantity_step = value
+        elif trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_REINVEST_MAX_LAST:
+            if self.trade_quantity <= 0.0:
+                # initialize
+                self.trade_quantity = instrument.trade_quantity
 
-        self.trade_quantity_type = trade_quantity_type
+            self.trade_quantity_step = 0.0
+            self.trade_quantity_type = trade_quantity_type

@@ -1751,6 +1751,82 @@ class SetGlobalShareCommand(Command):
         return args, 0
 
 
+class SetGlobalShareCommand(Command):
+    SUMMARY = "to enable, disable or configure the global share mode"
+    HELP = (
+        "param1: [on|off] Enable or disable for any strategy-traders",
+        "param2: <context-id> related context identifier must be specified",
+        "param3: <trade-quantity> initial trade quantity",
+        "param4: <step-size> step size",
+    )
+
+    def __init__(self, strategy_service):
+        super().__init__('set-global-share', 'SGS')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if len(args) < 1:
+            return False, "Missing parameters"
+
+        if len(args) > 4:
+            return False, "Too many parameters"
+
+        if args[0] not in ('on', 'off'):
+            return False, "First parameter must be 'on' or 'off'"
+
+        action = 'global-share' if args[0] == 'on' else 'normal'
+        context = args[1]
+        trade_quantity = 0.0
+        step = 0.0
+
+        if action == 'global-share':
+            if len(args) < 4:
+                return False, "Missing parameters"
+
+            try:
+                trade_quantity = float(args[2])
+            except ValueError:
+                return False, "Trade quantity value must be decimal"
+
+            if trade_quantity <= 0:
+                return False, "Trade quantity value must be greater than zero"
+
+            try:
+                step = float(args[3])
+            except ValueError:
+                return False, "Step value must be decimal"
+
+            if step <= 0:
+                return False, "Step value must be greater than zero"
+
+        elif action == 'normal':
+            if len(args) == 2:
+                context = args[1]
+
+        if not context:
+            return False, "Context must be specified"
+
+        results = self._strategy_service.command(Strategy.COMMAND_QUANTITY_GLOBAL_SHARE, {
+            'action': action,
+            'context': context,
+            'trade-quantity': trade_quantity,
+            'step': step
+        })
+
+        ok_message = "Modify global share for context %s" % context
+
+        return self.manage_results(results, ok_message)
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, ('on', 'off'), args, tab_pos, direction)
+
+        return args, 0
+
+
 class RestartCommand(Command):
     SUMMARY = "to force to restart an instrument of the strategy"
 

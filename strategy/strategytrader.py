@@ -222,13 +222,11 @@ class StrategyTrader(object):
                         return "Invalid %s option %s" % (keys[2], keys[3])
 
                     if keys[3] == 'type':
-                        if keys[4] not in ('normal', 'specific', 'reinvest-max-last', 'increment-step', 'global-share'):
-                            return "Type must be one of 'normal', 'specific', 'reinvest-max-last', 'increment-step', " \
-                                   "'global-share' "
+                        if keys[4] not in ('normal', 'specific', 'reinvest-max-last', 'increment-step'):
+                            return "Type must be one of 'normal', 'specific', 'reinvest-max-last', 'increment-step'"
 
-                        if keys[4] == 'global-share':
-                            # must be set globally
-                            return "Forbidden, this mode must be set globally using set-global-share <options>"
+                        if context.trade_quantity_type == context.TRADE_QUANTITY_GLOBAL_SHARE:
+                            return "Forbidden, this mode must be disabled globally using set-global-share off <...>"
 
                     elif keys[3] == 'quantity':
                         pass  # @todo
@@ -403,18 +401,44 @@ class StrategyTrader(object):
                         return True
 
                 elif keys[2] == 'trade-quantity':
-                    if keys[3] not in ('type', 'quantity', 'step'):
+                    if keys[3] not in ('quantity', 'step'):
                         return False
 
                     if keys[3] == 'type':
-                        if keys[4] not in ('normal', 'specific', 'reinvest-max-last', 'increment-step', 'global-share'):
+                        if keys[4] not in ('normal', 'specific', 'reinvest-max-last', 'increment-step'):
                             return False
 
-                        if keys[4] == 'global-share':
+                        if context.trade_quantity_type == context.TRADE_QUANTITY_GLOBAL_SHARE:
+                            # this mode must be managed globally
+                            return False
+
+                        if keys[4] == 'normal':
+                            context.modify_trade_quantity_type('normal', 0.0)
+                        elif keys[4] == 'specific':
+                            try:
+                                specific = float(value)
+                            except ValueError:
+                                return False
+
+                            if specific <= 0:
+                                return False
+
+                            context.modify_trade_quantity_type('specific', specific)
+                        elif keys[4] == 'reinvest-max-last':
+                            try:
+                                specific = float(value)
+                            except ValueError:
+                                return False
+
+                            if specific <= 0:
+                                return False
+
+                            context.modify_trade_quantity_type('specific', specific)
+                        elif keys[4] == 'increment-step':
+                            pass
+                        elif keys[4] == 'global-share':
                             # must be set globally
                             return False
-
-                        # @todo
 
                     elif keys[3] == 'quantity':
                         pass  # @todo
@@ -1256,9 +1280,12 @@ class StrategyTrader(object):
         if handler:
             with self._mutex:
                 if handler != self._handler:
-                    self._handler = handler
+                    # uninstall previous
+                    if self._handler:
+                        self._handler.uninstall(self)
 
-                    # update setup
+                    # setup the new
+                    self._handler = handler
                     handler.install(self)
 
     def uninstall_handler(self, name):
@@ -1276,6 +1303,10 @@ class StrategyTrader(object):
                 self._handler.process(self)
             except Exception as e:
                 error_logger.error(repr(e))
+
+    @property
+    def handler(self):
+        return self._handler
 
     #
     # misc

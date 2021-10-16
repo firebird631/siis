@@ -5,7 +5,7 @@
 
 import numpy as np
 
-from strategy.strategysignalcontext import BaseSignal
+from strategy.strategytradercontextbase import StrategyTraderContext
 
 
 def search_std_atrsr(direction, timeframe, orientation, depth, price, epsilon=0.0):
@@ -342,57 +342,57 @@ def dynamic_stop_loss_volume_sr_short(timeframe, last_price, curr_stop_loss_pric
 def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, curr_stop_loss_price, depth=1,
                       orientation=0, price_epsilon=0.0, distance=0.0):
     if direction > 0:
-        if method == BaseSignal.PRICE_NONE:
+        if method == StrategyTraderContext.PRICE_NONE:
             return 0.0
 
-        elif method == BaseSignal.PRICE_ATR_SR:
+        elif method == StrategyTraderContext.PRICE_ATR_SR:
             return dynamic_stop_loss_atrsr_long(timeframe, last_price, curr_stop_loss_price, depth, orientation,
                                                 price_epsilon)
 
-        elif method == BaseSignal.PRICE_CUR_ATR_SR:
+        elif method == StrategyTraderContext.PRICE_CUR_ATR_SR:
             return dynamic_stop_loss_cur_atrsr_long(timeframe, entry_price, last_price, curr_stop_loss_price, depth,
                                                     orientation, price_epsilon)
 
-        elif method == BaseSignal.PRICE_BOLLINGER:
+        elif method == StrategyTraderContext.PRICE_BOLLINGER:
             return dynamic_stop_loss_fixed_bollinger_long(timeframe, last_price, curr_stop_loss_price, price_epsilon)
 
-        elif method == BaseSignal.PRICE_FIXED_PCT and distance > 0.0:
+        elif method == StrategyTraderContext.PRICE_FIXED_PCT and distance > 0.0:
             return dynamic_stop_loss_fixed_pct_long(timeframe, last_price, curr_stop_loss_price, distance)
 
-        elif method == BaseSignal.PRICE_HMA:
+        elif method == StrategyTraderContext.PRICE_HMA:
             return dynamic_stop_loss_fixed_dist_long(timeframe, last_price, curr_stop_loss_price, distance)
 
-        elif method == BaseSignal.PRICE_HMA and distance > 0.0:
+        elif method == StrategyTraderContext.PRICE_HMA and distance > 0.0:
             return dynamic_stop_loss_fixed_hma_long(timeframe, last_price, curr_stop_loss_price, price_epsilon)
 
-        elif method == BaseSignal.PRICE_VOL_SR:
+        elif method == StrategyTraderContext.PRICE_VOL_SR:
             return dynamic_stop_loss_volume_sr_long(timeframe, last_price, curr_stop_loss_price)
 
     elif direction < 0:
-        if method == BaseSignal.PRICE_NONE:
+        if method == StrategyTraderContext.PRICE_NONE:
             return 0.0
 
-        elif method == BaseSignal.PRICE_ATR_SR:
+        elif method == StrategyTraderContext.PRICE_ATR_SR:
             return dynamic_stop_loss_atrsr_short(timeframe, last_price, curr_stop_loss_price, depth, orientation,
                                                  price_epsilon)
 
-        elif method == BaseSignal.PRICE_CUR_ATR_SR:
+        elif method == StrategyTraderContext.PRICE_CUR_ATR_SR:
             return dynamic_stop_loss_cur_atrsr_short(timeframe, entry_price, last_price, curr_stop_loss_price, depth,
                                                      orientation, price_epsilon)
 
-        elif method == BaseSignal.PRICE_BOLLINGER:
+        elif method == StrategyTraderContext.PRICE_BOLLINGER:
             return dynamic_stop_loss_fixed_bollinger_short(timeframe, last_price, curr_stop_loss_price, price_epsilon)
 
-        elif method == BaseSignal.PRICE_FIXED_PCT and distance > 0.0:
+        elif method == StrategyTraderContext.PRICE_FIXED_PCT and distance > 0.0:
             return dynamic_stop_loss_fixed_pct_short(timeframe, last_price, curr_stop_loss_price, distance)
 
-        elif method == BaseSignal.PRICE_FIXED_DIST and distance > 0.0:
+        elif method == StrategyTraderContext.PRICE_FIXED_DIST and distance > 0.0:
             return dynamic_stop_loss_fixed_dist_short(timeframe, last_price, curr_stop_loss_price, distance)
 
-        elif method == BaseSignal.PRICE_HMA:
+        elif method == StrategyTraderContext.PRICE_HMA:
             return dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_price, price_epsilon)
 
-        elif method == BaseSignal.PRICE_VOL_SR:
+        elif method == StrategyTraderContext.PRICE_VOL_SR:
             return dynamic_stop_loss_volume_sr_short(timeframe, last_price, curr_stop_loss_price)
 
     return 0.0

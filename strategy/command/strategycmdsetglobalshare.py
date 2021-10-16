@@ -28,15 +28,6 @@ def cmd_strategy_set_global_share(strategy, data):
 
     ctx_cnt = 0
 
-    def apply_to_context(local_context, status):
-        if status:
-            # on => global-share mode,
-            local_context.modify_trade_quantity_type('global-share', step)
-            local_context.update_quantity(strategy_trader.instrument, trade_quantity)
-        else:
-            # off => normal mode, instrument quantity
-            local_context.modify_trade_quantity_type('normal', 0.0)
-
     if action == 'global-share':
         if not step or step <= 0.0:
             # add an error result message
@@ -63,7 +54,6 @@ def cmd_strategy_set_global_share(strategy, data):
 
                 if ctx is not None:
                     ctx_cnt += 1
-                    apply_to_context(ctx, True)
                     strategy_trader.install_handler(handler)
 
     elif action == 'normal':
@@ -74,7 +64,6 @@ def cmd_strategy_set_global_share(strategy, data):
 
                 if ctx is not None:
                     ctx_cnt += 1
-                    apply_to_context(ctx, False)
                     strategy_trader.uninstall_handler(ReinvestGainHandler.name)
     else:
         # add an error result message
