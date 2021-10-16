@@ -72,6 +72,7 @@ class ReinvestGainHandler(Handler):
 
             # @todo
             context.compute_quantity(strategy_trader)
+            context.compute_quantity(strategy_trader)
 
     def uninstall(self, strategy_trader):
         if strategy_trader:

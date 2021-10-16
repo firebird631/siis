@@ -493,10 +493,12 @@ class BaseSignal(StrategySignalContext):
 
         if trade_quantity_type == BaseSignal.TRADE_QUANTITY_NORMAL:
             self.trade_quantity = 0.0
+            self.trade_quantity_step = 0.0
 
         elif trade_quantity_type == BaseSignal.TRADE_QUANTITY_SPECIFIC:
             if value >= 0.0:
                 self.trade_quantity = value
+                self.trade_quantity_step = 0.0
 
         elif trade_quantity_type == BaseSignal.TRADE_QUANTITY_INC_STEP:
             if value > 0.0:
