@@ -109,6 +109,9 @@ class ReinvestGainHandler(Handler):
         self._num_trades = 0
 
     def install(self, strategy_trader):
+        if strategy_trader in self._installed_strategy_traders:
+            return
+
         if strategy_trader and self._context_id:
             context = strategy_trader.retrieve_context(self._context_id)
 
@@ -121,20 +124,34 @@ class ReinvestGainHandler(Handler):
             # initial trade quantity
             context.trade_quantity = self._trade_quantity
 
-            # update handler
-            self._total_max_trades += context.max_trades
-            self._total_quantity += context.max_trades * context.trade_quantity
+            used_quantity = 0
+            num_trades = 0
 
             with strategy_trader._trade_mutex:
                 for trade in strategy_trader._trades:
                     if trade.context == context:
                         # compute quantity from trade
-                        trade_price = trade.entry_price if trade.entry_price else trade.order_price
+                        trade_price = trade.order_price if trade.order_price > 0 else trade.entry_price
+                        trade_quantity = trade.order_quantity
 
-                        self._used_quantity += trade.order_quantity * trade_price
-                        self._num_trades += 1
+                        used_quantity += trade_quantity * trade_price
+                        num_trades += 1
+
+            with self._mutex:
+                # update handler
+                self._installed_strategy_traders.append(strategy_trader)
+
+                self._total_max_trades += context.max_trades
+                self._total_quantity += strategy_trader.instrument.adjust_quote(
+                    context.max_trades * context.trade_quantity)
+
+                self._used_quantity += strategy_trader.instrument.adjust_quote(used_quantity)
+                self._num_trades += num_trades
 
     def uninstall(self, strategy_trader):
+        if strategy_trader not in self._installed_strategy_traders:
+            return
+
         if strategy_trader and self._context_id:
             context = strategy_trader.retrieve_context(self._context_id)
 
@@ -142,14 +159,25 @@ class ReinvestGainHandler(Handler):
                 # unable to retrieve related context
                 return
 
+            released_quantity = 0
+
+            with strategy_trader._trade_mutex:
+                for trade in strategy_trader._trades:
+                    if trade.context == context:
+                        # compute quantity from trade
+                        trade_price = trade.order_price if trade.order_price > 0 else trade.entry_price
+                        trade_quantity = trade.order_quantity
+
+                        released_quantity += trade_quantity * trade_price
+
             with self._mutex:
+                # update handler
                 if strategy_trader in self._installed_strategy_traders:
                     self._installed_strategy_traders.remove(strategy_trader)
 
                 if strategy_trader in self._need_update:
                     self._need_update.remove(strategy_trader)
 
-                # update handler
                 self._total_max_trades -= context.max_trades
                 if self._total_max_trades < 0:
                     self._total_max_trades = 0
@@ -158,17 +186,11 @@ class ReinvestGainHandler(Handler):
                 if self._total_quantity < 0.0:
                     self._total_quantity = 0.0
 
-                with strategy_trader._trade_mutex:
-                    for trade in strategy_trader._trades:
-                        if trade.context == context:
-                            # compute quantity from trade
-                            trade_price = trade.entry_price if trade.entry_price else trade.order_price
+                self._used_quantity -= released_quantity
+                if self._used_quantity < 0.0:
+                    self._used_quantity = 0.0
 
-                            self._used_quantity -= trade.order_quantity * trade_price
-                            if self._used_quantity < 0.0:
-                                self._used_quantity = 0.0
-
-                context.modify_trade_quantity_type(strategy_trader.instrument, 'normal')
+            context.modify_trade_quantity_type(strategy_trader.instrument, 'normal')
 
     def on_setting_changed(self, strategy_trader):
         # @todo
@@ -176,12 +198,13 @@ class ReinvestGainHandler(Handler):
 
     def on_trade_opened(self, strategy_trader, trade):
         if trade and trade.context and trade.context.name == self._context_id:
-            trade_price = trade.entry_price if trade.entry_price else trade.order_price
+            trade_price = trade.order_price if trade.order_price > 0 else trade.entry_price
+            trade_quantity = trade.order_quantity
 
-            entry_quantity = trade.exec_entry_qty * trade_price
+            entry_quantity = trade_quantity * trade_price
 
             with self._mutex:
-                self._used_quantity += entry_quantity
+                self._used_quantity += strategy_trader.instrument.adjust_quote(entry_quantity)
                 self._num_trades += 1
 
     def on_trade_exited(self, strategy_trader, trade):
@@ -189,12 +212,15 @@ class ReinvestGainHandler(Handler):
             entry_quantity = trade.exec_entry_qty * trade.entry_price
             exit_quantity = trade.exec_exit_qty * trade.exit_price
 
+            trade_price = trade.order_price if trade.order_price > 0 else trade.entry_price
+            trade_quantity = trade.order_quantity
+
             profit_loss = exit_quantity - entry_quantity
 
             with self._mutex:
                 self._total_quantity += profit_loss
 
-                self._used_quantity -= entry_quantity
+                self._used_quantity -= strategy_trader.instrument.adjust_quote(trade_quantity * trade_price)
                 if self._used_quantity < 0.0:
                     self._used_quantity = 0.0
 
@@ -238,9 +264,9 @@ class ReinvestGainHandler(Handler):
 
             for trade in strategy_trader._trades:
                 if trade.context == context and trade.is_opened() and trade.order_price > 0:
-                    trade_quantity = trade.order_quantity * trade.order_price
+                    cur_trade_quantity = trade.order_quantity * trade.order_price
 
-                    if abs(new_trade_quantity - trade_quantity) >= self._step_quantity:
+                    if abs(new_trade_quantity - cur_trade_quantity) >= self._step_quantity:
                         # the asset quantity for quote could not be up to date at this time
                         # quantity = strategy_trader.compute_asset_quantity(
                         #     trader, trade.order_price, new_trade_quantity)

@@ -94,6 +94,7 @@ class MyHttpHandler(http.server.BaseHTTPRequestHandler):
 		msg = format % args
 		return
 
+
 class TradingViewWatcher(Watcher):
 	"""
 	Its a simple HTTP server listening GET.
@@ -199,7 +200,7 @@ class TradingViewWatcher(Watcher):
 
 			# send a buy sell signal
 			# @todo is it can be something else ?
-			bs = BuySellSignal(symbol, timestamp, timeframe)
+			bs = BuySellSignal(timestamp, timeframe)
 
 			if stype == 'entry':
 				order_type = BuySellSignal.ORDER_ENTRY
@@ -208,7 +209,7 @@ class TradingViewWatcher(Watcher):
 			else:
 				order_type = BuySellSignal.ORDER_ENTRY
 
-			bs.set_data(strategy, order_type, dir_type, price)
+			bs.set_data(strategy, order_type, dir_type, price, timeframe)
 			bs.set_params(options)
 
 			self.service.notify(Signal.SIGNAL_BUY_SELL_ORDER, self.name, bs)
@@ -222,7 +223,7 @@ class TradingViewWatcher(Watcher):
 			# 	'symbol': symbol,          # mandatory related symbol
 			# 	'type': stype,             # order, trend, support, resistance, idea, info, comment...
 			# 	'direction': dir_type,     # direction if order or suggestion
-			# 	'price': price,            # price of the order or when the signal was emmited
+			# 	'price': price,            # price of the order or when the signal was emitted
 			# 	'options': options         # any other specifics details
 			# }
 

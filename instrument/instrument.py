@@ -152,7 +152,7 @@ class BuySellSignal(object):
     def exec_price(self):
         return self._exec_price
 
-    def set_data(strategy, order, direction, exec_price, timeframe):
+    def set_data(self, strategy, order_type, direction, exec_price, timeframe):
         self._strategy = strategy
         self._order_type = order_type
         self._direction = direction
@@ -534,7 +534,7 @@ class Instrument(object):
 
     @property
     def market_spread(self):
-        return (self._market_ask - self._market_bid)
+        return self._market_ask - self._market_bid
 
     @property
     def last_update_time(self):
@@ -661,7 +661,7 @@ class Instrument(object):
 
     def check_temporal_coherency(self, tf):
         """
-        Check temporal coherency of the candles and return the list of incoherencies.
+        Check temporal coherency of the candles and return the list of incoherence.
         """
         issues = []
 
@@ -671,23 +671,31 @@ class Instrument(object):
             if candles:
                 for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
                     if candles[i].timestamp - candles[i-1].timestamp != tf:
-                        logger.error("Timestamp inconsistency from %s and %s candles at %s delta=(%s)" % (i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
-                        issues.append(('ohlc', tf, i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
+                        logger.error("Timestamp inconsistency from %s and %s candles at %s delta=(%s)" % (
+                            i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
+
+                        issues.append(('ohlc', tf, i, i-1, candles[i-1].timestamp,
+                                       candles[i].timestamp - candles[i-1].timestamp))
 
         for tf, buy_sells in self._buy_sells.items():
             if buy_sells:
                 number = len(buy_sells)
                 for i in range(len(buy_sells)-1, max(-1, len(buy_sells)-number-1), -1):
                     if buy_sells[i].timestamp - buy_sells[i-1].timestamp != tf:
-                        logger.error("Timestamp inconsistency from %s and %s buy/sell signals at %s delta=(%s)" % (i, i-1, buy_sells[i-1].timestamp, buy_sells[i].timestamp - buy_sells[i-1].timestamp))
-                        issues.append(('buysell', tf, i, i-1, candles[i-1].timestamp, buy_sells[i].timestamp - buy_sells[i-1].timestamp))
+                        logger.error("Timestamp inconsistency from %s and %s buy/sell signals at %s delta=(%s)" % (
+                            i, i-1, buy_sells[i-1].timestamp, buy_sells[i].timestamp - buy_sells[i-1].timestamp))
+
+                        issues.append(('buysell', tf, i, i-1, buy_sells[i-1].timestamp,
+                                       buy_sells[i].timestamp - buy_sells[i-1].timestamp))
 
         ticks = self._ticks
         if ticks:
             number = len(ticks)
             for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
                 if ticks[i][0] - ticks[i-1][0] != tf:                    
-                    logger.error("Timestamp inconsistency from %s and %s ticks at %s delta=(%s)" % (i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
+                    logger.error("Timestamp inconsistency from %s and %s ticks at %s delta=(%s)" % (
+                        i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
+
                     issues.append(('tick', 0, i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
         
         return issues
@@ -699,6 +707,7 @@ class Instrument(object):
     def add_candles(self, candles_list, max_candles=-1):
         """
         Append an array of new candle.
+        @param candles_list
         @param max_candles Pop candles until num candles > max_candles.
         """
         if not candles_list:
@@ -740,6 +749,7 @@ class Instrument(object):
     def add_candle(self, candle, max_candles=-1):
         """
         Append a new candle.
+        @param candle
         @param max_candles Pop candles until num candles > max_candles.
         """
         if not candle:
@@ -921,7 +931,7 @@ class Instrument(object):
                     ticks.append(t)
         else:
             # initiate array
-            self._ticks = tick
+            self._ticks = ticks_list
 
     def add_tick(self, tick):
         if not tick:
@@ -944,7 +954,7 @@ class Instrument(object):
 
     def detach_ticks(self):
         """
-        Detach the array of tich and setup a new empty for the instrument.
+        Detach the array of tick and setup a new empty for the instrument.
         """
         ticks = self._ticks
         self._ticks = []
@@ -974,6 +984,7 @@ class Instrument(object):
     def add_tickbars(self, tickbars_list, max_tickbars=-1):
         """
         Append an array of new tickbars.
+        @param tickbars_list
         @param max_tickbars Pop tickbars until num tickbars > max_tickbars.
         """
         if not tickbars_list:
@@ -994,7 +1005,7 @@ class Instrument(object):
 
                 elif t.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
                     # replace the last tickbar if was not consolidated
-                    tickbars[-1] = c
+                    tickbars[-1] = t
         else:
             # initiate array
             self._tickbars = tickbars_list
@@ -1007,6 +1018,7 @@ class Instrument(object):
     def add_tickbar(self, tickbar, max_tickbars=-1):
         """
         Append a new tickbar.
+        @param tickbar
         @param max_tickbars Pop tickbars until num tickbars > max_tickbars.
         """
         if not tickbar:
@@ -1110,14 +1122,6 @@ class Instrument(object):
         else:
             return (self._market_bid * self._market_ask) * 0.5
 
-    def trade_quantity_mode_to_str(self):
-        if self._trade_quantity_mode == Instrument.TRADE_QUANTITY_DEFAULT:
-            return "default"
-        elif self._trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-            return "quote-to-base"
-        else:
-            return "default"
-
     #
     # format/adjust
     #
@@ -1134,6 +1138,19 @@ class Instrument(object):
 
         # adjusted price at precision and by step of pip meaning
         return truncate(round(price / tick_size) * tick_size, precision)
+
+    def adjust_quote(self, quote):
+        """
+        Format the quote according to the precision.
+        """
+        if quote is None:
+            quote = 0.0
+
+        precision = self._notional_limits[3] or 2
+        tick_size = self._notional_limits[2] or 0.01
+
+        # adjusted quote price at precision and by step of pip meaning
+        return truncate(round(quote / tick_size) * tick_size, precision)
 
     def format_price(self, price):
         """
@@ -1154,6 +1171,25 @@ class Instrument(object):
 
         return formatted_price
 
+    def format_quote(self, quote):
+        """
+        Format the quote according to the precision.
+        """
+        if quote is None or math.isnan(quote):
+            quote = 0.0
+
+        precision = self._notional_limits[3] or 2
+        tick_size = self._notional_limits[2] or 0.01
+
+        adjusted_quote = truncate(round(quote / tick_size) * tick_size, precision)
+        formatted_quote = "{:0.0{}f}".format(adjusted_quote, precision)
+
+        # remove trailing 0s and dot
+        if '.' in formatted_quote:
+            formatted_quote = formatted_quote.rstrip('0').rstrip('.')
+
+        return formatted_quote
+
     def adjust_quantity(self, quantity, min_is_zero=True):
         """
         From quantity return the floor tradable quantity according to min, max and rounded to step size.
@@ -1171,7 +1207,7 @@ class Instrument(object):
 
             return self.min_size
 
-        if self.max_size > 0.0 and quantity > self.max_size:
+        if 0.0 < self.max_size < quantity:
             return self.max_size
 
         if self.step_size > 0:
