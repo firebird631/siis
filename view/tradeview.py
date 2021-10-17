@@ -32,14 +32,16 @@ class TradeView(TableView):
             num_actives_trades = 0
 
             try:
-                columns, table, total_size, num_actives_trades = trades_stats_table(strategy, *self.table_format(), quantities=True,
-                        percents=self._percent, group=self._group, datetime_format=self._datetime_format)
+                columns, table, total_size, num_actives_trades = trades_stats_table(
+                    strategy, *self.table_format(), quantities=True, percents=self._percent,
+                    group=self._group, datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
                 error_logger.error(str(e))
 
-            self.set_title("Active trades (%i/%i) for strategy %s - %s" % (num_actives_trades, num, strategy.name, strategy.identifier))
+            self.set_title("Active trades (%i/%i) for strategy %s - %s" % (
+                num_actives_trades, num, strategy.name, strategy.identifier))
         else:
             self.set_title("Active trades - No configured strategy")

@@ -72,6 +72,7 @@ class StrategyAssetTrade(StrategyTrade):
         self._use_oco = use_oco
 
         self._stats['entry-order-type'] = order.order_type
+        self._stats['profit-loss-currency'] = instrument.quote
 
         if trader.create_order(order, instrument):
             if not self.eot and order.created_time:
@@ -628,7 +629,8 @@ class StrategyAssetTrade(StrategyTrade):
 
                 elif (data.get('exec-price') is not None and data['exec-price']) and (filled > 0):
                     # compute the average entry price whe increasing the trade
-                    self.aep = instrument.adjust_price(((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled))
+                    self.aep = instrument.adjust_price(((self.aep * self.e) + (
+                            data['exec-price'] * filled)) / (self.e + filled))
 
                 # cumulative filled entry qty
                 if data.get('cumulative-filled') is not None:
@@ -695,7 +697,8 @@ class StrategyAssetTrade(StrategyTrade):
                     self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
 
                     # average exit price
-                    self.axp = instrument.adjust_price(((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled))
+                    self.axp = instrument.adjust_price(((self.axp * self.x) + (
+                            data['exec-price'] * filled)) / (self.x + filled))
 
                 # elif data.get('avg-price') is not None and data['avg-price']:
                 #     # average price is directly given
@@ -741,7 +744,8 @@ class StrategyAssetTrade(StrategyTrade):
                 elif 'commission-amount' in data:
                     self._stats['exit-fees'] += data['commission-amount']
                 # else:  # @todo on quote or on base...
-                #     self._stats['exit-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+                #     self._stats['exit-fees'] += filled * (
+                #         instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
 
                 # retains the trade timestamp
                 if not self._stats['first-realized-exit-timestamp']:
@@ -995,6 +999,30 @@ class StrategyAssetTrade(StrategyTrade):
         # if no min notional, free qty... let the error status
 
         return False
+
+    #
+    # stats
+    #
+
+    def update_stats(self, last_price, timestamp):
+        super().update_stats(last_price, timestamp)
+
+        if self.is_active():
+            upnl = 0.0  # unrealized PNL
+            rpnl = 0.0  # realized PNL
+
+            # non realized quantity
+            nrq = self.e - self.x
+
+            if self.dir > 0:
+                upnl = last_price * nrq - self.aep * nrq
+                rpnl = self.axp * self.x - self.aep * self.x
+            elif self.dir < 0:
+                upnl = self.aep * nrq - last_price * nrq
+                rpnl = self.aep * self.x - self.axp * self.x
+
+            # including fees and realized profit and loss
+            self._stats['unrealized-profit-loss'] = upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees']
 
     def info_report(self, strategy_trader):
         data = super().info_report(strategy_trader)

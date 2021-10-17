@@ -246,7 +246,7 @@ class StrategyPositionTrade(StrategyTrade):
             # order fully or partially filled
             filled = 0
 
-            if (data['id'] == self.create_oid or data['id'] == self.position_id):
+            if data['id'] == self.create_oid or data['id'] == self.position_id:
                 info = data.get('info', "")
 
                 # if info == "closed" or info == "partially-closed":

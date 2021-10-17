@@ -18,7 +18,7 @@ def get_all_active_trades(strategy):
         eot: float first entry open UTC timestamp
         xot: float first exit open UTC timestamp
         freot: float first realized trade in entry UTC timestamp
-        frxot: float firest realized trade in exit UTC timestamp
+        frxot: float first realized trade in exit UTC timestamp
         lreot: float last realized trade in entry UTC timestamp
         lrxot: float last realized trade in exit UTC timestamp
         d: str 'long' or 'short'
@@ -43,7 +43,6 @@ def get_all_active_trades(strategy):
         leop : last exec open price
     """
     results = []
-    trader = strategy.trader()
 
     with strategy._mutex:
         try:
@@ -79,10 +78,11 @@ def get_all_active_trades(strategy):
                             'wt': trade.worst_price_timestamp(),
                             'label': trade.label,
                             'pl': profit_loss,
-                            'upnl': strategy_trader.instrument.format_price(trade.unrealized_profit_loss),
+                            'upnl': strategy_trader.instrument.format_quote(trade.unrealized_profit_loss),
                             'pnlcur': trade.profit_loss_currency,
                             'fees': trade.entry_fees_rate() + trade.estimate_exit_fees_rate(strategy_trader.instrument),
-                            'leop': strategy_trader.instrument.format_price(strategy_trader.instrument.open_exec_price(trade.direction)),
+                            'leop': strategy_trader.instrument.format_price(
+                                strategy_trader.instrument.open_exec_price(trade.direction)),
                         })
         except Exception as e:
             error_logger.error(repr(e))

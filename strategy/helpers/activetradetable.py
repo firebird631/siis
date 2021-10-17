@@ -19,11 +19,13 @@ logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
 
 
-def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, group=False, datetime_format='%y-%m-%d %H:%M:%S'):
+def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False,
+                       percents=False, group=False, datetime_format='%y-%m-%d %H:%M:%S'):
     """
     Returns a table of any active trades.
     """
-    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'UPNL']
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date',
+               'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'UPNL']
 
     if quantities:
         columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -61,7 +63,8 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
         trades = trades[offset:limit]
 
         for t in trades:
-            direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+            direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN,
+                                            t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
             aep = float(t['aep'])
             best = float(t['b'])
@@ -71,13 +74,18 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             tp = float(t['tp'])
             leop = float(t['leop'])
 
+            upnl = "%s%s" % (t['upnl'], t['pnlcur']) if aep else '-'
+
             if t['pl'] < 0 and ((t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep)):
                 # has been profitable but loss
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
+                upnl = Color.colorize(upnl, Color.ORANGE, style=style)
             elif t['pl'] < 0:  # loss
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
+                upnl = Color.colorize(upnl, Color.RED, style=style)
             elif t['pl'] > 0:  # profit
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
+                upnl = Color.colorize(upnl, Color.GREEN, style=style)
             else:  # equity
                 cr = "0.00" if aep else "-" 
 
@@ -112,8 +120,9 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             else:
                 oppct = 0
 
-            def format_with_percent(formated_value, condition, rate):
-                return (("%s (%.2f%%)" % (formated_value, rate * 100)) if percents else formated_value) if condition else '-'
+            def format_with_percent(formatted_value, condition, rate):
+                return (("%s (%.2f%%)" % (formatted_value,
+                                          rate * 100)) if percents else formatted_value) if condition else '-'
 
             op = (("%s (%.2f%%)" % (t['l'], oppct * 100)) if percents and oppct else t['l']) if op else '-'
 
@@ -122,8 +131,6 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
 
             b = format_with_percent(t['b'], best, bpct)
             w = format_with_percent(t['w'], worst, wpct)
-
-            upnl = "%s%s" % (t['upnl'], t['pnlcur']) if aep else '-'
 
             row = [
                 t['sym'],
