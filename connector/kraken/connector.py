@@ -232,31 +232,31 @@ class Connector(object):
         data = self.query_public('AssetPairs')
 
         if not data:
-            return []
+            return {}
         
         if data['error']:
             logger.error("query markets: %s" % ', '.join(data['error']))
-            return []
+            return {}
 
         if data['result']:
             return data['result']
 
-        return []
+        return {}
 
     def assets(self):
         data = self.query_public('Assets')
 
         if not data:
-            return []
+            return {}
         
         if data['error']:
             logger.error("query assets: %s" % ', '.join(data['error']))
-            return []
+            return {}
 
         if data['result']:
             return data['result']
 
-        return []
+        return {}
 
     def get_ws_token(self):
         data = self.query_private('GetWebSocketsToken')
@@ -434,7 +434,7 @@ class Connector(object):
 
                 last_datetime = dt
 
-                if (to_ts and dt > to_ts):
+                if to_ts and dt > to_ts:
                     break
 
             # kraken does not manage lot of history (no need to loop)
