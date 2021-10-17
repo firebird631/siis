@@ -20,7 +20,7 @@ def get_agg_trades(strategy):
     Generate and return an array of :
         mid: str name of the market id
         sym: str name of the symbol
-        pl: flaot profit/loss rate
+        pl: float profit/loss rate
         perf: perf
         worst: worst
         best: best
@@ -29,7 +29,6 @@ def get_agg_trades(strategy):
         roe: roe
     """
     results = []
-    trader = strategy.trader()
 
     with strategy._mutex:
         try:
@@ -42,8 +41,11 @@ def get_agg_trades(strategy):
                     best = strategy_trader._stats['best']
                     worst = strategy_trader._stats['worst']
 
-                    best_sum = strategy_trader._stats['best-sum']
-                    worst_sum = strategy_trader._stats['worst-sum']
+                    high = strategy_trader._stats['high']
+                    low = strategy_trader._stats['low']
+                    closed = strategy_trader._stats['closed']
+
+                    rpnl = strategy_trader.instrument.adjust_quote(strategy_trader._stats['rpnl'])
 
                     success = len(strategy_trader._stats['success'])
                     failed = len(strategy_trader._stats['failed'])
@@ -52,24 +54,34 @@ def get_agg_trades(strategy):
                     mid = strategy_trader.instrument.market_id
                     sym = strategy_trader.instrument.symbol
 
-                    num = len(strategy_trader.trades)
+                    num_trades = len(strategy_trader.trades)
+                    num_actives_trades = 0
 
                     for trade in strategy_trader.trades:
+                        # current UPNL %
                         pl += trade.estimate_profit_loss(strategy_trader.instrument)
 
-                if pl != 0.0 or num > 0 or success > 0 or failed > 0 or roe > 0:
+                        if trade.is_active():
+                            num_actives_trades += 1
+
+                if pl != 0.0 or num_trades > 0 or success > 0 or failed > 0 or roe > 0:
                     results.append({
                         'mid': mid,
                         'sym': sym,
                         'pl': pl,
+                        'num-open-trades': len(strategy_trader.trades),
                         'perf': perf,
                         'best': best,
                         'worst': worst,
                         'success': success,
                         'failed': failed,
                         'roe': roe,
-                        'best-sum': best_sum,
-                        'worst-sum': worst_sum,
+                        'high': high,
+                        'low': low,
+                        'num-closed-trades': closed,
+                        'rpnl': rpnl,
+                        'rpnl-currency': strategy_trader.instrument.quote,
+                        'num-actives-trades': num_actives_trades
                     })
         except Exception as e:
             error_logger.error(repr(e))

@@ -21,9 +21,10 @@ error_logger = logging.getLogger('siis.error.strategy')
 
 def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, summ=True):
     """
-    Returns a table of any aggreged active and closes trades.
+    Returns a table of any aggregated active and closes trades.
     """
-    columns = ('Symbol', 'P/L(%)', 'Total(%)', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE', 'Best Sum (%)', 'Worst Sum (%)', 'Best+Worst Sum (%)')
+    columns = ('Symbol', 'P/L(%)', 'Total(%)', 'RPNL', 'Open', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE',
+               'Closed', 'High(%)', 'Low(%)')
     total_size = (len(columns), 0)
     data = []
 
@@ -48,10 +49,10 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
         success_sum = 0
         failed_sum = 0
         roe_sum = 0
-        best_sum_g = 0.0
-        worst_sum_g = 0.0
+        num_open_trades_sum = 0
+        num_actives_trades_sum = 0
 
-        # total summ before offset:limit
+        # total sum before offset:limit
         if summ:
             for t in agg_trades:
                 pl_sum += t['pl']
@@ -61,51 +62,75 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
                 success_sum += t['success']
                 failed_sum += t['failed']
                 roe_sum += t['roe']
-                best_sum_g += t['best-sum']
-                worst_sum_g += t['worst-sum']
+                num_open_trades_sum += t['num-open-trades']
+                num_actives_trades_sum += t['num-actives-trades']
 
         agg_trades = agg_trades[offset:limit]
 
         for t in agg_trades:
             cr = Color.colorize_updn("%.2f" % (t['pl']*100.0), 0.0, t['pl'], style=style)
             cp = Color.colorize_updn("%.2f" % (t['perf']*100.0), 0.0, t['perf'], style=style)
+            rpnl = Color.colorize_updn("%g%s" % (t['rpnl'], t['rpnl-currency']), 0.0, t['rpnl'], style=style)
 
             row = (
                 t['sym'],
                 cr,
                 cp,
+                rpnl,
+                "%s/%s" % (t['num-actives-trades'], t['num-open-trades']),
                 "%.2f" % (t['best']*100.0),
                 "%.2f" % (t['worst']*100.0),
                 t['success'],
                 t['failed'],
                 t['roe'],
-                "%.2f" % (t['best-sum']*100.0),
-                "%.2f" % (t['worst-sum']*100.0),
-                "%.2f" % ((t['best-sum']+t['worst-sum'])*100.0),
+                t['num-closed-trades'],
+                "%.2f" % (t['high']*100.0),
+                "%.2f" % (t['low']*100.0),
             )
 
-            data.append(row[col_ofs:])
+            data.append(row[0:3] + row[3 + col_ofs:])
 
         #
         # sum
         #
 
         if summ:
+            row = (
+                '------',
+                '------',
+                '--------',
+                '----',
+                '----',
+                '-------',
+                '--------',
+                '-------',
+                '------',
+                '---',
+                '------',
+                '-------',
+                '------',
+            )
+
+            data.append(row[0:3] + row[3+col_ofs:])
+
             cpl_sum = Color.colorize_updn("%.2f" % (pl_sum*100.0), 0.0, pl_sum, style=style)
             cperf_sum = Color.colorize_updn("%.2f" % (perf_sum*100.0), 0.0, perf_sum, style=style)
 
             row = (
-                'Total',
+                'TOTAL',
                 cpl_sum,
                 cperf_sum,
+                '-',
+                "%s/%s" % (num_actives_trades_sum, num_open_trades_sum),
                 "%.2f" % (best_sum*100.0),
                 "%.2f" % (worst_sum*100.0),
                 success_sum,
                 failed_sum,
                 roe_sum,
-                "%.2f" % (best_sum_g*100.0),
-                "%.2f" % (worst_sum_g*100.0),
-                "%.2f" % ((best_sum_g+worst_sum_g)*100.0),
+                success_sum + failed_sum + roe_sum,
+                '-',
+                '-',
+                '-',
             )
 
             data.append(row[0:3] + row[3+col_ofs:])

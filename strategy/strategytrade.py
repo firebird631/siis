@@ -866,8 +866,10 @@ class StrategyTrade(object):
     # stats
     #
 
-    def update_stats(self, last_price, timestamp):
+    def update_stats(self, instrument, timestamp):
         if self.is_active():
+            last_price = instrument.close_exec_price(self.direction)
+
             if self.dir > 0:
                 if last_price > self._stats['best-price']:
                     self._stats['best-price'] = last_price
@@ -1120,7 +1122,7 @@ class StrategyTrade(object):
                 'last-realized-entry-datetime': self.dump_timestamp(self._stats['last-realized-entry-timestamp']),
                 'last-realized-exit-datetime': self.dump_timestamp(self._stats['last-realized-exit-timestamp']),
                 'profit-loss-currency': self._stats['profit-loss-currency'],
-                'profit-loss': self._stats['unrealized-profit-loss'],  # @todo
+                'profit-loss': self._stats['unrealized-profit-loss'],  # use the last computed or updated
                 'entry-fees': self._stats['entry-fees'],
                 'exit-fees': self._stats['exit-fees'],
                 'fees-pct': round((self.entry_fees_rate() + self.exit_fees_rate()) * 100.0, 2),

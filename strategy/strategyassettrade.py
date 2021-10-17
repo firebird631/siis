@@ -1004,10 +1004,12 @@ class StrategyAssetTrade(StrategyTrade):
     # stats
     #
 
-    def update_stats(self, last_price, timestamp):
-        super().update_stats(last_price, timestamp)
+    def update_stats(self, instrument, timestamp):
+        super().update_stats(instrument, timestamp)
 
         if self.is_active():
+            last_price = instrument.close_exec_price(self.direction)
+
             upnl = 0.0  # unrealized PNL
             rpnl = 0.0  # realized PNL
 
@@ -1022,7 +1024,8 @@ class StrategyAssetTrade(StrategyTrade):
                 rpnl = self.aep * self.x - self.axp * self.x
 
             # including fees and realized profit and loss
-            self._stats['unrealized-profit-loss'] = upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees']
+            self._stats['unrealized-profit-loss'] = instrument.adjust_quote(
+                upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees'])
 
     def info_report(self, strategy_trader):
         data = super().info_report(strategy_trader)

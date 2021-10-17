@@ -182,7 +182,8 @@ class ReinvestGainHandler(Handler):
                 if self._total_max_trades < 0:
                     self._total_max_trades = 0
 
-                self._total_quantity -= context.max_trades * context.trade_quantity
+                self._total_quantity -= strategy_trader.instrument.adjust_quote(
+                    context.max_trades * context.trade_quantity)
                 if self._total_quantity < 0.0:
                     self._total_quantity = 0.0
 
@@ -218,7 +219,7 @@ class ReinvestGainHandler(Handler):
             profit_loss = exit_quantity - entry_quantity
 
             with self._mutex:
-                self._total_quantity += profit_loss
+                self._total_quantity += strategy_trader.instrument.adjust_quote(profit_loss)
 
                 self._used_quantity -= strategy_trader.instrument.adjust_quote(trade_quantity * trade_price)
                 if self._used_quantity < 0.0:

@@ -34,6 +34,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
     total_size = (len(columns), 0)
     data = []
     num_actives_trades = 0
+    sub_totals = {}
 
     with strategy._mutex:
         trades = get_all_active_trades(strategy)
@@ -76,6 +77,11 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
 
             upnl = "%s%s" % (t['upnl'], t['pnlcur']) if aep else '-'
 
+            if t['pnlcur'] not in sub_totals:
+                sub_totals[t['pnlcur']] = 0.0
+
+            sub_totals[t['pnlcur']] += float(t['upnl'])
+
             if t['pl'] < 0 and ((t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep)):
                 # has been profitable but loss
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
@@ -87,7 +93,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
                 upnl = Color.colorize(upnl, Color.GREEN, style=style)
             else:  # equity
-                cr = "0.00" if aep else "-" 
+                cr = "0.00" if aep else "-"
 
             if t['d'] == 'long' and aep > 0 and best > 0 and worst > 0:
                 bpct = (best - aep) / aep - t['fees']
@@ -159,5 +165,70 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 row.append(t['s'].capitalize())
 
             data.append(row[0:4] + row[4+col_ofs:])
+
+    if sub_totals:
+        row = [
+            "------",
+            '-',
+            '-',
+            '------',
+            '--',
+            '--',
+            '--',
+            '----',
+            '-----',
+            '--',
+            '-----------',
+            '----------',
+            '------',
+            '---------',
+            '------',
+            '-----',
+            '----',
+        ]
+
+        if quantities:
+            row.append('---')
+            row.append('-------')
+            row.append('------')
+            row.append('------')
+
+        data.append(row[0:4] + row[4+col_ofs:])
+
+    for currency, sub_total in sub_totals.items():
+        if sub_total > 0:
+            upnl = Color.colorize("%g%s" % (sub_total, currency), Color.GREEN, style=style)
+        elif sub_total < 0:
+            upnl = Color.colorize("%g%s" % (sub_total, currency), Color.RED, style=style)
+        else:
+            upnl = "%g%s" % (sub_total, currency)
+
+        row = [
+            "SUB",
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            currency,
+            upnl,
+        ]
+
+        if quantities:
+            row.append('-')
+            row.append('-')
+            row.append('-')
+            row.append('-')
+
+        data.append(row[0:4] + row[4+col_ofs:])
 
     return columns[0:4] + columns[4+col_ofs:], data, total_size, num_actives_trades

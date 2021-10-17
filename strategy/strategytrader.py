@@ -104,13 +104,15 @@ class StrategyTrader(object):
             'perf': 0.0,       # initial
             'worst': 0.0,      # worst trade lost
             'best': 0.0,       # best trade profit
-            'worst-sum': 0.0,  # sum of worst trade lost
-            'best-sum': 0.0,   # sum of best trade profit
+            'high': 0.0,       # if closed at best price
+            'low': 0.0,        # if closed at worst price
             'failed': [],      # failed terminated trades
             'success': [],     # success terminated trades
             'roe': [],         # return to equity trades
             'cont-win': 0,     # contiguous win trades
             'cont-loss': 0,    # contiguous loss trades
+            'closed': 0,       # num of closed trades
+            'rpnl': 0.0        # realize profit and loss
         }
 
         self._trade_context_builder = None
@@ -913,7 +915,7 @@ class StrategyTrader(object):
 
                 if trade.is_active():
                     # for statistics usage
-                    trade.update_stats(self.instrument.close_exec_price(trade.direction), timestamp)
+                    trade.update_stats(self.instrument, timestamp)
 
                     # update data stream
                     self.notify_trade_update(timestamp, trade)
@@ -1010,7 +1012,7 @@ class StrategyTrader(object):
                     # record the trade for analysis and study
                     if not trade.is_canceled():
                         # last update of stats before logging (useless because no longer active and done before)
-                        trade.update_stats(self.instrument.close_exec_price(trade.direction), timestamp)
+                        trade.update_stats(self.instrument, timestamp)
 
                         # realized profit/loss
                         profit_loss = trade.profit_loss - trade.entry_fees_rate() - trade.exit_fees_rate()
@@ -1025,9 +1027,11 @@ class StrategyTrader(object):
                         if profit_loss != 0.0:
                             self._stats['perf'] += profit_loss
                             self._stats['best'] = max(self._stats['best'], profit_loss)
-                            self._stats['best-sum'] += best_pl
                             self._stats['worst'] = min(self._stats['worst'], profit_loss)
-                            self._stats['worst-sum'] += worst_pl
+                            self._stats['high'] += best_pl
+                            self._stats['low'] += worst_pl
+                            self._stats['closed'] += 1
+                            self._stats['rpnl'] += trade.unrealized_profit_loss
 
                         if profit_loss <= 0.0:
                             self._stats['cont-loss'] += 1

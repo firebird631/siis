@@ -18,11 +18,13 @@ logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
 
 
-def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False, percents=False, group=False, datetime_format='%y-%m-%d %H:%M:%S'):
+def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False,
+                              percents=False, group=False, datetime_format='%y-%m-%d %H:%M:%S'):
     """
     Returns a table of any closed trades.
     """
-    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'RPNL']
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF',
+               'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'RPNL']
 
     if quantities:
         columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
@@ -30,9 +32,11 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
     columns = tuple(columns)
     total_size = (len(columns), 0)
     data = []
+    sub_totals = {}
 
     def localize_datetime(dt):
-        return datetime.strptime(dt, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).astimezone().strftime(datetime_format) if dt else "-"
+        return datetime.strptime(dt, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).astimezone().strftime(
+            datetime_format) if dt else "-"
 
     with strategy._mutex:
         closed_trades = get_closed_trades(strategy)
@@ -55,7 +59,8 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
         closed_trades = closed_trades[offset:limit]
 
         for t in closed_trades:
-            direction = Color.colorize_cond(charmap.ARROWUP if t['direction'] == "long" else charmap.ARROWDN, t['direction'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+            direction = Color.colorize_cond(charmap.ARROWUP if t['direction'] == "long" else charmap.ARROWDN,
+                                            t['direction'] == "long", style=style, true=Color.GREEN, false=Color.RED)
 
             aep = float(t['avg-entry-price'])
             axp = float(t['avg-exit-price'])
@@ -64,7 +69,13 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             sl = float(t['stop-loss-price'])
             tp = float(t['take-profit-price'])
 
-            if t['profit-loss-pct'] < 0 and ((t['direction'] == 'long' and best > aep) or (t['direction'] == 'short' and best < aep)):
+            if t['stats']['profit-loss-currency'] not in sub_totals:
+                sub_totals[t['stats']['profit-loss-currency']] = 0.0
+
+            sub_totals[t['stats']['profit-loss-currency']] += float(t['stats']['profit-loss'])
+
+            if t['profit-loss-pct'] < 0 and ((t['direction'] == 'long' and best > aep) or (
+                    t['direction'] == 'short' and best < aep)):
                 # has been profitable but loss
                 cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.ORANGE, style=style)
             elif t['profit-loss-pct'] < 0:  # loss
@@ -74,7 +85,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             else:
                 cr = "0.0" if aep else "-"
 
-            # color TP in green if hitted, similarely in red for SL
+            # color TP in green if hit, similarly in red for SL
             # @todo not really exact, could use the exit reason
             if t['direction'] == "long" and aep:
                 _tp = Color.colorize_cond(t['take-profit-price'], tp > 0 and axp >= tp, style=style, true=Color.GREEN)
@@ -102,8 +113,9 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 bpct = 0
                 wpct = 0
 
-            def format_with_percent(formated_value, condition, rate):
-                return (("%s (%.2f%%)" % (formated_value, rate * 100)) if percents else formated_value) if condition else '-'
+            def format_with_percent(formatted_value, condition, rate):
+                return (("%s (%.2f%%)" % (formatted_value,
+                                          rate * 100)) if percents else formatted_value) if condition else '-'
 
             row = [
                 t['symbol'],
@@ -123,7 +135,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 localize_datetime(t['stats']['last-realized-exit-datetime']),
                 t['avg-exit-price'],
                 t['label'],
-                "%s%s" % (t['stats']['profit-loss'], t['stats']['profit-loss-currency'])
+                "%g%s" % (t['stats']['profit-loss'], t['stats']['profit-loss-currency'])
             ]
 
             if quantities:
@@ -133,5 +145,72 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 row.append(t['state'].capitalize())
 
             data.append(row[0:4] + row[4+col_ofs:])
+
+    if sub_totals:
+        row = [
+            "------",
+            '-',
+            '-',
+            '------',
+            '-------',
+            '--',
+            '--',
+            '--',
+            '----',
+            '-----',
+            '--',
+            '-----------',
+            '----------',
+            '------',
+            '---------',
+            '------',
+            '-----',
+            '----',
+        ]
+
+        if quantities:
+            row.append('---')
+            row.append('-------')
+            row.append('------')
+            row.append('------')
+
+        data.append(row[0:4] + row[4+col_ofs:])
+
+    for currency, sub_total in sub_totals.items():
+        if sub_total > 0:
+            rpnl = Color.colorize("%g%s" % (sub_total, currency), Color.GREEN, style=style)
+        elif sub_total < 0:
+            rpnl = Color.colorize("%g%s" % (sub_total, currency), Color.RED, style=style)
+        else:
+            rpnl = "%g%s" % (sub_total, currency)
+
+        row = [
+            "SUB",
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            currency,
+            rpnl,
+        ]
+
+        if quantities:
+            row.append('-')
+            row.append('-')
+            row.append('-')
+            row.append('-')
+
+        data.append(row[0:4] + row[4+col_ofs:])
 
     return columns[0:4] + columns[4+col_ofs:], data, total_size
