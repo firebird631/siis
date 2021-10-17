@@ -341,6 +341,16 @@ class StrategyTrade(object):
         """
         return False
 
+    def reopen(self, trader, instrument, quantity):
+        """
+        Order to reopen a position or to buy an asset by using previous parameters except the quantity.
+
+        @param trader Trader Valid trader handler.
+        @param instrument Instrument object.
+        @param quantity float Quantity in unit of quantity
+        """
+        return False
+
     def remove(self, trader, instrument):
         """
         Remove the trade and related remaining orders.

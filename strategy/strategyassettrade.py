@@ -83,6 +83,36 @@ class StrategyAssetTrade(StrategyTrade):
             self._entry_state = StrategyTrade.STATE_REJECTED
             return False
 
+    def reopen(self, trader, instrument, quantity):
+        if self._entry_state != StrategyTrade.STATE_CANCELED:
+            return False
+
+        # reset
+        self._entry_state = StrategyTrade.STATE_NEW
+        self.eot = 0
+
+        order = Order(trader, instrument.market_id)
+        order.direction = self.dir
+        order.price = self.op
+        order.order_type = self._stats['entry-order-type']
+        order.quantity = quantity
+
+        # generated a reference order id
+        trader.set_ref_order_id(order)
+        self.entry_ref_oid = order.ref_order_id
+
+        self.oq = order.quantity  # ordered quantity
+
+        if trader.create_order(order, instrument):
+            if not self.eot and order.created_time:
+                # only at the first open
+                self.eot = order.created_time
+
+            return True
+        else:
+            self._entry_state = StrategyTrade.STATE_REJECTED
+            return False
+
     def remove(self, trader, instrument):
         error = False
 

@@ -369,15 +369,14 @@ class StrategyTraderContext(StrategyTraderContextBase):
     TRADE_QUANTITY_SPECIFIC = 1              # use the context defined quantity, not the one from the instrument
     TRADE_QUANTITY_REINVEST_MAX_LAST = 2     # reuse the last exited quantity for the next trades
     TRADE_QUANTITY_INC_STEP = 3              # at each exit increase the quantity of a fixed size
-    # for any of the strategy-traders, share the total amount and increment by step of specified value
-    TRADE_QUANTITY_GLOBAL_SHARE = 4
+    TRADE_QUANTITY_MANAGED = 4               # managed by a handler
 
     TRADE_QUANTITY = {
         'normal': TRADE_QUANTITY_NORMAL,
         'specific': TRADE_QUANTITY_SPECIFIC,
         'reinvest-max-last': TRADE_QUANTITY_REINVEST_MAX_LAST,
         'increment-step': TRADE_QUANTITY_INC_STEP,
-        'global-share': TRADE_QUANTITY_GLOBAL_SHARE
+        'managed': TRADE_QUANTITY_MANAGED
     }
 
     TRADE_QUANTITY_FROM_STR_MAP = {
@@ -385,7 +384,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
         TRADE_QUANTITY_SPECIFIC: 'specific',
         TRADE_QUANTITY_REINVEST_MAX_LAST: 'reinvest-max-last',
         TRADE_QUANTITY_INC_STEP: 'increment-step',
-        TRADE_QUANTITY_GLOBAL_SHARE: 'global-share'
+        TRADE_QUANTITY_MANAGED: 'managed'
     }
 
     def __init__(self, name):
@@ -439,7 +438,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
             return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
         elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_INC_STEP:
             return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
-        elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_GLOBAL_SHARE:
+        elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_MANAGED:
             return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
         else:
             return 0.0
@@ -485,7 +484,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
                 self.trade_quantity_step = value
                 self.trade_quantity_type = trade_quantity_type
 
-        elif trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_GLOBAL_SHARE:
+        elif trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_MANAGED:
             if value > 0.0:
                 self.trade_quantity_step = value
                 self.trade_quantity_type = trade_quantity_type

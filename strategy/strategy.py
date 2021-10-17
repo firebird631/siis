@@ -25,7 +25,7 @@ from strategy.process import alphaprocess
 from strategy.command.strategycmdexitalltrade import cmd_strategy_exit_all_trade
 from strategy.command.strategycmdmodifyall import cmd_strategy_trader_modify_all
 from strategy.command.strategycmdcancelallpendingtrade import cmd_strategy_cancel_all_pending_trade
-from strategy.command.strategycmdsetglobalshare import cmd_strategy_set_global_share
+from strategy.command.strategycmdreinvestgain import cmd_strategy_reinvest_gain
 
 from strategy.command.strategycmdstrategytraderinfo import cmd_strategy_trader_info
 from strategy.command.strategycmdstrategytradermodify import cmd_strategy_trader_modify
@@ -1390,7 +1390,7 @@ class Strategy(Runnable):
         elif command_type == Strategy.COMMAND_TRADE_CANCEL_ALL_PENDING:
             return cmd_strategy_cancel_all_pending_trade(self, data)
         elif command_type == Strategy.COMMAND_QUANTITY_GLOBAL_SHARE:
-            return cmd_strategy_set_global_share(self, data)
+            return cmd_strategy_reinvest_gain(self, data)
 
         elif command_type == Strategy.COMMAND_TRADE_ENTRY:
             return self.trade_command("entry", data, cmd_trade_entry)

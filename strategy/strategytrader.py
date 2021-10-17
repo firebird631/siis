@@ -159,6 +159,9 @@ class StrategyTrader(object):
                 if keys[2] not in ('max-trades', 'mode'):
                     return "Invalid option %s" % keys[2]
 
+                if context.trade_quantity_type == context.TRADE_QUANTITY_MANAGED:
+                    return "Forbidden, changes on this context are locked by a handler."
+
                 if keys[2] == 'max-trades':
                     try:
                         v = int(value)
@@ -213,26 +216,37 @@ class StrategyTrader(object):
                             return "Depth must be an integer"
 
                     elif keys[3] == "orientation":
-                        if value not in ('up', 'upper', 'high', 'higher', 'dn', 'down', 'low', 'lower', 'both'):
-                            return "Orientation must be one of 'up', 'upper', 'high', 'higher', 'dn', 'down', 'low', " \
-                                   "'lower', 'both' "
+                        choices = ('up', 'upper', 'high', 'higher', 'dn', 'down', 'low', 'lower', 'both')
+                        if value not in choices:
+                            return "Orientation must be one of %s" % ' '.join(choices)
 
                 elif keys[2] == 'trade-quantity':
                     if keys[3] not in ('type', 'quantity', 'step'):
                         return "Invalid %s option %s" % (keys[2], keys[3])
 
-                    if keys[3] == 'type':
-                        if keys[4] not in ('normal', 'specific', 'reinvest-max-last', 'increment-step'):
-                            return "Type must be one of 'normal', 'specific', 'reinvest-max-last', 'increment-step'"
+                    if context.trade_quantity_type == context.TRADE_QUANTITY_MANAGED:
+                        return "Forbidden, changes on this context are locked by a handler."
 
-                        if context.trade_quantity_type == context.TRADE_QUANTITY_GLOBAL_SHARE:
-                            return "Forbidden, this mode must be disabled globally using set-global-share off <...>"
+                    if keys[3] == 'type':
+                        choices = ('normal', 'specific', 'reinvest-max-last', 'increment-step')
+                        if keys[4] not in choices:
+                            return "Type must be one of %s" % ' '.join(choices)
 
                     elif keys[3] == 'quantity':
-                        pass  # @todo
+                        try:
+                            v = float(value)
+                            if v < 0.0:
+                                return "Value must be greater or equal to zero"
+                        except ValueError:
+                            return "Value must be float"
 
                     elif keys[3] == 'step':
-                        pass  # @todo
+                        try:
+                            v = float(value)
+                            if v < 0.0:
+                                return "Value must be greater or equal to zero"
+                        except ValueError:
+                            return "Value must be float"
                 else:
                     return "Invalid option %s" % keys[2]
 
@@ -274,6 +288,10 @@ class StrategyTrader(object):
 
             if len(keys) == 3:
                 if keys[2] not in ('max-trades', 'mode'):
+                    return False
+
+                if context.trade_quantity_type == context.TRADE_QUANTITY_MANAGED:
+                    # in this mode it must be managed by its handler
                     return False
 
                 if keys[2] == 'max-trades':
@@ -401,15 +419,15 @@ class StrategyTrader(object):
                         return True
 
                 elif keys[2] == 'trade-quantity':
-                    if keys[3] not in ('quantity', 'step'):
+                    if keys[3] not in ('type', 'quantity', 'step'):
+                        return False
+
+                    if context.trade_quantity_type == context.TRADE_QUANTITY_MANAGED:
+                        # this mode must be managed globally
                         return False
 
                     if keys[3] == 'type':
                         if keys[4] not in ('normal', 'specific', 'reinvest-max-last', 'increment-step'):
-                            return False
-
-                        if context.trade_quantity_type == context.TRADE_QUANTITY_GLOBAL_SHARE:
-                            # this mode must be managed globally
                             return False
 
                         if keys[4] == 'normal':
@@ -436,9 +454,6 @@ class StrategyTrader(object):
                             context.modify_trade_quantity_type('specific', specific)
                         elif keys[4] == 'increment-step':
                             pass
-                        elif keys[4] == 'global-share':
-                            # must be set globally
-                            return False
 
                     elif keys[3] == 'quantity':
                         pass  # @todo
@@ -1025,14 +1040,17 @@ class StrategyTrader(object):
                         # notification exit reason if not reported
                         if not trade.exit_reason:
                             if trade.direction > 0:
-                                if trade.exit_price >= trade.take_profit and trade.take_profit > 0:
+                                if trade.exit_price >= trade.take_profit > 0:
                                     trade.exit_reason = trade.REASON_TAKE_PROFIT_LIMIT
+
                                 elif trade.exit_price <= trade.stop_loss and trade.stop_loss > 0:
                                     trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
+
                             elif trade.direction < 0:
                                 if trade.exit_price <= trade.take_profit and trade.take_profit > 0:
                                     trade.exit_reason = trade.REASON_TAKE_PROFIT_LIMIT
-                                elif trade.exit_price >= trade.stop_loss and trade.stop_loss > 0:
+
+                                elif trade.exit_price >= trade.stop_loss > 0:
                                     trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
 
                         record = trade.dumps_notify_exit(timestamp, self)
@@ -1504,12 +1522,9 @@ class StrategyTrader(object):
             filename = str(report_path.joinpath(datetime.now().strftime('%Y%m%d_%Hh%Mm%S') + ext))
 
             try:
-                f = open(filename, "wt")
-
-                if header:
-                    f.write(f + '\n')
-
-                f.close()
+                with open(filename, "wt") as f:
+                    if header:
+                        f.write(header + '\n')
             except Exception as e:
                 error_logger.error(repr(e))
                 return None
@@ -1524,12 +1539,10 @@ class StrategyTrader(object):
         """
         if self._report_filename:
             try:
-                f = open(self._report_filename, "at")
-                f.write(",".join([str(v) for v in row]) + "\n")
+                with open(self._report_filename, "at") as f:
+                    f.write(",".join([str(v) for v in row]) + "\n")
             except Exception as e:
                 error_logger.error(repr(e))
-            finally:
-                f.close()
 
     def report(self, trade, is_entry):
         """
@@ -1723,6 +1736,10 @@ class StrategyTrader(object):
             if self._reporting == self.REPORTING_VERBOSE:
                 self.report(trade, True)
 
+            # inform handler
+            if self._handler is not None:
+                self._handler.on_trade_opened(self, trade)
+
     def notify_trade_update(self, timestamp, trade):
         if trade:
             # stream only but could be remove, client will update using tickers, and only receive amends update
@@ -1749,6 +1766,10 @@ class StrategyTrader(object):
             # for reporting if specified
             if self._reporting == self.REPORTING_VERBOSE:
                 self.report(trade, False)
+
+            # inform handler
+            if self._handler is not None:
+                self._handler.on_trade_exited(self, trade)
 
     def notify_alert(self, timestamp, alert, result):
         if alert and result:

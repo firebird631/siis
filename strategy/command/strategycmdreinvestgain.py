@@ -1,12 +1,12 @@
 # @date 2021-10-11
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2021 Dream Overflow
-# Strategy command set global share for any traders
+# Strategy command enable/disable reinvest gain for any traders
 
 from strategy.handler.handler import ReinvestGainHandler
 
 
-def cmd_strategy_set_global_share(strategy, data):
+def cmd_strategy_reinvest_gain(strategy, data):
     """
     Modify global share for any traders.
     """
@@ -28,7 +28,7 @@ def cmd_strategy_set_global_share(strategy, data):
 
     ctx_cnt = 0
 
-    if action == 'global-share':
+    if action == 'reinvest-gain':
         if not step or step <= 0.0:
             # add an error result message
             results['error'] = True
