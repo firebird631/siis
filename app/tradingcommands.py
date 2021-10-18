@@ -451,6 +451,13 @@ class LongCommand(Command):
                     method = 'limit'
                     limit_price = float(value[2:])
 
+                elif value.startswith("L%") or value.startswith("l%"):
+                    method = 'limit-percent'
+                    limit_price = float(value[2:])
+
+                    if limit_price <= 0:
+                        return False, "Percent must be greater than 0"
+
                 elif value.startswith("L+") or value.startswith("l+"):
                     dist = int(value[2:])
 
@@ -604,6 +611,13 @@ class ShortCommand(Command):
                 if value.startswith("L@") or value.startswith("l@"):
                     method = 'limit'
                     limit_price = float(value[2:])
+
+                elif value.startswith("L%") or value.startswith("l%"):
+                    method = 'limit-percent'
+                    limit_price = float(value[2:])
+
+                    if limit_price <= 0:
+                        return False, "Percent must be greater than 0"
 
                 elif value.startswith("L+") or value.startswith("l+"):
                     dist = int(value[2:])

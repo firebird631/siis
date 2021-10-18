@@ -35,10 +35,12 @@ class ReinvestGainHandler(Handler):
         self._num_trades = 0
 
     def install(self, strategy_trader):
-        if strategy_trader in self._installed_strategy_traders:
-            return
-
         if strategy_trader and self._context_id:
+            # already installed
+            with self._mutex:
+                if strategy_trader in self._installed_strategy_traders:
+                    return
+
             context = strategy_trader.retrieve_context(self._context_id)
 
             if context is None:
@@ -74,10 +76,12 @@ class ReinvestGainHandler(Handler):
                 self._num_trades += num_trades
 
     def uninstall(self, strategy_trader):
-        if strategy_trader not in self._installed_strategy_traders:
-            return
-
         if strategy_trader and self._context_id:
+            # not installed
+            with self._mutex:
+                if strategy_trader not in self._installed_strategy_traders:
+                    return
+
             context = strategy_trader.retrieve_context(self._context_id)
 
             if context is None:
@@ -157,24 +161,21 @@ class ReinvestGainHandler(Handler):
                 if inc_step > 0:
                     self._trade_quantity += self._step_quantity * inc_step
 
-                    # update any strategy trader
-                    self._need_update = set(self._installed_strategy_traders)
-
                     # update trade quantity for each context of managed strategy traders
                     for strategy_trader in self._installed_strategy_traders:
                         context = strategy_trader.retrieve_context(self._context_id)
                         if context is not None:
                             context.trade_quantity = self._trade_quantity
 
+                    # update any strategy trader
+                    self._need_update = set(self._installed_strategy_traders)
+
     def process(self, strategy_trader):
-        if not self._context_id:
-            return
-
-        if strategy_trader not in self._need_update:
-            return
-
         with self._mutex:
-            self._need_update.remove(strategy_trader)
+            if strategy_trader in self._need_update:
+                self._need_update.remove(strategy_trader)
+            else:
+                return
 
         context = strategy_trader.retrieve_context(self._context_id)
         if context is None:
@@ -185,14 +186,14 @@ class ReinvestGainHandler(Handler):
             self._resize_open_trades(strategy_trader, context, self._trade_quantity)
 
     def _resize_open_trades(self, strategy_trader, context, new_trade_quantity):
-        with strategy_trader._trade_mutex:
-            trader = strategy_trader.strategy.trader()
+        trader = strategy_trader.strategy.trader()
 
+        with strategy_trader._trade_mutex:
             for trade in strategy_trader._trades:
                 if trade.context == context and trade.is_opened() and trade.order_price > 0:
                     cur_trade_quantity = trade.order_quantity * trade.order_price
 
-                    if abs(new_trade_quantity - cur_trade_quantity) >= self._step_quantity:
+                    if abs(round(new_trade_quantity - cur_trade_quantity)) >= self._step_quantity:
                         # the asset quantity for quote could not be up to date at this time
                         # quantity = strategy_trader.compute_asset_quantity(
                         #     trader, trade.order_price, new_trade_quantity)
