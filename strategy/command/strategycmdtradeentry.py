@@ -41,7 +41,7 @@ def cmd_trade_entry(strategy, strategy_trader, data):
     hedging = data.get('hedging', True)
     margin_trade = data.get('margin-trade', False)
     entry_timeout = data.get('entry-timeout', None)
-    context = data.get('context', None)
+    context_id = data.get('context', None)
 
     if quantity_rate <= 0.0:
         results['messages'].append("Missing or empty quantity.")
@@ -104,11 +104,28 @@ def cmd_trade_entry(strategy, strategy_trader, data):
     # need a valid price to compute the quantity
     price = limit_price or strategy_trader.instrument.open_exec_price(direction)
     trade = None
+    context = None
 
     if price <= 0.0:
         results['error'] = True
         results['messages'].append("Price must be greater than zero for %s" % (strategy_trader.instrument.market_id,))
         return results
+
+    if context_id:
+        context = strategy_trader.retrieve_context(context_id)
+
+        if context is None:
+            # add an error result message
+            results['error'] = True
+            results['messages'].append("Rejected trade on %s:%s because the context was not found" % (
+                strategy.identifier, strategy_trader.instrument.market_id))
+
+            return results
+
+    if context is not None:
+        trade_quantity = context.compute_quantity(strategy_trader)
+    else:
+        trade_quantity = strategy_trader.instrument.trade_quantity
 
     if strategy_trader.instrument.has_spot and not margin_trade:
         # market support spot and margin option is not defined
@@ -116,7 +133,7 @@ def cmd_trade_entry(strategy, strategy_trader, data):
 
         # adjust max quantity according to free asset of quote, and convert in asset base quantity
         if trader.has_asset(strategy_trader.instrument.quote):
-            qty = strategy_trader.instrument.trade_quantity * quantity_rate
+            qty = trade_quantity * quantity_rate
 
             if trader.has_quantity(strategy_trader.instrument.quote, qty):
                 order_quantity = strategy_trader.instrument.adjust_quantity(qty / price)  # and adjusted to 0/max/step
@@ -131,11 +148,9 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         trade = StrategyPositionTrade(timeframe)
 
         if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-            order_quantity = strategy_trader.instrument.adjust_quantity(
-                strategy_trader.instrument.trade_quantity * quantity_rate / price)
+            order_quantity = strategy_trader.instrument.adjust_quantity(trade_quantity * quantity_rate / price)
         else:
-            order_quantity = strategy_trader.instrument.adjust_quantity(
-                strategy_trader.instrument.trade_quantity * quantity_rate)
+            order_quantity = strategy_trader.instrument.adjust_quantity(trade_quantity * quantity_rate)
 
         if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
             results['error'] = True
@@ -146,11 +161,9 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         trade = StrategyIndMarginTrade(timeframe)
 
         if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-            order_quantity = strategy_trader.instrument.adjust_quantity(
-                strategy_trader.instrument.trade_quantity * quantity_rate / price)
+            order_quantity = strategy_trader.instrument.adjust_quantity(trade_quantity * quantity_rate / price)
         else:
-            order_quantity = strategy_trader.instrument.adjust_quantity(
-                strategy_trader.instrument.trade_quantity * quantity_rate)
+            order_quantity = strategy_trader.instrument.adjust_quantity(trade_quantity * quantity_rate)
 
         if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
             results['error'] = True
@@ -163,11 +176,9 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         trade = StrategyMarginTrade(timeframe)
 
         if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
-            order_quantity = strategy_trader.instrument.adjust_quantity(
-                strategy_trader.instrument.trade_quantity * quantity_rate / price)
+            order_quantity = strategy_trader.instrument.adjust_quantity(trade_quantity * quantity_rate / price)
         else:
-            order_quantity = strategy_trader.instrument.adjust_quantity(
-                strategy_trader.instrument.trade_quantity * quantity_rate)
+            order_quantity = strategy_trader.instrument.adjust_quantity(trade_quantity * quantity_rate)
 
         if not trader.has_margin(strategy_trader.instrument.market_id, order_quantity, price):
             results['error'] = True
@@ -275,14 +286,9 @@ def cmd_trade_entry(strategy, strategy_trader, data):
             # entry timeout expiration defined (could be override by trade context if specified)
             trade.entry_timeout = entry_timeout
 
-        if context:
-            if not strategy_trader.set_trade_context(trade, context):
-                # add an error result message
-                results['error'] = True
-                results['messages'].append("Rejected trade on %s:%s because the context was not found" % (
-                    strategy.identifier, strategy_trader.instrument.market_id))
-
-                return results
+        if context is not None:
+            # apply context to the new trade
+            strategy_trader.apply_trade_context(trade, context)
 
         # the new trade must be in the trades list if the event comes before, and removed after only it failed
         strategy_trader.add_trade(trade)

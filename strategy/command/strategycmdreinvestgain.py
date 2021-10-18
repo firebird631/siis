@@ -3,7 +3,7 @@
 # @license Copyright (c) 2021 Dream Overflow
 # Strategy command enable/disable reinvest gain for any traders
 
-from strategy.handler.handler import ReinvestGainHandler
+from strategy.handler.reinvestgainhandler import ReinvestGainHandler
 
 
 def cmd_strategy_reinvest_gain(strategy, data):
@@ -64,7 +64,7 @@ def cmd_strategy_reinvest_gain(strategy, data):
 
                 if ctx is not None:
                     ctx_cnt += 1
-                    strategy_trader.uninstall_handler(ReinvestGainHandler.name)
+                    strategy_trader.uninstall_handler(context_id, ReinvestGainHandler.name)
     else:
         # add an error result message
         results['error'] = True

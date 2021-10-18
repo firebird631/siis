@@ -25,10 +25,10 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
     Returns a table of any active trades.
     """
     columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date',
-               'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'UPNL']
+               'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
 
     if quantities:
-        columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
+        columns += ['UPNL', 'Qty', 'Entry Q', 'Exit Q', 'Quote']
 
     columns = tuple(columns)
     total_size = (len(columns), 0)
@@ -155,14 +155,15 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 datetime.fromtimestamp(t['lrxot']).strftime(datetime_format) if t['lrxot'] > 0 else '-',
                 t['axp'] if t['axp'] != '0' else '-',
                 t['label'],
-                upnl,
+                t['s'].capitalize(),
             ]
 
             if quantities:
+                row.append(upnl)
                 row.append(t['q'])
                 row.append(t['e'])
                 row.append(t['x'])
-                row.append(t['s'].capitalize())
+                row.append(t['qs'])
 
             data.append(row[0:4] + row[4+col_ofs:])
 
@@ -184,14 +185,15 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             '---------',
             '------',
             '-----',
-            '----',
+            '------',
         ]
 
         if quantities:
+            row.append('----')
             row.append('---')
             row.append('-------')
             row.append('------')
-            row.append('------')
+            row.append('-----')
 
         data.append(row[0:4] + row[4+col_ofs:])
 
@@ -220,10 +222,11 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             '-',
             '-',
             currency,
-            upnl,
+            '-',
         ]
 
         if quantities:
+            row.append(upnl)
             row.append('-')
             row.append('-')
             row.append('-')

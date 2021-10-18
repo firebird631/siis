@@ -83,6 +83,7 @@ def get_all_active_trades(strategy):
                             'fees': trade.entry_fees_rate() + trade.estimate_exit_fees_rate(strategy_trader.instrument),
                             'leop': strategy_trader.instrument.format_price(
                                 strategy_trader.instrument.open_exec_price(trade.direction)),
+                            'qs': strategy_trader.instrument.format_quote(trade.invested_quantity)
                         })
         except Exception as e:
             error_logger.error(repr(e))

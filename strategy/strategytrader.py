@@ -88,7 +88,7 @@ class StrategyTrader(object):
         self._alerts = []
         self._next_alert_id = 1
 
-        self._handler = None  # shared handler, only one can be installed
+        self._handlers = {}  # installed handlers per context (some can be shared)
 
         self._global_streamer = None
         self._trade_entry_streamer = None
@@ -1100,7 +1100,7 @@ class StrategyTrader(object):
         # shared or local handler
         #
 
-        self.process_handler()
+        self.process_handlers()
 
     def on_received_liquidation(self, liquidation):
         """
@@ -1299,36 +1299,48 @@ class StrategyTrader(object):
         """
         Add a trade handler to be executed at each update, can be shared between many strategy-traders.
         """
-        if handler:
+        if handler is not None:
             with self._mutex:
-                if handler != self._handler:
-                    # uninstall previous
-                    if self._handler:
-                        self._handler.uninstall(self)
-
+                if handler.context_id not in self._handlers:
                     # setup the new
-                    self._handler = handler
+                    self._handlers[handler.context_id] = handler
                     handler.install(self)
 
-    def uninstall_handler(self, name):
+    def uninstall_handler(self, context_id, name):
         with self._mutex:
-            if self._handler and self._handler.name == name:
-                self._handler.uninstall(self)
-                self._handler = None
+            if context_id in self._handlers:
+                if self._handlers[context_id].name == name:
+                    self._handlers[context_id].uninstall(self)
+                    del self._handlers[context_id]
 
-    def process_handler(self):
+    def process_handlers(self):
         """
-        Perform the installed handler.
+        Perform the installed handlers.
         """
-        if self._handler:
-            try:
-                self._handler.process(self)
-            except Exception as e:
-                error_logger.error(repr(e))
+        if self._handlers:
+            with self._mutex:
+                for context_id, handler in self._handlers.items():
+                    try:
+                        handler.process(self)
+                    except Exception as e:
+                        error_logger.error(repr(e))
 
-    @property
-    def handler(self):
-        return self._handler
+    def retrieve_handler(self, context_id):
+        with self._mutex:
+            return self._handlers.get(context_id)
+
+    def dumps_handlers(self):
+        results = []
+
+        if self._handlers:
+            with self._mutex:
+                for context_id, handler in self._handlers.items():
+                    try:
+                        results.append(handler.dumps())
+                    except Exception as e:
+                        error_logger.error(repr(e))
+
+        return results
 
     #
     # misc
@@ -1741,8 +1753,9 @@ class StrategyTrader(object):
                 self.report(trade, True)
 
             # inform handler
-            if self._handler is not None:
-                self._handler.on_trade_opened(self, trade)
+            if self._handlers and trade.context is not None and trade.context.name in self._handlers:
+                with self._mutex:
+                    self._handlers[trade.context.name].on_trade_opened(self, trade)
 
     def notify_trade_update(self, timestamp, trade):
         if trade:
@@ -1772,8 +1785,9 @@ class StrategyTrader(object):
                 self.report(trade, False)
 
             # inform handler
-            if self._handler is not None:
-                self._handler.on_trade_exited(self, trade)
+            if self._handlers and trade.context is not None and trade.context.name in self._handlers:
+                with self._mutex:
+                    self._handlers[trade.context.name].on_trade_exited(self, trade)
 
     def notify_alert(self, timestamp, alert, result):
         if alert and result:

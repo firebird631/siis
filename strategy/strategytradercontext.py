@@ -429,19 +429,24 @@ class StrategyTraderContext(StrategyTraderContextBase):
 
         return result
 
-    def compute_quantity(self, instrument):
+    def compute_quantity(self, strategy_trader):
         if self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_NORMAL:
-            return instrument.trade_quantity
+            # quantity is defined by instrument
+            return strategy_trader.instrument.trade_quantity
+        elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_MANAGED:
+            # quantity is defined by context, else by instrument
+            return self.trade_quantity if self.trade_quantity > 0 else strategy_trader.instrument.trade_quantity
         elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_SPECIFIC:
+            # quantity is defined by context
             return self.trade_quantity
         elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_REINVEST_MAX_LAST:
-            return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
+            # quantity is defined by context, else by instrument
+            return self.trade_quantity if self.trade_quantity > 0 else strategy_trader.instrument.trade_quantity
         elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_INC_STEP:
-            return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
-        elif self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_MANAGED:
-            return self.trade_quantity if self.trade_quantity > 0 else instrument.trade_quantity
-        else:
-            return 0.0
+            # quantity is defined by context, else by instrument
+            return self.trade_quantity if self.trade_quantity > 0 else strategy_trader.instrument.trade_quantity
+
+        return 0.0
 
     def mode_to_str(self):
         if self.mode == StrategyTraderContext.MODE_NONE:

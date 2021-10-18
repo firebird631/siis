@@ -199,6 +199,17 @@ class StrategyTrade(object):
         """Synonym for order_quantity"""
         return self.oq
 
+    @property
+    def invested_quantity(self):
+        """
+        Return the actively invested quantity or to be invested if not an active trade.
+        @todo Implement for margin, position and indmargin trade
+        """
+        if self.is_active():
+            return (self.e - self.x) * self.aep
+        else:
+            return self.order_quantity * self.order_price
+
     @property  
     def order_price(self):
         return self.op
@@ -615,7 +626,7 @@ class StrategyTrade(object):
             # the entry order is rejected, trade must be deleted
             return 'rejected'
         elif self._exit_state == StrategyTrade.STATE_REJECTED and self.e > self.x:
-            # exit order is rejectect but the exit quantity is not fully filled (x < e), this case must be managed
+            # exit order is rejected but the exit quantity is not fully filled (x < e), this case must be managed
             return 'problem'
         elif self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED:
             # entry order filling until complete

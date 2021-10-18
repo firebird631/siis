@@ -24,10 +24,10 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
     Returns a table of any closed trades.
     """
     columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF',
-               'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'RPNL']
+               'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
 
     if quantities:
-        columns += ['Qty', 'Entry Q', 'Exit Q', 'Status']
+        columns += ['RPNL', 'Qty', 'Entry Q', 'Exit Q']
 
     columns = tuple(columns)
     total_size = (len(columns), 0)
@@ -135,14 +135,14 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 localize_datetime(t['stats']['last-realized-exit-datetime']),
                 t['avg-exit-price'],
                 t['label'],
-                "%g%s" % (t['stats']['profit-loss'], t['stats']['profit-loss-currency'])
+                t['state'].capitalize(),
             ]
 
             if quantities:
+                row.append("%g%s" % (t['stats']['profit-loss'], t['stats']['profit-loss-currency']))
                 row.append(t['order-qty'])
                 row.append(t['filled-entry-qty'])
                 row.append(t['filled-exit-qty'])
-                row.append(t['state'].capitalize())
 
             data.append(row[0:4] + row[4+col_ofs:])
 
@@ -165,13 +165,13 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             '---------',
             '------',
             '-----',
-            '----',
+            '------',
         ]
 
         if quantities:
+            row.append('----')
             row.append('---')
             row.append('-------')
-            row.append('------')
             row.append('------')
 
         data.append(row[0:4] + row[4+col_ofs:])
@@ -202,11 +202,11 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             '-',
             '-',
             currency,
-            rpnl,
+            '-',
         ]
 
         if quantities:
-            row.append('-')
+            row.append(rpnl)
             row.append('-')
             row.append('-')
             row.append('-')

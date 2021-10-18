@@ -747,7 +747,6 @@ class Strategy(Runnable):
         a user operation to perform.
         """
         strategy_trader = self._strategy_traders.get(market_id)
-
         if not strategy_trader:
             return
 
@@ -767,7 +766,6 @@ class Strategy(Runnable):
         a user operation to perform.
         """
         strategy_trader = self._strategy_traders.get(market_id)
-
         if not strategy_trader:
             return
 
