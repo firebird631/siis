@@ -397,7 +397,7 @@ class LongCommand(Command):
     SUMMARY = "to manually create to a new trade in LONG direction"
     HELP = (
         "param1: <market-id>",
-        "param2: [l|L][@|+|-]<entry-price> Use @ for a limit, + or - for order book depth, "
+        "param2: [l|L][@|+|-|%]<entry-price> Use @ for a limit, + or - for order book depth, % below in percent,"
         "else enter at market (optional)",
         "param3: [sl|SL][@|%|!]<stop-loss-price> @ for a stop, % for distance in percent below "
         "market or limit price, ! for distance in pips below market or limit price (optional)",
@@ -558,7 +558,7 @@ class ShortCommand(Command):
     SUMMARY = "to manually create to a new trade in SHORT direction"
     HELP = (
         "param1: <market-id>",
-        "param2: [l|L][@|+|-]<entry-price> Use @ for a limit, + or - for order book depth, "
+        "param2: [l|L][@|+|-|%]<entry-price> Use @ for a limit, + or - for order book depth, % above in percent,"
         "else enter at market (optional)",
         "param3: [sl|SL][@|%|!]<stop-loss-price> @ for a stop, % for distance in percent above market or "
         "limit price, ! for distance in pips above market price (optional)",

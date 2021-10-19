@@ -145,7 +145,7 @@ class ReinvestGainHandler(Handler):
 
             with self._mutex:
                 # fake test
-                self._total_quantity += strategy_trader.instrument.adjust_quote(profit_loss) + 15
+                self._total_quantity += strategy_trader.instrument.adjust_quote(profit_loss)
 
                 self._used_quantity -= strategy_trader.instrument.adjust_quote(trade_quantity * trade_price)
                 if self._used_quantity < 0.0:

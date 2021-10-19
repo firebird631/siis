@@ -231,7 +231,7 @@ class StrategyTrader(object):
 
                     if keys[3] == 'type':
                         choices = ('normal', 'specific', 'reinvest-max-last', 'increment-step')
-                        if keys[4] not in choices:
+                        if value not in choices:
                             return "Type must be one of %s" % ' '.join(choices)
 
                     elif keys[3] == 'quantity':
@@ -429,12 +429,12 @@ class StrategyTrader(object):
                         return False
 
                     if keys[3] == 'type':
-                        if keys[4] not in ('normal', 'specific', 'reinvest-max-last', 'increment-step'):
+                        if value not in ('normal', 'specific', 'reinvest-max-last', 'increment-step'):
                             return False
 
-                        if keys[4] == 'normal':
+                        if value == 'normal':
                             context.modify_trade_quantity_type('normal', 0.0)
-                        elif keys[4] == 'specific':
+                        elif value == 'specific':
                             try:
                                 specific = float(value)
                             except ValueError:
@@ -444,7 +444,7 @@ class StrategyTrader(object):
                                 return False
 
                             context.modify_trade_quantity_type('specific', specific)
-                        elif keys[4] == 'reinvest-max-last':
+                        elif value == 'reinvest-max-last':
                             try:
                                 specific = float(value)
                             except ValueError:
@@ -454,7 +454,7 @@ class StrategyTrader(object):
                                 return False
 
                             context.modify_trade_quantity_type('specific', specific)
-                        elif keys[4] == 'increment-step':
+                        elif value == 'increment-step':
                             pass
 
                     elif keys[3] == 'quantity':
