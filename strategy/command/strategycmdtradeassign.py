@@ -68,7 +68,7 @@ def cmd_trade_assign(strategy, strategy_trader, data):
         results['messages'].append("No enough free asset quantity.")
         results['error'] = True
 
-    # @todo trade type
+    # @todo others trade models
     if not strategy_trader.instrument.has_spot:
         results['messages'].append("Only allowed on a spot market.")
         results['error'] = True
@@ -110,6 +110,9 @@ def cmd_trade_assign(strategy, strategy_trader, data):
 
     # update strategy-trader
     strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+
+    # update stats
+    trade.update_stats(strategy_trader.instrument, strategy.timestamp)
 
     results['messages'].append("Assigned trade %i on %s:%s" % (
         trade.id, strategy.identifier, strategy_trader.instrument.market_id))
