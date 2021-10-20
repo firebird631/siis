@@ -302,6 +302,9 @@ def cmd_trade_entry(strategy, strategy_trader, data):
             # update strategy-trader
             strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
 
+            # update stats
+            trade.update_stats(strategy_trader.instrument, strategy.timestamp)
+
             # add a success result message
             results['messages'].append("Created trade %i on %s:%s" % (trade.id, strategy.identifier,
                                                                       strategy_trader.instrument.market_id))
