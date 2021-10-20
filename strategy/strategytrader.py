@@ -1651,49 +1651,45 @@ class StrategyTrader(object):
         @param same_timeframe Compared timeframe.
         @param same_timeframe_num 0 mean Allow multiple trade of the same timeframe, else it define the max allowed.
         """
-        result = False
+        result = None
 
         if self._trades:
             with self._trade_mutex:
                 if len(self._trades) >= max_trades:
-                    # no more than max simultaneous trades
-                    result = True
+                    result = "Total max trades of %s reached for %s" % (max_trades, self.instrument.symbol)
 
                 elif same_timeframe > 0 and same_timeframe_num > 0:
                     for trade in self._trades:
                         if trade.timeframe == same_timeframe:
                             same_timeframe_num -= 1
                             if same_timeframe_num <= 0:
-                                result = True
+                                result = "Max trades of %s reached for timeframe %s for %s" % (
+                                    same_timeframe_num, timeframe_to_str(same_timeframe), self.instrument.symbol)
                                 break
 
         if result:
-            msg = "Max trade reached for %s with %s or max reached for the timeframe" % (self.instrument.symbol,
-                                                                                         max_trades)
+            # logger.warning(result)
+            Terminal.inst().notice(result, view='status')
+            return False
 
-            # logger.warning(msg)
-            Terminal.inst().notice(msg, view='status')
-
-        return result
+        return True
 
     def has_max_trades_by_context(self, max_trades, same_context=None):
         """
-        @param max_trades Max simultaneous trades for this instrument or 0.
-        @param same_context
-        @return True if a max is reached.
+        @param max_trades Max simultaneous trades for this instrument or context or 0.
+        @param same_context Context to check with
+        @return True if a limit is reached.
         """
-        result = False
+        result = None
 
         if self._trades:
             with self._trade_mutex:
                 if len(self._trades) >= max_trades:
-                    # no more than max simultaneous trades
-                    result = True
+                    result = "Total max trades of %s reached for %s" % (max_trades, self.instrument.symbol)
 
                 elif same_context:
                     if same_context.max_trades <= 0:
-                        # not trades allowed for this context
-                        result = True
+                        result = "No trades allowed for context %s for %s" % (same_context.name, self.instrument.symbol)
                     else:
                         # count trade base on the same context
                         same_context_num = 0
@@ -1702,21 +1698,22 @@ class StrategyTrader(object):
                             if trade.context == same_context:
                                 same_context_num += 1
                                 if same_context_num >= same_context.max_trades:
-                                    result = True
+                                    result = "Max trades of %s reached for context %s for %s" % (
+                                        same_context.max_trades, same_context.name, self.instrument.symbol)
                                     break
 
-        elif max_trades <= 0 or (same_context and same_context.max_trades <= 0):
-            # not trades allowed
-            result = True
+        elif max_trades <= 0:
+            result = "No trades allowed for %s" % self.instrument.symbol
+
+        elif same_context and same_context.max_trades <= 0:
+            result = "No trades allowed for context %s for %s" % (same_context.name, self.instrument.symbol)
 
         if result:
-            msg = "Max trade reached for %s with %s or max reached for the context" % (self.instrument.symbol,
-                                                                                       max_trades)
+            # logger.warning(result)
+            Terminal.inst().notice(result, view='status')
+            return False
 
-            # logger.warning(msg)
-            Terminal.inst().notice(msg, view='status')
-
-        return result
+        return True
 
     #
     # notification
