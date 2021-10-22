@@ -316,7 +316,7 @@ class Trader(Runnable):
 
     def command(self, command_type, data):
         """
-        Some parts are mutexed some others are not.
+        Some parts are mutex some others are not.
         """
         if command_type == Trader.COMMAND_INFO:
             return self.cmd_trader_info(data)
@@ -1248,8 +1248,8 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets.
         """
-        columns = ('Broker', 'Account', 'Username', 'Email', 'Asset', 'Free Asset', 'Balance', 'Margin', 'Level', 'Net worth',
-                   'Risk limit', 'Unrealized P/L', 'Asset U. P/L')
+        columns = ('Broker', 'Account', 'Username', 'Email', 'Asset', 'Free Asset', 'Balance', 'Margin',
+                   'Level', 'Net worth', 'Risk limit', 'Unrealized P/L', 'Asset U. P/L')
         data = []
 
         with self._mutex:
@@ -1261,24 +1261,37 @@ class Trader(Runnable):
 
             limit = offset + limit
 
-            asset_balance = self.account.format_price(self._account.asset_balance) + self.account.currency_display or self.account.currency
-            free_asset_balance = self.account.format_price(self._account.free_asset_balance) + self.account.currency_display or self.account.currency
-            balance = self.account.format_price(self._account.balance) + self.account.currency_display or self.account.currency
-            margin_balance = self.account.format_price(self._account.margin_balance) + self.account.currency_display or self.account.currency
-            net_worth = self.account.format_price(self._account.net_worth) + self.account.currency_display or self.account.currency
-            risk_limit = self.account.format_price(self._account.risk_limit) + self.account.currency_display or self.account.currency
-            upnl = self.account.format_price(self._account.profit_loss) + self.account.currency_display or self.account.currency
-            asset_upnl = self.account.format_price(self._account.asset_profit_loss) + self.account.currency_display or self.account.currency
+            cd = self.account.currency_display or self.account.currency
 
-            if self.account.currency != self.account.alt_currency and self._account.currency_ratio != 1.0 and self._account.currency_ratio > 0.0:
-                asset_balance += " (%s)" % self.account.format_price(self._account.asset_balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
-                free_asset_balance += " (%s)" % self.account.format_price(self._account.free_asset_balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
-                balance += " (%s)" % self.account.format_price(self._account.balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
-                margin_balance += " (%s)" % self.account.format_price(self._account.margin_balance * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
-                net_worth += " (%s)" % self.account.format_alt_price(self._account.net_worth * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
-                risk_limit += " (%s)" % self.account.format_price(self._account.risk_limit * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
-                upnl += " (%s)" % self.account.format_alt_price(self._account.profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
-                asset_upnl += " (%s)" % self.account.format_alt_price(self._account.asset_profit_loss * self._account.currency_ratio) + self.account.alt_currency_display or self.account.alt_currency
+            asset_balance = self.account.format_price(self._account.asset_balance) + cd
+            free_asset_balance = self.account.format_price(self._account.free_asset_balance) + cd
+            balance = self.account.format_price(self._account.balance) + cd
+            margin_balance = self.account.format_price(self._account.margin_balance) + cd
+            net_worth = self.account.format_price(self._account.net_worth) + cd
+            risk_limit = self.account.format_price(self._account.risk_limit) + cd
+            upnl = self.account.format_price(self._account.profit_loss) + cd
+            asset_upnl = self.account.format_price(self._account.asset_profit_loss) + cd
+
+            if (self.account.currency != self.account.alt_currency and self._account.currency_ratio != 1.0 and
+                    self._account.currency_ratio > 0.0):
+                acd = self.account.alt_currency_display or self.account.alt_currency
+
+                asset_balance += " (%s)" % self.account.format_price(
+                    self._account.asset_balance * self._account.currency_ratio) + acd
+                free_asset_balance += " (%s)" % self.account.format_price(
+                    self._account.free_asset_balance * self._account.currency_ratio) + acd
+                balance += " (%s)" % self.account.format_price(
+                    self._account.balance * self._account.currency_ratio) + acd
+                margin_balance += " (%s)" % self.account.format_price(
+                    self._account.margin_balance * self._account.currency_ratio) + acd
+                net_worth += " (%s)" % self.account.format_alt_price(
+                    self._account.net_worth * self._account.currency_ratio) + acd
+                risk_limit += " (%s)" % self.account.format_price(
+                    self._account.risk_limit * self._account.currency_ratio) + acd
+                upnl += " (%s)" % self.account.format_alt_price(
+                    self._account.profit_loss * self._account.currency_ratio) + acd
+                asset_upnl += " (%s)" % self.account.format_alt_price(
+                    self._account.asset_profit_loss * self._account.currency_ratio) + acd
 
             row = (
                 self.name,
@@ -1390,7 +1403,8 @@ class Trader(Runnable):
                             'q': market.format_quantity(position.quantity),
                             'tp': market.format_price(position.take_profit) if position.take_profit else "",
                             'sl': market.format_price(position.stop_loss) if position.stop_loss else "",
-                            'tr': "Yes" if position.trailing_stop else "No",  # market.format_price(position.trailing_stop_distance) if position.trailing_stop_distance else None,
+                            'tr': "Yes" if position.trailing_stop else "No",
+                            # 'tr-dist': market.format_price(position.trailing_stop_distance) if position.trailing_stop_distance else None,
                             'pl': position.profit_loss_rate,
                             'pnl': market.format_price(position.profit_loss),
                             'mpl': position.profit_loss_market_rate,
@@ -1502,8 +1516,9 @@ class Trader(Runnable):
         """
         Returns a table of any active orders.
         """
-        columns = ['Symbol', '#', 'ref #', charmap.ARROWUPDN, 'Type', 'x', 'Limit', 'Stop', 'SL', 'TP', 'TR', 'Created date', 'Transac date',
-            'Reduce', 'Post', 'Hedge', 'Close', 'Margin', 'TIF', 'Price', 'Key']
+        columns = ['Symbol', '#', 'ref #', charmap.ARROWUPDN, 'Type', 'x', 'Limit', 'Stop', 'SL', 'TP',
+                   'TR', 'Created date', 'Transac date', 'Reduce', 'Post', 'Hedge', 'Close', 'Margin',
+                   'TIF', 'Price', 'Key']
 
         if quantities:
             columns += ['Qty']
@@ -1534,7 +1549,9 @@ class Trader(Runnable):
                 orders = orders[offset:limit]
 
                 for t in orders:
-                    direction = Color.colorize_cond(charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long", style=style, true=Color.GREEN, false=Color.RED)
+                    direction = Color.colorize_cond(
+                        charmap.ARROWUP if t['d'] == "long" else charmap.ARROWDN, t['d'] == "long",
+                        style=style, true=Color.GREEN, false=Color.RED)
 
                     op = float(t['op']) if t['op'] else 0.0
                     sl = float(t['sl']) if t['sl'] else 0.0
@@ -1605,12 +1622,21 @@ class Trader(Runnable):
 
     def cmd_trader_froze_asset_quantity(self, data):
         """
-        ...
+        Lock a quantity of an asset to be not available for trading.
         """
         results = {
             'messages': [],
             'error': False
         }
+
+        asset_name = data.get('asset')
+        quantity = data.get('quantity', -1.0)
+
+        if not asset_name:
+            Terminal.inst().error("Asset to froze quantity must be specified")
+
+        if quantity < 0.0:
+            Terminal.inst().error("Asset quantity to froze must be specified and greater or equal to zero")
 
         # @todo
 
@@ -1672,13 +1698,13 @@ class Trader(Runnable):
                 if market:
                     positions.append((position.position_id, market, position.direction, position.quantity))
                 else:
-                    Terminal.inst().error("No market found to close position %s..." % (position.position_id, ))
+                    Terminal.inst().error("No market found to close position %s..." % position.position_id)
 
         for position in positions:
             # query close position
             try:
                 self.close_position(position[0], position[1], position[2], position[3], True, None)
-                Terminal.inst().action("Closing position %s..." % (position.position_id, ))
+                Terminal.inst().action("Closing position %s..." % position.position_id)
             except Exception as e:
                 error_logger.error(repr(e))
 
@@ -1790,9 +1816,11 @@ class Trader(Runnable):
                     self.set_ref_order_id(order)
 
                     if self.create_order(order, market):
-                        Terminal.inst().action("Create order %s to sell all of %s on %s..." % (order.order_id, asset[0], market.market_id))
+                        Terminal.inst().action("Create order %s to sell all of %s on %s..." % (
+                            order.order_id, asset[0], market.market_id))
                     else:
-                        Terminal.inst().action("Rejected order to sell all of %s on %s..." % (asset[0], market.market_id))
+                        Terminal.inst().action("Rejected order to sell all of %s on %s..." % (
+                            asset[0], market.market_id))
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())

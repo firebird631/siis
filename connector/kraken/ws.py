@@ -259,46 +259,56 @@ class KrakenSocketManager(threading.Thread):
         self._private_conns[id_] = connectWS(factory, options)
 
     def send_subscribe(self, id_, subscription, pair):
-        factory = self.factories[id_]
+        try:
+            factory = self.factories[id_]
 
-        if subscription and pair and factory:
-            if subscription not in factory.subscriptions:
-                factory.subscriptions[subscription] = set()
+            if subscription and pair and factory:
+                if subscription not in factory.subscriptions:
+                    factory.subscriptions[subscription] = set()
 
-            factory.subscriptions[subscription].update(pair)
+                factory.subscriptions[subscription].update(pair)
 
-            if factory.protocol_instance:
-                data = {
-                    'event': 'subscribe',
-                    'subscription': {
-                        'name': subscription
-                    },
-                    'pair': pair
-                }
+                if factory.protocol_instance:
+                    data = {
+                        'event': 'subscribe',
+                        'subscription': {
+                            'name': subscription
+                        },
+                        'pair': pair
+                    }
 
-                payload = json.dumps(data, ensure_ascii=False).encode('utf8')
-                factory.protocol_instance.sendMessage(payload, isBinary=False)
+                    payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+                    factory.protocol_instance.sendMessage(payload, isBinary=False)
+
+        except Exception as e:
+            error_logger.error("%s : %s" % (subscription, repr(e)))
+            traceback_logger.error(traceback.format_exc())
 
     def send_unsubscribe(self, id_, subscription, pair):
-        factory = self.factories[id_]
+        try:
+            factory = self.factories[id_]
 
-        if subscription and pair and factory:
-            if subscription not in factory.subscriptions:
-                factory.subscriptions[subscription] = set()
+            if subscription and pair and factory:
+                if subscription not in factory.subscriptions:
+                    factory.subscriptions[subscription] = set()
 
-            factory.subscriptions[subscription] = factory.subscriptions[subscription].difference(pair)
+                factory.subscriptions[subscription] = factory.subscriptions[subscription].difference(pair)
 
-            if factory.protocol_instance:
-                data = {
-                    'event': 'unsubscribe',
-                    'subscription': {
-                        'name': subscription
-                    },
-                    'pair': pair
-                }
+                if factory.protocol_instance:
+                    data = {
+                        'event': 'unsubscribe',
+                        'subscription': {
+                            'name': subscription
+                        },
+                        'pair': pair
+                    }
 
-                payload = json.dumps(data, ensure_ascii=False).encode('utf8')
-                factory.protocol_instance.sendMessage(payload, isBinary=False)
+                    payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+                    factory.protocol_instance.sendMessage(payload, isBinary=False)
+
+        except Exception as e:
+            error_logger.error("%s : %s" % (subscription, repr(e)))
+            traceback_logger.error(traceback.format_exc())
 
     def stop_socket(self, conn_key):
         """Stop a websocket given the connection key

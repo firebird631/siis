@@ -3,11 +3,11 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Account view.
 
-from terminal.terminal import Terminal
 from view.tableview import TableView
 
 import logging
 error_logger = logging.getLogger('siis.view.account')
+
 
 class AccountView(TableView):
     """

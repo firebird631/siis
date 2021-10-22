@@ -310,7 +310,7 @@ def dynamic_stop_loss_fixed_hma_long(timeframe, last_price, curr_stop_loss_price
         if 1:  # timeframe.last_closed:
             p = timeframe.hma.hmas[-1]
 
-            if p > curr_stop_loss_price and p < last_price - price_epsilon:
+            if curr_stop_loss_price < p < last_price - price_epsilon:
                 stop_loss = p
 
     return stop_loss
@@ -323,7 +323,7 @@ def dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_pric
         if 1:  # timeframe.last_closed:
             p = timeframe.hma.hmas[-1]
 
-            if p < curr_stop_loss_price and p > last_price + price_epsilon:
+            if curr_stop_loss_price > p > last_price + price_epsilon:
                 stop_loss = p
 
     return stop_loss

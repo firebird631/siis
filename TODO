@@ -35,8 +35,6 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
     - 'cumulative-commission-amount' pour les fees à gérer sur indmargintrade
     - calcule des qty locked par asset en fonction des ordres ouverts (attention aux arrondis)
 
-#113 En local dans dans siis-lab nettoyer les ancienne stratégies, ou convertir celles d'intérêts
-
 #24 Uniformiser l'order book (bitmex, binance, binancefutures, kraken)
     - avoir un object OrderBook facile à mettre à jour et à exploiter
     - utiliser DepthCacheManager pour binance et binancefutures
@@ -73,7 +71,7 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
         - Exemple un take-profit limit, mais mettons la quantité n'est pas fully-filled, et finalement intervient
             pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier ordre)
     - Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
-    
+
 #96 Valeur d'un pip pour les marchés BitMex => et corriger ainsi calcule uPnl.
     - Enfin même question avec BinanceFutures, calcule fait sur une supposition, mais par contre reste le prob pour le uPnl
 
@@ -87,15 +85,11 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 #57 Vérification des trades au rechargement :
     - Cas des positions indépendante (CFD, future) : pas de soucis tant qu'on retrouve la position et les ordres
     - Cas des crypto margin: si on rate un trade event, on va perdre le compte : reprendre l'historique des trades, ça devient l'usine à gérer
-    - Cas des crypto spot : pareil si on rate un trade event...
     => On pourrait depuis le watcher récupérer à la connexion tout les TRADES depuis le dernier timestamp connu
         - On le fait déjà en fait sur binance pour les asset non vide (nouvellement non vide (valeur fetched) ou précédemment non vide (valeur stocké en DB))
             - pour binance.com c'est un peu lent et ça consomme du crédit API
             - pour bitmex.com on a get_historical_trades(...)
             - pour ig.com pas de question à se poser on regarde l'état de la position, et éventuellement les ordres actifs qu'on a fetched
-
-#63 Mode backup urgency :
-    - Instance démarrée à coté pour fermer les trades en profit et se fermer une fois tous les trades fermés
 
 
 #############

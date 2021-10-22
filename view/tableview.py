@@ -39,7 +39,7 @@ class TableView(View):
 
     def scroll_col(self, n):
         """
-        Scroll n columnes (positive or negative) from current first columns.
+        Scroll n columns (positive or negative) from current first columns.
         """
         self._col += n
 
@@ -62,13 +62,13 @@ class TableView(View):
                 self.scroll_row(-(self.height()-4))   
             elif key == 'KEY_NPAGE':
                 self.scroll_row(self.height()-4)
-            elif (key == 'KEY_SR' or key == 'j'):
+            elif key == 'KEY_SR' or key == 'j':
                 self.scroll_row(-1)
-            elif (key == 'KEY_SF' or key == 'k'):
+            elif key == 'KEY_SF' or key == 'k':
                 self.scroll_row(1)
-            elif (key == 'KEY_SLEFT' or key == 'h'):
+            elif key == 'KEY_SLEFT' or key == 'h':
                 self.scroll_col(-1)
-            elif (key == 'KEY_SRIGHT' or key == 'l'):
+            elif key == 'KEY_SRIGHT' or key == 'l':
                 self.scroll_col(1)
             elif key == 'KEY_SPREVIOUS':
                 self.prev_item()
@@ -84,9 +84,10 @@ class TableView(View):
 
         self._table = total_size if total_size else (len(columns), len(table))
 
-        table_data = tabulate(table, headers=columns, tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
+        table_data = tabulate(table, headers=columns, tablefmt='psql', showindex=False,
+                              floatfmt=".2f", disable_numparse=True)
 
-        # replace color espace code before drawing
+        # replace color space code before drawing
         for k, v in Color.UTERM_COLORS_MAP.items():
             table_data = table_data.replace(k, v)
 

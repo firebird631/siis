@@ -3,14 +3,9 @@
 # @license Copyright (c) 2019 Dream Overflow
 # www.kraken.com watcher implementation
 
-import re
-import json
 import time
 import traceback
-import bisect
 import math
-
-from datetime import datetime
 
 from watcher.watcher import Watcher
 from common.signal import Signal
@@ -21,9 +16,8 @@ from connector.kraken.connector import Connector
 from trader.order import Order
 from trader.market import Market
 
-from instrument.instrument import Instrument, Candle
+from instrument.instrument import Instrument
 
-from terminal.terminal import Terminal
 from database.database import Database
 
 import logging
@@ -43,6 +37,7 @@ class KrakenWatcher(Watcher):
     @todo order book WS
 
     @ref WS 'status' online|maintenance|cancel_only|limit_only|post_only
+    @ref https://docs.kraken.com/websockets
     """
 
     BASE_QUOTE = "ZUSD"
@@ -61,9 +56,112 @@ class KrakenWatcher(Watcher):
         3600: 60,       # 1h
         14400: 240,     # 4h
         86400.0: 1440,  # 1d
-        # 604800: 10080,  # 1w (not allowed because starts on thuesday)
+        # 604800: 10080,  # 1w (not allowed because starts on tuesday)
         # 1296000: 21600  # 15d
     }
+
+    def __setup_ws_state(self):
+        # ['status'] in "online" | "maintenance" | "cancel_only" | "limit_only" | "post_only"
+        return {
+            'status': "offline",
+            'version': "0",
+            'timestamp': 0.0,
+            'subscribed': False,
+            'lost': False,
+            'retry': 0.0
+        }
+
+    def __reset_ws_state(self, ws):
+        """Reset the states of a WS connection watcher."""
+        ws['status'] = "offline"
+        ws['version'] = "0"
+        ws['timestamp'] = 0.0
+        ws['subscribed'] = False
+        ws['lost'] = False
+        ws['retry'] = 0.0
+
+    def __check_reconnect(self, ws):
+        """Return True if a reconnection in needed."""
+        if ws['lost']:
+            return True
+
+        # above 5 seconds without activity then reconnect
+        if ws['timestamp'] > 0.0 and time.time() - ws['timestamp'] > 5.0:
+            # if maintenance need to wait 5 sec before try to reconnect
+            # if ws['status'] == "maintenance" and ws['retry'] <= 0.0:
+            #     ws['retry'] = time.time() + 5.0
+
+            return True
+
+        return False
+
+    def __reconnect_ws(self, ws, callback, name):
+        # if ws['retry'] > 0.0 and time.time() < ws['retry']:
+        #     return
+
+        logger.debug("%s re-subscribe %s to markets..." % (self.name, name))
+
+        with self._mutex:
+            try:
+                self._connector.ws.stop_socket(name)
+                self.__reset_ws_state(ws)
+
+                pairs = []
+                instruments = self._instruments
+
+                for market_id in self._watched_instruments:
+                    if market_id in instruments:
+                        pairs.append(instruments[market_id]['wsname'])
+
+                if pairs:
+                    self._connector.ws.subscribe_public(
+                        subscription=name,
+                        pair=pairs,
+                        callback=callback
+                    )
+
+                    logger.debug("%s re-subscribe %s to markets succeed" % (self.name, name))
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+    def __reconnect_user_ws(self):
+        # if self._ws_own_trades['retry'] > 0.0 and time.time() < self._ws_own_trades['retry']:
+        #     return
+        # if self._ws_open_orders['retry'] > 0.0 and time.time() < self._ws_open_orders['retry']:
+        #     return
+
+        logger.debug("%s re-subscribe to user data..." % self.name)
+
+        with self._mutex:
+            try:
+                self._connector.ws.stop_private_socket('ownTrades')
+                self._connector.ws.stop_private_socket('openOrders')
+
+                self.__reset_ws_state(self._ws_own_trades)
+                self.__reset_ws_state(self._ws_open_orders)
+
+                ws_token = self._connector.get_ws_token()
+
+                if ws_token and ws_token.get('token'):
+                    self._connector.ws.subscribe_private(
+                        token=ws_token['token'],
+                        subscription='ownTrades',
+                        callback=self.__on_own_trades
+                    )
+
+                    self._connector.ws.subscribe_private(
+                        token=ws_token['token'],
+                        subscription='openOrders',
+                        callback=self.__on_open_orders
+                    )
+
+                    logger.debug("%s re-subscribe to user data succeed" % self.name)
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
     def __init__(self, service):
         super().__init__("kraken.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
@@ -80,8 +178,6 @@ class KrakenWatcher(Watcher):
         self.__matching_symbols = set()    # cache for matching symbols
         self.__ws_symbols = set()          # cache for matching symbols WS names
 
-        self._reconnect_user_ws = False
-
         self._assets = {}
         self._instruments = {}
         self._wsname_lookup = {}
@@ -90,10 +186,15 @@ class KrakenWatcher(Watcher):
         self._last_balance_update = 0.0  # last update of balances (assets) timestamp
         self._last_assets_balances = {}  # last free/locked balances values for each asset
 
-        self._ws_own_trades = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
-        self._ws_open_orders = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
+        # user WS
+        self._ws_own_trades = self.__setup_ws_state()
+        self._ws_open_orders = self.__setup_ws_state()
 
-        self._last_ws_heartbeat = 0.0
+        # public WS
+        self._ws_ticker_data = self.__setup_ws_state()
+        self._ws_trade_data = self.__setup_ws_state()
+        self._ws_spread_data = self.__setup_ws_state()
+        self._ws_depth_data = self.__setup_ws_state()
 
         self._got_orders_init_snapshot = False
         self._got_trades_init_snapshot = False
@@ -116,12 +217,15 @@ class KrakenWatcher(Watcher):
                 self._orders_ws_cache = {}
                 self._positions_ws_cache = {}
 
-                self._reconnect_user_ws = False
+                # user WS
+                self.__reset_ws_state(self._ws_own_trades)
+                self.__reset_ws_state(self._ws_open_orders)
 
-                self._ws_own_trades = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
-                self._ws_open_orders = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
-
-                self._last_ws_heartbeat = 0.0
+                # public WS
+                self.__reset_ws_state(self._ws_ticker_data)
+                self.__reset_ws_state(self._ws_trade_data)
+                self.__reset_ws_state(self._ws_spread_data)
+                self.__reset_ws_state(self._ws_depth_data)
 
                 identity = self.service.identity(self._name)
 
@@ -151,13 +255,10 @@ class KrakenWatcher(Watcher):
                         # prefetch all markets data with a single request to avoid one per market
                         self.__prefetch_markets()
 
-                        for asset_name, details in self._assets.items():
-                            # {'aclass': 'currency', 'altname': 'ADA', 'decimals': 8, 'display_decimals': 6},
-                            pass
-
                         instruments = self._instruments
                         configured_symbols = self.configured_symbols()
-                        matching_symbols = self.matching_symbols_set(configured_symbols, [instrument for instrument in list(self._instruments.keys())])
+                        matching_symbols = self.matching_symbols_set(configured_symbols, [
+                            instrument for instrument in list(self._instruments.keys())])
 
                         # cache them
                         self.__configured_symbols = configured_symbols
@@ -430,7 +531,9 @@ class KrakenWatcher(Watcher):
             reconnect = False
 
             with self._mutex:
-                if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
+                if (not self._ready or self._connector is None or not self._connector.connected or
+                        not self._connector.ws_connected):
+
                     # cleanup
                     self._ready = False
                     self._connector = None
@@ -453,42 +556,23 @@ class KrakenWatcher(Watcher):
 
         # disconnected for user socket in real mode, and auto-reconnect failed
         # mostly in case of EGeneral:Internal Error or ESession:Invalid session
-        if self._reconnect_user_ws and not self.service.paper_mode:
-            with self._mutex:
-                try:
-                    self._connector.ws.stop_private_socket('ownTrades')
-                    self._connector.ws.stop_private_socket('openOrders')
+        if not self.service.paper_mode:
+            if self.__check_reconnect(self._ws_own_trades) or self.__check_reconnect(self._ws_open_orders):
+                self.__reconnect_user_ws()
 
-                    self._reconnect_user_ws = False
+        # disconnected for a public socket, and auto-reconnect failed
+        if self.__check_reconnect(self._ws_ticker_data):
+            self.__reconnect_ws(self._ws_ticker_data, self.__on_ticker_data, 'ticker')
 
-                    self._ws_own_trades = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
-                    self._ws_open_orders = {'status': False, 'version': "0", 'ping': 0.0, 'subscribed': False}
+        if self.__check_reconnect(self._ws_trade_data):
+            self.__reconnect_ws(self._ws_trade_data, self.__on_trade_data, 'trade')
 
-                    ws_token = self._connector.get_ws_token()
+        if KrakenWatcher.USE_SPREAD:
+            if self.__check_reconnect(self._ws_spread_data):
+                self.__reconnect_ws(self._ws_spread_data, self.__on_spread_data, 'spread')
 
-                    if ws_token and ws_token.get('token'):
-                        self._connector.ws.subscribe_private(
-                            token=ws_token['token'],
-                            subscription='ownTrades',
-                            callback=self.__on_own_trades
-                        )
-
-                        self._connector.ws.subscribe_private(
-                            token=ws_token['token'],
-                            subscription='openOrders',
-                            callback=self.__on_open_orders
-                        )
-
-                except Exception as e:
-                    error_logger.error(repr(e))
-                    traceback_logger.error(traceback.format_exc())
-
-                    # @todo could need a delay
-                    # @todo could need to send a connected signal
-                    self._reconnect_user_ws = True
-
-        # disconnected for instruments socket, and auto-reconnect failed
-        # @todo reconnect instruments if necessary
+        if self.__check_reconnect(self._ws_depth_data):
+            self.__reconnect_ws(self._ws_depth_data, self.__on_depth_data, 'depth')
 
         #
         # ohlc close/open
@@ -603,7 +687,8 @@ class KrakenWatcher(Watcher):
             # orders capacities
             market.orders = Order.ORDER_LIMIT | Order.ORDER_MARKET | Order.ORDER_STOP | Order.ORDER_TAKE_PROFIT
 
-            # @todo take the first but it might depends of the traded volume per 30 days, then request volume window to got it
+            # @todo take the first but it might depends of the traded volume per 30 days, then
+            #       request volume window to got it
             # "fees":[[0,0.26],[50000,0.24],[100000,0.22],[250000,0.2],[500000,0.18],[1000000,0.16],[2500000,0.14],[5000000,0.12],[10000000,0.1]],
             # "fees_maker":[[0,0.16],[50000,0.14],[100000,0.12],[250000,0.1],[500000,0.08],[1000000,0.06],[2500000,0.04],[5000000,0.02],[10000000,0]],
             fees = instrument.get('fees', [])
@@ -686,6 +771,9 @@ class KrakenWatcher(Watcher):
 
     def __on_ticker_data(self, data):
         if isinstance(data, list) and data[2] == "ticker":
+            # last update timestamp
+            self._ws_ticker_data['timestamp'] = time.time()
+
             market_id = self._wsname_lookup.get(data[3])
             base_asset, quote_asset = data[3].split('/')
 
@@ -717,21 +805,42 @@ class KrakenWatcher(Watcher):
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
             else:
                 if bid > 0.0 and ask > 0.0:
-                    market_data = (market_id, last_update_time > 0, last_update_time, bid, ask, None, None, None, vol24_base, vol24_quote)
+                    market_data = (market_id, last_update_time > 0, last_update_time, bid, ask,
+                                   None, None, None, vol24_base, vol24_quote)
                     self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)           
 
         elif isinstance(data, dict):
             if not data.get('event'):
                 return
 
-            if data['event'] == "subscriptionStatus":
-                if data['status'] == "subscribed" and data['channelName'] == "ticker":
-                    # @todo register channelID...
-                    # {'channelID': 93, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'ticker'}}
-                    pass
+            if data['event'] == 'heartbeat':
+                self._ws_ticker_data['timestamp'] = time.time()
+
+            elif data['event'] == 'systemStatus':
+                # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
+                self._ws_ticker_data['timestamp'] = time.time()
+                self._ws_ticker_data['status'] = data['status']
+                self._ws_ticker_data['version'] = data['version']
+
+            elif data['event'] == "subscriptionStatus" and data['channelName'] == "ticker":
+                self._ws_ticker_data['timestamp'] = time.time()
+
+                if data['status'] == "subscribed":
+                    self._ws_ticker_data['subscribed'] = True
+                    self._ws_ticker_data['channel-id'] = data['channelID']
+
+                elif data['status'] == "error":
+                    self._ws_ticker_data['status'] = "offline"
+                    self._ws_ticker_data['lost'] = True
+
+                    error_logger.error("ticker subscriptionStatus : %s - %s" % (data.get('errorMessage'),
+                                                                                data.get('name')))
 
     def __on_spread_data(self, data):
         if isinstance(data, list) and data[2] == "spread":
+            # last update timestamp
+            self._ws_spread_data['timestamp'] = time.time()
+
             market_id = self._wsname_lookup.get(data[3])
             base_asset, quote_asset = data[3].split('/')
 
@@ -749,21 +858,42 @@ class KrakenWatcher(Watcher):
             # 4 is ask volume
 
             if bid > 0.0 and ask > 0.0:
-                market_data = (market_id, last_update_time > 0, last_update_time, bid, ask, None, None, None, None, None)
+                market_data = (market_id, last_update_time > 0, last_update_time, bid, ask,
+                               None, None, None, None, None)
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
         elif isinstance(data, dict):
             if not data.get('event'):
                 return
 
-            if data['event'] == "subscriptionStatus":
-                if data['status'] == "subscribed" and data['channelName'] == "spread":
-                    # @todo register channelID...
-                    # {'channelID': 536, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'spread'}}
-                    pass
+            if data['event'] == 'heartbeat':
+                self._ws_spread_data['timestamp'] = time.time()
+
+            elif data['event'] == 'systemStatus':
+                # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
+                self._ws_spread_data['timestamp'] = time.time()
+                self._ws_spread_data['status'] = data['status']
+                self._ws_spread_data['version'] = data['version']
+
+            elif data['event'] == "subscriptionStatus" and data['channelName'] == "spread":
+                self._ws_spread_data['timestamp'] = time.time()
+
+                if data['status'] == "subscribed":
+                    self._ws_spread_data['subscribed'] = True
+                    self._ws_spread_data['channel-id'] = data['channelID']
+
+                elif data['status'] == "error":
+                    self._ws_spread_data['status'] = "offline"
+                    self._ws_spread_data['lost'] = True
+
+                    error_logger.error("spread subscriptionStatus : %s - %s" % (data.get('errorMessage'),
+                                                                                data.get('name')))
 
     def __on_trade_data(self, data):
         if isinstance(data, list) and data[2] == "trade":
+            # last update timestamp
+            self._ws_trade_data['timestamp'] = time.time()
+
             market_id = self._wsname_lookup.get(data[3])
 
             if not market_id:
@@ -792,7 +922,8 @@ class KrakenWatcher(Watcher):
                 self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
 
                 if self._store_trade:
-                    Database.inst().store_market_trade((self.name, market_id, int(trade_time*1000.0), trade[0], trade[0], trade[0], trade[1], bid_ask))
+                    Database.inst().store_market_trade((self.name, market_id, int(trade_time*1000.0),
+                                                        trade[0], trade[0], trade[0], trade[1], bid_ask))
 
                 for tf in Watcher.STORED_TIMEFRAMES:
                     # generate candle per timeframe
@@ -806,20 +937,28 @@ class KrakenWatcher(Watcher):
             if not data.get('event'):
                 return
 
-            # if data['event'] == 'heartBeat':
-            #     self._ws_own_trades[]['ping'] = time.time()
+            if data['event'] == 'heartbeat':
+                self._ws_trade_data['timestamp'] = time.time()
 
-            if data['event'] == "subscriptionStatus":
-                if data['status'] == "subscribed" and data['channelName'] == "trade":
-                    # @todo register channelID...
-                    # {'channelID': 93, 'channelName': 'trade', 'event': 'subscriptionStatus', 'pair': 'ETH/USD', 'status': 'subscribed', 'subscription': {'name': 'trade'}}
-                    # self._ws_trades[]['subscribed'] = True
-                    pass
+            elif data['event'] == 'systemStatus':
+                # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
+                self._ws_trade_data['timestamp'] = time.time()
+                self._ws_trade_data['status'] = data['status']
+                self._ws_trade_data['version'] = data['version']
+
+            elif data['event'] == "subscriptionStatus" and data['channelName'] == "trade":
+                self._ws_trade_data['timestamp'] = time.time()
+
+                if data['status'] == "subscribed":
+                    self._ws_trade_data['subscribed'] = True
+                    self._ws_trade_data['channel-id'] = data['channelID']
 
                 elif data['status'] == "error":
-                    error_logger.error("trades subscriptionStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
-                # self._ws_trades[]['status'] = False
-                # self._reconnect_trade_ws = ...
+                    self._ws_trade_data['status'] = "offline"
+                    self._ws_trade_data['lost'] = True
+
+                    error_logger.error("trades subscriptionStatus : %s - %s" % (data.get('errorMessage'),
+                                                                                data.get('name')))
 
     def __on_kline_data(self, data):
         pass
@@ -856,6 +995,9 @@ class KrakenWatcher(Watcher):
 
     def __on_own_trades(self, data):
         if isinstance(data, list) and data[1] == "ownTrades":
+            # last update timestamp
+            self._ws_own_trades['timestamp'] = time.time()
+
             if not self._got_trades_init_snapshot:
                 # ignore the initial snapshot (got them through REST api), but keep open positions for the cache
                 for entry in data[0]:
@@ -1017,23 +1159,28 @@ class KrakenWatcher(Watcher):
             if not data.get('event'):
                 return
 
-            if data['event'] == 'heartBeat':
-                self._ws_own_trades['ping'] = time.time()
+            if data['event'] == 'heartbeat':
+                self._ws_own_trades['timestamp'] = time.time()
 
             elif data['event'] == 'systemStatus':
                 # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
-                self._ws_own_trades['status'] = data['status'] == "online"
+                self._ws_own_trades['timestamp'] = time.time()
+                self._ws_own_trades['status'] = data['status']
                 self._ws_own_trades['version'] = data['version']
 
-            elif data['event'] == "subscriptionStatus":
-                if data['status'] == "error":
-                    error_logger.error("ownTrades subscriptionStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
+            elif data['event'] == "subscriptionStatus" and data['channelName'] == "ownTrades":
+                self._ws_own_trades['timestamp'] = time.time()
 
-                    self._ws_own_trades['status'] = False
-                    self._reconnect_user_ws = True
-
-                elif data['status'] == "subscribed" and data['channelName'] == "ownTrades":
+                if data['status'] == "subscribed":
                     self._ws_own_trades['subscribed'] = True
+                    self._ws_own_trades['channel-id'] = data['channelID']
+
+                elif data['status'] == "error":
+                    self._ws_own_trades['status'] = "offline"
+                    self._ws_own_trades['lost'] = True
+
+                    error_logger.error("ownTrades subscriptionStatus : %s - %s" % (data.get('errorMessage'),
+                                                                                   data.get('name')))
 
     #
     # private order WS
@@ -1175,9 +1322,9 @@ class KrakenWatcher(Watcher):
             filled_volume = new_exec_vol - prev_exec_vol
 
             # status changed
-            if ('status' in new_order_data):
+            if 'status' in new_order_data:
                 # remove from cache if closed, canceled or deleted
-                if (new_order_data['status'] in ("closed", "deleted", "canceled")):
+                if new_order_data['status'] in ("closed", "deleted", "canceled"):
                     del self._orders_ws_cache[order_id]
 
                 # or open state
@@ -1217,8 +1364,11 @@ class KrakenWatcher(Watcher):
 
     def __on_open_orders(self, data):
         if isinstance(data, list) and data[1] == "openOrders":
+            # last update timestamp
+            self._ws_open_orders['timestamp'] = time.time()
+
             if not self._got_orders_init_snapshot:
-                # ignore the initial snapshot (got them throught REST api)
+                # ignore the initial snapshot (got them through REST api)
                 self._got_orders_init_snapshot = True
 
                 for entry in data[0]:
@@ -1240,14 +1390,17 @@ class KrakenWatcher(Watcher):
 
                 if 'descr' not in order_data:
                     # no have previous message to tell the symbol
-                    error_logger.warning("kraken.com openOrder : Could not retrieve the description for %s. Message ignored !" % (order_id,))
+                    error_logger.warning(
+                        "kraken.com openOrder : Could not retrieve the description for %s. Message ignored !" % (
+                            order_id,))
                     continue
 
                 symbol = self._wsname_lookup.get(order_data['descr']['pair'])
 
                 if not symbol:
                     # not managed symbol
-                    error_logger.warning("kraken.com openOrder : Could not retrieve the symbol for %s. Message ignored !" % (order_id,))
+                    error_logger.warning(
+                        "kraken.com openOrder : Could not retrieve the symbol for %s. Message ignored !" % (order_id,))
                     continue
 
                 status = order_data.get('status', "")
@@ -1309,27 +1462,35 @@ class KrakenWatcher(Watcher):
             if not data.get('event'):
                 return
 
-            if data['event'] == 'heartBeat':
-                self._ws_open_orders['ping'] = time.time()
+            if data['event'] == 'heartbeat':
+                self._ws_open_orders['timestamp'] = time.time()
 
             elif data['event'] == 'systemStatus':
                 # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
-                self._ws_open_orders['status'] = data['status'] == "online"
+                self._ws_open_orders['timestamp'] = time.time()
+                self._ws_open_orders['status'] = data['status']
                 self._ws_open_orders['version'] = data['version']
 
-            elif data['event'] == "subscriptionStatus":
-                if data['status'] == "error":
-                    error_logger.error("kraken.com openOrders:openOrders subscriptionStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
+            elif data['event'] == "subscriptionStatus" and data['channelName'] == "openOrders":
+                self._ws_open_orders['timestamp'] = time.time()
 
-                    self._ws_open_orders['status'] = False
-                    self._reconnect_user_ws = True
-
-                elif data['status'] == "subscribed" and data['channelName'] == "openOrders":
+                if data['status'] == "subscribed":
                     self._ws_open_orders['subscribed'] = True
+                    self._ws_open_orders['channel-id'] = data['channelID']
+
+                elif data['status'] == "error":
+                    self._ws_open_orders['status'] = "offline"
+                    self._ws_open_orders['lost'] = True
+
+                    error_logger.error("kraken.com openOrders:openOrders subscriptionStatus : %s - %s" % (
+                        data.get('errorMessage'), data.get('name')))
 
             elif data['event'] == "addOrderStatus":
+                self._ws_open_orders['timestamp'] = time.time()
+
                 if data['status'] == "error":
-                    error_logger.error("kraken.com openOrders:addOrderStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
+                    error_logger.error("kraken.com openOrders:addOrderStatus : %s - %s" % (
+                        data.get('errorMessage'), data.get('name')))
 
                     # already get in REST response
                     # self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
@@ -1340,8 +1501,11 @@ class KrakenWatcher(Watcher):
                     exec_logger.info("kraken.com openOrders:addOrderStatus : %s" % (trade_id,))
 
             elif data['event'] == "cancelOrderStatus":
+                self._ws_open_orders['timestamp'] = time.time()
+
                 if data['status'] == "error":
-                    error_logger.error("kraken.com openOrders:cancelOrderStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
+                    error_logger.error("kraken.com openOrders:cancelOrderStatus : %s - %s" % (
+                        data.get('errorMessage'), data.get('name')))
 
                 elif data['status'] == "ok":
                     order_ids = data['txid']  # array of order_id
@@ -1349,6 +1513,8 @@ class KrakenWatcher(Watcher):
                     exec_logger.info("kraken.com openOrders:cancelOrderStatus ids : %s" % (repr(order_ids),))
 
             elif data['event'] == "cancelAllStatus":
+                self._ws_open_orders['timestamp'] = time.time()
+
                 if data['status'] == "error":
                     error_logger.error("cancelAllStatus : %s - %s" % (data.get('errorMessage'), data.get('name')))
 
@@ -1358,7 +1524,7 @@ class KrakenWatcher(Watcher):
                     exec_logger.info("kraken.com openOrders:cancelAllStatus : %s orders" % (canceled_orders_count,))
 
     #
-    # miscs
+    # misc
     #
 
     def market_alias(self, market_id):
@@ -1391,7 +1557,8 @@ class KrakenWatcher(Watcher):
                         market.base_exchange_rate, market.contract_size, market.value_per_pip,
                         market.vol24h_base, market.vol24h_quote)
             else:
-                market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
+                market_data = (market_id, market.is_open, market.last_update_time,
+                               None, None, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 

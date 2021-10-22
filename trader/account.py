@@ -14,7 +14,6 @@ logger = logging.getLogger('siis')
 class Account(object):
     """
     An account object is owned by a Trader object.
-    @todo distinct spot/margin balance, balance and margin for margin and add a total asset value field (and column in views)
     """
 
     TYPE_UNDEFINED = 0
