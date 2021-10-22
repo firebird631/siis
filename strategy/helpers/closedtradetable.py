@@ -42,6 +42,13 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
         closed_trades = get_closed_trades(strategy)
         total_size = (len(columns), len(closed_trades))
 
+        for t in closed_trades:
+            # sum of RPNL per quote/currency
+            if t['stats']['profit-loss-currency'] not in sub_totals:
+                sub_totals[t['stats']['profit-loss-currency']] = 0.0
+
+            sub_totals[t['stats']['profit-loss-currency']] += float(t['stats']['profit-loss'])
+
         if offset is None:
             offset = 0
 
@@ -68,11 +75,6 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             worst = float(t['stats']['worst-price'])
             sl = float(t['stop-loss-price'])
             tp = float(t['take-profit-price'])
-
-            if t['stats']['profit-loss-currency'] not in sub_totals:
-                sub_totals[t['stats']['profit-loss-currency']] = 0.0
-
-            sub_totals[t['stats']['profit-loss-currency']] += float(t['stats']['profit-loss'])
 
             if t['profit-loss-pct'] < 0 and ((t['direction'] == 'long' and best > aep) or (
                     t['direction'] == 'short' and best < aep)):

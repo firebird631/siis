@@ -40,12 +40,18 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
         trades = get_all_active_trades(strategy)
         total_size = (len(columns), len(trades))
 
-        # count actives trades for all trades with filled (partial or complete) quantity
         for t in trades:
             aep = float(t['aep'])
 
+            # count actives trades for all trades with filled (partial or complete) quantity
             if aep > 0:
                 num_actives_trades += 1
+
+            # sum of UPNL per quote/currency
+            if t['pnlcur'] not in sub_totals:
+                sub_totals[t['pnlcur']] = 0.0
+
+            sub_totals[t['pnlcur']] += float(t['upnl'])
 
         if offset is None:
             offset = 0
@@ -76,11 +82,6 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             leop = float(t['leop'])
 
             upnl = "%s%s" % (t['upnl'], t['pnlcur']) if aep else '-'
-
-            if t['pnlcur'] not in sub_totals:
-                sub_totals[t['pnlcur']] = 0.0
-
-            sub_totals[t['pnlcur']] += float(t['upnl'])
 
             if t['pl'] < 0 and ((t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep)):
                 # has been profitable but loss
