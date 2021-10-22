@@ -1670,9 +1670,9 @@ class StrategyTrader(object):
         if result:
             # logger.warning(result)
             Terminal.inst().notice(result, view='status')
-            return False
+            return True
 
-        return True
+        return False
 
     def has_max_trades_by_context(self, max_trades, same_context=None):
         """
@@ -1711,9 +1711,9 @@ class StrategyTrader(object):
         if result:
             # logger.warning(result)
             Terminal.inst().notice(result, view='status')
-            return False
+            return True
 
-        return True
+        return False
 
     #
     # notification
