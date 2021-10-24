@@ -1554,8 +1554,8 @@ class KrakenWatcher(Watcher):
 
             if market.is_open:
                 market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ask,
-                        market.base_exchange_rate, market.contract_size, market.value_per_pip,
-                        market.vol24h_base, market.vol24h_quote)
+                               market.base_exchange_rate, market.contract_size, market.value_per_pip,
+                               market.vol24h_base, market.vol24h_quote)
             else:
                 market_data = (market_id, market.is_open, market.last_update_time,
                                None, None, None, None, None, None, None)
@@ -1602,7 +1602,7 @@ class KrakenWatcher(Watcher):
         for trade in trades:
             count += 1
             # timestamp, bid, ask, last, volume, direction
-            yield(trade)
+            yield trade
 
         logger.info("Watcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))
 
@@ -1628,6 +1628,7 @@ class KrakenWatcher(Watcher):
             count += 1
             # store (timestamp, open, high, low, close, spread, volume)
             if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
-                yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[5], candle[6]))
+                yield candle[0], candle[1], candle[2], candle[3], candle[4], candle[5], candle[6]
 
-        logger.info("Watcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe_to_str(timeframe)))
+        logger.info("Watcher %s has retrieved on market %s %s candles for timeframe %s" % (
+            self.name, market_id, count, timeframe_to_str(timeframe)))

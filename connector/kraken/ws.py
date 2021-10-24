@@ -381,8 +381,7 @@ class WssClient(KrakenSocketManager):
 
     This mean a common case will use 2 privates socket plus from 1 to 4 public sockets.
 
-    # @todo request private might use the myOrders socket
-    # @todo add unsubscribe_public
+    # @todo add request private using the myOrders socket
     """
 
     ###########################################################################
@@ -406,7 +405,7 @@ class WssClient(KrakenSocketManager):
     def subscribe_public(self, subscription, pair, callback):
         id_ = "_".join([subscription])
 
-        if id_ not in self.factories:
+        if id_ not in self._conns:
             self._start_socket(id_, subscription, pair, callback)
         else:
             reactor.callFromThread(self.send_subscribe, id_, subscription, pair)
@@ -414,7 +413,7 @@ class WssClient(KrakenSocketManager):
     def unsubscribe_public(self, subscription, pair):
         id_ = "_".join([subscription])
 
-        if id_ in self.factories:
+        if id_ in self._private_conns:
             reactor.callFromThread(self.send_unsubscribe, id_, subscription, pair)
 
     def subscribe_private(self, token, subscription, callback):
