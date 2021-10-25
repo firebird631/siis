@@ -4,13 +4,13 @@
 # Strategy indivisible trade for margin.
 
 from common.signal import Signal
-from database.database import Database
 
 from trader.order import Order
 from .strategytrade import StrategyTrade
 
 import logging
 logger = logging.getLogger('siis.strategy.indmargintrade')
+error_logger = logging.getLogger('siis.error.strategy.indmargintrade')
 
 
 class StrategyIndMarginTrade(StrategyTrade):
@@ -21,7 +21,7 @@ class StrategyIndMarginTrade(StrategyTrade):
     Works with crypto futures brokers (bitmex, binancefutures...).
 
     We cannot deal in opposite direction at the same time (no hedging),
-    but we can evantually manage many trade on the same direction.
+    but we can eventually manage many trade on the same direction.
 
     We prefers here to update on trade order signal. A position deleted mean any related trades closed.
 
@@ -29,8 +29,8 @@ class StrategyIndMarginTrade(StrategyTrade):
         specially with bitmex which only returns a cumulative filled
     """
 
-    __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', 'position_id', \
-        'leverage', 'stop_order_qty', 'limit_order_qty', 
+    __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', \
+                'position_id', 'leverage', 'stop_order_qty', 'limit_order_qty',
 
     def __init__(self, timeframe):
         super().__init__(StrategyTrade.TRADE_IND_MARGIN, timeframe)
@@ -49,7 +49,8 @@ class StrategyIndMarginTrade(StrategyTrade):
         self.stop_order_qty = 0.0    # if stop_oid then this is the qty placed on the stop order
         self.limit_order_qty = 0.0   # if limit_oid then this is the qty placed on the limit order
 
-    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
+    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss,
+             leverage=1.0, hedging=None):
         """
         Open a position or buy an asset.
         """
@@ -430,7 +431,7 @@ class StrategyIndMarginTrade(StrategyTrade):
             filled = 0
 
             if data['id'] == self.create_oid:
-                # a single order for the entry, then its OK and prefered to uses cumulative-filled and avg-price
+                # a single order for the entry, then its OK and preferred to uses cumulative-filled and avg-price
                 # because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     filled = data['cumulative-filled'] - self.e  # compute filled qty
@@ -445,7 +446,8 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 elif data.get('exec-price') is not None and data['exec-price'] > 0:
                     # compute the average entry price
-                    self.aep = instrument.adjust_price(((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled))
+                    self.aep = instrument.adjust_price(((self.aep * self.e) + (
+                            data['exec-price'] * filled)) / (self.e + filled))
                 else:
                     self.aep = self.op
 
@@ -506,7 +508,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
             elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
-                # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twices
+                # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twice
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     filled = data['cumulative-filled'] - self.x   # computed filled qty
                 elif data.get('filled') is not None and data['filled'] > 0:
@@ -532,7 +534,8 @@ class StrategyIndMarginTrade(StrategyTrade):
                         self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
 
                     # compute the average exit price
-                    self.axp = instrument.adjust_price(((self.axp * self.x) + (data['exec-price'] * filled)) / (self.x + filled))
+                    self.axp = instrument.adjust_price(((self.axp * self.x) + (
+                            data['exec-price'] * filled)) / (self.x + filled))
 
                 # cumulative filled exit qty
                 if data.get('cumulative-filled') is not None:
@@ -564,7 +567,8 @@ class StrategyIndMarginTrade(StrategyTrade):
                 maker = data.get('maker', None)
 
                 if maker is None:
-                    if data['id'] == self.limit_oid and self._stats.get('take-profit-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
+                    if data['id'] == self.limit_oid and self._stats.get(
+                            'take-profit-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
                         # @todo only if execution price is equal or better then order price (depends of direction)
                         maker = True
                     else:
@@ -638,7 +642,9 @@ class StrategyIndMarginTrade(StrategyTrade):
         if order_id and (order_id == self.create_oid or order_id == self.stop_oid or order_id == self.limit_oid):
             return True
 
-        if ref_order_id and (ref_order_id == self.create_ref_oid or ref_order_id == self.stop_ref_oid or ref_order_id == self.limit_ref_oid):
+        if ref_order_id and (ref_order_id == self.create_ref_oid or
+                             ref_order_id == self.stop_ref_oid or
+                             ref_order_id == self.limit_ref_oid):
             return True
 
         return False
@@ -651,7 +657,7 @@ class StrategyIndMarginTrade(StrategyTrade):
             return True
 
     #
-    # persistance
+    # persistence
     #
 
     def dumps(self):
@@ -692,5 +698,138 @@ class StrategyIndMarginTrade(StrategyTrade):
         return True
 
     def check(self, trader, instrument):
-        # @todo
-        return 1
+        result = 1
+
+        #
+        # entry
+        #
+
+        if self.create_oid:
+            data = trader.order_info(self.create_oid, instrument)
+
+            if data is None:
+                # API error, do nothing need retry
+                result = -1
+
+                # entry order error status
+                # self._entry_state = StrategyTrade.STATE_ERROR
+            else:
+                if data['id'] is None:
+                    # cannot retrieve the order, wrong id
+                    result = 0
+
+                    # no longer entry order
+                    self.create_oid = None
+                    self.create_ref_oid = None
+                else:
+                    if data['cumulative-filled'] > self.e or data['fully-filled']:
+                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                    if data['status'] in ('closed', 'deleted'):
+                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                    elif data['status'] in ('expired', 'canceled'):
+                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+
+        #
+        # exit
+        #
+
+        if self.stop_oid:
+            data = trader.order_info(self.stop_oid, instrument)
+
+            if data is None:
+                # API error, do nothing need retry
+                result = -1
+
+                # exit order error status
+                # self._exit_state = StrategyTrade.STATE_ERROR
+            else:
+                if data['id'] is None:
+                    # cannot retrieve the order, wrong id
+                    result = 0
+
+                    # no longer stop order
+                    self.stop_oid = None
+                    self.stop_ref_oid = None
+                else:
+                    if data['cumulative-filled'] > self.x or data['fully-filled']:
+                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                    if data['status'] in ('closed', 'deleted'):
+                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                    elif data['status'] in ('expired', 'canceled'):
+                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+
+        if self.limit_oid:
+            data = trader.order_info(self.limit_oid, instrument)
+
+            if data is None:
+                # API error, do nothing need retry
+                result = -1
+
+                # exit order error status
+                # self._exit_state = StrategyTrade.STATE_ERROR
+            else:
+                if data['id'] is None:
+                    # cannot retrieve the order, wrong id
+                    result = 0
+
+                    # no longer stop order
+                    self.limit_oid = None
+                    self.limit_ref_oid = None
+                else:
+                    if data['cumulative-filled'] > self.x or data['fully-filled']:
+                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
+
+                    if data['status'] in ('closed', 'deleted'):
+                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+
+                    elif data['status'] in ('expired', 'canceled'):
+                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+
+        return result
+
+    def repair(self, trader, instrument):
+        # @todo fix the trade
+
+        return False
+
+    #
+    # stats
+    #
+
+    def update_stats(self, instrument, timestamp):
+        super().update_stats(instrument, timestamp)
+
+        if self.is_active():
+            # @todo support only for quantity in asset not in lot or contract of different size
+            last_price = instrument.close_exec_price(self.direction)
+
+            upnl = 0.0  # unrealized PNL
+            rpnl = 0.0  # realized PNL
+
+            # non realized quantity
+            nrq = self.e - self.x
+
+            if self.dir > 0:
+                upnl = last_price * nrq - self.aep * nrq
+                rpnl = self.axp * self.x - self.aep * self.x
+            elif self.dir < 0:
+                upnl = self.aep * nrq - last_price * nrq
+                rpnl = self.aep * self.x - self.axp * self.x
+
+            # including fees and realized profit and loss
+            self._stats['unrealized-profit-loss'] = instrument.adjust_quote(
+                upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees'])
+
+    def info_report(self, strategy_trader):
+        data = super().info_report(strategy_trader)
+
+        return data + (
+            'Entry order id / ref : %s / %s' % (self.create_oid, self.create_ref_oid),
+            'Stop order id / ref : %s / %s' % (self.stop_oid, self.stop_ref_oid),
+            'Limit order id / ref : %s / %s' % (self.limit_oid, self.limit_ref_oid),
+            'Position id : %s' % self.position_id,
+        )

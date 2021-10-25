@@ -1631,6 +1631,42 @@ class CancelOrderCommand(Command):
         return args, 0
 
 
+class TickerMemSetCommand(Command):
+    SUMMARY = "<market-id> to reset the mark on market to last price or any markets"
+    HELP = (
+        "param1: <market-id> Market identifier, optional",
+    )
+
+    def __init__(self, trader_service):
+        super().__init__('memset', '!MS')
+
+        self._trader_service = trader_service
+
+    def execute(self, args):
+        # ie: ":memset BTCUSDT"
+        if len(args) == 0:
+            results = self._trader_service.command(Trader.COMMAND_TICKER_MEMSET, {
+                'market-id': None,
+            })
+        elif len(args) == 1:
+            results = self._trader_service.command(Trader.COMMAND_TICKER_MEMSET, {
+                'market-id': args[0],
+            })
+        else:
+            return False, "Invalid parameters"
+
+        return self.manage_results(results)
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            # market
+            trader = self._trader_service.trader()
+            if trader:
+                return self.iterate(0, trader.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 class ReconnectCommand(Command):
     SUMMARY = "to force to reconnect"
 
@@ -1852,6 +1888,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     #
 
     commands_handler.register(CancelOrderCommand(trader_service))
+    commands_handler.register(TickerMemSetCommand(trader_service))
 
     #
     # multi-trades operations

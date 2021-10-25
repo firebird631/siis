@@ -92,7 +92,7 @@ class Connector(object):
         return self._account_id
 
     #
-    # Conveniances helpers
+    # Conveniences helpers
     #
 
     def balances(self):
@@ -197,7 +197,8 @@ class Connector(object):
         timestamp = int(timestamp / tf) * tf
 
         if self._session:
-            return self._session.get_klines(symbol=symbol, interval=mapped_tf, startTime=int(timestamp*1000), endTime=int((timestamp+tf)*1000))
+            return self._session.get_klines(symbol=symbol, interval=mapped_tf, startTime=int(timestamp*1000),
+                                            endTime=int((timestamp+tf)*1000))
 
         return None
 
@@ -240,9 +241,20 @@ class Connector(object):
         timestamp = int(timestamp / tf) * tf
 
         if self._session:
-            return self._session.futures_klines(symbol=symbol, interval=mapped_tf, startTime=int(timestamp*1000), endTime=int((timestamp+tf)*1000))
+            return self._session.futures_klines(symbol=symbol, interval=mapped_tf, startTime=int(timestamp*1000),
+                                                endTime=int((timestamp+tf)*1000))
 
         return None
+
+    def future_order_info(self, symbol, order_id):
+        """
+        Returns order info for a specific symbol and order identifier.
+        """
+        if self._session:
+            data = {'symbol': symbol, 'orderId': order_id}
+            return self._session.futures_get_order(**data)
+
+        return {}
 
     def future_orders_for(self, symbol):
         """

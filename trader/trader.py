@@ -10,7 +10,7 @@ import base64
 import uuid
 import collections
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from common.signal import Signal
 
@@ -46,6 +46,7 @@ class Trader(Runnable):
     # general command
     COMMAND_INFO = 1
     COMMAND_TRADER_FROZE_ASSET_QUANTITY = 2   # froze a free quantity of an asset that could not be used
+    COMMAND_TICKER_MEMSET = 3                 # memorize the last market price for any or a specific ticker
 
     # order commands
     COMMAND_CLOSE_MARKET = 110                # close a managed or unmanaged position at market now
@@ -322,6 +323,8 @@ class Trader(Runnable):
             return self.cmd_trader_info(data)
         elif command_type == Trader.COMMAND_TRADER_FROZE_ASSET_QUANTITY:
             return self.cmd_trader_froze_asset_quantity(data)
+        elif command_type == Trader.COMMAND_TICKER_MEMSET:
+            return self.cmd_trader_ticker_memset(data)
         elif command_type == Trader.COMMAND_CLOSE_MARKET:
             return self.cmd_close_market(data)
         elif command_type == Trader.COMMAND_CLOSE_ALL_MARKET:
@@ -436,9 +439,9 @@ class Trader(Runnable):
         Close an existing position.
         
         @param position_id Unique position identifier on broker.
-        @param market_or_instrument Markt of Instrument related object.
+        @param market_or_instrument Market of Instrument related object.
         @param direction Direction of the position to close.
-        @param quantity Quantiy of the position to close or reduce.
+        @param quantity Quantity of the position to close or reduce.
         @param market If true close at market
         @param limit_price If Not market close at this limit price
 
@@ -448,7 +451,7 @@ class Trader(Runnable):
 
     def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
         """
-        Modifiy the stop loss or take profit of a position.
+        Modify the stop loss or take profit of a position.
         @note This call depend of the state of the connector.
         """
         return False
@@ -493,6 +496,7 @@ class Trader(Runnable):
     def market(self, market_id, force=False):
         """
         Market data for a market id.
+        @param market_id
         @param force True to force request and cache update.
         """
         # with self._mutex:
@@ -977,8 +981,8 @@ class Trader(Runnable):
     def history_price(self, market_id, timestamp=None):
         """
         Return the price for a particular timestamp or the last if not defined.
-        @param str market_id Valid market identifier
-        @param float timestamp Valid second timetamp or if None then prefers the method last_price.
+        @param market_id str Valid market identifier
+        @param timestamp flat Valid second timestamp or if None then prefers the method last_price.
         @return float Price or None if not found (market missing or unable to retrieve a price)
 
         @note Cost an API request when timestamp is defined and if price
@@ -1006,7 +1010,8 @@ class Trader(Runnable):
                 price = market.price
 
             if price is None:
-                logger.warning("Trader %s cannot found last price for %s because no market was found" % (self._name, market_id,))
+                logger.warning("Trader %s cannot found last price for %s because no market was found" % (
+                    self._name, market_id,))
 
         return price
 
@@ -1077,9 +1082,11 @@ class Trader(Runnable):
         """
         Returns a table of any followed markets tickers.
         """
-        columns = ('Market', 'Symbol', 'Mid', 'Bid', 'Ask', 'Spread', 'Vol24h base', 'Vol24h quote', 'Time')
+        columns = ('Market', 'Symbol', 'Mid', 'Bid', 'Ask', 'Spread', 'Vol24h base', 'Vol24h quote',
+                   'Time', 'Change(%)')
         total_size = (len(columns), 0)
         data = []
+        now = time.time()
 
         with self._mutex:
             markets = list(self._markets.values())
@@ -1101,12 +1108,15 @@ class Trader(Runnable):
             markets = markets[offset:limit]
 
             for market in markets:
-                recent = market.recent(self.timestamp - 0.5 if not prev_timestamp else prev_timestamp)
+                # recent = market.recent(self.timestamp - 0.5 if not prev_timestamp else prev_timestamp)
+                recent = market.previous(-2)
                 if recent:
-                    mid = Color.colorize_updn(market.format_price(market.price), recent[2], market.price, style=style)
+                    mid = Color.colorize_updn(market.format_price(market.price), (recent[1]+recent[2])*0.5,
+                                              market.price, style=style)
                     bid = Color.colorize_updn(market.format_price(market.bid), recent[1], market.bid, style=style)
                     ask = Color.colorize_updn(market.format_price(market.ask), recent[2], market.ask, style=style)
-                    spread = Color.colorize_updn(market.format_spread(market.spread), market.spread, recent[2] - recent[1], style=style)
+                    spread = Color.colorize_updn(market.format_spread(market.spread),
+                                                 market.spread, recent[2] - recent[1], style=style)
                 else:
                     mid = market.format_price(market.price)
                     bid = market.format_price(market.bid)
@@ -1123,13 +1133,13 @@ class Trader(Runnable):
                         low = 100
                     elif market.quote in ('ETH', 'XETH'):
                         low = 5000
-                    elif market.quote in ('BNB'):
+                    elif market.quote in ('BNB',):
                         low = 50000
 
                     vol24h_quote = Color.colorize_cond("%.2f" % market.vol24h_quote, market.vol24h_quote < low,
                                                        style=style, true=Color.YELLOW, false=Color.WHITE)
                 else:
-                    vol24h_quote = charmap.HOURGLASS
+                    vol24h_quote = '-'  # charmap.HOURGLASS
 
                 if market.last_update_time > 0:
                     last_timestamp = datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S")
@@ -1142,7 +1152,19 @@ class Trader(Runnable):
                     else:
                         last_timestamp = Color.colorize(last_timestamp, Color.GREEN, style)
                 else:
-                    last_timestamp = charmap.HOURGLASS
+                    last_timestamp = '-'  # charmap.HOURGLASS
+
+                # relative change in percent
+                if not market.last_mem:
+                    market.mem_set()
+
+                relative_change = (market.price - market.last_mem) / market.last_mem * 100.0 if market.last_mem else 0
+
+                if relative_change != 0.0:
+                    relative_change = Color.colorize_cond("%.2f" % relative_change, relative_change > 0,
+                                                          style=style, true=Color.GREEN, false=Color.RED)
+
+                    relative_change += " since %s" % str(timedelta(seconds=int(now - market.last_mem_timestamp)))
 
                 row = (
                      market.market_id,
@@ -1151,9 +1173,10 @@ class Trader(Runnable):
                      bid,
                      ask,
                      spread,
-                     market.format_quantity(market.vol24h_base) if market.vol24h_base else charmap.HOURGLASS,
+                     market.format_quantity(market.vol24h_base) if market.vol24h_base else '-',  # charmap.HOURGLASS,
                      vol24h_quote,
-                     last_timestamp)
+                     last_timestamp,
+                     relative_change)
 
                 data.append(row[0:2] + row[2+col_ofs:])
 
@@ -1232,7 +1255,7 @@ class Trader(Runnable):
                     locked,
                     free,
                     quantity,
-                    "%s%s" % (asset.format_price(asset.price), asset.quote) if asset.price else charmap.HOURGLASS,
+                    "%s%s" % (asset.format_price(asset.price), asset.quote) if asset.price else '-',  # charmap.HOURGLASS,
                     change or '-',
                     change_percent or '-',
                     profit_loss or '-',
@@ -1639,6 +1662,34 @@ class Trader(Runnable):
             Terminal.inst().error("Asset quantity to froze must be specified and greater or equal to zero")
 
         # @todo
+
+        return results
+
+    def cmd_trader_ticker_memset(self, data):
+        """
+        Memorize the last market price for any or a specific market.
+        """
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        market_id = data.get('market-id')
+
+        if market_id:
+            market = self.find_market(market_id)
+
+            if market is None:
+                results['messages'].append("Market %s not found !" % market_id)
+                results['error'] = True
+                return results
+
+            with self._mutex:
+                market.mem_set()
+        else:
+            with self._mutex:
+                for market_id, market in self._markets.items():
+                    market.mem_set()
 
         return results
 

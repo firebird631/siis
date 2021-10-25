@@ -1,13 +1,11 @@
 # @date 2020-05-09
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2020 Dream Overflow
-# Trader/autotrader connector for binancefutures.com
+# Trader connector for binancefutures.com
 
 import time
 import copy
 import traceback
-
-from operator import itemgetter, attrgetter
 
 from trader.trader import Trader
 
@@ -15,15 +13,9 @@ from .account import BinanceFuturesAccount
 
 from trader.position import Position
 from trader.order import Order
-from trader.account import Account
-from trader.market import Market
-
-from database.database import Database
 
 from connector.binance.exceptions import *
 from connector.binance.client import Client
-
-from trader.traderexception import TraderException
 
 import logging
 logger = logging.getLogger('siis.trader.binancefutures')
@@ -36,7 +28,7 @@ class BinanceFuturesTrader(Trader):
     """
     Binance futures market trader.
 
-    @todo WIP
+    @todo hedging, IOC/FIK mode
     """
 
     def __init__(self, service):
@@ -182,11 +174,11 @@ class BinanceFuturesTrader(Trader):
             order_type = Client.ORDER_TYPE_TAKE_PROFIT
 
         elif order.order_type == Order.ORDER_TRAILING_STOP_MARKET:
-            order_type = Client.ORDER_TRAILING_STOP_MARKET
+            order_type = Client.ORDER_TYPE_TRAILING_STOP_MARKET
 
         else:
             error_logger.error("Trader %s refuse order because the order type is unsupported %s in order %s !" % (
-                self.name, symbol, order.ref_order_id))
+                self.name, market_or_instrument.symbol, order.ref_order_id))
             return False
 
         symbol = order.symbol
@@ -207,7 +199,7 @@ class BinanceFuturesTrader(Trader):
         notional = quantity * (order.price or market_or_instrument.market_ask)
 
         if notional < market_or_instrument.min_notional:
-            # reject if lesser than min notinal
+            # reject if lesser than min notional
             error_logger.error("Trader %s refuse order because the min notional is not reached (%s<%s) %s in order %s !" % (
                 self.name, notional, market_or_instrument.min_notional, symbol, order.ref_order_id))
             return False
@@ -261,7 +253,8 @@ class BinanceFuturesTrader(Trader):
 
         data['newClientOrderId'] = order.ref_order_id
 
-        logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('quantity'), symbol, data.get('price')))
+        logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(),
+                                                      data.get('quantity'), symbol, data.get('price')))
 
         result = None
         reason = None
@@ -276,14 +269,16 @@ class BinanceFuturesTrader(Trader):
             reason = str(e)
 
         if reason:
-            error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (self.name, order.direction_to_str(), quantity, symbol, reason))
+            error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (
+                self.name, order.direction_to_str(), quantity, symbol, reason))
             return False
 
         if result:
             if result.get('status', "") == Client.ORDER_STATUS_REJECTED:
-                error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), quantity, symbol))
+                error_logger.error("Trader %s rejected order %s %s %s !" % (
+                    self.name, order.direction_to_str(), quantity, symbol))
                 order_logger.error(result)
-                
+
                 return False
 
             if 'orderId' in result:
@@ -300,7 +295,8 @@ class BinanceFuturesTrader(Trader):
 
                 return True
 
-        error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), quantity, symbol))
+        error_logger.error("Trader %s rejected order %s %s %s !" % (
+            self.name, order.direction_to_str(), quantity, symbol))
         order_logger.error(result)
 
         return False
@@ -340,7 +336,8 @@ class BinanceFuturesTrader(Trader):
             reason = str(e)
 
         if reason:
-            error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol, reason))
+            error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (
+                self.name, order_id, symbol, reason))
 
             if code == -2011:  # not exists assume its already canceled
                 return True
@@ -349,7 +346,8 @@ class BinanceFuturesTrader(Trader):
 
         if result:
             if result.get('status', "") == Client.ORDER_STATUS_REJECTED:
-                error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol, reason))
+                error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (
+                    self.name, order_id, symbol, reason))
                 order_logger.error(result)
 
                 if code == -2011:  # not exists assume its already canceled
@@ -432,6 +430,7 @@ class BinanceFuturesTrader(Trader):
     def market(self, market_id, force=False):
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
+        @param market_id
         @param force Force to update the cache
         """
         market = None
@@ -452,10 +451,179 @@ class BinanceFuturesTrader(Trader):
 
         return market
 
+    def order_info(self, order_id, market_or_instrument):
+        """
+        Retrieve the detail of an order.
+        """
+        if not order_id or not market_or_instrument:
+            return None
+
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to retrieve order info because of missing connector" % (self.name,))
+            return None
+
+        results = None
+
+        try:
+            results = self._watcher.connector.future_order_info(market_or_instrument.market_id, order_id)
+        except Exception:
+            # None as error
+            return None
+
+        if results and str(results.get('orderId', 0)) == order_id:
+            order_data = results
+
+            try:
+                symbol = order_data['symbol']
+                market = self.market(symbol)
+
+                if not market:
+                    return None
+
+                price = None
+                stop_price = None
+                completed = False
+                order_ref_id = order_data['clientOrderId']
+                event_timestamp = order_data['updateTime'] * 0.001 if 'updateTime' in order_data else order_data['time'] * 0.001
+
+                if order_data['status'] == Client.ORDER_STATUS_NEW:
+                    status = 'opened'
+                elif order_data['status'] == Client.ORDER_STATUS_PENDING_CANCEL:
+                    # @note not exactly the same meaning
+                    status = 'pending'
+                elif order_data['status'] == Client.ORDER_STATUS_FILLED:
+                    status = 'closed'
+                    completed = True
+                    if 'updateTime' in order_data:
+                        event_timestamp = order_data['updateTime'] * 0.001
+                elif order_data['status'] == Client.ORDER_STATUS_PARTIALLY_FILLED:
+                    status = 'opened'
+                    completed = False
+                    if 'updateTime' in order_data:
+                        event_timestamp = order_data['updateTime'] * 0.001
+                elif order_data['status'] == Client.ORDER_STATUS_CANCELED:
+                    status = 'canceled'
+                    # status = 'deleted'
+                elif order_data['status'] == Client.ORDER_STATUS_EXPIRED:
+                    status = 'expired'
+                    # completed = True ? and on watcher WS...
+                else:
+                    status = ""
+
+                # reduce only
+                reduce_only = order_data['reduceOnly']
+
+                # price type
+                if order_data['workingType'] == 'MARK_PRICE':
+                    price_type = Order.PRICE_MARK
+                elif order_data['workingType'] == 'CONTRACT_PRICE':
+                    price_type = Order.PRICE_LAST
+                else:
+                    price_type = Order.PRICE_LAST
+
+                # 'type' and 'origType'
+                if order_data['type'] == Client.ORDER_TYPE_LIMIT:
+                    order_type = Order.ORDER_LIMIT
+                    price = float(order_data['price']) if 'price' in order_data else None
+
+                elif order_data['type'] == Client.ORDER_TYPE_MARKET:
+                    order_type = Order.ORDER_MARKET
+
+                elif order_data['type'] == Client.ORDER_TYPE_STOP:
+                    order_type = Order.ORDER_STOP
+                    price = float(order_data['price']) if 'price' in order_data else None
+                    stop_price = float(order_data['stopPrice']) if 'stopPrice' in order_data else None
+
+                elif order_data['type'] == Client.ORDER_TYPE_TAKE_PROFIT:
+                    order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    price = float(order_data['price']) if 'price' in order_data else None
+                    stop_price = float(order_data['stopPrice']) if 'stopPrice' in order_data else None
+
+                elif order_data['type'] == Client.ORDER_TYPE_TAKE_PROFIT_MARKET:
+                    order_type = Order.ORDER_TAKE_PROFIT
+                    stop_price = float(order_data['stopPrice']) if 'stopPrice' in order_data else None
+
+                elif order_data['type'] == Client.ORDER_TYPE_TRAILING_STOP_MARKET:
+                    order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    # @todo not supported
+
+                else:
+                    order_type = Order.ORDER_MARKET
+
+                if order_data['timeInForce'] == Client.TIME_IN_FORCE_GTC:
+                    time_in_force = Order.TIME_IN_FORCE_GTC
+                elif order_data['timeInForce'] == Client.TIME_IN_FORCE_IOC:
+                    time_in_force = Order.TIME_IN_FORCE_IOC
+                elif order_data['timeInForce'] == Client.TIME_IN_FORCE_FOK:
+                    time_in_force = Order.TIME_IN_FORCE_FOK
+                else:
+                    time_in_force = Order.TIME_IN_FORCE_GTC
+
+                # order_data['cumQuote'] "0",
+                # order_data['positionSide'] "SHORT",
+
+                # if Close - All
+                # order_data['closePosition'] false
+
+                # ignored when order type is TRAILING_STOP_MARKET
+                # order_data['stopPrice'] "9300"
+
+                # only for trailing stop market
+                # order_data['activatePrice'] "9020"
+                # order_data['priceRate'] "0.3"
+                # order_data['priceProtect'] false
+
+                post_only = False
+                cumulative_commission_amount = 0.0  # @todo
+
+                cumulative_filled = float(order_data['executedQty'])
+                order_volume = float(order_data['origQty'])
+                fully_filled = completed
+
+                # trades = array of trade ids related to order (if trades info requested and data available)
+                trades = []
+
+                order_info = {
+                    'id': order_id,
+                    'symbol': symbol,
+                    'status': status,
+                    'ref-id': order_ref_id,
+                    'direction': Order.LONG if order_data['side'] == Client.SIDE_BUY else Order.SHORT,
+                    'type': order_type,
+                    'timestamp': event_timestamp,
+                    'avg-price': float(order_data['avgPrice']),
+                    'quantity': order_volume,
+                    'cumulative-filled': cumulative_filled,
+                    'cumulative-commission-amount': cumulative_commission_amount,
+                    'price': price,
+                    'stop-price': stop_price,
+                    'time-in-force': time_in_force,
+                    'post-only': post_only,
+                    # 'close-only': ,
+                    'reduce-only': reduce_only,
+                    # 'stop-loss': None,
+                    # 'take-profit': None,
+                    'fully-filled': fully_filled
+                    # 'trades': trades
+                }
+
+                return order_info
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+                # error during processing
+                return None
+
+        # empty means success returns but does not exists
+        return {
+            'id': None
+        }
+
     #
     # slots
     #
-
 
     #
     # protected
@@ -477,7 +645,7 @@ class BinanceFuturesTrader(Trader):
         for data in open_orders:
             market = self.market(data['symbol'])
 
-            if data['status'] == 'NEW':  # might be...
+            if data['status'] == Client.ORDER_STATUS_NEW:  # might be...
                 order = Order(self, data['symbol'])
 
                 order.set_order_id(str(data['orderId']))
@@ -486,34 +654,34 @@ class BinanceFuturesTrader(Trader):
                 order.quantity = float(data.get('origQty', "0.0"))
                 order.executed = float(data.get('executedQty', "0.0"))
 
-                order.direction = Order.LONG if data['side'] == 'BUY' else Order.SHORT
+                order.direction = Order.LONG if data['side'] == Client.SIDE_BUY else Order.SHORT
 
-                if data['type'] == 'LIMIT':
+                if data['type'] == Client.ORDER_TYPE_LIMIT:
                     order.order_type = Order.ORDER_LIMIT
                     order.price = float(data['price']) if 'price' in data else None
 
-                elif data['type'] == 'MARKET':
+                elif data['type'] == Client.ORDER_TYPE_MARKET:
                     order.order_type = Order.ORDER_MARKET
 
-                elif data['type'] == 'STOP':
+                elif data['type'] == Client.ORDER_TYPE_STOP:
                     order.order_type = Order.ORDER_STOP_LIMIT
                     order.price = float(data['price']) if 'price' in data else None
                     order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
-                elif data['type'] == 'TAKE_PROFIT':
+                elif data['type'] == Client.ORDER_TYPE_TAKE_PROFIT:
                     order.order_type = Order.ORDER_TAKE_PROFIT_LIMIT
                     order.price = float(data['price']) if 'price' in data else None
                     order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
-                elif data['type'] == 'STOP_MARKET':
+                elif data['type'] == Client.ORDER_TYPE_STOP_MARKET:
                     order.order_type = Order.ORDER_STOP
                     order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
-                elif data['type'] == 'TAKE_PROFIT_MARKET':
+                elif data['type'] == Client.ORDER_TYPE_TAKE_PROFIT_MARKET:
                     order.order_type = Order.ORDER_TAKE_PROFIT
                     order.stop_price = float(data['stopPrice']) if 'stopPrice' in data else None
 
-                elif data['type']== 'TRAILING_STOP_MARKET':
+                elif data['type'] == Client.ORDER_TYPE_TRAILING_STOP_MARKET:
                     order.order_type = Order.ORDER_TAKE_PROFIT_LIMIT
                     # @todo order.trailing_distance data['callbackRate']
 
@@ -526,11 +694,11 @@ class BinanceFuturesTrader(Trader):
                 # data['cumQuote']
 
                 # time-in-force
-                if data['timeInForce'] == 'GTC':
+                if data['timeInForce'] == Client.TIME_IN_FORCE_GTC:
                     order.time_in_force = Order.TIME_IN_FORCE_GTC
-                elif data['timeInForce'] == 'IOC':
+                elif data['timeInForce'] == Client.TIME_IN_FORCE_IOC:
                     order.time_in_force = Order.TIME_IN_FORCE_IOC
-                elif data['timeInForce'] == 'FOK':
+                elif data['timeInForce'] == Client.TIME_IN_FORCE_FOK:
                     order.time_in_force = Order.TIME_IN_FORCE_FOK
                 else:
                     order.time_in_force = Order.TIME_IN_FORCE_GTC
@@ -579,7 +747,7 @@ class BinanceFuturesTrader(Trader):
             position = None
 
             if data['positionSide'] == 'LONG' or data['positionSide'] == 'SHORT':
-                # only if hedgin @todo
+                # only if hedging @todo
                 continue
 
             if self._positions.get(symbol):
@@ -625,7 +793,7 @@ class BinanceFuturesTrader(Trader):
                 position.entry_price = float(data['entryPrice'])
                 # position.created_time = 
 
-                # @todo minus taker-fee (it is compared to mark-price, but it woth only for mark-price stop-loss)
+                # @todo minus taker-fee (it is compared to mark-price, but it worth only for mark-price stop-loss)
                 position.profit_loss = float(data['unRealizedProfit'])
                 # position.profit_loss_rate = float(data[''])
 
@@ -633,7 +801,7 @@ class BinanceFuturesTrader(Trader):
                 position.profit_loss_market = float(data['unRealizedProfit'])
                 # position.profit_loss_market_rate = float(data[''])
 
-                # compute profit loss in base currency (disabled, uses values aboves)
+                # compute profit loss in base currency (disabled, uses values above)
                 # position.update_profit_loss(market)
 
         if positions:
@@ -645,10 +813,11 @@ class BinanceFuturesTrader(Trader):
     #
 
     def on_update_market(self, market_id, tradable, last_update_time, bid, ask,
-            base_exchange_rate, contract_size=None, value_per_pip=None,
-            vol24h_base=None, vol24h_quote=None):
+                         base_exchange_rate, contract_size=None, value_per_pip=None,
+                         vol24h_base=None, vol24h_quote=None):
 
-        super().on_update_market(market_id, tradable, last_update_time, bid, ask, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
+        super().on_update_market(market_id, tradable, last_update_time, bid, ask, base_exchange_rate,
+                                 contract_size, value_per_pip, vol24h_base, vol24h_quote)
 
         # update positions profit/loss for the related market id
         market = self.market(market_id)

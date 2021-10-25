@@ -4,7 +4,6 @@
 # Market data
 
 import time
-import math
 
 from trader.position import Position
 from common.utils import truncate, decimal_place
@@ -15,9 +14,9 @@ class Market(object):
     Useful market data from instrument.
     @note Ofr is a synonym for ask.
 
-    @todo availables margins levels for IG but its complicated to manage
+    @todo available margins levels for IG but its complicated to manage
     @todo rollover fee buts its complicated too
-    @todo levarage persistance
+    @todo leverage persistence
     @todo base and quote could be struct with symbol, display, precision, vol24h
     @todo message market (out only)
     """
@@ -80,9 +79,11 @@ class Market(object):
     __slots__ = '_market_id', '_symbol', '_trade', '_orders', \
                 '_base', '_base_display', '_base_precision', \
                 '_quote', '_quote_display', '_quote_precision', \
-                '_expiry', '_is_open', '_contract_size', '_lot_size', '_base_exchange_rate', '_value_per_pip', '_one_pip_means', '_margin_factor', \
-                '_size_limits', '_price_limits', '_notional_limits', '_market_type', '_unit_type', '_contract_type', '_vol24h_base', '_vol24h_quote', \
-                '_hedging', '_fees', '_fee_currency', '_previous', '_leverages', '_last_update_time', '_bid', '_ask'
+                '_expiry', '_is_open', '_contract_size', '_lot_size', '_base_exchange_rate', \
+                '_value_per_pip', '_one_pip_means', '_margin_factor', '_size_limits', '_price_limits', \
+                '_notional_limits', '_market_type', '_unit_type', '_contract_type', '_vol24h_base', '_vol24h_quote', \
+                '_hedging', '_fees', '_fee_currency', '_previous', '_leverages', '_last_update_time', \
+                '_bid', '_ask', '_last_mem', '_last_mem_timestamp'
 
     def __init__(self, market_id, symbol):
         self._market_id = market_id
@@ -133,6 +134,9 @@ class Market(object):
 
         self._bid = 0.0
         self._ask = 0.0
+
+        self._last_mem = 0.0
+        self._last_mem_timestamp = 0.0
 
     @property
     def market_id(self):
@@ -639,7 +643,7 @@ class Market(object):
 
             return self.min_size
 
-        if self.max_size > 0.0 and quantity > self.max_size:
+        if 0.0 < self.max_size < quantity:
             return self.max_size
 
         if self.step_size > 0:
@@ -672,6 +676,20 @@ class Market(object):
     # ticks local history cache
     #
 
+    @property
+    def last_mem(self):
+        """Last memorised price for comparison"""
+        return self._last_mem
+
+    @property
+    def last_mem_timestamp(self):
+        """Last memorised price for comparison"""
+        return self._last_mem_timestamp
+
+    def mem_set(self):
+        self._last_mem = (self._bid + self._ask) * 0.5
+        self._last_mem_timestamp = time.time()
+
     def push_price(self):
         """
         Push the last bid/ask price, base exchange rate and timestamp.
@@ -691,15 +709,15 @@ class Market(object):
         One minute ticks price history.
         @return Price at timestamp or None.
 
-        @todo Could use a dichotomic search.
+        @todo Could use a dichotomy search.
         """
         if self._previous:
             if self._previous[0][0] > timestamp:
                 return None
 
-            for l in self._previous:
-                if timestamp >= l[0]:
-                    return (l[1] + l[2]) * 0.5
+            for prev in self._previous:
+                if timestamp >= prev[0]:
+                    return (prev[1] + prev[2]) * 0.5
 
         return None
 
@@ -708,24 +726,27 @@ class Market(object):
         One minute ticks price history.
         @return tuple(timestamp, bid, ask, base-exchange-rate) or None
 
-        @todo Could use a dichotomic search.
+        @todo Could use a dichotomy search.
         """
         if self._previous:
             if self._previous[0][0] > timestamp:
                 return None
 
-            for l in self._previous:
-                if timestamp >= l[0]:
-                    return l
+            for prev in self._previous:
+                if timestamp >= prev[0]:
+                    return prev
 
         return None
 
-    def previous(self):
+    def previous(self, position=-1):
         """
         One minute ticks price history, return the previous entry.
         @return tuple(timestamp, bid, ask, base-exchange-rate) or None
         """
-        return self._previous[-1] if self._previous else None
+        if 0 > position >= -len(self._previous):
+            return self._previous[position]
+
+        return None
 
     def previous_spread(self):
         """
@@ -769,7 +790,7 @@ class Market(object):
         return realized_position_cost * self._margin_factor / self._base_exchange_rate  # in account currency
 
     def clamp_leverage(self, leverage):
-        return max(self._leverages, min(self.self._leverages, leverage))
+        return max(self._leverages, min(self._leverages, leverage))
 
     def unit_type_str(self):
         if self._unit_type == Market.UNIT_AMOUNT:
@@ -816,7 +837,7 @@ class Market(object):
         return "undefined"
 
     #
-    # persistance
+    # persistence
     #
 
     def dumps(self):

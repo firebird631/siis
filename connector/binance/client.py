@@ -65,7 +65,7 @@ class Client(object):
     ORDER_TYPE_TAKE_PROFIT_LIMIT = 'TAKE_PROFIT_LIMIT'
     ORDER_TYPE_LIMIT_MAKER = 'LIMIT_MAKER'
     ORDER_TYPE_ONE_CANCEL_OTHER = 'OCO'
-    ORDER_TRAILING_STOP_MARKET = 'TRAILING_STOP_MARKET'  # future trailing stop market
+    ORDER_TYPE_TRAILING_STOP_MARKET = 'TRAILING_STOP_MARKET'  # future trailing stop market
 
     TIME_IN_FORCE_GTC = 'GTC'  # Good till cancelled
     TIME_IN_FORCE_IOC = 'IOC'  # Immediate or cancel
@@ -2788,10 +2788,9 @@ class Client(object):
         return self._request_futures_api('post', 'order', True, data=params)
 
     def futures_get_order(self, **params):
-        """Check an order's status.
+        """Check an order's status (symbol, orderId).
 
         https://binance-docs.github.io/apidocs/futures/en/#query-order-user_data
-
         """
         return self._request_futures_api('get', 'order', True, data=params)
 
