@@ -1174,7 +1174,7 @@ class KrakenWatcher(Watcher):
 
                 if data['status'] == "subscribed":
                     self._ws_own_trades['subscribed'] = True
-                    self._ws_own_trades['channel-id'] = data['channelID']
+                    # self._ws_own_trades['channel-id'] = data['channelID']
 
                 elif data['status'] == "error":
                     self._ws_own_trades['status'] = "offline"
@@ -1477,7 +1477,7 @@ class KrakenWatcher(Watcher):
 
                 if data['status'] == "subscribed":
                     self._ws_open_orders['subscribed'] = True
-                    self._ws_open_orders['channel-id'] = data['channelID']
+                    # self._ws_open_orders['channel-id'] = data['channelID']
 
                 elif data['status'] == "error":
                     self._ws_open_orders['status'] = "offline"
