@@ -74,6 +74,7 @@ class KrakenWatcher(Watcher):
     def __reset_ws_state(self, ws):
         """Reset the states of a WS connection watcher."""
         ws['status'] = "offline"
+        ws['channel-id'] = 0
         ws['version'] = "0"
         ws['timestamp'] = 0.0
         ws['subscribed'] = False
