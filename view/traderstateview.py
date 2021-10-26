@@ -48,6 +48,7 @@ class TraderStateView(TableView):
 
         self._upd_freq = TraderStateView.REFRESH_RATE
         self._report_mode = 0
+        self._num_report_modes = 0
 
         self._reported_activity = False
         self._reported_bootstraping = False
@@ -213,6 +214,7 @@ class TraderStateView(TableView):
         self._reported_bootstraping = strategy_trader_state.get('bootstraping', False)
         self._reported_ready = strategy_trader_state.get('ready', False)
         self._reported_affinity = strategy_trader_state.get('affinity', 5)
+        self._num_report_modes = strategy_trader_state.get('num-modes', 1)
 
         if offset is None:
             offset = 0
@@ -235,7 +237,8 @@ class TraderStateView(TableView):
                         row[i] = Color.colorize(charmap.ARROWDN, Color.RED)
 
                 elif members[i][0] == "datetime":
-                    row[i] = datetime.fromtimestamp(d).strftime(self._datetime_format) if (type(d) is float and d > 0) else ""
+                    row[i] = datetime.fromtimestamp(d).strftime(self._datetime_format) if (
+                            type(d) is float and d > 0) else ""
 
             data.append(row[col_ofs:])
 
@@ -270,6 +273,7 @@ class TraderStateView(TableView):
                     # get updated state
                     market_id = self._market_id
                     report_mode = self._report_mode
+                    num_report_modes = self._num_report_modes
 
                     reported_activity = self._reported_activity
                     reported_bootstraping = self._reported_bootstraping
@@ -277,11 +281,15 @@ class TraderStateView(TableView):
                     reported_affinity = self._reported_affinity
 
                 state = " - ".join((
-                    "active" if reported_activity else "disabled",
+                    "active" if reported_activity else "pause",
                     ("ready" if reported_ready else "pending") + ("(%s)" % reported_affinity),
-                    "bootstraping" if reported_bootstraping else "computing"))
+                    "bootstraping" if reported_bootstraping else ""))
 
-                self.set_title("Trader state for strategy %s - %s on %s - mode %s - %s" % (strategy.name, strategy.identifier, market_id, report_mode, state))
+                state = state.rstrip(" - ")
+
+                self.set_title("Trader state %s/%s for strategy %s - %s on %s - %s" % (
+                    report_mode + 1 if num_report_modes > 0 else 0, num_report_modes,
+                    strategy.name, strategy.identifier, market_id, state))
             else:
                 self.set_title("Trader state - No selected market")
         else:
