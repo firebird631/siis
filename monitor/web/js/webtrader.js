@@ -1265,7 +1265,7 @@ function fetch_trades() {
             add_active_trade(trade['market-id'], trade);
 
             if (parseFloat(trade['filled-entry-qty']) <= 0.0) {
-                let key = market_id + ':' + trade_id;
+                let key = trade['market-id'] + ':' + trade['id'];
                 window.pending_trades.push(key);
             }
         }
