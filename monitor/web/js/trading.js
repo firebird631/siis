@@ -305,8 +305,8 @@ function on_breakeven_trade(elt) {
     let pnl_pct = trade['profit-loss-pct'];
 
     if (pnl_pct <= 0.0) {
-        let msg = "It is not allowed to breakeven a non profit trade. On market " + market['symbol'] + ".";
-        notify({'message': msg, 'title': 'Breakeven Stop-Loss', 'type': 'info'});
+        let msg = "It is not allowed to break-even a non profit trade. On market " + market['symbol'] + ".";
+        notify({'message': msg, 'title': 'Break-even Stop-Loss', 'type': 'info'});
         return false;
     }
 
@@ -334,15 +334,15 @@ function on_breakeven_trade(elt) {
         .done(function(data) {
             if (data.error) {
                 for (let msg in data.messages) {
-                    notify({'message': data.messages[msg], 'title': 'Breakeven Stop-Loss', 'type': 'error'});
+                    notify({'message': data.messages[msg], 'title': 'Break-even Stop-Loss', 'type': 'error'});
                 }
             } else {
-                notify({'message': "Success", 'title': 'Breakeven Stop-Loss', 'type': 'success'});
+                notify({'message': "Success", 'title': 'Break-even Stop-Loss', 'type': 'success'});
             }
         })
         .fail(function(data) {
             for (let msg in data.messages) {
-                notify({'message': msg, 'title': 'Breakeven Stop-Loss', 'type': 'error'});
+                notify({'message': msg, 'title': 'Break-even Stop-Loss', 'type': 'error'});
             }
         });
     }

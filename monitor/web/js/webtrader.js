@@ -1260,10 +1260,14 @@ function fetch_trades() {
 
         for (let i = 0; i < trades.length; ++i) {
             let trade = trades[i];
-            window.actives_trades[trade['market-id'] + ':' + trade.id] = trade;
 
             // initial add
             add_active_trade(trade['market-id'], trade);
+
+            if (parseFloat(trade['filled-entry-qty']) <= 0.0) {
+                let key = market_id + ':' + trade_id;
+                window.pending_trades.push(key);
+            }
         }
 
         update_status_trades();
