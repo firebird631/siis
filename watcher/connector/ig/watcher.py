@@ -4,12 +4,9 @@
 # ig.com watcher implementation
 
 import copy
-import math
-import urllib
 import json
 import time
 import pytz
-import os.path
 import traceback
 
 from datetime import datetime, timedelta
@@ -20,7 +17,7 @@ from common.signal import Signal
 from connector.ig.connector import IGConnector
 from connector.ig.lightstreamer import LSClient, Subscription
 
-from instrument.instrument import Instrument, Candle
+from instrument.instrument import Instrument
 from database.database import Database
 
 from trader.order import Order
@@ -58,7 +55,7 @@ class IGWatcher(Watcher):
         - Historical price data points per week: 10,000 (Applies to price history endpoints)
 
     Streaming API:
-        - 40 concurrents subscriptions
+        - 40 concurrent subscriptions
 
     Data history:
         - 1 Sec 4 Days
@@ -70,7 +67,7 @@ class IGWatcher(Watcher):
     @todo get vol24 in base and quote unit
     @todo base_exchange_rate must be updated as price changes
 
-    @todo does the subsriptions renegociated by the ws client at reconnection ?
+    @todo does the subscriptions renegotiated by the ws client at reconnection ?
     """
 
     MAX_CONCURRENT_SUBSCRIPTIONS = 40
@@ -83,6 +80,7 @@ class IGWatcher(Watcher):
         self._lightstreamer = None
         self._subscriptions = []
         self._account_id = ""
+        self._account_type = ""
         self._tzname = None
 
         self._subscribed_markets = {}
@@ -210,7 +208,7 @@ class IGWatcher(Watcher):
                 self._ready = False
                 self._connecting = False
 
-                logger.debug("%s disconnected" % (self.name))
+                logger.debug("%s disconnected" % self.name)
 
             except Exception as e:
                 error_logger.error(repr(e))
@@ -221,7 +219,8 @@ class IGWatcher(Watcher):
             reconnect = False
 
             with self._mutex:
-                if self._connector is None or not self._connector.connected or self._lightstreamer is None or not self._lightstreamer.connected:
+                if (self._connector is None or not self._connector.connected or
+                        self._lightstreamer is None or not self._lightstreamer.connected):
                     # cleanup
                     self._ready = False
                     self._connector = None
@@ -289,7 +288,7 @@ class IGWatcher(Watcher):
             # for the 2h and 4h they are generated from the 1h candles,
             # so they are aligned to UTC, but the OHLC open time is still in LSE timezone
 
-            # we could manage a timeoffset for the stocks exchanges
+            # we could manage a time-offset for the stocks exchanges
 
             if self._initial_fetch:
                 logger.info("%s prefetch for %s" % (self.name, market_id))
@@ -298,7 +297,8 @@ class IGWatcher(Watcher):
                     try:
                         # sync to recent OHLCs
                         for timeframe, depth in ohlc_depths.items():
-                            # its 60 req/min max, but we cannot wait to long else there is a buffer overflow with the tickers
+                            # its 60 req/min max, but we cannot wait to long else there is a buffer
+                            # overflow with the tickers
                             if timeframe in (Instrument.TF_1M,  Instrument.TF_2M, Instrument.TF_3M):
                                 self.fetch_and_generate(market_id, Instrument.TF_1M, 120, None)
 
@@ -311,8 +311,9 @@ class IGWatcher(Watcher):
                             elif timeframe == Instrument.TF_30M:
                                 self.fetch_and_generate(market_id, Instrument.TF_30M, 120, None)
 
-                            elif timeframe in (Instrument.TF_1H, Instrument.TF_2H, Instrument.TF_3H, Instrument.TF_4H, Instrument.TF_6H, Instrument.TF_8H, Instrument.TF_12H):
-                                self.fetch_and_generate(market_id, Instrument.TF_1H, 120, Instrument.TF_4H):
+                            elif timeframe in (Instrument.TF_1H, Instrument.TF_2H, Instrument.TF_3H, Instrument.TF_4H,
+                                               Instrument.TF_6H, Instrument.TF_8H, Instrument.TF_12H):
+                                self.fetch_and_generate(market_id, Instrument.TF_1H, 120, Instrument.TF_4H)
 
                             elif timeframe in (Instrument.TF_1D, Instrument.TF_2D, Instrument.TF_3D):
                                 self.fetch_and_generate(market_id, Instrument.TF_1D, 7, None)
@@ -356,7 +357,7 @@ class IGWatcher(Watcher):
         return False
 
     #
-    # WS subscribtion
+    # WS subscription
     #
 
     def subscribe_account(self, account_id):
@@ -477,10 +478,12 @@ class IGWatcher(Watcher):
                 # live account updates
                 values = item_update['values']
 
-                account_data = (float(values['FUNDS']), float(values['AVAILABLE_TO_DEAL']), float(values['PNL']), None, float(values['MARGIN']))
+                account_data = (float(values['FUNDS']), float(values['AVAILABLE_TO_DEAL']),
+                                float(values['PNL']), None, float(values['MARGIN']))
+
                 self.service.notify(Signal.SIGNAL_ACCOUNT_DATA, self.name, account_data)
         except Exception as e:
-            error.error(repr(e))
+            error_logger.error(repr(e))
             traceback_logger.error(traceback.format_exc())
 
     @staticmethod
@@ -498,8 +501,9 @@ class IGWatcher(Watcher):
                 # date of the event 20:36:01 without Z
                 if ready:
                     # @todo take now and replace H:M:S
-                    update_time = time.time()  #  datetime.strptime(values['UPDATE_TIME'], '%H:%M:%S').timestamp()
-                    market_data = (name[1], True, update_time, float(values["BID"]), float(values["OFFER"]), None, None, None, None, None)
+                    update_time = time.time()  # datetime.strptime(values['UPDATE_TIME'], '%H:%M:%S').timestamp()
+                    market_data = (name[1], True, update_time, float(values["BID"]), float(values["OFFER"]),
+                                   None, None, None, None, None)
                 else:
                     update_time = 0
                     market_data = (name[1], False, 0, None, None, None, None, None, None, None)
@@ -550,7 +554,7 @@ class IGWatcher(Watcher):
                     ltv = self._cached_tick[market_id][4]
 
                 if utm is None or bid is None or ask is None:
-                    # need all informations, wait the next one
+                    # need all information, wait the next one
                     return
 
                 # cache for when a value is not defined
@@ -586,7 +590,8 @@ class IGWatcher(Watcher):
     #             values = item_update['values']
     #             if values['CONS_END'] == '0':
     #                 # get only consolidated candles
-    #                 # @warning It is rarely defined, so many close could be missing, prefers using tick to rebuild ohlc locally
+    #                 # @warning It is rarely defined, so many close could be missing, prefers using
+    #                 #          tick to rebuild ohlc locally
     #                 return
 
     #             # timeframe
@@ -674,7 +679,8 @@ class IGWatcher(Watcher):
                     epic = data['epic']
 
                     # date of the event 2018-09-13T20:36:01.096 without Z
-                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC()).timestamp()
+                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').replace(
+                        tzinfo=UTC()).timestamp()
 
                     if data.get('direction', '') == 'BUY':
                         direction = Order.LONG
@@ -709,6 +715,8 @@ class IGWatcher(Watcher):
                             elif data['timeInForce'] == "GOOD_TILL_DATE":
                                 time_in_force = Order.TIME_IN_FORCE_GTD
                                 # data['goodTillDate']   @todo till date
+                            else:
+                                time_in_force = Order.TIME_IN_FORCE_GTC
                         else:
                             time_in_force = Order.TIME_IN_FORCE_GTC
 
@@ -725,7 +733,8 @@ class IGWatcher(Watcher):
                                 'take-profit': limit_distance
                             }
 
-                            self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order_data, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (
+                                epic, order_data, ref_order_id))
 
                         elif status == "UPDATED":
                             # signal of updated order
@@ -739,11 +748,13 @@ class IGWatcher(Watcher):
                                 'take-profit': limit_distance
                             }
 
-                            self.service.notify(Signal.SIGNAL_ORDER_UPDATED, self.name, (epic, order_data, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_ORDER_UPDATED, self.name, (
+                                epic, order_data, ref_order_id))
 
                         elif status == "DELETED":
                             # signal of deleted order
-                            self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (epic, order_id, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (
+                                epic, order_id, ref_order_id))
 
                 #
                 # order confirms (accepted/rejected)
@@ -766,7 +777,8 @@ class IGWatcher(Watcher):
                         ref_order_id = data['dealReference']
 
                         # date 2018-09-13T20:36:01.096 without Z
-                        event_time = datetime.strptime(data['date'], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC()).timestamp()
+                        event_time = datetime.strptime(data['date'], '%Y-%m-%dT%H:%M:%S.%f').replace(
+                            tzinfo=UTC()).timestamp()
 
                         # direction of the trade
                         if data['direction'] == 'BUY':
@@ -785,7 +797,8 @@ class IGWatcher(Watcher):
 
                         # 'expiry', 'guaranteedStop'
 
-                        # affected positions, normaly should not be necessary except if user create a manual trade that could reduce an existing position
+                        # affected positions, normally should not be necessary except if user create a manual
+                        # trade that could reduce an existing position
                         # for affected_deal in data.get('affectedDeals', []):
                         #     position_id = affected_deal['dealId']
                         #     status = affected_deal.get('status', "")
@@ -929,7 +942,8 @@ class IGWatcher(Watcher):
                     # "channel": "WTP", "expiry": "-"
 
                     # date of the event 2018-09-13T20:36:01.096 without Z
-                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC()).timestamp()
+                    event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').replace(
+                        tzinfo=UTC()).timestamp()
 
                     if data.get('direction', '') == 'BUY':
                         direction = Order.LONG
@@ -972,7 +986,8 @@ class IGWatcher(Watcher):
                                 'liquidation-price': None
                             }
 
-                            self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (epic, position_data, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (
+                                epic, position_data, ref_order_id))
 
                         elif status == "UPDATED":
                             # signal of updated position
@@ -994,7 +1009,8 @@ class IGWatcher(Watcher):
                                 'liquidation-price': None
                             }
 
-                            self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (epic, position_data, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (
+                                epic, position_data, ref_order_id))
 
                         elif status == "DELETED":
                             # signal of deleted position
@@ -1015,7 +1031,8 @@ class IGWatcher(Watcher):
                                 'filled': None,
                                 'liquidation-price': None
                             }
-                            self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (epic, position_data, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (
+                                epic, position_data, ref_order_id))
 
         except Exception as e:
             error_logger.error(repr(e))
@@ -1086,7 +1103,9 @@ class IGWatcher(Watcher):
 
             market.set_base(base_symbol, base_symbol, base_precision)
         else:
-            market.set_base(base_symbol, base_symbol, decimal_place(market.one_pip_means))
+            # determine precision from pip means
+            base_precision = decimal_place(market.one_pip_means)
+            market.set_base(base_symbol, base_symbol, base_precision)
 
         quote_precision = base_precision  # most of the currencies have 2 decimals for usage
 
@@ -1135,13 +1154,15 @@ class IGWatcher(Watcher):
         # @todo there is some limits in contract size
         market.set_notional_limits(0.0, 0.0, 0.0)
         # use one pip means for minimum and tick price size
-        market.set_price_limits(round(pow(0.1, quote_precision), quote_precision), 0.0, round(pow(0.1, quote_precision), quote_precision))
+        market.set_price_limits(round(pow(0.1, quote_precision), quote_precision), 0.0,
+                                round(pow(0.1, quote_precision), quote_precision))
 
         # commission for stocks @todo
         commission = "0.0"
 
         # store the last market info to be used for backtesting
-        Database.inst().store_market_info((self.name, epic, market.symbol,
+        Database.inst().store_market_info((
+            self.name, epic, market.symbol,
             market.market_type, market.unit_type, market.contract_type,  # type
             market.trade, market.orders,  # type
             market.base, market.base_display, market.base_precision,  # base
@@ -1171,10 +1192,11 @@ class IGWatcher(Watcher):
 
             if market.is_open:
                 market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ask,
-                        market.base_exchange_rate, market.contract_size, market.value_per_pip,
-                        market.vol24h_base, market.vol24h_quote)
+                               market.base_exchange_rate, market.contract_size, market.value_per_pip,
+                               market.vol24h_base, market.vol24h_quote)
             else:
-                market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
+                market_data = (market_id, market.is_open, market.last_update_time,
+                               None, None, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
@@ -1199,14 +1221,15 @@ class IGWatcher(Watcher):
 
         prices = data.get('prices', [])
 
-        # get local timezone, assume its the same of the account, or overrided by account detail
+        # get local timezone, assume its the same of the account, or override by account detail
         tzname = self._tzname or time.tzname[0]
         pst = pytz.timezone(tzname)
 
         for price in prices:
             dt = datetime.strptime(price['snapshotTimeUTC'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
 
-            # fix for D,W,M snapshotTimeUTC, because it is LSE aligned and shifted by the DST (then might be +1 or -1 hour)
+            # fix for D,W,M snapshotTimeUTC, because it is LSE aligned and shifted by
+            # the DST (then might be +1 or -1 hour)
             if timeframe in (Instrument.TF_1D, Instrument.TF_1W, Instrument.TF_1M):
                 if dt.hour == 22:
                     # is 22:00 on the previous day, add 2h
@@ -1254,8 +1277,5 @@ class IGWatcher(Watcher):
 
             spread = max(0.0, ca - cb)
 
-            # yield (timestamp, open, high, low, close, spread, volume)
-            yield([int(timestamp * 1000),
-                str(o), str(h), str(l), str(c),
-                spread,
-                price.get('lastTradedVolume', '0')])
+            # yield timestamp, open, high, low, close, spread, volume
+            yield [int(timestamp * 1000), str(o), str(h), str(l), str(c), spread, price.get('lastTradedVolume', '0')]

@@ -3,7 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # watcher side position model
 
-from . import author
+from watcher.author import Author
 from common.keyed import Keyed
 
 
@@ -40,8 +40,13 @@ class Position(Keyed):
         self._quantity = 0.0
         self._leverage = 1.0
         self._trailing_stop_loss = False
+        self._entry_price = 0.0
+        self._entry_date = 0.0
+        self._exit_price = 0.0
+        self._exit_date = 0.0
 
-    def entry(self, direction, quantity, entry_price, stop_loss, take_profit, entry_date, leverage=None, trailing_stop_loss=False):
+    def entry(self, direction, quantity, entry_price, stop_loss, take_profit, entry_date,
+              leverage=None, trailing_stop_loss=False):
         self._status = Position.POSITION_OPENED
         self._direction = direction
         self._quantity = quantity

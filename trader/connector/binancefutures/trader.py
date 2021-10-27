@@ -459,7 +459,7 @@ class BinanceFuturesTrader(Trader):
             return None
 
         if not self._watcher.connector:
-            error_logger.error("Trader %s refuse to retrieve order info because of missing connector" % (self.name,))
+            error_logger.error("Trader %s refuse to retrieve order info because of missing connector" % self.name)
             return None
 
         results = None

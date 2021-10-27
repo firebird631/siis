@@ -540,11 +540,11 @@ class IGTrader(Trader):
             position.stop_loss = pos.get('stopLevel', 0.0)
             position.take_profit = pos.get('limitLevel', 0.0)
 
-            # garanteed stop
+            # guarantee stop
             if pos.get('controlledRisk', False):
                 pass  # @todo
 
-            # @todo stop type (garantee, market, trailing)
+            # @todo stop type (guarantee, market, trailing)
             position.trailing_stop = pos.get('trailingStep', 0.0)
             position.trailing_stop_dst = pos.get('trailingStopDistance', 0.0)
 

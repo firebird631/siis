@@ -54,6 +54,9 @@ class StrategyIndMarginTrade(StrategyTrade):
         """
         Open a position or buy an asset.
         """
+        if self._entry_state != StrategyTrade.STATE_NEW:
+            return False
+
         order = Order(trader, instrument.market_id)
         order.direction = direction
         order.price = order_price
@@ -80,9 +83,47 @@ class StrategyIndMarginTrade(StrategyTrade):
         self._stats['entry-order-type'] = order.order_type
 
         if trader.create_order(order, instrument):
+            self.create_oid = order.order_id
             self.position_id = order.position_id  # might be market-id
 
             if not self.eot and order.created_time:
+                # only at the first open
+                self.eot = order.created_time
+
+            return True
+        else:
+            self._entry_state = StrategyTrade.STATE_REJECTED
+            return False
+
+    def reopen(self, trader, instrument, quantity):
+        if self._entry_state != StrategyTrade.STATE_CANCELED:
+            return False
+
+        # reset
+        self._entry_state = StrategyTrade.STATE_NEW
+        self.eot = 0
+
+        order = Order(trader, instrument.market_id)
+        order.direction = self.dir
+        order.price = self.op
+        order.order_type = self._stats['entry-order-type']
+        order.quantity = quantity
+        order.post_only = False
+        order.margin_trade = True
+        order.leverage = self.leverage
+
+        # generated a reference order id
+        trader.set_ref_order_id(order)
+        self.create_ref_oid = order.ref_order_id
+
+        self.oq = order.quantity  # ordered quantity
+
+        if trader.create_order(order, instrument):
+            self.create_oid = order.order_id
+            self.position_id = order.position_id  # might be market-id
+
+            if not self.eot and order.created_time:
+                # only at the first open
                 self.eot = order.created_time
 
             return True

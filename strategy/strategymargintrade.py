@@ -4,7 +4,6 @@
 # Strategy trade for margin.
 
 from common.signal import Signal
-from database.database import Database
 
 from trader.order import Order
 from .strategytrade import StrategyTrade
@@ -18,10 +17,10 @@ class StrategyMarginTrade(StrategyTrade):
     Specialization for margin trading. 
 
     This type of trade is related to margin trading market, allowing or not hedging.
-    Works with cryypto margin brokers (kraken...).
+    Works with crypto margin brokers (kraken...).
 
     @todo do we need like with asset trade an exit_trades list to compute the axp and x values, because
-        if we use cumulative-filled and avg-price we have the same probleme here too.
+        if we use cumulative-filled and avg-price we have the same problem here too.
     @todo have to check about position_updated qty with direction maybe or take care to have trade signal and 
         distinct entry from exit
     """
@@ -46,12 +45,16 @@ class StrategyMarginTrade(StrategyTrade):
         self.stop_order_qty = 0.0    # if stop_oid then this is the qty placed on the stop order
         self.limit_order_qty = 0.0   # if limit_oid then this is the qty placed on the limit order
 
-    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
+    def open(self, trader, instrument, direction, order_type, order_price, quantity,
+             take_profit, stop_loss, leverage=1.0, hedging=None):
         """
         Open a position or buy an asset.
 
         @param hedging If defined use the defined value else use the default from the market.
         """
+        if self._entry_state != StrategyTrade.STATE_NEW:
+            return False
+
         order = Order(trader, instrument.market_id)
         order.direction = direction
         order.price = order_price
@@ -82,8 +85,44 @@ class StrategyMarginTrade(StrategyTrade):
 
         if trader.create_order(order, instrument):
             # keep the related create position identifier if available
-            self.create_ref_oid = order.order_id
+            self.create_oid = order.order_id
             self.position_id = order.position_id
+
+            if not self.eot and order.created_time:
+                # only at the first open
+                self.eot = order.created_time
+
+            return True
+        else:
+            self._entry_state = StrategyTrade.STATE_REJECTED
+            return False
+
+    def reopen(self, trader, instrument, quantity):
+        if self._entry_state != StrategyTrade.STATE_CANCELED:
+            return False
+
+        # reset
+        self._entry_state = StrategyTrade.STATE_NEW
+        self.eot = 0
+
+        order = Order(trader, instrument.market_id)
+        order.direction = self.dir
+        order.price = self.op
+        order.order_type = self._stats['entry-order-type']
+        order.quantity = quantity
+        order.post_only = False
+        order.margin_trade = True
+        order.leverage = self.leverage
+
+        # generated a reference order id
+        trader.set_ref_order_id(order)
+        self.create_ref_oid = order.ref_order_id
+
+        self.oq = order.quantity  # ordered quantity
+
+        if trader.create_order(order, instrument):
+            self.create_oid = order.order_id
+            self.position_id = order.position_id  # might be market-id
 
             if not self.eot and order.created_time:
                 # only at the first open
@@ -104,6 +143,7 @@ class StrategyMarginTrade(StrategyTrade):
             # cancel the remaining buy order
             if trader.cancel_order(self.create_oid, instrument):
                 self.create_ref_oid = None
+                self.create_oid = None
 
                 if self.e <= 0:
                     # no entry qty processed, entry canceled
@@ -575,7 +615,7 @@ class StrategyMarginTrade(StrategyTrade):
             return True
 
     #
-    # persistance
+    # persistence
     #
 
     def dumps(self):
@@ -618,3 +658,20 @@ class StrategyMarginTrade(StrategyTrade):
     def check(self, trader, instrument):
         # @todo
         return 1
+
+    #
+    # stats
+    #
+
+    def update_stats(self, instrument, timestamp):
+        super().update_stats(instrument, timestamp)
+
+    def info_report(self, strategy_trader):
+        data = super().info_report(strategy_trader)
+
+        return data + (
+            'Entry order id / ref : %s / %s' % (self.create_oid, self.create_ref_oid),
+            'Stop order id / ref : %s / %s' % (self.stop_oid, self.stop_ref_oid),
+            'Limit order id / ref : %s / %s' % (self.limit_oid, self.limit_ref_oid),
+            'Position id : %s' % self.position_id,
+        )

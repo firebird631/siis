@@ -4,7 +4,6 @@
 # Strategy trade for margin individual position
 
 from common.signal import Signal
-from database.database import Database
 
 from trader.order import Order
 from .strategytrade import StrategyTrade
@@ -21,7 +20,8 @@ class StrategyPositionTrade(StrategyTrade):
     Works with CFD brokers (ig...).
     """
 
-    __slots__ = 'create_ref_oid', 'create_oid', 'position_id', 'position_stop', 'position_limit', 'position_quantity', 'leverage'
+    __slots__ = 'create_ref_oid', 'create_oid', 'position_id', 'position_stop', 'position_limit', \
+                'position_quantity', 'leverage', 'hedging'
 
     def __init__(self, timeframe):
         super().__init__(StrategyTrade.TRADE_POSITION, timeframe)
@@ -36,13 +36,18 @@ class StrategyPositionTrade(StrategyTrade):
         self.position_quantity = 0.0  # Current position quantity
 
         self.leverage = 1.0
+        self.hedging = False
 
-    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss, leverage=1.0, hedging=None):
+    def open(self, trader, instrument, direction, order_type, order_price, quantity,
+             take_profit, stop_loss, leverage=1.0, hedging=None):
         """
         Open a position or buy an asset.
 
         @param hedging If defined use the defined value else use the default from the market.
         """
+        if self._entry_state != StrategyTrade.STATE_NEW:
+            return False
+
         order = Order(trader, instrument.market_id)
         order.direction = direction
         order.order_type = order_type
@@ -70,6 +75,7 @@ class StrategyPositionTrade(StrategyTrade):
         self.sl = stop_loss
 
         self.leverage = leverage
+        self.hedging = hedging
 
         self._stats['entry-order-type'] = order.order_type
 
@@ -77,6 +83,47 @@ class StrategyPositionTrade(StrategyTrade):
             # keep the related create position identifier if available
             self.create_oid = order.order_id
             self.position_id = order.position_id
+
+            if not self.eot and order.created_time:
+                # only at the first open
+                self.eot = order.created_time
+
+            return True
+        else:
+            self._entry_state = StrategyTrade.STATE_REJECTED
+            return False
+
+    def reopen(self, trader, instrument, quantity):
+        if self._entry_state != StrategyTrade.STATE_CANCELED:
+            return False
+
+        # reset
+        self._entry_state = StrategyTrade.STATE_NEW
+        self.eot = 0
+
+        order = Order(trader, instrument.market_id)
+        order.direction = self.dir
+        order.order_type = self._stats['entry-order-type']
+        order.quantity = quantity
+        order.post_only = False
+        order.margin_trade = True
+        order.leverage = self.leverage
+
+        if order.order_type == Order.ORDER_LIMIT:
+            order.price = self.op
+
+        if self.hedging:
+            order.hedging = self.hedging
+
+        # generated a reference order id
+        trader.set_ref_order_id(order)
+        self.create_ref_oid = order.ref_order_id
+
+        self.oq = order.quantity  # ordered quantity
+
+        if trader.create_order(order, instrument):
+            self.create_oid = order.order_id
+            self.position_id = order.position_id  # might be market-id
 
             if not self.eot and order.created_time:
                 # only at the first open
@@ -97,6 +144,7 @@ class StrategyPositionTrade(StrategyTrade):
             # cancel the remaining buy order
             if trader.cancel_order(self.create_oid, instrument):
                 self.create_ref_oid = None
+                self.create_oid = None
 
                 if self.e <= 0:
                     # no entry qty processed, entry canceled
@@ -130,7 +178,8 @@ class StrategyPositionTrade(StrategyTrade):
     def modify_take_profit(self, trader, instrument, limit_price):
         if self.position_id:
             # if not accepted as modification do it as limit order
-            if trader.modify_position(self.position_id, instrument, stop_loss_price=self.sl, take_profit_price=limit_price):
+            if trader.modify_position(self.position_id, instrument,
+                                      stop_loss_price=self.sl, take_profit_price=limit_price):
                 self.tp = limit_price
                 self.position_limit = limit_price
                 return self.ACCEPTED
@@ -142,7 +191,8 @@ class StrategyPositionTrade(StrategyTrade):
     def modify_stop_loss(self, trader, instrument, stop_price):
         if self.position_id:
             # if not accepted as modification do it as stop order
-            if trader.modify_position(self.position_id, instrument, stop_loss_price=stop_price, take_profit_price=self.tp):
+            if trader.modify_position(self.position_id, instrument,
+                                      stop_loss_price=stop_price, take_profit_price=self.tp):
                 self.sl = stop_price
                 self.position_stop = stop_price
                 return self.ACCEPTED
@@ -503,7 +553,7 @@ class StrategyPositionTrade(StrategyTrade):
         return False
 
     #
-    # persistance
+    # persistence
     #
 
     def dumps(self):
@@ -518,7 +568,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         return data
 
-    def loads(self, data, strategy_trader, context_builder):
+    def loads(self, data, strategy_trader, context_builder=None):
         if not super().loads(data, strategy_trader, context_builder):
             return False
 
@@ -592,3 +642,15 @@ class StrategyPositionTrade(StrategyTrade):
         # @todo
 
         return 1  # position or create_order
+
+    #
+    # stats
+    #
+
+    def info_report(self, strategy_trader):
+        data = super().info_report(strategy_trader)
+
+        return data + (
+            'Entry order id / ref : %s / %s' % (self.create_oid, self.create_ref_oid),
+            'Position id : %s' % self.position_id,
+        )

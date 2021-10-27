@@ -11,6 +11,7 @@ class Order(Keyed):
     Order for execution on a trader.
 
     @todo GTD could be distinct and need an expiry_time field
+    @todo __slots__
     """
 
     LONG = 1    # long direction
@@ -53,7 +54,7 @@ class Order(Keyed):
 
         self._transact_time = 0.0   # last qty execution (traded) timestamp
         self._executed = 0.0        # executed quantity if partially (executed = quantity when completed)
-        self._fully_filled = False  # true if executed qty represent the orderer qty (eventually minus fees)
+        self._fully_filled = False  # true if executed qty represent the ordered qty (eventually minus fees)
         self._avg_price = 0.0       # average executed price
 
         self._direction = 0
@@ -75,6 +76,8 @@ class Order(Keyed):
         self._leverage = 1.0
 
         self._time_in_force = Order.TIME_IN_FORCE_GTC
+
+        self._trailing_stop = False
 
     #
     # Getters

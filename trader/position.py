@@ -4,7 +4,6 @@
 # Trader position
 
 from common.keyed import Keyed
-from strategy.indicator import utils
 
 
 class Position(Keyed):
@@ -23,7 +22,8 @@ class Position(Keyed):
 
     __slots_ = '_trader', '_position_id', '_state', '_symbol', '_shared', '_symbol', '_quantity', \
                '_profit_loss', '_profit_loss_rate', '_profit_loss_currency', \
-               '_profit_loss_market', '_profit_loss_market_rate', '_created_time', '_market_close', '_leverage', '_entry_price', '_exit_price' \
+               '_profit_loss_market', '_profit_loss_market_rate', '_created_time', '_market_close', \
+               '_leverage', '_entry_price', '_exit_price' \
                '_stop_loss', '_take_profit', '_trailing_stop', '_direction'
 
     LONG = 1    # long direction
@@ -302,7 +302,7 @@ class Position(Keyed):
     def close_direction(self):
         """
         Return the inverse of the direction of the position that is needed to close or revert this position.
-        It does not invert the position ! Its just a syntaxic sugar.
+        It does not invert the position ! Its just a syntax sugar.
         """
         return Position.LONG if self.direction == Position.SHORT else Position.SHORT
 
