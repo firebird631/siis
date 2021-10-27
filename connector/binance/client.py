@@ -1,4 +1,7 @@
-# coding=utf-8
+# @date 2020-01-31
+# @author Frederic Scherma, All rights reserved without prejudices.
+# @license Copyright (c) 2020 Dream Overflow
+# Binance client connector.
 
 import hashlib
 import hmac
@@ -12,7 +15,7 @@ from .exceptions import BinanceAPIException, BinanceRequestException, BinanceWit
 class Client(object):
 
     KLINES_HISTORY_MAX_RETRY = 3
-    AGGTRADES_HISTORY_MAX_RETRY = 3
+    AGG_TRADES_HISTORY_MAX_RETRY = 3
 
     API_URL = 'https://api.binance.{}/api'
     WITHDRAW_API_URL = 'https://api.binance.{}/wapi'

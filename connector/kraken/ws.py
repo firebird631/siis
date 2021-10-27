@@ -16,9 +16,9 @@ from twisted.internet.protocol import ReconnectingClientFactory
 
 from monitor.service import MonitorService
 
+logger = logging.getLogger('siis.kraken.ws')
 error_logger = logging.getLogger('siis.error.kraken.ws')
 traceback_logger = logging.getLogger('siis.traceback.kraken.ws')
-logger = logging.getLogger('siis.kraken.ws')
 
 
 class KrakenClientProtocol(WebSocketClientProtocol):

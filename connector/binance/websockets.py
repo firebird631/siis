@@ -1,12 +1,15 @@
-# coding=utf-8
+# @date 2020-01-31
+# @author Frederic Scherma, All rights reserved without prejudices.
+# @license Copyright (c) 2020 Dream Overflow
+# Binance Websocket connector.
 
 import json
 import threading
+import traceback
 
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
-from twisted.internet import reactor, ssl
+from twisted.internet import ssl
 from twisted.internet.protocol import ReconnectingClientFactory
-from twisted.internet.error import ReactorAlreadyRunning
 
 from connector.binance.client import Client
 from monitor.service import MonitorService
@@ -14,6 +17,7 @@ from monitor.service import MonitorService
 import logging
 logger = logging.getLogger('siis.connector.binance.ws')
 error_logger = logging.getLogger('siis.error.connector.binance.ws')
+traceback_logger = logging.getLogger('siis.traceback.connector.binance.ws')
 
 
 class BinanceClientProtocol(WebSocketClientProtocol):
@@ -32,7 +36,11 @@ class BinanceClientProtocol(WebSocketClientProtocol):
             except ValueError:
                 pass
             else:
-                self.factory.callback(payload_obj)
+                try:
+                    self.factory.callback(payload_obj)
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
 
 
 class BinanceReconnectingClientFactory(ReconnectingClientFactory):
@@ -42,7 +50,7 @@ class BinanceReconnectingClientFactory(ReconnectingClientFactory):
 
     maxDelay = 10
 
-    maxRetries = 5
+    maxRetries = 30
 
 
 class BinanceClientFactory(WebSocketClientFactory, BinanceReconnectingClientFactory):
