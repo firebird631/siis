@@ -1,21 +1,17 @@
 # @date 2019-08-28
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
-# Trader/autotrader connector for kraken.com
+# Trader connector for kraken.com
 
 import traceback
 import time
 import base64
 import uuid
 import copy
-import requests
 
 from datetime import datetime
 
-from common.signal import Signal
-
 from trader.trader import Trader
-from trader.market import Market
 
 from .account import KrakenAccount
 
@@ -23,7 +19,6 @@ from trader.position import Position
 from trader.order import Order
 from trader.asset import Asset
 
-from connector.kraken.connector import Connector
 from database.database import Database
 
 import logging
@@ -94,6 +89,7 @@ class KrakenTrader(Trader):
     def market(self, market_id, force=False):
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
+        @param market_id Unique market identifier
         @param force Force to update the cache
         """
         market = self._markets.get(market_id)
@@ -176,7 +172,8 @@ class KrakenTrader(Trader):
                 asset.update_profit_loss(market)
 
             # store in database with the last update quantity
-            Database.inst().store_asset((self._name, self.account.name,
+            Database.inst().store_asset((
+                self._name, self.account.name,
                 asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
                 asset.quantity, asset.price, asset.quote))
 
@@ -291,7 +288,8 @@ class KrakenTrader(Trader):
         # @todo for testing only
         # data['validate'] = True
 
-        logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('volume'), pair, data.get('price')))
+        logger.info("Trader %s order %s %s %s @%s" % (
+            self.name, order.direction_to_str(), data.get('volume'), pair, data.get('price')))
 
         results = None
         reason = None
@@ -302,14 +300,16 @@ class KrakenTrader(Trader):
             reason = str(e)
 
         if reason:
-            error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (self.name, order.direction_to_str(), volume, pair, reason))
+            error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (
+                self.name, order.direction_to_str(), volume, pair, reason))
             return False
 
         if results:
             if results.get('error', []):
                 reason = ','.join(results['error'])
 
-                error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (self.name, order.direction_to_str(), volume, pair, reason))
+                error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (
+                    self.name, order.direction_to_str(), volume, pair, reason))
                 order_logger.error(results)
 
                 return False

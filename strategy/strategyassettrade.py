@@ -75,6 +75,8 @@ class StrategyAssetTrade(StrategyTrade):
         self._stats['profit-loss-currency'] = instrument.quote
 
         if trader.create_order(order, instrument):
+            self.entry_oid = order.order_id
+
             if not self.eot and order.created_time:
                 # only at the first open
                 self.eot = order.created_time
@@ -105,6 +107,8 @@ class StrategyAssetTrade(StrategyTrade):
         self.oq = order.quantity  # ordered quantity
 
         if trader.create_order(order, instrument):
+            self.entry_oid = order.order_id
+
             if not self.eot and order.created_time:
                 # only at the first open
                 self.eot = order.created_time

@@ -140,12 +140,12 @@ class KrakenWatcher(Watcher):
                 self._connector.ws.stop_private_socket('ownTrades')
                 self._connector.ws.stop_private_socket('openOrders')
 
-                self.__reset_ws_state(self._ws_own_trades)
-                self.__reset_ws_state(self._ws_open_orders)
-
                 ws_token = self._connector.get_ws_token()
 
                 if ws_token and ws_token.get('token'):
+                    self.__reset_ws_state(self._ws_own_trades)
+                    self.__reset_ws_state(self._ws_open_orders)
+
                     self._connector.ws.subscribe_private(
                         token=ws_token['token'],
                         subscription='ownTrades',
@@ -159,6 +159,11 @@ class KrakenWatcher(Watcher):
                     )
 
                     logger.debug("%s re-subscribe to user data succeed" % self.name)
+
+                else:
+                    # error retrieving the token, retry
+                    self._ws_own_trades['timestamp'] = time.time()
+                    self._ws_open_orders['timestamp'] = time.time()
 
             except Exception as e:
                 error_logger.error(repr(e))
@@ -1174,7 +1179,6 @@ class KrakenWatcher(Watcher):
 
                 if data['status'] == "subscribed":
                     self._ws_own_trades['subscribed'] = True
-                    # self._ws_own_trades['channel-id'] = data['channelID']
 
                 elif data['status'] == "error":
                     self._ws_own_trades['status'] = "offline"
@@ -1477,7 +1481,6 @@ class KrakenWatcher(Watcher):
 
                 if data['status'] == "subscribed":
                     self._ws_open_orders['subscribed'] = True
-                    # self._ws_open_orders['channel-id'] = data['channelID']
 
                 elif data['status'] == "error":
                     self._ws_open_orders['status'] = "offline"

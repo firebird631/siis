@@ -44,22 +44,26 @@ def cmd_trade_check(strategy, strategy_trader, data, repair=False):
 
             if result >= 0:
                 # add a success result message
-                results['messages'].append("Checked trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
+                results['messages'].append("Checked trade %i on %s:%s" % (
+                    trade.id, strategy.identifier, strategy_trader.instrument.market_id))
 
                 if result == 0 and repair:
                     if trade.repair(trader, strategy_trader.instrument):
                         # add a success result message
-                        results['messages'].append("Repaired trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
+                        results['messages'].append("Repaired trade %i on %s:%s" % (
+                            trade.id, strategy.identifier, strategy_trader.instrument.market_id))
                     else:
                         results['error'] = True
-                        results['messages'].append("Unable to repair trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
+                        results['messages'].append("Unable to repair trade %i on %s:%s" % (
+                            trade.id, strategy.identifier, strategy_trader.instrument.market_id))
 
                 # update strategy-trader
                 strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
             else:
                 # add an error result message
                 results['error'] = True
-                results['messages'].append("Unable to check trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
+                results['messages'].append("Unable to check trade %i on %s:%s" % (
+                    trade.id, strategy.identifier, strategy_trader.instrument.market_id))
         else:
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)
