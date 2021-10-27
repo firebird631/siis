@@ -100,7 +100,7 @@ class KrakenWatcher(Watcher):
         # if ws['retry'] > 0.0 and time.time() < ws['retry']:
         #     return
 
-        logger.debug("%s re-subscribe %s to markets..." % (self.name, name))
+        logger.debug("%s re-subscribe %s to markets data stream..." % (self.name, name))
 
         with self._mutex:
             try:
@@ -114,15 +114,12 @@ class KrakenWatcher(Watcher):
                     if market_id in instruments:
                         pairs.append(instruments[market_id]['wsname'])
 
-                if pairs:
+                if 1:  # pairs:
                     self._connector.ws.subscribe_public(
                         subscription=name,
                         pair=pairs,
                         callback=callback
                     )
-
-                    logger.debug("%s re-subscribe %s to markets succeed" % (self.name, name))
-
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
@@ -133,7 +130,7 @@ class KrakenWatcher(Watcher):
         # if self._ws_open_orders['retry'] > 0.0 and time.time() < self._ws_open_orders['retry']:
         #     return
 
-        logger.debug("%s re-subscribe to user data..." % self.name)
+        logger.debug("%s re-subscribe to user data stream..." % self.name)
 
         with self._mutex:
             try:
@@ -157,9 +154,6 @@ class KrakenWatcher(Watcher):
                         subscription='openOrders',
                         callback=self.__on_open_orders
                     )
-
-                    logger.debug("%s re-subscribe to user data succeed" % self.name)
-
                 else:
                     # error retrieving the token, retry
                     self._ws_own_trades['timestamp'] = time.time()
@@ -310,7 +304,7 @@ class KrakenWatcher(Watcher):
                                 if market_id in instruments:
                                     pairs.append(instruments[market_id]['wsname'])
 
-                            if pairs:
+                            if 1:  # pairs:
                                 try:
                                     self._connector.ws.subscribe_public(
                                         subscription='ticker',
@@ -484,7 +478,7 @@ class KrakenWatcher(Watcher):
             # live data
             pairs.append(instrument['wsname'])
 
-            if pairs:
+            if 1:  # pairs:
                 self._connector.ws.subscribe_public(
                     subscription='ticker',
                     pair=pairs,
@@ -564,20 +558,25 @@ class KrakenWatcher(Watcher):
         # mostly in case of EGeneral:Internal Error or ESession:Invalid session
         if not self.service.paper_mode:
             if self.__check_reconnect(self._ws_own_trades) or self.__check_reconnect(self._ws_open_orders):
+                logger.debug("%s try to reconnect to user trades and user orders data stream" % self.name)
                 self.__reconnect_user_ws()
 
         # disconnected for a public socket, and auto-reconnect failed
         if self.__check_reconnect(self._ws_ticker_data):
+            logger.debug("%s try to reconnect to tickers data stream" % self.name)
             self.__reconnect_ws(self._ws_ticker_data, self.__on_ticker_data, 'ticker')
 
         if self.__check_reconnect(self._ws_trade_data):
+            logger.debug("%s try to reconnect to trades data stream" % self.name)
             self.__reconnect_ws(self._ws_trade_data, self.__on_trade_data, 'trade')
 
         if KrakenWatcher.USE_SPREAD:
             if self.__check_reconnect(self._ws_spread_data):
+                logger.debug("%s try to reconnect to spreads data stream" % self.name)
                 self.__reconnect_ws(self._ws_spread_data, self.__on_spread_data, 'spread')
 
         if self.__check_reconnect(self._ws_depth_data):
+            logger.debug("%s try to reconnect to depths data stream" % self.name)
             self.__reconnect_ws(self._ws_depth_data, self.__on_depth_data, 'depth')
 
         #
@@ -828,6 +827,8 @@ class KrakenWatcher(Watcher):
                 self._ws_ticker_data['status'] = data['status']
                 self._ws_ticker_data['version'] = data['version']
 
+                logger.debug("%s connected to tickers data stream" % self.name)
+
             elif data['event'] == "subscriptionStatus" and data['channelName'] == "ticker":
                 self._ws_ticker_data['timestamp'] = time.time()
 
@@ -880,6 +881,8 @@ class KrakenWatcher(Watcher):
                 self._ws_spread_data['timestamp'] = time.time()
                 self._ws_spread_data['status'] = data['status']
                 self._ws_spread_data['version'] = data['version']
+
+                logger.debug("%s connected to spreads data stream" % self.name)
 
             elif data['event'] == "subscriptionStatus" and data['channelName'] == "spread":
                 self._ws_spread_data['timestamp'] = time.time()
@@ -951,6 +954,8 @@ class KrakenWatcher(Watcher):
                 self._ws_trade_data['timestamp'] = time.time()
                 self._ws_trade_data['status'] = data['status']
                 self._ws_trade_data['version'] = data['version']
+
+                logger.debug("%s connected to trades data stream" % self.name)
 
             elif data['event'] == "subscriptionStatus" and data['channelName'] == "trade":
                 self._ws_trade_data['timestamp'] = time.time()
@@ -1174,6 +1179,8 @@ class KrakenWatcher(Watcher):
                 self._ws_own_trades['status'] = data['status']
                 self._ws_own_trades['version'] = data['version']
 
+                logger.debug("%s connected to user trades stream" % self.name)
+
             elif data['event'] == "subscriptionStatus" and data['channelName'] == "ownTrades":
                 self._ws_own_trades['timestamp'] = time.time()
 
@@ -1261,7 +1268,7 @@ class KrakenWatcher(Watcher):
         # if descr['close']:
         #     pass  # @todo
 
-        # most of the event are update, execept for the open event where it is replace by opentm
+        # most of the event are update, except for the open event where it is replace by opentm
         event_timestamp = float(order_data['lastupdated']) if 'lastupdated' in order_data else time.time()
 
         return {
@@ -1475,6 +1482,8 @@ class KrakenWatcher(Watcher):
                 self._ws_open_orders['timestamp'] = time.time()
                 self._ws_open_orders['status'] = data['status']
                 self._ws_open_orders['version'] = data['version']
+
+                logger.debug("%s connected to user orders stream" % self.name)
 
             elif data['event'] == "subscriptionStatus" and data['channelName'] == "openOrders":
                 self._ws_open_orders['timestamp'] = time.time()
