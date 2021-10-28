@@ -1284,7 +1284,10 @@ class StrategyTrade(object):
             entry_phrase.append(v)
             assign_phrase.append(v)
 
-        quantity_rate = round(self.invested_quantity / strategy_trader.instrument.trade_quantity, 2)
+        quantity_rate = 1.0
+
+        if strategy_trader.instrument.trade_quantity > 0.0:
+            quantity_rate = round(self.invested_quantity / strategy_trader.instrument.trade_quantity, 2)
 
         if quantity_rate != 1.0:
             entry_phrase.append("*%g" % quantity_rate)
