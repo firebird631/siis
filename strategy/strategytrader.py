@@ -20,8 +20,7 @@ from strategy.indicator.models import Limits
 
 from instrument.instrument import Instrument
 
-from common.utils import timeframe_to_str, UTC
-from common.signal import Signal
+from common.utils import timeframe_to_str
 from terminal.terminal import Terminal
 
 from database.database import Database
@@ -1007,6 +1006,7 @@ class StrategyTrader(object):
                     mutated = True
 
                     # cleanup if necessary before deleting the trade related refs
+                    # but there might be no order or position remaining at this level
                     trade.remove(trader, self.instrument)
 
                     # record the trade for analysis and study

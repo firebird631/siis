@@ -143,6 +143,7 @@ class StrategyAssetTrade(StrategyTrade):
                 # returns true, no need to wait signal confirmation
                 self.oco_ref_oid = None
                 self.oco_oid = None
+
                 self.stop_oid = None
                 self.limit_oid = None
 

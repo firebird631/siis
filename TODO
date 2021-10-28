@@ -57,6 +57,17 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 
 #89 Finir les conversion des tools avec le model Tool (binarizer, fetcher, optimizer)
 
+# 115 tool withdraw (ou command) simple avec pin code (2AF) paire et addresse
+    - peut utiliser un alias d'adresse ou l'adresse enregistré par défaut (wallets.json)
+    - montant de la transaction
+
+# 116 tool withdraw emergency (ou command) qui annule tout les buy pending ou incomplet,
+    et qui transfert sur les hard wallets (ou soft wallet)
+
+# 117 tool withdraw emergency (ou command) comme précédente mais qui va revendre toutes les paires
+    sur une seule de reference (exemple tout sur ZEC) et ensuite transferer sur le le
+    hard wallet de reference (ou soft wallet)
+        - la même mais avec un découpe en % sur N asset, et N wallet (hard ou soft)
 
 #######
 # BUG #

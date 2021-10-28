@@ -249,7 +249,7 @@ class KrakenTrader(Trader):
         notional = volume * (order.price or market_or_instrument.market_ask)
 
         # if notional < market_or_instrument.min_notional:
-        #     # reject if lesser than min notinal
+        #     # reject if lesser than min notional
         #     error_logger.error("Trader %s refuse order because the min notional is not reached (%s<%s) %s in order %s !" % (
         #         self.name, notional, market_or_instrument.min_notional, pair, order.ref_order_id))
         #     return False
@@ -291,30 +291,29 @@ class KrakenTrader(Trader):
         logger.info("Trader %s order %s %s %s @%s" % (
             self.name, order.direction_to_str(), data.get('volume'), pair, data.get('price')))
 
-        results = None
-        reason = None
-
         try:
             results = self._watcher.connector.create_order(data)
         except Exception as e:
-            reason = str(e)
+            order.reason = Order.REASON_ERROR
 
-        if reason:
-            error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (
-                self.name, order.direction_to_str(), volume, pair, reason))
+            error_logger.error("Trader %s rejected order %s %s %s - exception : %s" % (
+                self.name, order.direction_to_str(), volume, pair, str(e)))
+
             return False
 
         if results:
             if results.get('error', []):
-                reason = ','.join(results['error'])
+                # failed
+                order.reason = KrakenTrader.error_code_to_reason(results['error'][0])
 
-                error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (
-                    self.name, order.direction_to_str(), volume, pair, reason))
                 order_logger.error(results)
+                error_logger.error("Trader %s rejected order %s %s %s - reason : %s" % (
+                    self.name, order.direction_to_str(), volume, pair, ','.join(results['error'])))
 
                 return False
 
             elif results.get('result', {}):
+                # ok
                 result = results['result']
 
                 order_logger.info(results)
@@ -325,6 +324,9 @@ class KrakenTrader(Trader):
                 order.transact_time = time.time()
 
                 return True
+
+        # rejected
+        order.reason = Order.REASON_ERROR
 
         error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), volume, pair))
         order_logger.error(results)
@@ -341,24 +343,23 @@ class KrakenTrader(Trader):
 
         pair = market_or_instrument.market_id
 
-        reason = None
-        result = None
-
         try:
             results = self._watcher.connector.cancel_order(order_id)
         except Exception as e:
-            reason = str(e)
+            # reason = Order.REASON_ERROR
 
-        if reason:
-            error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, pair, reason))
+            error_logger.error("Trader %s rejected cancel order %s %s - exception : %s" % (
+                self.name, order_id, pair, str(e)))
+
             return False
 
         if results:
             if results.get('error', []):
-                reason = ','.join(results['error'])
+                # reason = KrakenTrader.error_code_to_reason(results['error'][0])
 
-                error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, pair, reason))
                 order_logger.error(results)
+                error_logger.error("Trader %s rejected cancel order %s %s - reason : %s" % (
+                    self.name, order_id, pair, ','.join(results['error'])))
 
                 return False
 
@@ -366,15 +367,19 @@ class KrakenTrader(Trader):
                 result = results['result']
 
                 if result.get('count', 0) <= 0:
-                    error_logger.error("Trader %s cancel order %s %s invalid count !" % (self.name, order_id, pair))
-                    order_logger.error(result)
-                    return False
+                    # reason = Order.REASON_ERROR
 
+                    order_logger.error(result)
+                    error_logger.error("Trader %s cancel order %s %s invalid count" % (self.name, order_id, pair))
+                    return False
                 else:
                     order_logger.info(result)
                     return True
 
-        error_logger.error("Trader %s rejected cancel order %s %s !" % (self.name, order_id, pair))
+        # rejected
+        # reason = Order.REASON_ERROR
+
+        error_logger.error("Trader %s rejected cancel order %s %s" % (self.name, order_id, pair))
         order_logger.error(results)
 
         return False
@@ -385,13 +390,13 @@ class KrakenTrader(Trader):
 
         ref_order_id = "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
 
-        # keep for might be useless in this case
-        order.set_ref_order_id(ref_order_id)
-
         order = Order(self, market_or_instrument.market_id)
         order.set_position_id(position_id)
         order.quantity = quantity
         order.direction = -direction  # neg direction
+
+        # keep for might be useless in this case
+        order.set_ref_order_id(ref_order_id)
 
         # @todo
 
@@ -606,7 +611,8 @@ class KrakenTrader(Trader):
             asset = Asset(self, asset_name, data.get('decimals', 8))
 
             for market_id, instrument in instruments.items():
-                if market_id.endswith('.d') or market_id.endswith('.S') or market_id.endswith('.M') or market_id.endswith('.HOLD'):
+                if (market_id.endswith('.d') or market_id.endswith('.S') or market_id.endswith('.M') or
+                        market_id.endswith('.HOLD')):
                     continue
 
                 has_currency = False
@@ -778,3 +784,63 @@ class KrakenTrader(Trader):
         if orders:
             with self._mutex:
                 self._orders = orders
+
+    #
+    # helpers
+    #
+
+    @staticmethod
+    def error_code_to_reason(error_code):
+        if error_code == "EAPI:Invalid nonce":
+            return Order.REASON_INVALID_NONCE
+
+        elif error_code == "EAPI:Rate limit exceeded":
+            return Order.REASON_RATE_LIMIT
+        elif error_code == "EOrder:Rate limit exceeded":
+            return Order.REASON_RATE_LIMIT
+
+        elif error_code == "EOrder:Insufficient funds":
+            return Order.REASON_INSUFFICIENT_FUNDS
+        elif error_code == "EOrder:Insufficient margin":
+            return Order.REASON_INSUFFICIENT_MARGIN
+        elif error_code == "EOrder:Margin allowance exceeded":
+            return Order.REASON_INSUFFICIENT_MARGIN
+        elif error_code == "EOrder:Margin level too low":
+            return Order.REASON_INSUFFICIENT_MARGIN
+        elif error_code == "EOrder:Margin position size exceeded":
+            return Order.REASON_INSUFFICIENT_MARGIN
+
+        elif error_code == "EAPI:Invalid key":
+            return Order.REASON_DENIED
+        elif error_code == "EAPI:Invalid signature":
+            return Order.REASON_DENIED
+        elif error_code == "EGeneral:Permission denied":
+            return Order.REASON_DENIED
+        elif error_code == "EOrder:Cannot open position":
+            return Order.REASON_DENIED
+
+        elif error_code == "EService:Unavailable":
+            return Order.REASON_UNREACHABLE_SERVICE
+        elif error_code == "EService:Busy":
+            return Order.REASON_UNREACHABLE_SERVICE
+
+        elif error_code == "EService:Market in cancel_only mode":
+            return Order.REASON_CANCEL_ONLY
+        elif error_code == "EService:Market in post_only mode":
+            return Order.REASON_POST_ONLY
+        elif error_code == "EService:Deadline elapsed":
+            return Order.REASON_ERROR
+
+        elif error_code == "EOrder:Order minimum not met":
+            return Order.REASON_ERROR
+        elif error_code == "EOrder:Orders limit exceeded":
+            return Order.REASON_ORDER_LIMIT
+        elif error_code == "EOrder:Positions limit exceeded":
+            return Order.REASON_POSITION_LIMIT
+        elif error_code == "EOrder:Unknown position":
+            return Order.REASON_ERROR
+
+        elif error_code.startswith("EGeneral:Invalid arguments"):
+            return Order.REASON_INVALID_ARGS
+
+        return Order.REASON_ERROR

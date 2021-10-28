@@ -203,7 +203,7 @@ class StrategyTrade(object):
     def invested_quantity(self):
         """
         Return the actively invested quantity or to be invested if not an active trade.
-        @todo Implement for margin, position and indmargin trade
+        @todo Implement for margin, ind-margin and position trade
         """
         if self.is_active():
             return (self.e - self.x) * self.aep
@@ -361,6 +361,46 @@ class StrategyTrade(object):
         @param quantity float Quantity in unit of quantity
         """
         return False
+
+    def assign(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss,
+               leverage=1.0, hedging=None):
+        """
+        Assign an open a position on buy or sell.
+
+        @param trader Trader Valid trader handler.
+        @param instrument Instrument object.
+        @param direction int Order direction (1 or -1)
+        @param order_type int Order type (market, limit...)
+        @param order_price float Limit order price or None for market
+        @param quantity float Quantity in unit of quantity
+        @param take_profit float Initial take-profit price or None
+        @param stop_loss float Initial stop-loss price or None
+        @param leverage float For some brokers leverage multiplier else unused
+        @param hedging boolean On margin market if True could open positions of opposites directions
+        """
+        # user managed trade
+        self.set_user_trade()
+
+        self._entry_state = StrategyTrade.STATE_FILLED
+        self._exit_state = StrategyTrade.STATE_NEW
+
+        self.dir = direction
+        self.op = order_price
+        self.oq = quantity
+
+        self.tp = take_profit
+        self.sl = stop_loss
+
+        self.eot = trader.timestamp
+
+        self.aep = order_price
+
+        self.e = quantity
+
+        self._stats['entry-order-type'] = order_type
+        self._stats['profit-loss-currency'] = instrument.quote
+
+        return True
 
     def remove(self, trader, instrument):
         """

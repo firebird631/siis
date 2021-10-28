@@ -15,6 +15,9 @@ from strategy.strategyindmargintrade import StrategyIndMarginTrade
 def cmd_trade_assign(strategy, strategy_trader, data):
     """
     Assign a free quantity of an asset to a newly created trade according data on given strategy_trader.
+
+    @todo Support for margin, ind-margin, position trade and short.
+    @todo Support for order-type else assume LIMIT.
     """
     results = {
         'messages': [],
@@ -29,6 +32,7 @@ def cmd_trade_assign(strategy, strategy_trader, data):
     take_profit = data.get('take-profit', 0.0)
     timeframe = data.get('timeframe', Instrument.TF_4HOUR)
     context = data.get('context', None)
+    order_type = data.get('order-type', Order.ORDER_LIMIT)
 
     if quantity <= 0.0:
         results['messages'].append("Missing or empty quantity.")
@@ -78,24 +82,8 @@ def cmd_trade_assign(strategy, strategy_trader, data):
 
     trade = StrategyAssetTrade(timeframe)
 
-    # user managed trade
-    trade.set_user_trade()
-
-    trade._entry_state = StrategyAssetTrade.STATE_FILLED
-    trade._exit_state = StrategyAssetTrade.STATE_NEW
-    
-    trade.dir = direction
-    trade.op = entry_price
-    trade.oq = quantity
-
-    trade.tp = take_profit
-    trade.sl = stop_loss        
-
-    trade.eot = strategy.timestamp
-
-    trade.aep = entry_price
-
-    trade.e = quantity
+    trade.assign(trader, strategy_trader.instrument, direction, order_type,
+                 entry_price, quantity, take_profit, stop_loss)
 
     if context:
         if not strategy_trader.set_trade_context(trade, context):

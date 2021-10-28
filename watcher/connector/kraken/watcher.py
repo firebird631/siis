@@ -114,12 +114,12 @@ class KrakenWatcher(Watcher):
                     if market_id in instruments:
                         pairs.append(instruments[market_id]['wsname'])
 
-                if 1:  # pairs:
-                    self._connector.ws.subscribe_public(
-                        subscription=name,
-                        pair=pairs,
-                        callback=callback
-                    )
+                # if pairs:
+                self._connector.ws.subscribe_public(
+                    subscription=name,
+                    pair=pairs,
+                    callback=callback
+                )
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
@@ -296,7 +296,7 @@ class KrakenWatcher(Watcher):
 
                         # retry the previous subscriptions
                         if self._watched_instruments:
-                            logger.debug("%s re-subscribe to markets..." % self.name)
+                            logger.debug("%s subscribe to markets data stream..." % self.name)
 
                             pairs = []
 
@@ -304,35 +304,35 @@ class KrakenWatcher(Watcher):
                                 if market_id in instruments:
                                     pairs.append(instruments[market_id]['wsname'])
 
-                            if 1:  # pairs:
-                                try:
+                            # if pairs:
+                            try:
+                                self._connector.ws.subscribe_public(
+                                    subscription='ticker',
+                                    pair=pairs,
+                                    callback=self.__on_ticker_data
+                                )
+
+                                self._connector.ws.subscribe_public(
+                                    subscription='trade',
+                                    pair=pairs,
+                                    callback=self.__on_trade_data
+                                )
+
+                                # market spread (order book of first level)
+                                if KrakenWatcher.USE_SPREAD:
                                     self._connector.ws.subscribe_public(
-                                        subscription='ticker',
+                                        subscription='spread',
                                         pair=pairs,
-                                        callback=self.__on_ticker_data
+                                        callback=self.__on_spread_data
                                     )
 
-                                    self._connector.ws.subscribe_public(
-                                        subscription='trade',
-                                        pair=pairs,
-                                        callback=self.__on_trade_data
-                                    )
+                                # @todo order book
 
-                                    # market spread (order book of first level)
-                                    if KrakenWatcher.USE_SPREAD:
-                                        self._connector.ws.subscribe_public(
-                                            subscription='spread',
-                                            pair=pairs,
-                                            callback=self.__on_spread_data
-                                        )
+                                logger.debug("%s re-subscribe to markets succeed" % self.name)
 
-                                    # @todo order book
-
-                                    logger.debug("%s re-subscribe to markets succeed" % self.name)
-
-                                except Exception as e:
-                                    error_logger.error(repr(e))
-                                    traceback_logger.error(traceback.format_exc())
+                            except Exception as e:
+                                error_logger.error(repr(e))
+                                traceback_logger.error(traceback.format_exc())
 
                         # once market are init
                         self._ready = True
@@ -473,52 +473,59 @@ class KrakenWatcher(Watcher):
         with self._mutex:
             self.insert_watched_instrument(market_id, [0])
 
-            pairs = []
-
             # live data
-            pairs.append(instrument['wsname'])
+            pairs = [instrument['wsname']]
 
-            if 1:  # pairs:
+            self._connector.ws.subscribe_public(
+                subscription='ticker',
+                pair=pairs,
+                callback=self.__on_ticker_data
+            )
+
+            self._connector.ws.subscribe_public(
+                subscription='trade',
+                pair=pairs,
+                callback=self.__on_trade_data
+            )
+
+            # market spread (order book of first level)
+            if KrakenWatcher.USE_SPREAD:
                 self._connector.ws.subscribe_public(
-                    subscription='ticker',
+                    subscription='spread',
                     pair=pairs,
-                    callback=self.__on_ticker_data
+                    callback=self.__on_spread_data
                 )
 
+            if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
                 self._connector.ws.subscribe_public(
-                    subscription='trade',
+                    subscription='book',
                     pair=pairs,
-                    callback=self.__on_trade_data
+                    depth=order_book_depth,
+                    callback=self.__on_depth_data
                 )
-
-                # market spread (order book of first level)
-                if KrakenWatcher.USE_SPREAD:
-                    self._connector.ws.subscribe_public(
-                        subscription='spread',
-                        pair=pairs,
-                        callback=self.__on_spread_data
-                    )
-
-                if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
-                    self._connector.ws.subscribe_public(
-                        subscription='book',
-                        pair=pairs,
-                        depth=order_book_depth,
-                        callback=self.__on_depth_data
-                    )
 
         return True
 
     def unsubscribe(self, market_id, timeframe):
-        # @todo because of watch list, and correct WS instrument name do for and for ticker/trade/spread/book
-        # with self._mutex:
-        #     if market_id in self._watched_instruments:
-        #         if market_id in instruments:
-        #             pair = instruments[market_id]['wsname']
-        #         self._connector.ws.unsubscribe_public(pair)
-        #         del self._watched_instruments[market_id]
+        """Unsubscribe to public market data streams for a specified market id."""
+        with self._mutex:
+            instruments = self._instruments
 
-        #         return True
+            if market_id in self._watched_instruments:
+                if market_id in instruments:
+                    pairs = [instruments[market_id]['wsname']]
+
+                    self._connector.ws.unsubscribe_public('ticker', pairs)
+                    self._connector.ws.unsubscribe_public('trade', pairs)
+
+                    if KrakenWatcher.USE_SPREAD:
+                        self._connector.ws.unsubscribe_public('spread', pairs)
+
+                    self._connector.ws.unsubscribe_public('book', pairs)
+
+                    del self._watched_instruments[market_id]
+
+                    return True
 
         return False
 

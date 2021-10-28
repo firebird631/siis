@@ -4,7 +4,6 @@
 # HTTPS+WS connector for kraken.com
 
 import time
-import json
 import base64
 import requests
 import threading
@@ -81,7 +80,8 @@ class Connector(object):
     and by IP address only for calls to all other public endpoints.
     Calling the public endpoints at a frequency of 1 per second (or less) would remain within the rate limits, 
     but exceeding this frequency could cause the calls to be rate limited. If the rate limits are reached, 
-    additional calls would be restricted for a few seconds (or possibly longer if calls continue to be made while the rate limits are active).
+    additional calls would be restricted for a few seconds (or possibly longer if calls continue to be made while
+    the rate limits are active).
 
     Private API
     ===========
@@ -150,6 +150,7 @@ class Connector(object):
     CANDLES_HISTORY_MAX_RETRY = 3
     TRADES_HISTORY_MAX_RETRY = 3
     ORDER_HISTORY_MAX_RETRY = 3
+    QUERY_PRIVATE_MAX_RETRY = 3
 
     PUBLIC_QUERY_DELAY = 1.5
     MAX_PUBLIC_CONNS = 5
@@ -282,6 +283,7 @@ class Connector(object):
         last_datetime = str(int(from_date.timestamp() * 1000000000)) if from_date else "0"
         to_ts = to_date.timestamp()
         retry_count = 0
+        dt = 0
 
         while 1:
             if last_datetime:
@@ -340,11 +342,8 @@ class Connector(object):
                 if c[3] == 's' and c[4] == 'm':
                     bid_ask = -1
 
-                yield (int(dt*1000),  # integer ms
-                    c[0], c[0],  # bid, ask
-                    c[0],  # last
-                    c[1],  # volume
-                    bid_ask)
+                # integer ms, bid, ask, last, volume, bid or ask direction
+                yield int(dt*1000), c[0], c[0], c[0], c[1], bid_ask
 
             if not len(trades) or dt > to_ts:
                 break
@@ -377,7 +376,7 @@ class Connector(object):
 
         delta = None
 
-        # but we disallow 1w and 15d because 1w starts on a thuesday
+        # but we disallow 1w and 15d because 1w starts on thursday
         if interval == 10080:
             delta = timedelta(days=3)
 
@@ -427,10 +426,8 @@ class Connector(object):
                 if to_ts and dt > to_ts:
                     break
 
-                yield (int(dt*1000),  # integer ms
-                    c[1], c[2], c[3], c[4],  # ohlc
-                    0.0,  # spread
-                    c[6])  # volume
+                # integer ms, ohlc, spread, volume
+                yield int(dt*1000), c[1], c[2], c[3], c[4], 0.0, c[6]
 
                 last_datetime = dt
 
@@ -453,7 +450,8 @@ class Connector(object):
             'asset': asset
         }
 
-        data = self.query_private('TradeBalance', params)
+        # data = self.query_private('TradeBalance', params)
+        data = self.retry_query_private('TradeBalance', params)
 
         if data['error']:
             logger.error("query trade balance: %s" % ', '.join(data['error']))
@@ -465,7 +463,8 @@ class Connector(object):
         return {}
 
     def get_balances(self):
-        data = self.query_private('Balance')
+        # data = self.query_private('Balance')
+        data = self.retry_query_private('Balance')
 
         if data['error']:
             logger.error("query balance: %s" % ', '.join(data['error']))
@@ -479,7 +478,8 @@ class Connector(object):
     def get_trade_volume(self):
         # pair = comma delimited list of asset pairs to get fee info on (optional)
         # fee-info = whether or not to include fee info info results (optional)
-        data = self.query_private('TradeVolume')
+        # data = self.query_private('TradeVolume')
+        data = self.retry_query_private('TradeVolume')
 
         # currency = volume currency
         # volume = current discount volume
@@ -518,7 +518,8 @@ class Connector(object):
         if userref:
             params['userref'] = userref
 
-        data = self.query_private('OpenOrders', params)
+        # data = self.query_private('OpenOrders', params)
+        data = self.retry_query_private('OpenOrders', params)
 
         # refid = identifiant de référence de la transaction qui a créé cette commande
         # userref = identifiant de référence de l'utilisateur
@@ -601,7 +602,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.ORDER_HISTORY_MAX_RETRY:
-                        raise ValueError("Kraken historical orders : Multiple failures after consecutives errors 502.")
+                        raise ValueError("Kraken historical orders : Multiple failures after consecutive errors 502.")
 
                     continue
                 else:
@@ -665,7 +666,8 @@ class Connector(object):
 
         # @todo start_date, and end_date
 
-        result = self.query_private('TradesHistory', params)
+        # result = self.query_private('TradesHistory', params)
+        result = self.retry_query_private('TradesHistory', params)
 
         # trades = array of trade info with txid as the key
         #     ordertxid = order responsible for execution of trade
@@ -743,7 +745,8 @@ class Connector(object):
         #     close[price2] = secondary price
         params = data
 
-        result = self.query_private('AddOrder', params)
+        # result = self.query_private('AddOrder', params)
+        result = self.retry_order_query_private('AddOrder', params)
         # descr = order description info
         #     order = order description
         #     close = conditional close order description (if conditional close set)
@@ -757,7 +760,8 @@ class Connector(object):
         """
         params = {'txid': txid}
 
-        result = self.query_private('CancelOrder', params)
+        # result = self.query_private('CancelOrder', params)
+        result = self.retry_order_query_private('CancelOrder', params)
         # count = number of orders canceled
         # pending = if set, order(s) is/are pending cancellation
 
@@ -776,7 +780,9 @@ class Connector(object):
         if docalcs:
             params['docalcs'] = True
 
-        data = self.query_private('OpenPositions', params)
+        # data = self.query_private('OpenPositions', params)
+        data = self.retry_query_private('OpenPositions', params)
+
         # <position_txid> = open position info
         #     ordertxid = order responsible for execution of trade
         #     pair = asset pair
@@ -821,7 +827,8 @@ class Connector(object):
         if userref:
             params['userref'] = userref
 
-        data = self.query_private('QueryOrders', params)
+        # data = self.query_private('QueryOrders', params)
+        data = self.retry_query_private('QueryOrders', params)
 
         if data['error']:
             logger.error("query orders info: %s" % ', '.join(data['error']))
@@ -940,6 +947,102 @@ class Connector(object):
         }
 
         return self._query(urlpath, data, headers, timeout=timeout)
+
+    def retry_query_private(self, method, data=None, timeout=None):
+        """
+        Retry query private for common operation excepted add and cancel order.
+        """
+        retry_count = 0
+
+        while 1:
+            try:
+                results = self.query_private(method, data, timeout)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 502:
+                    # bad gateway service, retry for 3 times delayed by 5 seconds
+                    time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
+                        raise
+
+                    continue
+                else:
+                    raise
+
+            if results.get('error', []):
+                if results['error'][0] == "EAPI:Rate limit exceeded":
+                    time.sleep(5.0)
+                    continue
+
+                elif results['error'][0] == "EAPI:Invalid nonce":
+                    retry_count += 1
+
+                    if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
+                        raise ValueError("Kraken query private : %s !" % '\n'.join(results['error']))
+
+                    continue
+
+                elif results['error'][0] == "EService:Busy":
+                    time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
+                        raise ValueError("Kraken query private : %s !" % '\n'.join(results['error']))
+
+                    continue
+
+            return results
+
+    def retry_order_query_private(self, method, data=None, timeout=None):
+        """
+        Retry query private for add and cancel order only.
+        """
+        retry_count = 0
+
+        while 1:
+            try:
+                results = self.query_private(method, data, timeout)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 502:
+                    # bad gateway service, retry for 3 times delayed by 5 seconds
+                    time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
+                        raise
+
+                    continue
+                else:
+                    raise
+
+            if results.get('error', []):
+                if results['error'][0] == "EAPI:Rate limit exceeded":
+                    time.sleep(5.0)
+                    continue
+
+                elif results['error'][0] == "EOrder:Rate limit exceeded":
+                    time.sleep(5.0)
+                    continue
+
+                elif results['error'][0] == "EAPI:Invalid nonce":
+                    retry_count += 1
+
+                    if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
+                        raise ValueError("Kraken query private : %s !" % '\n'.join(results['error']))
+
+                    continue
+
+                elif results['error'][0] == "EService:Busy":
+                    time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
+                        raise ValueError("Kraken query private : %s !" % '\n'.join(results['error']))
+
+                    continue
+
+            return results
 
     def _nonce(self):
         """

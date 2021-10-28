@@ -14,6 +14,12 @@ class Order(Keyed):
     @todo __slots__
     """
 
+    __slots__ = "_order_id", "_ref_order_id", "_trader", "_symbol", "_created_time", "_position_id", "_quantity", \
+        "_transact_time", "_executed", "_fully_filled", "_avg_price", "_direction", "_order_type", \
+        "_price", "_stop_price", "_stop_mode", "_stop_loss", "_take_profit", "_reduce_only", "_hedging", \
+        "_post_only", "_close_only", "_price_type", "_margin_trade", "_leverage", "_time_in_force", \
+        "_trailing_stop", "_reason"
+
     LONG = 1    # long direction
     SHORT = -1  # short direction
 
@@ -37,6 +43,21 @@ class Order(Keyed):
     TIME_IN_FORCE_IOC = 1  # Immediate or cancel
     TIME_IN_FORCE_FOK = 2  # Fill or kill
     TIME_IN_FORCE_GTD = 3  # Good til date
+
+    REASON_UNDEFINED = 0            # Undefined
+    REASON_OK = 1                   # Order successfully open
+    REASON_INSUFFICIENT_FUNDS = 2   # Insufficient asset quantity to open order
+    REASON_INSUFFICIENT_MARGIN = 3  # Insufficient margin to open order
+    REASON_ERROR = 4                # General error or unspecified
+    REASON_INVALID_ARGS = 5         # Invalid order arguments
+    REASON_DENIED = 6               # User or API key or sign not allowed
+    REASON_UNREACHABLE_SERVICE = 7  # Service is currently or permanently unreachable
+    REASON_RATE_LIMIT = 8           # API rate limit exceeded
+    REASON_ORDER_LIMIT = 9          # Number of order limit exceeded
+    REASON_POSITION_LIMIT = 10      # Number of position limit exceeded
+    REASON_INVALID_NONCE = 11       # Wrong nonce value
+    REASON_CANCEL_ONLY = 12         # Cancel only mode
+    REASON_POST_ONLY = 13           # Post-only mode
 
     def __init__(self, trader, symbol):
         super().__init__()
@@ -78,6 +99,7 @@ class Order(Keyed):
         self._time_in_force = Order.TIME_IN_FORCE_GTC
 
         self._trailing_stop = False
+        self._reason = Order.REASON_UNDEFINED
 
     #
     # Getters
@@ -179,12 +201,18 @@ class Order(Keyed):
     def time_in_force(self):
         return self._time_in_force
 
+    @property
+    def reason(self):
+        return self._reason
+
     #
     # Setters
     #
 
     def set_order_id(self, order_id):
+        """Defines the result order id and set reason as OK."""
         self._order_id = order_id
+        self._reason = Order.REASON_OK
 
     def set_ref_order_id(self, ref_order_id):
         self._ref_order_id = ref_order_id
@@ -268,6 +296,10 @@ class Order(Keyed):
     def time_in_force(self, time_in_force):
         self._time_in_force = time_in_force
 
+    @reason.setter
+    def reason(self, reason):
+        self._reason = reason
+
     def set_executed(self, quantity, fully_filled, avg_price):
         self._executed = quantity
         self._fully_filled = fully_filled
@@ -285,6 +317,14 @@ class Order(Keyed):
         Returns true if the order would be executed as market.
         """
         return self._order_type in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT)
+
+    # def can_retry(self):
+    #     """
+    #     If the reason of fail to order is a temporary raison return True
+    #     """
+    #     return self._reason in (
+    #         Order.REASON_INVALID_NONCE, Order.REASON_RATE_LIMIT, Order.REASON_UNREACHABLE_SERVICE,
+    #         Order.REASON_POST_ONLY, Order.REASON_CANCEL_ONLY)
 
     def order_type_to_str(self):
         return order_type_to_str(self._order_type)
@@ -310,6 +350,40 @@ class Order(Keyed):
             return "mark"
 
         return "unknown"
+
+    def reason_to_str(self):
+        if self._reason == Order.REASON_UNDEFINED:
+            return "undefined"
+        elif self._reason == Order.REASON_OK:
+            return "success"
+        elif self._reason == Order.REASON_INSUFFICIENT_FUNDS:
+            return "insufficient-funds"
+        elif self._reason == Order.REASON_INSUFFICIENT_MARGIN:
+            return "insufficient-margin"
+        elif self._reason == Order.REASON_ERROR:
+            return "error"
+        elif self._reason == Order.REASON_INVALID_ARGS:
+            return "invalid-arguments"
+        elif self._reason == Order.REASON_DENIED:
+            return "denied"
+        elif self._reason == Order.REASON_UNREACHABLE_SERVICE:
+            return "unreachable"
+        elif self._reason == Order.REASON_UNDEFINED:
+            return "undefined"
+        elif self._reason == Order.REASON_RATE_LIMIT:
+            return "rate-limit"
+        elif self._reason == Order.REASON_ORDER_LIMIT:
+            return "order-limit"
+        elif self._reason == Order.REASON_POSITION_LIMIT:
+            return "position-limit"
+        elif self._reason == Order.REASON_INVALID_NONCE:
+            return "invalid-nonce"
+        elif self._reason == Order.REASON_POST_ONLY:
+            return "post-only"
+        elif self._reason == Order.REASON_CANCEL_ONLY:
+            return "cancel-only"
+        else:
+            return "undefined"
 
 
 def order_type_to_str(order_type):

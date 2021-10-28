@@ -42,7 +42,7 @@ def cmd_trade_clean(strategy, strategy_trader, data):
             # remove orders
             trade.remove(trader, strategy_trader.instrument)
 
-            # and the trade, don't keet it for history because unqualifiable
+            # and the trade, don't keep it for history because unqualified
             strategy_trader.remove_trade(trade)
 
             # update strategy-trader
