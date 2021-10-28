@@ -208,7 +208,7 @@ class StrategyTrade(object):
         if self.is_active():
             return (self.e - self.x) * self.aep
         else:
-            return self.order_quantity * self.order_price
+            return self.oq * self.op
 
     @property  
     def order_price(self):
@@ -1238,45 +1238,79 @@ class StrategyTrade(object):
         }
 
     def info_report(self, strategy_trader):
-        phrase = [self.direction_to_str(), strategy_trader.instrument.symbol]
+        entry_phrase = [self.direction_to_str(), strategy_trader.instrument.symbol]
+        assign_phrase = [strategy_trader.instrument.symbol, self.direction_to_str()]
 
         if self.op:
             if self._stats['entry-order-type'] == Order.ORDER_LIMIT:
-                phrase.append("L@%s" % strategy_trader.instrument.format_price(self.op))
+                entry_phrase.append("L@%s" % strategy_trader.instrument.format_price(self.op))
+                assign_phrase.append("limit EP@%s" % strategy_trader.instrument.format_price(self.aep or self.op))
+
+            elif self._stats['entry-order-type'] == Order.ORDER_MARKET:
+                assign_phrase.append("market EP@%s" % strategy_trader.instrument.format_price(self.aep))
+
             elif self._stats['entry-order-type'] == Order.ORDER_STOP:
                 # @todo with trigger command
-                phrase.append("T@%s" % strategy_trader.instrument.format_price(self.op))
+                entry_phrase.append("T@%s" % strategy_trader.instrument.format_price(self.op))
+                assign_phrase.append("trigger EP@%s" % strategy_trader.instrument.format_price(self.aep or self.op))
 
         if self.sl:
-            phrase.append("SL@%s" % strategy_trader.instrument.format_price(self.sl))
+            v = "SL@%s" % strategy_trader.instrument.format_price(self.sl)
+            entry_phrase.append(v)
+            assign_phrase.append(v)
 
         if self.tp:
-            phrase.append("TP@%s" % strategy_trader.instrument.format_price(self.tp))
+            v = "TP@%s" % strategy_trader.instrument.format_price(self.tp)
+            entry_phrase.append(v)
+            assign_phrase.append(v)
 
         if self._timeframe:
-            phrase.append("'%s" % timeframe_to_str(self._timeframe))
+            v = "'%s" % timeframe_to_str(self._timeframe)
+            entry_phrase.append(v)
+            assign_phrase.append(v)
 
         if self._label:
-            phrase.append("-%s" % self._label)
+            v = "-%s" % self._label
+            entry_phrase.append(v)
+            assign_phrase.append(v)
+
+        if self._entry_timeout:
+            v = "/%s" % self._entry_timeout
+            entry_phrase.append(v)
+            # assign_phrase.append(v)
 
         if self._expiry:
-            phrase.append("/%s" % self._expiry)
+            v = "+%s" % self._expiry
+            entry_phrase.append(v)
+            assign_phrase.append(v)
 
-        phrase.append(strategy_trader.instrument.format_quantity(self.oq))
+        quantity_rate = round(self.invested_quantity / strategy_trader.instrument.trade_quantity, 2)
+
+        if quantity_rate != 1.0:
+            entry_phrase.append("*%g" % quantity_rate)
+
+        assign_phrase.append(strategy_trader.instrument.format_quantity(self.e or self.oq))
+
         # @todo leverage for phrase command
 
         return (
-            "Trade info - %s - id %s - on %s. Opened %s." % (self.trade_type_to_str(),
-                                                             self.id,
-                                                             strategy_trader.instrument.symbol,
-                                                             self.dump_timestamp(self.eot)),
+            "Trade info - %s - id %s - on %s. Opened %s." % (
+                self.trade_type_to_str(),
+                self.id,
+                strategy_trader.instrument.symbol,
+                datetime.fromtimestamp(self.eot).strftime('%Y-%m-%d %H:%M:%S')),
             "Timeframe %s, Label %s, Entry timeout %s, Expiry %s, %s, Status %s." % (
                 timeframe_to_str(self._timeframe),
                 self._label,
                 timeframe_to_str(self._entry_timeout),
                 self._expiry or "Never",
                 "Manual-Trade" if self._user_trade else "Auto-Trade", self.state_to_str()),
-            "Command %s" % ' '.join(phrase)
+            "-----",
+            "- %s" % ' '.join(entry_phrase),
+            "- assign %s" % ' '.join(assign_phrase),
+            "- close %s %s" % (strategy_trader.instrument.symbol, self.id),
+            "- clean-trade %s %s" % (strategy_trader.instrument.symbol, self.id),
+            "-----",
             # specialize for add row with detail such as orders or positions ids
         )
 

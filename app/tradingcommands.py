@@ -408,6 +408,7 @@ class LongCommand(Command):
         "param7: [*]<decimal> or <decimal>% Quantity rate factor or rate in percent (optional)",
         "param8: [/]<timeframe> Entry timeout timeframe (1m, 4h, 1d..) (optional)",
         "param9: [x]<decimal> Manual leverage if supported (optional)",
+        "param10: [+]<timeframe> Expiry (optional)",
     )
 
     def __init__(self, strategy_service):
@@ -434,6 +435,7 @@ class LongCommand(Command):
         quantity_rate = 1.0
         timeframe = Instrument.TF_4HOUR
         entry_timeout = None
+        expiry = None
         leverage = None
         context = None
 
@@ -507,6 +509,9 @@ class LongCommand(Command):
 
                 elif value.startswith("/"):
                     entry_timeout = timeframe_from_str(value[1:])
+
+                elif value.startswith("+"):
+                    expiry = timeframe_from_str(value[1:])
 
                 elif value.startswith("x"):
                     leverage = float(value[1:])
@@ -539,6 +544,7 @@ class LongCommand(Command):
             'take-profit-price-mode': take_profit_price_mode,
             'timeframe': timeframe,
             'entry-timeout': entry_timeout,
+            'expiry': expiry,
             'leverage': leverage,
             'context': context
         })
@@ -569,6 +575,7 @@ class ShortCommand(Command):
         "param7: [*]<decimal> or <decimal>% Quantity rate factor or rate in percent (optional)",
         "param8: [/]<timeframe> Entry timeout timeframe (1m, 4h, 1d..) (optional)",
         "param9: [x]<decimal> Manual leverage if supported (optional)",
+        "param10: [+]<timeframe> Expiry (optional)",
     )
 
     def __init__(self, strategy_service):
@@ -595,6 +602,7 @@ class ShortCommand(Command):
         quantity_rate = 1.0
         timeframe = Instrument.TF_4HOUR
         entry_timeout = None
+        expiry = None
         leverage = None
         context = None
 
@@ -669,6 +677,9 @@ class ShortCommand(Command):
                 elif value.startswith("/"):
                     entry_timeout = timeframe_from_str(value[1:])
 
+                elif value.startswith("+"):
+                    expiry = timeframe_from_str(value[1:])
+
                 elif value.startswith("x"):
                     leverage = float(value[1:])
 
@@ -700,6 +711,7 @@ class ShortCommand(Command):
             'take-profit-price-mode': take_profit_price_mode,
             'timeframe': timeframe,
             'entry-timeout': entry_timeout,
+            'expiry': expiry,
             'leverage': leverage,
             'context': context
         })
@@ -1214,15 +1226,18 @@ class TradeInfoCommand(Command):
 
 
 class AssignCommand(Command):
-    SUMMARY = "to manually assign a quantity of asset to a new trade in LONG direction"
+    SUMMARY = "to manually assign a quantity of asset or an existing position to a new trade"
     HELP = (
         "param1: <market-id> Market identifier",
-        "param2: [L|S|long|short] Direction (optional) (default long)",
-        "param3: [EP@]<entry-price>",
-        "param4: [SL@]<stop-loss-price> (optional)",
-        "param5: [TP@]<take-profit-price> (optional)",
-        "param6: [']<timeframe> (optional)",
-        "param7: [-]<context-id> (optional)",
+        "param2: [limit|market|trigger] Order type (optional) (default limit)",
+        "param3: [L|S|long|short] Direction (optional) (default long)",
+        "param4: [EP@]<entry-price>",
+        "param5: [SL@]<stop-loss-price> (optional)",
+        "param6: [TP@]<take-profit-price> (optional)",
+        "param7: [']<timeframe> (optional)",
+        "param8: [-]<context-id> (optional)",
+        # "param9: [/]<timeframe> Entry timeout (optional)",
+        "param10: [+]<timeframe> Expiry (optional)",
         "last: <quantity>",
     )
 
@@ -1240,11 +1255,15 @@ class AssignCommand(Command):
 
         # direction base on command name
         direction = 1
+        order_type = 'limit'
         entry_price = None
         stop_loss = 0.0
         take_profit = 0.0
         quantity = 0.0
         timeframe = Instrument.TF_4HOUR
+        # entry_timeout = None
+        expiry = None
+        leverage = None
         context = None
 
         if len(args) < 2:
@@ -1261,6 +1280,12 @@ class AssignCommand(Command):
                     direction = 1
                 elif value == 'S' or value == 'short':
                     direction = -1
+                elif value == 'limit':
+                    order_type = value
+                elif value == 'market':
+                    order_type = value
+                elif value == 'trigger':
+                    order_type = value
                 elif value.startswith("EP@"):
                     entry_price = float(value[3:])
                 elif value.startswith("SL@"):
@@ -1271,6 +1296,12 @@ class AssignCommand(Command):
                     timeframe = timeframe_from_str(value[1:])
                 elif value.startswith("-"):
                     context = value[1:]
+                # elif value.startswith("/"):
+                #     entry_timeout = timeframe_from_str(value[1:])
+                elif value.startswith("+"):
+                    expiry = timeframe_from_str(value[1:])
+                elif value.startswith("x"):
+                    leverage = float(value[1:])
                 else:
                     quantity = float(value)
 
@@ -1298,12 +1329,16 @@ class AssignCommand(Command):
         results = self._strategy_service.command(Strategy.COMMAND_TRADE_ASSIGN, {
             'market-id': market_id,
             'direction': direction,
+            'order-type': order_type,
             'entry-price': entry_price,
             'quantity': quantity,
             'stop-loss': stop_loss,
             'take-profit': take_profit,
             'timeframe': timeframe,
-            'context': context
+            'context': context,
+            # 'entry-timeout': entry_timeout,
+            'expiry': expiry,
+            'leverage': leverage,
         })
 
         return self.manage_results(results)

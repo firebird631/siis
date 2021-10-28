@@ -1049,11 +1049,18 @@ class StrategyAssetTrade(StrategyTrade):
                 upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees'])
 
     def info_report(self, strategy_trader):
-        data = super().info_report(strategy_trader)
+        data = list(super().info_report(strategy_trader))
 
-        return data + (
-            'Entry order id / ref : %s / %s' % (self.entry_oid, self.entry_ref_oid),
-            'Stop order id / ref : %s / %s' % (self.stop_oid, self.stop_ref_oid),
-            'Limit order id / ref : %s / %s' % (self.limit_oid, self.limit_ref_oid),
-            'OCO order id / ref : %s / %s' % (self.oco_oid, self.oco_ref_oid)
-        )
+        if self.entry_oid or self.entry_ref_oid:
+            data.append("Entry order id / ref : %s / %s" % (self.entry_oid, self.entry_ref_oid))
+
+        if self.stop_oid or self.stop_ref_oid:
+            data.append("Stop order id / ref : %s / %s" % (self.stop_oid, self.stop_ref_oid))
+
+        if self.limit_oid or self.limit_ref_oid:
+            data.append("Limit order id / ref : %s / %s" % (self.limit_oid, self.limit_ref_oid))
+
+        if self.oco_oid or self.oco_ref_oid:
+            data.append("OCO order id / ref : %s / %s" % (self.oco_oid, self.oco_ref_oid))
+
+        return tuple(data)

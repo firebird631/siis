@@ -866,11 +866,18 @@ class StrategyIndMarginTrade(StrategyTrade):
                 upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees'])
 
     def info_report(self, strategy_trader):
-        data = super().info_report(strategy_trader)
+        data = list(super().info_report(strategy_trader))
 
-        return data + (
-            'Entry order id / ref : %s / %s' % (self.create_oid, self.create_ref_oid),
-            'Stop order id / ref : %s / %s' % (self.stop_oid, self.stop_ref_oid),
-            'Limit order id / ref : %s / %s' % (self.limit_oid, self.limit_ref_oid),
-            'Position id : %s' % self.position_id,
-        )
+        if self.create_oid or self.create_ref_oid:
+            data.append("Entry order id / ref : %s / %s" % (self.create_oid, self.create_ref_oid))
+
+        if self.stop_oid or self.stop_ref_oid:
+            data.append("Stop order id / ref : %s / %s" % (self.stop_oid, self.stop_ref_oid))
+
+        if self.limit_oid or self.limit_ref_oid:
+            data.append("Limit order id / ref : %s / %s" % (self.limit_oid, self.limit_ref_oid))
+
+        if self.position_id:
+            data.append("Position id : %s" % self.position_id)
+
+        return tuple(data)

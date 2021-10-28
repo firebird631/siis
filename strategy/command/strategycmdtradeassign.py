@@ -31,8 +31,11 @@ def cmd_trade_assign(strategy, strategy_trader, data):
     stop_loss = data.get('stop-loss', 0.0)
     take_profit = data.get('take-profit', 0.0)
     timeframe = data.get('timeframe', Instrument.TF_4HOUR)
+    order_type = data.get('order-type', 'limit')
+    # entry_timeout = data.get('entry-timeout', None)
+    expiry = data.get('expiry', None)
+    leverage = data.get('leverage', None)
     context = data.get('context', None)
-    order_type = data.get('order-type', Order.ORDER_LIMIT)
 
     if quantity <= 0.0:
         results['messages'].append("Missing or empty quantity.")
@@ -40,6 +43,10 @@ def cmd_trade_assign(strategy, strategy_trader, data):
 
     if entry_price <= 0:
         results['messages'].append("Invalid entry price.")
+        results['error'] = True
+
+    if order_type not in ('limit', 'market', 'trigger'):
+        results['messages'].append("Invalid order type.")
         results['error'] = True
 
     if stop_loss:
@@ -80,10 +87,23 @@ def cmd_trade_assign(strategy, strategy_trader, data):
     if results['error']:
         return results
 
+    if order_type == 'limit':
+        order_type = Order.ORDER_LIMIT
+    if order_type == 'market':
+        order_type = Order.ORDER_MARKET
+    if order_type == 'trigger':
+        order_type = Order.ORDER_STOP
+
     trade = StrategyAssetTrade(timeframe)
 
     trade.assign(trader, strategy_trader.instrument, direction, order_type,
-                 entry_price, quantity, take_profit, stop_loss)
+                 entry_price, quantity, take_profit, stop_loss, leverage=leverage)
+
+    # if entry_timeout:
+    #     trade.entry_timeout = entry_timeout
+
+    if expiry:
+        trade.expiry = expiry
 
     if context:
         if not strategy_trader.set_trade_context(trade, context):
