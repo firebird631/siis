@@ -292,13 +292,14 @@ class Connector(object):
             try:
                 results = self.query_public('Trades', params)
             except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 502:
+                if 500 <= e.response.status_code <= 599 or 1000 <= e.response.status_code <= 1100:
                     # bad gateway service, retry for 3 times delayed by 5 seconds
                     time.sleep(5.0)
                     retry_count += 1
 
                     if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
-                        raise ValueError("Kraken historical trades : Multiple failures after consecutive errors 502.")
+                        raise ValueError("Kraken historical trades : Multiple failures after consecutive errors %s." %
+                                         e.response.status_code)
 
                     continue
                 else:
@@ -387,13 +388,14 @@ class Connector(object):
             try:
                 results = self.query_public('OHLC', params)
             except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 502:
+                if 500 <= e.response.status_code <= 599 or 1000 <= e.response.status_code <= 1100:
                     # bad gateway service, retry for 3 times delayed by 5 seconds
                     time.sleep(5.0)
                     retry_count += 1
 
                     if retry_count > Connector.CANDLES_HISTORY_MAX_RETRY:
-                        raise ValueError("Kraken historical candles : Multiple failures after consecutive errors 502.")
+                        raise ValueError("Kraken historical candles : Multiple failures after consecutive errors %s" %
+                                         e.response.status_code)
 
                     continue
                 else:
@@ -596,13 +598,14 @@ class Connector(object):
             try:
                 results = self.query_private('ClosedOrders', params)
             except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 502:
+                if 500 <= e.response.status_code <= 599 or 1000 <= e.response.status_code <= 1100:
                     # bad gateway service, retry for 3 times delayed by 5 seconds
                     time.sleep(5.0)
                     retry_count += 1
 
                     if retry_count > Connector.ORDER_HISTORY_MAX_RETRY:
-                        raise ValueError("Kraken historical orders : Multiple failures after consecutive errors 502.")
+                        raise ValueError("Kraken historical orders : Multiple failures after consecutive errors %s." %
+                                         e.response.status_code)
 
                     continue
                 else:
@@ -958,7 +961,7 @@ class Connector(object):
             try:
                 results = self.query_private(method, data, timeout)
             except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 502:
+                if 500 <= e.response.status_code <= 599 or 1000 <= e.response.status_code <= 1100:
                     # bad gateway service, retry for 3 times delayed by 5 seconds
                     time.sleep(5.0)
                     retry_count += 1
@@ -979,7 +982,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
-                        raise ValueError("Kraken query private : %s !" % '\n'.join(results['error']))
+                        break
 
                     continue
 
@@ -988,7 +991,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
-                        raise ValueError("Kraken query private : %s !" % '\n'.join(results['error']))
+                        break
 
                     continue
 
@@ -1004,7 +1007,7 @@ class Connector(object):
             try:
                 results = self.query_private(method, data, timeout)
             except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 502:
+                if 500 <= e.response.status_code <= 599 or 1000 <= e.response.status_code <= 1100:
                     # bad gateway service, retry for 3 times delayed by 5 seconds
                     time.sleep(5.0)
                     retry_count += 1
@@ -1029,7 +1032,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
-                        raise ValueError("Kraken query private : %s !" % '\n'.join(results['error']))
+                        break
 
                     continue
 
@@ -1038,7 +1041,7 @@ class Connector(object):
                     retry_count += 1
 
                     if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
-                        raise ValueError("Kraken query private : %s !" % '\n'.join(results['error']))
+                        break
 
                     continue
 

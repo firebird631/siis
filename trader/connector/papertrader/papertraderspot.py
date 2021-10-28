@@ -59,10 +59,13 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
             trader.unlock()
 
             # and then rejected order
-            trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, trader.name, (order.symbol, order.ref_order_id))
+            trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, trader.name, (
+                order.symbol, order.ref_order_id))
 
-            logger.error("Not enought quote asset quantity for %s with %s (have %s)!" % (quote_asset.symbol, quote_qty, quote_asset.quantity))
-            return False
+            logger.error("Not enough quote asset quantity for %s with %s (have %s)!" % (
+                quote_asset.symbol, quote_qty, quote_asset.quantity))
+
+            return Order.REASON_INSUFFICIENT_FUNDS
 
         # retain the fee on the quote asset
         commission_asset = quote_asset.symbol
@@ -77,7 +80,8 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
         # base asset. it will receive its own signal (ignored)
         update_asset(trader, order.order_type, base_asset, market, 0, open_exec_price, base_qty, True, trader.timestamp)
         # quote asset
-        update_asset(trader, order.order_type, quote_asset, quote_market, 0, quote_exec_price, quote_qty, False, trader.timestamp)
+        update_asset(trader, order.order_type, quote_asset, quote_market, 0, quote_exec_price,
+                     quote_qty, False, trader.timestamp)
 
         # directly executed quantity
         order.executed = base_qty
@@ -109,7 +113,8 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
         }
 
         # signal as watcher service (opened + full traded qty and immediately deleted)
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (order.symbol, order_data, order.ref_order_id))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (
+            order.symbol, order_data, order.ref_order_id))
 
         order_data = {
             'id': order.order_id,
@@ -133,8 +138,10 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
             'commission-asset': commission_asset
         }
 
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (order.symbol, order_data, order.ref_order_id))
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (order.symbol, order.order_id, ""))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
+            order.symbol, order_data, order.ref_order_id))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (
+            order.symbol, order.order_id, ""))
 
     elif order.direction == Position.SHORT:
         # sell
@@ -146,12 +153,13 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
             trader.unlock()
 
             # and then rejected order
-            trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, trader.name, (order.symbol, order.ref_order_id))
+            trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, trader.name, (
+                order.symbol, order.ref_order_id))
 
-            logger.error("Not enought base asset quantity for %s with %s (have %s)!" % (
+            logger.error("Not enough base asset quantity for %s with %s (have %s)!" % (
                 base_asset.symbol, market.format_quantity(base_qty), market.format_quantity(base_asset.quantity)))
 
-            return False
+            return Order.REASON_INSUFFICIENT_FUNDS
 
         # retain the fee from the quote asset
         commission_asset = quote_asset.symbol
@@ -167,9 +175,11 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
         delta_price = close_exec_price - base_asset.price
 
         # it will receive its own signal (ignored)
-        update_asset(trader, order.order_type, base_asset, market, 0, close_exec_price, base_qty, False, trader.timestamp)
+        update_asset(trader, order.order_type, base_asset, market, 0, close_exec_price, base_qty,
+                     False, trader.timestamp)
         # quote asset
-        position_gain_loss_currency = update_asset(trader, order.order_type, quote_asset, quote_market, 0, quote_exec_price, quote_qty, True, trader.timestamp)
+        position_gain_loss_currency = update_asset(trader, order.order_type, quote_asset, quote_market, 0,
+                                                   quote_exec_price, quote_qty, True, trader.timestamp)
 
         gain_loss_rate = ((close_exec_price - base_asset.price) / base_asset.price) if base_asset.price else 0.0
         position_gain_loss = delta_price * base_qty
@@ -205,7 +215,8 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
         }
 
         # signal as watcher service (opened + fully traded qty and immediately deleted)
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (order.symbol, order_data, order.ref_order_id))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (
+            order.symbol, order_data, order.ref_order_id))
 
         order_data = {
             'id': order.order_id,
@@ -229,18 +240,20 @@ def exec_buysell_order(trader, order, market, open_exec_price, close_exec_price)
             'commission-asset': commission_asset
         }
 
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (order.symbol, order_data, order.ref_order_id))
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (order.symbol, order.order_id, ""))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
+            order.symbol, order_data, order.ref_order_id))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (
+            order.symbol, order.order_id, ""))
 
-    return result
+    return Order.REASON_OK if result else Order.REASON_ERROR
 
 
 def update_asset(trader, order_type, asset, market, trade_id, exec_price, trade_qty, buy_or_sell, timestamp):
     """
     Update asset price and quantity.
-    @todo It seems sometime we have a quantiy lacking issue.
+    @todo It seems sometime we have a quantity lacking issue.
     """
-    curr_price = asset.price  # in asset prefered quote symbol
+    curr_price = asset.price  # in asset preferred quote symbol
     curr_qty = asset.quantity
 
     # base price in quote, time in seconds
@@ -251,11 +264,11 @@ def update_asset(trader, order_type, asset, market, trade_id, exec_price, trade_
             # asset is not quote, quote is not default, get its price at trade time
             if trader._watcher:
                 if trader._watcher.has_instrument(market.quote+trader._account.currency):
-                    # direct
-                    quote_price = trader.history_price(market.quote+trader._account.currency, timestamp)  # REST call but cost API call and delay
+                    # direct, REST call but cost API call and delay
+                    quote_price = trader.history_price(market.quote+trader._account.currency, timestamp)
                 elif trader._watcher.has_instrument(trader._account.currency+market.quote):
-                    # indirect
-                    quote_price = 1.0 / trader.history_price(trader._account.currency+market.quote, timestamp)  # REST call but cost API call and delay
+                    # indirect, REST call but cost API call and delay
+                    quote_price = 1.0 / trader.history_price(trader._account.currency+market.quote, timestamp)
                 else:
                     quote_price = 0.0  # might not occurs
                     logger.warning("Unsupported quote asset " + market.quote)

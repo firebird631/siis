@@ -1354,15 +1354,16 @@ class StrategyTrader(object):
             if trade.direction > 0:
                 if self.instrument.close_exec_price(trade.direction) >= trade.tp:
                     trader = self.strategy.trader()
-                    trade.cancel_open(trader, self.instrument)
-                    trade.exit_reason = trade.REASON_CANCELED_TARGETED
+                    if trade.cancel_open(trader, self.instrument) > 0:
+                        trade.exit_reason = trade.REASON_CANCELED_TARGETED
+                        return True
+
             elif trade.direction < 0:
                 if self.instrument.close_exec_price(trade.direction) <= trade.tp:
                     trader = self.strategy.trader()
-                    trade.cancel_open(trader, self.instrument)
-                    trade.exit_reason = trade.REASON_CANCELED_TARGETED
-
-            return True
+                    if trade.cancel_open(trader, self.instrument) > 0:
+                        trade.exit_reason = trade.REASON_CANCELED_TARGETED
+                        return True
 
         return False
 
@@ -1394,8 +1395,9 @@ class StrategyTrader(object):
                 if (trade.is_duration_timeout(timestamp, trade.context.take_profit.timeout) and
                         trade_profit_loss < trade.context.take_profit.timeout_distance):
                     trader = self.strategy.trader()
-                    trade.close(trader, self.instrument)
-                    trade.exit_reason = trade.REASON_MARKET_TIMEOUT
+
+                    if trade.close(trader, self.instrument) > 0:
+                        trade.exit_reason = trade.REASON_MARKET_TIMEOUT
 
                     return True
 
@@ -1405,8 +1407,9 @@ class StrategyTrader(object):
                 if (trade.is_duration_timeout(timestamp, trade.context.stop_loss.timeout) and
                         -trade_profit_loss > trade.context.stop_loss.timeout_distance):
                     trader = self.strategy.trader()
-                    trade.close(trader, self.instrument)
-                    trade.exit_reason = trade.REASON_MARKET_TIMEOUT
+
+                    if trade.close(trader, self.instrument) > 0:
+                        trade.exit_reason = trade.REASON_MARKET_TIMEOUT
 
                     return True
 

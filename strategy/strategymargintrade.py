@@ -83,7 +83,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         self._stats['entry-order-type'] = order.order_type
 
-        if trader.create_order(order, instrument):
+        if trader.create_order(order, instrument) > 0:
             # keep the related create position identifier if available
             self.create_oid = order.order_id
             self.position_id = order.position_id
@@ -120,7 +120,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         self.oq = order.quantity  # ordered quantity
 
-        if trader.create_order(order, instrument):
+        if trader.create_order(order, instrument) > 0:
             self.create_oid = order.order_id
             self.position_id = order.position_id  # might be market-id
 
@@ -141,7 +141,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         if self.create_oid:
             # cancel the remaining buy order
-            if trader.cancel_order(self.create_oid, instrument):
+            if trader.cancel_order(self.create_oid, instrument) > 0:
                 self.create_ref_oid = None
                 self.create_oid = None
 
@@ -156,7 +156,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         if self.stop_oid:
             # cancel the stop order
-            if trader.cancel_order(self.stop_oid, instrument):
+            if trader.cancel_order(self.stop_oid, instrument) > 0:
                 self.stop_ref_oid = None
                 self.stop_oid = None
                 self.stop_order_qty = 0.0
@@ -173,7 +173,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         if self.limit_oid:
             # cancel the limit order
-            if trader.cancel_order(self.limit_oid, instrument):
+            if trader.cancel_order(self.limit_oid, instrument) > 0:
                 self.limit_ref_oid = None
                 self.limit_oid = None
                 self.limit_order_qty = 0.0
@@ -193,7 +193,7 @@ class StrategyMarginTrade(StrategyTrade):
     def cancel_open(self, trader, instrument):
         if self.create_oid:
             # cancel the buy order
-            if trader.cancel_order(self.create_oid, instrument):
+            if trader.cancel_order(self.create_oid, instrument) > 0:
                 self.create_ref_oid = None
                 self.create_oid = None
 
@@ -211,7 +211,7 @@ class StrategyMarginTrade(StrategyTrade):
     def modify_take_profit(self, trader, instrument, limit_price):
         if self.limit_oid:
             # cancel the limit order and create a new one
-            if trader.cancel_order(self.limit_oid, instrument):
+            if trader.cancel_order(self.limit_oid, instrument) > 0:
                 self.limit_ref_oid = None
                 self.limit_oid = None
                 self.limit_order_qty = 0.0
@@ -242,7 +242,7 @@ class StrategyMarginTrade(StrategyTrade):
 
             self._stats['take-profit-order-type'] = order.order_type
 
-            if trader.create_order(order, instrument):
+            if trader.create_order(order, instrument) > 0:
                 self.limit_oid = order.order_id
                 self.limit_order_qty = order.quantity
 
@@ -263,7 +263,7 @@ class StrategyMarginTrade(StrategyTrade):
     def modify_stop_loss(self, trader, instrument, stop_price):
         if self.stop_oid:
             # cancel the stop order and create a new one
-            if trader.cancel_order(self.stop_oid, instrument):
+            if trader.cancel_order(self.stop_oid, instrument) > 0:
                 self.stop_ref_oid = None
                 self.stop_oid = None
             else:
@@ -293,7 +293,7 @@ class StrategyMarginTrade(StrategyTrade):
 
             self._stats['stop-order-type'] = order.order_type
 
-            if trader.create_order(order, instrument):
+            if trader.create_order(order, instrument) > 0:
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
                 
@@ -321,7 +321,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         if self.create_oid:
             # cancel the remaining buy order
-            if trader.cancel_order(self.create_oid, instrument):
+            if trader.cancel_order(self.create_oid, instrument) > 0:
                 self.create_ref_oid = None
                 self.create_oid = None
 
@@ -331,7 +331,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         if self.stop_oid:
             # cancel the stop order
-            if trader.cancel_order(self.stop_oid, instrument):
+            if trader.cancel_order(self.stop_oid, instrument) > 0:
                 self.stop_ref_oid = None
                 self.stop_oid = None
             else:
@@ -339,7 +339,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         if self.limit_oid:
             # cancel the limit order
-            if trader.cancel_order(self.limit_oid, instrument):
+            if trader.cancel_order(self.limit_oid, instrument) > 0:
                 self.limit_ref_oid = None
 
         if self.e - self.x > 0.0:
@@ -358,7 +358,7 @@ class StrategyMarginTrade(StrategyTrade):
 
             self._stats['stop-order-type'] = order.order_type
 
-            if trader.create_order(order, instrument):
+            if trader.create_order(order, instrument) > 0:
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
 

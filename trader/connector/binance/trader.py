@@ -178,11 +178,11 @@ class BinanceTrader(Trader):
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
         """
         if not order or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if not self._watcher.connector:
             error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
-            return False
+            return Order.REASON_ERROR
 
         # order type
         if order.order_type == Order.ORDER_MARKET:
@@ -198,8 +198,9 @@ class BinanceTrader(Trader):
 
         else:
             error_logger.error("Trader %s refuse order because the order type is unsupported %s in order %s !" % (
-                self.name, symbol, order.ref_order_id))
-            return False
+                self.name, market_or_instrument.symbol, order.ref_order_id))
+
+            return Order.REASON_INVALID_ARGS
 
         symbol = order.symbol
         side = Client.SIDE_BUY if order.direction == Order.LONG else Client.SIDE_SELL
@@ -211,7 +212,8 @@ class BinanceTrader(Trader):
             # reject if lesser than min size
             error_logger.error("Trader %s refuse order because the min size is not reached (%s<%s) %s in order %s !" % (
                 self.name, order.quantity, market_or_instrument.min_size, symbol, order.ref_order_id))
-            return False
+
+            return Order.REASON_INVALID_ARGS
 
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
         # quantity = market_or_instrument.format_quantity(market_or_instrument.adjust_quantity(order.quantity))
@@ -219,10 +221,11 @@ class BinanceTrader(Trader):
         notional = quantity * (order.price or market_or_instrument.market_ask)
 
         if notional < market_or_instrument.min_notional:
-            # reject if lesser than min notinal
+            # reject if lesser than min notional
             error_logger.error("Trader %s refuse order because the min notional is not reached (%s<%s) %s in order %s !" % (
                 self.name, notional, market_or_instrument.min_notional, symbol, order.ref_order_id))
-            return False
+
+            return Order.REASON_INVALID_ARGS
 
         data = {
             'symbol': symbol,
@@ -257,7 +260,8 @@ class BinanceTrader(Trader):
         data['newClientOrderId'] = order.ref_order_id
         # data['icebergQty'] = 0.0
 
-        logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('quantity'), symbol, data.get('price')))
+        logger.info("Trader %s order %s %s %s @%s" % (self.name, order.direction_to_str(), data.get('quantity'),
+                                                      symbol, data.get('price')))
 
         result = None
         reason = None
@@ -273,15 +277,19 @@ class BinanceTrader(Trader):
             reason = str(e)
 
         if reason:
-            error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (self.name, order.direction_to_str(), quantity, symbol, reason))
-            return False
+            error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (
+                self.name, order.direction_to_str(), quantity, symbol, reason))
+
+            # @todo reason to error
+            return Order.REASON_ERROR
 
         if result:
             if result.get('status', "") == Client.ORDER_STATUS_REJECTED:
-                error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), quantity, symbol))
+                error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(),
+                                                                            quantity, symbol))
                 order_logger.error(result)
-                
-                return False
+
+                return Order.REASON_ERROR
 
             if 'orderId' in result:
                 order_logger.info(result)
@@ -295,23 +303,24 @@ class BinanceTrader(Trader):
                 #     # partially or fully executed quantity
                 #     order.set_executed(float(result['executedQty']), result.get['status'] == "FILLED", float(result['price']))
 
-                return True
+                return Order.REASON_OK
 
+        # unknown error
         error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), quantity, symbol))
         order_logger.error(result)
 
-        return False
+        return Order.REASON_ERROR
 
     def cancel_order(self, order_id, market_or_instrument):
         """
         Cancel a pending or partially filled order.
         """
         if not order_id or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if not self._watcher.connector:
             error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
-            return False
+            return Order.REASON_ERROR
 
         symbol = market_or_instrument.market_id
 
@@ -335,18 +344,24 @@ class BinanceTrader(Trader):
             reason = str(e)
 
         if reason:
-            error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol, reason))
-            return False
+            error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol,
+                                                                                      reason))
+
+            # @todo error to reason
+            return Order.REASON_ERROR
 
         if result:
             if result.get('status', "") == Client.ORDER_STATUS_REJECTED:
-                error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol, reason))
+                error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol,
+                                                                                          reason))
                 order_logger.error(result)
-                return False
+
+                return Order.REASON_ERROR
 
             order_logger.info(result)
 
-        return True
+        # ok
+        return Order.REASON_OK
 
     def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         """

@@ -419,14 +419,14 @@ class Trader(Runnable):
         Create an order. The symbol of the order must be on of the trader instruments.
         @note This call depend of the state of the connector.
         """
-        return False
+        return 0
 
     def cancel_order(self, order_id, market_or_instrument):
         """
         Cancel an existing order. The symbol of the order must be on of the trader instruments.
         @note This call depend of the state of the connector.
         """
-        return False
+        return 0
 
     def cancel_all_orders(self, market_or_instrument):
         """
@@ -1813,8 +1813,8 @@ class Trader(Runnable):
         for order in orders:
             # query cancel order
             try:
-                self.cancel_order(order[0], order[1])
-                Terminal.inst().action("Cancel order %s..." % (order[0], ))
+                if self.cancel_order(order[0], order[1]) > 0:
+                    Terminal.inst().action("Cancel order %s..." % order[0])
             except Exception as e:
                 error_logger.error(repr(e))
 
@@ -1866,7 +1866,7 @@ class Trader(Runnable):
                     # generated a reference order id
                     self.set_ref_order_id(order)
 
-                    if self.create_order(order, market):
+                    if self.create_order(order, market) > 0:
                         Terminal.inst().action("Create order %s to sell all of %s on %s..." % (
                             order.order_id, asset[0], market.market_id))
                     else:
@@ -1891,8 +1891,8 @@ class Trader(Runnable):
 
         # query cancel order
         try:
-            self.cancel_order(order_id, market)
-            Terminal.inst().action("Cancel order %s..." % (order_id, ))
+            if self.cancel_order(order_id, market) > 0:
+                Terminal.inst().action("Cancel order %s..." % order_id)
         except Exception as e:
             error_logger.error(repr(e))
 

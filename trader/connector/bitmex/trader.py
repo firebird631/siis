@@ -216,11 +216,11 @@ class BitMexTrader(Trader):
 
     def create_order(self, order, market_or_instrument):
         if not order or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if not self._watcher.connector:
             error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
-            return False
+            return Order.REASON_ERROR
 
         postdict = {
             'symbol': order.symbol,
@@ -301,7 +301,8 @@ class BitMexTrader(Trader):
             result = self._watcher.connector.request(path="order", postdict=postdict, verb='POST', max_retries=15)
         except Exception as e:
             error_logger.error(str(e))
-            return False
+            # @todo reason to error
+            return Order.REASON_ERROR
 
         order_logger.info(result)
 
@@ -310,7 +311,8 @@ class BitMexTrader(Trader):
             error_logger.error("%s rejected order %s from %s %s - cause : %s !" % (
                 self.name, order.direction_to_str(), order.quantity, order.symbol, result['ordRejReason']))
 
-            return False
+            # @todo reason to error
+            return Order.REASON_ERROR
 
         # store the order with its order id
         order.set_order_id(result['orderID'])
@@ -318,15 +320,15 @@ class BitMexTrader(Trader):
         order.created_time = self._parse_datetime(result.get('timestamp')).replace(tzinfo=UTC()).timestamp()
         order.transact_time = self._parse_datetime(result.get('transactTime')).replace(tzinfo=UTC()).timestamp()
 
-        return True
+        return Order.REASON_OK
 
     def cancel_order(self, order_id, market_or_instrument):
         if not order_id or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if not self._watcher.connector:
             error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
-            return False
+            return Order.REASON_ERROR
 
         symbol = market_or_instrument.market_id
 
@@ -339,18 +341,26 @@ class BitMexTrader(Trader):
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
                 # no longer exist, accepts as ok
-                error_logger.warning("%s rejected cancel order %s %s - cause : no longer exists !" % (self.name, order_id, symbol))
-                return True
+                error_logger.warning("%s rejected cancel order %s %s - cause : no longer exists !" % (self.name,
+                                                                                                      order_id, symbol))
+
+                # @todo question
+                return Order.REASON_OK
             else:
-                error_logger.error("%s rejected cancel order %s %s - cause : %s !" % (self.name, order_id, symbol, str(e)))
-                return False
+                error_logger.error("%s rejected cancel order %s %s - cause : %s !" % (self.name, order_id,
+                                                                                      symbol, str(e)))
+
+                # @todo error to reason
+                return Order.REASON_ERROR
         except Exception as e:
             error_logger.error(str(e))
-            return False
+
+            # @todo error to reason
+            return Order.REASON_ERROR
 
         order_logger.info(result)
 
-        return True
+        return Order.REASON_OK
 
     def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         """Not supported, use create_order for that"""

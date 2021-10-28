@@ -202,11 +202,11 @@ class IGTrader(Trader):
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
         """
         if not order or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if not self._watcher.connector:
             error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
-            return False
+            return Order.REASON_ERROR
 
         level = None
         force_open = False  # can be used to hedge force_open = order.hedging
@@ -284,11 +284,13 @@ class IGTrader(Trader):
         logger.info("Trader %s order %s %s @%s %s" % (self.name, order.direction_to_str(), epic, limit_level, size))
 
         try:
-            results = self._watcher.connector.ig.create_open_position(currency_code, direction, epic, expiry,
-                                                    force_open, guaranteed_stop, level,
-                                                    limit_distance, limit_level, order_type,
-                                                    quote_id, size, stop_distance, stop_level, time_in_force,
-                                                    deal_reference)
+            results = self._watcher.connector.ig.create_open_position(
+                currency_code, direction, epic, expiry,
+                force_open, guaranteed_stop, level,
+                limit_distance, limit_level, order_type,
+                quote_id, size, stop_distance, stop_level, time_in_force,
+                deal_reference)
+
             order_logger.info(results)
 
             if results.get('dealStatus', '') == 'ACCEPTED':
@@ -297,9 +299,13 @@ class IGTrader(Trader):
                 order.set_order_id(results['dealReference'])
                 order.set_position_id(results['dealId'])
 
-                # but it's in local account timezone, not createdDateUTC... but API v2 provides that (@todo look with header v=2 in place of v=1)
-                order.created_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
-                order.transact_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
+                # but it's in local account timezone, not createdDateUTC...
+                # but API v2 provides that
+                # @todo look with header v=2 in place of v=1
+                order.created_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'),
+                                                       "%Y/%m/%d %H:%M:%S:%f").timestamp()
+                order.transact_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'),
+                                                        "%Y/%m/%d %H:%M:%S:%f").timestamp()
 
                 if not order.created_time:
                     order.created_time = self.timestamp
@@ -309,44 +315,57 @@ class IGTrader(Trader):
                 # executed price (no change in limit, but useful when market order)
                 order.entry_price = results.get('level')
             else:
-                error_logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, results.get('reason')))
-                return False
+                error_logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (
+                    self.name, order.direction_to_str(), size, epic, results.get('reason')))
+
+                # @todo reason to error
+                return Order.REASON_ERROR
 
         except IGException as e:
-            error_logger.error("Trader %s except on order %s of %s %s - cause : %s !" % (self.name, order.direction_to_str(), size, epic, repr(e)))
-            return False
+            error_logger.error("Trader %s except on order %s of %s %s - cause : %s !" % (
+                self.name, order.direction_to_str(), size, epic, repr(e)))
 
-        return True
+            # @todo reason to error
+            return Order.REASON_ERROR
+
+        return Order.REASON_OK
 
     def cancel_order(self, order_id, market_or_instrument):
         if not order_id or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if not self._watcher.connector:
             error_logger.error("Trader %s refuse to cancel order because of missing connector" % (self.name,))
-            return False
+            return Order.REASON_ERROR
 
         try:
             results = self._watcher.connector.ig.delete_working_order(order_id)
             order_logger.info(results)
 
             if results.get('dealReference', '') != 'ACCEPTED':
-                error_logger.error("%s rejected cancel order %s - %s !" % (self.name, order_id, market_or_instrument.market_id))
-                return False
+                error_logger.error("%s rejected cancel order %s - %s !" % (self.name, order_id,
+                                                                           market_or_instrument.market_id))
+
+                # @todo reason to error
+                return Order.REASON_ERROR
 
         except IGException as e:
-            error_logger.error("%s except on order %s cancelation - cause : %s !" % (self.name, order_id, str(e)))
-            return False
+            error_logger.error("%s except on order %s cancellation - cause : %s !" % (self.name, order_id, str(e)))
 
-        return True
+            # @todo reason to error
+            return Order.REASON_ERROR
+
+        return Order.REASON_OK
 
     def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         """
         Close an existing position by its position identifier.
         @param position_id str Unique position identifier (dealId)
-        @param market boolean True if close at market (no limit price)
-        @param limit_price float If market is False then use this limit price
-        @note epic and expiry must be none if there is a defined dealId.
+        @param market_or_instrument boolean True if close at market (no limit price)
+        @param direction
+        @param quantity
+        @param market
+        @param limit_price
         """
         if not position_id or not market_or_instrument:
             return False

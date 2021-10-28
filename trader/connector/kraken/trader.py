@@ -203,7 +203,11 @@ class KrakenTrader(Trader):
 
     def create_order(self, order, market_or_instrument):
         if not order or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
+
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
+            return Order.REASON_ERROR
 
         # oflags = comma delimited list of order flags (optional):
         #     viqc = volume in quote currency (not available for leveraged orders)
@@ -241,7 +245,7 @@ class KrakenTrader(Trader):
         #     # reject if lesser than min size
         #     error_logger.error("Trader %s refuse order because the min size is not reached (%s<%s) %s in order %s !" % (
         #         self.name, order.quantity, market_or_instrument.min_size, pair, order.ref_order_id))
-        #     return False
+        #     return Order.REASON_INSUFFICIENT_FUNDS
 
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
         # volume = market_or_instrument.format_quantity(market_or_instrument.adjust_quantity(order.quantity))
@@ -252,7 +256,7 @@ class KrakenTrader(Trader):
         #     # reject if lesser than min notional
         #     error_logger.error("Trader %s refuse order because the min notional is not reached (%s<%s) %s in order %s !" % (
         #         self.name, notional, market_or_instrument.min_notional, pair, order.ref_order_id))
-        #     return False
+        #     return Order.REASON_INVALID_ARGS
 
         data = {
             'pair': pair,
@@ -284,9 +288,7 @@ class KrakenTrader(Trader):
         # expiretm (for expiration time, 0, none or not defined no expiry)
 
         # close['ordertype'], close['price'], close['price2'] for optional closing order
-
-        # @todo for testing only
-        # data['validate'] = True
+        # data['validate'] = True  # for testing only
 
         logger.info("Trader %s order %s %s %s @%s" % (
             self.name, order.direction_to_str(), data.get('volume'), pair, data.get('price')))
@@ -294,23 +296,19 @@ class KrakenTrader(Trader):
         try:
             results = self._watcher.connector.create_order(data)
         except Exception as e:
-            order.reason = Order.REASON_ERROR
-
             error_logger.error("Trader %s rejected order %s %s %s - exception : %s" % (
                 self.name, order.direction_to_str(), volume, pair, str(e)))
 
-            return False
+            return Order.REASON_UNREACHABLE_SERVICE
 
         if results:
             if results.get('error', []):
                 # failed
-                order.reason = KrakenTrader.error_code_to_reason(results['error'][0])
-
                 order_logger.error(results)
                 error_logger.error("Trader %s rejected order %s %s %s - reason : %s" % (
                     self.name, order.direction_to_str(), volume, pair, ','.join(results['error'])))
 
-                return False
+                return KrakenTrader.error_code_to_reason(results['error'][0])
 
             elif results.get('result', {}):
                 # ok
@@ -323,66 +321,56 @@ class KrakenTrader(Trader):
                 order.created_time = time.time()
                 order.transact_time = time.time()
 
-                return True
+                return Order.REASON_OK
 
-        # rejected
-        order.reason = Order.REASON_ERROR
-
+        # rejected, unknown reason
         error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), volume, pair))
         order_logger.error(results)
 
-        return False
+        return Order.REASON_ERROR
 
     def cancel_order(self, order_id, market_or_instrument):
         if not order_id or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if not self._watcher.connector:
             error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
-            return False
+            return Order.REASON_ERROR
 
         pair = market_or_instrument.market_id
 
         try:
             results = self._watcher.connector.cancel_order(order_id)
         except Exception as e:
-            # reason = Order.REASON_ERROR
-
             error_logger.error("Trader %s rejected cancel order %s %s - exception : %s" % (
                 self.name, order_id, pair, str(e)))
 
-            return False
+            return Order.REASON_UNREACHABLE_SERVICE
 
         if results:
             if results.get('error', []):
-                # reason = KrakenTrader.error_code_to_reason(results['error'][0])
-
                 order_logger.error(results)
                 error_logger.error("Trader %s rejected cancel order %s %s - reason : %s" % (
                     self.name, order_id, pair, ','.join(results['error'])))
 
-                return False
+                return KrakenTrader.error_code_to_reason(results['error'][0])
 
             elif results.get('result', {}):
                 result = results['result']
 
                 if result.get('count', 0) <= 0:
-                    # reason = Order.REASON_ERROR
-
                     order_logger.error(result)
                     error_logger.error("Trader %s cancel order %s %s invalid count" % (self.name, order_id, pair))
-                    return False
+                    return Order.REASON_ERROR
                 else:
                     order_logger.info(result)
-                    return True
+                    return Order.REASON_OK
 
-        # rejected
-        # reason = Order.REASON_ERROR
-
+        # rejected, unknown reason
         error_logger.error("Trader %s rejected cancel order %s %s" % (self.name, order_id, pair))
         order_logger.error(results)
 
-        return False
+        return Order.REASON_ERROR
 
     def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         if not position_id or not market_or_instrument:
@@ -791,6 +779,7 @@ class KrakenTrader(Trader):
 
     @staticmethod
     def error_code_to_reason(error_code):
+        # @ref https://support.kraken.com/hc/en-us/articles/360001491786-API-error-messages
         if error_code == "EAPI:Invalid nonce":
             return Order.REASON_INVALID_NONCE
 
@@ -818,10 +807,16 @@ class KrakenTrader(Trader):
             return Order.REASON_DENIED
         elif error_code == "EOrder:Cannot open position":
             return Order.REASON_DENIED
+        elif error_code == "ETrade:Locked":
+            return Order.REASON_DENIED
 
         elif error_code == "EService:Unavailable":
             return Order.REASON_UNREACHABLE_SERVICE
         elif error_code == "EService:Busy":
+            return Order.REASON_UNREACHABLE_SERVICE
+        elif error_code == "EGeneral:Temporary lockout":
+            return Order.REASON_UNREACHABLE_SERVICE
+        elif error_code == "EGeneral:Internal error":
             return Order.REASON_UNREACHABLE_SERVICE
 
         elif error_code == "EService:Market in cancel_only mode":

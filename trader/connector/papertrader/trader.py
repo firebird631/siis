@@ -483,19 +483,19 @@ class PaperTrader(Trader):
 
     def create_order(self, order, market_or_instrument):
         if not order or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         trader_market = self._markets.get(market_or_instrument.market_id)
         if not trader_market:
             error_logger.error("Trader %s refuse order because the market %s is not found" % (
                 self.name, market_or_instrument.market_id))
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if (trader_market.min_size > 0.0) and (order.quantity < trader_market.min_size):
             # reject if lesser than min size
             logger.error("Trader %s refuse order because the min size is not reached (%s<%s) %s in ref order %s" % (
                 self.name, order.quantity, trader_market.min_size, order.symbol, order.ref_order_id))
-            return False
+            return Order.REASON_INVALID_ARGS
 
         #
         # price according to order type
@@ -521,11 +521,11 @@ class PaperTrader(Trader):
             close_exec_price = ask_price
         else:
             logger.error("Unsupported direction")
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if not open_exec_price or not close_exec_price:
             logger.error("No order execution price")
-            return False
+            return Order.REASON_INVALID_ARGS
 
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
         quantity = order.quantity
@@ -535,10 +535,10 @@ class PaperTrader(Trader):
             # reject if lesser than min notional
             logger.error("%s refuse order because the min notional is not reached (%s<%s) %s in ref order %s" % (
                 self.name, notional, trader_market.min_notional, order.symbol, order.ref_order_id))
-            return False
+            return Order.REASON_INVALID_ARGS
 
         # unique order id
-        order_id =  "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
+        order_id = "siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
         order.set_order_id(order_id)
         order.created_time = self.timestamp
 
@@ -580,13 +580,13 @@ class PaperTrader(Trader):
             self.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (
                 order.symbol, order_data, order.ref_order_id))
 
-            return True
+            return Order.REASON_OK
 
-        return False
+        return Order.REASON_ERROR
 
     def cancel_order(self, order_id, market_or_instrument):
         if not order_id or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         result = False
 
@@ -600,7 +600,9 @@ class PaperTrader(Trader):
             self.service.watcher_service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (
                 market_or_instrument.market_id, order_id, ""))
 
-        return result
+            return Order.REASON_OK
+
+        return Order.REASON_ERROR
 
     def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
         if not position_id or not market_or_instrument:

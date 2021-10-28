@@ -79,7 +79,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         self._stats['entry-order-type'] = order.order_type
 
-        if trader.create_order(order, instrument):
+        if trader.create_order(order, instrument) > 0:
             # keep the related create position identifier if available
             self.create_oid = order.order_id
             self.position_id = order.position_id
@@ -121,7 +121,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         self.oq = order.quantity  # ordered quantity
 
-        if trader.create_order(order, instrument):
+        if trader.create_order(order, instrument) > 0:
             self.create_oid = order.order_id
             self.position_id = order.position_id  # might be market-id
 
@@ -142,7 +142,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         if self.create_oid:
             # cancel the remaining buy order
-            if trader.cancel_order(self.create_oid, instrument):
+            if trader.cancel_order(self.create_oid, instrument) > 0:
                 self.create_ref_oid = None
                 self.create_oid = None
 
@@ -160,7 +160,7 @@ class StrategyPositionTrade(StrategyTrade):
     def cancel_open(self, trader, instrument):
         if self.create_oid:
             # cancel the buy order
-            if trader.cancel_order(self.create_oid, instrument):
+            if trader.cancel_order(self.create_oid, instrument) > 0:
                 self.create_ref_oid = None
                 self.create_oid = None
 
@@ -211,7 +211,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         if self.create_oid:
             # cancel the remaining buy order
-            if trader.cancel_order(self.create_oid, instrument):
+            if trader.cancel_order(self.create_oid, instrument) > 0:
                 self.create_ref_oid = None
                 self.create_oid = None
 

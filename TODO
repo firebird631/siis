@@ -73,6 +73,9 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 # BUG #
 #######
 
+#117 Kraken have maintenance, cancel-only and post-only market status, could be usefull
+    to manage this state at the strategytrader level.
+
 #114 Supprimer le client chart une fois la version web réalisée, donc ce bug ne devrait plus être
 
 #87 Problème sur le comptage de la quantité de sortie, et du prix moyen de sortie d'un trade

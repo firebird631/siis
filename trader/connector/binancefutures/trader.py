@@ -148,11 +148,11 @@ class BinanceFuturesTrader(Trader):
         @todo Hedging with positionSide
         """
         if not order or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if not self._watcher.connector:
             error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
-            return False
+            return Order.REASON_ERROR
 
         # order type
         if order.order_type == Order.ORDER_MARKET:
@@ -179,7 +179,8 @@ class BinanceFuturesTrader(Trader):
         else:
             error_logger.error("Trader %s refuse order because the order type is unsupported %s in order %s !" % (
                 self.name, market_or_instrument.symbol, order.ref_order_id))
-            return False
+
+            return Order.REASON_INVALID_ARGS
 
         symbol = order.symbol
         side = Client.SIDE_BUY if order.direction == Order.LONG else Client.SIDE_SELL
@@ -191,7 +192,8 @@ class BinanceFuturesTrader(Trader):
             # reject if lesser than min size
             error_logger.error("Trader %s refuse order because the min size is not reached (%s<%s) %s in order %s !" % (
                 self.name, order.quantity, market_or_instrument.min_size, symbol, order.ref_order_id))
-            return False
+
+            return Order.REASON_INVALID_ARGS
 
         # adjust quantity to step min and max, and round to decimal place of min size, and convert it to str
         # quantity = market_or_instrument.format_quantity(market_or_instrument.adjust_quantity(order.quantity))
@@ -202,7 +204,8 @@ class BinanceFuturesTrader(Trader):
             # reject if lesser than min notional
             error_logger.error("Trader %s refuse order because the min notional is not reached (%s<%s) %s in order %s !" % (
                 self.name, notional, market_or_instrument.min_notional, symbol, order.ref_order_id))
-            return False
+
+            return Order.REASON_INVALID_ARGS
 
         data = {
             'symbol': symbol,
@@ -271,7 +274,9 @@ class BinanceFuturesTrader(Trader):
         if reason:
             error_logger.error("Trader %s rejected order %s %s %s - reason : %s !" % (
                 self.name, order.direction_to_str(), quantity, symbol, reason))
-            return False
+
+            # @todo convert reason to error
+            return Order.REASON_ERROR
 
         if result:
             if result.get('status', "") == Client.ORDER_STATUS_REJECTED:
@@ -279,7 +284,7 @@ class BinanceFuturesTrader(Trader):
                     self.name, order.direction_to_str(), quantity, symbol))
                 order_logger.error(result)
 
-                return False
+                return Order.REASON_ERROR
 
             if 'orderId' in result:
                 order_logger.info(result)
@@ -293,24 +298,25 @@ class BinanceFuturesTrader(Trader):
                 #     # partially or fully executed quantity
                 #     order.set_executed(float(result['executedQty']), result.get['status'] == "FILLED", float(result['price']))
 
-                return True
+                return Order.REASON_OK
 
-        error_logger.error("Trader %s rejected order %s %s %s !" % (
-            self.name, order.direction_to_str(), quantity, symbol))
+        # unknown error
+        error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), quantity,
+                                                                    symbol))
         order_logger.error(result)
 
-        return False
+        return Order.REASON_ERROR
 
     def cancel_order(self, order_id, market_or_instrument):
         """
         Cancel a pending or partially filled order.
         """
         if not order_id or not market_or_instrument:
-            return False
+            return Order.REASON_INVALID_ARGS
 
         if not self._watcher.connector:
             error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
-            return False
+            return Order.REASON_INVALID_ARGS
 
         symbol = market_or_instrument.market_id
 
@@ -340,9 +346,11 @@ class BinanceFuturesTrader(Trader):
                 self.name, order_id, symbol, reason))
 
             if code == -2011:  # not exists assume its already canceled
-                return True
+                # @todo question...
+                return Order.REASON_OK
 
-            return False
+            # @todo reason to error
+            return Order.REASON_ERROR
 
         if result:
             if result.get('status', "") == Client.ORDER_STATUS_REJECTED:
@@ -351,13 +359,16 @@ class BinanceFuturesTrader(Trader):
                 order_logger.error(result)
 
                 if code == -2011:  # not exists assume its already canceled
-                    return True
+                    # @todo question...
+                    return Order.REASON_OK
 
-                return False
+                # @todo reason to error
+                return Order.REASON_ERROR
 
             order_logger.info(result)
 
-        return True
+        # ok, done
+        return Order.REASON_OK
 
     def cancel_all_orders(self, market_or_instrument):
         """

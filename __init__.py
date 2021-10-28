@@ -3,9 +3,9 @@
 # @license Copyright (c) 2018 Dream Overflow
 # 
 
-__version__ = '0.2.9'
+__version__ = '0.3.0'
 
 APP_SHORT_NAME = "siis"
 APP_LONG_NAME = "Strategy Indicator Information System"
-APP_VERSION = (0, 2, 9)
-APP_RELEASE = 452
+APP_VERSION = (0, 3, 0)
+APP_RELEASE = 457

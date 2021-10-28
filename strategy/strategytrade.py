@@ -371,7 +371,7 @@ class StrategyTrade(object):
         @param instrument Instrument object.
         @param direction int Order direction (1 or -1)
         @param order_type int Order type (market, limit...)
-        @param order_price float Limit order price or None for market
+        @param order_price float Executed entry price
         @param quantity float Quantity in unit of quantity
         @param take_profit float Initial take-profit price or None
         @param stop_loss float Initial stop-loss price or None

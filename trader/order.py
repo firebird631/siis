@@ -44,20 +44,20 @@ class Order(Keyed):
     TIME_IN_FORCE_FOK = 2  # Fill or kill
     TIME_IN_FORCE_GTD = 3  # Good til date
 
-    REASON_UNDEFINED = 0            # Undefined
-    REASON_OK = 1                   # Order successfully open
-    REASON_INSUFFICIENT_FUNDS = 2   # Insufficient asset quantity to open order
-    REASON_INSUFFICIENT_MARGIN = 3  # Insufficient margin to open order
-    REASON_ERROR = 4                # General error or unspecified
-    REASON_INVALID_ARGS = 5         # Invalid order arguments
-    REASON_DENIED = 6               # User or API key or sign not allowed
-    REASON_UNREACHABLE_SERVICE = 7  # Service is currently or permanently unreachable
-    REASON_RATE_LIMIT = 8           # API rate limit exceeded
-    REASON_ORDER_LIMIT = 9          # Number of order limit exceeded
-    REASON_POSITION_LIMIT = 10      # Number of position limit exceeded
-    REASON_INVALID_NONCE = 11       # Wrong nonce value
-    REASON_CANCEL_ONLY = 12         # Cancel only mode
-    REASON_POST_ONLY = 13           # Post-only mode
+    REASON_UNDEFINED = 0              # Undefined
+    REASON_OK = 1                     # Order successfully open
+    REASON_INSUFFICIENT_FUNDS = -1    # Insufficient asset quantity to open order (permanent)
+    REASON_INSUFFICIENT_MARGIN = -2   # Insufficient margin to open order (permanent)
+    REASON_ERROR = -3                 # General error or unspecified (permanent)
+    REASON_INVALID_ARGS = -4          # Invalid order arguments (permanent)
+    REASON_DENIED = -5                # User or API key or sign not allowed (permanent)
+    REASON_UNREACHABLE_SERVICE = -32  # Service is currently or permanently unreachable (temporary)
+    REASON_RATE_LIMIT = -33           # API rate limit exceeded (temporary)
+    REASON_ORDER_LIMIT = -34          # Number of order limit exceeded (temporary)
+    REASON_POSITION_LIMIT = -35       # Number of position limit exceeded (temporary)
+    REASON_INVALID_NONCE = -36        # Wrong nonce value (temporary)
+    REASON_CANCEL_ONLY = -37          # Cancel only mode (temporary)
+    REASON_POST_ONLY = -38            # Post-only mode (temporary)
 
     def __init__(self, trader, symbol):
         super().__init__()
@@ -317,14 +317,6 @@ class Order(Keyed):
         Returns true if the order would be executed as market.
         """
         return self._order_type in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT)
-
-    # def can_retry(self):
-    #     """
-    #     If the reason of fail to order is a temporary raison return True
-    #     """
-    #     return self._reason in (
-    #         Order.REASON_INVALID_NONCE, Order.REASON_RATE_LIMIT, Order.REASON_UNREACHABLE_SERVICE,
-    #         Order.REASON_POST_ONLY, Order.REASON_CANCEL_ONLY)
 
     def order_type_to_str(self):
         return order_type_to_str(self._order_type)

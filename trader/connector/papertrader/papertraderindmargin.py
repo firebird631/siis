@@ -21,6 +21,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
     """
     current_position = None
     positions = []
+    result = False
 
     trader.lock()
 
@@ -50,7 +51,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         prev_entry_price = current_position.entry_price or close_exec_price
         leverage = order.leverage
 
-        # most of thoose data rarely change except the base_exchange_rate
+        # most of those data rarely change except the base_exchange_rate
         value_per_pip = market.value_per_pip
         contract_size = market.contract_size
         lot_size = market.lot_size
@@ -76,13 +77,18 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 # and then rejected order
                 trader.unlock()
 
-                trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, trader.name, (order.symbol, order.ref_order_id))
+                trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, trader.name, (
+                    order.symbol, order.ref_order_id))
 
-                logger.error("Not enought free margin for %s need %s but have %s!" % (order.symbol, margin_cost, trader.account.margin_balance))
-                return False
+                logger.error("Not enough free margin for %s need %s but have %s!" % (
+                    order.symbol, margin_cost, trader.account.margin_balance))
+
+                return Order.REASON_INSUFFICIENT_MARGIN
 
             # still in long, position size increase and adjust the entry price
-            entry_price = ((current_position.entry_price * current_position.quantity) + (open_exec_price * order.quantity)) / 2
+            entry_price = ((current_position.entry_price * current_position.quantity) + (
+                    open_exec_price * order.quantity)) / 2
+
             current_position.entry_price = entry_price
             current_position.quantity += order.quantity
 
@@ -200,7 +206,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         }
 
         # signal as watcher service (opened + fully traded qty)
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (order.symbol, order_data, order.ref_order_id))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (
+            order.symbol, order_data, order.ref_order_id))
 
         order_data = {
             'id': order.order_id,
@@ -224,7 +231,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             'commission-asset': trader.account.currency
         }
 
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (order.symbol, order_data, order.ref_order_id))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
+            order.symbol, order_data, order.ref_order_id))
 
         #
         # position signal
@@ -244,7 +252,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 'take-profit': None
             }
 
-            trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_DELETED, trader.name, (order.symbol, position_data, order.ref_order_id))
+            trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_DELETED, trader.name, (
+                order.symbol, position_data, order.ref_order_id))
         else:
             # updated position
             position_data = {
@@ -260,10 +269,12 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 # 'profit-loss': @todo here
             }
 
-            trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_UPDATED, trader.name, (order.symbol, position_data, order.ref_order_id))
+            trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_UPDATED, trader.name, (
+                order.symbol, position_data, order.ref_order_id))
 
         # and then deleted order
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (order.symbol, order.order_id, ""))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (
+            order.symbol, order.order_id, ""))
 
         # if position is empty -> closed -> delete it
         if current_position.quantity <= 0.0:
@@ -288,10 +299,13 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             # and then rejected order
             trader.unlock()
 
-            trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, trader.name, (order.symbol, order.ref_order_id))
+            trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, trader.name, (
+                order.symbol, order.ref_order_id))
 
-            logger.error("Not enought free margin for %s need %s but have %s!" % (order.symbol, margin_cost, trader.account.margin_balance))
-            return False
+            logger.error("Not enough free margin for %s need %s but have %s!" % (
+                order.symbol, margin_cost, trader.account.margin_balance))
+
+            return Order.REASON_INSUFFICIENT_MARGIN
 
         # create a new position at market
         position = Position(trader)
@@ -348,7 +362,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         }
 
         # signal as watcher service (opened + fully traded qty)
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (order.symbol, order_data, order.ref_order_id))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (
+            order.symbol, order_data, order.ref_order_id))
 
         order_data = {
             'id': order.order_id,
@@ -373,7 +388,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         }
 
         #logger.info("%s %s %s" % (position.entry_price, position.quantity, order.direction))
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (order.symbol, order_data, order.ref_order_id))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
+            order.symbol, order_data, order.ref_order_id))
 
         #
         # position signal
@@ -391,9 +407,11 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         }
 
         # signal as watcher service (position opened fully completed)
-        trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_OPENED, trader.name, (order.symbol, position_data, order.ref_order_id))
+        trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_OPENED, trader.name, (
+            order.symbol, position_data, order.ref_order_id))
 
         # and then deleted order
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (order.symbol, order.order_id, ""))
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (
+            order.symbol, order.order_id, ""))
 
-    return result
+    return Order.REASON_OK if result else Order.REASON_ERROR
