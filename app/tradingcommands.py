@@ -1357,7 +1357,7 @@ class UserSaveCommand(Command):
     SUMMARY = "to save user data now (strategy traders states, options, regions, trades)"
 
     def __init__(self, strategy_service):
-        super().__init__('save', 's')
+        super().__init__('save', 'SA')
 
         self._strategy_service = strategy_service
 
@@ -1369,6 +1369,85 @@ class UserSaveCommand(Command):
 
         return True, "Successfully saved strategy data for %s - %s" % (
             self._strategy_service.strategy().name, self._strategy_service.strategy().identifier)
+
+
+class UserExportCommand(Command):
+
+    SUMMARY = "to export active trade or history at current state in json or CSV file"
+
+    CHOICES = ("active", "history", "closed", "csv", "json", "pending")
+
+    def __init__(self, strategy_service):
+        super().__init__('export', 'EX')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if not args:
+            return False, "Missing parameters"
+
+        # ie: ":export BTCUSDT active"
+        dataset = "history"
+        market_id = None
+        export_format = "csv"
+        pending = False
+
+        arg_offset = 0
+
+        if len(args) > 4:
+            return False, "Too many parameters"
+
+        if len(args) >= 1:
+            # specific market
+            strategy = self._strategy_service.strategy()
+            if self._strategy_service:
+                if args[0] in strategy.symbols_ids():
+                    market_id = args[0]
+                    arg_offset += 1
+
+        for arg in args[arg_offset:]:
+            if arg not in UserExportCommand.CHOICES:
+                return False, "Unsupported option %s" % arg
+
+            if arg == "active":
+                dataset = "active"
+            elif arg == "history" or arg == "closed":
+                dataset = "history"
+
+            elif arg == "pending":
+                pending = True
+
+            elif arg == "csv":
+                export_format = "csv"
+            elif arg == "json":
+                export_format = "json"
+
+        if market_id:
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT, {
+                'market-id': market_id,
+                'dataset': dataset,
+                'pending': pending,
+                'export-format': export_format
+            })
+        else:
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT_ALL, {
+                'dataset': dataset,
+                'pending': pending,
+                'export-format': export_format,
+            })
+
+        return self.manage_results(results)
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, list(UserExportCommand.CHOICES) + strategy.symbols_ids(), args, tab_pos,
+                                    direction)
+        elif len(args) > 1:
+            return self.iterate(len(args) - 1, UserExportCommand.CHOICES, args, tab_pos, direction)
+
+        return args, 0
 
 
 class SetQuantityCommand(Command):
@@ -1879,6 +1958,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(PauseCommand(strategy_service, notifier_service))
     commands_handler.register(InfoCommand(strategy_service, notifier_service))
     commands_handler.register(UserSaveCommand(strategy_service))
+    commands_handler.register(UserExportCommand(strategy_service))
     commands_handler.register(SetQuantityCommand(strategy_service))
     commands_handler.register(SetAffinityCommand(strategy_service))
     commands_handler.register(SetOptionCommand(strategy_service))
