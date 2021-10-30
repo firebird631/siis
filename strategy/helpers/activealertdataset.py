@@ -35,7 +35,7 @@ def get_all_active_alerts(strategy):
                             'ctd': alert._countdown,
                             'msg': alert._message,
                             'cond': alert.condition_str(),
-                            'cancel': alert.cancelation_str(),
+                            'cancel': alert.cancellation_str(),
                         })
 
         except Exception as e:

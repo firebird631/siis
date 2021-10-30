@@ -22,12 +22,21 @@ class TrendRegion(Region):
         self.dl = 0.0  # delta low trend
         self.dh = 0.0  # delta high trend
 
+        self._low_a = 0.0
+        self._high_a = 0.0
+        self._low_b = 0.0
+        self._high_b = 0.0
+        self._cancellation = 0.0
+
+        self._dl = 0.0
+        self._dh = 0.0
+
     def init(self, parameters):
         self._low_a = parameters.get('low-a', 0.0)
         self._high_a = parameters.get('high-a', 0.0)
         self._low_b = parameters.get('low-b', 0.0)
         self._high_b = parameters.get('high-b', 0.0)
-        self._cancelation = parameters.get('cancelation', 0.0)
+        self._cancellation = parameters.get('cancellation', 0.0)
 
         self._dl = (self._low_b - self._low_a) / (self._expiry - self._created)
         self._dh = (self._high_b - self._high_a) / (self._expiry - self._created)
@@ -63,10 +72,10 @@ class TrendRegion(Region):
             return True
 
         # trigger price reached in accordance with the direction
-        if self._dir == Region.LONG and ask < self._cancelation:
+        if self._dir == Region.LONG and ask < self._cancellation:
             return True
 
-        if self._dir == Region.SHORT and bid > self._cancelation:
+        if self._dir == Region.SHORT and bid > self._cancellation:
             return True
 
         return False
@@ -87,7 +96,7 @@ class TrendRegion(Region):
         params['low-b'] = self._low_b,
         params['high-b'] = self._high_b
 
-        params['cancelation'] = self._cancelation
+        params['cancellation'] = self._cancellation
 
         return params
 
@@ -100,7 +109,7 @@ class TrendRegion(Region):
         data['low-b'] = self._low_b
         data['high-b'] = self._high_b
 
-        data['cancelation'] = self._cancelation
+        data['cancellation'] = self._cancellation
 
         return data
 
@@ -113,4 +122,4 @@ class TrendRegion(Region):
         self._low_b = data.get('low-b', 0.0)
         self._high_b = data.get('high-b', 0.0)
 
-        self._cancelation = data.get('cancelation', 0.0)
+        self._cancellation = data.get('cancellation', 0.0)

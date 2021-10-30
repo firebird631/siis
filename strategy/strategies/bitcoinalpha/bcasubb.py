@@ -226,14 +226,14 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
                     signal.p = self.price.close[-1]
 
                 elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0:  # and (ema_sma < 0):
-                    # cancelation
+                    # cancellation
                     signal = StrategySignal(self.tf, timestamp)
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.dir = 1
                     signal.p = self.price.close[-1]
 
                 elif 3 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d < 0:  # and (ema_sma > 0):
-                    # cancelation
+                    # cancellation
                     signal = StrategySignal(self.tf, timestamp)
                     signal.signal = StrategySignal.SIGNAL_EXIT
                     signal.dir = -1

@@ -175,7 +175,7 @@ class Alert(object):
     def can_delete(self, timestamp, bid, ask):
         """
         By default perform a test on expiration time, but more deletion cases can be added,
-        like a cancelation price trigger.
+        like a cancellation price trigger.
 
         @param timestamp float Current timestamp
         @param bid float last bid price
@@ -227,9 +227,9 @@ class Alert(object):
         """
         return ""
 
-    def cancelation_str(self):
+    def cancellation_str(self):
         """
-        Dump a string with alert cancelation details.
+        Dump a string with alert cancellation details.
         """
         return ""
 

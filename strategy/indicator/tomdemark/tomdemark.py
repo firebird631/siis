@@ -285,7 +285,7 @@ class TomDemarkIndicator(Indicator):
     #             tds[i].tdst = self.hl
 
     #             if self.cd > 0 and tds[i].d != self.cdd:
-    #                 # count-down cancelation when buy-setup appears during a sell count-down or a sell-setup appear during a buy count-down.
+    #                 # count-down cancellation when buy-setup appears during a sell count-down or a sell-setup appear during a buy count-down.
     #                 tds[i].cd = 0
     #                 tds[i].cdd = 0
     #                 tds[i].cdq = False
@@ -308,7 +308,7 @@ class TomDemarkIndicator(Indicator):
     #             # copy from previous
     #             tds[i].tdst = tds[i-1].tdst
 
-    #         # count-down cancelation on TSDT
+    #         # count-down cancellation on TSDT
     #         if ((tds[i-1].d == 1) and (candles[j].close > tds[i].tdst)) or ((tds[i-1].d == -1) and (candles[j].close < tds[i].tdst)):
     #             tds[i].tdst = 0
 
@@ -490,7 +490,7 @@ class TomDemarkIndicator(Indicator):
             self._c.tdst = self._high_low
 
             if self._cd.d > 0 and self._c.d != self._cd.d:
-                # count-down cancelation when buy-setup appears during a sell count-down or a sell-setup appear during a buy count-down.
+                # count-down cancellation when buy-setup appears during a sell count-down or a sell-setup appear during a buy count-down.
                 self._cd = CToken()
 
             if self._agg_cd.d > 0 and self._c.d != self._agg_cd.d:
@@ -500,7 +500,7 @@ class TomDemarkIndicator(Indicator):
             # copy from previous
             self._c.tdst = self._prev_c.tdst
 
-        # count-down cancelation on TDST
+        # count-down cancellation on TDST
         if ((self._prev_c.d > 0) and (close[b] > self._c.tdst)) or ((self._prev_c.d < 0) and (close[b] < self._c.tdst)):
             self._cd = CToken()
             self._agg_cd = CToken()

@@ -16,11 +16,11 @@ class PriceCrossAlert(Alert):
     """
     Alert when price cross up or down a specified value, and at a timeframe or each time if no timeframe defined.
 
-    @todo Persistance
-    @todo Cancelation price
+    @todo Persistence
+    @todo Cancellation price
     """
 
-    __slots__ = '_price', '_price_src', '_cancelation_price', '_last_price', '_last_trigger_timestamp'
+    __slots__ = '_price', '_price_src', '_cancellation_price', '_last_price', '_last_trigger_timestamp'
 
     NAME = "price-cross"
     ALERT = Alert.ALERT_PRICE_CROSS
@@ -32,7 +32,7 @@ class PriceCrossAlert(Alert):
         self._price = 0.0  # price value
         self._price_src = PriceCrossAlert.PRICE_SRC_BID  # source of the price (bid, ask or mid)
 
-        self._cancelation_price = 0.0  # Remove the alert if price reach it
+        self._cancellation_price = 0.0  # Remove the alert if price reach it
 
         self._last_price = 0.0
         self._last_trigger_timestamp = 0.0
@@ -45,13 +45,14 @@ class PriceCrossAlert(Alert):
         self._dir = parameters.get('direction', 0)
         self._price = parameters.get('price', 0.0)
         self._price_src = parameters.get('price-src', 0)
-        self._cancelation_price = parameters.get('cancelation', 0.0)
+        self._cancellation_price = parameters.get('cancellation', 0.0)
         self._last_price = 0.0
 
     def check(self):
         return (self._dir in (-1, 1) and
                 self._price > 0.0 and
-                self._price_src in (PriceCrossAlert.PRICE_SRC_BID, PriceCrossAlert.PRICE_SRC_ASK, PriceCrossAlert.PRICE_SRC_MID))
+                self._price_src in (PriceCrossAlert.PRICE_SRC_BID, PriceCrossAlert.PRICE_SRC_ASK,
+                                    PriceCrossAlert.PRICE_SRC_MID))
 
     def test(self, timestamp, bid, ask, timeframes):
         trigger = 0
@@ -107,17 +108,17 @@ class PriceCrossAlert(Alert):
         else:
             part = "?"
 
-        return "Price alert cross, %s, timeframe %s, expiry %s, cancelation %s" % (
-            part, self.timeframe_to_str(), self.expiry_to_str(), self._cancelation)
+        return "Price alert cross, %s, timeframe %s, expiry %s, cancellation %s" % (
+            part, self.timeframe_to_str(), self.expiry_to_str(), self._cancellation_price)
 
-    def cancelation_str(self):
+    def cancellation_str(self):
         """
-        Dump a string with short alert cancelation str.
+        Dump a string with short alert cancellation str.
         """
-        if self._dir > 0 and self._cancelation_price > 0.0:
-            return"if %s price > %s" % (self.price_src_to_str(), self._cancelation_price)
-        elif self._dir < 0 and self._cancelation_price > 0.0:
-            return "if %s price < %s" % (self.price_src_to_str(), self._cancelation_price)
+        if self._dir > 0 and self._cancellation_price > 0.0:
+            return"if %s price > %s" % (self.price_src_to_str(), self._cancellation_price)
+        elif self._dir < 0 and self._cancellation_price > 0.0:
+            return "if %s price < %s" % (self.price_src_to_str(), self._cancellation_price)
         else:
             return "never"
 
@@ -149,7 +150,7 @@ class PriceCrossAlert(Alert):
         return result
 
     #
-    # persistance
+    # persistence
     #
 
     def parameters(self):
@@ -158,7 +159,7 @@ class PriceCrossAlert(Alert):
         result['direction'] = direction_to_str(self._dir)
         result['price'] = self._price
         result['price-src'] = self.price_src_to_str()
-        result['cancelation-price'] = self._cancelation_price
+        result['cancellation-price'] = self._cancellation_price
 
         return result
 
@@ -168,17 +169,17 @@ class PriceCrossAlert(Alert):
         result['direction'] = self._dir
         result['price'] = self._price
         result['price-src'] = self._price_src
-        result['cancelation-price'] = self._cancelation_price
+        result['cancellation-price'] = self._cancellation_price
 
         return result
 
     def loads(self, data):
         super().loads(data)
 
-        self._dir = result['direction']
-        self._price = result['price']
-        self._price_src = result['price-src']
-        self._cancelation_price = result['cancelation-price']
+        self._dir = data['direction']
+        self._price = data['price']
+        self._price_src = data['price-src']
+        self._cancellation_price = data['cancellation-price']
 
     #
     # helpers

@@ -168,7 +168,7 @@ class Region(object):
     def can_delete(self, timestamp, bid, ask):
         """
         By default perform a test on expiration time, but more deletion cases can be added,
-        like a cancelation price trigger.
+        like a cancellation price trigger.
 
         @param timestamp float Current timestamp
         @param bid float last bid price
@@ -207,10 +207,10 @@ class Region(object):
             'name': self.name(),        # str type
             'id': self._id,             # previous integer unique id
             'created': self._created,   # created timestamp datetime.utcfromtimestamp(self._created).strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'stage': self._stage,  #  "entry" if self._stage == Region.STAGE_ENTRY else "exit" if self._stage == Region.STAGE_EXIT else "both",
-            'direction': self._dir,  # "long" if self._dir == Region.LONG else "short" if self._dir == Region.SHORT else "both",
+            'stage': self._stage,       #  "entry" if self._stage == Region.STAGE_ENTRY else "exit" if self._stage == Region.STAGE_EXIT else "both",
+            'direction': self._dir,     # "long" if self._dir == Region.LONG else "short" if self._dir == Region.SHORT else "both",
             'timeframe': self._timeframe,  # timeframe_to_str(self._timeframe),
-            'expiry': self._expiry,  # datetime.utcfromtimestamp(self._expiry).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'expiry': self._expiry,     # datetime.utcfromtimestamp(self._expiry).strftime('%Y-%m-%dT%H:%M:%SZ'),
         }
 
     def loads(self, data):
@@ -218,11 +218,11 @@ class Region(object):
         Override this method and add specific parameters for loads parameters from persistence model.
         """
         self._id = data.get('id', -1)
-        self._created = data.get('created', 0)  # datetime.strptime(data.get('created', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
-        self._stage = data.get('stage', 0)  # self.stage_from_str(data.get('stage', ''))
-        self._dir = data.get('direction', 0)  # self.direction_from_str(data.get('direction', ''))
+        self._created = data.get('created', 0)   # datetime.strptime(data.get('created', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
+        self._stage = data.get('stage', 0)       # self.stage_from_str(data.get('stage', ''))
+        self._dir = data.get('direction', 0)     # self.direction_from_str(data.get('direction', ''))
         self._timeframe = data.get('timeframe')  # timeframe_from_str(data.get('timeframe', 't'))
-        self._expiry = data.get('expiry', 0)  # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
+        self._expiry = data.get('expiry', 0)     # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
 
     def stage_to_str(self):
         if self._stage == Region.STAGE_ENTRY:

@@ -23,7 +23,7 @@ def actives_alerts_table(strategy, style='', offset=None, limit=None, col_ofs=No
     """
     Returns a table of any active alerts.
     """
-    COLUMNS = ('Market', '#', 'Label', 'TF', 'Created', 'Expiry', 'Countdown', 'Condition', 'Cancelation', 'Message')
+    COLUMNS = ('Market', '#', 'Label', 'TF', 'Created', 'Expiry', 'Countdown', 'Condition', 'Cancellation', 'Message')
 
     columns = tuple(COLUMNS)
     total_size = (len(columns), 0)

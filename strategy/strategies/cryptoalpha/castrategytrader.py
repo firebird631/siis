@@ -444,7 +444,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # order_price = self.instrument.adjust_price(price)
 
         #
-        # cancelation of the signal
+        # cancellation of the signal
         #
 
         if order_quantity <= 0 or order_quantity * price < self.instrument.min_notional:

@@ -165,12 +165,12 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
             # elif td.c >= 3 and td.c <= 7:
             #     # if td.d > 0:  # and candles[-1].close < candles[-2].low:            
             #     if td.d < 0:  # and candles[-1].close < candles[-2].low:
-            #         # short cancelation (excess of volume and ema under sma)
+            #         # short cancellation (excess of volume and ema under sma)
             #         pass
 
             #     # elif td.d < 0 and candles[-1].close < candles[-2].close:
             #     elif td.d > 0: # and candles[-1].close < candles[-2].close:
-            #         # long cancelation (excess of volume and ema under sma)
+            #         # long cancellation (excess of volume and ema under sma)
             #         # if ema_sma_height < 0 or rsi_40_60 > 0:
             #         # if stochrsi_20_80 < 0:  # and volume_signal > 0:
             #         # if ema_sma_height < 0 and volume_signal > 0:

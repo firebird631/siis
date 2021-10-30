@@ -206,7 +206,7 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             # second condition might be optimized
             elif (self.tomdemark.c.c == 2 and self.tomdemark.c.d > 0 and self.price.close[-1] < self.price.close[-2]) or (self.tomdemark.c.c == 3 and self.tomdemark.c.d > 0):
                 # elif td.c == 3 and td.d > 0:  # and candles[-1].close < candles[-2].close:
-                # long cancelation on buy-setup formation 
+                # long cancellation on buy-setup formation
                 # if ema_sma_height < 0 or rsi_40_60 > 0:  # (excess of volume and ema under sma)
                 # if stochrsi_20_80 < 0:  # and volume_signal > 0:
                 # if bb_break < 0:
@@ -428,7 +428,7 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             # second condition might be optimized
             elif (self.tomdemark.c.c == 2 and self.tomdemark.c.d > 0 and self.price.close[-1] < self.price.close[-2]) or (self.tomdemark.c.c == 3 and self.tomdemark.c.d > 0):
                 # elif td.c == 3 and td.d > 0:  # and self.price.close < self.price.close:
-                # long cancelation on buy-setup formation 
+                # long cancellation on buy-setup formation
                 # if ema_sma_height < 0 or rsi_40_60 > 0:  # (excess of volume and ema under sma)
                 # if stochrsi_20_80 < 0:  # and volume_signal > 0:
                 # if bb_break < 0:
@@ -618,7 +618,7 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
                 signal.p = self.price.close[-1]
 
             elif 2 <= self.tomdemark.c.c <= 5 and self.tomdemark.c.d > 0 and (ema_sma < 0 and bsawe < 0):
-                # cancelation
+                # cancellation
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT
                 signal.dir = 1

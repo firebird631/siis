@@ -13,6 +13,8 @@ from trader.trader import Trader
 from common.utils import timeframe_from_str
 from instrument.instrument import Instrument
 
+from app.script import setup_script
+
 # @todo ClosePositionCommand, CloseAllPositionCommand
 
 
@@ -996,7 +998,7 @@ class ModifyStopLossCommand(Command):
     HELP = (
         "param1: <market-id> Market identifier",
         "param2: <trade-id> Trade identifier",
-        "param3: [ep|m|EP|M][+|-]<stop-loss-price><%> EP: relative to entry-price, M to market-price, " \
+        "param3: [ep|m|EP|M][+|-]<stop-loss-price><%> EP: relative to entry-price, M to market-price, "
         "else to last stop price, + or - for relative change, in price or percent",
         "param4: [force] to force to realize the order if none (optional)",
     )
@@ -1089,7 +1091,7 @@ class ModifyTakeProfitCommand(Command):
     HELP = (
         "param1: <market-id> Market identifier",
         "param2: <trade-id> Trade identifier",
-        "param3: [ep|m|EP|M][+|-]<take-profit-price><%> EP: relative to entry-price, M to market-price, " \
+        "param3: [ep|m|EP|M][+|-]<take-profit-price><%> EP: relative to entry-price, M to market-price, "
         "else to last take-profit price, + or - for relative change, in price or percent",
         "param4: [force] to force to realize the order if none (optional)",
     )
@@ -1954,9 +1956,52 @@ class SetReinvestGainCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            strategy = self._strategy_service.strategy()
-            if strategy:
-                return self.iterate(0, ('on', 'off'), args, tab_pos, direction)
+            return self.iterate(0, ('on', 'off'), args, tab_pos, direction)
+
+        return args, 0
+
+
+class ScriptCommand(Command):
+    SUMMARY = "to execute a python script file"
+    HELP = (
+        "param1: [exec|remove] Execute a python script or remove an installable script",
+        "param2: <module> python module to execute or to remove",
+    )
+
+    def __init__(self, watcher_service, trader_service, strategy_service, monitor_service, notifier_service):
+        super().__init__('!script', '!SC')
+
+        self._watcher_service = watcher_service
+        self._trader_service = trader_service
+        self._strategy_service = strategy_service
+        self._monitor_service = monitor_service
+        self._notifier_service = notifier_service
+
+    def execute(self, args):
+        if len(args) < 2:
+            return False, "Missing parameters"
+
+        if len(args) > 2:
+            return False, "Too many parameters"
+
+        if args[0] not in ('exec', 'remove'):
+            return False, "First parameter must be 'exec' or 'remove'"
+
+        action = args[0]
+        module = args[1]
+
+        if not module:
+            return False, "Module must be specified"
+
+        results = setup_script(action, module,
+                               self._watcher_service, self._trader_service, self._strategy_service,
+                               self._monitor_service, self._notifier_service)
+
+        return self.manage_results(results)
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, ('exec', 'remove'), args, tab_pos, direction)
 
         return args, 0
 
@@ -2016,6 +2061,9 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(RecheckCommand(strategy_service))
 
     commands_handler.register(SetReinvestGainCommand(strategy_service))
+
+    commands_handler.register(ScriptCommand(watcher_service, trader_service, strategy_service,
+                                            monitor_service, notifier_service))
 
     #
     # strategy, order operations

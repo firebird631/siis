@@ -73,6 +73,8 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 
 #122 implement IG trader order_info method
 
+#123 send a error notification in case of a trade goes to ERROR state
+
 #######
 # BUG #
 #######

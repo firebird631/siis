@@ -3,16 +3,12 @@
 # @license Copyright (c) 2020 Dream Overflow
 # terminal alert commands and registration
 
-import time
-
 from datetime import datetime
 
 from terminal.command import Command
 from strategy.strategy import Strategy
-from trader.trader import Trader
 
-from common.utils import timeframe_from_str
-from instrument.instrument import Instrument
+from common.utils import timeframe_from_str, UTC
 from strategy.alert.alert import Alert
 
 
@@ -21,7 +17,7 @@ class PriceCrossAlertCommand(Command):
     SUMMARY = "to manually add a price-cross alert on a strategy"
     HELP = (":price-cross-alert <market-id> <price>",
             "optional parameters:",
-            "- C@<price> : cancelation price",
+            "- C@<price> : cancellation price",
             "- @<timestamp|duration> : expiry",
             "- '<timeframe> : timeframe")
     
@@ -83,7 +79,7 @@ class PriceCrossAlertCommand(Command):
         countdown = -1
 
         price = 0.0
-        cancelation = 0.0
+        cancellation = 0.0
         price_src = Alert.PRICE_SRC_BID
 
         # ie ":PCA EURUSD bid >1.12"
@@ -113,7 +109,7 @@ class PriceCrossAlertCommand(Command):
                 elif value.startswith("'"):
                     timeframe = timeframe_from_str(value[1:])
                 elif value.startswith('C@'):
-                    cancelation = float(value[2:])
+                    cancellation = float(value[2:])
                 elif value.startswith('@'):
                     # expiry
                     if 'T' in value:
@@ -138,7 +134,7 @@ class PriceCrossAlertCommand(Command):
             'price': price,
             'direction': direction,
             'price-src': price_src,
-            'cancelation': cancelation
+            'cancellation': cancellation
         })
 
         return self.manage_results(results)

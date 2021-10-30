@@ -518,7 +518,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             stop_loss = self.instrument.adjust_price(stop_loss)
 
         #
-        # cancelation of the signal
+        # cancellation of the signal
         #
 
         if not self.check_min_notional(order_quantity, order_price):

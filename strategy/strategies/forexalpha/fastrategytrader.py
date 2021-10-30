@@ -418,7 +418,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             stop_loss = self.instrument.adjust_price(stop_loss)
 
         #
-        # cancelation of the signal
+        # cancellation of the signal
         #
 
         if not self.check_min_notional(order_quantity, order_price):
@@ -490,7 +490,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # is_div = utils.divergence(mt, Mt)
         # cross_dir = utils.cross((pm, pM), (nm, nM))
 
-        # # accum until execution or cancelation
+        # # accum until execution or cancellation
         # if is_div:
         #   # divergence from minor and major
         #   if self.score_div_factor[0] != 0.0:

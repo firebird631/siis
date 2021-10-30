@@ -20,7 +20,7 @@ class RangeRegionCommand(Command):
     SUMMARY = "to manually add a range region on a strategy"
     HELP = (":range-region <market-id> <low> <high>",
             "optional parameters:",
-            "- [C]@<price> : cancelation price",
+            "- [C]@<price> : cancellation price",
             "- [@]<timestamp|duration> : expiry",
             "- [']<timeframe> : timeframe",
             "- [L|l|long|LONG|S|s|short|SHORT] : direction",
@@ -47,7 +47,7 @@ class RangeRegionCommand(Command):
 
         low = 0.0
         high = 0.0
-        cancelation = 0.0
+        cancellation = 0.0
 
         # ie ":RR EURUSD 1.12 1.15"
         if len(args) < 3:
@@ -63,7 +63,7 @@ class RangeRegionCommand(Command):
                 if value.startswith("'"):
                     timeframe = timeframe_from_str(value[1:])
                 elif value.startswith('C@'):
-                    cancelation = float(value[2:])
+                    cancellation = float(value[2:])
                 elif value.startswith('@'):
                     # expiry
                     if 'T' in value:
@@ -96,7 +96,7 @@ class RangeRegionCommand(Command):
             'expiry': expiry,
             'low': low,
             'high': high,
-            'cancelation': cancelation
+            'cancellation': cancellation
         })
 
         return self.manage_results(results)
@@ -115,7 +115,7 @@ class TrendRegionCommand(Command):
     SUMMARY = "to manually add a trend region on a strategy"
     HELP = (":trend-region <market-id> <low-a> <high-a> <low-b> <high-b>",
             "optional parameters:",
-            "- [C@]<price> : cancelation price",
+            "- [C@]<price> : cancellation price",
             "- [@]<timestamp|duration> : expiry",
             "- [']<timeframe> : timeframe",
             "- [L|l|long|LONG|S|s|short|SHORT] : direction",
@@ -144,7 +144,7 @@ class TrendRegionCommand(Command):
         high_a = 0.0
         low_b = 0.0
         high_b = 0.0
-        cancelation = 0.0
+        cancellation = 0.0
 
         # ie ":TR EURUSD 4 1.12 1.15 1.15 1.2"
         if len(args) < 6:
@@ -163,7 +163,7 @@ class TrendRegionCommand(Command):
                 if value.startswith("'"):
                     timeframe = timeframe_from_str(value[1:])
                 elif value.startswith('C@'):
-                    cancelation = float(value[2:])
+                    cancellation = float(value[2:])
                 elif value.startswith('@'):
                     # expiry
                     if 'T' in value:
@@ -198,7 +198,7 @@ class TrendRegionCommand(Command):
             'high-a': high_a,
             'low-b': low_b,
             'high-b': high_b,
-            'cancelation': cancelation
+            'cancellation': cancellation
         })
 
         return self.manage_results(results)

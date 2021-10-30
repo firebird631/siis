@@ -29,13 +29,13 @@ class RangeRegion(Region):
         self._low = 0.0
         self._high = 0.0
 
-        self._cancelation = 0.0
+        self._cancellation = 0.0
 
     def init(self, parameters):
         self._low = parameters.get('low', 0.0)
         self._high = parameters.get('high', 0.0)
 
-        self._cancelation = parameters.get('cancelation', 0.0)
+        self._cancellation = parameters.get('cancellation', 0.0)
 
     def check(self):
         return self._low > 0 and self._high > 0 and self._high >= self._low
@@ -49,18 +49,18 @@ class RangeRegion(Region):
             return True
 
         # trigger price reached in accordance with the direction
-        if self._dir == Region.LONG and ask < self._cancelation:
+        if self._dir == Region.LONG and ask < self._cancellation:
             return True
 
-        if self._dir == Region.SHORT and bid > self._cancelation:
+        if self._dir == Region.SHORT and bid > self._cancellation:
             return True
 
         return False
 
     def str_info(self):
-        return "Range region from %s to %s, stage %s, direction %s, timeframe %s, expiry %s, cancelation %s" % (
+        return "Range region from %s to %s, stage %s, direction %s, timeframe %s, expiry %s, cancellation %s" % (
                 self._low, self._high, self.stage_to_str(), self.direction_to_str(),
-                self.timeframe_to_str(), self.expiry_to_str(), self._cancelation)
+                self.timeframe_to_str(), self.expiry_to_str(), self._cancellation)
 
     def parameters(self):
         params = super().parameters()
@@ -70,7 +70,7 @@ class RangeRegion(Region):
         params['low'] = self._low,
         params['high'] = self._high
         
-        params['cancelation'] = self._cancelation
+        params['cancellation'] = self._cancellation
 
         return params
 
@@ -80,7 +80,7 @@ class RangeRegion(Region):
         data['low'] = self._low
         data['high'] = self._high
         
-        data['cancelation'] = self._cancelation
+        data['cancellation'] = self._cancellation
 
         return data
 
@@ -90,4 +90,4 @@ class RangeRegion(Region):
         self._low = data.get('low', 0.0)
         self._high = data.get('high', 0.0)
         
-        self._cancelation = data.get('cancelation', 0.0)
+        self._cancellation = data.get('cancellation', 0.0)
