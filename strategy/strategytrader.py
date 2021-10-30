@@ -895,6 +895,10 @@ class StrategyTrader(object):
         with self._trade_mutex:
             for trade in self._trades:
 
+                # cannot manage a trade in state error
+                if trade.is_error():
+                    continue
+
                 #
                 # managed operation
                 #

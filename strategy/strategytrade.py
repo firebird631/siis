@@ -429,6 +429,12 @@ class StrategyTrade(object):
 
         return False
 
+    def is_error(self):
+        """
+        Return true if the trade entry or exit are in error state.
+        """
+        return self._entry_state == StrategyTrade.STATE_ERROR or self._exit_state == StrategyTrade.STATE_ERROR
+
     def is_active(self):
         """
         Return true if the trade is active (non-null entry qty, and exit quantity non fully completed).

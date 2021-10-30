@@ -355,7 +355,8 @@ class StrategyAssetTrade(StrategyTrade):
                 trader.set_ref_order_id(order)
                 self.limit_ref_oid = order.ref_order_id
 
-                if trader.create_order(order, instrument) > 0:
+                create_order_result = trader.create_order(order, instrument)
+                if create_order_result > 0:
                     # REST sync
                     self.limit_oid = order.order_id
                     self.limit_order_qty = order.quantity
@@ -366,6 +367,14 @@ class StrategyAssetTrade(StrategyTrade):
                     self.tp = limit_price
 
                     return self.ACCEPTED
+                elif create_order_result == Order.REASON_INSUFFICIENT_FUNDS:
+                    # rejected because not enough margin, must stop to retry
+                    self.limit_ref_oid = None
+                    self.limit_order_qty = 0.0
+
+                    self._exit_state = self.STATE_ERROR
+
+                    return self.REJECTED
                 else:
                     # rejected
                     self.limit_ref_oid = None
@@ -454,7 +463,8 @@ class StrategyAssetTrade(StrategyTrade):
                 trader.set_ref_order_id(order)
                 self.stop_ref_oid = order.ref_order_id
 
-                if trader.create_order(order, instrument) > 0:
+                create_order_result = trader.create_order(order, instrument)
+                if create_order_result > 0:
                     # REST sync
                     self.stop_oid = order.order_id
                     self.stop_order_qty = order.quantity
@@ -465,6 +475,14 @@ class StrategyAssetTrade(StrategyTrade):
                     self.sl = stop_price
 
                     return self.ACCEPTED
+                elif create_order_result == Order.REASON_INSUFFICIENT_FUNDS:
+                    # rejected because not enough margin, must stop to retry
+                    self.stop_ref_oid = None
+                    self.stop_order_qty = 0.0
+
+                    self._exit_state = self.STATE_ERROR
+
+                    return self.REJECTED
                 else:
                     # rejected
                     self.stop_ref_oid = None
@@ -571,7 +589,8 @@ class StrategyAssetTrade(StrategyTrade):
             trader.set_ref_order_id(order)
             self.stop_ref_oid = order.ref_order_id
 
-            if trader.create_order(order, instrument) > 0:
+            create_order_result = trader.create_order(order, instrument)
+            if create_order_result > 0:
                 # REST sync
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
@@ -580,6 +599,14 @@ class StrategyAssetTrade(StrategyTrade):
                 self._closing = True
 
                 return self.ACCEPTED
+            elif create_order_result == Order.REASON_INSUFFICIENT_FUNDS:
+                # rejected because not enough margin, must stop to retry
+                self.stop_ref_oid = None
+                self.stop_order_qty = 0.0
+
+                self._exit_state = self.STATE_ERROR
+
+                return self.REJECTED
             else:
                 # rejected
                 self.stop_ref_oid = None
@@ -952,9 +979,6 @@ class StrategyAssetTrade(StrategyTrade):
             if data is None:
                 # API error, do nothing need retry
                 result = -1
-
-                # entry order error status
-                # self._entry_state = StrategyTrade.STATE_ERROR
             else:
                 if data['id'] is None:
                     # cannot retrieve the order, wrong id
@@ -984,9 +1008,6 @@ class StrategyAssetTrade(StrategyTrade):
             if data is None:
                 # API error, do nothing need retry
                 result = -1
-
-                # exit order error status
-                # self._exit_state = StrategyTrade.STATE_ERROR
             else:
                 if data['id'] is None:
                     # cannot retrieve the order, wrong id
@@ -1011,9 +1032,6 @@ class StrategyAssetTrade(StrategyTrade):
                 if data is None:
                     # API error, do nothing need retry
                     result = -1
-
-                    # exit order error status
-                    # self._exit_state = StrategyTrade.STATE_ERROR
                 else:
                     if data['id'] is None:
                         # cannot retrieve the order, wrong id
@@ -1038,9 +1056,6 @@ class StrategyAssetTrade(StrategyTrade):
                 if data is None:
                     # API error, do nothing need retry
                     result = -1
-
-                    # exit order error status
-                    # self._exit_state = StrategyTrade.STATE_ERROR
                 else:
                     if data['id'] is None:
                         # cannot retrieve the order, wrong id

@@ -276,7 +276,8 @@ class StrategyMarginTrade(StrategyTrade):
 
             self._stats['take-profit-order-type'] = order.order_type
 
-            if trader.create_order(order, instrument) > 0:
+            create_order_result = trader.create_order(order, instrument)
+            if create_order_result > 0:
                 self.limit_oid = order.order_id
                 self.limit_order_qty = order.quantity
 
@@ -286,6 +287,14 @@ class StrategyMarginTrade(StrategyTrade):
                 self.tp = limit_price
 
                 return self.ACCEPTED
+            elif create_order_result == Order.REASON_INSUFFICIENT_MARGIN:
+                # rejected because not enough margin, must stop to retry
+                self.limit_ref_oid = None
+                self.limit_order_qty = 0.0
+
+                self._exit_state = self.STATE_ERROR
+
+                return self.REJECTED
             else:
                 self.limit_ref_oid = None
                 self.limit_order_qty = 0.0
@@ -347,7 +356,8 @@ class StrategyMarginTrade(StrategyTrade):
 
             self._stats['stop-order-type'] = order.order_type
 
-            if trader.create_order(order, instrument) > 0:
+            create_order_result = trader.create_order(order, instrument)
+            if create_order_result > 0:
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
                 
@@ -357,6 +367,14 @@ class StrategyMarginTrade(StrategyTrade):
                 self.sl = stop_price
 
                 return self.ACCEPTED
+            elif create_order_result == Order.REASON_INSUFFICIENT_MARGIN:
+                # rejected because not enough margin, must stop to retry
+                self.stop_ref_oid = None
+                self.stop_order_qty = 0.0
+
+                self._exit_state = self.STATE_ERROR
+
+                return self.REJECTED
             else:
                 self.stop_ref_oid = None
                 self.stop_order_qty = 0.0
@@ -457,7 +475,8 @@ class StrategyMarginTrade(StrategyTrade):
 
         self._stats['stop-order-type'] = order.order_type
 
-        if trader.create_order(order, instrument) > 0:
+        create_order_result = trader.create_order(order, instrument)
+        if create_order_result > 0:
             self.stop_oid = order.order_id
             self.stop_order_qty = order.quantity
 
@@ -465,6 +484,14 @@ class StrategyMarginTrade(StrategyTrade):
             self._closing = True
 
             return self.ACCEPTED
+        elif create_order_result == Order.REASON_INSUFFICIENT_MARGIN:
+            # rejected because not enough margin, must stop to retry
+            self.stop_ref_oid = None
+            self.stop_order_qty = 0.0
+
+            self._exit_state = self.STATE_ERROR
+
+            return self.REJECTED
         else:
             self.stop_ref_oid = None
             self.stop_order_qty = 0.0
@@ -563,7 +590,7 @@ class StrategyMarginTrade(StrategyTrade):
             filled = 0
 
             if data['id'] == self.create_oid:
-                # a single order for the entry, then its OK and prefered to uses cumulative-filled and avg-price
+                # a single order for the entry, then its OK and preferred to uses cumulative-filled and avg-price
                 # because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     filled = data['cumulative-filled'] - self.e  # compute filled qty

@@ -277,7 +277,8 @@ class StrategyIndMarginTrade(StrategyTrade):
 
             self._stats['take-profit-order-type'] = order.order_type
 
-            if trader.create_order(order, instrument) > 0:
+            create_order_result = trader.create_order(order, instrument)
+            if create_order_result > 0:
                 self.limit_oid = order.order_id
 
                 self.limit_order_qty = order.quantity
@@ -349,7 +350,8 @@ class StrategyIndMarginTrade(StrategyTrade):
 
             self._stats['stop-order-type'] = order.order_type
 
-            if trader.create_order(order, instrument) > 0:
+            create_order_result = trader.create_order(order, instrument)
+            if create_order_result > 0:
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
 
@@ -359,6 +361,14 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self.sl = stop_price
 
                 return self.ACCEPTED
+            elif create_order_result == Order.REASON_INSUFFICIENT_MARGIN:
+                # rejected because not enough margin, must stop to retry
+                self.stop_ref_oid = None
+                self.stop_order_qty = 0.0
+
+                self._exit_state = self.STATE_ERROR
+
+                return self.REJECTED
             else:
                 self.stop_ref_oid = None
                 self.stop_order_qty = 0.0
@@ -459,7 +469,8 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         self._stats['stop-order-type'] = order.order_type
 
-        if trader.create_order(order, instrument) > 0:
+        create_order_result = trader.create_order(order, instrument)
+        if create_order_result > 0:
             self.stop_oid = order.order_id
             self.stop_order_qty = order.quantity
 
@@ -467,6 +478,14 @@ class StrategyIndMarginTrade(StrategyTrade):
             self._closing = True
 
             return self.ACCEPTED
+        elif create_order_result == Order.REASON_INSUFFICIENT_MARGIN:
+            # rejected because not enough margin, must stop to retry
+            self.stop_ref_oid = None
+            self.stop_order_qty = 0.0
+
+            self._exit_state = self.STATE_ERROR
+
+            return self.REJECTED
         else:
             self.stop_ref_oid = None
             self.stop_order_qty = 0.0

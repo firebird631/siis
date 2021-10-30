@@ -49,7 +49,8 @@ def cmd_trade_clean(strategy, strategy_trader, data):
             strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
 
             # add a success result message
-            results['messages'].append("Force remove trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
+            results['messages'].append("Force remove trade %i on %s:%s" % (trade.id, strategy.identifier,
+                                                                           strategy_trader.instrument.market_id))
         else:
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)
