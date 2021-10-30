@@ -143,7 +143,7 @@ class History(Tool):
                     closed_orders = fetcher.fetch_closed_orders(options.get('from'), options.get('to'))
                     if WRITE_DEBUG_CACHE:
                         with open('c.tmp', 'wt') as f:
-                        f.write(json.dumps(closed_orders))
+                            f.write(json.dumps(closed_orders))
             except Exception as e:
                 error_logger.error("fetch_closed_orders : " + str(e))
 
@@ -374,5 +374,6 @@ class History(Tool):
 
     def forced_interrupt(self, options):
         return True
+
 
 tool = History

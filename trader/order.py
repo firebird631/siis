@@ -114,6 +114,10 @@ class Order(Keyed):
         return self._executed
 
     @property
+    def avg_price(self):
+        return self._avg_price
+
+    @property
     def fully_filled(self):
         return self._fully_filled
 

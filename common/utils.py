@@ -92,9 +92,11 @@ def matching_symbols_set(configured_symbols, available_symbols):
     """
     Special '*' symbol mean every symbol.
     Starting with '!' mean except this symbol.
-    Starting with '*' mean every wildchar before the suffix.
+    Starting with '*' mean every wildcard before the suffix.
 
-    @param available_symbols List containing any supported markets symbol of the broker. Used when a wildchar is defined.
+    @param configured_symbols
+    @param available_symbols List containing any supported markets symbol of the broker.
+           Used when a wildcard is defined.
     """
     if not configured_symbols:
         return set()
@@ -104,12 +106,12 @@ def matching_symbols_set(configured_symbols, available_symbols):
 
     if '*' in configured_symbols:
         # all instruments
-        watched_symbols = set(availables)
+        watched_symbols = set(available_symbols)
 
         # except...
         for configured_symbol in configured_symbols:
             if configured_symbol.startswith('!'):
-                # ignore, not wildchar, remove it
+                # ignore, not wildcard, remove it
                 watched_symbols.remove(configured_symbol[1:])
     else:
         watched_symbols = set()
@@ -125,7 +127,7 @@ def matching_symbols_set(configured_symbols, available_symbols):
                         watched_symbols.add(symbol)
 
             elif not configured_symbol.startswith('!'):
-                # not ignored, not wildchar
+                # not ignored, not wildcard
                 watched_symbols.add(configured_symbol)
 
     return watched_symbols

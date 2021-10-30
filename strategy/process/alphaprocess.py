@@ -196,7 +196,7 @@ def alpha_update_strategy(strategy, strategy_trader):
             initiate_strategy_trader(strategy, strategy_trader)
 
         if strategy_trader._checked == 1:
-            # need to check existings trade orders, trade history and positions
+            # need to check existing trade orders, trade history and positions
             strategy_trader.check_trades(strategy.timestamp)
 
         if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.instrument.ready():
@@ -239,7 +239,7 @@ def alpha_async_update_strategy(strategy, strategy_trader):
             initiate_strategy_trader(strategy, strategy_trader)
 
         if strategy_trader._checked == 1:
-            # need to check existings trade orders, trade history and positions
+            # need to check existing trade orders, trade history and positions
             strategy_trader.check_trades(strategy.timestamp)
 
         if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.instrument.ready():

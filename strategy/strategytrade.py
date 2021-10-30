@@ -706,7 +706,7 @@ class StrategyTrade(object):
             return "undefined"
 
     @staticmethod
-    def trade_type_from_str(self, trade_type):
+    def trade_type_from_str(trade_type):
         if trade_type == 'asset':
             return StrategyTrade.TRADE_ASSET
         elif trade_type == 'margin':
@@ -718,7 +718,8 @@ class StrategyTrade(object):
         else:
             return StrategyTrade.TRADE_UNDEFINED
 
-    def trade_state_to_str(self, trade_state):
+    @staticmethod
+    def trade_state_to_str(trade_state):
         if trade_state == StrategyTrade.STATE_NEW:
             return 'new'
         elif trade_state == StrategyTrade.STATE_REJECTED:
@@ -739,7 +740,7 @@ class StrategyTrade(object):
             return "undefined"
 
     @staticmethod
-    def trade_state_from_str(self, trade_state):
+    def trade_state_from_str(trade_state):
         if trade_state == 'new':
             return StrategyTrade.STATE_NEW
         elif trade_state == 'rejected':
@@ -789,10 +790,12 @@ class StrategyTrade(object):
     # persistence
     #
 
-    def dump_timestamp(self, timestamp):
+    @staticmethod
+    def dump_timestamp(timestamp):
         return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ') if timestamp else None
 
-    def load_timestamp(self, datetime_str):
+    @staticmethod
+    def load_timestamp(datetime_str):
         if datetime_str:
             return datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).timestamp()
         else:

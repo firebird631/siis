@@ -47,6 +47,8 @@ class PaperTrader(Trader):
         self._watcher = None  # in backtesting refers to a dummy watcher
         self._unlimited = False
 
+        self._closed_orders = {}  # history of closed or canceled orders
+
         trader_config = service.trader_config()
         paper_mode = trader_config.get('paper-mode')
         if paper_mode:
@@ -465,6 +467,7 @@ class PaperTrader(Trader):
                     # remove fully executed orders
                     if rm in self._orders:
                         del self._orders[rm]
+                        # self._closed_orders[rm.order_id] = rm  # keep for history
 
     def post_run(self):
         super().post_run()
@@ -592,6 +595,7 @@ class PaperTrader(Trader):
 
         with self._mutex:
             if order_id in self._orders:
+                # self._closed_orders[rm.order_id] = self._orders[order_id]  # keep for history
                 del self._orders[order_id]
                 result = True
 
@@ -722,12 +726,47 @@ class PaperTrader(Trader):
         return positions
 
     def order_info(self, order_id, market_or_instrument):
+        """
+        @todo for closed or canceled orders
+        @todo Order should support the cumulative commission amount
+        """
         if not order_id or not market_or_instrument:
             return None
 
-        # @todo see from kraken, but not very useful in paper-mode
+        with self._mutex:
+            order = self._orders.get(order_id)
 
-        return None
+            if order is None:
+                # empty means success returns but does not exists
+                return {
+                    'id': None
+                }
+
+            order_info = {
+                'id': order_id,
+                'symbol': market_or_instrument.symbol,
+                'status': 'opened',
+                'ref-id': order.ref_order_id,
+                'direction': order.direction,
+                'type': order.order_type,
+                'timestamp': order.transact_time or order.created_time,
+                'avg-price': order.avg_price,
+                'quantity': order.quantity,
+                'cumulative-filled': order.executed,
+                # 'cumulative-commission-amount': None,  # no have in Order object
+                'price': order.price,
+                'stop-price': order.stop_price,
+                'time-in-force': order.time_in_force,
+                'post-only': order.post_only,
+                'close-only': order.close_only,
+                'reduce-only': order.reduce_only,
+                'stop-loss': None,
+                'take-profit': None,
+                'fully-filled': order.fully_filled
+                # 'trades': trades
+            }
+
+            return order_info
 
     def set_market(self, market):
         """

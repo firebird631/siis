@@ -258,7 +258,8 @@ class StrategySignal(object):
     # dumps for notify/history
     #
 
-    def dump_timestamp(self, timestamp, v1=False):
+    @staticmethod
+    def dump_timestamp(timestamp, v1=False):
         if v1:
             return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%SZ')
         else:

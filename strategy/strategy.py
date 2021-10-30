@@ -35,6 +35,7 @@ from strategy.command.strategycmdstrategytraderrecheck import cmd_strategy_trade
     cmd_strategy_trader_recheck_all
 from strategy.command.strategycmdstrategytraderexport import cmd_strategy_trader_export, \
     cmd_strategy_trader_export_all
+from strategy.command.strategycmdstrategytraderimport import cmd_strategy_trader_import_all
 
 from strategy.command.strategycmdtradeassign import cmd_trade_assign
 from strategy.command.strategycmdtradeclean import cmd_trade_clean
@@ -90,6 +91,7 @@ class Strategy(Runnable):
     COMMAND_TRADER_RECHECK_ALL = 26
     COMMAND_TRADER_EXPORT = 27
     COMMAND_TRADER_EXPORT_ALL = 28
+    COMMAND_TRADER_IMPORT_ALL = 29
 
     def __init__(self, name,
                  strategy_service, watcher_service, trader_service,
@@ -1428,6 +1430,8 @@ class Strategy(Runnable):
             return cmd_strategy_trader_recheck_all(self, data)
         elif command_type == Strategy.COMMAND_TRADER_EXPORT_ALL:
             return cmd_strategy_trader_export_all(self, data)
+        elif command_type == Strategy.COMMAND_TRADER_IMPORT_ALL:
+            return cmd_strategy_trader_import_all(self, data)
 
         return None
 
