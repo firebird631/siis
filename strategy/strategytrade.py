@@ -517,13 +517,14 @@ class StrategyTrade(object):
         """
         Cancel the entire or remaining open order.
         """
-        return False
+        return StrategyTrade.NOTHING_TO_DO
 
     def cancel_close(self, trader, instrument):
         """
         Cancel the entire or remaining close order.
+        @todo Not implemented in specialized class for now
         """
-        return False
+        return StrategyTrade.NOTHING_TO_DO
 
     def modify_take_profit(self, trader, instrument, limit_price):
         """

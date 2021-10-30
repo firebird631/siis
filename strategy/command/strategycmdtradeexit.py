@@ -6,8 +6,6 @@
 def cmd_trade_exit(strategy, strategy_trader, data):
     """
     Exit an existing trade according data on given strategy_trader.
-
-    @note If trade-id is -1 assume the last trade.
     """
     results = {
         'messages': [],
@@ -31,9 +29,8 @@ def cmd_trade_exit(strategy, strategy_trader, data):
     trader = strategy.trader()
 
     with strategy_trader._mutex:
-        if trade_id == -1 and strategy_trader.trades:
-            trade = strategy_trader.trades[-1]
-        else:
+        # retrieve the trade
+        with strategy_trader._trade_mutex:
             for t in strategy_trader.trades:
                 if t.id == trade_id:
                     trade = t
@@ -44,22 +41,31 @@ def cmd_trade_exit(strategy, strategy_trader, data):
 
             if not trade.is_active():
                 # cancel open
-                trade.cancel_open(trader, strategy_trader.instrument)
+                if trade.cancel_open(trader, strategy_trader.instrument) > 0:
+                    # add a success result message
+                    results['messages'].append("Cancel trade %i on %s:%s" % (
+                        trade.id, strategy.identifier, strategy_trader.instrument.market_id))
 
-                # add a success result message
-                results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, strategy.identifier,
-                                                                         strategy_trader.instrument.market_id))
+                    # update strategy-trader
+                    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+                else:
+                    results['error'] = True
+                    results['messages'].append("Error during cancel trade %i on %s:%s" % (
+                        trade.id, strategy.identifier, strategy_trader.instrument.market_id))
             else:
                 # close or cancel
-                trade.close(trader, strategy_trader.instrument)
+                if trade.close(trader, strategy_trader.instrument) >= 0:
+                    # add a success result message
+                    results['messages'].append("Close trade %i on %s:%s at market price %s" % (
+                        trade.id, strategy.identifier, strategy_trader.instrument.market_id,
+                        strategy_trader.instrument.format_price(price)))
 
-                # add a success result message
-                results['messages'].append("Close trade %i on %s:%s at market price %s" % (
-                    trade.id, strategy.identifier, strategy_trader.instrument.market_id,
-                    strategy_trader.instrument.format_price(price)))
-
-            # update strategy-trader
-            strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+                    # update strategy-trader
+                    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+                else:
+                    results['error'] = True
+                    results['messages'].append("Error during close trade %i on %s:%s" % (
+                        trade.id, strategy.identifier, strategy_trader.instrument.market_id))
         else:
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)

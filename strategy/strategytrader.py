@@ -1373,10 +1373,9 @@ class StrategyTrader(object):
         """
         if trade.is_entry_timeout(timestamp, timeout):
             trader = self.strategy.trader()
-            trade.cancel_open(trader, self.instrument)
-            trade.exit_reason = trade.REASON_CANCELED_TIMEOUT
-
-            return True
+            if trade.cancel_open(trader, self.instrument) > 0:
+                trade.exit_reason = trade.REASON_CANCELED_TIMEOUT
+                return True
 
         return False
 

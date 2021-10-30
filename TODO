@@ -71,6 +71,8 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 
 #119 close_position and modify position must return Order REASON code in place of boolean
 
+#122 implement IG trader order_info method
+
 #######
 # BUG #
 #######

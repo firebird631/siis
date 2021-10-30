@@ -18,7 +18,7 @@ class Order(Keyed):
         "_transact_time", "_executed", "_fully_filled", "_avg_price", "_direction", "_order_type", \
         "_price", "_stop_price", "_stop_mode", "_stop_loss", "_take_profit", "_reduce_only", "_hedging", \
         "_post_only", "_close_only", "_price_type", "_margin_trade", "_leverage", "_time_in_force", \
-        "_trailing_stop", "_reason"
+        "_trailing_stop"
 
     LONG = 1    # long direction
     SHORT = -1  # short direction
@@ -44,8 +44,8 @@ class Order(Keyed):
     TIME_IN_FORCE_FOK = 2  # Fill or kill
     TIME_IN_FORCE_GTD = 3  # Good til date
 
-    REASON_UNDEFINED = 0              # Undefined
     REASON_OK = 1                     # Order successfully open
+    REASON_UNDEFINED = 0              # Undefined
     REASON_INSUFFICIENT_FUNDS = -1    # Insufficient asset quantity to open order (permanent)
     REASON_INSUFFICIENT_MARGIN = -2   # Insufficient margin to open order (permanent)
     REASON_ERROR = -3                 # General error or unspecified (permanent)
@@ -99,7 +99,6 @@ class Order(Keyed):
         self._time_in_force = Order.TIME_IN_FORCE_GTC
 
         self._trailing_stop = False
-        self._reason = Order.REASON_UNDEFINED
 
     #
     # Getters
@@ -205,10 +204,6 @@ class Order(Keyed):
     def time_in_force(self):
         return self._time_in_force
 
-    @property
-    def reason(self):
-        return self._reason
-
     #
     # Setters
     #
@@ -216,7 +211,6 @@ class Order(Keyed):
     def set_order_id(self, order_id):
         """Defines the result order id and set reason as OK."""
         self._order_id = order_id
-        self._reason = Order.REASON_OK
 
     def set_ref_order_id(self, ref_order_id):
         self._ref_order_id = ref_order_id
@@ -300,10 +294,6 @@ class Order(Keyed):
     def time_in_force(self, time_in_force):
         self._time_in_force = time_in_force
 
-    @reason.setter
-    def reason(self, reason):
-        self._reason = reason
-
     def set_executed(self, quantity, fully_filled, avg_price):
         self._executed = quantity
         self._fully_filled = fully_filled
@@ -347,40 +337,6 @@ class Order(Keyed):
 
         return "unknown"
 
-    def reason_to_str(self):
-        if self._reason == Order.REASON_UNDEFINED:
-            return "undefined"
-        elif self._reason == Order.REASON_OK:
-            return "success"
-        elif self._reason == Order.REASON_INSUFFICIENT_FUNDS:
-            return "insufficient-funds"
-        elif self._reason == Order.REASON_INSUFFICIENT_MARGIN:
-            return "insufficient-margin"
-        elif self._reason == Order.REASON_ERROR:
-            return "error"
-        elif self._reason == Order.REASON_INVALID_ARGS:
-            return "invalid-arguments"
-        elif self._reason == Order.REASON_DENIED:
-            return "denied"
-        elif self._reason == Order.REASON_UNREACHABLE_SERVICE:
-            return "unreachable"
-        elif self._reason == Order.REASON_UNDEFINED:
-            return "undefined"
-        elif self._reason == Order.REASON_RATE_LIMIT:
-            return "rate-limit"
-        elif self._reason == Order.REASON_ORDER_LIMIT:
-            return "order-limit"
-        elif self._reason == Order.REASON_POSITION_LIMIT:
-            return "position-limit"
-        elif self._reason == Order.REASON_INVALID_NONCE:
-            return "invalid-nonce"
-        elif self._reason == Order.REASON_POST_ONLY:
-            return "post-only"
-        elif self._reason == Order.REASON_CANCEL_ONLY:
-            return "cancel-only"
-        else:
-            return "undefined"
-
 
 def order_type_to_str(order_type):
     if order_type == Order.ORDER_MARKET:
@@ -399,3 +355,37 @@ def order_type_to_str(order_type):
         return "trailing-stop-market"
 
     return "unknown"
+
+
+def order_reason_to_str(reason):
+    if reason == Order.REASON_OK:
+        return "success"
+    elif reason == Order.REASON_UNDEFINED:
+        return "undefined"
+    elif reason == Order.REASON_INSUFFICIENT_FUNDS:
+        return "insufficient-funds"
+    elif reason == Order.REASON_INSUFFICIENT_MARGIN:
+        return "insufficient-margin"
+    elif reason == Order.REASON_ERROR:
+        return "error"
+    elif reason == Order.REASON_INVALID_ARGS:
+        return "invalid-arguments"
+    elif reason == Order.REASON_DENIED:
+        return "denied"
+    elif reason == Order.REASON_UNREACHABLE_SERVICE:
+        return "unreachable"
+    elif reason == Order.REASON_RATE_LIMIT:
+        return "rate-limit"
+    elif reason == Order.REASON_ORDER_LIMIT:
+        return "order-limit"
+    elif reason == Order.REASON_POSITION_LIMIT:
+        return "position-limit"
+    elif reason == Order.REASON_INVALID_NONCE:
+        return "invalid-nonce"
+    elif reason == Order.REASON_POST_ONLY:
+        return "post-only"
+    elif reason == Order.REASON_CANCEL_ONLY:
+        return "cancel-only"
+    else:
+        return "undefined"
+

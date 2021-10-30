@@ -1,7 +1,7 @@
 # @date 2018-12-28
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Strategy indivisible trade for margin.
+# Strategy trade for margin with an indivisible (unique) position.
 
 from common.signal import Signal
 
@@ -22,6 +22,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
     We cannot deal in opposite direction at the same time (no hedging),
     but we can eventually manage many trade on the same direction.
+    With some exchanges (binancefutures) if the hedge mode is active it is possible to manage the both directions.
 
     We prefers here to update on trade order signal. A position deleted mean any related trades closed.
 
@@ -66,6 +67,9 @@ class StrategyIndMarginTrade(StrategyTrade):
         order.margin_trade = True
         order.leverage = leverage
 
+        if hedging:
+            order.hedging = hedging
+
         # generated a reference order id
         trader.set_ref_order_id(order)
         self.create_ref_oid = order.ref_order_id
@@ -83,8 +87,9 @@ class StrategyIndMarginTrade(StrategyTrade):
         self._stats['entry-order-type'] = order.order_type
 
         if trader.create_order(order, instrument) > 0:
+            # keep the related create position identifier if available
             self.create_oid = order.order_id
-            self.position_id = order.position_id  # might be market-id
+            self.position_id = order.position_id  # might be market-id, but depends if hedging active or not
 
             if not self.eot and order.created_time:
                 # only at the first open
@@ -120,7 +125,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         if trader.create_order(order, instrument) > 0:
             self.create_oid = order.order_id
-            self.position_id = order.position_id  # might be market-id
+            self.position_id = order.position_id  # might be market-id, but depends if hedging active or not
 
             if not self.eot and order.created_time:
                 # only at the first open
@@ -174,7 +179,6 @@ class StrategyIndMarginTrade(StrategyTrade):
             if trader.cancel_order(self.limit_oid, instrument) > 0:
                 self.limit_ref_oid = None
                 self.limit_oid = None
-                
                 self.limit_order_qty = 0.0
 
                 if self.e <= 0 and self.x <= 0:
@@ -202,23 +206,62 @@ class StrategyIndMarginTrade(StrategyTrade):
                 else:
                     # cancel a partially filled trade means it is then fully filled
                     self._entry_state = StrategyTrade.STATE_FILLED
-            else:
-                return False
 
-        return True
+                return self.ACCEPTED
+            else:
+                data = trader.order_info(self.create_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no create order, nothing to do
+                    self.create_ref_oid = None
+                    self.create_oid = None
+
+                    self._entry_state = StrategyTrade.STATE_CANCELED
+                else:
+                    # exists, do nothing need to retry
+                    return self.ERROR
+
+        return self.NOTHING_TO_DO
 
     def modify_take_profit(self, trader, instrument, limit_price):
+        if self._closing:
+            # already closing order
+            return self.NOTHING_TO_DO
+
+        if self._exit_state == StrategyTrade.STATE_FILLED:
+            # exit already fully filled
+            return self.NOTHING_TO_DO
+
         if self.limit_oid:
             # cancel the limit order and create a new one
             if trader.cancel_order(self.limit_oid, instrument) > 0:
                 self.limit_ref_oid = None
                 self.limit_oid = None
-                
                 self.limit_order_qty = 0.0
             else:
-                return self.ERROR
+                data = trader.order_info(self.limit_oid, instrument)
 
-        if self.e - self.x > 0.0:
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no limit order
+                    self.limit_ref_oid = None
+                    self.limit_oid = None
+                    self.limit_order_qty = 0.0
+                else:
+                    return self.ERROR
+
+        if self.x >= self.e:
+            # all entry qty is filled, if lesser something wrong but its ok
+            return self.NOTHING_TO_DO
+
+        if limit_price:
             # only if filled entry partially or totally
             order = Order(self, instrument.market_id)
             order.direction = -self.direction
@@ -250,19 +293,47 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self.limit_order_qty = 0.0
 
                 return self.REJECTED
+        else:
+            # remove take-profit
+            self.tp = 0.0
 
         return self.NOTHING_TO_DO
 
     def modify_stop_loss(self, trader, instrument, stop_price):
+        if self._closing:
+            # already closing order
+            return self.NOTHING_TO_DO
+
+        if self._exit_state == StrategyTrade.STATE_FILLED:
+            # exit already fully filled
+            return self.NOTHING_TO_DO
+
         if self.stop_oid:
             # cancel the stop order and create a new one
             if trader.cancel_order(self.stop_oid, instrument) > 0:
                 self.stop_ref_oid = None
                 self.stop_oid = None
+                self.stop_order_qty = 0.0
             else:
-                return self.ERROR
+                data = trader.order_info(self.stop_oid, instrument)
 
-        if self.e - self.x > 0.0:
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no stop order
+                    self.stop_ref_oid = None
+                    self.stop_oid = None
+                    self.stop_order_qty = 0.0
+                else:
+                    return self.ERROR
+
+        if self.x >= self.e:
+            # all entry qty is filled, if lesser something wrong but its ok
+            return self.NOTHING_TO_DO
+
+        if stop_price:
             # only if filled entry partially or totally
             order = Order(self, instrument.market_id)
             order.direction = -self.direction
@@ -293,6 +364,9 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self.stop_order_qty = 0.0
 
                 return self.REJECTED
+        else:
+            # remove stop-loss
+            self.sl = 0.0
 
         return self.NOTHING_TO_DO
 
@@ -312,54 +386,92 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 self._entry_state = StrategyTrade.STATE_CANCELED
             else:
-                return self.ERROR
+                data = trader.order_info(self.create_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no create order
+                    self.create_ref_oid = None
+                    self.create_oid = None
+                else:
+                    return self.ERROR
 
         if self.stop_oid:
             # cancel the stop order
             if trader.cancel_order(self.stop_oid, instrument) > 0:
                 self.stop_ref_oid = None
                 self.stop_oid = None
+                self.stop_order_qty = 0.0
             else:
-                return self.ERROR
+                data = trader.order_info(self.stop_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no stop order
+                    self.stop_ref_oid = None
+                    self.stop_oid = None
+                    self.stop_order_qty = 0.0
+                else:
+                    return self.ERROR
 
         if self.limit_oid:
             # cancel the limit order
             if trader.cancel_order(self.limit_oid, instrument) > 0:
                 self.limit_ref_oid = None
                 self.limit_oid = None
+                self.limit_order_qty = 0.0
             else:
-                return self.ERROR
+                data = trader.order_info(self.limit_oid, instrument)
 
-        if self.e - self.x > 0.0:
-            order = Order(trader, instrument.market_id)
-            order.direction = -self.dir  # neg dir
-            order.order_type = Order.ORDER_MARKET
-            order.reduce_only = True
-            order.quantity = self.e - self.x  # remaining qty
-            order.margin_trade = True
-            order.leverage = self.leverage
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
 
-            # generated a reference order id
-            trader.set_ref_order_id(order)
-            self.stop_ref_oid = order.ref_order_id
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no limit order
+                    self.limit_ref_oid = None
+                    self.limit_oid = None
+                    self.limit_order_qty = 0.0
+                else:
+                    return self.ERROR
 
-            self._stats['stop-order-type'] = order.order_type
+        if self.x >= self.e:
+            # all qty is filled
+            return self.NOTHING_TO_DO
 
-            if trader.create_order(order, instrument) > 0:
-                self.stop_oid = order.order_id
-                self.stop_order_qty = order.quantity
+        order = Order(trader, instrument.market_id)
+        order.direction = -self.dir  # neg dir
+        order.order_type = Order.ORDER_MARKET
+        order.reduce_only = True
+        order.quantity = self.e - self.x  # remaining qty
+        order.margin_trade = True
+        order.leverage = self.leverage
 
-                # closing order defined
-                self._closing = True
+        # generated a reference order id
+        trader.set_ref_order_id(order)
+        self.stop_ref_oid = order.ref_order_id
 
-                return self.ACCEPTED
-            else:
-                self.stop_ref_oid = None
-                self.stop_order_qty = 0.0
+        self._stats['stop-order-type'] = order.order_type
 
-                return self.REJECTED
+        if trader.create_order(order, instrument) > 0:
+            self.stop_oid = order.order_id
+            self.stop_order_qty = order.quantity
 
-        return self.NOTHING_TO_DO
+            # closing order defined
+            self._closing = True
+
+            return self.ACCEPTED
+        else:
+            self.stop_ref_oid = None
+            self.stop_order_qty = 0.0
+
+            return self.REJECTED
 
     def has_stop_order(self):
         return self.stop_oid is not None and self.stop_oid != ""

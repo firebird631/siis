@@ -204,7 +204,7 @@ class ReinvestGainHandler(Handler):
                             quantity, trade.id, strategy_trader.instrument.symbol))
 
                         try:
-                            if not trade.cancel_open(trader, strategy_trader.instrument):
+                            if trade.cancel_open(trader, strategy_trader.instrument) <= 0:
                                 logger.error("Unable to cancel trade %s open for %s" % (
                                     trade.id, strategy_trader.instrument.symbol))
                                 continue

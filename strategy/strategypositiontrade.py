@@ -154,6 +154,22 @@ class StrategyPositionTrade(StrategyTrade):
                     self._entry_state = StrategyTrade.STATE_FILLED
             else:
                 error = True
+                # @todo once implemented trader.order_info for IG
+                # data = trader.order_info(self.create_oid, instrument)
+                #
+                # if data is None:
+                #     # API error, do nothing need retry
+                #     error = True
+                #
+                # elif data['id'] is None:
+                #     # cannot retrieve the order, wrong id, no create order, nothing to do
+                #     self.create_ref_oid = None
+                #     self.create_oid = None
+                #
+                #     self._entry_state = StrategyTrade.STATE_CANCELED
+                # else:
+                #     # exists, do nothing need to retry
+                #     error = True
 
         return not error
 
@@ -170,10 +186,28 @@ class StrategyPositionTrade(StrategyTrade):
                 else:
                     # cancel a partially filled trade means it is then fully filled
                     self._entry_state = StrategyTrade.STATE_FILLED
-            else:
-                return False
 
-        return True
+                return self.ACCEPTED
+            else:
+                return self.ERROR
+                # @todo once implemented trader.order_info for IG
+                # data = trader.order_info(self.create_oid, instrument)
+                #
+                # if data is None:
+                #     # API error, do nothing need retry
+                #     return self.ERROR
+                #
+                # elif data['id'] is None:
+                #     # cannot retrieve the order, wrong id, no create order, nothing to do
+                #     self.create_ref_oid = None
+                #     self.create_oid = None
+                #
+                #     self._entry_state = StrategyTrade.STATE_CANCELED
+                # else:
+                #     # exists, do nothing need to retry
+                #     return self.ERROR
+
+        return self.NOTHING_TO_DO
 
     def modify_take_profit(self, trader, instrument, limit_price):
         if self.position_id:
@@ -216,6 +250,21 @@ class StrategyPositionTrade(StrategyTrade):
                 self.create_oid = None
 
                 self._entry_state = StrategyTrade.STATE_CANCELED
+            else:
+                return self.ERROR
+                # @todo once implemented trader.order_info for IG
+                # data = trader.order_info(self.create_oid, instrument)
+                #
+                # if data is None:
+                #     # API error, do nothing need retry
+                #     return self.ERROR
+                #
+                # elif data['id'] is None:
+                #     # cannot retrieve the order, wrong id, no create order
+                #     self.create_ref_oid = None
+                #     self.create_oid = None
+                # else:
+                #     return self.ERROR
 
         if self.position_id:
             # most of the margin broker case we have a position id

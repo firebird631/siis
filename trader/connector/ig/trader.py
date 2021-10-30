@@ -371,7 +371,7 @@ class IGTrader(Trader):
             return False
 
         if not self._watcher.connector:
-            error_logger.error("Trader %s refuse to close position because of missing connector" % (self.name,))
+            error_logger.error("Trader %s refuse to close position because of missing connector" % self.name)
             return False
 
         epic = market_or_instrument.market_id
@@ -395,15 +395,18 @@ class IGTrader(Trader):
         direction = 'SELL' if direction == Position.LONG else 'BUY'
 
         try:
-            results = self._watcher.connector.ig.close_open_position(deal_id, direction, epic, expiry, level, order_type, quote_id, size)
+            results = self._watcher.connector.ig.close_open_position(deal_id, direction, epic, expiry,
+                                                                     level, order_type, quote_id, size)
             order_logger.info(results)
      
             if results.get('dealStatus', '') != 'ACCEPTED':
-                error_logger.error("%s rejected close position %s - %s !" % (self.name, position_id, market_or_instrument.market_id))
+                error_logger.error("%s rejected close position %s - %s !" % (
+                    self.name, position_id, market_or_instrument.market_id))
                 return False
 
         except IGException as e:
-            error_logger.error("%s except close position %s - %s - cause : %s !" % (self.name, position_id, market_or_instrument.market_id, str(e)))
+            error_logger.error("%s except close position %s - %s - cause : %s !" % (
+                self.name, position_id, market_or_instrument.market_id, str(e)))
             return False
 
         return True
@@ -413,7 +416,7 @@ class IGTrader(Trader):
             return False
 
         if not self._watcher.connector:
-            error_logger.error("Trader %s refuse to modify position because of missing connector" % (self.name,))
+            error_logger.error("Trader %s refuse to modify position because of missing connector" % self.name)
             return False
 
         limit_level = None
@@ -429,14 +432,20 @@ class IGTrader(Trader):
             order_logger.info(results)
 
             if results.get('dealStatus', '') != 'ACCEPTED':
-                error_logger.error("%s rejected modify position %s - %s !" % (self.name, position_id, market_or_instrument.market_id))
+                error_logger.error("%s rejected modify position %s - %s !" % (
+                    self.name, position_id, market_or_instrument.market_id))
                 return False
 
         except IGException as e:
-            error_logger.error("%s except modify position %s - %s - cause : %s !" % (self.name, position_id, market_or_instrument.market_id, str(e)))
+            error_logger.error("%s except modify position %s - %s - cause : %s !" % (
+                self.name, position_id, market_or_instrument.market_id, str(e)))
             return False
 
         return True
+
+    def order_info(self, order_id, market_or_instrument):
+        # @todo
+        return None
 
     #
     # global accessors
@@ -444,8 +453,8 @@ class IGTrader(Trader):
 
     def positions(self, market_id):
         """
-        Returns current positions for an instrtument. If the trader does not use a WS API it is possible
-        to constat a latency between the reality and what it returns. Prefers use WS API as possible.
+        Returns current positions for an instrument. If the trader does not use a WS API it is possible
+        to detect a latency between the reality and what it returns. Prefers use WS API as possible.
         @deprecated
         """
         positions = []
@@ -460,6 +469,7 @@ class IGTrader(Trader):
     def market(self, market_id, force=False):
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
+        @param market_id
         @param force Force to update the cache
         """
         with self._mutex:

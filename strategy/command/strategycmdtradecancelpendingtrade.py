@@ -8,8 +8,6 @@ def cmd_trade_cancel_pending(strategy, strategy_trader, data, silent=False):
     Cancel an existing trade according data on given strategy_trader.
     If the trade is active it will not be canceled.
     An error message is returned if the trade cannot be canceled, except if silent is defined.
-
-    @note If trade-id is -1 assume the last trade.
     """
     results = {
         'messages': [],
@@ -33,9 +31,8 @@ def cmd_trade_cancel_pending(strategy, strategy_trader, data, silent=False):
     trader = strategy.trader()
 
     with strategy_trader._mutex:
-        if trade_id == -1 and strategy_trader.trades:
-            trade = strategy_trader.trades[-1]
-        else:
+        # retrieve the trade
+        with strategy_trader._trade_mutex:
             for t in strategy_trader.trades:
                 if t.id == trade_id:
                     trade = t
@@ -44,13 +41,17 @@ def cmd_trade_cancel_pending(strategy, strategy_trader, data, silent=False):
         if trade:
             if not trade.is_active():
                 # cancel open
-                trade.cancel_open(trader, strategy_trader.instrument)
+                if trade.cancel_open(trader, strategy_trader.instrument) > 0:
+                    # add a success result message
+                    results['messages'].append("Cancel trade %i on %s:%s" % (
+                        trade.id, strategy.identifier, strategy_trader.instrument.market_id))
 
-                # add a success result message
-                results['messages'].append("Cancel trade %i on %s:%s" % (trade.id, strategy.identifier, strategy_trader.instrument.market_id))
-
-                # update strategy-trader
-                strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+                    # update strategy-trader
+                    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+                else:
+                    results['error'] = True
+                    results['messages'].append("Error during cancel trade %i on %s:%s" % (
+                        trade.id, strategy.identifier, strategy_trader.instrument.market_id))
             else:
                 # cannot cancel if active, add a reject result message
                 if not silent:

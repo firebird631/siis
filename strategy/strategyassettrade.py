@@ -135,7 +135,21 @@ class StrategyAssetTrade(StrategyTrade):
                     # cancel a partially filled trade means it is then fully filled
                     self._entry_state = StrategyTrade.STATE_FILLED
             else:
-                error = True
+                data = trader.order_info(self.entry_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    error = True
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no entry order, nothing to do
+                    self.entry_ref_oid = None
+                    self.entry_oid = None
+
+                    self._entry_state = StrategyTrade.STATE_CANCELED
+                else:
+                    # exists, do nothing need to retry
+                    error = True
 
         if self.oco_oid:
             # cancel the oco sell order
@@ -155,7 +169,19 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
             else:
-                error = True
+                data = trader.order_info(self.oco_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    error = True
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no entry order, nothing to do
+                    self.oco_ref_oid = None
+                    self.oco_oid = None
+                else:
+                    # exists, do nothing need to retry
+                    error = True
         else:
             if self.stop_oid:
                 # cancel the stop sell order
@@ -163,6 +189,7 @@ class StrategyAssetTrade(StrategyTrade):
                     # returns true, no need to wait signal confirmation
                     self.stop_ref_oid = None
                     self.stop_oid = None
+                    self.stop_order_qty = 0.0
 
                     if self.e <= 0 and self.x <= 0:
                         # no exit qty
@@ -172,7 +199,19 @@ class StrategyAssetTrade(StrategyTrade):
                     else:
                         self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
                 else:
-                    error = True
+                    data = trader.order_info(self.stop_oid, instrument)
+
+                    if data is None:
+                        # API error, do nothing need retry
+                        error = True
+
+                    elif data['id'] is None:
+                        # cannot retrieve the order, wrong id, no stop order
+                        self.stop_ref_oid = None
+                        self.stop_oid = None
+                        self.stop_order_qty = 0.0
+                    else:
+                        error = True
 
             if self.limit_oid:
                 # cancel the sell limit order
@@ -180,6 +219,7 @@ class StrategyAssetTrade(StrategyTrade):
                     # returns true, no need to wait signal confirmation
                     self.limit_ref_oid = None
                     self.limit_oid = None
+                    self.limit_order_qty = 0.0
 
                     if self.e <= 0 and self.x <= 0:
                         # no exit qty
@@ -189,7 +229,19 @@ class StrategyAssetTrade(StrategyTrade):
                     else:
                         self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
                 else:
-                    error = True
+                    data = trader.order_info(self.limit_oid, instrument)
+
+                    if data is None:
+                        # API error, do nothing need retry
+                        error = True
+
+                    elif data['id'] is None:
+                        # cannot retrieve the order, wrong id, no stop order
+                        self.limit_ref_oid = None
+                        self.limit_oid = None
+                        self.limit_order_qty = 0.0
+                    else:
+                        error = True
 
         return not error
 
@@ -217,7 +269,7 @@ class StrategyAssetTrade(StrategyTrade):
                     return self.ERROR
 
                 elif data['id'] is None:
-                    # cannot retrieve the order, wrong id, no entry order
+                    # cannot retrieve the order, wrong id, no entry order, nothing to do
                     self.entry_ref_oid = None
                     self.entry_oid = None
 
