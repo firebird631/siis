@@ -175,7 +175,7 @@ class NotifierService(Service):
 
     def receiver(self, signal):
         if signal.source == Signal.SOURCE_STRATEGY:
-            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_ALERT:
 
                 # propagate the signal to the notifiers
                 with self._mutex:

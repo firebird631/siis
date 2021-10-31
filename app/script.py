@@ -18,7 +18,7 @@ def setup_script(action, module, watcher_service, trader_service, strategy_servi
         def run_once(watcher_service, trader_service, strategy_service, monitor_service, notifier_service):
     and must at least return a command results dict with 'messages' and 'error' field or a list of a such dict.
 
-    @todo cron script
+    @todo cron script (need a registry)
     @todo run by a service script
     @todo remove a cron or a run by service script
     """

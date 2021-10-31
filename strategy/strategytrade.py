@@ -52,6 +52,8 @@ class StrategyTrade(object):
     STATE_FILLED = 6
     STATE_ERROR = 7
 
+    INSUFFICIENT_MARGIN = -3
+    INSUFFICIENT_FUNDS = -2
     ERROR = -1
     REJECTED = 0
     ACCEPTED = 1

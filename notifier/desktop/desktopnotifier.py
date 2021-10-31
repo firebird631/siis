@@ -37,7 +37,7 @@ class DesktopNotifier(Notifier):
     """
     Desktop notifier for desktop popup and audio alerts.
 
-    @todo Strategey alert notifications
+    @todo Strategy alert notifications
     """
 
     AUDIO_ALERT_DEFAULT = 0
@@ -85,6 +85,8 @@ class DesktopNotifier(Notifier):
 
     def __init__(self, identifier, service, options):
         super().__init__("desktop", identifier, service)
+
+        self.notify2 = None
 
         self._backtesting = options.get('backtesting', False)
 
@@ -212,6 +214,19 @@ class DesktopNotifier(Notifier):
             if signal.data['message'] is not None:
                 message += " (%s)" % signal.data['message']
 
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ERROR:
+            icon = "dialog-error"
+            alert = DesktopNotifier.AUDIO_ALERT_WARNING
+
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+
+            label = "Trade #%s error on %s !" % (signal.data['trade-id'], signal.data['symbol'],)
+
+            message = "Trade error at %s - #%s on %s" % (
+                ldatetime,
+                signal.data['trade-id'],
+                signal.data['symbol'])
+
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return
 
@@ -234,12 +249,17 @@ class DesktopNotifier(Notifier):
         # @todo results
         if command_type == self.COMMAND_TOGGLE and data and data.get("value", "") == "popup":
             self._popups = not self._popups
-            Terminal.inst().action("desktop notifier popups are now %s" % ("actives" if self._popups else "disabled",), view='status')
+            Terminal.inst().action("desktop notifier popups are now %s" % (
+                "actives" if self._popups else "disabled",), view='status')
+
         elif command_type == self.COMMAND_TOGGLE and data and data.get("value", "") == "audible":
             self._audible = not self._audible
-            Terminal.inst().action("desktop notifier audio alertes are now %s" % ("actives" if self._audible else "disabled",), view='status')
+            Terminal.inst().action("desktop notifier audio alerts are now %s" % (
+                "actives" if self._audible else "disabled",), view='status')
+
         elif command_type == self.COMMAND_INFO:
-            Terminal.inst().info("desktop notifier is %s" % ("active" if self._playpause else "disabled",), view='content')
+            Terminal.inst().info("desktop notifier is %s" % ("active" if self._playpause else "disabled",),
+                                 view='content')
 
         return None
 
@@ -252,7 +272,8 @@ class DesktopNotifier(Notifier):
                 self.push_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHDOG:
-            self.push_signal(signal)
+            if signal.signal_type in (Signal.SIGNAL_WATCHDOG_TIMEOUT, Signal.SIGNAL_WATCHDOG_UNREACHABLE):
+                self.push_signal(signal)
 
     #
     # helpers
@@ -263,12 +284,13 @@ class DesktopNotifier(Notifier):
         if not self._backtesting and self._audible and audio_alert is not None and 0 <= audio_alert <= len(self._alerts):
             try:
                 for i in range(0, self._alerts[audio_alert][1]):
-                    subprocess.Popen(['aplay', '-D', self._audio_device, self._alerts[audio_alert][0]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.Popen(['aplay', '-D', self._audio_device, self._alerts[audio_alert][0]],
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except:
                 pass
 
     def play_wave(self, freq, duration, mode="sine"):
-        if not self.backtesting and self._audible and freq and duration and mode:
+        if not self._backtesting and self._audible and freq and duration and mode:
             try:
                 os.system('play --no-show-progress --null --channels 1 synth %s %s %f' % (duration, mode, freq))
             except:

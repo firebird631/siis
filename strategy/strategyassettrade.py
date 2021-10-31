@@ -374,7 +374,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                     self._exit_state = self.STATE_ERROR
 
-                    return self.REJECTED
+                    return self.INSUFFICIENT_FUNDS
                 else:
                     # rejected
                     self.limit_ref_oid = None
@@ -482,7 +482,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                     self._exit_state = self.STATE_ERROR
 
-                    return self.REJECTED
+                    return self.INSUFFICIENT_FUNDS
                 else:
                     # rejected
                     self.stop_ref_oid = None
@@ -606,7 +606,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                 self._exit_state = self.STATE_ERROR
 
-                return self.REJECTED
+                return self.INSUFFICIENT_FUNDS
             else:
                 # rejected
                 self.stop_ref_oid = None
@@ -762,7 +762,8 @@ class StrategyAssetTrade(StrategyTrade):
                 elif 'commission-amount' in data:
                     self._stats['entry-fees'] += data['commission-amount']
                 # else:  # @todo on quote or on base...
-                #     self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+                #     self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get(
+                #         'maker', False) else instrument.taker_fee)
 
                 # retains the trade timestamp
                 if not self._stats['first-realized-entry-timestamp']:

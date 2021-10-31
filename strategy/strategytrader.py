@@ -601,10 +601,15 @@ class StrategyTrader(object):
             with self._trade_mutex:
                 for trade in self._trades:
                     try:
-                        # check orders/position/quantity
-                        if trade.check(trader, self.instrument) == 0:
-                            # try to repair it else stay in check status
-                            trade.repair(trader, self.instrument)
+                        # check and update from order info orders/position/quantity
+                        result = trade.check(trader, self.instrument)
+
+                        # do not repair automatically because of free quantity can be necessary to another trade
+                        # and could results to error another trade
+
+                        # if result == 0:
+                        #     # try to repair it else stay in error status
+                        #     trade.repair(trader, self.instrument)
 
                         time.sleep(1.0)  # do not saturate API
 
@@ -1762,7 +1767,7 @@ class StrategyTrader(object):
 
     def notify_trade_update(self, timestamp, trade):
         if trade:
-            # stream only but could be remove, client will update using tickers, and only receive amends update
+            # stream only but could be removed, client will update using tickers, and only receive amends update
             if self._trade_update_streamer:
                 try:
                     self._trade_update_streamer.member('trade-update').update(self, trade, timestamp)
@@ -1791,6 +1796,11 @@ class StrategyTrader(object):
             if self._handlers and trade.context is not None and trade.context.name in self._handlers:
                 with self._mutex:
                     self._handlers[trade.context.name].on_trade_exited(self, trade)
+
+    def notify_trade_error(self, timestamp, trade):
+        if trade:
+            # system notification
+            self.strategy.notify_trade_error(timestamp, trade.id, self)
 
     def notify_alert(self, timestamp, alert, result):
         if alert and result:

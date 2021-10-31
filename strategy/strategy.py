@@ -255,6 +255,20 @@ class Strategy(Runnable):
             signal_data = trade.dumps_notify_update(timestamp, strategy_trader)
             self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_UPDATE, self._name, signal_data)
 
+    def notify_trade_error(self, timestamp, trade_id, strategy_trader):
+        """
+        Notify a strategy trade update to cause an unmanageable error to the user.
+        It must be called by the strategy-trader.
+        """
+        if trade_id:
+            signal_data = {
+                'trade-id': trade_id,
+                'market-id': strategy_trader.instrument.market_id,
+                'symbol': strategy_trader.instrument.symbol,
+                'timestamp': timestamp,
+            }
+            self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_ERROR, self._name, signal_data)
+
     def notify_alert(self, timestamp, alert, result, strategy_trader):
         """
         Notify a strategy alert to the user. It must be called by the strategy-trader.

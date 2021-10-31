@@ -3,19 +3,15 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Discord notification handler
 
-import logging
-import time
 import traceback
 import re
 
-from importlib import import_module
-from datetime import datetime, timedelta
+from tabulate import tabulate
+from datetime import datetime
 
 from notifier.notifier import Notifier
+from terminal.terminal import Terminal, Color
 
-from config import utils
-
-from trader.position import Position
 from notifier.discord.webhooks import send_to_discord
 from notifier.notifierexception import NotifierException
 
@@ -39,11 +35,11 @@ class DiscordNotifier(Notifier):
         super().__init__("discord", identifier, service)
 
         self._url_re = re.compile(
-                r'^(?:http|ftp)s?://' # http:// or https://
-                r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
-                r'localhost|' #localhost...
-                r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
-                r'(?::\d+)?' # optional port
+                r'^(?:http|ftp)s?://'  # http:// or https://
+                r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+                r'localhost|'  # localhost...
+                r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+                r'(?::\d+)?'  # optional port
                 r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
         self._backtesting = options.get('backtesting', False)
@@ -61,6 +57,7 @@ class DiscordNotifier(Notifier):
                 "alert",
                 "entry",
                 "exit",
+                # "error",
                 # "take-profit",
                 # "stop-loss",
                 # "quantity",
@@ -96,7 +93,6 @@ class DiscordNotifier(Notifier):
         pass
 
     def process_signal(self, signal):
-        label = ""
         message = ""
 
         if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
@@ -111,7 +107,6 @@ class DiscordNotifier(Notifier):
                 action = signal.data['stats']['exit-reason']
 
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-            label = "Signal %s %s on %s" % (action, signal.data['direction'], signal.data['symbol'],)
 
             message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
                 signal.data['symbol'],
@@ -153,7 +148,6 @@ class DiscordNotifier(Notifier):
                 border = "default"
 
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-            label = "Alert %s %s on %s" % (signal.data['name'], signal.data['reason'], signal.data['symbol'],)
 
             message = "%s %s@%s (%s) %s at %s - #%s in %s" % (
                 signal.data['name'],
@@ -167,6 +161,19 @@ class DiscordNotifier(Notifier):
 
             if signal.data.get('user') is not None:
                 message += " (%s)" % signal.data['user']
+
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ERROR:
+            if 'error' not in self._signals_opts:
+                return
+
+            border = "orange"
+
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+
+            message = "Trade error at %s - #%s on %s" % (
+                ldatetime,
+                signal.data['trade-id'],
+                signal.data['symbol'])
 
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return
@@ -186,6 +193,11 @@ class DiscordNotifier(Notifier):
         if signal.source == Signal.SOURCE_STRATEGY:
             if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_ALERT:
                 self.push_signal(signal)
+
+        # avoid to public
+        # elif signal.source == Signal.SOURCE_WATCHDOG:
+        #     if signal.signal_type in (Signal.SIGNAL_WATCHDOG_TIMEOUT, Signal.SIGNAL_WATCHDOG_UNREACHABLE):
+        #         self.push_signal(signal)
 
     #
     # helpers
@@ -210,7 +222,8 @@ class DiscordNotifier(Notifier):
     def format_table(self, data):
         arr = tabulate(data, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)
         # remove colors
-        arr = arr.replace(Color.ORANGE, '').replace(Color.RED, '').replace(Color.GREEN, '').replace(Color.WHITE, '').replace(Color.PURPLE, '')
+        arr = arr.replace(Color.ORANGE, '').replace(Color.RED, '').replace(Color.GREEN, '').replace(
+            Color.WHITE, '').replace(Color.PURPLE, '')
 
         return arr
 
@@ -225,19 +238,22 @@ class DiscordNotifier(Notifier):
     #             closed_trades_dst = self._discord_webhooks[strategy.identifier + '.closed-trades']
 
     #         if trades_dst:
-    #             columns, table, total_size = trades_stats_table(appl, *Terminal.inst().active_content().format(), quantities=True, percents=True)
+    #             columns, table, total_size = trades_stats_table(appl, *Terminal.inst().active_content().format(),
+    #                   quantities=True, percents=True)
     #             if table:
     #                 arr = self.format_table(table)
     #                 self.split_and_send(trades_dst, arr)
             
     #         if agg_trades_dst:
-    #             columns, table, total_size = agg_trades_stats_table(appl, *Terminal.inst().active_content().format(), quantities=True)
+    #             columns, table, total_size = agg_trades_stats_table(appl, *Terminal.inst().active_content().format(),
+    #                   quantities=True)
     #             if table:
     #                 arr = self.format_table(table)
     #                 self.split_and_send(agg_trades_dst, arr)
 
     #         if closed_trades_dst:
-    #             columns, table, total_size = closed_trades_stats_table(appl, *Terminal.inst().active_content().format(), quantities=True, percents=True)
+    #             columns, table, total_size = closed_trades_stats_table(appl,
+    #                   *Terminal.inst().active_content().format(), quantities=True, percents=True)
     #             if table:
     #                 arr = self.format_table(table)
     #                 self.split_and_send(closed_trades_dst, arr)

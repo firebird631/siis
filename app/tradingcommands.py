@@ -374,7 +374,7 @@ class SetFrozenQuantityCommand(Command):
             asset_name = args[0]
             quantity = float(args[1])
 
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         results = self._trader_service.command(Trader.COMMAND_TRADER_FROZE_ASSET_QUANTITY, {
@@ -521,7 +521,7 @@ class LongCommand(Command):
                 elif value.startswith("-"):
                     context = value[1:]
 
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         if limit_price and stop_loss and stop_loss_price_mode == "price" and stop_loss > limit_price:
@@ -688,7 +688,7 @@ class ShortCommand(Command):
                 elif value.startswith("-"):
                     context = value[1:]
 
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         if limit_price and stop_loss and stop_loss_price_mode == "price" and stop_loss < limit_price:
@@ -757,7 +757,7 @@ class CloseCommand(Command):
             market_id = args[0]
             trade_id = int(args[1])
 
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         results = self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, {
@@ -806,7 +806,7 @@ class CleanCommand(Command):
             market_id = args[0]
             trade_id = int(args[1])
 
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         results = self._strategy_service.command(Strategy.COMMAND_TRADE_CLEAN, {
@@ -864,7 +864,7 @@ class StepStopLossOperationCommand(Command):
 
             trigger = float(args[2])
             stop_loss = float(args[3])
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
@@ -919,7 +919,7 @@ class RemoveOperationCommand(Command):
 
             trade_id = int(args[1])
             operation_id = int(args[2])
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
@@ -973,7 +973,7 @@ class CheckTradeCommand(Command):
 
             if len(args) > 2:
                 repair = args[2] == "repair"
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         results = self._strategy_service.command(Strategy.COMMAND_TRADE_CHECK, {
@@ -1063,7 +1063,7 @@ class ModifyStopLossCommand(Command):
                 # create an order or modify the position, else use default
                 force = str(args[3]) == "force"
 
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
@@ -1155,7 +1155,7 @@ class ModifyTakeProfitCommand(Command):
                 # create an order or modify the position, else use default
                 force = str(args[3]) == "force"
 
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
@@ -1206,7 +1206,7 @@ class TradeInfoCommand(Command):
                 else:
                     trade_id = -1
 
-            except Exception:
+            except ValueError:
                 return False, "Invalid parameters"
 
             results = self._strategy_service.command(Strategy.COMMAND_TRADE_INFO, {
@@ -1307,7 +1307,7 @@ class AssignCommand(Command):
                 else:
                     quantity = float(value)
 
-        except Exception:
+        except ValueError:
             return False, "Invalid parameters"
 
         if entry_price <= 0.0:

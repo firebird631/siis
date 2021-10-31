@@ -12,9 +12,12 @@ class Signal(object):
 	SIGNAL_STRATEGY_TRADE_ENTRY = 52    # data is a dict @see StrategyTrade (trade entry)
 	SIGNAL_STRATEGY_TRADE_EXIT = 53     # data is a dict @see StrategyTrade (trade exit)
 	SIGNAL_STRATEGY_TRADE_UPDATE = 54   # data is a dict @see StrategyTrade (fill qty, modify stop-loss, take-profit...)
-	SIGNAL_STRATEGY_ALERT = 55          # data is a dict @see StrategyAlert (alert, notify an custom or contextual event)
-	SIGNAL_STRATEGY_INITIALIZE = 56     # data is market_id
-	SIGNAL_STRATEGY_UPDATE = 57         # data is market_id
+	SIGNAL_STRATEGY_TRADE_ERROR = 55    # data is a dict with market-id, symbol, trade-id and timestamp
+
+	SIGNAL_STRATEGY_ALERT = 60          # data is a dict @see StrategyAlert (alert, notify an custom or contextual event)
+
+	SIGNAL_STRATEGY_INITIALIZE = 70     # data is market_id
+	SIGNAL_STRATEGY_UPDATE = 71         # data is market_id
 
 	SIGNAL_CANDLE_DATA = 100            # data is a pair with (market_id, Candle)
 	SIGNAL_TICK_DATA = 101              # data is a pair with (market_id, Tick)

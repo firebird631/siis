@@ -4,17 +4,12 @@
 # Android notifier bot message post.
 
 import time
-import logging
 import traceback
 
-from importlib import import_module
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from notifier.notifier import Notifier
 
-from config import utils
-
-from trader.position import Position
 from notifier.android.androidpush import send_to_android
 
 from common.signal import Signal
@@ -57,6 +52,7 @@ class AndroidNotifier(Notifier):
                 "alert",
                 "entry",
                 "exit",
+                "error",
                 "quantity",
                 "stop-loss",
                 "take-profit"
@@ -82,7 +78,6 @@ class AndroidNotifier(Notifier):
         pass
 
     def process_signal(self, signal):
-        label = ""
         message = ""
         sound = "default"
         channel = ""
@@ -101,7 +96,6 @@ class AndroidNotifier(Notifier):
                 action = signal.data['stats']['exit-reason']
 
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-            label = "Signal %s %s on %s" % (action, signal.data['direction'], signal.data['symbol'],)
 
             message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
                 signal.data['symbol'],
@@ -138,14 +132,13 @@ class AndroidNotifier(Notifier):
             reason = signal.data['reason']
 
             if signal.data['trigger'] > 0:
-                notifcation_type = "alert-up"
+                notification_type = "alert-up"
             elif signal.data['trigger'] < 0:
-                notifcation_type = "alert-down"
+                notification_type = "alert-down"
             else:
-                notifcation_type = "alert"
+                notification_type = "alert"
 
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-            label = "Alert %s %s on %s" % (signal.data['name'], signal.data['reason'], signal.data['symbol'],)
 
             message = "%s %s@%s (%s) %s at %s - #%s in %s" % (
                 signal.data['name'],
@@ -160,29 +153,40 @@ class AndroidNotifier(Notifier):
             if signal.data.get('message') is not None:
                 message += " (%s)" % signal.data['message']
 
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ERROR:
+            if 'error' not in self._signals_opts:
+                return
+
+            channel = self._channels.get('signals')  # @todo
+
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+
+            message = "Trade error at %s - #%s on %s" % (
+                ldatetime,
+                signal.data['trade-id'],
+                signal.data['symbol'])
+
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return
 
         elif signal.signal_type == Signal.SIGNAL_WATCHDOG_TIMEOUT:
-            if not 'timeout' in self._watchdog:
+            if 'timeout' not in self._watchdog:
                 return
 
             channel = self._channels.get('watchdog')
 
             ldatetime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-            label = "Watchdog timeout pid %i service" % (signal.data[0], signal.data[1])
 
             message = "Watchdog timeout pid %i service %s after %.0f' at %s" % (
                 signal.data[0], signal.data[1], signal.data[2], ldatetime)
 
         elif signal.signal_type == Signal.SIGNAL_WATCHDOG_UNREACHABLE:
-            if not 'unreachable' in self._watchdog:
+            if 'unreachable' not in self._watchdog:
                 return
 
             channel = self._channels.get('watchdog')
 
             ldatetime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-            label = "Watchdog unreachable service %s'" % signal.data[0]
             message = "Watchdog unreachable service %s at %s - %s" % (signal.data[0], ldatetime, signal.data[1])
 
         if message:

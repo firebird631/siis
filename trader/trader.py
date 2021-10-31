@@ -916,7 +916,7 @@ class Trader(Runnable):
 
     @Runnable.mutexed
     def on_update_market(self, market_id, tradable, last_update_time, bid, ask, base_exchange_rate,
-            contract_size=None, value_per_pip=None, vol24h_base=None, vol24h_quote=None):
+                         contract_size=None, value_per_pip=None, vol24h_base=None, vol24h_quote=None):
         """
         Update bid, ask, base exchange rate and last update time of a market.
         Take care this method is not thread safe. Use it with the trader mutex or exclusively in the same thread.
@@ -966,7 +966,7 @@ class Trader(Runnable):
     def last_price(self, market_id):
         """
         Return the last price for a specific market.
-        @param str market_id Valid market identifier
+        @param market_id str Valid market identifier
         @return float Last watched price or None if missing market.
         """
         price = None

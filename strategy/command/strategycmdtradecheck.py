@@ -1,9 +1,9 @@
 # @date 2021-08-13
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2021 Dream Overflow
-# Strategy command trade clean
+# Strategy command trader check and repair
 
-def cmd_trade_check(strategy, strategy_trader, data, repair=False):
+def cmd_trade_check(strategy, strategy_trader, data):
     """
     Check and optional repair an existing trade according data on given strategy_trader.
 
@@ -17,9 +17,11 @@ def cmd_trade_check(strategy, strategy_trader, data, repair=False):
     # retrieve the trade
     trade_id = -1
 
+    repair = data.get('repair', False)
+
     try:
         trade_id = int(data.get('trade-id'))
-    except Exception:
+    except ValueError:
         results['error'] = True
         results['messages'].append("Invalid trade identifier")
 
@@ -30,13 +32,10 @@ def cmd_trade_check(strategy, strategy_trader, data, repair=False):
     trader = strategy.trader()
 
     with strategy_trader._mutex:
-        if trade_id == -1 and strategy_trader.trades:
-            trade = strategy_trader.trades[-1]
-        else:
-            for t in strategy_trader.trades:
-                if t.id == trade_id:
-                    trade = t
-                    break
+        for t in strategy_trader.trades:
+            if t.id == trade_id:
+                trade = t
+                break
 
         if trade:
             # check trade

@@ -280,7 +280,6 @@ class StrategyIndMarginTrade(StrategyTrade):
             create_order_result = trader.create_order(order, instrument)
             if create_order_result > 0:
                 self.limit_oid = order.order_id
-
                 self.limit_order_qty = order.quantity
 
                 self.last_tp_ot[0] = order.created_time
@@ -289,6 +288,14 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self.tp = limit_price
 
                 return self.ACCEPTED
+            elif create_order_result == Order.REASON_INSUFFICIENT_MARGIN:
+                # rejected because not enough margin, must stop to retry
+                self.limit_ref_oid = None
+                self.limit_order_qty = 0.0
+
+                self._exit_state = self.STATE_ERROR
+
+                return self.INSUFFICIENT_MARGIN
             else:
                 self.limit_ref_oid = None
                 self.limit_order_qty = 0.0
@@ -368,7 +375,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 self._exit_state = self.STATE_ERROR
 
-                return self.REJECTED
+                return self.INSUFFICIENT_MARGIN
             else:
                 self.stop_ref_oid = None
                 self.stop_order_qty = 0.0
@@ -485,7 +492,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
             self._exit_state = self.STATE_ERROR
 
-            return self.REJECTED
+            return self.INSUFFICIENT_MARGIN
         else:
             self.stop_ref_oid = None
             self.stop_order_qty = 0.0

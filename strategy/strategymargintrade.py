@@ -294,7 +294,7 @@ class StrategyMarginTrade(StrategyTrade):
 
                 self._exit_state = self.STATE_ERROR
 
-                return self.REJECTED
+                return self.INSUFFICIENT_MARGIN
             else:
                 self.limit_ref_oid = None
                 self.limit_order_qty = 0.0
@@ -374,7 +374,7 @@ class StrategyMarginTrade(StrategyTrade):
 
                 self._exit_state = self.STATE_ERROR
 
-                return self.REJECTED
+                return self.INSUFFICIENT_MARGIN
             else:
                 self.stop_ref_oid = None
                 self.stop_order_qty = 0.0
@@ -491,7 +491,7 @@ class StrategyMarginTrade(StrategyTrade):
 
             self._exit_state = self.STATE_ERROR
 
-            return self.REJECTED
+            return self.INSUFFICIENT_MARGIN
         else:
             self.stop_ref_oid = None
             self.stop_order_qty = 0.0
