@@ -8,13 +8,13 @@ from trader.order import Order
 
 class TradeOp(object):
     """
-    Startegy trade operation base class.
+    Strategy trade operation base class.
     """
 
     VERSION = "1.0.0"
 
     OP_UNDEFINED = 0
-    OP_DYNAMIC_STOP_LOSS = 1
+    OP_STEP_STOP_LOSS = 1
     OP_SINGLE_VAR_CONDITION = 2
     OP_TWO_VARS_CONDITION = 3
 
@@ -27,7 +27,7 @@ class TradeOp(object):
     def __init__(self, stage):
         self._id = -1        # operation unique identifier
         self._stage = stage  # apply on entry or exit
-        self._count = -1     # peristant operation count is -1, else its value is decremented until 0
+        self._count = -1     # persistent operation count is -1, else its value is decremented until 0
 
     #
     # getters
@@ -146,7 +146,7 @@ class TradeOp(object):
         }
 
     #
-    # persistance
+    # persistence
     #
 
     def stage_to_str(self):
@@ -159,7 +159,7 @@ class TradeOp(object):
 
     def dumps(self):
         """
-        Override this method and add specific parameters for dumps parameters for persistance model.
+        Override this method and add specific parameters for dumps parameters for persistence model.
         """
         return {
             'version': self.version(),
@@ -171,20 +171,20 @@ class TradeOp(object):
 
     def loads(self, data):
         """
-        Override this method and add specific parameters for loads parameters from persistance model.
+        Override this method and add specific parameters for loads parameters from persistence model.
         """
         self._id = data.get('id', -1)
         self._stage = data.get('stage', 0)  # self.stage_from_str(data.get('stage', ''))
         self._count = data.get('count', 0)
 
 
-class TradeOpDynamicStopLoss(TradeOp):
+class TradeOpStepStopLoss(TradeOp):
     """
-    Dynamic stop-loss level. Each time a target is reached the stop-loss is set to a specific price.
+    Step stop-loss trade operation. Each time a target is reached the stop-loss is set to a specific price.
     """
 
-    OP = TradeOp.OP_DYNAMIC_STOP_LOSS
-    NAME = 'dynamic-stop-loss'
+    OP = TradeOp.OP_STEP_STOP_LOSS
+    NAME = 'step-stop-loss'
 
     def __init__(self):
         super().__init__(TradeOp.STAGE_EXIT)
@@ -238,13 +238,13 @@ class TradeOpDynamicStopLoss(TradeOp):
         return False
 
     def str_info(self):
-        return "Dynamic stop-loss at %s when reach %s" % (self._stop_loss, self._trigger)
+        return "Step stop-loss at %s when reach %s" % (self._stop_loss, self._trigger)
 
     def parameters(self):
         return {
-            'label': "Dynamic stop-loss",
+            'label': "Step stop-loss",
             'name': self.name(),
-            'id': self.id(),
+            'id': self.id,
             'stop-loss': self._stop_loss,
             'trigger': self._trigger
         }
@@ -266,7 +266,7 @@ class TradeOpDynamicStopLoss(TradeOp):
 
 class TradeSingleVarOpCondStopLoss(TradeOp):
     """
-    Modifiy the stop-loss when a condition is true.
+    Modify the stop-loss when a condition is true.
 
     @todo test for example RSI greater than... two values cross...
     """
@@ -290,13 +290,13 @@ class TradeSingleVarOpCondStopLoss(TradeOp):
         self._count = 1
 
     def str_info(self):
-        return "Single variable conditionned stop-loss ...@todo"
+        return "Single variable conditioned stop-loss ...@todo"
 
     def parameters(self):
         return {
-            'label': "Single variable conditionned stop-loss",
+            'label': "Single variable conditioned stop-loss",
             'name': self.name(),
-            'id': self.id(),
+            'id': self.id,
             'variable': self._variable,
         }
 
@@ -315,7 +315,7 @@ class TradeSingleVarOpCondStopLoss(TradeOp):
 
 class TradeTwoVarsOpCondStopLoss(TradeOp):
     """
-    Modifiy the stop-loss when a condition is true.
+    Modify the stop-loss when a condition is true.
 
     @todo test for example price cross ema, ema1 greater than ema2...
     """
@@ -340,13 +340,13 @@ class TradeTwoVarsOpCondStopLoss(TradeOp):
         self._count = 1
 
     def str_info(self):
-        return "Two variables conditionned stop-loss ...@todo"
+        return "Two variables conditioned stop-loss ...@todo"
 
     def parameters(self):
         return {
-            'label': "Two variables conditionned stop-loss",
+            'label': "Two variables conditioned stop-loss",
             'name': self.name(),
-            'id': self.id(),
+            'id': self.id,
             # ...
         }
 

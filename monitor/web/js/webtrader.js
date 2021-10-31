@@ -549,8 +549,8 @@ $(window).ready(function() {
         $('#apply_modify_trade_take_profit').modal('hide');
     });
 
-    $('#apply_trade_add_dynamic_stop_loss').on('click', function(e) {
-        on_add_active_trade_dynamic_stop_loss();
+    $('#apply_trade_add_step_stop_loss').on('click', function(e) {
+        on_add_active_trade_step_stop_loss();
     });
 
     $('#modified_stop_loss_range').slider({

@@ -329,11 +329,11 @@ Force to save now all strategies/appliances states and existing trades. This ope
 
 This command refers to a trading operation of an existing trade.
 
-```:dynamic-stop-loss (appliance) (market) (trade) (trigger-price) (stop-price)``` or ```:DSL ...```
+```:step-stop-loss (appliance) (market) (trade) (trigger-price) (stop-price)``` or ```:SSL ...```
 
 [More information about trade operations.](doc/strategies/tradeops.md)
 
-Add an operation on an existing trade, to modify the stop-loss order/price once it reach a specified trigger price.
+Add an operation on an existing trade, to modify the stop-loss order/price once it reaches a specified trigger price.
 In others words, each time the price move and reach a fixed better price it will modify the stop-loss price to a specified value.
 
 Example :
@@ -343,7 +343,7 @@ Example :
 The price of BTCUSDT reach 9000$, then the operation modify the stop-loss price to 8600$.
 Once executed the operation is deleted.
 
-You can add many dynamic-stop-loss operation, at diffents level, then you could progressively secure your trade during the pump.
+You can add many step-stop-loss operation, at different level, then you could progressively secure your trade during the pump.
 
 
 ## Remove Operation ##

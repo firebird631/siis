@@ -1061,7 +1061,7 @@ function on_apply_modify_active_trade_stop_loss() {
     }
 }
 
-function on_add_active_trade_dynamic_stop_loss() {
+function on_add_active_trade_step_stop_loss() {
     let key = $('#modify_trade_stop_loss').attr('trade-key', key);
 
     let parts = key.split(':');
@@ -1077,16 +1077,16 @@ function on_add_active_trade_dynamic_stop_loss() {
 
     let market = window.markets[market_id];
 
-    let dynamic_stop_loss_price = parseFloat($('#dynamic_stop_loss_price').val());
-    let trigger_price = parseFloat($('#dynamic_stop_loss_trigger_price').val());
+    let step_stop_loss_price = parseFloat($('#step_stop_loss_price').val());
+    let trigger_price = parseFloat($('#step_stop_loss_trigger_price').val());
 
     if (market_id && market && trade_id) {
         let data = {
             'market-id': market['market-id'],
             'trade-id': trade_id,
             'command': "trade-modify",
-            'action': "dynamic-stop-loss",
-            'stop-loss': dynamic_stop_loss_price,
+            'action': "step-stop-loss",
+            'stop-loss': step_stop_loss_price,
             'trigger': trigger_price
         };
 
@@ -1104,15 +1104,15 @@ function on_add_active_trade_dynamic_stop_loss() {
         .done(function(data) {
             if (data.error) {
                 for (let msg in data.messages) {
-                    notify({'message': data.messages[msg], 'title': 'Add Dynamic Stop-Loss', 'type': 'error'});
+                    notify({'message': data.messages[msg], 'title': 'Add Step Stop-Loss', 'type': 'error'});
                 }
             } else {
-                notify({'message': "Success", 'title': 'Add Dynamic Stop-Loss', 'type': 'success'});
+                notify({'message': "Success", 'title': 'Add Step Stop-Loss', 'type': 'success'});
             }
         })
         .fail(function(data) {
             for (let msg in data.messages) {
-                notify({'message': msg, 'title': 'Add Dynamic Stop-Loss', 'type': 'error'});
+                notify({'message': msg, 'title': 'Add Step Stop-Loss', 'type': 'error'});
             }
         });
     }

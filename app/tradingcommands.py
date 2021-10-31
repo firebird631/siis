@@ -826,8 +826,8 @@ class CleanCommand(Command):
         return args, 0
 
 
-class DynamicStopLossOperationCommand(Command):
-    SUMMARY = "to manually add a dynamic-stop-loss operation on a trade"
+class StepStopLossOperationCommand(Command):
+    SUMMARY = "to manually add a step-stop-loss operation on a trade"
     HELP = (
         "param1: <market-id> Market identifier",
         "param2: <trade-id> Trade identifier",
@@ -836,7 +836,7 @@ class DynamicStopLossOperationCommand(Command):
     )
 
     def __init__(self, strategy_service):
-        super().__init__('dynamic-stop-loss', 'DSL')
+        super().__init__('step-stop-loss', 'SSL')
 
         self._strategy_service = strategy_service
 
@@ -848,12 +848,12 @@ class DynamicStopLossOperationCommand(Command):
         trade_id = None
 
         action = "add-op"
-        op = "dynamic-stop-loss"
+        op = "step-stop-loss"
 
         trigger = 0.0
         stop_loss = 0.0
 
-        # ie ":DSL EURUSD 4 1.12 1.15"
+        # ie ":SSL EURUSD 4 1.12 1.15"
         if len(args) != 4:
             return False, "Missing parameters"
 
@@ -2090,7 +2090,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(CleanCommand(strategy_service))
     commands_handler.register(TradeInfoCommand(strategy_service))
     commands_handler.register(RemoveOperationCommand(strategy_service))
-    commands_handler.register(DynamicStopLossOperationCommand(strategy_service))
+    commands_handler.register(StepStopLossOperationCommand(strategy_service))
     commands_handler.register(CheckTradeCommand(strategy_service))
 
     #
