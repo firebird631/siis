@@ -142,7 +142,10 @@ class InfoCommand(Command):
         "param1: [strategy|notifier]",
         "param2: <notifier-id> for notifier only",
         "param3: <market-id> for strategy only (optional)",
+        "param4: <status|details> for strategy with a specified market-id only (optional)",
     )
+
+    DETAIL_CHOICES = ("status", "details")
 
     def __init__(self, strategy_service, notifier_service):
         super().__init__('info', None)
@@ -154,23 +157,38 @@ class InfoCommand(Command):
         if not args:
             return False, "Missing parameters. Need at at least strategy or notifiers."
 
+        detail = None
+
+        if len(args) == 3:
+            if args[2] in InfoCommand.DETAIL_CHOICES:
+                detail = args[2]
+            else:
+                return False, "Invalid detail option."
+
         if args[0] == 'strategy':
             if len(args) == 1:
-                self._strategy_service.command(Strategy.COMMAND_INFO, {})
-                return True, []
+                results = self._strategy_service.command(Strategy.COMMAND_INFO, {})
+                return self.manage_results(results)
 
             elif len(args) == 2:
-                self._strategy_service.command(Strategy.COMMAND_INFO, {'market-id': args[1]})
-                return True, []
+                results = self._strategy_service.command(Strategy.COMMAND_INFO, {'market-id': args[1]})
+                return self.manage_results(results)
+
+            elif len(args) == 3:
+                results = self._strategy_service.command(Strategy.COMMAND_TRADER_INFO, {
+                    'detail': detail,
+                    'market-id': args[1]
+                })
+                return self.manage_results(results)
 
         elif args[0] == 'notifiers':
             if len(args) == 1:
-                self._notifier_service.command(Notifier.COMMAND_INFO, {})
-                return True, []
+                results = self._notifier_service.command(Notifier.COMMAND_INFO, {})
+                return self.manage_results(results)
 
             elif len(args) == 2:
-                self._notifier_service.command(Notifier.COMMAND_INFO, {'notifier': args[1]})
-                return True, []
+                results = self._notifier_service.command(Notifier.COMMAND_INFO, {'notifier': args[1]})
+                return self.manage_results(results)
 
         return False, None
 
@@ -187,6 +205,10 @@ class InfoCommand(Command):
 
             elif args[0] == "notifiers":
                 return self.iterate(1, self._notifier_service.notifiers_identifiers(), args, tab_pos, direction)
+
+        elif len(args) <= 3:
+            if args[0] == "strategy" and args[1]:
+                return self.iterate(2, InfoCommand.DETAIL_CHOICES, args, tab_pos, direction)
 
         return args, 0
 

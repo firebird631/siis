@@ -99,7 +99,7 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 # URGENT #
 ##########
 
-#120 Kraken have maintenance, cancel-only and post-only market status, could be usefull
+#120 Kraken have maintenance, cancel-only and post-only market status, could be useful
     to manage this state at the strategytrader level.
 
 #57 Vérification des trades au rechargement :

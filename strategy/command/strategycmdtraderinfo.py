@@ -3,9 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy command trader info
 
-from terminal.terminal import Terminal
-
-
 def cmd_trader_info(strategy, data):
     # info on the strategy
     if 'market-id' in data:
@@ -22,16 +19,15 @@ def cmd_trader_info(strategy, data):
                 strategy_trader = strategy._strategy_traders.get(market_id)
 
             if strategy_trader:
-                Terminal.inst().message(
-                    "Market %s of strategy %s identified by \\2%s\\0 is %s. Trade quantity is %s." % (
+                message = "Market %s of strategy %s identified by \\2%s\\0 is %s. Trade quantity is %s." % (
                         data['market-id'], strategy.name, strategy.identifier,
-                        "active" if strategy_trader.activity else "paused",
-                        strategy_trader.instrument.trade_quantity),
-                    view='content')
-    else:
-        Terminal.inst().message("Strategy %s is identified by \\2%s\\0" % (
-            strategy.name, strategy.identifier), view='content')
+                        "active" if strategy_trader.activity else "pause",
+                        strategy_trader.instrument.trade_quantity)
 
+                return {'error': False, 'messages': [message]}
+            else:
+                return {'error': True, 'messages': "Strategy trader not found for %s" % market_id}
+    else:
         enabled = []
         disabled = []
 
@@ -42,12 +38,14 @@ def cmd_trader_info(strategy, data):
                 else:
                     disabled.append(k)
 
+        message = ""
+
         if enabled:
-            enabled = [e if i%10 else e+'\n' for i, e in enumerate(enabled)]
-            Terminal.inst().message("Enabled instruments (%i): %s" % (
-                len(enabled), " ".join(enabled)), view='content')
+            enabled = [e if i % 10 else e+'\n' for i, e in enumerate(enabled)]
+            message = "Enabled instruments (%i): %s" % (len(enabled), " ".join(enabled))
 
         if disabled:
-            disabled = [e if i%10 else e+'\n' for i, e in enumerate(disabled)]
-            Terminal.inst().message("Disabled instruments (%i): %s" % (
-                len(disabled), " ".join(disabled)), view='content')
+            disabled = [e if i % 10 else e+'\n' for i, e in enumerate(disabled)]
+            message = "Disabled instruments (%i): %s" % (len(disabled), " ".join(disabled))
+
+        return {'error': False, 'messages': [message]}

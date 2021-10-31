@@ -246,20 +246,22 @@ class DesktopNotifier(Notifier):
                 n.show()
 
     def command(self, command_type, data):
-        # @todo results
+        message = ""
+
         if command_type == self.COMMAND_TOGGLE and data and data.get("value", "") == "popup":
             self._popups = not self._popups
-            Terminal.inst().action("desktop notifier popups are now %s" % (
-                "actives" if self._popups else "disabled",), view='status')
+            message = "%s notifier popups are now %s" % (self.identifier, "actives" if self._popups else "disabled")
 
         elif command_type == self.COMMAND_TOGGLE and data and data.get("value", "") == "audible":
             self._audible = not self._audible
-            Terminal.inst().action("desktop notifier audio alerts are now %s" % (
-                "actives" if self._audible else "disabled",), view='status')
+            message = "%s notifier audio alerts are now %s" % (self.identifier,
+                                                               "actives" if self._audible else "disabled")
 
         elif command_type == self.COMMAND_INFO:
-            Terminal.inst().info("desktop notifier is %s" % ("active" if self._playpause else "disabled",),
-                                 view='content')
+            message = "%s notifier is %s" % (self.identifier, "active" if self._playpause else "disabled")
+
+        if message:
+            return {'error': False, 'messages': message}
 
         return None
 

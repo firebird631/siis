@@ -742,18 +742,23 @@ def application(argv):
                                 elif value == ' ':
                                     # toggle play/pause on backtesting
                                     if strategy_service.backtesting:
-                                        result = strategy_service.toggle_play_pause()
+                                        results = strategy_service.toggle_play_pause()
                                         Terminal.inst().notice("Backtesting now %s" % (
-                                            "play" if result else "paused"), view='status')
+                                            "play" if results else "paused"), view='status')
 
                                 elif value == 'a':
                                     if notifier_service:
-                                        notifier_service.command(Notifier.COMMAND_TOGGLE, {
+                                        results = notifier_service.command(Notifier.COMMAND_TOGGLE, {
                                             'notifier': "desktop", 'value': "audible"})
+                                        if results and not results.get('error'):
+                                            Terminal.inst().notice(results['messages'], view='status')
                                 elif value == 'n':
                                     if notifier_service:
-                                        notifier_service.command(Notifier.COMMAND_TOGGLE, {
+                                        results = notifier_service.command(Notifier.COMMAND_TOGGLE, {
                                             'notifier': "desktop", 'value': "popup"})
+                                        if results and not results.get('error'):
+                                            Terminal.inst().notice(results['messages'], view='status')
+
                                 elif value == '%':
                                     if view_service:
                                         view_service.toggle_percent()
@@ -799,7 +804,7 @@ def application(argv):
                         value_changed = True
                         Terminal.inst().info("Current typing canceled", view='status')
 
-                # display strategy tarding time (update max once per second)
+                # display strategy trading time (update max once per second)
                 if strategy_service.timestamp - prev_timestamp >= 1.0:
                     mode = "live"
                     if trader_service.backtesting:

@@ -124,14 +124,8 @@ class Notifier(Runnable):
 
     def command(self, command_type, data):
         if command_type == self.COMMAND_INFO:
-            Terminal.inst().info("%s notifier is %s" % (self.identifier, "active" if self._playpause else "disabled",),
-                                 view='content')
-
-            return {
-                'name': self._name,
-                'identifier': self.identifier,
-                'status': self._playpause,
-            }
+            message = "%s notifier is %s" % (self.identifier, "active" if self._playpause else "disabled")
+            return {'error': False, 'messages': message}
 
         return None
 

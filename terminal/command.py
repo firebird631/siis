@@ -161,11 +161,19 @@ class Command(object):
                 if r['error']:
                     # partial error
                     failed += 1
-                    messages += r.get('messages', [])
+                    msg = r.get('messages', [])
+                    if type(msg) in (list, tuple):
+                        messages += msg
+                    elif type(msg) is str:
+                        messages.append(msg)
                 else:
                     # partial success
                     succeed += 1
-                    messages += r.get('messages', [])
+                    msg = r.get('messages', [])
+                    if type(msg) in (list, tuple):
+                        messages += msg
+                    elif type(msg) is str:
+                        messages.append(msg)
 
             if succeed > 0 and failed > 0:
                 messages.append("Partially succeed %i, failed %i" % (succeed, failed))
@@ -295,7 +303,7 @@ class CommandsHandler(object):
                     Terminal.inst().action(msgs, view='content')
                 elif type(msgs) == list or type(msgs) == tuple:
                     for msg in msgs:
-                        Terminal.inst().info(msg, view='content')
+                        Terminal.inst().action(msg, view='content')
             else:
                 if type(msgs) == str:
                     Terminal.inst().error(msgs, view='status')
