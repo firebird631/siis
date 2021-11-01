@@ -1850,6 +1850,9 @@ class Trader(Runnable):
                         # elif m.quote == self._account.alt_currency:
                         #     market = m  # second choice
 
+                    if asset.free <= 0.0:
+                        continue
+
                     if market:
                         assets.append((asset.symbol, market, asset.free))
                     else:
