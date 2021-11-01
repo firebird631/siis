@@ -1,12 +1,13 @@
-#####################
-# OBJETS A RESOUDRE #
-#####################
+####################
+# Tasks to resolve #
+####################
 
 Limitations de IG des 10k candle/mois en fetch :
     - IG n'offre que les historique des commodities, des indices et des forex (et pas des actions)
     - selon la stratégie on en a besoin au moins de 50 par timeframe par symbol à chaque démarrage pour se synchroniser,
 
-Distance et timeout-distance si en DIST doivent être supporté par distance_type et timeout_distance_type dans les methode de SL/TP et dynamiques.
+Distance et timeout-distance si en DIST doivent être supporté par distance_type et timeout_distance_type
+dans les methode de SL/TP et dynamiques.
 
 Bootstrap et Preprocess risque de se recouvrer dans certains cas :
     - comment éviter cela si la stratégie execute les 2 méthodes ?
@@ -20,11 +21,9 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
                 - ce qui en plus évite les imprécisions de ce pseudo replay
 
 
-############
-# EN COURS #
-############
-
-#118 Commande de fusion et split des trades pour un instrument donné (à réfléchir)
+#######
+# WIP #
+#######
 
 #116 kraken watcher et trader :
     - fetch des positions
@@ -38,8 +37,6 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 #24 Uniformiser l'order book (bitmex, binance, binancefutures, kraken)
     - avoir un object OrderBook facile à mettre à jour et à exploiter
     - utiliser DepthCacheManager pour binance et binancefutures
-
-#100 active regions view
 
 #103 WebTrader
     - gérer affinity par market (+ streaming de change car il peut être produit depuis le term ou un autre client)
@@ -69,15 +66,10 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
     hard wallet de reference (ou soft wallet)
         - la même mais avec un découpe en % sur N asset, et N wallet (hard ou soft)
 
-#119 close_position and modify position must return Order REASON code in place of boolean
 
-#122 implement IG trader order_info method
-
-#123 send a error notification in case of a trade goes to ERROR state
-
-#######
-# BUG #
-#######
+########
+# Bugs #
+########
 
 #114 Supprimer le client chart une fois la version web réalisée, donc ce bug ne devrait plus être
 
@@ -96,43 +88,49 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 
 
 ##########
-# URGENT #
+# Urgent #
 ##########
+
+#119 close_position and modify_position must return Order REASON code in place of boolean
+
+#122 send an error notification in case of a trade goes to ERROR state
 
 #120 Kraken have maintenance, cancel-only and post-only market status, could be useful
     to manage this state at the strategytrader level.
 
-#57 Vérification des trades au rechargement :
-    - Cas des positions indépendante (CFD, future) : pas de soucis tant qu'on retrouve la position et les ordres
-    - Cas des crypto margin: si on rate un trade event, on va perdre le compte : reprendre l'historique des trades, ça devient l'usine à gérer
-    => On pourrait depuis le watcher récupérer à la connexion tout les TRADES depuis le dernier timestamp connu
-        - On le fait déjà en fait sur binance pour les asset non vide (nouvellement non vide (valeur fetched) ou précédemment non vide (valeur stocké en DB))
-            - pour binance.com c'est un peu lent et ça consomme du crédit API
-            - pour bitmex.com on a get_historical_trades(...)
-            - pour ig.com pas de question à se poser on regarde l'état de la position, et éventuellement les ordres actifs qu'on a fetched
+#57 Verification des trades par la method check :
+    - implementer order_info pour le trader bitmex et verifier
+    - implementer order_info pour le trader ig et verifier
+    - verifier order_info pour le trader binance et binancefutures
+    - verifier order_info pour le trader binance et binancefutures
 
 
 #############
-# IMPORTANT #
+# Important #
 #############
 
 #60 Gérer la partie locked sur le paper trader en mode asset
-    - C'est à dire ne pas tout gérer en free, ce n'est pas super important au final car ça n'empêche pas le fonctionnement,
+    - C'est à dire ne pas tout gérer en free, pas super important au final car ça n'empêche pas le fonctionnement,
 
 
 #########
-# BONUS #
+# Bonus #
 #########
 
-#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, l'intérêt c'est d'avoir le trigger coté bot, pour ne pas bloquer les fonds coté broker
+#100 active regions view
+
+#118 Commande de fusion et split des trades pour un instrument donné (à réfléchir)
+
+#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, ainsi avoir le trigger coté bot,
+    et ne pas bloquer les fonds coté broker
 
 #117 A chaque fois que un espace (separateur de parametre) est inséré, lors d'une commande, proposer l'entrée suivante
     de HELP de la commande, en fonction de l'index
 
 
-#########################
-## Idées de stratégies ##
-#########################
+####################
+## Strategy Ideas ##
+####################
 
 - TD9 : 9 13 9, double setup, aggressive, combiné avec RSI par exemple et MA pour les double setup
 - Mode HHT (Hilbert) et min/max par modes

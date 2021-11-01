@@ -235,7 +235,11 @@ class Market(object):
     @bid.setter
     def bid(self, bid):
         self._bid = bid
-    
+
+    @property
+    def market_bid(self):
+        return self._bid
+
     @property
     def spread(self):
         return self._ask - self._bid
@@ -247,6 +251,10 @@ class Market(object):
     @ask.setter
     def ask(self, ask):
         self._ask = ask
+
+    @property
+    def market_ask(self):
+        return self._ask
 
     @property
     def price(self):
