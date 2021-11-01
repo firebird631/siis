@@ -590,14 +590,14 @@ function add_active_trade(market_id, trade) {
     let stop_loss_price_rate = compute_price_pct(trade['stop-loss-price'], trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
     trade_stop_loss.attr('title', (stop_loss_price_rate * 100).toFixed(2) + '%');
 
-    let trade_stop_loss_chg = $('<button class="btn btn-light trade-modify-stop-loss fa fa-pencil""></button>');
+    let trade_stop_loss_chg = $('<button class="btn btn-light trade-modify-stop-loss fa fa-pencil"></button>');
 
     // take-profit
     let trade_take_profit = $('<span class="trade-take-profit"></span>').text(trade['take-profit-price']);  // + UP/DN buttons
     trade_take_profit.attr('data-toggle', "tooltip");
     trade_take_profit.attr('data-placement', "top");
     
-    let trade_take_profit_chg = $('<button class="btn btn-light trade-modify-take-profit fa fa-pencil""></button>');
+    let trade_take_profit_chg = $('<button class="btn btn-light trade-modify-take-profit fa fa-pencil"></button>');
 
     let take_profit_price_rate = compute_price_pct(trade['take-profit-price'], trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
     trade_take_profit.attr('title', (take_profit_price_rate * 100).toFixed(2) + '%');
@@ -622,11 +622,21 @@ function add_active_trade(market_id, trade) {
     trade_elt.append($('<td></td>').append(trade_percent));
     trade_elt.append($('<td></td>').append(trade_upnl));
     trade_elt.append($('<td></td>').append(trade_fees));
-    
-    trade_elt.append($('<td></td>').append(trade_stop_loss).append(trade_stop_loss_chg));
-    trade_elt.append($('<td></td>').append(trade_take_profit).append(trade_take_profit_chg));
-    
-    trade_elt.append($('<td></td>').append(trade_close));  
+
+    if (server.permissions.indexOf("strategy-modify-trade") != -1) {
+        trade_elt.append($('<td></td>').append(trade_stop_loss).append(trade_stop_loss_chg));
+        trade_elt.append($('<td></td>').append(trade_take_profit).append(trade_take_profit_chg));
+    }
+
+    if (server.permissions.indexOf("strategy-close-trade") < 0) {
+        trade_close.attr("disabled", "")
+    }
+
+    if (server.permissions.indexOf("strategy-modify-trade") != -1) {
+        trade_breakeven.attr("disabled", "")
+    }
+
+    trade_elt.append($('<td></td>').append(trade_close));
     trade_elt.append($('<td></td>').append(trade_breakeven));
     trade_elt.append($('<td></td>').append(trade_details));
 
@@ -634,11 +644,17 @@ function add_active_trade(market_id, trade) {
     $('div.active-trade-list-entries tbody').append(trade_elt);
 
     // actions
-    trade_close.on('click', on_close_trade);
+    if (server.permissions.indexOf("strategy-close-trade") != -1) {
+        trade_close.on('click', on_close_trade);
+        trade_breakeven.on('click', on_breakeven_trade);
+    }
+
+    if (server.permissions.indexOf("strategy-modify-trade") != -1) {
+        trade_stop_loss_chg.on('click', on_modify_active_trade_stop_loss);
+        trade_take_profit_chg.on('click', on_modify_active_trade_take_profit);
+    }
+
     trade_details.on('click', on_details_active_trade);
-    trade_breakeven.on('click', on_breakeven_trade);
-    trade_stop_loss_chg.on('click', on_modify_active_trade_stop_loss);
-    trade_take_profit_chg.on('click', on_modify_active_trade_take_profit);
 
     window.actives_trades[key] = trade;
 
@@ -1140,7 +1156,7 @@ function on_details_historical_trade(elt) {
  * using an average slot size based on last data.
  * Report console log analysis results.
  * @param currency str Currency asset to use.
- * @apram currency_prefix str In some case an additional currency prefix to match between asset symbol and market ids.
+ * @param currency_prefix str In some case an additional currency prefix to match between asset symbol and market ids.
  * @return object Per asset an object with details.
  */
 function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X") {

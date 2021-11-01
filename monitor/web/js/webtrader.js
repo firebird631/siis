@@ -1258,6 +1258,9 @@ function fetch_trades() {
 
         let trades = result['data'];
 
+        // sort by entry date
+        trades.sort((a, b) => (a['entry-open-time'] > b['entry-open-time']) - (a['entry-open-time'] < b['entry-open-time']));
+
         for (let i = 0; i < trades.length; ++i) {
             let trade = trades[i];
 
@@ -1312,7 +1315,7 @@ function fetch_history() {
         update_status_trades();
     })
     .fail(function() {
-        notify({'message': "Unable to obtains historicals trades !", 'title': 'fetching"', 'type': 'error'});
+        notify({'message': "Unable to obtains historical trades !", 'title': 'fetching"', 'type': 'error'});
     });
 }
 
