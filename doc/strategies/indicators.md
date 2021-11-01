@@ -1,11 +1,11 @@
 # List of implemented strategy indicators #
 
-A strategy can operate ony many markets and many timeframes, for each timeframe there is is sub, and each sub can compute multiples indicators.
+A strategy can operate ony many markets and many timeframes, for each timeframe there is sub, and each sub can compute multiples indicators.
 
 Indicators take input data, compute at every update (tick, trade, candle) or only at candle close, or any other circumstances implemented by the strategy.
 
 Some indicators generate an array of the same size of the input, or multiples array, some others are more exotics, and compute non temporals results,
-or temporals results buy with a different structure than the inputs.
+or temporal results buy with a different structure than the inputs.
 
 ...
 
@@ -70,7 +70,7 @@ Most common and simple indicator, the smoothed moving average.
 
 ...
 
-### MESA MAMA (SineWave based adapative moving average) ###
+### MESA MAMA (SineWave based adaptive moving average) ###
 
 ...
 

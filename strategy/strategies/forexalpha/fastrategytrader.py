@@ -3,28 +3,16 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Forex Alpha strategy
 
-from datetime import datetime
-from common.utils import UTC
-
-from terminal.terminal import Terminal
 from trader.order import Order
 
 from strategy.strategypositiontrade import StrategyPositionTrade
-from strategy.strategysignal import StrategySignal
 from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
 
 from instrument.instrument import Instrument
 
-from strategy.indicator import utils
-from strategy.indicator.score import Score
-
-from common.utils import timeframe_to_str
-
 from .fasuba import ForexAlphaStrategySubA
 from .fasubb import ForexAlphaStrategySubB
 from .fasubc import ForexAlphaStrategySubC
-
-from .faparameters import DEFAULT_PARAMS
 
 import logging
 logger = logging.getLogger('siis.strategy.forexalpha')
@@ -38,7 +26,8 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     def __init__(self, strategy, instrument, params):
         super().__init__(strategy, instrument, Instrument.TF_TICK)
 
-        # mean when there is already a position on the same direction does not increase in the same direction if 0 or increase at max N times
+        # mean when there is already a position on the same direction does not increase in the same
+        # direction if 0 or increase at max N times
         self.pyramided = params['pyramided']
         self.max_trades = params['max-trades']
         self.hedging = params['hedging']  # only if the broker/market allow it
@@ -144,7 +133,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         major_trend = 0
 
-        if (sma and sma55 and last_price and rsi21):
+        if sma and sma55 and last_price and rsi21:
             # not having main trend and at least 1 sample OR not in the trend
             if ema < sma:
                 major_trend = -1
@@ -301,7 +290,8 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     # if trade.is_entry_timeout(timestamp, trade.timeframe):
                     #     trader = self.strategy.trader()
                     #     trade.cancel_open(trader, self.instrument)
-                    #     # logger.info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,))
+                    #     # logger.info("Canceled order (exit signal or entry timeout) %s" % (
+                    #         self.instrument.market_id,))
                     #     continue
 
                     # ROE (long/short) @todo or optimize ATR, we need volatility index
@@ -320,7 +310,8 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     # dynamic take-profit update
                     #
 
-                    # @todo if the trend is weaker, lower the target distance, or if the trend stronger could increase to a largest one
+                    # @todo if the trend is weaker, lower the target distance, or if the trend stronger
+                    #  could increase to a largest one
 
                     if trade.is_opened() and not trade.is_valid(timestamp, trade.timeframe):
                         # @todo re-adjust entry
@@ -403,7 +394,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # simply set the computed quantity
         order_quantity = quantity
-        order_type = Order.ORDER_MARKET  #  Order.ORDER_LIMIT @todo limit later
+        order_type = Order.ORDER_MARKET  # Order.ORDER_LIMIT @todo limit later
 
         # @todo or trade at order book, compute the limit price from what the order book offer
         # limit best price at tiniest ask price
@@ -436,7 +427,8 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # the new trade must be in the trades list if the event comes before, and removed after only it failed
         self.add_trade(trade)
 
-        if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
+        if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit,
+                      stop_loss, order_leverage, hedging=order_hedging):
             # initiate the take-profit limit order
             if take_profit > 0:
                 trade.modify_take_profit(trader, self.instrument, take_profit)

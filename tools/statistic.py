@@ -3,9 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Statistic tools
 
-import sys
-import traceback
-
 from datetime import datetime, timedelta
 
 from tools.tool import Tool
@@ -13,7 +10,6 @@ from config import utils
 
 from common.utils import timeframe_from_str, UTC
 
-from terminal.terminal import Terminal
 from database.database import Database
 
 import logging

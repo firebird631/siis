@@ -1,13 +1,13 @@
 # @date 2019-01-19
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
-# Crystal ball strategy indicator default parameters.
+# Crystal ball strategy default parameters.
 
 DEFAULT_PARAMS = {
     "reversal": True,
     "pyramided": 0,
     "hedging": False,
-    "max-trades": 3,    # max number of simultaned trades for a same market
+    "max-trades": 3,    # max number of simultaneous trades for a same market
     "trade-delay": 30,  # at least wait 30 seconds before sending another signal 
     "min-traded-timeframe": "1m",
     "max-traded-timeframe": "4h",

@@ -9,12 +9,15 @@ import time
 import traceback
 
 from datetime import datetime
+from typing import Optional
 
 from strategy.strategyassettrade import StrategyAssetTrade
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
 from strategy.strategymargintrade import StrategyMarginTrade
 from strategy.strategypositiontrade import StrategyPositionTrade
 from strategy.strategytrade import StrategyTrade
+
+from strategy.strategytradercontext import StrategyTraderContext
 
 from strategy.indicator.models import Limits
 
@@ -1423,14 +1426,14 @@ class StrategyTrader(object):
 
         return False
 
-    def retrieve_context(self, name):
+    def retrieve_context(self, name) -> Optional[StrategyTraderContext]:
         """
         Return a trade context object. Used by set_trade_context.
         Must be override.
         """
         return None
 
-    def apply_trade_context(self, trade, context):
+    def apply_trade_context(self, trade: StrategyTrade, context: StrategyTraderContext) -> bool:
         """
         Apply a trade context to a valid trade.
         Must be override.
@@ -1440,7 +1443,7 @@ class StrategyTrader(object):
 
         return True
 
-    def set_trade_context(self, trade, name):
+    def set_trade_context(self, trade: StrategyTrade, name: str) -> bool:
         """
         Apply a trade context to a valid trade.
         Must be override.
@@ -1455,14 +1458,14 @@ class StrategyTrader(object):
 
         return self.apply_trade_context(trade, context)
 
-    def contexts_ids(self):
+    def contexts_ids(self) -> list:
         """
         Returns the list of context ids.
         Must be override.
         """
         return []
 
-    def dumps_context(self, context_id):
+    def dumps_context(self, context_id) -> Optional[dict]:
         """
         Returns a dict with the normalized contexts details or None if don't exists.
         Must be override.

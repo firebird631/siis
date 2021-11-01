@@ -3,14 +3,11 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Bitcoin Alpha strategy trader.
 
-from datetime import datetime
-
 from terminal.terminal import Terminal
 from trader.order import Order
 
 from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
 from strategy.strategyindmargintrade import StrategyIndMarginTrade
-from strategy.strategysignal import StrategySignal
 
 from instrument.instrument import Instrument
 
@@ -18,8 +15,6 @@ from strategy.indicator import utils
 
 from .bcasuba import BitcoinAlphaStrategySubA
 from .bcasubb import BitcoinAlphaStrategySubB
-
-import numpy as np
 
 import logging
 logger = logging.getLogger('siis.strategy.bitcoinalpha')
@@ -29,8 +24,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     """
     Bitcoin Alpha strategy trader per instrument.
     Based on CryptoAlpha strategy for margin trading (long/short). Does not support asset (buy/sell) markets.
-    The defined timeframe must form a chained list of multiple of the previous timeframe. One is the root, and the last is the leaf.
-    Each timeframe is unique and is defined by its preceding timeframe.
+    The defined timeframe must form a chained list of multiple of the previous timeframe. One is the root,
+    and the last is the leaf. Each timeframe is unique and is defined by its preceding timeframe.
 
     - Enter, exit as possible as maker (limit order)
     - Stop are taker (market order)
@@ -39,7 +34,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     def __init__(self, strategy, instrument, params):
         super().__init__(strategy, instrument, Instrument.TF_TICK)
 
-        # mean when there is already a position on the same direction does not increase in the same direction if 0 or increase at max N times
+        # mean when there is already a position on the same direction does not increase in the same
+        # direction if 0 or increase at max N times
         self.pyramided = params['pyramided']
         self.max_trades = params['max-trades']
 
@@ -129,7 +125,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 continue
 
             # trade region
-            if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ask, entry, self.region_allow):
+            if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ask, entry,
+                                      self.region_allow):
                 continue
 
             # ref timeframe is contrary
@@ -141,6 +138,10 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             # initial stop-loss
             atr_stop = self.timeframes[self.sltp_timeframe].atr.stop_loss(entry.dir)
+
+            loss = 0.0
+            gain = 0.0
+            take_profit = 0.0
 
             if entry.direction > 0:
                 # and an initial target
@@ -163,10 +164,11 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 loss = (entry.sl - entry.p) / entry.p
 
             if loss != 0 and (gain / loss < 1.0):
-                Terminal.inst().message("%s %s %s %s %s %s" % (entry.p, entry.sl, take_profit, gain, loss, (gain/loss)), view="debug")
+                Terminal.inst().message("%s %s %s %s %s %s" % (entry.p, entry.sl, take_profit,
+                                                               gain, loss, (gain/loss)), view="debug")
                 continue
 
-            # not enought potential profit
+            # not enough potential profit
             if gain < 0.005:
                 continue
 
@@ -202,7 +204,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 for trade in self.trades:
                     retained_exit = None
 
-                    # important if we dont want to update user controlled trades if it have some operations
+                    # important if we don't want to update user controlled trades if it have some operations
                     user_mgmt = trade.is_user_trade()
 
                     for signal in exits:
@@ -227,7 +229,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     # if trade.is_entry_timeout(timestamp, trade.timeframe):
                     #     trader = self.strategy.trader()
                     #     trade.cancel_open(trader, self.instrument)
-                    #     Terminal.inst().info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,), view='default')
+                    #     Terminal.inst().info("Canceled order (exit signal or entry timeout) %s" % (
+                    #         self.instrument.market_id,), view='default')
                     #     continue
 
                     if user_mgmt:
@@ -235,7 +238,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                     # if trade.is_opened() and not trade.is_valid(timestamp, trade.timeframe):
                     #     # @todo re-adjust entry
-                    #     Terminal.inst().info("Update order %s trade %s TODO" % (trade.id, self.instrument.market_id,), view='default')
+                    #     Terminal.inst().info("Update order %s trade %s TODO" % (trade.id,
+                    #         self.instrument.market_id,), view='default')
                     #     continue
 
                     # only for active and currently not closing trades
@@ -273,7 +277,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         if trade.direction > 0:
                             # long
                             if close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[2]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.resistances[2]):
                                     update_tp = True
 
                                 if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
@@ -281,7 +286,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
 
                             elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[1]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.resistances[1]):
                                     update_tp = True
 
                                 if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
@@ -289,7 +295,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
 
                             elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[0]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.resistances[0]):
                                     update_tp = True
 
                                 if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
@@ -297,7 +304,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_pivot
 
                             elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.pivot):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.pivot):
                                     update_tp = True
 
                                 if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
@@ -305,7 +313,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]
 
                             elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[0]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.supports[0]):
                                     update_tp = True
 
                                 if trade.sl < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
@@ -313,7 +322,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]
 
                             elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[1]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.supports[1]):
                                     update_tp = True
 
                                 if trade.sl < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
@@ -321,7 +331,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
 
                             elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[2]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.supports[2]):
                                     update_tp = True
 
                                 if close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
@@ -331,7 +342,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         elif trade.direction < 0:
                             # short (could use the sign, but if we want a non symmetrical approch...)
                             if close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[2]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.supports[2]):
                                     update_tp = True
 
                                 if close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
@@ -339,7 +351,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
 
                             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[1]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.supports[1]):
                                     update_tp = True
 
                                 if trade.sl > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
@@ -347,7 +360,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
 
                             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[0]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.supports[0]):
                                     update_tp = True
 
                                 if trade.sl > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
@@ -355,7 +369,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]
 
                             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.pivot):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.pivot):
                                     update_tp = True
 
                                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
@@ -363,7 +378,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]
 
                             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[0]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.resistances[0]):
                                     update_tp = True
 
                                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
@@ -371,7 +387,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_pivot
 
                             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
-                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[1]):
+                                if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                                   self.timeframes[self.ref_timeframe].pivotpoint.resistances[1]):
 
                                     update_tp = True
                                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
@@ -379,7 +396,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                     # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
 
                             elif close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]:
-                                if utils.crossunder(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[2]):
+                                if utils.crossunder(self.timeframes[self.ref_timeframe].price.prices,
+                                                    self.timeframes[self.ref_timeframe].pivotpoint.resistances[2]):
                                     update_tp = True
 
                                 if stop_loss > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
@@ -390,9 +408,10 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         # target update
                         #
 
-                        # enought potential profit (0.5% min target)
+                        # enough potential profit (0.5% min target)
                         if trade.direction > 0:
-                            take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.get('partial-take-profit', 0))]
+                            take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(
+                                2*trade.get('partial-take-profit', 0))]
 
                             # if take_profit <= trade.entry_price:
                             #     take_profit = trade.entry_price * 1.05
@@ -401,7 +420,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                             loss = (trade.entry_price - trade.sl) / trade.entry_price
 
                         elif trade.direction < 0:
-                            take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[int(2*trade.get('partial-take-profit', 0))]
+                            take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[int(
+                                2*trade.get('partial-take-profit', 0))]
 
                             # if take_profit >= trade.entry_price:
                             #     take_profit = trade.entry_price * 0.95
@@ -425,7 +445,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                             num_orders = trade.last_stop_loss[1]
 
                             # too many stop-loss modifications in the timeframe
-                            if not trade.has_stop_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
+                            if not trade.has_stop_order() or delta_time > 60.0:  # not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
                                 try:
                                     trade.modify_stop_loss(self.strategy.trader(), self.instrument, stop_loss)
                                 except Exception as e:
@@ -445,7 +465,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                             num_orders = trade.last_take_profit[1]
 
                             # too many stop-loss modifications in the timeframe
-                            if not trade.has_limit_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
+                            if not trade.has_limit_order() or delta_time > 60.0:  # not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
                                 try:
                                     trade.modify_take_profit(self.strategy.trader(), self.instrument, take_profit)
                                 except Exception as e:
@@ -468,7 +488,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # retained long entry do the order entry signal
         for signal in retained_entries:
-            if not self.process_entry(timestamp, signal.dir, signal.price, signal.tp, signal.sl, signal.timeframe, signal.get('partial-take-profit', 0)):
+            if not self.process_entry(timestamp, signal.dir, signal.price, signal.tp, signal.sl, signal.timeframe,
+                                      signal.get('partial-take-profit', 0)):
                 # notify a signal only
                 self.notify_signal(timestamp, signal)
 
@@ -502,7 +523,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         order_quantity = quantity
 
         # market or limit
-        #order_type = Order.ORDER_MARKET
+        # order_type = Order.ORDER_MARKET
         order_type = Order.ORDER_LIMIT
 
         # @todo or trade at order book, compute the limit price from what the order book offer
@@ -538,14 +559,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         trade.set('partial-take-profit', partial_tp)
 
-        if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage, hedging=order_hedging):
-            # initiate the take-profit limit order
-            # if take_profit > 0:
-            #    trade.modify_take_profit(trader, self.instrument, take_profit)
-
-            # initiate the stop-loss order
-            # if stop_loss > 0:
-            #     trade.modify_stop_loss(trader, self.instrument, stop_loss)
+        if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit,
+                      stop_loss, order_leverage, hedging=order_hedging):
 
             self.notify_trade_entry(timestamp, trade)
 

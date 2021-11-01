@@ -238,10 +238,15 @@ class Market(object):
 
     @property
     def market_bid(self):
+        """Synonym for bid and compatibility with Market class."""
         return self._bid
 
     @property
     def spread(self):
+        return self._ask - self._bid
+
+    def market_spread(self):
+        """Synonym for spread and compatibility with Market class."""
         return self._ask - self._bid
 
     @property
@@ -254,10 +259,16 @@ class Market(object):
 
     @property
     def market_ask(self):
+        """Synonym for ask and compatibility with Market class."""
         return self._ask
 
     @property
     def price(self):
+        return (self._bid + self._ask) * 0.5
+
+    @property
+    def market_price(self):
+        """Synonym for price and compatibility with Market class."""
         return (self._bid + self._ask) * 0.5
 
     @property

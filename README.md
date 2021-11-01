@@ -1,5 +1,5 @@
-SIIS Strategy/Scalper Indicator Information System
-==================================================
+SIIS Self Investor Income System
+================================
 
 ![Intro image](doc/img/bt_dax_trades.png)
 

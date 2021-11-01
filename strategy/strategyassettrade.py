@@ -645,17 +645,20 @@ class StrategyAssetTrade(StrategyTrade):
             done = True
 
             if self.has_oco_order():
-                done = False
-                # @todo
+                # @todo done = False
+                pass
             else:
                 try:
                     if self.has_limit_order() and self.tp > 0.0:
-                        if self.modify_take_profit(trader, instrument, self.tp) <= 0:
+                        result = self.modify_take_profit(trader, instrument, self.tp)
+                        if result <= 0:
                             done = False
 
                     if self.has_stop_order() and self.sl > 0.0:
-                        if self.modify_stop_loss(trader, instrument, self.sl) <= 0:
+                        result = self.modify_stop_loss(trader, instrument, self.sl)
+                        if result <= 0:
                             done = False
+
                 except Exception as e:
                     error_logger.error(str(e))
 

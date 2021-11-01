@@ -3,14 +3,11 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Crypto Alpha strategy trader.
 
-from datetime import datetime
-
 from terminal.terminal import Terminal
 from trader.order import Order
 
 from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
 from strategy.strategyassettrade import StrategyAssetTrade
-from strategy.strategysignal import StrategySignal
 
 from instrument.instrument import Instrument
 
@@ -20,8 +17,6 @@ from .casuba import CryptoAlphaStrategySubA
 from .casubb import CryptoAlphaStrategySubB
 from .casubc import CryptoAlphaStrategySubC
 
-import numpy as np
-
 import logging
 logger = logging.getLogger('siis.strategy.cryptoalpha')
 
@@ -29,21 +24,22 @@ logger = logging.getLogger('siis.strategy.cryptoalpha')
 class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     """
     Crypto Alpha strategy trader per instrument.
-    The defined timeframe must form a chained list of multiple of the previous timeframe. One is the root, and the last is the leaf.
-    Each timeframe is unique and is defined by its preceding timeframe.
+    The defined timeframe must form a chained list of multiple of the previous timeframe. One is the root,
+    and the last is the leaf. Each timeframe is unique and is defined by its preceding timeframe.
 
     - Work with limit order
     - Stop are at market
     - Need at least 15 day of 4h history to have valuables signals (EMA 55)
 
-    @todo Need to cancel a trade if not executed after a specific timeout. If partially executed, after the timeout only cancel the
-        buy order, keep the trade active of course.
+    @todo Need to cancel a trade if not executed after a specific timeout. If partially executed, after the
+    timeout only cancel the buy order, keep the trade active of course.
     """
 
     def __init__(self, strategy, instrument, params):
         super().__init__(strategy, instrument, Instrument.TF_TICK)
 
-        # mean when there is already a position on the same direction does not increase in the same direction if 0 or increase at max N times
+        # mean when there is already a position on the same direction does not increase in the
+        # same direction if 0 or increase at max N times
         self.max_trades = params['max-trades']
         self.trade_delay = params['trade-delay']
 
@@ -140,7 +136,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 continue
 
             # trade region
-            if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ask, entry, self.region_allow):
+            if not self.check_regions(timestamp, self.instrument.market_bid, self.instrument.market_ask,
+                                      entry, self.region_allow):
                 continue
 
             # ref timeframe is bear don't take the risk (always long entry)
@@ -160,10 +157,11 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             loss = (entry.p - entry.sl) / entry.p
 
             if loss != 0 and (gain / loss < 0.85):  # 0.75 1.0
-                Terminal.inst().message("Risk:reward too weak p=%s sl=%s tp=%s rr=%s" % (entry.p, entry.sl, take_profit, (gain/loss)), view="debug")
+                Terminal.inst().message("Risk:reward too weak p=%s sl=%s tp=%s rr=%s" % (
+                    entry.p, entry.sl, take_profit, (gain/loss)), view="debug")
                 continue
 
-            # not enought potential profit (minimal %)
+            # not enough potential profit (minimal %)
             if gain < 0.01:
                 continue
 
@@ -196,8 +194,12 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                 for trade in self.trades:
                     retained_exit = None
 
-                    # important if we dont want to update user controlled trades if it have some operations
+                    # important if we don't want to update user controlled trades if it have some operations
                     user_mgmt = trade.is_user_trade() and trade.has_operations()
+
+                    # never manage a trade in error state
+                    if trade.is_error():
+                        continue
 
                     # important, do not update user controlled trades if it have some operations
                     if trade.is_user_trade() and trade.has_operations():
@@ -225,7 +227,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                     # if trade.is_entry_timeout(timestamp, trade.timeframe):
                     #     trader = self.strategy.trader()
                     #     trade.cancel_open(trader, self.instrument)
-                    #     Terminal.inst().info("Canceled order (exit signal or entry timeout) %s" % (self.instrument.market_id,), view='default')
+                    #     Terminal.inst().info("Canceled order (exit signal or entry timeout) %s" % (
+                    #         self.instrument.market_id,), view='default')
                     #     continue
 
                     if user_mgmt:
@@ -233,7 +236,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                     if trade.is_opened() and not trade.is_valid(timestamp, trade.timeframe):
                         # @todo re-adjust entry
-                        Terminal.inst().info("Update order %s trade %s TODO" % (trade.id, self.instrument.market_id,), view='default')
+                        Terminal.inst().info("Update order %s trade %s TODO" % (trade.id, self.instrument.market_id,),
+                                             view='default')
                         continue
 
                     # only for active and currently not closing trades
@@ -261,7 +265,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
                     if self.timeframes[self.ref_timeframe].pivotpoint.last_pivot > 0.0:
                         if close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[2]:
-                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[2]):
+                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                               self.timeframes[self.ref_timeframe].pivotpoint.resistances[2]):
                                 update_tp = True
 
                             if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
@@ -269,7 +274,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                 stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]
 
                         elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[1]:
-                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[1]):
+                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                               self.timeframes[self.ref_timeframe].pivotpoint.resistances[1]):
                                 update_tp = True
 
                             if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
@@ -277,7 +283,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                 stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]
 
                         elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[0]:
-                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.resistances[0]):
+                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                               self.timeframes[self.ref_timeframe].pivotpoint.resistances[0]):
                                 update_tp = True
 
                             if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
@@ -285,7 +292,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                 stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_pivot
 
                         elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_pivot:
-                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.pivot):
+                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                               self.timeframes[self.ref_timeframe].pivotpoint.pivot):
                                 update_tp = True
 
                             if stop_loss < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
@@ -293,7 +301,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                 # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]
 
                         elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[0]:
-                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[0]):
+                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                               self.timeframes[self.ref_timeframe].pivotpoint.supports[0]):
                                 update_tp = True
 
                             if trade.sl < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
@@ -301,7 +310,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                 # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]
 
                         elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[1]:
-                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[1]):
+                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                               self.timeframes[self.ref_timeframe].pivotpoint.supports[1]):
                                 update_tp = True
 
                             if trade.sl < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
@@ -309,7 +319,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                                 # stop_loss = self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]
 
                         elif close_exec_price > self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
-                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices, self.timeframes[self.ref_timeframe].pivotpoint.supports[2]):
+                            if utils.crossover(self.timeframes[self.ref_timeframe].price.prices,
+                                               self.timeframes[self.ref_timeframe].pivotpoint.supports[2]):
                                 update_tp = True
 
                             if close_exec_price < self.timeframes[self.ref_timeframe].pivotpoint.last_supports[2]:
@@ -320,9 +331,10 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         # target update
                         #
 
-                        take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(2*trade.get('partial-take-profit', 0))]
+                        take_profit = self.timeframes[self.ref_timeframe].pivotpoint.last_resistances[int(
+                            2*trade.get('partial-take-profit', 0))]
 
-                        # enought potential profit (0.5% min target) (always long)
+                        # enough potential profit (0.5% min target) (always long)
                         # if (take_profit - close_exec_price) / close_exec_price < 0.005 and update_tp:
                         #     update_tp = False
 
@@ -335,7 +347,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                         #     # @todo force exit
                         #     continue
 
-                    # @todo utiliser OCO, et sinon on peu aussi prioriser un ordre SL si le trade est en perte, et plutot un limit si en profit
+                    # @todo utiliser OCO, et sinon on peu aussi prioriser un ordre SL si le trade est en perte,
+                    #  et plutot un limit si en profit
                     if update_sl and stop_loss > 0:
                         stop_loss = self.instrument.adjust_price(stop_loss)
 
@@ -346,7 +359,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                             num_orders = trade.last_stop_loss[1]
 
                             # too many stop-loss modifications in the timeframe
-                            if 0:  #not trade.has_stop_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
+                            if 0:  # not trade.has_stop_order() or delta_time > 60.0:  # not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
                                 try:
                                     # OCO order or only bot managed stop-loss, only a TP limit is defined
                                     trade.modify_stop_loss(self.strategy.trader(), self.instrument, stop_loss)
@@ -368,7 +381,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
                             num_orders = trade.last_take_profit[1]
 
                             # too many stop-loss modifications in the timeframe
-                            if not trade.has_limit_order() or delta_time > 60.0: #not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
+                            if not trade.has_limit_order() or delta_time > 60.0:  # not ((self.sltp_max_rate > num_orders) and (delta_time < self.sltp_max_timeframe)):
                                 try:
                                     trade.modify_take_profit(self.strategy.trader(), self.instrument, take_profit)
                                 except Exception as e:
@@ -391,7 +404,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # retained long entry do the order entry signal
         for entry in retained_entries:
-            if not self.process_entry(timestamp, entry.price, entry.tp, entry.sl, entry.timeframe, entry.get('partial-take-profit', 0)):
+            if not self.process_entry(timestamp, entry.price, entry.tp, entry.sl, entry.timeframe,
+                                      entry.get('partial-take-profit', 0)):
                 # notify a signal only
                 self.notify_signal(timestamp, entry)
 
@@ -436,7 +450,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # simply set the computed quantity
         order_quantity = quantity
 
-        # prefered in limit order at the current best price, and with binance in market INSUFISCENT BALANCE can occurs with market orders...
+        # prefered in limit order at the current best price, and with binance in market
+        # INSUFISCENT BALANCE can occurs with market orders...
         order_type = Order.ORDER_LIMIT
 
         # limit price
@@ -478,7 +493,8 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
             trade.set('partial-take-profit', partial_tp)
 
-            if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity, take_profit, stop_loss, order_leverage):
+            if trade.open(trader, self.instrument, direction, order_type, order_price, order_quantity,
+                          take_profit, stop_loss, order_leverage):
                 # notify
                 self.notify_trade_entry(timestamp, trade)
 

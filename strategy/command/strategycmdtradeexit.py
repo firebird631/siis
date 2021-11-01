@@ -54,7 +54,7 @@ def cmd_trade_exit(strategy, strategy_trader, data):
                         trade.id, strategy.identifier, strategy_trader.instrument.market_id))
             else:
                 # close or cancel
-                if trade.close(trader, strategy_trader.instrument) >= 0:
+                if trade.close(trader, strategy_trader.instrument) > 0:
                     # add a success result message
                     results['messages'].append("Close trade %i on %s:%s at market price %s" % (
                         trade.id, strategy.identifier, strategy_trader.instrument.market_id,
