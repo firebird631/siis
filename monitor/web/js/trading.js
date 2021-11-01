@@ -635,7 +635,7 @@ function add_active_trade(market_id, trade) {
         trade_close.attr("disabled", "")
     }
 
-    if (server.permissions.indexOf("strategy-modify-trade") != -1) {
+    if (server.permissions.indexOf("strategy-modify-trade") < 0) {
         trade_breakeven.attr("disabled", "")
     }
 
