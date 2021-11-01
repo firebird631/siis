@@ -627,8 +627,8 @@ function add_active_trade(market_id, trade) {
         trade_elt.append($('<td></td>').append(trade_stop_loss).append(trade_stop_loss_chg));
         trade_elt.append($('<td></td>').append(trade_take_profit).append(trade_take_profit_chg));
     } else {
-        trade_elt.append($('<td></td>').append(trade_stop_loss);
-        trade_elt.append($('<td></td>').append(trade_take_profit);
+        trade_elt.append($('<td></td>').append(trade_stop_loss));
+        trade_elt.append($('<td></td>').append(trade_take_profit));
     }
 
     if (server.permissions.indexOf("strategy-close-trade") < 0) {
