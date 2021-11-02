@@ -529,25 +529,35 @@ function add_active_trade(market_id, trade) {
 
     // info
     let trade_id = $('<span class="trade-id"></span>').text(trade.id);
-    let trade_symbol = $('<span class="trade-symbol"></span>').text(symbol);
+    let trade_symbol = $('<span class="trade-symbol badge"></span>').text(symbol);
+    if (trade['filled-entry-qty'] > 0.0) {
+        trade_symbol.addClass("badge-info");
+    } else {
+        trade_symbol.addClass("badge-secondary");
+    }
     let trade_direction = $('<span class="trade-direction fa"></span>')
         .addClass(trade.direction == "long" ? 'trade-long' : 'trade-short')
         .addClass(trade.direction == "long" ? 'fa-arrow-up' : 'fa-arrow-down');
 
     // order date, first trade date
-    let trade_datetime = $('<span class="trade-datetime"></span>').text(timestamp_to_datetime_str(trade['entry-open-time']));
+    let trade_datetime = $('<span class="trade-datetime"></span>').text(
+        timestamp_to_datetime_str(trade['entry-open-time']));
     trade_datetime.attr('data-toggle', "tooltip");
     trade_datetime.attr('data-placement', "top");
     trade_datetime.attr('title', timestamp_to_datetime_str(trade['stats']['first-realized-entry-datetime']));
 
-    let trade_order = $('<span class="trade-order"></span>').text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
+    let trade_order = $('<span class="trade-order"></span>').text(
+        trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
  
     // entry
-    let trade_entry = $('<span class="trade-entry"></span>').text(trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
+    let trade_entry = $('<span class="trade-entry"></span>').text(
+        trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
     trade_entry.attr('data-toggle', "tooltip");
     trade_entry.attr('data-placement', "top");
 
-    let entry_price_rate = compute_price_pct(trade['avg-entry-price'], trade.stats['close-exec-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
+    let entry_price_rate = compute_price_pct(trade['avg-entry-price'],
+        trade.stats['close-exec-price'] || trade['order-price'],
+        trade.direction == "long" ? 1 : -1);
     trade_entry.attr('title', (entry_price_rate * 100).toFixed(2) + '%');
 
     // exit
@@ -578,7 +588,8 @@ function add_active_trade(market_id, trade) {
     }
 
     // fees
-    let fees = trade.stats['entry-fees'] == undefined || trade.stats['exit-fees'] == undefined ? 0.0 : format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
+    let fees = trade.stats['entry-fees'] == undefined || trade.stats['exit-fees'] == undefined ? 0.0 : format_quote_price(
+        market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
     let trade_fees = $('<span class="trade-fees"></span>').text(fees);
     trade_fees.attr('title', (trade.stats['fees-pct'] == undefined ? 0.0 : trade.stats['fees-pct']).toFixed(2) + '%');
 
@@ -587,7 +598,9 @@ function add_active_trade(market_id, trade) {
     trade_stop_loss.attr('data-toggle', "tooltip");
     trade_stop_loss.attr('data-placement', "top");
 
-    let stop_loss_price_rate = compute_price_pct(trade['stop-loss-price'], trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
+    let stop_loss_price_rate = compute_price_pct(trade['stop-loss-price'],
+        trade['avg-entry-price'] || trade['order-price'],
+        trade.direction == "long" ? 1 : -1);
     trade_stop_loss.attr('title', (stop_loss_price_rate * 100).toFixed(2) + '%');
 
     let trade_stop_loss_chg = $('<button class="btn btn-light trade-modify-stop-loss fa fa-pencil"></button>');
@@ -599,7 +612,9 @@ function add_active_trade(market_id, trade) {
     
     let trade_take_profit_chg = $('<button class="btn btn-light trade-modify-take-profit fa fa-pencil"></button>');
 
-    let take_profit_price_rate = compute_price_pct(trade['take-profit-price'], trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
+    let take_profit_price_rate = compute_price_pct(trade['take-profit-price'],
+        trade['avg-entry-price'] || trade['order-price'],
+        trade.direction == "long" ? 1 : -1);
     trade_take_profit.attr('title', (take_profit_price_rate * 100).toFixed(2) + '%');
 
     // actions
@@ -669,28 +684,42 @@ function update_active_trade(market_id, trade) {
     let container = $('div.active-trade-list-entries tbody');
     let trade_elt = container.find('tr.active-trade[trade-key="' + key + '"]')
 
-    let trade_order = $('<span class="trade-order"></span>').text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
+    let trade_symbol = $('<span class="trade-symbol badge"></span>').text(trade.symbol);
+    if (trade['filled-entry-qty'] > 0.0) {
+        trade_symbol.addClass("badge-info");
+    } else {
+        trade_symbol.addClass("badge-secondary");
+    }
+
+    let trade_order = $('<span class="trade-order"></span>').text(
+        trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
 
     // order date, first trade date
-    let trade_datetime = $('<span class="trade-datetime"></span>').text(timestamp_to_datetime_str(trade['entry-open-time']));
+    let trade_datetime = $('<span class="trade-datetime"></span>').text(
+        timestamp_to_datetime_str(trade['entry-open-time']));
     trade_datetime.attr('data-toggle', "tooltip");
     trade_datetime.attr('data-placement', "top");
     trade_datetime.attr('title', timestamp_to_datetime_str(trade['stats']['first-realized-entry-datetime']));
 
     // entry
-    let trade_entry = $('<span class="trade-entry"></span>').text(trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
+    let trade_entry = $('<span class="trade-entry"></span>').text(
+        trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
     trade_entry.attr('data-toggle', "tooltip");
     trade_entry.attr('data-placement', "top");
 
-    let entry_price_rate = compute_price_pct(trade['avg-entry-price'], trade.stats['close-exec-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
+    let entry_price_rate = compute_price_pct(trade['avg-entry-price'],
+        trade.stats['close-exec-price'] || trade['order-price'],
+        trade.direction == "long" ? 1 : -1);
     trade_entry.attr('title', (entry_price_rate * 100).toFixed(2) + '%');
 
     // exit
-    let trade_exit = $('<span class="trade-exit"></span>').text(trade['avg-exit-price'] + ' (' + trade['filled-exit-qty'] + ')');
+    let trade_exit = $('<span class="trade-exit"></span>').text(
+        trade['avg-exit-price'] + ' (' + trade['filled-exit-qty'] + ')');
     trade_exit.attr('data-toggle', "tooltip");
     trade_exit.attr('data-placement', "top");
 
-    let exit_price_rate = compute_price_pct(trade['avg-exit-price'], trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
+    let exit_price_rate = compute_price_pct(trade['avg-exit-price'],
+        trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
     trade_exit.attr('title', (exit_price_rate * 100).toFixed(2) + '%');
 
     // pnl
@@ -706,7 +735,8 @@ function update_active_trade(market_id, trade) {
     }
 
     // fees
-    let fees = trade.stats['entry-fees'] == undefined || trade.stats['exit-fees'] == undefined ? 0.0 : format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
+    let fees = trade.stats['entry-fees'] == undefined || trade.stats['exit-fees'] == undefined ? 0.0 : format_quote_price(
+        market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
     let trade_fees = $('<span class="trade-fees"></span>').text(fees);
     trade_fees.attr('title', (trade.stats['fees-pct'] == undefined ? 0.0 : trade.stats['fees-pct']).toFixed(2) + '%');
 
@@ -715,15 +745,17 @@ function update_active_trade(market_id, trade) {
     trade_stop_loss.attr('data-toggle', "tooltip");
     trade_stop_loss.attr('data-placement', "top");
 
-    let stop_loss_price_rate = compute_price_pct(trade['stop-loss-price'], trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
+    let stop_loss_price_rate = compute_price_pct(trade['stop-loss-price'],
+        trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
     trade_stop_loss.attr('title', (stop_loss_price_rate * 100).toFixed(2) + '%');
 
-    // take-profit
-    let trade_take_profit = $('<span class="trade-take-profit"></span>').text(trade['take-profit-price']);  // + UP/DN buttons
+    // take-profit + UP/DN buttons
+    let trade_take_profit = $('<span class="trade-take-profit"></span>').text(trade['take-profit-price']);
     trade_take_profit.attr('data-toggle', "tooltip");
     trade_take_profit.attr('data-placement', "top");
 
-    let take_profit_price_rate = compute_price_pct(trade['take-profit-price'], trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
+    let take_profit_price_rate = compute_price_pct(trade['take-profit-price'],
+        trade['avg-entry-price'] || trade['order-price'], trade.direction == "long" ? 1 : -1);
     trade_take_profit.attr('title', (take_profit_price_rate * 100).toFixed(2) + '%');
 
     // colorized upnl % background
@@ -753,6 +785,7 @@ function update_active_trade(market_id, trade) {
         .css('width', '100%');
 
     // update
+    trade_elt.find('span.trade-symbol').replaceWith(trade_symbol);
     trade_elt.find('span.trade-datetime').replaceWith(trade_datetime);
     trade_elt.find('span.trade-order').replaceWith(trade_order);
     trade_elt.find('span.trade-entry').replaceWith(trade_entry);
@@ -820,26 +853,31 @@ function add_historical_trade(market_id, trade) {
     let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
 
     let trade_id = $('<span class="trade-id"></span>').text(trade.id);
-    let trade_symbol = $('<span class="trade-symbol"></span>').text(symbol);
+    let trade_symbol = $('<span class="trade-symbol badge badge-info"></span>').text(symbol);
     let trade_direction = $('<span class="trade-direction fa"></span>')
         .addClass(trade.direction == "long" ? 'trade-long' : 'trade-short')
         .addClass(trade.direction == "long" ? 'fa-arrow-up' : 'fa-arrow-down');
 
-    let trade_datetime = $('<span class="trade-datetime"></span>').text(timestamp_to_datetime_str(trade['entry-open-time']));
+    let trade_datetime = $('<span class="trade-datetime"></span>').text(
+        timestamp_to_datetime_str(trade['entry-open-time']));
     trade_datetime.attr('data-toggle', "tooltip");
     trade_datetime.attr('data-placement', "top");
     trade_datetime.attr('title', timestamp_to_datetime_str(trade['stats']['last-realized-exit-datetime']));
 
-    let trade_order = $('<span class="trade-order"></span>').text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
+    let trade_order = $('<span class="trade-order"></span>').text(
+        trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
  
-    let trade_entry = $('<span class="trade-entry"></span>').text(trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
-    let trade_exit = $('<span class="trade-entry"></span>').text(trade['avg-exit-price'] + ' (' + trade['filled-exit-qty'] + ')');
+    let trade_entry = $('<span class="trade-entry"></span>').text(
+        trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
+    let trade_exit = $('<span class="trade-entry"></span>').text(
+        trade['avg-exit-price'] + ' (' + trade['filled-exit-qty'] + ')');
 
     let trade_context = $('<span class="trade-context"></span>')
         .text(trade['label'] ? trade['label'] + ' (' + trade['timeframe'] + ')' : trade['timeframe']);
 
     let trade_percent = $('<span class="trade-percent"></span>').text(trade['profit-loss-pct'] +'%');   
-    let trade_pnl = $('<span class="trade-pnl"></span>').text(format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
+    let trade_pnl = $('<span class="trade-pnl"></span>').text(format_quote_price(market_id,
+        trade.stats['profit-loss']) + trade.stats['profit-loss-currency']);
 
     let fees = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
     let trade_fees = $('<span class="trade-fees"></span>').text(fees);
@@ -849,14 +887,16 @@ function add_historical_trade(market_id, trade) {
     trade_stop_loss.attr('data-toggle', "tooltip");
     trade_stop_loss.attr('data-placement', "top");
 
-    let stop_loss_price_rate = compute_price_pct(trade['stop-loss-price'], trade['avg-entry-price'], trade.direction == "long" ? 1 : -1);
+    let stop_loss_price_rate = compute_price_pct(trade['stop-loss-price'],
+        trade['avg-entry-price'], trade.direction == "long" ? 1 : -1);
     trade_stop_loss.attr('title', (stop_loss_price_rate * 100).toFixed(2) + '%');
 
     let trade_take_profit = $('<span class="trade-take-profit"></span>').text(trade['take-profit-price']);
     trade_take_profit.attr('data-toggle', "tooltip");
     trade_take_profit.attr('data-placement', "top");
 
-    let take_profit_price_rate = compute_price_pct(trade['take-profit-price'], trade['avg-entry-price'], trade.direction == "long" ? 1 : -1);
+    let take_profit_price_rate = compute_price_pct(trade['take-profit-price'],
+        trade['avg-entry-price'], trade.direction == "long" ? 1 : -1);
     trade_take_profit.attr('title', (take_profit_price_rate * 100).toFixed(2) + '%');
 
     let trade_details = $('<button class="trade-details btn btn-info fa fa-info"></button>');
@@ -928,14 +968,16 @@ function on_change_take_profit_step() {
     if (mode == 'percent') {
         range = (range - 50) * 0.001;
 
-        take_profit_price = format_price(trade['market-id'], parseFloat(trade['take-profit-price']) * (1.0 + range));
+        take_profit_price = format_price(trade['market-id'],
+            parseFloat(trade['take-profit-price']) * (1.0 + range));
 
         $('#modified_take_profit_range_relative').text((range*100).toFixed(2) + "%");
     } else if (mode == 'pip') {
         range = (range - 50);
         let value_per_pip = window.markets[trade['market-id']]['value-per-pip'];
 
-        take_profit_price = format_price(trade['market-id'], parseFloat(trade['take-profit-price']) + value_per_pip * range);
+        take_profit_price = format_price(trade['market-id'],
+            parseFloat(trade['take-profit-price']) + value_per_pip * range);
 
         $('#modified_take_profit_range_relative').text(range + "pips");
     }
@@ -955,14 +997,16 @@ function on_change_stop_loss_step() {
     if (mode == 'percent') {
         range = (range - 50) * 0.001;
 
-        stop_loss_price = format_price(trade['market-id'], parseFloat(trade['stop-loss-price']) * (1.0 + range));
+        stop_loss_price = format_price(trade['market-id'],
+            parseFloat(trade['stop-loss-price']) * (1.0 + range));
 
         $('#modified_stop_loss_range_relative').text((range*100).toFixed(2) + "%");
     } else if (mode == 'pip') {
         range = (range - 50);
         let value_per_pip = window.markets[trade['market-id']]['value-per-pip'];
 
-        stop_loss_price = format_price(trade['market-id'], parseFloat(trade['stop-loss-price']) + value_per_pip * range);
+        stop_loss_price = format_price(trade['market-id'],
+            parseFloat(trade['stop-loss-price']) + value_per_pip * range);
 
         $('#modified_stop_loss_range_relative').text(range + "pips");
     }
@@ -1139,14 +1183,386 @@ function on_add_active_trade_step_stop_loss() {
 
 function on_details_active_trade(elt) {
     let key = retrieve_trade_key(elt);
+    let table = $('#trade_details_table');
+    let tbody = table.find('tbody').empty();
 
-    // @todo
+    let trade = window.actives_trades[key];
+    if (!trade) {
+        return;
+    }
+
+    let market_id = trade['market-id'];
+
+    let app = $('<tr></tr>').append($('<td class="data-name">Strategy</td>')).append(
+        $('<td class="data-value">' + trade['app-name'] + ' / ' + trade['app-id'] + '</td>'));
+    let id = $('<tr></tr>').append($('<td class="data-name">Identifier</td>')).append(
+        $('<td class="data-value">' + trade.id + '</td>'));
+    let lmarket_id = $('<tr></tr>').append($('<td class="data-name">Market</td>')).append(
+        $('<td class="data-value"><span class="badge">' + trade['market-id'] + '</span></td>'));
+    let symbol = $('<tr></tr>').append($('<td class="data-name">Symbol</td>')).append(
+        $('<td class="data-value"><span class="badge">' + trade.symbol + '</span></td>'));
+    let version = $('<tr></tr>').append($('<td class="data-name">Version</td>')).append(
+        $('<td class="data-value">' + trade.version + '</td>'));
+    let trade_type = $('<tr></tr>').append($('<td class="data-name">Type</td>')).append(
+        $('<td class="data-value">' + trade.trade + '</td>'));
+    let timestamp = $('<tr></tr>').append($('<td class="data-name">Last update</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade.timestamp) + '</td>'));
+    let timeframe = $('<tr></tr>').append($('<td class="data-name">Timeframe</td>')).append(
+        $('<td class="data-value">' + timeframe_to_str(trade.timeframe) + '</td>'));
+    let entry_timeout = $('<tr></tr>').append($('<td class="data-name">Entry timeout</td>')).append(
+        $('<td class="data-value">' + timeframe_to_str(trade['entry-timeout']) + '</td>'));
+    let expiry = $('<tr></tr>').append($('<td class="data-name">Expiry</td>')).append(
+        $('<td class="data-value">' + timeframe_to_str(trade.expiry) + '</td>'));
+    let user_trade = $('<tr></tr>').append($('<td class="data-name">User trade</td>')).append(
+        $('<td class="data-value">' + trade['is-user-trade'] + '</td>'));
+
+    let direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
+        $('<td class="data-value">' + trade.direction + '</td>'));
+
+    if (trade.direction == "long") {
+        direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
+        $('<td class="data-value"><span class="trade-direction fa trade-long fa-arrow-up"></span></td>'));
+    } else if (trade.direction == "short") {
+       direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
+        $('<td class="data-value"><span class="trade-direction fa trade-short fa-arrow-dn"></span></td>'));
+    }
+
+    let state = $('<tr></tr>').append($('<td class="data-name">State</td>')).append(
+        $('<td class="data-value">' + trade.state + '</td>'));
+    let label = $('<tr></tr>').append($('<td class="data-name">Label</td>')).append(
+        $('<td class="data-value">' + trade.label + '</td>'));
+    let order_price = $('<tr></tr>').append($('<td class="data-name">Order price</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['order-price']) + '</td>'));
+    let order_qty = $('<tr></tr>').append($('<td class="data-name">Order qty</td>')).append(
+        $('<td class="data-value">' + trade['order-qty'] + '</td>'));
+    let stop_loss_price = $('<tr></tr>').append($('<td class="data-name">Take-Profit</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['stop-loss-price']) + '</td>'));
+    let take_profit_price = $('<tr></tr>').append($('<td class="data-name">Stop-Loss</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['take-profit-price']) + '</td>'));
+
+    let avg_entry_price = $('<tr></tr>').append($('<td class="data-name">Avg entry price</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['avg-entry-price']) + '</td>'));
+    let avg_exit_price = $('<tr></tr>').append($('<td class="data-name">Avg exit price</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['avg-exit-price']) + '</td>'));
+
+    let entry_open_time = $('<tr></tr>').append($('<td class="data-name">Entry open at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade['entry-open-time']) + '</td>'));
+    let exit_open_time = $('<tr></tr>').append($('<td class="data-name">Exit open at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade['exit-open-time']) + '</td>'));
+
+    let filled_entry_qty = $('<tr></tr>').append($('<td class="data-name">Filled entry qty</td>')).append(
+        $('<td class="data-value">' + trade['filled-entry-qty'] + '</td>'));
+    let filled_exit_qty = $('<tr></tr>').append($('<td class="data-name">Filled exit qty</td>')).append(
+        $('<td class="data-value">' + trade['filled-exit-qty'] + '</td>'));
+
+    let profit_loss_pct_text = '-';
+    let trade_upnl_text= '-';
+    let entry_fees_text = '-';
+    let exit_fees_text = '-';
+    let total_fees_text = '-';
+    if (parseFloat(trade['filled-entry-qty']) > 0.0) {
+        profit_loss_pct_text = trade['profit-loss-pct'] + '%';
+        trade_upnl_text = format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency'];
+        entry_fees_text = format_quote_price(market_id, trade.stats['entry-fees']) + trade.stats['profit-loss-currency'];
+        total_fees_text = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']) +
+            trade.stats['profit-loss-currency'] + ' (' + trade.stats['fees-pct'] + '%)';
+        symbol.find('span').addClass('badge-info');
+        lmarket_id.find('span').addClass('badge-info');
+    } else {
+        symbol.find('span').addClass('badge-secondary');
+        lmarket_id.find('span').addClass('badge-secondary');
+    }
+
+    if (parseFloat(trade['filled-exit-qty']) > 0.0) {
+        exit_fees_text = format_quote_price(market_id, trade.stats['exit-fees']) + trade.stats['profit-loss-currency'];
+    }
+
+    let profit_loss_pct = $('<tr></tr>').append($('<td class="data-name">Profit/Loss</td>')).append(
+        $('<td class="data-value">' + profit_loss_pct_text + '</td>'));
+
+    let trade_upnl = $('<tr></tr>').append($('<td class="data-name">UPNL</td>')).append(
+        $('<td class="data-value">' + trade_upnl_text + '</td>'));
+
+    if (trade.stats['profit-loss'] > 0.0) {
+        profit_loss_pct.find('td:last').css('color', 'green');
+        trade_upnl.find('td:last').css('color', 'green');
+    } else if (trade.stats['profit-loss'] < 0.0) {
+       profit_loss_pct.find('td:last').css('color', 'red');
+       trade_upnl.find('td:last').css('color', 'red');
+    }
+
+    tbody.append(app);
+    tbody.append(id);
+    tbody.append(lmarket_id);
+    tbody.append(symbol);
+    tbody.append(version);
+    tbody.append(trade_type);
+    tbody.append(timestamp);
+    tbody.append(entry_timeout);
+    tbody.append(expiry);
+    tbody.append(user_trade);
+    tbody.append(direction);
+    tbody.append(state);
+    tbody.append(label);
+    tbody.append(order_price);
+    tbody.append(order_qty);
+    tbody.append(stop_loss_price);
+    tbody.append(take_profit_price);
+    tbody.append(avg_entry_price);
+    tbody.append(avg_exit_price);
+    tbody.append(entry_open_time);
+    tbody.append(exit_open_time);
+    tbody.append(filled_entry_qty);
+    tbody.append(filled_exit_qty);
+    tbody.append(profit_loss_pct);
+    tbody.append(trade_upnl);
+
+    let best_price_text = '-';
+    let worst_price_text = '-';
+
+    if (trade.stats['best-datetime']) {
+        best_price_text = format_price(market_id, trade.stats['best-price']) + ' on ' +
+            timestamp_to_datetime_str(trade.stats['best-datetime']);
+        worst_price_text = format_price(market_id, trade.stats['worst-price']) + ' on ' +
+            timestamp_to_datetime_str(trade.stats['worst-datetime']);
+    }
+
+    let best_price = $('<tr></tr>').append($('<td class="data-name">Best price</td>')).append(
+        $('<td class="data-value">' + best_price_text + '</td>'));
+    let worst_price = $('<tr></tr>').append($('<td class="data-name">Worst price</td>')).append(
+        $('<td class="data-value">' + worst_price_text + '</td>'));
+
+    let entry_order_type = $('<tr></tr>').append($('<td class="data-name">Entry order type</td>')).append(
+        $('<td class="data-value">' + trade.stats['entry-order-type'] + '</td>'));
+
+    let first_realized_entry_dt = $('<tr></tr>').append($('<td class="data-name">First realized entry at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade.stats['first-realized-entry-datetime']) + '</td>'));
+    let first_realized_exit_dt = $('<tr></tr>').append($('<td class="data-name">First realized exit at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade.stats['first-realized-exit-datetime']) + '</td>'));
+
+    let last_realized_entry_dt = $('<tr></tr>').append($('<td class="data-name">Last realized entry at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade.stats['last-realized-entry-datetime']) + '</td>'));
+    let last_realized_exit_dt = $('<tr></tr>').append($('<td class="data-name">Last realized exit at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade.stats['last-realized-exit-datetime']) + '</td>'));
+
+    let entry_fees = $('<tr></tr>').append($('<td class="data-name">Entry fees</td>')).append(
+        $('<td class="data-value">' + entry_fees_text + '</td>'));
+    let exit_fees = $('<tr></tr>').append($('<td class="data-name">Exit fees</td>')).append(
+        $('<td class="data-value">' + exit_fees_text + '</td>'));
+    let total_fees = $('<tr></tr>').append($('<td class="data-name">Total fees</td>')).append(
+        $('<td class="data-value">' + total_fees_text + '</td>'));
+
+    let close_exec_price = $('<tr></tr>').append($('<td class="data-name">Last close exec price</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade.stats['close-exec-price']) + '</td>'));
+
+    tbody.append(best_price);
+    tbody.append(worst_price);
+
+    tbody.append(entry_order_type);
+    tbody.append(first_realized_entry_dt);
+    tbody.append(first_realized_exit_dt);
+    tbody.append(last_realized_entry_dt);
+    tbody.append(last_realized_exit_dt);
+
+    tbody.append(entry_fees);
+    tbody.append(exit_fees);
+    tbody.append(total_fees);
+
+    tbody.append(close_exec_price);
+
+    $('#trade_details').modal({'show': true, 'backdrop': true});
 }
 
 function on_details_historical_trade(elt) {
     let key = retrieve_trade_key(elt);
+    let table = $('#trade_details_table');
+    let tbody = table.find('tbody').empty();
 
-    // @todo
+    let trade = window.historical_trades[key];
+    if (!trade) {
+        return;
+    }
+
+    let market_id = trade['market-id'];
+
+    let app = $('<tr></tr>').append($('<td class="data-name">Strategy</td>')).append(
+        $('<td class="data-value">' + trade['app-name'] + ' / ' + trade['app-id'] + '</td>'));
+    let id = $('<tr></tr>').append($('<td class="data-name">Identifier</td>')).append(
+        $('<td class="data-value">' + trade.id + '</td>'));
+    let lmarket_id = $('<tr></tr>').append($('<td class="data-name">Market</td>')).append(
+        $('<td class="data-value"><span class="badge">' + trade['market-id'] + '</span></td>'));
+    let symbol = $('<tr></tr>').append($('<td class="data-name">Symbol</td>')).append(
+        $('<td class="data-value"><span class="badge">' + trade.symbol + '</span></td>'));
+    let version = $('<tr></tr>').append($('<td class="data-name">Version</td>')).append(
+        $('<td class="data-value">' + trade.version + '</td>'));
+    let trade_type = $('<tr></tr>').append($('<td class="data-name">Type</td>')).append(
+        $('<td class="data-value">' + trade.trade + '</td>'));
+    let timestamp = $('<tr></tr>').append($('<td class="data-name">Last update</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade.timestamp) + '</td>'));
+    let timeframe = $('<tr></tr>').append($('<td class="data-name">Timeframe</td>')).append(
+        $('<td class="data-value">' + timeframe_to_str(trade.timeframe) + '</td>'));
+    let entry_timeout = $('<tr></tr>').append($('<td class="data-name">Entry timeout</td>')).append(
+        $('<td class="data-value">' + timeframe_to_str(trade['entry-timeout']) + '</td>'));
+    let expiry = $('<tr></tr>').append($('<td class="data-name">Expiry</td>')).append(
+        $('<td class="data-value">' + timeframe_to_str(trade.expiry) + '</td>'));
+    let user_trade = $('<tr></tr>').append($('<td class="data-name">User trade</td>')).append(
+        $('<td class="data-value">' + trade['is-user-trade'] + '</td>'));
+
+    let direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
+        $('<td class="data-value">' + trade.direction + '</td>'));
+
+    if (trade.direction == "long") {
+        direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
+        $('<td class="data-value"><span class="trade-direction fa trade-long fa-arrow-up"></span></td>'));
+    } else if (trade.direction == "short") {
+       direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
+        $('<td class="data-value"><span class="trade-direction fa trade-short fa-arrow-dn"></span></td>'));
+    }
+
+    let state = $('<tr></tr>').append($('<td class="data-name">State</td>')).append(
+        $('<td class="data-value">' + trade.state + '</td>'));
+    let label = $('<tr></tr>').append($('<td class="data-name">Label</td>')).append(
+        $('<td class="data-value">' + trade.label + '</td>'));
+    let order_price = $('<tr></tr>').append($('<td class="data-name">Order price</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['order-price']) + '</td>'));
+    let order_qty = $('<tr></tr>').append($('<td class="data-name">Order qty</td>')).append(
+        $('<td class="data-value">' + trade['order-qty'] + '</td>'));
+    let stop_loss_price = $('<tr></tr>').append($('<td class="data-name">Take-Profit</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['stop-loss-price']) + '</td>'));
+    let take_profit_price = $('<tr></tr>').append($('<td class="data-name">Stop-Loss</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['take-profit-price']) + '</td>'));
+
+    let avg_entry_price = $('<tr></tr>').append($('<td class="data-name">Avg entry price</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['avg-entry-price']) + '</td>'));
+    let avg_exit_price = $('<tr></tr>').append($('<td class="data-name">Avg exit price</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['avg-exit-price']) + '</td>'));
+
+    let entry_open_time = $('<tr></tr>').append($('<td class="data-name">Entry open at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade['entry-open-time']) + '</td>'));
+    let exit_open_time = $('<tr></tr>').append($('<td class="data-name">Exit open at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade['exit-open-time']) + '</td>'));
+
+    let filled_entry_qty = $('<tr></tr>').append($('<td class="data-name">Filled entry qty</td>')).append(
+        $('<td class="data-value">' + trade['filled-entry-qty'] + '</td>'));
+    let filled_exit_qty = $('<tr></tr>').append($('<td class="data-name">Filled exit qty</td>')).append(
+        $('<td class="data-value">' + trade['filled-exit-qty'] + '</td>'));
+
+    let profit_loss_pct_text = '-';
+    let trade_pnl_text= '-';
+    let entry_fees_text = '-';
+    let exit_fees_text = '-';
+    let total_fees_text = '-';
+    if (parseFloat(trade['filled-entry-qty']) > 0.0) {
+        profit_loss_pct_text = trade['profit-loss-pct'] + '%';
+        trade_pnl_text = format_quote_price(market_id, trade.stats['profit-loss']) + trade.stats['profit-loss-currency'];
+        entry_fees_text = format_quote_price(market_id, trade.stats['entry-fees']) + trade.stats['profit-loss-currency'];
+        total_fees_text = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']) +
+            trade.stats['profit-loss-currency'] + ' (' + trade.stats['fees-pct'] + '%)';
+        symbol.find('span').addClass('badge-info');
+        lmarket_id.find('span').addClass('badge-info');
+    } else {
+        symbol.find('span').addClass('badge-secondary');
+        lmarket_id.find('span').addClass('badge-secondary');
+    }
+
+    if (parseFloat(trade['filled-exit-qty']) > 0.0) {
+        exit_fees_text = format_quote_price(market_id, trade.stats['exit-fees']) + trade.stats['profit-loss-currency'];
+    }
+
+    let profit_loss_pct = $('<tr></tr>').append($('<td class="data-name">Profit/Loss</td>')).append(
+        $('<td class="data-value">' + profit_loss_pct_text + '</td>'));
+
+    let trade_pnl = $('<tr></tr>').append($('<td class="data-name">Realized PNL</td>')).append(
+        $('<td class="data-value">' + trade_pnl_text + '</td>'));
+
+    if (trade.stats['profit-loss'] > 0.0) {
+        profit_loss_pct.find('td:last').css('color', 'green');
+        trade_pnl.find('td:last').css('color', 'green');
+    } else if (trade.stats['profit-loss'] < 0.0) {
+       profit_loss_pct.find('td:last').css('color', 'red');
+       trade_pnl.find('td:last').css('color', 'red');
+    }
+
+    tbody.append(app);
+    tbody.append(id);
+    tbody.append(lmarket_id);
+    tbody.append(symbol);
+    tbody.append(version);
+    tbody.append(trade_type);
+    tbody.append(timestamp);
+    tbody.append(entry_timeout);
+    tbody.append(expiry);
+    tbody.append(user_trade);
+    tbody.append(direction);
+    tbody.append(state);
+    tbody.append(label);
+    tbody.append(order_price);
+    tbody.append(order_qty);
+    tbody.append(stop_loss_price);
+    tbody.append(take_profit_price);
+    tbody.append(avg_entry_price);
+    tbody.append(avg_exit_price);
+    tbody.append(entry_open_time);
+    tbody.append(exit_open_time);
+    tbody.append(filled_entry_qty);
+    tbody.append(filled_exit_qty);
+    tbody.append(profit_loss_pct);
+    tbody.append(trade_pnl);
+
+    let best_price_text = '-';
+    let worst_price_text = '-';
+
+    if (trade.stats['best-datetime']) {
+        best_price_text = format_price(market_id, trade.stats['best-price']) + ' on ' +
+            timestamp_to_datetime_str(trade.stats['best-datetime']);
+        worst_price_text = format_price(market_id, trade.stats['worst-price']) + ' on ' +
+            timestamp_to_datetime_str(trade.stats['worst-datetime']);
+    }
+
+    let best_price = $('<tr></tr>').append($('<td class="data-name">Best price</td>')).append(
+        $('<td class="data-value">' + best_price_text + '</td>'));
+    let worst_price = $('<tr></tr>').append($('<td class="data-name">Worst price</td>')).append(
+        $('<td class="data-value">' + worst_price_text + '</td>'));
+
+    let entry_order_type = $('<tr></tr>').append($('<td class="data-name">Entry order type</td>')).append(
+        $('<td class="data-value">' + trade.stats['entry-order-type'] + '</td>'));
+
+    let first_realized_entry_dt = $('<tr></tr>').append($('<td class="data-name">First realized entry at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade.stats['first-realized-entry-datetime']) + '</td>'));
+    let first_realized_exit_dt = $('<tr></tr>').append($('<td class="data-name">First realized exit at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade.stats['first-realized-exit-datetime']) + '</td>'));
+
+    let last_realized_entry_dt = $('<tr></tr>').append($('<td class="data-name">Last realized entry at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade.stats['last-realized-entry-datetime']) + '</td>'));
+    let last_realized_exit_dt = $('<tr></tr>').append($('<td class="data-name">Last realized exit at</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(trade.stats['last-realized-exit-datetime']) + '</td>'));
+
+    let entry_fees = $('<tr></tr>').append($('<td class="data-name">Entry fees</td>')).append(
+        $('<td class="data-value">' + entry_fees_text + '</td>'));
+    let exit_fees = $('<tr></tr>').append($('<td class="data-name">Exit fees</td>')).append(
+        $('<td class="data-value">' + exit_fees_text + '</td>'));
+    let total_fees = $('<tr></tr>').append($('<td class="data-name">Total fees</td>')).append(
+        $('<td class="data-value">' + total_fees_text + '</td>'));
+
+    let exit_reason = $('<tr></tr>').append($('<td class="data-name">Exit reason</td>')).append(
+        $('<td class="data-value">' + trade.stats['exit-reason'] + '</td>'));
+
+    tbody.append(best_price);
+    tbody.append(worst_price);
+
+    tbody.append(entry_order_type);
+    tbody.append(first_realized_entry_dt);
+    tbody.append(first_realized_exit_dt);
+    tbody.append(last_realized_entry_dt);
+    tbody.append(last_realized_exit_dt);
+
+    tbody.append(entry_fees);
+    tbody.append(exit_fees);
+    tbody.append(total_fees);
+
+    tbody.append(exit_reason);
+
+    $('#trade_details').modal({'show': true, 'backdrop': true});
 }
 
 /////////////////////
@@ -1324,7 +1740,9 @@ function compute_all_avg_entry_price() {
             tp_pct = (tp_price - price) / price * 100;
             price_pct = (market['mid'] - price) / price * 100;
 
-            console.log(market['symbol'] + ' / avg-entry-price=' + format_quote_price(mid, price) + '(' + price_pct.toFixed(2) + '%) / qty=' + qty + ' / tp=' + format_quote_price(mid, tp_price) + '(' + tp_pct.toFixed(2) + '%)');
+            console.log(market['symbol'] + ' / avg-entry-price=' + format_quote_price(mid, price) +
+                '(' + price_pct.toFixed(2) + '%) / qty=' + qty + ' / tp=' + format_quote_price(mid, tp_price) +
+                '(' + tp_pct.toFixed(2) + '%)');
         }
     }
 }
@@ -1345,7 +1763,8 @@ function trade_validation(asset, currency, zero_count) {
         }
 
         if (trade['market-id'] == asset+currency) {
-            console.log(trade['id'] + ' EP@' + trade['avg-entry-price'] + ' date=' + trade['stats']['first-realized-entry-datetime'], ' TP@' + trade['take-profit-price']);
+            console.log(trade['id'] + ' EP@' + trade['avg-entry-price'] + ' date=' + trade['stats']['first-realized-entry-datetime'],
+                ' TP@' + trade['take-profit-price']);
             // console.log(trade)
             qty += trade_qty;
         }

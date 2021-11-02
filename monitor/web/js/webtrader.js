@@ -503,7 +503,7 @@ $(window).ready(function() {
         $(this).css('background', 'chocolate');
     });
 
-    $('#authentification').modal({'show': true, 'backdrop': false});
+    $('#authentication').modal({'show': true, 'backdrop': false});
     $('#list_active_trades').css('background', 'chocolate');
 
     $('#list_performances').on('click', function(e) {
@@ -512,7 +512,7 @@ $(window).ready(function() {
         }
     });
 
-    $('#authentification').on('shown.bs.modal', function () {
+    $('#authentication').on('shown.bs.modal', function () {
         $('#identifier').focus();
         let identifier = getCookie('identifier');
 
@@ -654,7 +654,7 @@ $(window).ready(function() {
                 fetch_strategy();
             }
 
-            $('#authentification').modal('hide');
+            $('#authentication').modal('hide');
 
             $("div.active-trade-list-entries ul").empty();
             $("div.historical-trade-list-entries ul").empty();
@@ -737,7 +737,7 @@ $(window).ready(function() {
                 fetch_strategy();
             }
 
-            $('#authentification').modal('hide');
+            $('#authentication').modal('hide');
 
             $("div.active-trade-list-entries ul").empty();
             $("div.historical-trade-list-entries ul").empty();
@@ -1386,6 +1386,32 @@ function timestamp_to_datetime_str(timestamp) {
 
     let datetime = new Date(timestamp);
     return datetime.toLocaleDateString("en-GB") + " " + datetime.toLocaleTimeString("fr-FR");
+}
+
+function timeframe_to_str(timeframe) {
+    if (timeframe == null || timeframe == undefined) {
+        return "";
+    }
+
+    if (typeof(timeframe) !== "number") {
+        timestamp = parseFloat(timeframe);
+    }
+
+    if (timeframe >= 30*24*60*60*60) {
+        return timeframe / (30*24*60*60) + " months"
+    } else if (timeframe >= 7*24*60*60) {
+        return timeframe / (7*24*60*60) + " weeks"
+    } else if (timeframe >= 24*60*60) {
+        return timeframe / (24*60*60) + " days"
+    } else if (timeframe >= 60*60) {
+        return timeframe / (60*60) + " hours"
+    } else if (timeframe >= 60) {
+        return timeframe / 60 + " minutes"
+    } else if (timeframe > 0) {
+        return timeframe + " seconds"
+    } else {
+        return "";
+    }
 }
 
 //

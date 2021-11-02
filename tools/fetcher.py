@@ -182,7 +182,7 @@ def do_fetcher(options):
     today = datetime.now().astimezone(UTC())
 
     if fetcher.connected:
-        logger.info("Fetcher authentified to %s, trying to collect data..." % fetcher.name)
+        logger.info("Fetcher authenticated to %s, trying to collect data..." % fetcher.name)
 
         markets = fetcher.matching_symbols_set(options['market'].split(','), fetcher.available_instruments())
 

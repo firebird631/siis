@@ -73,11 +73,11 @@
       <source src="audio/entry.mp3" type="audio/mp3">
 </audio>
 
-<div class="modal fade" id="authentification" tabindex="-1" role="dialog" aria-labelledby="authentification" aria-hidden="true">
+<div class="modal fade" id="authentication" tabindex="-1" role="dialog" aria-labelledby="authentication" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Authentification</h5>
+        <h5 class="modal-title">Authentication</h5>
       </div>
       <div class="modal-body">
         <form>
@@ -136,7 +136,7 @@
           <button type="button" class="btn btn-info" id="apply_trade_add_dynamic_stop_loss">Add</button>
         </div>
         <div>
-          <!-- todo list of existing DSL -->
+          <!-- todo list of existing Step-Stop-Loss -->
         </div>
       </div>
       <div class="modal-footer">
@@ -182,6 +182,32 @@
   </div>
 </div>
 
+<div class="modal" id="trade_details" tabindex="-1" role="dialog" aria-labelledby="Trade details" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Trade details</h5>
+      </div>
+      <div class="modal-body">
+        <div class="">
+            <table id="trade_details_table" class="content-table" style="width: 100%;">
+              <thead style="width: 100%; border-bottom: 1px solid gray;">
+                <tr>
+                  <th>Data</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="main">
     <div class="container-fluid status">
