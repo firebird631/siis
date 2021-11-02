@@ -70,7 +70,7 @@ div.content-bar {
 table.content-table thead th {
     background: blueviolet;
     position: sticky;
-    /** top: -1px; */
+    top: -1px;
     z-index: 1;
 }
 
