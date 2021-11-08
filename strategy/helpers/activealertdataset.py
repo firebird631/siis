@@ -12,7 +12,7 @@ error_logger = logging.getLogger('siis.error.strategy')
 
 def get_all_active_alerts(strategy):
     """
-    Generate and return an array of all the actives alertes :
+    Generate and return an array of all the actives alerts :
         symbol: str market identifier
         id: int alert identifier
     """

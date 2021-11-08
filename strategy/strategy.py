@@ -1362,7 +1362,7 @@ class Strategy(Runnable):
     # helpers
     #
 
-    def dumps_trades_update(self):
+    def dumps_trades_update(self) -> list[dict]:
         """
         Dumps trade update notify of any trades of any strategy traders.
         """
@@ -1377,7 +1377,7 @@ class Strategy(Runnable):
 
         return trades
 
-    def dumps_trades_history(self):
+    def dumps_trades_history(self) -> list[dict]:
         """
         Dumps trade records of any historical trades of any strategy traders. Not sorted.
         """

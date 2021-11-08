@@ -20,6 +20,21 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
             => une méthode bootstrap mais qui ne rejout pas les candles :
                 - ce qui en plus évite les imprécisions de ce pseudo replay
 
+Sum order :
+  - si spot : sum base (au moins sum pour EUR et USD), pour et eviter le rejet de l'API si qty insuffisante
+        - attention à l'arrondit pour que ça ne bloque pas un autre order
+        - le faire sur le watcher, lors d'order event, générer le asset update signal, locked/free
+        - le faire sur le trader lors du __fetch_assets
+        - si pas de leverage, ok ok est bien spot, sinon ignorer
+        - si buy :
+            - base free - volume executé en quote
+            - quote -free +lock mais oter le volume executé
+            - asset update signal
+        - si sell :
+            - base -free +lock mais oter le volume executé
+            - quote free + volume executé en quote
+            - asset update signal
+
 
 #######
 # WIP #
@@ -34,25 +49,20 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
     - 'cumulative-commission-amount' pour les fees à gérer sur indmargintrade
     - calcule des qty locked par asset en fonction des ordres ouverts (attention aux arrondis)
 
-#24 Uniformiser l'order book (bitmex, binance, binancefutures, kraken)
-    - avoir un object OrderBook facile à mettre à jour et à exploiter
-    - utiliser DepthCacheManager pour binance et binancefutures
-
 #103 WebTrader
     - gérer affinity par market (+ streaming de change car il peut être produit depuis le term ou un autre client)
+    - WS sur retour status strategie (activity, affinity, qty/factor)
     - charting OHLC et ticks (streaming) + performance
     - goto charting historique sur un trade passé
-    - details trade avec modal
     - session expiry message to renew
     - active alerts prefetch à la connexion, WS d'update et de delete (à chaque trigger countdown peu changer)
     - ticker WS, basé sur quoi ? trader ticker ? strategy instrument ?
         - plutôt sur le trader car pas besoin de surcharger encore le strategy trader
     - copy de signal (bouton)
     - toggle audio et alt sound alerts (et save conf)
-
-#108 Move from siis.py for the resting command part to command_handler
-
-#89 Finir les conversion des tools avec le model Tool (binarizer, fetcher, optimizer)
+    - rajouter des tris (% pnl+-, market+-, date+-, upnl+-)
+    - dans la vue console ajouter un edit pour saisir des commande comme depuis le terminal
+        - pour la commande quit rajouter un validateur ou rejetter cette commande
 
 #115 tool withdraw (ou command) simple avec pin code (2AF) paire et addresse
     - peut utiliser un alias d'adresse ou l'adresse enregistré par défaut (wallets.json)
@@ -91,8 +101,6 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
 # Urgent #
 ##########
 
-#119 close_position and modify_position must return Order REASON code in place of boolean
-
 #122 send an error notification in case of a trade goes to ERROR state
 
 #120 Kraken have maintenance, cancel-only and post-only market status, could be useful
@@ -105,12 +113,27 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
     - verifier order_info pour le trader binance et binancefutures
 
 
+##################
+# Uniformization #
+##################
+
+#108 Move from siis.py for the resting command part to command_handler
+
+#89 Finir les conversion des tools avec le model Tool (binarizer, fetcher, optimizer)
+
+#119 close_position and modify_position must return Order REASON code in place of boolean
+
+#24 Uniformiser l'order book (bitmex, binance, binancefutures, kraken)
+    - avoir un object OrderBook facile à mettre à jour et à exploiter
+    - utiliser DepthCacheManager pour binance et binancefutures
+
+
 #############
 # Important #
 #############
 
 #60 Gérer la partie locked sur le paper trader en mode asset
-    - C'est à dire ne pas tout gérer en free, pas super important au final car ça n'empêche pas le fonctionnement,
+    - ne pas tout gérer en free, peu important car ça n'empêche pas de fonctionner
 
 
 #########

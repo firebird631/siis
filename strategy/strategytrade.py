@@ -5,7 +5,6 @@
 
 from datetime import datetime
 
-from common.signal import Signal
 from common.utils import timeframe_to_str, timeframe_from_str, UTC
 
 from trader.order import Order, order_type_to_str
@@ -1250,6 +1249,9 @@ class StrategyTrade(object):
         }
 
     def info_report(self, strategy_trader):
+        """
+        @todo leverage for phrase command
+        """
         entry_phrase = [self.direction_to_str(), strategy_trader.instrument.symbol]
         assign_phrase = [strategy_trader.instrument.symbol, self.direction_to_str()]
 
@@ -1306,7 +1308,8 @@ class StrategyTrade(object):
 
         assign_phrase.append(strategy_trader.instrument.format_quantity(self.e or self.oq))
 
-        # @todo leverage for phrase command
+        # 'avg-entry-price' 'avg-exit-price' 'entry-open-time' 'exit-open-time'
+        # 'filled-entry-qty' 'filled-exit-qty' 'profit-loss-pct' 'num-exit-trades'
 
         return (
             "Trade info - %s - id %s - on %s. Opened %s." % (
@@ -1328,12 +1331,3 @@ class StrategyTrade(object):
             "-----",
             # specialize for add row with detail such as orders or positions ids
         )
-
-        # 'avg-entry-price': strategy_trader.instrument.format_price(self.aep),
-        # 'avg-exit-price': strategy_trader.instrument.format_price(self.axp),
-        # 'entry-open-time': self.dump_timestamp(self.eot),
-        # 'exit-open-time': self.dump_timestamp(self.xot),
-        # 'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
-        # 'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
-        # 'profit-loss-pct': round(self.estimate_profit_loss(strategy_trader.instrument) * 100.0, 2),
-        # 'num-exit-trades': len(self.exit_trades),
