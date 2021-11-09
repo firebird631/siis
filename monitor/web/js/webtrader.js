@@ -1,7 +1,14 @@
-// @todo auto-reconnect
-
 $(window).ready(function() {
     CURRENCIES = ['EUR', 'ZEUR', 'USD', 'ZUSD', 'CAD', 'ZCAD', 'JPY', 'ZJPY', 'CHF', 'ZCHF'];
+    CURRENCIES_ALIAS = {
+        'ZEUR': ['EUR', '€'],
+        'ZUSD': ['USD', '$'],
+        'ZCHF': ['CHF', 'CHF'],
+        'ZJPY': ['JPY', '¥'],
+        'ZCAD': ['CAD','$CA'],
+        'XXBT': ['BTC','₿'],
+        'XETH': ['ETH','Ξ'],
+    }
 
     window.server = {
         'protocol': 'http:',
@@ -2217,6 +2224,14 @@ function reset_states() {
         $(nid).css('border-color', 'gray');
         $(nid).attr('title', type + ': ' + update.name)
     }
+}
+
+function get_currency_display(currency, display=true) {
+    if (currency in CURRENCIES_ALIAS) {
+        return CURRENCIES_ALIAS[currency][display ? 1 : 0];
+    }
+
+    return currency;
 }
 
 // function rcv_ws_data() {
