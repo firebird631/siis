@@ -1,5 +1,21 @@
 $(window).ready(function() {
-    CURRENCIES = ['EUR', 'ZEUR', 'USD', 'ZUSD', 'CAD', 'ZCAD', 'JPY', 'ZJPY', 'CHF', 'ZCHF'];
+    CURRENCIES = {
+        'EUR': 2,
+        'ZEUR': 2,
+        'USD': 2,
+        'ZUSD': 2,
+        'CAD': 2,
+        'ZCAD': 2,
+        'JPY': 2,
+        'ZJPY': 2,
+        'CHF': 2,
+        'ZCHF': 2,
+        'XBT': 8,
+        'XXBT': 8,
+        'ETH': 8,
+        'XETH': 8,
+    };
+
     CURRENCIES_ALIAS = {
         'ZEUR': ['EUR', '€'],
         'ZUSD': ['USD', '$'],
@@ -8,7 +24,7 @@ $(window).ready(function() {
         'ZCAD': ['CAD','$CA'],
         'XXBT': ['BTC','₿'],
         'XETH': ['ETH','Ξ'],
-    }
+    };
 
     window.server = {
         'protocol': 'http:',
@@ -1948,17 +1964,19 @@ function on_update_performances() {
             row_entry.append($('<td class="balance-symbol">' + asset + '</td>'));
 
             if (balance.type == "asset") {
-                if (CURRENCIES.indexOf(asset) >= 0) {
-                    precision = 2;
+                if ((precision === undefined || precision === null) && (asset in CURRENCIES)) {
+                    precision = CURRENCIES[asset];
                 }
 
-                row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
-                row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + '</td>'));
-                row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '</td>'));
+                row_entry.append($('<td class="balance-free">' + balance.free.format_value(precision) + '</td>'));
+                row_entry.append($('<td class="balance-locked">' + balance.locked.format_value(precision) + '</td>'));
+                row_entry.append($('<td class="balance-total">' + balance.total.format_value(precision) + '</td>'));
             } else if (balance.type == "margin") {
-                row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
-                row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + ' (level '+ balance['margin-level'] * 100).toFixed(2) + ')</td>');
-                row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '(upnl ' + balance.upnl + ')</td>'));
+                row_entry.append($('<td class="balance-free">' + balance.free.format_value(precision) + '</td>'));
+                row_entry.append($('<td class="balance-locked">' + balance.locked.format_value(precision) +
+                    ' (level '+ balance['margin-level'] * 100).toFixed(2) + ')</td>');
+                row_entry.append($('<td class="balance-total">' + balance.total.format_value(precision) +
+                    ' (upnl ' + balance.upnl + ')</td>'));
             }
 
             table.append(row_entry);
@@ -1999,8 +2017,12 @@ function on_update_balances(symbol, asset, timestamp, data) {
             // or insert
             window.account_balances[asset] = data;
 
-            if (data.precision === undefined) {
-                window.account_balances[asset].precision = 8;
+            if (data.precision === undefined || data.precision === null) {
+                if (asset in CURRENCIES) {
+                    window.account_balances[asset].precision = CURRENCIES[asset];
+                } else {
+                    window.account_balances[asset].precision = 8;
+                }
             }
         }
 
@@ -2021,8 +2043,8 @@ function on_update_balances(symbol, asset, timestamp, data) {
             let precision = balance.precision;
 
             if (balance.type == "asset") {
-                if (CURRENCIES.indexOf(asset) >= 0) {
-                    precision = 2;
+                if ((precision === undefined || precision === null) && (asset in CURRENCIES)) {
+                    precision = CURRENCIES[asset];
                 }
 
                 row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
@@ -2232,6 +2254,10 @@ function get_currency_display(currency, display=true) {
     }
 
     return currency;
+}
+
+function format_value(value, precision) {
+    return value.toFixed(precision).replace(/\.?0+$/, "");
 }
 
 // function rcv_ws_data() {

@@ -436,8 +436,8 @@ function update_status_pnl() {
         }
     }
 
-    if (CURRENCIES.indexOf(currency) >= 0) {
-        precision = 2;
+    if (currency in CURRENCIES) {
+        precision = CURRENCIES[currency];
     }
 
     let currency_display = get_currency_display(currency);
@@ -449,10 +449,10 @@ function update_status_pnl() {
     window.stats['rpnl'] = rpnl_v;
 
     $('#upln_pct').text(upnl_pct.toFixed(2) + "%");
-    $('#upln_value').text(upnl_v + currency_display);
+    $('#upln_value').text(upnl_v.format_value(precision) + currency_display);
 
     $('#rpln_pct').text(rpnl_pct.toFixed(2) + "%");
-    $('#rpln_value').text(rpnl_v + currency_display);
+    $('#rpln_value').text(rpnl_v.format_value(precision) + currency_display);
 }
 
 //
@@ -1419,6 +1419,7 @@ function on_details_historical_trade(elt) {
     }
 
     let market_id = trade['market-id'];
+    let currency_display = get_currency_display(trade.stats['profit-loss-currency']);
 
     let app = $('<tr></tr>').append($('<td class="data-name">Strategy</td>')).append(
         $('<td class="data-value">' + trade['app-name'] + ' / ' + trade['app-id'] + '</td>'));
@@ -1692,7 +1693,7 @@ function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X") {
                         total_missing_trades += Math.round(count)
                     }
                 }
-            } else if (CURRENCIES.indexOf(asset_name) < 0) {
+            } else if (!asset_name in CURRENCIES) {
                 // not a currency 
                 let diff = asset.total;
                 let market = null;
