@@ -1968,14 +1968,14 @@ function on_update_performances() {
                     precision = CURRENCIES[asset];
                 }
 
-                row_entry.append($('<td class="balance-free">' + balance.free.format_value(precision) + '</td>'));
-                row_entry.append($('<td class="balance-locked">' + balance.locked.format_value(precision) + '</td>'));
-                row_entry.append($('<td class="balance-total">' + balance.total.format_value(precision) + '</td>'));
+                row_entry.append($('<td class="balance-free">' + format_value(balance.free, precision) + '</td>'));
+                row_entry.append($('<td class="balance-locked">' + format_value(balance.locked, precision) + '</td>'));
+                row_entry.append($('<td class="balance-total">' + format_value(balance.total, precision) + '</td>'));
             } else if (balance.type == "margin") {
-                row_entry.append($('<td class="balance-free">' + balance.free.format_value(precision) + '</td>'));
-                row_entry.append($('<td class="balance-locked">' + balance.locked.format_value(precision) +
+                row_entry.append($('<td class="balance-free">' + format_value(balance.free, precision) + '</td>'));
+                row_entry.append($('<td class="balance-locked">' + format_value(balance.locked, precision) +
                     ' (level '+ balance['margin-level'] * 100).toFixed(2) + ')</td>');
-                row_entry.append($('<td class="balance-total">' + balance.total.format_value(precision) +
+                row_entry.append($('<td class="balance-total">' + format_value(balance.total, precision) +
                     ' (upnl ' + balance.upnl + ')</td>'));
             }
 
@@ -2257,6 +2257,9 @@ function get_currency_display(currency, display=true) {
 }
 
 function format_value(value, precision) {
+    /**
+     * Format number value as string according ot a fixed precision and remove trailing 0 and dot.
+     */
     return value.toFixed(precision).replace(/\.?0+$/, "");
 }
 

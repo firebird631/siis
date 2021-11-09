@@ -449,10 +449,10 @@ function update_status_pnl() {
     window.stats['rpnl'] = rpnl_v;
 
     $('#upln_pct').text(upnl_pct.toFixed(2) + "%");
-    $('#upln_value').text(upnl_v.format_value(precision) + currency_display);
+    $('#upln_value').text(format_value(upnl_v, precision) + currency_display);
 
     $('#rpln_pct').text(rpnl_pct.toFixed(2) + "%");
-    $('#rpln_value').text(rpnl_v.format_value(precision) + currency_display);
+    $('#rpln_value').text(format_value(rpnl_v, precision) + currency_display);
 }
 
 //
