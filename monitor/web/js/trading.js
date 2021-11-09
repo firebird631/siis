@@ -520,6 +520,36 @@ function normalized_profit_loss_distance(entry, close, stop_loss_rate, take_prof
     return 0.0;    
 }
 
+function colorize_pnl(trade, trade_percent, stop_loss_price_rate, take_profit_price_rate) {
+    /** Colorized the background of the element trade_percent according to distance of trade price to stop-loss
+     * and take profit rate.
+     */
+    let upnl_bg_color = 'initial';
+    let upnl_border_color = 'initial';
+    let upnl_color = 'white';
+
+    let upnl_bg = normalized_profit_loss_distance(
+            trade['avg-entry-price'],
+            trade.stats['close-exec-price'],
+            stop_loss_price_rate,
+            take_profit_price_rate,
+            trade.direction == "long" ? 1 : -1);
+
+    if (upnl_bg < 0.0) {
+        upnl_bg_color = 'rgba(255, 0, 0, ' + (-upnl_bg * 0.9).toFixed(1) + ')';
+        upnl_border_color = 'rgba(255, 0, 0, 0)';
+    } else if (upnl_bg > 0.0) {
+        upnl_bg_color = 'rgba(0, 255, 0, ' + (upnl_bg * 0.9).toFixed(1) + ')';
+        upnl_border_color = 'rgba(0, 255, 0, 0)';
+    }
+
+    trade_percent.css('background', upnl_bg_color)
+        .css('color', upnl_color)
+        .css('border', 'solid 1px ' + upnl_border_color)
+        .css('border-radius', '3px')
+        .css('width', '100%');
+}
+
 function add_active_trade(market_id, trade) {
     let trade_elt = $('<tr class="active-trade"></tr>');
     let key = market_id + ':' + trade.id;
@@ -616,6 +646,9 @@ function add_active_trade(market_id, trade) {
         trade['avg-entry-price'] || trade['order-price'],
         trade.direction == "long" ? 1 : -1);
     trade_take_profit.attr('title', (take_profit_price_rate * 100).toFixed(2) + '%');
+
+    // colorized upnl % background
+    colorize_pnl(trade, trade_percent, stop_loss_price_rate, take_profit_price_rate);
 
     // actions
     let trade_close = $('<button class="trade-close btn btn-danger fa fa-close"></button>');
@@ -759,30 +792,7 @@ function update_active_trade(market_id, trade) {
     trade_take_profit.attr('title', (take_profit_price_rate * 100).toFixed(2) + '%');
 
     // colorized upnl % background
-    let upnl_bg_color = 'initial';
-    let upnl_border_color = 'initial';
-    let upnl_color = 'white';
-
-    let upnl_bg = normalized_profit_loss_distance(
-            trade['avg-entry-price'],
-            trade.stats['close-exec-price'],
-            stop_loss_price_rate,
-            take_profit_price_rate,
-            trade.direction == "long" ? 1 : -1);
-
-    if (upnl_bg < 0.0) {
-        upnl_bg_color = 'rgba(255, 0, 0, ' + (-upnl_bg * 0.9).toFixed(1) + ')';
-        upnl_border_color = 'rgba(255, 0, 0, 0)';
-    } else if (upnl_bg > 0.0) {
-        upnl_bg_color = 'rgba(0, 255, 0, ' + (upnl_bg * 0.9).toFixed(1) + ')';
-        upnl_border_color = 'rgba(0, 255, 0, 0)';
-    }
-
-    trade_percent.css('background', upnl_bg_color)
-        .css('color', upnl_color)
-        .css('border', 'solid 1px ' + upnl_border_color)
-        .css('border-radius', '3px')
-        .css('width', '100%');
+    colorize_pnl(trade, trade_percent, stop_loss_price_rate, take_profit_price_rate);
 
     // update
     trade_elt.find('span.trade-symbol').replaceWith(trade_symbol);
