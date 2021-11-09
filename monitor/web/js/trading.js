@@ -436,8 +436,12 @@ function update_status_pnl() {
         }
     }
 
+    let precision = 8;
+
     if (currency in CURRENCIES) {
         precision = CURRENCIES[currency];
+    } else if (currency in window.account_balances) {
+        precision = window.account_balances[currency].precision || 8;
     }
 
     let currency_display = get_currency_display(currency);
