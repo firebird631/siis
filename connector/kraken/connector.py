@@ -976,6 +976,11 @@ class Connector(object):
             if results.get('error', []):
                 if results['error'][0] == "EAPI:Rate limit exceeded":
                     time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
+                        break
+
                     continue
 
                 elif results['error'][0] == "EAPI:Invalid nonce":
@@ -1022,10 +1027,20 @@ class Connector(object):
             if results.get('error', []):
                 if results['error'][0] == "EAPI:Rate limit exceeded":
                     time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
+                        break
+
                     continue
 
                 elif results['error'][0] == "EOrder:Rate limit exceeded":
                     time.sleep(5.0)
+                    retry_count += 1
+
+                    if retry_count > Connector.QUERY_PRIVATE_MAX_RETRY:
+                        break
+
                     continue
 
                 elif results['error'][0] == "EAPI:Invalid nonce":

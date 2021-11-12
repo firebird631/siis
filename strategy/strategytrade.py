@@ -977,7 +977,7 @@ class StrategyTrade(object):
 
     def entry_fees_rate(self):
         """Realized entry fees rate"""
-        if self.e > 0:
+        if self.e > 0 and self.aep > 0:
             return self._stats['entry-fees'] / (self.aep * self.e)
 
         return 0.0
@@ -988,7 +988,7 @@ class StrategyTrade(object):
 
     def exit_fees_rate(self):
         """Realized entry fees rate"""
-        if self.x > 0:
+        if self.x > 0 and self.axp > 0:
             return self._stats['exit-fees'] / (self.axp * self.x)
 
         return 0.0
