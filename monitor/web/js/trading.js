@@ -1618,10 +1618,10 @@ function on_details_historical_trade(elt) {
  * @param currency_prefix str In some case an additional currency prefix to match between asset symbol and market ids.
  * @return object Per asset an object with details.
  */
-function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X") {
+function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X", initial_avg_slot_size=0) {
     let diffs = {};
     let totals = {};
-    let avg_slot_size = 0;
+    let avg_slot_size = initial_avg_slot_size || 0;
     let avg_slot_count = 0;
 
     for (let trade in window.actives_trades) {
@@ -1697,7 +1697,7 @@ function check_trades(currency="EUR", currency_prefix="Z", asset_prefix="X") {
                         total_missing_trades += Math.round(count)
                     }
                 }
-            } else if (!asset_name in CURRENCIES) {
+            } else if (asset_name != currency_prefix+currency) { // (!asset_name in CURRENCIES) {
                 // not a currency 
                 let diff = asset.total;
                 let market = null;

@@ -1400,8 +1400,8 @@ class UserExportCommand(Command):
         "param1: <market-id> market-id or any if not specified (optional)",
         "param2: <active|history|closed> Active or history trades (closed means for history) (optional) "
         "(default history)",
-        "param3: <pending> Include non realized entry actives trades (optional)"
-        "param4: <csv|json> Export format CSV or JSON (optional) (default csv)"
+        "param3: <pending> Include non realized entry actives trades (optional)",
+        "param4: <csv|json> Export format CSV or JSON (optional) (default csv)",
         "last: <filename> Specify the full-path filename (optional) (default "
         "/tmp/siis_trades<_history><_market-id>.<format>)"
     )
