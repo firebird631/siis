@@ -61,6 +61,19 @@ def setup_script(action, module, watcher_service, trader_service, strategy_servi
             return results
 
     elif action == "remove":
-        pass  # @todo
+        if hasattr(script_module, 'remove'):
+            # remove script
+            remove = getattr(script_module, 'remove')
+
+            try:
+                results = remove(watcher_service, trader_service, strategy_service, monitor_service, notifier_service)
+            except Exception as e:
+                results['messages'].append(repr(e))
+                results['error'] = True
+                return results
+        else:
+            results['messages'].append("Unsupported script module %s format" % module)
+            results['error'] = True
+            return results
 
     return results

@@ -6,6 +6,7 @@
 import copy
 import logging
 import threading
+import traceback
 
 from twisted.internet import reactor
 from twisted.internet.error import ReactorAlreadyRunning, ReactorNotRunning
@@ -128,6 +129,8 @@ class MonitorService(Service):
 
         self._client_ws_auth_token = {}
 
+        self._scripts = {}  # user installed scripts registry
+
     def setup(self, watcher_service, trader_service, strategy_service):
         self._watcher_service = watcher_service
         self._trader_service = trader_service
@@ -187,9 +190,9 @@ class MonitorService(Service):
         """
         permissions = []
 
-        for str, v in MonitorService.PERMISSIONS.items():
+        for k, v in MonitorService.PERMISSIONS.items():
             if self._permissions & v == v:
-                permissions.append(str)
+                permissions.append(k)
 
         return permissions
 
@@ -312,6 +315,16 @@ class MonitorService(Service):
             self._http = None
             self._ws = None
 
+        # user scripts
+        for k, script in self._scripts.items():
+            try:
+                script.stop()
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+        self._scripts = {}
+
     def run_ws(self):
         self._ws.start()
 
@@ -336,3 +349,29 @@ class MonitorService(Service):
 
         except Exception as e:
             error_logger.error(repr(e))
+
+    def install_script(self, name, inst):
+        try:
+            inst.start()
+        except Exception as e:
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
+            return False
+
+        self._scripts[name] = inst
+        return True
+
+    def remove_script(self, name):
+        if name in self._scripts:
+            inst = self._scripts[name]
+
+            try:
+                inst.stop()
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+            del self._scripts[name]
+            return True
+
+        return False
