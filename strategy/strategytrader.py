@@ -752,6 +752,8 @@ class StrategyTrader(object):
 
         trade.loads(data, self, self._trade_context_builder)
 
+        logger.debug("Load trade %s:%s" % (self.instrument.symbol, trade_id))
+
         # operations
         for op in operations:
             if op['name'] in self.strategy.service.tradeops:

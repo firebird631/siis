@@ -603,6 +603,7 @@ class PgSql(Database):
                         user_trades.append((row[0], row[1], row[2], json.loads(row[3]), json.loads(row[4])))
 
                     cursor = None
+                    logger.debug(rows)
 
                     # notify
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ut[4], user_trades)

@@ -354,8 +354,8 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
 
     # initialized state
     for k, strategy_trader in strategy._strategy_traders.items():
-        with strategy_traders._mutex:
-            strategy_traders._initialized = 0
+        with strategy_trader._mutex:
+            strategy_trader._initialized = 0
 
 #
 # live setup

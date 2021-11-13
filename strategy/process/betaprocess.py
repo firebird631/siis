@@ -32,7 +32,8 @@ def setup_process(strategy):
     """
     Setup this beta processing to the strategy.
     Setup for live and backtesting are OHLCs history, and process trade/tick data for backtesting.
-    There is a preprocessing of necessary data that must be disposed by the related strategy data cache processing before going to live or to receive backtest data.
+    There is a preprocessing of necessary data that must be disposed by the related strategy data cache
+    processing before going to live or to receive backtest data.
     There is a bootstrap processing before going to live or to receive backtest data.
     """
     strategy._setup_backtest = beta_setup_backtest
@@ -506,8 +507,8 @@ def beta_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument.
 
     # initialized state
     for k, strategy_trader in strategy._strategy_traders.items():
-        with strategy_traders._mutex:
-            strategy_traders._initialized = 0
+        with strategy_trader._mutex:
+            strategy_trader._initialized = 0
 
 #
 # live setup
