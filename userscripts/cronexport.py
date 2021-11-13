@@ -12,7 +12,7 @@ class CronExportScript(threading.Thread):
     SLEEP_TIME = 5.0
     BALANCE_DELAY = 60*60*24
 
-    def __init__(self, strategy_service):
+    def __init__(self, strategy_service, unmanaged=False):
         super().__init__()
 
         self._strategy_service = strategy_service
@@ -20,6 +20,7 @@ class CronExportScript(threading.Thread):
         self._balances_last_time = 0.0
 
         self._process = True
+        self._unmanaged = unmanaged
 
     def run(self):
         while self._process:
@@ -60,6 +61,11 @@ class CronExportScript(threading.Thread):
                         with open("/tmp/siis_balances.json", "w") as f:
                             f.write(json.dumps(dataset))
 
+            if self._unmanaged and self._strategy_service.strategy() is None:
+                # conditional break for older version
+                self._process = False
+                break
+
             time.sleep(CronExportScript.SLEEP_TIME)
 
     def stop(self):
@@ -75,7 +81,18 @@ def run_once(watcher_service, trader_service, strategy_service, monitor_service,
 
     results['messages'].append("Install cron trade data export")
 
-    monitor_service.install_script('cron-export', CronExportScript(strategy_service))
+    if hasattr(monitor_service, 'install_script'):
+        if not monitor_service.has_script('cron-export'):
+            monitor_service.install_script('cron-export', CronExportScript(strategy_service))
+    else:
+        # for older version
+        try:
+            instance = CronExportScript(strategy_service, True)
+            instance.start()
+        except Exception as e:
+            results['error'] = True
+            results['messages'].append(repr(e))
+
     return results
 
 
@@ -87,5 +104,8 @@ def remove(watcher_service, trader_service, strategy_service, monitor_service, n
 
     results['messages'].append("Stop and remove cron trade data export")
 
-    monitor_service.remove_script('cron-export')
+    if hasattr(monitor_service, 'remove_script'):
+        if monitor_service.has_script('cron-export'):
+            monitor_service.remove_script('cron-export')
+
     return results

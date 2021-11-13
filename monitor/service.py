@@ -351,6 +351,9 @@ class MonitorService(Service):
         except Exception as e:
             error_logger.error(repr(e))
 
+    def has_script(self, name):
+        return name in self._scripts
+
     def install_script(self, name, inst):
         try:
             inst.start()
