@@ -34,6 +34,18 @@ class ReinvestGainHandler(Handler):
         self._total_quantity = 0.0
         self._num_trades = 0
 
+    @property
+    def total_quantity(self):
+        return self._total_quantity
+
+    @property
+    def total_max_trades(self):
+        return self._total_max_trades
+
+    @property
+    def trade_quantity(self):
+        return self._trade_quantity
+
     def install(self, strategy_trader):
         if strategy_trader and self._context_id:
             # already installed

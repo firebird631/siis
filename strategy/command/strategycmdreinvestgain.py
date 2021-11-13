@@ -19,6 +19,7 @@ def cmd_strategy_reinvest_gain(strategy, data):
     trade_quantity = data.get('trade-quantity', 0.0)
     step = data.get('step', 0.0)
     context_id = data.get('context')
+    initial_total_qty = data.get('initial-total-qty')
 
     if not context_id:
         results['error'] = True
@@ -55,6 +56,11 @@ def cmd_strategy_reinvest_gain(strategy, data):
                 if ctx is not None:
                     ctx_cnt += 1
                     strategy_trader.install_handler(handler)
+
+            # force the value of initial total quantity, only if acceptable
+            if initial_total_qty is not None and initial_total_qty > handler.total_quantity:
+                if initial_total_qty - handler.total_quantity < handler.trade_quantity:
+                    handler._total_quantity = initial_total_qty
 
     elif action == 'normal':
         with strategy._mutex:

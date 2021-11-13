@@ -1916,6 +1916,7 @@ class SetReinvestGainCommand(Command):
         "param2: <context-id> related context identifier must be specified",
         "param3: <trade-quantity> initial trade quantity",
         "param4: <step-size> step size",
+        "param5: <initial-total-qty> initial total quantity (optional)",
     )
 
     def __init__(self, strategy_service):
@@ -1927,7 +1928,7 @@ class SetReinvestGainCommand(Command):
         if len(args) < 1:
             return False, "Missing parameters"
 
-        if len(args) > 4:
+        if len(args) > 5:
             return False, "Too many parameters"
 
         if args[0] not in ('on', 'off'):
@@ -1936,6 +1937,7 @@ class SetReinvestGainCommand(Command):
         action = 'reinvest-gain' if args[0] == 'on' else 'normal'
         context = args[1]
         trade_quantity = 0.0
+        initial_total_qty = None
         step = 0.0
 
         if action == 'reinvest-gain':
@@ -1958,6 +1960,12 @@ class SetReinvestGainCommand(Command):
             if step <= 0:
                 return False, "Step value must be greater than zero"
 
+            if len(args) > 4:
+                initial_total_qty = float(args[4])
+
+                if initial_total_qty < 0:
+                    return False, "Initial total quantity must be greater than zero"
+
         elif action == 'normal':
             if len(args) == 2:
                 context = args[1]
@@ -1969,7 +1977,8 @@ class SetReinvestGainCommand(Command):
             'action': action,
             'context': context,
             'trade-quantity': trade_quantity,
-            'step': step
+            'step': step,
+            'initial-total-qty': initial_total_qty,
         })
 
         ok_message = "Modify reinvest gain for context %s" % context
