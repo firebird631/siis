@@ -14,6 +14,7 @@ import base64, hashlib
 import asyncio
 
 from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
+from autobahn.websocket.protocol import WebSocketProtocol
 from autobahn.websocket.types import ConnectionDeny
 
 from twisted.python import log
@@ -56,12 +57,14 @@ class ServerProtocol(WebSocketServerProtocol):
     def broadcast_message(cls, data):
         payload = json.dumps(data, ensure_ascii=False).encode('utf8')
         for c in set(cls.connections):
-            reactor.callFromThread(cls.sendMessage, c, payload)
+            if c.state == WebSocketProtocol.STATE_OPEN:
+                reactor.callFromThread(cls.sendMessage, c, payload)
 
     @classmethod
     def close_all(cls, data):
         for c in set(cls.connections):
-            reactor.callFromThread(cls.sendClose, c, 1000)  # normal close
+            if c.state == WebSocketProtocol.STATE_OPEN:
+                reactor.callFromThread(cls.sendClose, c, 1000)  # normal close
 
 
 class AllowedIPOnlyFactory(WebSocketServerFactory):
