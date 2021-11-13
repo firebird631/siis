@@ -22,6 +22,7 @@ traceback_logger = logging.getLogger('siis.traceback.monitor')
 class MonitorService(Service):
     """
     Monitoring web service.
+    It also manage user installed scripts.
     """
 
     MODE_NONE = 0
