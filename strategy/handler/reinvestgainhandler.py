@@ -164,8 +164,8 @@ class ReinvestGainHandler(Handler):
                     self._used_quantity = 0.0
 
                 self._num_trades -= 1
-                if self._num_trades < 0.0:
-                    self._num_trades = 0.0
+                if self._num_trades < 0:
+                    self._num_trades = 0
 
                 max_quantity = int(self._total_quantity / self._total_max_trades)
                 inc_step = int((max_quantity - self._trade_quantity) / self._step_quantity)
