@@ -57,6 +57,7 @@ class DiscordNotifier(Notifier):
                 "alert",
                 "entry",
                 "exit",
+                # "update",
                 # "error",
                 # "take-profit",
                 # "stop-loss",

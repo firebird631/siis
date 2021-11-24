@@ -52,6 +52,7 @@ class AndroidNotifier(Notifier):
                 "alert",
                 "entry",
                 "exit",
+                # "update",
                 "error",
                 "quantity",
                 "stop-loss",
