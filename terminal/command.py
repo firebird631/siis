@@ -517,7 +517,9 @@ class CommandsHandler(object):
         if not char:
             return
 
-        if char == ' ':
+        if char == ':':
+            pass
+        elif char == ' ':
             # next word
             self._word = ""
         elif char == '\b':
@@ -527,10 +529,6 @@ class CommandsHandler(object):
         else:
             # same word
             self._word += char
-
-        if len(args) <= 1 and self._word and self._word[0] != ':':
-            # command starts with a semicolumn
-            self._word = ""
 
         # each time a char is typed current completion is reset
         self._tab_pos = -1
