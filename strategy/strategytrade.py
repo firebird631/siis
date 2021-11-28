@@ -813,6 +813,7 @@ class StrategyTrade(object):
         """
         Override this method to make a dumps for the persistence.
         @return dict with at least as defined in this method.
+        @note Data are not humanized.
         """
         return {
             'version': self.version(),
@@ -850,6 +851,7 @@ class StrategyTrade(object):
         """
         Override this method to make a loads for the persistence model.
         @return True if success.
+        @note Data Must not be humanized.
         """
         self.id = data.get('id', -1)
         self._trade_type = data.get('trade', 0)  # self.trade_type_from_str(data.get('type', ''))
@@ -896,6 +898,13 @@ class StrategyTrade(object):
             'entry-order-type': Order.ORDER_LIMIT,
             'take-profit-order-type': Order.ORDER_LIMIT,
             'stop-order-type': Order.ORDER_MARKET,
+            'first-realized-entry-timestamp': 0.0,
+            'first-realized-exit-timestamp': 0.0,
+            'last-realized-entry-timestamp': 0.0,
+            'last-realized-exit-timestamp': 0.0,
+            'unrealized-profit-loss': 0.0,
+            'profit-loss-currency': "",
+            'exit-reason': StrategyTrade.REASON_NONE,
             'entry-fees': 0.0,
             'exit-fees': 0.0,
             'conditions': {}
@@ -1107,6 +1116,7 @@ class StrategyTrade(object):
     def dumps_notify_entry(self, timestamp, strategy_trader):
         """
         Dumps to dict for stream/notify/history.
+        @note Data are humanized.
         """
         return {
             'version': self.version(),
@@ -1142,6 +1152,7 @@ class StrategyTrade(object):
     def dumps_notify_exit(self, timestamp, strategy_trader):
         """
         Dumps to dict for stream/notify/history.
+        @note Data are humanized.
         """
         return {
             'version': self.version(),
@@ -1197,6 +1208,7 @@ class StrategyTrade(object):
     def dumps_notify_update(self, timestamp, strategy_trader):
         """
         Dumps to dict for stream/notify/history.
+        @note Data are humanized.
         """
         return {
             'version': self.version(),

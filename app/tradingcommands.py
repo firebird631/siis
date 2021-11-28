@@ -1525,6 +1525,9 @@ class UserImportCommand(Command):
         if not dataset or dataset not in UserImportCommand.CHOICES:
             return False, "Data-set must be specified"
 
+        if dataset == "closed":
+            dataset = "history"
+
         if not filename:
             if dataset == 'active':
                 filename = "/tmp/siis_trades.json"

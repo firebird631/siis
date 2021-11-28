@@ -22,6 +22,7 @@ def humanize_trade(trade, trade_dump, instrument):
     trade_dump['direction'] = trade.direction_to_str()
     trade_dump['entry-open-time'] = trade.dump_timestamp(trade.eot)
     trade_dump['exit-open-time'] = trade.dump_timestamp(trade.xot)
+
     # @todo stats
 
     return trade_dump
@@ -80,9 +81,9 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
     if dataset == "history":
         if merged:
-            filename = "/tmp/siis_trades_history.%s" % export_format
+            filename = "/tmp/siis_history.%s" % export_format
         else:
-            filename = "/tmp/siis_trades_history_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+            filename = "/tmp/siis_history_%s.%s" % (strategy_trader.instrument.symbol, export_format)
 
         try:
             with strategy_trader._mutex:
@@ -224,7 +225,7 @@ def cmd_strategy_trader_export_all(strategy, data):
 
     if not filename:
         if dataset == "history":
-            filename = "/tmp/siis_trades_history.%s" % export_format
+            filename = "/tmp/siis_history.%s" % export_format
         elif dataset == "active":
             filename = "/tmp/siis_trades.%s" % export_format
         elif dataset == "alert":

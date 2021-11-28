@@ -13,13 +13,34 @@ def dehumanize_trade(trade_dump):
     trade_dump['trade'] = StrategyTrade.trade_type_from_str(trade_dump['trade'])
     trade_dump['entry-timeout'] = timeframe_from_str(trade_dump['entry-timeout'])
     # trade_dump['expiry'] = timeframe_from_str(trade_dump['expiry'])
-    trade_dump['entry-state'] = StrategyTrade.trade_state_from_str(trade_dump['entry-state'])
-    trade_dump['exit-state'] = StrategyTrade.trade_state_from_str(trade_dump['exit-state'])
+
+    if 'entry-state' in trade_dump:
+        trade_dump['entry-state'] = StrategyTrade.trade_state_from_str(trade_dump['entry-state'])
+
+    if 'exit-state' in trade_dump:
+        trade_dump['exit-state'] = StrategyTrade.trade_state_from_str(trade_dump['exit-state'])
+
     trade_dump['timeframe'] = timeframe_from_str(trade_dump['timeframe'])
     trade_dump['direction'] = direction_from_str(trade_dump['direction'])
+
     trade_dump['entry-open-time'] = StrategyTrade.load_timestamp(trade_dump['entry-open-time'])
     trade_dump['exit-open-time'] = StrategyTrade.load_timestamp(trade_dump['exit-open-time'])
-    # @todo stats
+
+    # if 'first-realized-entry-datetime' in trade_dump['stats']:
+    #     trade_dump['stats']['first-realized-entry-datetime'] = StrategyTrade.load_timestamp(
+    #         trade_dump['stats']['first-realized-entry-datetime'])
+    #
+    # if 'last-realized-entry-datetime' in trade_dump['stats']:
+    #     trade_dump['stats']['last-realized-entry-datetime'] = StrategyTrade.load_timestamp(
+    #         trade_dump['stats']['last-realized-entry-datetime'])
+    #
+    # if 'first-realized-exit-datetime' in trade_dump['stats']:
+    #     trade_dump['stats']['first-realized-exit-datetime'] = StrategyTrade.load_timestamp(
+    #         trade_dump['stats']['first-realized-exit-datetime'])
+    #
+    # if 'last-realized-exit-datetime' in trade_dump['stats']:
+    #     trade_dump['stats']['last-realized-exit-datetime'] = StrategyTrade.load_timestamp(
+    #         trade_dump['stats']['last-realized-exit-datetime'])
 
     return trade_dump
 
@@ -67,7 +88,20 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
                 results['error'] = True
 
     elif dataset == 'history':
-        pass  # @todo
+        for trade_dump in data_dumps:
+            try:
+                with strategy_trader._mutex:
+                    if trade_dump['profit-loss-pct'] > 0:
+                        strategy_trader._stats['success'].append(trade_dump)
+                    elif trade_dump['profit-loss-pct'] < 0:
+                        strategy_trader._stats['failed'].append(trade_dump)
+                    else:
+                        strategy_trader._stats['roe'].append(trade_dump)
+
+            except Exception as e:
+                results['messages'].append("Error during import of trade history %s for %s" % (
+                    trade_dump.get('id'), trade_dump.get('symbol')))
+                results['error'] = True
 
     elif dataset == 'alert':
         for alert_dump in data_dumps:
