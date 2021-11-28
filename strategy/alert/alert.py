@@ -45,7 +45,7 @@ class Alert(object):
         self._id = -1                # alert unique identifier
         self._created = created      # creation timestamp (always defined)
         self._expiry = 0             # expiration timestamp (<=0 never)
-        self._countdown = -1         # max trigger occurences, -1 mean forever (until expiry)
+        self._countdown = -1         # max trigger occurrences, -1 mean forever (until expiry)
         self._timeframe = timeframe  # specific timeframe or 0 for any
         self._message = ""           # optional user short message
 
@@ -61,7 +61,7 @@ class Alert(object):
         """
         Integer type of alert.
         """
-        return cls.ALERT
+        return cls.ALERT_UNDEFINED
 
     @classmethod
     def version(cls):
@@ -73,6 +73,13 @@ class Alert(object):
         Unique alert identifier.
         """
         return self._id
+
+    @property
+    def created(self):
+        """
+        Creation timestamp.
+        """
+        return self._created
 
     @property
     def expiry(self):
@@ -127,8 +134,8 @@ class Alert(object):
 
         @return True if the signal pass the test.
         """
-        if self._expiry > 0 and timestamp >= self._expiry:
-            # alerte expired
+        if 0 < self._expiry <= timestamp:
+            # alert expired
             return None
 
         if self._timeframe > 0 and self._timeframe not in timeframes:
@@ -181,7 +188,7 @@ class Alert(object):
         @param bid float last bid price
         @param ask float last ask price
         """
-        return (self._expiry > 0 and timestamp >= self._expiry) or self._countdown == 0
+        return (0 < self._expiry <= timestamp) or self._countdown == 0
 
     def str_info(self):
         """
@@ -259,12 +266,12 @@ class Alert(object):
             'timeframe': timeframe_to_str(self._timeframe),
             'message': self._message,
             'trigger': 0,  # 1 for up, -1 for down
-            'last-price': strategy_trader.instrument.format_price((strategy_trader.instrument.market_price)),
+            'last-price': strategy_trader.instrument.format_price(strategy_trader.instrument.market_price),
             'reason': "",  # alert specific detail of the trigger
         }
 
     #
-    # persistance
+    # persistence
     #
 
     def parameters(self):
@@ -283,7 +290,7 @@ class Alert(object):
 
     def dumps(self):
         """
-        Override this method and add specific parameters for dumps parameters for persistance model.
+        Override this method and add specific parameters for dumps parameters for persistence model.
         """
         return {
             'version': self.version(),  # str version (M.m.s)
@@ -299,7 +306,7 @@ class Alert(object):
 
     def loads(self, data):
         """
-        Override this method and add specific parameters for loads parameters from persistance model.
+        Override this method and add specific parameters for loads parameters from persistence model.
         """
         self._id = data.get('id', -1)
         self._created = data.get('created', 0)  # datetime.strptime(data.get('created', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()

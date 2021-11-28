@@ -107,6 +107,43 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
                 results['error'] = True
                 results['messages'].append("Invalid parameters")
 
+            if data.get('price') is not None:
+                # method, default is a price
+                method = data.get('method', "price")
+                price_source = data.get('price-src', 'bid')
+                alert_price = 0.0
+
+                if method not in ("price", "market-delta-percent", "market-delta-price"):
+                    results['error'] = True
+                    results['messages'].append("Alert unsupported price method %s" % method)
+
+                if price_source == "bid":
+                    market_price = strategy_trader.instrument.market_bid
+                elif price_source == "ask":
+                    market_price = strategy_trader.instrument.market_ask
+                elif price_source == "mid":
+                    market_price = strategy_trader.instrument.market_price
+                else:
+                    market_price = strategy_trader.instrument.market_price
+
+                if method == "market-delta-percent" and data['price'] != 0.0:
+                    alert_price = market_price * (1.0 + data['price'])
+                elif method == "market-delta-price" and data['price'] != 0.0:
+                    alert_price = market_price + data['price']
+                elif method == "price" and data['price'] >= 0.0:
+                    alert_price = data['price']
+                else:
+                    results['error'] = True
+                    results['messages'].append("Alert invalid price method or value")
+
+                # apply
+                if alert_price < 0.0:
+                    results['error'] = True
+                    results['messages'].append("Alert price is negative")
+                else:
+                    # update with computed price
+                    data['price'] = alert_price
+
             if not results['error']:
                 if alert_name in strategy.service.alerts:
                     try:

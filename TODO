@@ -96,6 +96,9 @@ Sum order :
 
 #75 TD9 countdown a debug et tester
 
+#123 RPLN sur un history negatif alors pourcent positif, pl en pourcent juste, mais RPNL en quote negatif et faux
+    - produit une seule fois... origine inconnu
+
 
 ##########
 # Urgent #
@@ -150,6 +153,10 @@ Sum order :
 #117 A chaque fois que un espace (separateur de parametre) est inséré, lors d'une commande, proposer l'entrée suivante
     de HELP de la commande, en fonction de l'index
 
+#124 sur webtrader remplacer les icones play/pause du mode auto/user par android/human
+
+#125 faire import des trade history (command traderimport)
+
 
 ####################
 ## Strategy Ideas ##
@@ -197,3 +204,32 @@ Sum order :
 - polygon.io (99$ à 399$ / mois) => selon 1m ou tick, REST ou WS
 - rapidapi-yahoo-finance pour récupérer stock, indices, forex quotes, mappinng à un autre broker (ig.com...) pour le prefetch
 - rapidapi-morningstar pour récupérer les actions et indices intraday, D, W, M, mappinng à un autre broker (ig.com...) pour le prefetch
+
+
+############
+## Divers ##
+############
+
+Serveur :
+
+- recup et intégration d'un int +1 ou -1 pour dire direction du trade (-bid, +ask)
+- propagation de la dite info au stratégie
+- stockage dans les fichiers trades avec en ASCII 1 ask 0 bid et en binaire un octet 1 ask 0 bid
+- creation d'un tick bar avec nombre de tick par barre
+- creation d'un tick bar reversal avec nombre de tick avant reversal
+- mesure des hedge zone sur tick bar
+- mesure des balance bid ask par tick
+- mesure des balance bid ask par tick bar
+- mesure des volume imbalance par tick bar
+- mesure des volume delta
+- mesure en mode croisé bid x ask ou ask x bid
+- parametrage des volume
+- detection auto selon volume des précédentes tick bar pour ajuster les parametre des tick bar et autres seuils des indicateurs de mesure
+
+
+Client Web
+
+- tracer tick bar et reversal sur client web
+- tracer bougie sur client web
+- tracer volume bar sur client web
+- tracer volume delta sur client web

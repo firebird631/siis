@@ -707,11 +707,11 @@ class StrategyTrader(object):
                     if region.check():
                         self.add_region(region)
                     else:
-                        error_logger.error("During loads, region checking error %s" % (r['name'],))
+                        error_logger.error("During loads, region checking error %s" % r['name'])
                 except Exception as e:
                     error_logger.error(repr(e))
             else:
-                error_logger.error("During loads, unsupported region %s" % (r['name'],))
+                error_logger.error("During loads, unsupported region %s" % r['name'])
 
         # instantiate the alerts
         for a in alerts:
@@ -724,19 +724,17 @@ class StrategyTrader(object):
                     if alert.check():
                         self.add_alert(alert)
                     else:
-                        error_logger.error("During loads, alert checking error %s" % (a['name'],))
+                        error_logger.error("During loads, alert checking error %s" % a['name'])
                 except Exception as e:
                     error_logger.error(repr(e))
             else:
-                error_logger.error("During loads, unsupported alert %s" % (a['name'],))
+                error_logger.error("During loads, unsupported alert %s" % a['name'])
 
     def loads_trade(self, trade_id, trade_type, data, operations):
         """
         Load a strategy trader trade and its operations.
         There is many scenarios where the trade state changed, trade executed, order modified or canceled...
         """
-        trade = None
-
         # trade builder
         if trade_type == StrategyTrade.TRADE_BUY_SELL:
             trade = StrategyAssetTrade(0)
@@ -747,7 +745,7 @@ class StrategyTrader(object):
         elif trade_type == StrategyTrade.TRADE_IND_MARGIN:
             trade = StrategyIndMarginTrade(0)
         else:
-            error_logger.error("During loads, unsupported trade type %i" % (trade_type,))
+            error_logger.error("During loads, unsupported trade type %i" % trade_type)
             return
 
         trade.loads(data, self, self._trade_context_builder)
@@ -765,14 +763,70 @@ class StrategyTrader(object):
                         # append the operation to the trade
                         trade.add_operation(operation)
                     else:
-                        error_logger.error("During loads, trade operation checking error %s" % (op['name'],))
+                        error_logger.error("During loads, trade operation checking error %s" % op['name'])
                 except Exception as e:
                     error_logger.error(repr(e))
             else:
-                error_logger.error("During loads, trade operation checking error %s" % (op['name'],))
+                error_logger.error("During loads, trade operation checking error %s" % op['name'])
 
         # add the trade, will be check on a next process
         self.add_trade(trade)
+
+    def loads_alert(self, alert_id, alert_type, data):
+        """
+        Load a strategy trader alert.
+        @param alert_id Above 0 original alert identifier
+        @param alert_type String type name of the alert to instantiate (optional use data['name'])
+        @param data Loaded data a dict
+        """
+        alert_name = data.get('name')
+
+        if not alert_name:
+            error_logger.error("During loads, undefined alert %i type name" % alert_id)
+            return
+
+        if alert_name not in self.strategy.service.alerts:
+            error_logger.error("During loads, unsupported alert %s %i" % (alert_name, alert_id))
+
+        try:
+            # instantiate the alert
+            alert = self.strategy.service.alerts[alert_name](0, 0)
+            alert.loads(data)
+
+            if alert.check():
+                self.add_alert(alert)
+            else:
+                error_logger.error("During loads, alert checking error %s %i" % (alert_name, alert_id))
+        except Exception as e:
+            error_logger.error(repr(e))
+
+    def loads_region(self, region_id, region_type, data):
+        """
+        Load a strategy trader region.
+        @param region_id Above 0 original region identifier
+        @param region_type String type name of the region to instantiate (optional use data['name'])
+        @param data Loaded data a dict
+        """
+        region_name = data.get('name')
+
+        if not region_name:
+            error_logger.error("During loads, undefined region %i type name" % region_id)
+            return
+
+        if region_name not in self.strategy.service.regions:
+            error_logger.error("During loads, unsupported region %s %i" % (region_name, region_id))
+
+        try:
+            # instantiate the region
+            region = self.strategy.service.regions[region_name](0, 0)
+            region.loads(data)
+
+            if region.check():
+                self.add_region(region)
+            else:
+                error_logger.error("During loads, region checking error %s %i" % (region_name, region_id))
+        except Exception as e:
+            error_logger.error(repr(e))
 
     #
     # order/position slot

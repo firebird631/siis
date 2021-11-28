@@ -8,10 +8,6 @@ from datetime import datetime
 from terminal.terminal import Color
 from terminal import charmap
 
-from common.utils import timeframe_to_str
-
-from strategy.strategy import Strategy
-
 from strategy.helpers.activetradedataset import get_all_active_trades
 
 import logging
@@ -83,25 +79,35 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
 
             upnl = "%s%s" % (t['upnl'], t['pnlcur']) if aep else '-'
 
-            if t['pl'] < 0 and ((t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep)):
-                # has been profitable but loss
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.ORANGE, style=style)
-                upnl = Color.colorize(upnl, Color.ORANGE, style=style)
-            elif t['pl'] < 0:  # loss
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
-                upnl = Color.colorize(upnl, Color.RED, style=style)
+            if t['pl'] < 0:  # loss
+                if (t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep):
+                    # but was profitable during a time
+                    cr = Color.colorize("%.2f" % (t['pl'] * 100.0), Color.ORANGE, style=style)
+                    upnl = Color.colorize(upnl, Color.ORANGE, style=style)
+                else:
+                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.RED, style=style)
+                    upnl = Color.colorize(upnl, Color.RED, style=style)
+
             elif t['pl'] > 0:  # profit
-                cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
-                upnl = Color.colorize(upnl, Color.GREEN, style=style)
+                if (t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep):
+                    # but was in lost during a time
+                    cr = Color.colorize("%.2f" % (t['pl'] * 100.0), Color.BLUE, style=style)
+                    upnl = Color.colorize(upnl, Color.BLUE, style=style)
+                else:
+                    cr = Color.colorize("%.2f" % (t['pl']*100.0), Color.GREEN, style=style)
+                    upnl = Color.colorize(upnl, Color.GREEN, style=style)
+
             else:  # equity
                 cr = "0.00" if aep else "-"
 
             if t['d'] == 'long' and aep > 0 and best > 0 and worst > 0:
                 bpct = (best - aep) / aep - t['fees']
                 wpct = (worst - aep) / aep - t['fees']
+
             elif t['d'] == 'short' and aep > 0 and best > 0 and worst > 0:
                 bpct = (aep - best) / aep - t['fees']
                 wpct = (aep - worst) / aep - t['fees']
+
             else:
                 bpct = 0
                 wpct = 0
@@ -109,14 +115,16 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             if t['d'] == 'long' and (aep or op):
                 slpct = (sl - (aep or op)) / (aep or op)
                 tppct = (tp - (aep or op)) / (aep or op)
+
             elif t['d'] == 'short' and (aep or op):
                 slpct = ((aep or op) - sl) / (aep or op)
                 tppct = ((aep or op) - tp) / (aep or op)
+
             else:
                 slpct = 0
                 tppct = 0
 
-            # pct from last exec open price
+            # percent from last exec open price
             if op and (t['s'] in ('new', 'opened', 'filling')):
                 if t['d'] == 'long':
                     oppct = (op - leop) / op

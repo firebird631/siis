@@ -69,6 +69,13 @@ class Region(object):
         return self._id
 
     @property
+    def created(self):
+        """
+        Creation timestamp.
+        """
+        return self._created
+
+    @property
     def stage(self):
         """
         Zone for entry, exit or both
@@ -132,7 +139,7 @@ class Region(object):
             # cannot validate an entry region on the exit signal
             return False
 
-        if self._expiry > 0 and timestamp >= self._expiry:
+        if 0 < self._expiry <= timestamp:
             # region expired
             return False
 
@@ -174,7 +181,7 @@ class Region(object):
         @param bid float last bid price
         @param ask float last ask price
         """
-        return self._expiry > 0 and timestamp >= self._expiry
+        return 0 < self._expiry <= timestamp
 
     def str_info(self):
         """

@@ -9,10 +9,10 @@ from common.utils import timeframe_from_str, direction_from_str
 from strategy.strategytrade import StrategyTrade
 
 
-def dehumanize(trade_dump):
+def dehumanize_trade(trade_dump):
     trade_dump['trade'] = StrategyTrade.trade_type_from_str(trade_dump['trade'])
     trade_dump['entry-timeout'] = timeframe_from_str(trade_dump['entry-timeout'])
-    # trade_dump['expiry'] = timeframe_to_str(trade_dump['expiry'])
+    # trade_dump['expiry'] = timeframe_from_str(trade_dump['expiry'])
     trade_dump['entry-state'] = StrategyTrade.trade_state_from_str(trade_dump['entry-state'])
     trade_dump['exit-state'] = StrategyTrade.trade_state_from_str(trade_dump['exit-state'])
     trade_dump['timeframe'] = timeframe_from_str(trade_dump['timeframe'])
@@ -24,6 +24,22 @@ def dehumanize(trade_dump):
     return trade_dump
 
 
+def dehumanize_alert(alert_dump):
+    alert_dump['created'] = StrategyTrade.load_timestamp(alert_dump['created'])
+    alert_dump['timeframe'] = timeframe_from_str(alert_dump['timeframe']) if alert_dump['timeframe'] else 0
+    alert_dump['expiry'] = timeframe_from_str(alert_dump['expiry']) if alert_dump['expiry'] else 0
+
+    return alert_dump
+
+
+def dehumanize_region(region_dump):
+    region_dump['created'] = StrategyTrade.load_timestamp(region_dump['created'])
+    region_dump['timeframe'] = timeframe_from_str(region_dump['timeframe']) if region_dump['timeframe'] else 0
+    region_dump['expiry'] = timeframe_from_str(region_dump['expiry']) if region_dump['expiry'] else 0
+
+    return region_dump
+
+
 def cmd_strategy_trader_import(strategy, strategy_trader, data):
     """
     Query strategy-trader import any trade for a specific trader.
@@ -33,21 +49,51 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
         'error': False
     }
 
-    # filename = data.get('filename', "/tmp/siis_trades_%s.json" % strategy_trader.instrument.symbol)
-    trades_dumps = data.get('trades', [])
+    data_dumps = data.get('data', [])
+    dataset = data.get('dataset', "active")
 
-    for trade_dump in trades_dumps:
-        try:
-            dehumanize(trade_dump)
-            trade_id = trade_dump['id']
-            trade_type = trade_dump['trade']
-            operations = trade_dump.get('operations', [])
+    if dataset == 'active':
+        for trade_dump in data_dumps:
+            try:
+                dehumanize_trade(trade_dump)
+                trade_id = trade_dump['id']
+                trade_type = trade_dump['trade']
+                operations = trade_dump.get('operations', [])
 
-            strategy_trader.loads_trade(trade_id, trade_type, trade_dump, operations)
-        except Exception as e:
-            results['messages'].append("Error during import of trade %s for %s" % (
-                trade_dump.get('id'), trade_dump.get('symbol')))
-            results['error'] = True
+                strategy_trader.loads_trade(trade_id, trade_type, trade_dump, operations)
+            except Exception as e:
+                results['messages'].append("Error during import of trade %s for %s" % (
+                    trade_dump.get('id'), trade_dump.get('symbol')))
+                results['error'] = True
+
+    elif dataset == 'history':
+        pass  # @todo
+
+    elif dataset == 'alert':
+        for alert_dump in data_dumps:
+            try:
+                dehumanize_alert(alert_dump)
+                alert_id = alert_dump['id']
+                alert_type = alert_dump['alert']
+
+                strategy_trader.loads_alert(alert_id, alert_type, alert_dump)
+            except Exception as e:
+                results['messages'].append("Error during import of alert %s for %s" % (
+                    alert_dump.get('id'), alert_dump.get('symbol')))
+                results['error'] = True
+
+    elif dataset == 'region':
+        for region_dump in data_dumps:
+            try:
+                dehumanize_region(region_dump)
+                region_id = region_dump['id']
+                region_type = region_dump['region']
+
+                strategy_trader.loads_region(region_id, region_type, region_dump)
+            except Exception as e:
+                results['messages'].append("Error during import of region %s for %s" % (
+                    region_dump.get('id'), region_dump.get('symbol')))
+                results['error'] = True
 
     return results
 
@@ -58,11 +104,26 @@ def cmd_strategy_trader_import_all(strategy, data):
     """
     results = []
 
-    filename = data.get('filename', "/tmp/siis_trades.json")
+    filename = data.get('filename', "")
+    dataset = data.get('dataset', "active")
+
+    if dataset not in ('active', 'history', 'alert', 'region'):
+        results = {'message': "Unsupported import dataset", 'error': True}
+        return results
+
+    if not filename:
+        if dataset == 'active':
+            filename = "/tmp/siis_trades.json"
+        elif dataset == 'history':
+            filename = "/tmp/siis_history.json"
+        elif dataset == 'alert':
+            filename = "/tmp/siis_alerts.json"
+        if dataset == 'region':
+            filename = "/tmp/siis_regions.json"
 
     try:
         with open(filename, "rt") as f:
-            dataset = json.loads(f.read())
+            data_dumps = json.loads(f.read())
     except FileNotFoundError:
         results = {'message': "File %s not found or no permissions" % filename, 'error': True}
         return results
@@ -72,24 +133,25 @@ def cmd_strategy_trader_import_all(strategy, data):
 
     by_market = {}
 
-    for trade_dump in dataset:
-        # sort by market-id
-        market_id = trade_dump['market-id']
+    for data_dump in data_dumps:
+        # organize by market-id
+        market_id = data_dump['market-id']
 
         if market_id not in by_market:
             by_market[market_id] = []
 
-        by_market[market_id].append(trade_dump)
+        by_market[market_id].append(data_dump)
 
     # process by strategy trader
-    for market_id, trades_dumps in by_market.items():
+    for market_id, data_dumps in by_market.items():
         with strategy._mutex:
             strategy_trader = strategy._strategy_traders.get(market_id)
             if not strategy_trader:
                 results.append({'message': "Unable to retrieved strategy-trader for %s" % market_id, 'error': True})
 
             sub_data = {
-                'trades': trades_dumps
+                'dataset': dataset,
+                'data': data_dumps
             }
 
             result = cmd_strategy_trader_import(strategy, strategy_trader, sub_data)

@@ -76,42 +76,67 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             sl = float(t['stop-loss-price'])
             tp = float(t['take-profit-price'])
 
-            if t['profit-loss-pct'] < 0 and ((t['direction'] == 'long' and best > aep) or (
-                    t['direction'] == 'short' and best < aep)):
-                # has been profitable but loss
-                cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.ORANGE, style=style)
-            elif t['profit-loss-pct'] < 0:  # loss
-                cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.RED, style=style)
-            elif t['profit-loss-pct'] > 0:  # profit
-                cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.GREEN, style=style)
-            else:
-                cr = "0.0" if aep else "-"
+            # colorize profit or loss percent
+            if t['profit-loss-pct'] < 0:  # loss
+                if (t['direction'] == 'long' and best > aep) or (t['direction'] == 'short' and best < aep):
+                    # but was profitable during a time
+                    cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.ORANGE, style=style)
+                    exit_color = Color.ORANGE
+                else:
+                    cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.RED, style=style)
+                    exit_color = Color.RED
 
-            # color TP in green if hit, similarly in red for SL
-            # @todo not really exact, could use the exit reason
+            elif t['profit-loss-pct'] > 0:  # profit
+                if (t['direction'] == 'long' and worst < aep) or (t['direction'] == 'short' and worst > aep):
+                    # but was in lost during a time
+                    cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.BLUE, style=style)
+                    exit_color = Color.BLUE
+                else:
+                    cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.GREEN, style=style)
+                    exit_color = Color.GREEN
+
+            else:  # equity
+                cr = "0.0" if aep else "-"
+                exit_color = None
+
+            # realized profit or loss
+            rpnl = "%g%s" % (t['stats']['profit-loss'], t['stats']['profit-loss-currency'])
+
+            if exit_color:
+                rpnl = Color.colorize(rpnl, exit_color, style=style)
+
+            # colorize TP if hit, similarly for SL, color depend if profit or loss, nothing if close at market
+            if t['stats']['exit-reason'] in ("stop-loss-market", "stop-loss-limit") and exit_color:
+                _tp = t['take-profit-price']
+                _sl = Color.colorize(t['stop-loss-price'], exit_color, style=style)
+
+            elif t['stats']['exit-reason'] in ("take-profit-limit", "take-profit-market") and exit_color:
+                _tp = Color.colorize(t['take-profit-price'], exit_color, style=style)
+                _sl = t['stop-loss-price']
+
+            else:
+                _tp = t['take-profit-price']
+                _sl = t['stop-loss-price']
+
+            # values in percent
             if t['direction'] == "long" and aep:
-                _tp = Color.colorize_cond(t['take-profit-price'], tp > 0 and axp >= tp, style=style, true=Color.GREEN)
-                _sl = Color.colorize_cond(t['stop-loss-price'], sl > 0 and axp <= sl, style=style, true=Color.RED)
                 slpct = (sl - aep) / aep
                 tppct = (tp - aep) / aep
+
+                bpct = (best - aep) / aep - (t['stats']['fees-pct'] * 0.01)
+                wpct = (worst - aep) / aep - (t['stats']['fees-pct'] * 0.01)
+
             elif t['direction'] == "short" and aep:
-                _tp = Color.colorize_cond(t['take-profit-price'], tp > 0 and axp <= tp, style=style, true=Color.GREEN)
-                _sl = Color.colorize_cond(t['stop-loss-price'], sl > 0 and axp >= sl, style=style, true=Color.RED)
                 slpct = (aep - sl) / aep
                 tppct = (aep - tp) / aep
+
+                bpct = (aep - best) / aep - (t['stats']['fees-pct'] * 0.01)
+                wpct = (aep - worst) / aep - (t['stats']['fees-pct'] * 0.01)
+
             else:
-                _tp = str(t['stop-loss-price'])
-                _sl = str(t['take-profit-price'])
                 slpct = 0
                 tppct = 0
 
-            if t['direction'] == 'long' and aep:
-                bpct = (best - aep) / aep - (t['stats']['fees-pct'] * 0.01)
-                wpct = (worst - aep) / aep - (t['stats']['fees-pct'] * 0.01)
-            elif t['direction'] == 'short' and aep:
-                bpct = (aep - best) / aep - (t['stats']['fees-pct'] * 0.01)
-                wpct = (aep - worst) / aep - (t['stats']['fees-pct'] * 0.01)
-            else:
                 bpct = 0
                 wpct = 0
 
@@ -141,7 +166,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             ]
 
             if quantities:
-                row.append("%g%s" % (t['stats']['profit-loss'], t['stats']['profit-loss-currency']))
+                row.append(rpnl)
                 row.append(t['order-qty'])
                 row.append(t['filled-entry-qty'])
                 row.append(t['filled-exit-qty'])

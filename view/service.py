@@ -72,7 +72,7 @@ class ViewService(BaseService):
         Terminal.inst().switch_view(view_id)
 
     def on_key_pressed(self, key):
-        # progagate to active view
+        # propagate to active view
         if key:
             vt = Terminal.inst().active_content()
             if vt:
@@ -81,7 +81,7 @@ class ViewService(BaseService):
                     view.on_key_pressed(key)
 
     def on_char(self, key):
-        # progagate to active view
+        # propagate to active view
         if key:
             vt = Terminal.inst().active_content()
             if vt:

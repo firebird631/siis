@@ -9,7 +9,7 @@ import csv
 from common.utils import timeframe_to_str
 
 
-def humanize(trade, trade_dump, instrument):
+def humanize_trade(trade, trade_dump, instrument):
     trade_dump['market-id'] = instrument.market_id
     trade_dump['symbol'] = instrument.symbol
 
@@ -25,6 +25,28 @@ def humanize(trade, trade_dump, instrument):
     # @todo stats
 
     return trade_dump
+
+
+def humanize_alert(alert, alert_dump, instrument):
+    alert_dump['market-id'] = instrument.market_id
+    alert_dump['symbol'] = instrument.symbol
+
+    alert_dump['created'] = alert.dump_timestamp(alert.created)
+    alert_dump['timeframe'] = alert.timeframe_to_str()
+    alert_dump['expiry'] = alert.expiry_to_str()
+
+    return alert_dump
+
+
+def humanize_region(region, region_dump, instrument):
+    region_dump['market-id'] = instrument.market_id
+    region_dump['symbol'] = instrument.symbol
+
+    region_dump['created'] = region.dump_timestamp(region.created)
+    region_dump['timeframe'] = region.timeframe_to_str()
+    region_dump['expiry'] = region.expiry_to_str()
+
+    return region_dump
 
 
 def cmd_strategy_trader_export(strategy, strategy_trader, data):
@@ -43,22 +65,18 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
     header = data.get('header', True)
     first = data.get('first', True)
 
-    if dataset not in ('active', 'history'):
-        results['messages'].append("Unsupported export dataset")
-        results['error'] = True
-
+    if dataset not in ('active', 'history', 'alert', 'region'):
+        results = {'message': "Unsupported export dataset", 'error': True}
         return results
 
     if export_format not in ('csv', 'json'):
-        results['messages'].append("Unsupported export format")
-        results['error'] = True
-
+        results = {'message': "Unsupported export format", 'error': True}
         return results
 
     filename = ""
     filemode = "a" if merged else "w"
 
-    trades_dumps = []
+    data_dumps = []
 
     if dataset == "history":
         if merged:
@@ -68,15 +86,15 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
         try:
             with strategy_trader._mutex:
-                trades_dumps += strategy_trader._stats['success']
-                trades_dumps += strategy_trader._stats['failed']
-                trades_dumps += strategy_trader._stats['roe']
+                data_dumps += strategy_trader._stats['success']
+                data_dumps += strategy_trader._stats['failed']
+                data_dumps += strategy_trader._stats['roe']
 
         except Exception as e:
             results['messages'].append(repr(e))
             results['error'] = True
 
-        trades_dumps.sort(key=lambda x: x['stats']['last-realized-exit-datetime'])
+        data_dumps.sort(key=lambda x: x['stats']['last-realized-exit-datetime'])
 
     elif dataset == "active":
         if merged:
@@ -88,29 +106,66 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
             with strategy_trader._mutex:
                 for trade in strategy_trader.trades:
                     if trade.is_active() or (pending and trade.is_opened()):
-                        trade_dump = trade.dumps()
-                        if trade.has_operations():
-                            trade_dump['operations'] = [operation.dumps() for operation in trade.operations]
-                        else:
-                            trade_dump['operations'] = []
+                        data_dump = trade.dumps()
 
-                        trades_dumps.append(humanize(trade, trade_dump, strategy_trader.instrument))
+                        if trade.has_operations():
+                            data_dump['operations'] = [operation.dumps() for operation in trade.operations]
+                        else:
+                            data_dump['operations'] = []
+
+                        data_dumps.append(humanize_trade(trade, data_dump, strategy_trader.instrument))
 
         except Exception as e:
             results['messages'].append(repr(e))
             results['error'] = True
 
-        trades_dumps.sort(key=lambda x: x['entry-open-time'])
+        data_dumps.sort(key=lambda x: x['entry-open-time'])
 
-    if not trades_dumps:
+    elif dataset == "alert":
+        if merged:
+            filename = "/tmp/siis_alerts.%s" % export_format
+        else:
+            filename = "/tmp/siis_alerts_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+
+        try:
+            with strategy_trader._mutex:
+                for alert in strategy_trader.alerts:
+                    data_dump = alert.dumps()
+                    data_dumps.append(humanize_alert(alert, data_dump, strategy_trader.instrument))
+
+        except Exception as e:
+            results['messages'].append(repr(e))
+            results['error'] = True
+
+        data_dumps.sort(key=lambda x: x['created'])
+
+    elif dataset == "region":
+        if merged:
+            filename = "/tmp/siis_regions.%s" % export_format
+        else:
+            filename = "/tmp/siis_regions_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+
+        try:
+            with strategy_trader._mutex:
+                for region in strategy_trader.regions:
+                    data_dump = region.dumps()
+                    data_dumps.append(humanize_region(region, data_dump, strategy_trader.instrument))
+
+        except Exception as e:
+            results['messages'].append(repr(e))
+            results['error'] = True
+
+        data_dumps.sort(key=lambda x: x['created'])
+
+    if not data_dumps:
         results['messages'].append("No data to export")
         return results
 
-    results['count'] = len(trades_dumps)
+    results['count'] = len(data_dumps)
 
-    for trade in trades_dumps:
-        trade['market-id'] = strategy_trader.instrument.market_id
-        trade['symbol'] = strategy_trader.instrument.symbol
+    for element in data_dumps:
+        element['market-id'] = strategy_trader.instrument.market_id
+        element['symbol'] = strategy_trader.instrument.symbol
 
     if export_format == "csv":
         try:
@@ -119,10 +174,10 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
                 # header
                 if header:
-                    wrt.writerow(list(trades_dumps[0].keys()))
+                    wrt.writerow(list(data_dumps[0].keys()))
 
                 # dataset
-                for row in trades_dumps:
+                for row in data_dumps:
                     wrt.writerow([str(x) for x in row.values()])
 
         except Exception as e:
@@ -133,13 +188,13 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
         try:
             with open(filename, filemode) as f:
                 if merged:
-                    for row in trades_dumps:
+                    for row in data_dumps:
                         if not first:
                             f.write(',\n')
                         json.dump(row, f, indent=4)
                         first = False
                 else:
-                    json.dump(trades_dumps, f, indent=4)
+                    json.dump(data_dumps, f, indent=4)
 
         except Exception as e:
             results['messages'].append(repr(e))
@@ -150,33 +205,32 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
 def cmd_strategy_trader_export_all(strategy, data):
     """
-    Query strategy-trader export any trades for any traders.
+    Query strategy-trader export any trades for any traders, or alerts or regions data.
     """
     results = []
 
     # clear the file
     dataset = data.get('dataset', "history")
     export_format = data.get('export-format', "csv")
-    filename = ""
+    filename = data.get('filename', "")
 
-    if dataset not in ('active', 'history'):
-        results = {}
-        results['messages'].append("Unsupported export dataset")
-        results['error'] = True
-
+    if dataset not in ('active', 'history', 'alert', 'region'):
+        results = {'message': "Unsupported export dataset", 'error': True}
         return results
 
     if export_format not in ('csv', 'json'):
-        results = {}
-        results['messages'].append("Unsupported export format")
-        results['error'] = True
-
+        results = {'message': "Unsupported export format", 'error': True}
         return results
 
-    if dataset == "history":
-        filename = "/tmp/siis_trades_history.%s" % export_format
-    elif dataset == "active":
-        filename = "/tmp/siis_trades.%s" % export_format
+    if not filename:
+        if dataset == "history":
+            filename = "/tmp/siis_trades_history.%s" % export_format
+        elif dataset == "active":
+            filename = "/tmp/siis_trades.%s" % export_format
+        elif dataset == "alert":
+            filename = "/tmp/siis_alerts.%s" % export_format
+        elif dataset == "region":
+            filename = "/tmp/siis_regions.%s" % export_format
 
     with open(filename, "w") as f:
         if export_format == "json":

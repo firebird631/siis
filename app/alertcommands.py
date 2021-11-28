@@ -69,7 +69,7 @@ class PriceCrossAlertCommand(Command):
             return False, "Missing parameters"
 
         market_id = None
-        timeframe = -1
+        timeframe = 0
 
         action = "add-alert"
         alert = "price-cross"
@@ -79,10 +79,11 @@ class PriceCrossAlertCommand(Command):
         countdown = -1
 
         price = 0.0
+        method = "price"  # or market-delta-percent or market-delta-price
         cancellation = 0.0
         price_src = Alert.PRICE_SRC_BID
 
-        # ie ":PCA EURUSD bid >1.12"
+        # ie ":PCA EURUSD bid >1.12 x1"
         if len(args) < 2:
             return False, "Missing parameters"
 
@@ -92,10 +93,50 @@ class PriceCrossAlertCommand(Command):
             for value in args[1:]:
                 if value.startswith('>'):
                     direction = 1
-                    price = float(value[1:])
+
+                    if value.endswith('%'):
+                        if len(value) < 3:
+                            return False, "Missing price percent"
+
+                        price = float(value[1:-1]) * 0.01
+                        method = "market-delta-percent"
+
+                    elif value.startswith('>+') or value.startswith('>-'):
+                        if len(value) < 3:
+                            return False, "Missing price delta"
+
+                        price = float(value[1:])
+                        method = "market-delta-price"
+                    else:
+                        if len(value) < 2:
+                            return False, "Missing price"
+
+                        method = "price"
+                        price = float(value[1:])
+
                 elif value.startswith('<'):
                     direction = -1
-                    price = float(value[1:])
+
+                    if value.endswith('%'):
+                        if len(value) < 3:
+                            return False, "Missing price percent"
+
+                        price = float(value[1:-1]) * 0.01
+                        method = "market-delta-percent"
+
+                    elif value.startswith('<+') or value.startswith('<-'):
+                        if len(value) < 3:
+                            return False, "Missing price delta"
+
+                        price = float(value[1:])
+                        method = "market-delta-price"
+                    else:
+                        if len(value) < 2:
+                            return False, "Missing price"
+
+                        method = "price"
+                        price = float(value[1:])
+
                 elif value == "bid":
                     price_src = Alert.PRICE_SRC_BID
                 elif value == "ask":
@@ -132,6 +173,7 @@ class PriceCrossAlertCommand(Command):
             'expiry': expiry,
             'countdown': countdown,
             'price': price,
+            'method': method,
             'direction': direction,
             'price-src': price_src,
             'cancellation': cancellation

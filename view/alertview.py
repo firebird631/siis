@@ -47,6 +47,15 @@ class AlertView(TableView):
 
         return 1
 
+    def on_char(self, char):
+        if char == 'C':
+            # empty history and refresh
+            with self._mutex:
+                if self._alerts_list:
+                    self._alerts_list.clear()
+
+            self._refresh = 0.0
+
     def receiver(self, signal):
         if not signal:
             return

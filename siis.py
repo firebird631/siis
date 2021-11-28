@@ -397,7 +397,7 @@ def application(argv):
         Terminal.inst().error("First option must be the identity name")
 
     Terminal.inst().info("Starting SIIS using %s identity..." % options['identity'])
-    Terminal.inst().action("- type ':q<Enter> or :quit<Enter>' to terminate")
+    Terminal.inst().action("- type ':quit<Enter>' to terminate")
     Terminal.inst().action("- type ':h<Enter> or :help<Enter>' to display help")
     Terminal.inst().flush()
 
@@ -654,7 +654,7 @@ def application(argv):
 
                             if not result:
                                 # maybe an application level command
-                                if value == ':q' or value == ':quit':
+                                if value == ':quit':
                                     running = False
 
                                 elif value.startswith(':x '):

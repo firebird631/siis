@@ -10,7 +10,9 @@ from common.utils import UTC
 class CronExportScript(threading.Thread):
     TRADES_DELAY = 60.0
     SLEEP_TIME = 5.0
-    BALANCE_DELAY = 60*60*24
+    BALANCE_DELAY = 60.0*60*24
+    ALERT_DELAY = 60.0*5
+    REGION_DELAY = 60.0*5
 
     def __init__(self, strategy_service, unmanaged=False):
         super().__init__()
@@ -18,6 +20,8 @@ class CronExportScript(threading.Thread):
         self._strategy_service = strategy_service
         self._trades_last_time = 0.0
         self._balances_last_time = 0.0
+        self._alerts_last_time = 0.0
+        self._regions_last_time = 0.0
 
         self._process = True
         self._unmanaged = unmanaged
@@ -34,7 +38,7 @@ class CronExportScript(threading.Thread):
                         'dataset': "active",
                         'pending': True,
                         'export-format': "json",
-                        'filename': "last.json",
+                        'filename': "/tmp/siis_trades.json",
                     })
 
             if now - self._balances_last_time >= CronExportScript.BALANCE_DELAY:
@@ -60,6 +64,28 @@ class CronExportScript(threading.Thread):
 
                         with open("/tmp/siis_balances.json", "w") as f:
                             f.write(json.dumps(dataset))
+
+            if now - self._alerts_last_time >= CronExportScript.ALERT_DELAY:
+                self._alerts_last_time = now
+
+                if self._strategy_service.strategy():
+                    # export actives alerts
+                    results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT_ALL, {
+                        'dataset': "alert",
+                        'export-format': "json",
+                        'filename': "/tmp/siis_alerts.json",
+                    })
+
+            if now - self._regions_last_time >= CronExportScript.REGION_DELAY:
+                self._regions_last_time = now
+
+                if self._strategy_service.strategy():
+                    # export actives regions
+                    results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT_ALL, {
+                        'dataset': "region",
+                        'export-format': "json",
+                        'filename': "/tmp/siis_regions.json",
+                    })
 
             if self._unmanaged and self._strategy_service.strategy() is None:
                 # conditional break for older version
