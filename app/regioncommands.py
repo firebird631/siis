@@ -3,16 +3,10 @@
 # @license Copyright (c) 2018 Dream Overflow
 # terminal region commands and registration
 
-import time
-
-from datetime import datetime
-
 from terminal.command import Command
 from strategy.strategy import Strategy
-from trader.trader import Trader
 
-from common.utils import timeframe_from_str
-from instrument.instrument import Instrument
+from common.utils import timeframe_from_str, parse_datetime
 
 
 class RangeRegionCommand(Command):
@@ -66,9 +60,9 @@ class RangeRegionCommand(Command):
                     cancellation = float(value[2:])
                 elif value.startswith('@'):
                     # expiry
-                    if 'T' in value:
+                    if ':' in value or '-' in value:
                         # as local datetime
-                        expiry = datetime.strptime(value[1:], '%Y-%m-%dT%H:%M:%S').timestamp()  # .replace(tzinfo=UTC())
+                        expiry = parse_datetime(value[1:]).timestamp()
                     else:
                         # relative to now
                         duration = timeframe_from_str(value[1:])
@@ -166,9 +160,9 @@ class TrendRegionCommand(Command):
                     cancellation = float(value[2:])
                 elif value.startswith('@'):
                     # expiry
-                    if 'T' in value:
+                    if ':' in value or '-' in value:
                         # as local datetime
-                        expiry = datetime.strptime(value[1:], '%Y-%m-%dT%H:%M:%S').timestamp()  # .replace(tzinfo=UTC())
+                        expiry = parse_datetime(value[1:]).timestamp()
                     else:
                         # relative to now
                         duration = timeframe_from_str(value[1:])

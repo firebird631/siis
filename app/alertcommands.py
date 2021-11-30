@@ -3,12 +3,10 @@
 # @license Copyright (c) 2020 Dream Overflow
 # terminal alert commands and registration
 
-from datetime import datetime
-
 from terminal.command import Command
 from strategy.strategy import Strategy
 
-from common.utils import timeframe_from_str, UTC
+from common.utils import timeframe_from_str, UTC, parse_datetime
 from strategy.alert.alert import Alert
 
 
@@ -25,44 +23,6 @@ class PriceCrossAlertCommand(Command):
         super().__init__('price-cross-alert', 'pca')
 
         self._strategy_service = strategy_service
-
-    def parse_datetime(self, formatted):
-        if formatted:
-            try:
-                result = None
-                use_utc = False
-
-                if formatted.endswith('Z'):
-                    formatted = formatted.rstrip('Z')
-                    use_utc = True
-
-                if 'T' in formatted:
-                    if formatted.count(':') == 2:
-                        if formatted.count('.') == 1:
-                            result = datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S.%f')
-                        else:
-                            result = datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S')
-                    elif formatted.count(':') == 1:
-                        result = datetime.strptime(formatted, '%Y-%m-%dT%H:%M')
-                    elif formatted.count(':') == 0:
-                        result = datetime.strptime(formatted, '%Y-%m-%dT%H')
-                else:
-                    if formatted.count('-') == 2:
-                        result = datetime.strptime(formatted, '%Y-%m-%d')
-                    elif formatted.count('-') == 1:
-                        result = datetime.strptime(formatted, '%Y-%m')
-                    elif formatted.count('-') == 0:
-                        result = datetime.strptime(formatted, '%Y')
-
-                if result:
-                    if use_utc:
-                        result = result.replace(tzinfo=UTC())
-
-                    return result
-            except:
-                return None
-
-        return None
 
     def execute(self, args):
         if not args:
@@ -153,9 +113,9 @@ class PriceCrossAlertCommand(Command):
                     cancellation = float(value[2:])
                 elif value.startswith('@'):
                     # expiry
-                    if 'T' in value:
+                    if ':' in value or '-' in value:
                         # parse a local or UTC datetime
-                        expiry = self.parse_datetime(value[1:]).timestamp()
+                        expiry = parse_datetime(value[1:]).timestamp()
                     else:
                         # parse a duration in seconds, relative to now
                         duration = timeframe_from_str(value[1:])

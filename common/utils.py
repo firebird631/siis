@@ -212,3 +212,72 @@ def format_delta(td):
         s = r
 
         return "%i days %i hours %i minutes %i seconds" % (d, h, m, s)
+
+
+def parse_utc_datetime(formatted):
+    if formatted:
+        try:
+            if formatted.endswith('Z'):
+                # always UTC
+                formatted = formatted.rstrip('Z')
+
+            if 'T' in formatted:
+                if formatted.count(':') == 2:
+                    if formatted.count('.') == 1:
+                        return datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC())
+                    else:
+                        return datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
+                elif formatted.count(':') == 1:
+                    return datetime.strptime(formatted, '%Y-%m-%dT%H:%M').replace(tzinfo=UTC())
+                elif formatted.count(':') == 0:
+                    return datetime.strptime(formatted, '%Y-%m-%dT%H').replace(tzinfo=UTC())
+            else:
+                if formatted.count('-') == 2:
+                    return datetime.strptime(formatted, '%Y-%m-%d').replace(tzinfo=UTC())
+                elif formatted.count('-') == 1:
+                    return datetime.strptime(formatted, '%Y-%m').replace(tzinfo=UTC())
+                elif formatted.count('-') == 0:
+                    return datetime.strptime(formatted, '%Y').replace(tzinfo=UTC())
+        except:
+            return None
+
+    return None
+
+
+def parse_datetime(formatted):
+    if formatted:
+        try:
+            result = None
+            use_utc = False
+
+            if formatted.endswith('Z'):
+                formatted = formatted.rstrip('Z')
+                use_utc = True
+
+            if 'T' in formatted:
+                if formatted.count(':') == 2:
+                    if formatted.count('.') == 1:
+                        result = datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S.%f')
+                    else:
+                        result = datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S')
+                elif formatted.count(':') == 1:
+                    result = datetime.strptime(formatted, '%Y-%m-%dT%H:%M')
+                elif formatted.count(':') == 0:
+                    result = datetime.strptime(formatted, '%Y-%m-%dT%H')
+            else:
+                if formatted.count('-') == 2:
+                    result = datetime.strptime(formatted, '%Y-%m-%d')
+                elif formatted.count('-') == 1:
+                    result = datetime.strptime(formatted, '%Y-%m')
+                elif formatted.count('-') == 0:
+                    result = datetime.strptime(formatted, '%Y')
+
+            if result:
+                if use_utc:
+                    result = result.replace(tzinfo=UTC())
+
+                return result
+        except:
+            return None
+
+    return None

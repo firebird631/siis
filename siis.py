@@ -16,7 +16,7 @@ import traceback
 
 from datetime import datetime
 
-from common.utils import UTC, fix_thread_set_name, TIMEFRAME_FROM_STR_MAP
+from common.utils import parse_utc_datetime, UTC, fix_thread_set_name, TIMEFRAME_FROM_STR_MAP
 
 from watcher.watcher import Watcher
 from watcher.service import WatcherService
@@ -74,36 +74,6 @@ def terminate(watchdog_service, watcher_service, trader_service, strategy_servic
 
     if watchdog_service:
         watchdog_service.terminate()
-
-
-def parse_datetime(formatted):
-    if formatted:
-        try:
-            if formatted.endswith('Z'):
-                # always UTC
-                formatted = formatted.rstrip('Z')
-
-            if 'T' in formatted:
-                if formatted.count(':') == 2:
-                    if formatted.count('.') == 1:
-                        return datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=UTC())
-                    else:
-                        return datetime.strptime(formatted, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
-                elif formatted.count(':') == 1:
-                    return datetime.strptime(formatted, '%Y-%m-%dT%H:%M').replace(tzinfo=UTC())
-                elif formatted.count(':') == 0:
-                    return datetime.strptime(formatted, '%Y-%m-%dT%H').replace(tzinfo=UTC())
-            else:
-                if formatted.count('-') == 2:
-                    return datetime.strptime(formatted, '%Y-%m-%d').replace(tzinfo=UTC())
-                elif formatted.count('-') == 1:
-                    return datetime.strptime(formatted, '%Y-%m').replace(tzinfo=UTC())
-                elif formatted.count('-') == 0:
-                    return datetime.strptime(formatted, '%Y').replace(tzinfo=UTC())
-        except:
-            return None
-
-    return None
 
 
 def application(argv):
@@ -229,13 +199,13 @@ def application(argv):
 
                 elif arg.startswith('--from='):
                     # if backtest from date and tools
-                    options['from'] = parse_datetime(arg.split('=')[1])
+                    options['from'] = parse_utc_datetime(arg.split('=')[1])
                     if not options['from']:
                         Terminal.inst().error("Invalid 'from' datetime format")
                         sys.exit(-1)
                 elif arg.startswith('--to='):
                     # if backtest to date and tools
-                    options['to'] = parse_datetime(arg.split('=')[1])
+                    options['to'] = parse_utc_datetime(arg.split('=')[1])
                     if not options['to']:
                         Terminal.inst().error("Invalid 'to' datetime format")
                         sys.exit(-1)
