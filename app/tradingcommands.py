@@ -15,8 +15,6 @@ from instrument.instrument import Instrument
 
 from app.script import setup_script
 
-# @todo ClosePositionCommand, CloseAllPositionCommand
-
 
 class PlayCommand(Command):
     SUMMARY = "[strategy|notifiers] <empty,notifier-id> <market-id> to enable strategy-trader(s) or notifiers(s)."
@@ -1883,6 +1881,57 @@ class TickerMemSetCommand(Command):
         return args, 0
 
 
+class ClosePositionCommand(Command):
+    SUMMARY = "<position-key> to close at market a specific position, immediately"
+    HELP = (
+        "param1: <position-key> Position key",
+    )
+
+    def __init__(self, trader_service):
+        super().__init__('!close-position', '!CP')
+
+        self._trader_service = trader_service
+
+    def execute(self, args):
+        # ie: ":!CP 31"
+
+        if len(args) != 1:
+            return False, "Missing parameters"
+
+        target = args[0]
+
+        results = self._trader_service.command(Trader.COMMAND_CLOSE_MARKET, {
+            'key': target
+        })
+
+        return self.manage_results(results)
+
+    def completion(self, args, tab_pos, direction):
+        return args, 0
+
+
+class CloseAllPositionCommand(Command):
+    SUMMARY = "to close at market all opened positions, immediately"
+
+    def __init__(self, trader_service):
+        super().__init__('!close-all-position', '!CAP')
+
+        self._trader_service = trader_service
+
+    def execute(self, args):
+        # ie: ":!CAP"
+
+        if len(args) != 0:
+            return False, "Invalid parameters"
+
+        results = self._trader_service.command(Trader.COMMAND_CLOSE_ALL_MARKET, {})
+
+        return self.manage_results(results)
+
+    def completion(self, args, tab_pos, direction):
+        return args, 0
+
+
 class ReconnectCommand(Command):
     SUMMARY = "to force to reconnect"
 
@@ -2162,6 +2211,8 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
 
     commands_handler.register(CancelOrderCommand(trader_service))
     commands_handler.register(TickerMemSetCommand(trader_service))
+    commands_handler.register(ClosePositionCommand(trader_service))
+    commands_handler.register(CloseAllPositionCommand(trader_service))
 
     #
     # multi-trades operations
@@ -2169,5 +2220,3 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
 
     commands_handler.register(SellAllAssetCommand(trader_service))
     commands_handler.register(CancelAllOrderCommand(trader_service))
-    # commands_handler.register(CloseAllPositionCommand(trader_service))
-    # commands_handler.register(ClosePositionCommand(trader_service))

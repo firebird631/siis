@@ -56,16 +56,14 @@ class TrendRegion(Region):
 
         return True
 
-    def test(self, timestamp, signal):
-        timeframe = signal.timeframe
-
+    def test(self, timestamp, signal_price):
         # y = ax + b
         dt = timestamp - self._created
 
         low = dt * self._dl + self._low_a
         high = dt * self._dh + self._high_a
 
-        return low <= signal.price <= high
+        return low <= signal_price <= high
 
     def can_delete(self, timestamp, bid, ask):
         if self._expiry > 0 and timestamp >= self._expiry:
@@ -81,15 +79,29 @@ class TrendRegion(Region):
         return False
 
     def str_info(self):
-        return "Trend region from %s/%s to %s/%s, stage %s, direction %s, timeframe %s, expiry %s" % (
+        return "Trend region from [%g - %g] to [%g - %g], stage %s, direction %s, timeframe %s, expiry %s" % (
                 self._low_a, self._high_a, self._low_b, self._high_b,
                 self.stage_to_str(), self.direction_to_str(), self.timeframe_to_str(), self.expiry_to_str())
+
+    def cancellation_str(self):
+        """
+        Dump a string with short region cancellation str.
+        """
+        if self._dir == Region.LONG and self._cancellation > 0.0:
+            return"if ask price < %g" % (self._cancellation,)
+        elif self._dir == Region.SHORT and self._cancellation > 0.0:
+            return "if bid price > %g" % (self._cancellation,)
+        else:
+            return "never"
+
+    def condition_str(self):
+        return "[%g - %g] - [%g - %g]" % (self._low_a, self._high_a, self._low_b, self._high_b)
 
     def parameters(self):
         params = super().parameters()
 
         params['label'] = "Trend region"
-        
+
         params['low-a'] = self._low_a,
         params['high-a'] = self._high_a
 

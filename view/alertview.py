@@ -29,7 +29,7 @@ class AlertView(TableView):
     REFRESH_RATE = 60  # only on alert or 1 minute refresh
 
     MAX_ALERTS = 500
-    COLUMNS = ('#', 'Market', 'Label', charmap.ARROWUPDN, 'TF', 'Last Price', 'Reason', 'User', 'Date')
+    COLUMNS = ('Symbol', '#', 'Label', charmap.ARROWUPDN, 'TF', 'Last Price', 'Reason', 'User', 'Date')
 
     def __init__(self, service, strategy_service):
         super().__init__("alert", service)
@@ -106,8 +106,8 @@ class AlertView(TableView):
             lsymbol = Color.colorize(alert['symbol'], Color.color(symbol_color), style)
 
             row = (
-                lid,
                 lsymbol,
+                lid,
                 alert.get('name', ""),
                 trigger,
                 alert.get('timeframe', ""),

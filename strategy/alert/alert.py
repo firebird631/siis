@@ -262,7 +262,8 @@ class Alert(object):
             'app-name': strategy_trader.strategy.name,
             'app-id': strategy_trader.strategy.identifier,
             'timestamp': timestamp,
-            'symbol': strategy_trader.instrument.market_id,
+            'market-id': strategy_trader.instrument.market_id,
+            'symbol': strategy_trader.instrument.symbol,
             'timeframe': timeframe_to_str(self._timeframe),
             'message': self._message,
             'trigger': 0,  # 1 for up, -1 for down

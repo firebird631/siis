@@ -40,12 +40,12 @@ class RangeRegion(Region):
     def check(self):
         return self._low > 0 and self._high > 0 and self._high >= self._low
 
-    def test(self, timestamp, signal):
+    def test(self, timestamp, signal_price):
         # signal price is in low / high range
-        return self._low <= signal.price <= self._high
+        return self._low <= signal_price <= self._high
 
     def can_delete(self, timestamp, bid, ask):
-        if self._expiry > 0 and timestamp >= self._expiry:
+        if 0 < self._expiry <= timestamp:
             return True
 
         # trigger price reached in accordance with the direction
@@ -58,9 +58,23 @@ class RangeRegion(Region):
         return False
 
     def str_info(self):
-        return "Range region from %s to %s, stage %s, direction %s, timeframe %s, expiry %s, cancellation %s" % (
+        return "Range region from %g to %g, stage %s, direction %s, timeframe %s, expiry %s, cancellation %s" % (
                 self._low, self._high, self.stage_to_str(), self.direction_to_str(),
                 self.timeframe_to_str(), self.expiry_to_str(), self._cancellation)
+
+    def cancellation_str(self):
+        """
+        Dump a string with short region cancellation str.
+        """
+        if self._dir == Region.LONG and self._cancellation > 0.0:
+            return"if ask price < %g" % (self._cancellation,)
+        elif self._dir == Region.SHORT and self._cancellation > 0.0:
+            return "if bid price > %g" % (self._cancellation,)
+        else:
+            return "never"
+
+    def condition_str(self):
+        return "[%g - %g]" % (self._low, self._high)
 
     def parameters(self):
         params = super().parameters()

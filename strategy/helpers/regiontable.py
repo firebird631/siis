@@ -1,62 +1,61 @@
-# @date 2020-05-30
+# @date 2021-11-30
 # @author Frederic Scherma, All rights reserved without prejudices.
-# @license Copyright (c) 2020 Dream Overflow
+# @license Copyright (c) 2021 Dream Overflow
 # Strategy display table formatter helpers for views or notifiers
 
 from datetime import datetime
 
+from strategy.helpers.regiondataset import get_all_regions
 from terminal.terminal import Color
-from terminal import charmap
-
-from common.utils import timeframe_to_str
-
-from strategy.strategy import Strategy
-
-from strategy.helpers.activealertdataset import get_all_active_alerts
 
 import logging
 logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
 
 
-def actives_alerts_table(strategy, style='', offset=None, limit=None, col_ofs=None,
-                         datetime_format='%y-%m-%d %H:%M:%S'):
+def region_table(strategy, style='', offset=None, limit=None, col_ofs=None, datetime_format='%y-%m-%d %H:%M:%S'):
     """
     Returns a table of any active alerts.
     """
-    COLUMNS = ('Symbol', '#', 'Label', 'TF', 'Created', 'Expiry', 'Countdown', 'Condition', 'Cancellation', 'Message')
+    COLUMNS = ('Symbol', '#', 'Name', 'Dir', 'Stage', 'TF', 'Created', 'Expiry', 'Cancellation', 'Inside', 'Condition')
 
     columns = tuple(COLUMNS)
     total_size = (len(columns), 0)
     data = []
 
     with strategy._mutex:
-        alerts = get_all_active_alerts(strategy)
-        total_size = (len(columns), len(alerts))
+        regions = get_all_regions(strategy)
+        total_size = (len(columns), len(regions))
 
         if offset is None:
             offset = 0
 
         if limit is None:
-            limit = len(alerts)
+            limit = len(regions)
 
         limit = offset + limit
 
-        alerts.sort(key=lambda x: -x['id'])
-        alerts = alerts[offset:limit]
+        regions.sort(key=lambda x: -x['id'])
+        regions = regions[offset:limit]
 
-        for t in alerts:
+        for t in regions:
+            if t['inside']:
+                inside = Color.colorize('IN', Color.GREEN, style=style)
+            else:
+                inside = Color.colorize('OUT', Color.RED, style=style)
+
             row = [
                 t['sym'],
                 t['id'],
-                t['name'], 
+                t['name'],
+                t['dir'],
+                t['stage'],
                 t['tf'],
                 datetime.fromtimestamp(t['ts']).strftime(datetime_format) if t['ts'] > 0 else "?",
                 datetime.fromtimestamp(t['expiry']).strftime(datetime_format) if t['expiry'] > 0 else "never",
-                t['ctd'],
-                t['cond'],
                 t['cancel'],
-                t['msg'],
+                inside,
+                t['cond'],
             ]
 
             data.append(row[0:3] + row[3+col_ofs:])

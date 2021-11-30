@@ -116,9 +116,9 @@ class PriceCrossAlert(Alert):
         Dump a string with short alert cancellation str.
         """
         if self._dir > 0 and self._cancellation_price > 0.0:
-            return"if %s price > %s" % (self.price_src_to_str(), self._cancellation_price)
+            return"if %s price < %s" % (self.price_src_to_str(), self._cancellation_price)
         elif self._dir < 0 and self._cancellation_price > 0.0:
-            return "if %s price < %s" % (self.price_src_to_str(), self._cancellation_price)
+            return "if %s price > %s" % (self.price_src_to_str(), self._cancellation_price)
         else:
             return "never"
 

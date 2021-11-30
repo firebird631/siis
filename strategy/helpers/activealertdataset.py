@@ -17,7 +17,6 @@ def get_all_active_alerts(strategy):
         id: int alert identifier
     """
     results = []
-    trader = strategy.trader()
 
     with strategy._mutex:
         try:
@@ -26,6 +25,7 @@ def get_all_active_alerts(strategy):
                     for alert in strategy_trader.alerts:
                         results.append({
                             'mid': strategy_trader.instrument.market_id,
+                            'sym': strategy_trader.instrument.symbol,
                             'id': alert._id,
                             'vers': alert.version(),
                             'name': alert.name(),

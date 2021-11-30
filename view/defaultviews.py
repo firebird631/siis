@@ -27,10 +27,10 @@ def setup_default_views(view_service, watcher_service, trader_service, strategy_
     traderstate = TraderStateView(view_service, strategy_service)
     view_service.add_view(traderstate)
 
-    # 'activeregion' @todo
-    # from view.activeregionview import ActiveRegionView
-    # activeregion = ActiveRegionView(view_service, strategy_service)
-    # view_service.add_view(activeregion)
+    # 'region'
+    from view.regionview import RegionView
+    region = RegionView(view_service, strategy_service)
+    view_service.add_view(region)
 
     # 'account'
     from view.accountview import AccountView

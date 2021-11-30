@@ -40,8 +40,11 @@ def cmd_strategy_trader_modify(strategy, strategy_trader, data):
                 created = float(data.get('created', 0.0))
                 expiry = float(data.get('expiry', 0.0))
 
-                if 'timeframe' in data and type(data['timeframe']) is str:
-                    timeframe = timeframe_from_str(data['timeframe'])
+                if 'timeframe' in data:
+                    if type(data['timeframe']) is str:
+                        timeframe = timeframe_from_str(data['timeframe'])
+                    elif type(data['timeframe']) in (float, int):
+                        timeframe = data['timeframe']
 
             except ValueError:
                 results['error'] = True

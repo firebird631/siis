@@ -456,7 +456,8 @@ class CommandsHandler(object):
 
     def get_command_help(self, command_name):
         """
-        Return a list of triplets containing advanced command name, alias (can be None) and detailed help (can be empty).
+        Return a list of triplets containing advanced command name, alias (can be None)
+        and detailed help (can be empty).
         """
         command = self._commands.get(command_name)
         if command:
@@ -466,7 +467,8 @@ class CommandsHandler(object):
 
     def get_cli_summary(self):
         """
-        Return a list of triplets containing advanced command identifier, alias (can be None) and summary help (can be empty).
+        Return a list of triplets containing advanced command identifier, alias (can be None)
+        and summary help (can be empty).
         """
         result = []
 
@@ -491,7 +493,8 @@ class CommandsHandler(object):
 
     def get_user_summary(self):
         """
-        For user context only, return a list of couples containing simple command with accelerator and summary help (can be empty).
+        For user context only, return a list of couples containing simple command with accelerator
+        and summary help (can be empty).
         """
         result = []
 

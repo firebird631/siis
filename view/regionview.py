@@ -1,6 +1,6 @@
-# @date 2020-05-30
+# @date 2021-11-30
 # @author Frederic Scherma, All rights reserved without prejudices.
-# @license Copyright (c) 2020 Dream Overflow
+# @license Copyright (c) 2021 Dream Overflow
 # Active alerts view.
 
 import threading
@@ -16,43 +16,29 @@ from terminal import charmap
 
 from view.tableview import TableView
 
-from strategy.helpers.activealerttable import actives_alerts_table
+from strategy.helpers.regiontable import region_table
 
 import logging
-logger = logging.getLogger('siis.view.activealert')
-error_logger = logging.getLogger('siis.error.view.activealert')
+logger = logging.getLogger('siis.view.region')
+error_logger = logging.getLogger('siis.error.view.region')
 
 
-class ActiveAlertView(TableView):
+class RegionView(TableView):
     """
-    Active alerts view.
+    Region view.
     """
 
     def __init__(self, service, strategy_service):
-        super().__init__("activealert", service)
+        super().__init__("region", service)
 
         self._mutex = threading.RLock()
         self._strategy_service = strategy_service
-        self._alerts_list = {}
-
-        # listen to its service
-        self.service.add_listener(self)
 
     def count_items(self):
         if not self._strategy_service:
             return 0
 
         return 1
-
-    def receiver(self, signal):
-        if not signal:
-            return
-
-        if signal.source == Signal.SOURCE_STRATEGY:
-            if signal.signal_type == Signal.SIGNAL_STRATEGY_ALERT:
-                with self._mutex:
-                    if signal.data.get('app-id'):
-                        self._refresh = 0.0
 
     def refresh(self):
         if not self._strategy_service:
@@ -64,8 +50,8 @@ class ActiveAlertView(TableView):
 
             with self._mutex:
                 try:
-                    columns, table, total_size = actives_alerts_table(strategy, *self.table_format(),
-                                                                      datetime_format=self._datetime_format)
+                    columns, table, total_size = region_table(strategy, *self.table_format(),
+                                                              datetime_format=self._datetime_format)
 
                     for row in table:
                         # colorize by symbol
@@ -79,6 +65,6 @@ class ActiveAlertView(TableView):
                     error_logger.error(str(traceback.format_exc()))
                     error_logger.error(str(e))
 
-            self.set_title("Actives alerts list (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
+            self.set_title("Region list (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
         else:
-            self.set_title("Actives alerts list - No configured strategy")
+            self.set_title("Region list - No configured strategy")

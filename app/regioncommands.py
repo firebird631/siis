@@ -146,7 +146,7 @@ class TrendRegionCommand(Command):
         high_b = 0.0
         cancellation = 0.0
 
-        # ie ":TR EURUSD 4 1.12 1.15 1.15 1.2"
+        # ie ":TR EURUSD 1.12 1.15 1.15 1.2"
         if len(args) < 6:
             return False, "Missing parameters"
 

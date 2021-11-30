@@ -109,7 +109,7 @@ def parse_datetime(formatted):
 def application(argv):
     fix_thread_set_name()
 
-    # init terminal displayer
+    # init terminal display
     Terminal()
 
     options = {
@@ -631,7 +631,7 @@ def application(argv):
                     view_service.on_key_pressed(key)
 
                     if key == 'KEY_ESCAPE':
-                        # was in command me, now in default mode
+                        # was in command mode, now in default mode
                         Terminal.inst().set_mode(Terminal.MODE_DEFAULT)
 
                 # @todo move the rest to command_handler
@@ -657,20 +657,6 @@ def application(argv):
                                 # maybe an application level command
                                 if value == ':quit':
                                     running = False
-
-                                elif value.startswith(':x '):
-                                    # manually exit position at market 
-                                    # @todo move as command
-                                    target = value[3:]
-
-                                    if target == "all" or target == "ALL":
-                                        Terminal.inst().action("Send close to market command for any positions",
-                                                               view='status')
-                                        trader_service.command(Trader.COMMAND_CLOSE_ALL_MARKET, {})
-                                    else:
-                                        Terminal.inst().action("Send close to market command for position %s" % (
-                                            target,), view='status')
-                                        trader_service.command(Trader.COMMAND_CLOSE_MARKET, {'key': target})
 
                             # clear command value
                             value_changed = True
@@ -699,40 +685,44 @@ def application(argv):
                             result = commands_handler.process_accelerator(key)
 
                             # @todo convert to Command object accelerator
+                            # used : ABCDFIMNOPQRSTWXZ? an%,;:!
+                            # unused : EGHJKLUVY
                             if not result:
                                 result = True
 
                                 # display views @todo must be managed by view_service
-                                if value == 'C':
+                                if value == 'A':
+                                    Terminal.inst().switch_view('account')
+                                elif value == 'B':
+                                    Terminal.inst().switch_view('activealert')
+                                elif value == 'C':
                                     Terminal.inst().clear_content()
                                 elif value == 'D':
                                     Terminal.inst().switch_view('debug')
-                                elif value == 'I':
-                                    Terminal.inst().switch_view('content')
                                 elif value == 'F':
                                     Terminal.inst().switch_view('strategy')
-                                elif value == 'S':
-                                    Terminal.inst().switch_view('stats')
-                                elif value == 'P':
-                                    Terminal.inst().switch_view('perf')
-                                elif value == 'X':
-                                    Terminal.inst().switch_view('position')
-                                elif value == 'O':
-                                    Terminal.inst().switch_view('order')
-                                elif value == 'T':
-                                    Terminal.inst().switch_view('ticker')
-                                elif value == 'A':
-                                    Terminal.inst().switch_view('account')
+                                elif value == 'I':
+                                    Terminal.inst().switch_view('content')
                                 elif value == 'M':
                                     Terminal.inst().switch_view('market')
-                                elif value == 'Q':
-                                    Terminal.inst().switch_view('asset')
                                 elif value == 'N':
                                     Terminal.inst().switch_view('signal')
+                                elif value == 'O':
+                                    Terminal.inst().switch_view('order')
+                                elif value == 'P':
+                                    Terminal.inst().switch_view('perf')
+                                elif value == 'Q':
+                                    Terminal.inst().switch_view('asset')
+                                elif value == 'R':
+                                    Terminal.inst().switch_view('region')
+                                elif value == 'S':
+                                    Terminal.inst().switch_view('stats')
+                                elif value == 'T':
+                                    Terminal.inst().switch_view('ticker')
                                 elif value == 'W':
                                     Terminal.inst().switch_view('alert')
-                                elif value == 'w':
-                                    Terminal.inst().switch_view('activealert')
+                                elif value == 'X':
+                                    Terminal.inst().switch_view('position')
                                 elif value == 'Z':
                                     Terminal.inst().switch_view('traderstate')
 
