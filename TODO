@@ -112,8 +112,8 @@ Sum order :
 #57 Verification des trades par la method check :
     - implementer order_info pour le trader bitmex et verifier
     - implementer order_info pour le trader ig et verifier
-    - verifier order_info pour le trader binance et binancefutures
-    - verifier order_info pour le trader binance et binancefutures
+    - verifier order_info pour le trader binance
+    - verifier order_info pour le trader binancefutures
 
 
 ##################

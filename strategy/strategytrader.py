@@ -1093,11 +1093,11 @@ class StrategyTrader(object):
 
                         # perf summed here it means that its not done during partial closing
                         if profit_loss != 0.0:
-                            self._stats['perf'] += profit_loss
-                            self._stats['best'] = max(self._stats['best'], profit_loss)
-                            self._stats['worst'] = min(self._stats['worst'], profit_loss)
-                            self._stats['high'] += best_pl
-                            self._stats['low'] += worst_pl
+                            self._stats['perf'] += profit_loss  # total profit/loss percent
+                            self._stats['best'] = max(self._stats['best'], profit_loss)  # retains the best win
+                            self._stats['worst'] = min(self._stats['worst'], profit_loss)  # retain the worst loss
+                            self._stats['high'] += best_pl  # sum if all trades was closed at best price
+                            self._stats['low'] += worst_pl  # sum if all trades was closed at worst price
                             self._stats['closed'] += 1
                             self._stats['rpnl'] += trade.unrealized_profit_loss
 

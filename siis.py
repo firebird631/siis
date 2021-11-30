@@ -600,7 +600,8 @@ def application(argv):
                         args.append('')
 
                     # update the current type command
-                    commands_handler.process_char(c, args)
+                    if Terminal.inst().mode == Terminal.MODE_COMMAND:
+                        commands_handler.process_char(c, args)
 
                     # only in normal mode
                     if Terminal.inst().mode == Terminal.MODE_DEFAULT:

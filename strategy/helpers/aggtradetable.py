@@ -44,8 +44,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
 
         pl_sum = 0.0
         perf_sum = 0.0
-        best_sum = 0.0
-        worst_sum = 0.0
+        best_best = 0.0
+        worst_worst = 0.0
         success_sum = 0
         failed_sum = 0
         roe_sum = 0
@@ -57,8 +57,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
             for t in agg_trades:
                 pl_sum += t['pl']
                 perf_sum += t['perf']
-                best_sum = max(best_sum, t['best'])
-                worst_sum = min(worst_sum, t['worst'])
+                best_best = max(best_best, t['best'])
+                worst_worst = min(worst_worst, t['worst'])
                 success_sum += t['success']
                 failed_sum += t['failed']
                 roe_sum += t['roe']
@@ -122,8 +122,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
                 cperf_sum,
                 '-',
                 "%s/%s" % (num_actives_trades_sum, num_open_trades_sum),
-                "%.2f" % (best_sum*100.0),
-                "%.2f" % (worst_sum*100.0),
+                "%.2f" % (best_best*100.0),
+                "%.2f" % (worst_worst*100.0),
                 success_sum,
                 failed_sum,
                 roe_sum,

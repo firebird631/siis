@@ -513,6 +513,7 @@ class CommandsHandler(object):
     def process_char(self, char, args):
         """
         Process a character on the command handler.
+        @note To be call only during command mode.
         """
         if not char:
             return
@@ -563,7 +564,7 @@ class CommandsHandler(object):
 
         elif key_code == 'KEY_UP' and command_mode:
             if self._history:
-                if (len(self._history) + self._history_pos > 0):
+                if len(self._history) + self._history_pos > 0:
                     if self._history_pos == 0:
                         self._current = args
 
