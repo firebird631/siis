@@ -28,7 +28,7 @@ class SignalView(TableView):
 
     REFRESH_RATE = 60  # only on signal or 1 minute refresh
 
-    MAX_SIGNALS = 200
+    MAX_SIGNALS = 500
     COLUMNS = ('#', 'Symbol', charmap.ARROWLR, charmap.ARROWUPDN, 'TF', 'EP', 'SL', 'TP', 'Date', 'Label',
                'Reason', 'P/L')
 
@@ -37,6 +37,8 @@ class SignalView(TableView):
 
         self._mutex = threading.RLock()
         self._strategy_service = strategy_service
+        self._ordering = True  # initially most recent first
+
         self._signals_list = {}
 
         # listen to its service
@@ -82,21 +84,34 @@ class SignalView(TableView):
         limit = offset + limit
 
         if self._group:
-            entries = [signal for signal in signals if (signal['way'] == "entry" or signal['id'] <= 0)]
-            entries.sort(key=lambda x: -x['timestamp'])
-            entries_exits = signals
+            signals_entries = []
+            signals_exits = []
+
+            for signal in signals:
+                if signal['way'] == "entry" or signal['id'] <= 0:
+                    signals_entries.append(signal)
+                elif signal['way'] == "exit":
+                    signals_exits.append(signal)
+
+            signals_entries.sort(key=lambda x: x['timestamp'])
             signals = []
 
-            for entry in entries:
-                # lookup for the related exit (before)
-                if entry['id'] > 0:
-                    for exit in entries_exits:
-                        if exit['id'] == entry['id'] and exit['way'] == "exit":
-                            signals.append(exit)
+            for signal_entry in signals_entries:
+                signals.append(signal_entry)
 
-                signals.append(entry)
+                # lookup for the related exit
+                if signal_entry['id'] > 0:
+                    for signal_exit in signals_exits:
+                        if (signal_exit['market-id'] == signal_entry['market-id'] and
+                                signal_exit['id'] == signal_entry['id']):
+
+                            signals.append(signal_exit)
+                            break
+
+            if self._ordering:
+                signals.reverse()
         else:
-            signals = sorted(signals, key=lambda x: -x['timestamp'])
+            signals = sorted(signals, key=lambda x: x['timestamp'], reverse=True if self._ordering else False)
 
         signals = signals[offset:limit]
 
@@ -158,6 +173,7 @@ class SignalView(TableView):
                     error_logger.error(str(traceback.format_exc()))
                     error_logger.error(str(e))
 
-            self.set_title("Signal list (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
+            self.set_title("Signal list (%i)%s for strategy %s - %s" % (
+                num, self.display_mode_str(), strategy.name, strategy.identifier))
         else:
             self.set_title("Signal list - No configured strategy")

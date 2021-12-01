@@ -30,7 +30,7 @@ class RangeRegionCommand(Command):
             return False, "Missing parameters"
 
         market_id = None
-        timeframe = 0
+        timeframe = 0.0
 
         action = "add-region"
         reg = "range"
@@ -125,7 +125,7 @@ class TrendRegionCommand(Command):
             return False, "Missing parameters"
 
         market_id = None
-        timeframe = -1
+        timeframe = 0.0
 
         action = "add-region"
         reg = "trend"

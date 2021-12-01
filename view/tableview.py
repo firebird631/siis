@@ -95,3 +95,10 @@ class TableView(View):
         vt = Terminal.inst().view(self._id)
         if vt:
             vt.draw('', table_data, True)
+
+    def display_mode_str(self):
+        """
+        Helper that return a str according to group and ordering state for the view.
+        From : G+, G-, +, -
+        """
+        return "%s%s" % ("G" if self._group else "", "-" if self._ordering else '+')

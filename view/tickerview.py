@@ -43,6 +43,7 @@ class TickerView(TableView):
             except Exception as e:
                 error_logger.error(str(e))
 
-            self.set_title("Tickers list (%i) trader %s on account %s" % (num, trader.name, trader.account.name))
+            self.set_title("Tickers list (%i)%s trader %s on account %s" % (
+                num, self.display_mode_str(), trader.name, trader.account.name))
         else:
             self.set_title("Tickers list - No configured trader")

@@ -20,7 +20,7 @@ error_logger = logging.getLogger('siis.error.strategy')
 
 
 def actives_alerts_table(strategy, style='', offset=None, limit=None, col_ofs=None,
-                         datetime_format='%y-%m-%d %H:%M:%S'):
+                         group=None, ordering=None, datetime_format='%y-%m-%d %H:%M:%S'):
     """
     Returns a table of any active alerts.
     """
@@ -42,7 +42,13 @@ def actives_alerts_table(strategy, style='', offset=None, limit=None, col_ofs=No
 
         limit = offset + limit
 
-        alerts.sort(key=lambda x: -x['id'])
+        if group:
+            # in alpha order then by created
+            alerts.sort(key=lambda x: x['sym']+str(x['ts']), reverse=True if ordering else False)
+        else:
+            # by created timestamp descending
+            alerts.sort(key=lambda x: x['ts'], reverse=True if ordering else False)
+
         alerts = alerts[offset:limit]
 
         for t in alerts:

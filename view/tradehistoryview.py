@@ -25,6 +25,7 @@ class TradeHistoryView(TableView):
         super().__init__("stats", service)
 
         self._strategy_service = strategy_service
+        self._ordering = True  # initially most recent first
 
         # listen to its service
         self.service.add_listener(self)
@@ -50,13 +51,15 @@ class TradeHistoryView(TableView):
             try:
                 columns, table, total_size = closed_trades_stats_table(
                     strategy, *self.table_format(),
-                    quantities=True, percents=self._percent, group=self._group, datetime_format=self._datetime_format)
+                    quantities=True, percents=self._percent,
+                    group=self._group, ordering=self._ordering, datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
                 error_logger.error(str(e))
 
-            self.set_title("Trade history (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
+            self.set_title("Trade history (%i)%s for strategy %s - %s" % (
+                num, self.display_mode_str(), strategy.name, strategy.identifier))
         else:
             self.set_title("Trade history - No configured strategy")

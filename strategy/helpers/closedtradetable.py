@@ -19,7 +19,7 @@ error_logger = logging.getLogger('siis.error.strategy')
 
 
 def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False,
-                              percents=False, group=False, datetime_format='%y-%m-%d %H:%M:%S'):
+                              percents=False, group=None, ordering=None, datetime_format='%y-%m-%d %H:%M:%S'):
     """
     Returns a table of any closed trades.
     """
@@ -58,10 +58,12 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
         limit = offset + limit
 
         if group:
-            # in alpha order
-            closed_trades.sort(key=lambda x: x['symbol'])
+            # in alpha order + last realized exit datetime
+            closed_trades.sort(key=lambda x: x['symbol']+x['stats']['last-realized-exit-datetime'],
+                               reverse=True if ordering else False)
         else:
-            closed_trades.sort(key=lambda x: x['stats']['last-realized-exit-datetime'], reverse=True)
+            closed_trades.sort(key=lambda x: x['stats']['last-realized-exit-datetime'],
+                               reverse=True if ordering else False)
 
         closed_trades = closed_trades[offset:limit]
 

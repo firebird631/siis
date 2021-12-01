@@ -1101,7 +1101,7 @@ class Trader(Runnable):
             limit = offset + limit
 
             if group:
-                markets.sort(key=lambda x: -x.price, reverse=True if ordering else False)
+                markets.sort(key=lambda x: x.price, reverse=True if ordering else False)
             else:
                 markets.sort(key=lambda x: x.symbol, reverse=True if ordering else False)
 
@@ -1203,7 +1203,7 @@ class Trader(Runnable):
             limit = offset + limit
 
             if group:
-                assets.sort(key=lambda x: -x.quantity, reverse=True if ordering else False)
+                assets.sort(key=lambda x: x.quantity, reverse=True if ordering else False)
             else:
                 assets.sort(key=lambda x: x.symbol, reverse=True if ordering else False)
 

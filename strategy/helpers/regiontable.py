@@ -13,7 +13,8 @@ logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
 
 
-def region_table(strategy, style='', offset=None, limit=None, col_ofs=None, datetime_format='%y-%m-%d %H:%M:%S'):
+def region_table(strategy, style='', offset=None, limit=None, col_ofs=None,
+                 group=None, ordering=None, datetime_format='%y-%m-%d %H:%M:%S'):
     """
     Returns a table of any active alerts.
     """
@@ -35,7 +36,13 @@ def region_table(strategy, style='', offset=None, limit=None, col_ofs=None, date
 
         limit = offset + limit
 
-        regions.sort(key=lambda x: -x['id'])
+        if group:
+            # in alpha order then by created
+            regions.sort(key=lambda x: x['sym']+str(x['ts']), reverse=True if ordering else False)
+        else:
+            # by created timestamp descending
+            regions.sort(key=lambda x: x['ts'], reverse=True if ordering else False)
+
         regions = regions[offset:limit]
 
         for t in regions:

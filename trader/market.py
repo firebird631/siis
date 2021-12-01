@@ -723,6 +723,9 @@ class Market(object):
             self._ask,
             self._base_exchange_rate))
 
+        if not self._last_mem:
+            self.mem_set()
+
     def recent_price(self, timestamp):
         """
         One minute ticks price history.

@@ -35,14 +35,16 @@ class OrderView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.active_orders_table(*self.table_format(),
-                    quantities=True, datetime_format=self._datetime_format, group=self._group, ordering=self._ordering)
+                columns, table, total_size = trader.active_orders_table(
+                    *self.table_format(), quantities=True, datetime_format=self._datetime_format,
+                    group=self._group, ordering=self._ordering)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:
                 error_logger.error(str(e))
 
-            self.set_title("Order list (%i) trader %s on account %s" % (num, trader.name, trader.account.name))
+            self.set_title("Order list (%i)%s trader %s on account %s" % (
+                num, self.display_mode_str(), trader.name, trader.account.name))
         else:
             self.set_title("Order list - No configured trader")

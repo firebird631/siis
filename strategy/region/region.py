@@ -228,7 +228,7 @@ class Region(object):
         self._created = data.get('created', 0.0)  # datetime.strptime(data.get('created', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
         self._stage = data.get('stage', 0)        # self.stage_from_str(data.get('stage', ''))
         self._dir = data.get('direction', 0)      # self.direction_from_str(data.get('direction', ''))
-        self._timeframe = data.get('timeframe')   # timeframe_from_str(data.get('timeframe', 't'))
+        self._timeframe = data.get('timeframe', 0.0)   # timeframe_from_str(data.get('timeframe', 't'))
         self._expiry = data.get('expiry', 0.0)    # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
 
     def stage_to_str(self):

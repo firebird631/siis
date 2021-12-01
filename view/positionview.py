@@ -35,8 +35,8 @@ class PositionView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.positions_stats_table(*self.table_format(),
-                        quantities=True, datetime_format=self._datetime_format)
+                columns, table, total_size = trader.positions_stats_table(
+                    *self.table_format(), quantities=True, datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]

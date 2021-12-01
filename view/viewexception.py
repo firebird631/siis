@@ -23,4 +23,4 @@ class ViewException(ViewServiceException):
         self.view_name = view_name
 
     def __str__(self):
-        return 'ViewException (%s:%s) : %s' % (self.view_name, self.message)
+        return 'ViewException (%s) : %s' % (self.view_name, self.message)

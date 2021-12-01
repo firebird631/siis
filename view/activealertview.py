@@ -64,8 +64,9 @@ class ActiveAlertView(TableView):
 
             with self._mutex:
                 try:
-                    columns, table, total_size = actives_alerts_table(strategy, *self.table_format(),
-                                                                      datetime_format=self._datetime_format)
+                    columns, table, total_size = actives_alerts_table(
+                        strategy, *self.table_format(), group=self._group, ordering=self._ordering,
+                        datetime_format=self._datetime_format)
 
                     for row in table:
                         # colorize by symbol
@@ -79,6 +80,7 @@ class ActiveAlertView(TableView):
                     error_logger.error(str(traceback.format_exc()))
                     error_logger.error(str(e))
 
-            self.set_title("Actives alerts list (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
+            self.set_title("Actives alerts list (%i)%s for strategy %s - %s" % (
+                num, self.display_mode_str(), strategy.name, strategy.identifier))
         else:
             self.set_title("Actives alerts list - No configured strategy")

@@ -90,7 +90,7 @@ class AlertView(TableView):
         limit = offset + limit
 
         # sort by timestamp desc
-        alerts.sort(key=lambda x: -x['timestamp'])
+        alerts.sort(key=lambda x: x['timestamp'], reverse=self._ordering)
 
         alerts = alerts[offset:limit]
 
@@ -139,6 +139,7 @@ class AlertView(TableView):
                     error_logger.error(str(traceback.format_exc()))
                     error_logger.error(str(e))
 
-            self.set_title("Alert list (%i) for strategy %s - %s" % (num, strategy.name, strategy.identifier))
+            self.set_title("Alert list (%i)%s for strategy %s - %s" % (
+                num, self.display_mode_str(), strategy.name, strategy.identifier))
         else:
             self.set_title("Alert list - No configured strategy")

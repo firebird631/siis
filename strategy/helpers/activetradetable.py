@@ -16,7 +16,7 @@ error_logger = logging.getLogger('siis.error.strategy')
 
 
 def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False,
-                       percents=False, group=False, datetime_format='%y-%m-%d %H:%M:%S'):
+                       percents=False, group=None, ordering=None, datetime_format='%y-%m-%d %H:%M:%S'):
     """
     Returns a table of any active trades.
     """
@@ -58,10 +58,12 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
         limit = offset + limit
 
         if group:
-            # filled first, and in alpha order
-            trades.sort(key=lambda x: x['sym'] if x['freot'] <= 0 else ' '+x['sym'])
+            # filled first, and in alpha order + entry order timestamp
+            trades.sort(key=lambda x: x['sym']+str(x['eot']) if x['e'] != "0" else ' '+x['sym']+str(x['eot']),
+                        reverse=True if ordering else False)
         else:
-            trades.sort(key=lambda x: x['eot'])
+            # by entry order timestamp
+            trades.sort(key=lambda x: x['eot'], reverse=True if ordering else False)
 
         trades = trades[offset:limit]
 

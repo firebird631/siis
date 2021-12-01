@@ -19,7 +19,8 @@ logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
 
 
-def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, summ=True):
+def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, summ=True,
+                           group=None, ordering=None):
     """
     Returns a table of any aggregated active and closes trades.
     """
@@ -40,7 +41,10 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
 
         limit = offset + limit
 
-        agg_trades.sort(key=lambda x: x['mid'])
+        if group:
+            agg_trades.sort(key=lambda x: x['perf'], reverse=True if ordering else False)
+        else:
+            agg_trades.sort(key=lambda x: x['sym'], reverse=True if ordering else False)
 
         pl_sum = 0.0
         perf_sum = 0.0
