@@ -65,6 +65,7 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
     merged = data.get('merged', False)
     header = data.get('header', True)
     first = data.get('first', True)
+    filename = data.get('filename', "")
 
     if dataset not in ('active', 'history', 'alert', 'region'):
         results = {'message': "Unsupported export dataset", 'error': True}
@@ -74,16 +75,16 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
         results = {'message': "Unsupported export format", 'error': True}
         return results
 
-    filename = ""
     filemode = "a" if merged else "w"
 
     data_dumps = []
 
     if dataset == "history":
-        if merged:
-            filename = "siis_history.%s" % export_format
-        else:
-            filename = "siis_history_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+        if not filename:
+            if merged:
+                filename = "siis_history.%s" % export_format
+            else:
+                filename = "siis_history_%s.%s" % (strategy_trader.instrument.symbol, export_format)
 
         try:
             with strategy_trader._mutex:
@@ -98,10 +99,11 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
         data_dumps.sort(key=lambda x: x['stats']['last-realized-exit-datetime'])
 
     elif dataset == "active":
-        if merged:
-            filename = "siis_trades.%s" % export_format
-        else:
-            filename = "siis_trades_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+        if not filename:
+            if merged:
+                filename = "siis_trades.%s" % export_format
+            else:
+                filename = "siis_trades_%s.%s" % (strategy_trader.instrument.symbol, export_format)
 
         try:
             with strategy_trader._mutex:
@@ -123,10 +125,11 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
         data_dumps.sort(key=lambda x: x['entry-open-time'])
 
     elif dataset == "alert":
-        if merged:
-            filename = "siis_alerts.%s" % export_format
-        else:
-            filename = "siis_alerts_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+        if not filename:
+            if merged:
+                filename = "siis_alerts.%s" % export_format
+            else:
+                filename = "siis_alerts_%s.%s" % (strategy_trader.instrument.symbol, export_format)
 
         try:
             with strategy_trader._mutex:
@@ -141,10 +144,11 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
         data_dumps.sort(key=lambda x: x['created'])
 
     elif dataset == "region":
-        if merged:
-            filename = "siis_regions.%s" % export_format
-        else:
-            filename = "siis_regions_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+        if not filename:
+            if merged:
+                filename = "siis_regions.%s" % export_format
+            else:
+                filename = "siis_regions_%s.%s" % (strategy_trader.instrument.symbol, export_format)
 
         try:
             with strategy_trader._mutex:
