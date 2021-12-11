@@ -643,7 +643,7 @@ class KrakenTrader(Trader):
 
         positions = {}
 
-        for tx_id, data in open_positions:
+        for tx_id, data in open_positions.items():
             # @todo
             pass
 
