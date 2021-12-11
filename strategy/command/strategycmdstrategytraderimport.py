@@ -147,13 +147,13 @@ def cmd_strategy_trader_import_all(strategy, data):
 
     if not filename:
         if dataset == 'active':
-            filename = "/tmp/siis_trades.json"
+            filename = "siis_trades.json"
         elif dataset == 'history':
-            filename = "/tmp/siis_history.json"
+            filename = "siis_history.json"
         elif dataset == 'alert':
-            filename = "/tmp/siis_alerts.json"
+            filename = "siis_alerts.json"
         if dataset == 'region':
-            filename = "/tmp/siis_regions.json"
+            filename = "siis_regions.json"
 
     try:
         with open(filename, "rt") as f:

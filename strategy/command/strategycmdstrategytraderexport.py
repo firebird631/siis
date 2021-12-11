@@ -81,9 +81,9 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
     if dataset == "history":
         if merged:
-            filename = "/tmp/siis_history.%s" % export_format
+            filename = "siis_history.%s" % export_format
         else:
-            filename = "/tmp/siis_history_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+            filename = "siis_history_%s.%s" % (strategy_trader.instrument.symbol, export_format)
 
         try:
             with strategy_trader._mutex:
@@ -99,9 +99,9 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
     elif dataset == "active":
         if merged:
-            filename = "/tmp/siis_trades.%s" % export_format
+            filename = "siis_trades.%s" % export_format
         else:
-            filename = "/tmp/siis_trades_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+            filename = "siis_trades_%s.%s" % (strategy_trader.instrument.symbol, export_format)
 
         try:
             with strategy_trader._mutex:
@@ -124,9 +124,9 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
     elif dataset == "alert":
         if merged:
-            filename = "/tmp/siis_alerts.%s" % export_format
+            filename = "siis_alerts.%s" % export_format
         else:
-            filename = "/tmp/siis_alerts_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+            filename = "siis_alerts_%s.%s" % (strategy_trader.instrument.symbol, export_format)
 
         try:
             with strategy_trader._mutex:
@@ -142,9 +142,9 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
     elif dataset == "region":
         if merged:
-            filename = "/tmp/siis_regions.%s" % export_format
+            filename = "siis_regions.%s" % export_format
         else:
-            filename = "/tmp/siis_regions_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+            filename = "siis_regions_%s.%s" % (strategy_trader.instrument.symbol, export_format)
 
         try:
             with strategy_trader._mutex:
@@ -225,13 +225,13 @@ def cmd_strategy_trader_export_all(strategy, data):
 
     if not filename:
         if dataset == "history":
-            filename = "/tmp/siis_history.%s" % export_format
+            filename = "siis_history.%s" % export_format
         elif dataset == "active":
-            filename = "/tmp/siis_trades.%s" % export_format
+            filename = "siis_trades.%s" % export_format
         elif dataset == "alert":
-            filename = "/tmp/siis_alerts.%s" % export_format
+            filename = "siis_alerts.%s" % export_format
         elif dataset == "region":
-            filename = "/tmp/siis_regions.%s" % export_format
+            filename = "siis_regions.%s" % export_format
 
     with open(filename, "w") as f:
         if export_format == "json":

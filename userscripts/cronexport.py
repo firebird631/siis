@@ -26,6 +26,8 @@ class CronExportScript(threading.Thread):
         self._process = True
         self._unmanaged = unmanaged
 
+        self._report_path = strategy_service.report_path
+
     def run(self):
         while self._process:
             now = time.time()
@@ -38,7 +40,7 @@ class CronExportScript(threading.Thread):
                         'dataset': "active",
                         'pending': True,
                         'export-format': "json",
-                        'filename': "/tmp/siis_trades.json",
+                        'filename': self._report_path + "/siis_trades.json",
                     })
 
             if now - self._balances_last_time >= CronExportScript.BALANCE_DELAY:
@@ -55,14 +57,14 @@ class CronExportScript(threading.Thread):
                         }
 
                         try:
-                            with open("/tmp/siis_balances.json", "rb") as f:
+                            with open(self._report_path + "/siis_balances.json", "rb") as f:
                                 dataset = json.loads(f.read())
                         except FileNotFoundError:
                             dataset = []
 
                         dataset.append(balances)
 
-                        with open("/tmp/siis_balances.json", "w") as f:
+                        with open(self._report_path + "/siis_balances.json", "w") as f:
                             f.write(json.dumps(dataset))
 
             if now - self._alerts_last_time >= CronExportScript.ALERT_DELAY:
@@ -73,7 +75,7 @@ class CronExportScript(threading.Thread):
                     results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT_ALL, {
                         'dataset': "alert",
                         'export-format': "json",
-                        'filename': "/tmp/siis_alerts.json",
+                        'filename': self._report_path + "/siis_alerts.json",
                     })
 
             if now - self._regions_last_time >= CronExportScript.REGION_DELAY:
@@ -84,7 +86,7 @@ class CronExportScript(threading.Thread):
                     results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT_ALL, {
                         'dataset': "region",
                         'export-format': "json",
-                        'filename': "/tmp/siis_regions.json",
+                        'filename': self._report_path + "/siis_regions.json",
                     })
 
             if self._unmanaged and self._strategy_service.strategy() is None:
