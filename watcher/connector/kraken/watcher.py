@@ -74,7 +74,6 @@ class KrakenWatcher(Watcher):
     def __reset_ws_state(self, ws):
         """Reset the states of a WS connection watcher."""
         ws['status'] = "offline"
-        ws['channel-id'] = 0
         ws['version'] = "0"
         ws['timestamp'] = 0.0
         ws['subscribed'] = False
@@ -822,26 +821,31 @@ class KrakenWatcher(Watcher):
                     self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)           
 
         elif isinstance(data, dict):
-            if not data.get('event'):
+            event = data.get('event')
+            if not event:
                 return
 
-            if data['event'] == 'heartbeat':
+            if event == 'heartbeat':
                 self._ws_ticker_data['timestamp'] = time.time()
 
-            elif data['event'] == 'systemStatus':
+            elif event == 'systemStatus':
                 # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
                 self._ws_ticker_data['timestamp'] = time.time()
                 self._ws_ticker_data['status'] = data['status']
                 self._ws_ticker_data['version'] = data['version']
 
-                logger.debug("%s connected to tickers data stream" % self.name)
+                logger.debug("%s connection status to tickers data stream : %s" % (self.name, data['status']))
 
-            elif data['event'] == "subscriptionStatus" and data['channelName'] == "ticker":
+            elif event == "subscriptionStatus":
                 self._ws_ticker_data['timestamp'] = time.time()
 
-                if data['status'] == "subscribed":
+                if data['status'] == "subscribed" and data['channelName'] == "ticker":
                     self._ws_ticker_data['subscribed'] = True
-                    self._ws_ticker_data['channel-id'] = data['channelID']
+                    logger.debug("tickers data subscriptionStatus : subscribed")
+
+                elif data['status'] == "unsubscribed" and data['channelName'] == "ticker":
+                    self._ws_ticker_data['subscribed'] = False
+                    logger.debug("tickers data subscriptionStatus : unsubscribed")
 
                 elif data['status'] == "error":
                     self._ws_ticker_data['status'] = "offline"
@@ -877,26 +881,31 @@ class KrakenWatcher(Watcher):
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
         elif isinstance(data, dict):
-            if not data.get('event'):
+            event = data.get('event')
+            if not event:
                 return
 
-            if data['event'] == 'heartbeat':
+            if event == 'heartbeat':
                 self._ws_spread_data['timestamp'] = time.time()
 
-            elif data['event'] == 'systemStatus':
+            elif event == 'systemStatus':
                 # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
                 self._ws_spread_data['timestamp'] = time.time()
                 self._ws_spread_data['status'] = data['status']
                 self._ws_spread_data['version'] = data['version']
 
-                logger.debug("%s connected to spreads data stream" % self.name)
+                logger.debug("%s connection status to spreads data stream : %s" % (self.name, data['status']))
 
-            elif data['event'] == "subscriptionStatus" and data['channelName'] == "spread":
+            elif event == "subscriptionStatus":
                 self._ws_spread_data['timestamp'] = time.time()
 
-                if data['status'] == "subscribed":
+                if data['status'] == "subscribed" and data['channelName'] == "spread":
                     self._ws_spread_data['subscribed'] = True
-                    self._ws_spread_data['channel-id'] = data['channelID']
+                    logger.debug("spreads data subscriptionStatus : subscribed")
+
+                elif data['status'] == "unsubscribed" and data['channelName'] == "spread":
+                    self._ws_spread_data['subscribed'] = False
+                    logger.debug("spreads data subscriptionStatus : unsubscribed")
 
                 elif data['status'] == "error":
                     self._ws_spread_data['status'] = "offline"
@@ -950,26 +959,31 @@ class KrakenWatcher(Watcher):
                         self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
         elif isinstance(data, dict):
-            if not data.get('event'):
+            event = data.get('event')
+            if not event:
                 return
 
-            if data['event'] == 'heartbeat':
+            if event == 'heartbeat':
                 self._ws_trade_data['timestamp'] = time.time()
 
-            elif data['event'] == 'systemStatus':
+            elif event == 'systemStatus':
                 # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
                 self._ws_trade_data['timestamp'] = time.time()
                 self._ws_trade_data['status'] = data['status']
                 self._ws_trade_data['version'] = data['version']
 
-                logger.debug("%s connected to trades data stream" % self.name)
+                logger.debug("%s connection status to trades data stream : %s" % (self.name, data['status']))
 
-            elif data['event'] == "subscriptionStatus" and data['channelName'] == "trade":
+            elif event == "subscriptionStatus":
                 self._ws_trade_data['timestamp'] = time.time()
 
-                if data['status'] == "subscribed":
+                if data['status'] == "subscribed" and data['channelName'] == "trade":
                     self._ws_trade_data['subscribed'] = True
-                    self._ws_trade_data['channel-id'] = data['channelID']
+                    logger.debug("trades data subscriptionStatus : subscribed")
+
+                elif data['status'] == "unsubscribed" and data['channelName'] == "trade":
+                    self._ws_trade_data['subscribed'] = False
+                    logger.debug("trades data subscriptionStatus : unsubscribed")
 
                 elif data['status'] == "error":
                     self._ws_trade_data['status'] = "offline"
@@ -1174,25 +1188,31 @@ class KrakenWatcher(Watcher):
                     # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
 
         elif isinstance(data, dict):
-            if not data.get('event'):
+            event = data.get('event')
+            if not event:
                 return
 
-            if data['event'] == 'heartbeat':
+            if event == 'heartbeat':
                 self._ws_own_trades['timestamp'] = time.time()
 
-            elif data['event'] == 'systemStatus':
+            elif event == 'systemStatus':
                 # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
                 self._ws_own_trades['timestamp'] = time.time()
                 self._ws_own_trades['status'] = data['status']
                 self._ws_own_trades['version'] = data['version']
 
-                logger.debug("%s connected to user trades stream" % self.name)
+                logger.debug("%s connection status to user trades stream : %s" % (self.name, data['status']))
 
-            elif data['event'] == "subscriptionStatus" and data['channelName'] == "ownTrades":
+            elif event == "subscriptionStatus":
                 self._ws_own_trades['timestamp'] = time.time()
 
-                if data['status'] == "subscribed":
+                if data['status'] == "subscribed" and data['channelName'] == "ownTrades":
                     self._ws_own_trades['subscribed'] = True
+                    logger.debug("user trades data subscriptionStatus : subscribed")
+
+                elif data['status'] == "unsubscribed" and data['channelName'] == "ownTrades":
+                    self._ws_own_trades['subscribed'] = False
+                    logger.debug("user trades data subscriptionStatus : unsubscribed")
 
                 elif data['status'] == "error":
                     self._ws_own_trades['status'] = "offline"
@@ -1478,25 +1498,31 @@ class KrakenWatcher(Watcher):
                     self.service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (symbol, order_id, client_order_id))
 
         elif isinstance(data, dict):
-            if not data.get('event'):
+            event = data.get('event')
+            if not event:
                 return
 
-            if data['event'] == 'heartbeat':
+            if event == 'heartbeat':
                 self._ws_open_orders['timestamp'] = time.time()
 
-            elif data['event'] == 'systemStatus':
+            elif event == 'systemStatus':
                 # {'connectionID': 000, 'event': 'systemStatus', 'status': 'online', 'version': '0.2.0'}
                 self._ws_open_orders['timestamp'] = time.time()
                 self._ws_open_orders['status'] = data['status']
                 self._ws_open_orders['version'] = data['version']
 
-                logger.debug("%s connected to user orders stream" % self.name)
+                logger.debug("%s connection status to user orders stream : %s" % (self.name, data['status']))
 
-            elif data['event'] == "subscriptionStatus" and data['channelName'] == "openOrders":
+            elif event == "subscriptionStatus":
                 self._ws_open_orders['timestamp'] = time.time()
 
-                if data['status'] == "subscribed":
+                if data['status'] == "subscribed" and data['channelName'] == "openOrders":
                     self._ws_open_orders['subscribed'] = True
+                    logger.debug("user orders data subscriptionStatus : subscribed")
+
+                elif data['status'] == "unsubscribed" and data['channelName'] == "openOrders":
+                    self._ws_open_orders['subscribed'] = False
+                    logger.debug("user orders data subscriptionStatus : unsubscribed")
 
                 elif data['status'] == "error":
                     self._ws_open_orders['status'] = "offline"
@@ -1505,7 +1531,7 @@ class KrakenWatcher(Watcher):
                     error_logger.error("kraken.com openOrders:openOrders subscriptionStatus : %s - %s" % (
                         data.get('errorMessage'), data.get('name')))
 
-            elif data['event'] == "addOrderStatus":
+            elif event == "addOrderStatus":
                 self._ws_open_orders['timestamp'] = time.time()
 
                 if data['status'] == "error":
@@ -1520,7 +1546,7 @@ class KrakenWatcher(Watcher):
 
                     exec_logger.info("kraken.com openOrders:addOrderStatus : %s" % (trade_id,))
 
-            elif data['event'] == "cancelOrderStatus":
+            elif event == "cancelOrderStatus":
                 self._ws_open_orders['timestamp'] = time.time()
 
                 if data['status'] == "error":
@@ -1532,7 +1558,7 @@ class KrakenWatcher(Watcher):
 
                     exec_logger.info("kraken.com openOrders:cancelOrderStatus ids : %s" % (repr(order_ids),))
 
-            elif data['event'] == "cancelAllStatus":
+            elif event == "cancelAllStatus":
                 self._ws_open_orders['timestamp'] = time.time()
 
                 if data['status'] == "error":

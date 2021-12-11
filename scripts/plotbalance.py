@@ -24,7 +24,7 @@ period = 20
 fname = "balance.json"
 
 if len(sys.argv) > 2:
-    fname = sys.argv[2]
+    fname = sys.argv[1]
 
 if len(sys.argv) > 1:   
     for argv in sys.argv:
@@ -129,10 +129,26 @@ if len(title) > 1:
 
 plt.title(title)
 plt.legend()
-plt.subplots_adjust(bottom=0.17, left=0.17)
+plt.subplots_adjust(
+    top=0.936,
+    bottom=0.143,
+    left=0.10,
+    right=0.95,
+    hspace=0.2,
+    wspace=0.2
+)
 
 if dopng:
-    plt.savefig(fname.replace(".json", ".png"), transparent=True)
+    if doy1 and doy2:
+        output = fname.replace(".json", "_both.png")
+    elif doy1:
+        output = fname.replace(".json", "_total.png")
+    elif doy2:
+        output = fname.replace(".json", "_asset.png")
+    else:
+        output = fname.replace(".json", ".png")
+        
+    plt.savefig(output, transparent=True, bbox_inches='tight')
     
 if doshow:
     plt.show()
