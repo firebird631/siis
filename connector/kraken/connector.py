@@ -262,6 +262,10 @@ class Connector(object):
     def get_ws_token(self):
         data = self.query_private('GetWebSocketsToken')
 
+        if not data:
+            logger.error("ws token no result")
+            return {}
+
         if data.get('error'):
             logger.error("ws token: %s" % ', '.join(data['error']))
             return ""
@@ -455,6 +459,10 @@ class Connector(object):
         # data = self.query_private('TradeBalance', params)
         data = self.retry_query_private('TradeBalance', params)
 
+        if not data:
+            logger.error("query trade balance no result")
+            return {}
+
         if data.get('error'):
             logger.error("query trade balance: %s" % ', '.join(data['error']))
             return {}
@@ -467,6 +475,10 @@ class Connector(object):
     def get_balances(self):
         # data = self.query_private('Balance')
         data = self.retry_query_private('Balance')
+
+        if not data:
+            logger.error("query balance no result")
+            return {}
 
         if data.get('error'):
             logger.error("query balance: %s" % ', '.join(data['error']))
@@ -499,6 +511,10 @@ class Connector(object):
         #     nextfee = next tier's fee for pair (if not fixed fee.  nil if at lowest fee tier)
         #     nextvolume = volume level of next tier (if not fixed fee.  nil if at lowest fee tier)
         #     tiervolume = volume level of current tier (if not fixed fee.  nil if at lowest fee tier)
+
+        if not data:
+            logger.error("query trade volume no result")
+            return {}
 
         if data.get('error'):
             logger.error("query trade volume: %s" % ', '.join(data['error']))
@@ -561,6 +577,10 @@ class Connector(object):
         #     fciq = préférer frais dans la devise de cotation (par défaut si achat)
         #     nompp = pas de protection des prix du marché
         # trades = tableau d'identifiants de transaction liés à l'ordre (si des informations sur les transactions sont demandées et les données disponibles)
+
+        if not data:
+            logger.error("query open orders no result")
+            return {}
 
         if data.get('error'):
             logger.error("query open orders: %s" % ', '.join(data['error']))
@@ -696,6 +716,10 @@ class Connector(object):
         #     net = net profit/loss of closed portion of position (quote currency, quote currency scale)
         #     trades = list of closing trades for position (if available)
 
+        if not result:
+            logger.error("query trade history no result")
+            return {}
+
         if result.get('error'):
             logger.error("query trades history: %s" % ', '.join(result['error']))
             return {}
@@ -803,6 +827,10 @@ class Connector(object):
         #     oflags = comma delimited list of order flags
         #         viqc = volume in quote currency
 
+        if not data:
+            logger.error("query open positions no result")
+            return {}
+
         if data.get('error'):
             logger.error("query open positions: %s" % ', '.join(data['error']))
             return {}
@@ -832,6 +860,10 @@ class Connector(object):
 
         # data = self.query_private('QueryOrders', params)
         data = self.retry_query_private('QueryOrders', params)
+
+        if not data:
+            logger.error("query orders info no result")
+            return {}
 
         if data.get('error'):
             logger.error("query orders info: %s" % ', '.join(data['error']))
