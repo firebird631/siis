@@ -292,6 +292,10 @@ class KrakenWatcher(Watcher):
                                     subscription='openOrders',
                                     callback=self.__on_open_orders
                                 )
+                        else:
+                            # error retrieving the token, retry
+                            self._ws_own_trades['timestamp'] = time.time()
+                            self._ws_open_orders['timestamp'] = time.time()
 
                         # retry the previous subscriptions
                         if self._watched_instruments:

@@ -53,13 +53,14 @@ class KrakenAccount(Account):
             data = connector.get_account(self._currency)
             alt_data = connector.get_account(self._alt_currency)
 
-            self._asset_balance = float(data.get('eb', '0.0'))
-            self._balance = float(data.get('e', '0.0'))
-            self._net_worth = float(data.get('e', '0.0'))
-            self._margin_balance = float(data.get('mf', '0.0'))
-            self._profit_loss = float(data.get('n', '0.0'))
-            self._risk_limit = float(data.get('mf', '0.0'))
-            self._margin_level = float(data.get('ml', '0.0')) * 0.01
+            if data:
+                self._asset_balance = float(data.get('eb', '0.0'))
+                self._balance = float(data.get('e', '0.0'))
+                self._net_worth = float(data.get('e', '0.0'))
+                self._margin_balance = float(data.get('mf', '0.0'))
+                self._profit_loss = float(data.get('n', '0.0'))
+                self._risk_limit = float(data.get('mf', '0.0'))
+                self._margin_level = float(data.get('ml', '0.0')) * 0.01
 
             # eb = solde équivalent (solde combiné de toutes les devises) 
             # tb = balance de trade (balance combinée de toutes les devises capital) 
@@ -79,9 +80,9 @@ class KrakenAccount(Account):
             # self._asset_balance = 0.0
             # self._free_asset_balance = 0.0
 
-            if self._asset_balance:
+            if alt_data:
                 alt_balance = float(alt_data.get('eb', '0.0'))
-                if alt_balance:
+                if alt_balance and self._asset_balance:
                     self._currency_ratio = alt_balance / self._asset_balance
 
             self._last_update = time.time()

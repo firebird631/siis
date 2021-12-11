@@ -235,11 +235,11 @@ class Connector(object):
         if not data:
             return {}
         
-        if data['error']:
+        if data.get('error'):
             logger.error("query markets: %s" % ', '.join(data['error']))
             return {}
 
-        if data['result']:
+        if data.get('result'):
             return data['result']
 
         return {}
@@ -250,11 +250,11 @@ class Connector(object):
         if not data:
             return {}
         
-        if data['error']:
+        if data.get('error'):
             logger.error("query assets: %s" % ', '.join(data['error']))
             return {}
 
-        if data['result']:
+        if data.get('result'):
             return data['result']
 
         return {}
@@ -262,11 +262,11 @@ class Connector(object):
     def get_ws_token(self):
         data = self.query_private('GetWebSocketsToken')
 
-        if data['error']:
+        if data.get('error'):
             logger.error("ws token: %s" % ', '.join(data['error']))
             return ""
 
-        if data['result']:
+        if data.get('result'):
             return data['result']
 
         return ""
@@ -455,11 +455,11 @@ class Connector(object):
         # data = self.query_private('TradeBalance', params)
         data = self.retry_query_private('TradeBalance', params)
 
-        if data['error']:
+        if data.get('error'):
             logger.error("query trade balance: %s" % ', '.join(data['error']))
             return {}
 
-        if data['result']:
+        if data.get('result'):
             return data['result']
 
         return {}
@@ -468,11 +468,11 @@ class Connector(object):
         # data = self.query_private('Balance')
         data = self.retry_query_private('Balance')
 
-        if data['error']:
+        if data.get('error'):
             logger.error("query balance: %s" % ', '.join(data['error']))
             return {}
 
-        if data['result']:
+        if data.get('result'):
             return data['result']
 
         return {}
@@ -500,11 +500,11 @@ class Connector(object):
         #     nextvolume = volume level of next tier (if not fixed fee.  nil if at lowest fee tier)
         #     tiervolume = volume level of current tier (if not fixed fee.  nil if at lowest fee tier)
 
-        if data['error']:
+        if data.get('error'):
             logger.error("query trade volume: %s" % ', '.join(data['error']))
             return {}
 
-        if data['result']:
+        if data.get('result'):
             return data['result']
 
         return {}
@@ -562,11 +562,11 @@ class Connector(object):
         #     nompp = pas de protection des prix du marché
         # trades = tableau d'identifiants de transaction liés à l'ordre (si des informations sur les transactions sont demandées et les données disponibles)
 
-        if data['error']:
+        if data.get('error'):
             logger.error("query open orders: %s" % ', '.join(data['error']))
             return {}
 
-        if data['result']:
+        if data.get('result'):
             return data['result'].get('open', {})
 
         return {}
@@ -696,11 +696,11 @@ class Connector(object):
         #     net = net profit/loss of closed portion of position (quote currency, quote currency scale)
         #     trades = list of closing trades for position (if available)
 
-        if result['error']:
+        if result.get('error'):
             logger.error("query trades history: %s" % ', '.join(result['error']))
             return {}
 
-        if result['result']:
+        if result.get('result'):
             return result['result'].get('trades', {})
 
         return {}
@@ -803,11 +803,11 @@ class Connector(object):
         #     oflags = comma delimited list of order flags
         #         viqc = volume in quote currency
 
-        if data['error']:
+        if data.get('error'):
             logger.error("query open positions: %s" % ', '.join(data['error']))
             return {}
 
-        if data['result']:
+        if data.get('result'):
             # logger.info(data['result'])
             return data['result'].get('open', {})
 
@@ -833,11 +833,11 @@ class Connector(object):
         # data = self.query_private('QueryOrders', params)
         data = self.retry_query_private('QueryOrders', params)
 
-        if data['error']:
+        if data.get('error'):
             logger.error("query orders info: %s" % ', '.join(data['error']))
             return {}
 
-        if data['result']:
+        if data.get('result'):
             return data['result']
 
         return {}
