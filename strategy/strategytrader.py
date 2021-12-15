@@ -771,7 +771,7 @@ class StrategyTrader(object):
 
         if check:
             # check the trade before to add it to prevent sides effects cause by the strategy behavior
-            trade.check(self, self.instrument)
+            trade.check(self.strategy.trader(), self.instrument)
 
         # and finally add the trade
         self.add_trade(trade)
