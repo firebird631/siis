@@ -4,6 +4,7 @@
 # Strategy command import active trades
 
 import json
+import time
 
 from common.utils import timeframe_from_str, direction_from_str
 from strategy.strategytrade import StrategyTrade
@@ -81,7 +82,9 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
                 trade_type = trade_dump['trade']
                 operations = trade_dump.get('operations', [])
 
-                strategy_trader.loads_trade(trade_id, trade_type, trade_dump, operations)
+                strategy_trader.loads_trade(trade_id, trade_type, trade_dump, operations, check=True)
+                time.sleep(2)
+
             except Exception as e:
                 results['messages'].append("Error during import of trade %s for %s" % (
                     trade_dump.get('id'), trade_dump.get('symbol')))

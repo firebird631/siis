@@ -20,6 +20,23 @@ class StrategyAssetTrade(StrategyTrade):
 
     @todo fill the exit_trades list and update the x and axp each time
     @todo support of OCO order (modify_sl/tp) if available from market or a specialized model
+
+    @todo on cancel_open a rare case is not matched :
+        - if the signal is lost, or after a restart and loading trades, maybe the order was partially completed,
+        but the entry quantity is still 0 or partial, but the strategy when to cancel the order because of
+        a timeout or another logic, then it is necessary to check the state of the current order before cancel it,
+        and to fix the quantity.
+        - before canceling (and possibly after fixing from previous case) it is necessary to compute the notional
+        size and to compare with the min-notional size, because else it will be impossible to create a sell order
+        with the realized entry quantity.
+
+    @todo on modify_stop_loss or modify_take_profit some rare case are not matched :
+        - if the signal is lost, and a stop or limit quantity has been realized during this time, so the order
+        is partially completed, and the exit quantity is still 0 or partial, but the strategy want to modify
+        the order because of its logic, then it is necessary to check the state of the current order before cancel it,
+        and to fix the quantity.
+        - before modifying or canceling, it is necessary to compute the notional size and to compare with the
+        min-notional size, because else it will be impossible to recreate a sell order with the remaining quantity.
     """
 
     __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', 'entry_oid', 'stop_oid', \
@@ -246,6 +263,10 @@ class StrategyAssetTrade(StrategyTrade):
         return not error
 
     def cancel_open(self, trader, instrument):
+        """
+        @todo Before cancel, if the realized quantity is lesser than the min-notional it
+        will be impossible to create an exit order.
+        """
         if self.entry_oid:
             # cancel the buy order
             if trader.cancel_order(self.entry_oid, instrument) > 0:
@@ -281,6 +302,10 @@ class StrategyAssetTrade(StrategyTrade):
         return self.NOTHING_TO_DO
 
     def modify_take_profit(self, trader, instrument, limit_price):
+        """
+        @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
+        to create a new order.
+        """
         if self._closing:
             # already closing order
             return self.NOTHING_TO_DO
@@ -388,6 +413,10 @@ class StrategyAssetTrade(StrategyTrade):
             return self.NOTHING_TO_DO
 
     def modify_stop_loss(self, trader, instrument, stop_price):
+        """
+        @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
+        to create a new order.
+        """
         if self._closing:
             # already closing order
             return self.NOTHING_TO_DO
@@ -501,6 +530,10 @@ class StrategyAssetTrade(StrategyTrade):
         return self.REJECTED
 
     def close(self, trader, instrument):
+        """
+        @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
+        to create a new order.
+        """
         if self._closing:
             # already closing order
             return self.NOTHING_TO_DO
@@ -992,14 +1025,7 @@ class StrategyAssetTrade(StrategyTrade):
                     self.entry_oid = None
                     self.entry_ref_oid = None
                 else:
-                    if data['cumulative-filled'] > self.e or data['fully-filled']:
-                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
-
-                    if data['status'] in ('closed', 'deleted'):
-                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
-
-                    elif data['status'] in ('expired', 'canceled'):
-                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+                    self.fix_by_order(data, instrument)
 
         #
         # exit
@@ -1021,14 +1047,7 @@ class StrategyAssetTrade(StrategyTrade):
                     self.oco_oid = None
                     self.oco_ref_oid = None
                 else:
-                    if data['cumulative-filled'] > self.x or data['fully-filled']:
-                        self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
-
-                    if data['status'] in ('closed', 'deleted'):
-                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
-
-                    elif data['status'] in ('expired', 'canceled'):
-                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+                    self.fix_by_order(data, instrument)
         else:
             if self.stop_oid:
                 data = trader.order_info(self.stop_oid, instrument)
@@ -1045,14 +1064,7 @@ class StrategyAssetTrade(StrategyTrade):
                         self.stop_oid = None
                         self.stop_ref_oid = None
                     else:
-                        if data['cumulative-filled'] > self.x or data['fully-filled']:
-                            self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
-
-                        if data['status'] in ('closed', 'deleted'):
-                            self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
-
-                        elif data['status'] in ('expired', 'canceled'):
-                            self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+                        self.fix_by_order(data, instrument)
 
             if self.limit_oid:
                 data = trader.order_info(self.limit_oid, instrument)
@@ -1069,16 +1081,37 @@ class StrategyAssetTrade(StrategyTrade):
                         self.limit_oid = None
                         self.limit_ref_oid = None
                     else:
-                        if data['cumulative-filled'] > self.x or data['fully-filled']:
-                            self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
-
-                        if data['status'] in ('closed', 'deleted'):
-                            self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
-
-                        elif data['status'] in ('expired', 'canceled'):
-                            self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+                        self.fix_by_order(data, instrument)
 
         return result
+
+    def fix_by_order(self, order_data, instrument):
+        """
+        Mostly an internal method used to fix a missed and closed order, fixing the realized quantity.
+
+        @param order_data:
+        @param instrument:
+        @return:
+        """
+        if not order_data or not instrument:
+            return False
+
+        if 'cumulative-filled' not in order_data or 'fully-filled' not in order_data:
+            return False
+
+        if order_data['cumulative-filled'] > self.x or order_data['fully-filled']:
+            self.order_signal(Signal.SIGNAL_ORDER_TRADED, order_data, order_data['ref-id'], instrument)
+
+        if 'ref-id' not in order_data or 'status' not in order_data:
+            return False
+
+        if order_data['status'] in ('closed', 'deleted'):
+            self.order_signal(Signal.SIGNAL_ORDER_DELETED, order_data, order_data['ref-id'], instrument)
+
+        elif order_data['status'] in ('expired', 'canceled'):
+            self.order_signal(Signal.SIGNAL_ORDER_CANCELED, order_data, order_data['ref-id'], instrument)
+
+        return True
 
     def repair(self, trader, instrument):
         # @todo fix the trade

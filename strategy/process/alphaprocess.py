@@ -48,10 +48,10 @@ def alpha_bootstrap(strategy, strategy_trader):
     """
     with strategy_trader._mutex:
         if strategy_trader._bootstraping != 1:
-            # only if waiting for bootstraping
+            # only if waiting for bootstrapping
             return
 
-        # bootstraping in progress, suspend live until complete
+        # bootstrapping in progress, suspend live until complete
         strategy_trader._bootstraping = 2
 
     try:
@@ -64,7 +64,7 @@ def alpha_bootstrap(strategy, strategy_trader):
         traceback_logger.error(traceback.format_exc())
 
     with strategy_trader._mutex:
-        # bootstraping done, can now branch to live
+        # bootstrapping done, can now branch to live
         strategy_trader._bootstraping = 0
 
 
@@ -72,7 +72,7 @@ def timeframe_based_bootstrap(strategy, strategy_trader):
     # captures all initials candles
     initial_candles = {}
 
-    # compute the begining timestamp
+    # compute the beginning timestamp
     timestamp = strategy.timestamp
 
     instrument = strategy_trader.instrument
@@ -165,7 +165,7 @@ def timeframe_based_bootstrap(strategy, strategy_trader):
             # no more candles to process
             break
 
-    logger.debug("%s timeframes bootstraping done" % instrument.market_id)
+    logger.debug("%s timeframes bootstrapping done" % instrument.market_id)
 
 
 def tickbar_based_bootstrap(strategy, strategy_trader):
@@ -181,7 +181,7 @@ def tickbar_based_bootstrap(strategy, strategy_trader):
 
     # @todo need tickstreamer, and call strategy_trader.bootstrap(timestamp) at per bulk of ticks (temporal size defined)
 
-    logger.debug("%s tickbars bootstraping done" % instrument.market_id)
+    logger.debug("%s tickbars bootstrapping done" % instrument.market_id)
 
 
 def alpha_update_strategy(strategy, strategy_trader):
@@ -371,10 +371,10 @@ def alpha_setup_live(strategy):
     trader = strategy.trader()
 
     Database.inst().load_user_trades(strategy.service, strategy, trader.name,
-            trader.account.name, strategy.identifier)
+                                     trader.account.name, strategy.identifier)
 
     Database.inst().load_user_traders(strategy.service, strategy, trader.name,
-            trader.account.name, strategy.identifier)
+                                      trader.account.name, strategy.identifier)
 
     for market_id, instrument in strategy._instruments.items():
         # wake-up all for initialization

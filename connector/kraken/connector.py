@@ -91,9 +91,12 @@ class Connector(object):
     @ref https://support.kraken.com/hc/en-us/articles/360045239571
 
     @todo Private rate limit by call cost but need a global lock for multiple call
-    With max at 15 or 20 initial, decrease by 1 every 3 or 2 seconds.
-    Order/cancel does not affect this counter.
-    Trade history increase by 2, other by 2
+
+    The private rate limit counter increase by call cost 1 per call (or 2 for history call),
+    with max at 15(starter) or 20(intermediate and pro) initial. It decrease by 1 every 3(starter) or 2(intermediate)
+    or 1(pro) seconds. This counter is per API key.
+
+    Order/cancel does not affect the same counter, they are per market and for any API keys.
 
     # https://api.kraken.com/0/private/QueryTrades
     # https://api.kraken.com/0/private/TradeVolume
@@ -155,6 +158,14 @@ class Connector(object):
     PUBLIC_QUERY_DELAY = 1.5
     MAX_PUBLIC_CONNS = 5
 
+    STARTER_PRIVATE_QUERY_DELAY = 3
+    INTERMEDIATE_PRIVATE_QUERY_DELAY = 2
+    PRO_PRIVATE_QUERY_DELAY = 1
+
+    STARTER_PRIVATE_MAX_COUNTER = 15
+    INTERMEDIATE_PRIVATE_MAX_COUNTER = 20
+    PRO_PRIVATE_MAX_COUNTER = 20
+
     INTERVALS = {
         1: 60.0,        # 1m
         5: 300.0,
@@ -182,7 +193,10 @@ class Connector(object):
         self._public_pairs_conn_conds = {}
         self._public_conn_cond = MaxConns(Connector.MAX_PUBLIC_CONNS)
 
-        self._last_private_query_ts = 0
+        self._private_call_counter = 0
+        self._private_call_max_counter = Connector.INTERMEDIATE_PRIVATE_MAX_COUNTER
+        self._private_call_delay = Connector.INTERMEDIATE_PRIVATE_QUERY_DELAY
+        self._private_call_last_ts = 0
 
         self.__api_key = api_key
         self.__api_secret = api_secret
@@ -616,7 +630,7 @@ class Connector(object):
 
         while 1:
             try:
-                results = self.query_private('ClosedOrders', params)
+                results = self.query_private('ClosedOrders', params, cost=2)
             except requests.exceptions.HTTPError as e:
                 if 500 <= e.response.status_code <= 599 or 1000 <= e.response.status_code <= 1100:
                     # bad gateway service, retry for 3 times delayed by 5 seconds
@@ -689,8 +703,8 @@ class Connector(object):
 
         # @todo start_date, and end_date
 
-        # result = self.query_private('TradesHistory', params)
-        result = self.retry_query_private('TradesHistory', params)
+        # result = self.query_private('TradesHistory', params, cost=2)
+        result = self.retry_query_private('TradesHistory', params, cost=2)
 
         # trades = array of trade info with txid as the key
         #     ordertxid = order responsible for execution of trade
@@ -772,8 +786,8 @@ class Connector(object):
         #     close[price2] = secondary price
         params = data
 
-        # result = self.query_private('AddOrder', params)
-        result = self.retry_order_query_private('AddOrder', params)
+        # result = self.query_private_order('AddOrder', params)
+        result = self.retry_query_private_order('AddOrder', params)
         # descr = order description info
         #     order = order description
         #     close = conditional close order description (if conditional close set)
@@ -787,8 +801,8 @@ class Connector(object):
         """
         params = {'txid': txid}
 
-        # result = self.query_private('CancelOrder', params)
-        result = self.retry_order_query_private('CancelOrder', params)
+        # result = self.query_private_order('CancelOrder', params)
+        result = self.retry_query_private_order('CancelOrder', params)
         # count = number of orders canceled
         # pending = if set, order(s) is/are pending cancellation
 
@@ -952,7 +966,7 @@ class Connector(object):
 
         return results
 
-    def query_private(self, method, data=None, timeout=None):
+    def query_private(self, method, data=None, timeout=None, cost=1):
         """
         Performs an API query that requires a valid key/secret pair.
 
@@ -981,9 +995,28 @@ class Connector(object):
             'API-Sign': self._sign(data, urlpath)
         }
 
+        # now = time.time()
+        #
+        # times = now - self._private_call_last_ts
+        # if times > self._private_call_delay:
+        #     n = times / self._private_call_delay
+        #     self._private_call_counter -= n
+        #
+        #     if self._private_call_counter < 0:
+        #         self._private_call_counter = 0
+        #
+        # # check the private call counter, if reached compute the best time to wait before doing the call
+        # if self._private_call_counter + cost > self._private_call_max_counter:
+        #     # need to wait before
+        #     count = self._private_call_counter + cost - self._private_call_max_counter
+        #     # self._private_call_delay = Connector.INTERMEDIATE_PRIVATE_QUERY_DELAY
+        #
+        # self._private_call_counter += cost
+        # self._private_call_last_ts = now
+
         return self._query(urlpath, data, headers, timeout=timeout)
 
-    def retry_query_private(self, method, data=None, timeout=None):
+    def retry_query_private(self, method, data=None, timeout=None, cost=1):
         """
         Retry query private for common operation excepted add and cancel order.
         """
@@ -991,7 +1024,7 @@ class Connector(object):
 
         while 1:
             try:
-                results = self.query_private(method, data, timeout)
+                results = self.query_private(method, data, timeout, cost)
             except requests.exceptions.HTTPError as e:
                 if 500 <= e.response.status_code <= 599 or 1000 <= e.response.status_code <= 1100:
                     # bad gateway service, retry for 3 times delayed by 5 seconds
@@ -1034,7 +1067,41 @@ class Connector(object):
 
             return results
 
-    def retry_order_query_private(self, method, data=None, timeout=None):
+    def query_private_order(self, method, data=None, timeout=None):
+        """
+        Performs an API query that requires a valid key/secret pair.
+
+        :param method: API method name
+        :type method: str
+        :param data: (optional) API request parameters
+        :type data: dict
+        :param timeout: (optional) if not ``None``, a :py:exc:`requests.HTTPError`
+                        will be thrown after ``timeout`` seconds if a response
+                        has not been received
+        :type timeout: int or float
+        :returns: :py:meth:`requests.Response.json`-deserialised Python object
+        """
+        if data is None:
+            data = {}
+
+        if not self.__api_key or not self.__api_secret:
+            raise Exception("kraken.com Either key or secret is not set!.")
+
+        data['nonce'] = self._nonce()
+
+        urlpath = '/' + self._apiversion + '/private/' + method
+
+        headers = {
+            'API-Key': self.__api_key,
+            'API-Sign': self._sign(data, urlpath)
+        }
+
+        # @todo check the private call counter per market, if reached compute the best time to wait before
+        # doing the call, but it is for all the API key... then there is some unknowns
+
+        return self._query(urlpath, data, headers, timeout=timeout)
+
+    def retry_query_private_order(self, method, data=None, timeout=None):
         """
         Retry query private for add and cancel order only.
         """
@@ -1042,7 +1109,7 @@ class Connector(object):
 
         while 1:
             try:
-                results = self.query_private(method, data, timeout)
+                results = self.query_private_order(method, data, timeout)
             except requests.exceptions.HTTPError as e:
                 if 500 <= e.response.status_code <= 599 or 1000 <= e.response.status_code <= 1100:
                     # bad gateway service, retry for 3 times delayed by 5 seconds

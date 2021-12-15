@@ -730,7 +730,7 @@ class StrategyTrader(object):
             else:
                 error_logger.error("During loads, unsupported alert %s" % a['name'])
 
-    def loads_trade(self, trade_id, trade_type, data, operations):
+    def loads_trade(self, trade_id, trade_type, data, operations, check=False):
         """
         Load a strategy trader trade and its operations.
         There is many scenarios where the trade state changed, trade executed, order modified or canceled...
@@ -769,7 +769,11 @@ class StrategyTrader(object):
             else:
                 error_logger.error("During loads, trade operation checking error %s" % op['name'])
 
-        # add the trade, will be check on a next process
+        if check:
+            # check the trade before to add it to prevent sides effects cause by the strategy behavior
+            trade.check(self, self.instrument)
+
+        # and finally add the trade
         self.add_trade(trade)
 
     def loads_alert(self, alert_id, alert_type, data):

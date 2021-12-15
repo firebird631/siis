@@ -52,7 +52,7 @@ from app.alertcommands import register_alert_commands
 
 def signal_handler(sig, frame):
     if Terminal.inst():
-        Terminal.inst().action('Tip command :q<ENTER> to exit !', view='status')
+        Terminal.inst().action('Type command :quit<ENTER> to exit !', view='status')
 
 
 def terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,

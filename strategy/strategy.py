@@ -878,7 +878,8 @@ class Strategy(Runnable):
                         # instantiate the trade and add it
                         if strategy_trader:
                             with strategy_trader._mutex:
-                                strategy_trader.loads_trade(data[1], data[2], data[3], data[4])
+                                strategy_trader.loads_trade(data[1], data[2], data[3], data[4], check=True)
+                                time.sleep(2)
 
                     # clear once done (@todo or by trade...)
                     trader = self.trader()
