@@ -88,6 +88,7 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
             except Exception as e:
                 results['messages'].append("Error during import of trade %s for %s" % (
                     trade_dump.get('id'), trade_dump.get('symbol')))
+                results['messages'].append(repr(e))
                 results['error'] = True
 
     elif dataset == 'history':
@@ -104,6 +105,7 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
             except Exception as e:
                 results['messages'].append("Error during import of trade history %s for %s" % (
                     trade_dump.get('id'), trade_dump.get('symbol')))
+                results['messages'].append(repr(e))
                 results['error'] = True
 
     elif dataset == 'alert':
@@ -117,6 +119,7 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
             except Exception as e:
                 results['messages'].append("Error during import of alert %s for %s" % (
                     alert_dump.get('id'), alert_dump.get('symbol')))
+                results['messages'].append(repr(e))
                 results['error'] = True
 
     elif dataset == 'region':
@@ -130,6 +133,7 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
             except Exception as e:
                 results['messages'].append("Error during import of region %s for %s" % (
                     region_dump.get('id'), region_dump.get('symbol')))
+                results['messages'].append(repr(e))
                 results['error'] = True
 
     return results
