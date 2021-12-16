@@ -88,7 +88,8 @@ def beta_preprocess(strategy, strategy_trader):
             logger.debug("%s preprocess begin, now is %s..." % (instrument.market_id, strategy.timestamp))
 
             try:
-                limits = Database.inst().get_cached_limits(strategy.trader_service.trader().name, instrument.market_id, strategy.identifier)
+                limits = Database.inst().get_cached_limits(strategy.trader_service.trader().name,
+                                                           instrument.market_id, strategy.identifier)
             except Exception as e:
                 error_logger.error(repr(e))
                 limits = None
@@ -103,13 +104,13 @@ def beta_preprocess(strategy, strategy_trader):
                 first_tick = Database.inst().get_first_tick(strategy.trader_service.trader().name, instrument.market_id)
                 from_date = datetime.fromtimestamp(first_tick[0], tz=UTC()) if first_tick else None
 
-                logger.debug("%s preprocess missing of trade data, abord %s..." % (instrument.market_id, strategy.timestamp))
+                logger.debug("%s preprocess missing of trade data, abort %s..." % (
+                    instrument.market_id, strategy.timestamp))
 
                 with strategy_trader._mutex:
                     strategy_trader._preprocessing = 0
 
                 return
-
                 strategy_trader._preprocess_streamer = get_tick_streamer(
                     strategy, strategy_trader, from_date=from_date)
             else:
@@ -197,7 +198,8 @@ def beta_preprocess(strategy, strategy_trader):
 
         if strategy_trader._preprocessing == 5:
             try:
-                Database.inst().store_cached_limits(strategy.trader_service.trader().name, instrument.market_id, strategy.identifier, limits)
+                Database.inst().store_cached_limits(strategy.trader_service.trader().name,
+                                                    instrument.market_id, strategy.identifier, limits)
                 strategy_trader.preprocess_store_cache(from_date, to_date)
 
             except Exception as e:
@@ -225,7 +227,7 @@ def beta_bootstrap(strategy, strategy_trader):
             # in progress
             return
 
-        # bootstraping in progress, avoid live until complete
+        # bootstrapping in progress, avoid live until complete
         strategy_trader._bootstraping = 2
 
     try:
@@ -238,7 +240,7 @@ def beta_bootstrap(strategy, strategy_trader):
         traceback_logger.error(traceback.format_exc())
 
     with strategy_trader._mutex:
-        # bootstraping done, can now branch to live
+        # bootstrapping done, can now branch to live
         strategy_trader._bootstraping = 0
 
 
@@ -246,7 +248,7 @@ def timeframe_based_bootstrap(strategy, strategy_trader):
     # captures all initials candles
     initial_candles = {}
 
-    # compute the begining timestamp
+    # compute the beginning timestamp
     timestamp = strategy.timestamp
 
     instrument = strategy_trader.instrument
@@ -262,7 +264,8 @@ def timeframe_based_bootstrap(strategy, strategy_trader):
             # get the nearest next candle
             timestamp = min(timestamp, candles[0].timestamp + sub.depth*sub.timeframe)
 
-    logger.debug("%s timeframes bootstrap begin at %s, now is %s" % (instrument.market_id, timestamp, strategy.timestamp))
+    logger.debug("%s timeframes bootstrap begin at %s, now is %s" % (
+        instrument.market_id, timestamp, strategy.timestamp))
 
     # initials candles
     lower_timeframe = 0
@@ -339,23 +342,24 @@ def timeframe_based_bootstrap(strategy, strategy_trader):
             # no more candles to process
             break
 
-    logger.debug("%s timeframes bootstraping done" % instrument.market_id)
+    logger.debug("%s timeframes bootstrapping done" % instrument.market_id)
 
 
 def tickbar_based_bootstrap(strategy, strategy_trader):
     # captures all initials ticks
     initial_ticks = []
 
-    # compute the begining timestamp
+    # compute the beginning timestamp
     timestamp = strategy.timestamp
 
     instrument = strategy_trader.instrument
 
     logger.debug("%s tickbars bootstrap begin at %s, now is %s" % (instrument.market_id, timestamp, strategy.timestamp))
 
-    # @todo need tickstreamer, and call strategy_trader.bootstrap(timestamp) at per bulk of ticks (temporal size defined)
+    # @todo need tickstreamer, and call strategy_trader.bootstrap(timestamp) at per bulk of ticks (
+    #  temporal size defined)
 
-    logger.debug("%s tickbars bootstraping done" % instrument.market_id)
+    logger.debug("%s tickbars bootstrapping done" % instrument.market_id)
 
 
 def beta_update_strategy(strategy, strategy_trader):
@@ -510,6 +514,7 @@ def beta_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument.
         with strategy_trader._mutex:
             strategy_trader._initialized = 0
 
+
 #
 # live setup
 #
@@ -523,11 +528,11 @@ def beta_setup_live(strategy):
     # load the strategy-traders and traders for this strategy/account
     trader = strategy.trader()
 
-    Database.inst().load_user_trades(strategy.service, strategy, trader.name,
-            trader.account.name, strategy.identifier)
-
     Database.inst().load_user_traders(strategy.service, strategy, trader.name,
-            trader.account.name, strategy.identifier)
+                                      trader.account.name, strategy.identifier)
+
+    Database.inst().load_user_trades(strategy.service, strategy, trader.name,
+                                     trader.account.name, strategy.identifier)
 
     for market_id, instrument in strategy._instruments.items():
         # wake-up all for initialization

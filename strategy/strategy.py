@@ -872,10 +872,10 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_LIST:
                     # for each market load the corresponding trades to the strategy trader
+                    logger.debug("Received signal data for strategy list of trades data. Process to loading...")
+
                     for data in signal.data:
                         strategy_trader = self._strategy_traders.get(data[0])
-
-                        # instantiate the trade and add it
                         if strategy_trader:
                             with strategy_trader._mutex:
                                 strategy_trader.loads_trade(data[1], data[2], data[3], data[4], check=True)
@@ -887,10 +887,10 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADER_LIST:
                     # for each market load the corresponding settings and regions to the strategy trader
+                    logger.debug("Received signal data for strategy traders data. Process to loading...")
+
                     for data in signal.data:
                         strategy_trader = self._strategy_traders.get(data[0])
-
-                        # load strategy-trader data
                         if strategy_trader:
                             with strategy_trader._mutex:
                                 # activity, trader-data, regions-data, alerts-data
@@ -1275,10 +1275,10 @@ class Strategy(Runnable):
         if signal.source == Signal.SOURCE_STRATEGY:
             if signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                 if signal.data[0] not in self._strategy_traders:
-                    # non interested by this instrument/symbol
+                    # not interested by this instrument/symbol
                     return
 
-                # signal of interest
+                # any others are a signal of interest
                 self._add_signal(signal)
 
             elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_LIST:
@@ -1288,6 +1288,14 @@ class Strategy(Runnable):
             elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADER_LIST:
                 # signal of interest
                 self._add_signal(signal)
+
+            # elif signal.signal_type == Signal.SIGNAL_STRATEGY_INITIALIZE:
+            #     # signal of interest (directly managed buy the caller method)
+            #     self._add_signal(signal)
+
+            # elif signal.signal_type == Signal.SIGNAL_STRATEGY_UPDATE:
+            #     # signal of interest (directly managed buy the caller method)
+            #     self._add_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHER:
             if signal.source_name not in self._watchers_conf:

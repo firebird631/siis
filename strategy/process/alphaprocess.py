@@ -172,14 +172,15 @@ def tickbar_based_bootstrap(strategy, strategy_trader):
     # captures all initials ticks
     initial_ticks = []
 
-    # compute the begining timestamp
+    # compute the beginning timestamp
     timestamp = strategy.timestamp
 
     instrument = strategy_trader.instrument
 
     logger.debug("%s tickbars bootstrap begin at %s, now is %s" % (instrument.market_id, timestamp, strategy.timestamp))
 
-    # @todo need tickstreamer, and call strategy_trader.bootstrap(timestamp) at per bulk of ticks (temporal size defined)
+    # @todo need tickstreamer, and call strategy_trader.bootstrap(timestamp) at per bulk of ticks (
+    #  temporal size defined)
 
     logger.debug("%s tickbars bootstrapping done" % instrument.market_id)
 
@@ -188,6 +189,7 @@ def alpha_update_strategy(strategy, strategy_trader):
     """
     Compute a strategy step per instrument.
     Default implementation supports bootstrapping.
+    @param strategy:
     @param strategy_trader StrategyTrader Instance of the strategy trader to process.
     @note Non thread-safe method.
     """
@@ -287,7 +289,9 @@ def initiate_strategy_trader(strategy, strategy_trader):
     try:
         watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
         if watcher:
-            tfs = {tf['timeframe']: tf['history'] for tf in strategy.parameters.get('timeframes', {}).values() if tf['timeframe'] > 0}
+            tfs = {tf['timeframe']: tf['history'] for tf in strategy.parameters.get(
+                'timeframes', {}).values() if tf['timeframe'] > 0}
+
             watcher.subscribe(instrument.market_id, tfs, None, None)
 
             # wait to DB commit
@@ -304,7 +308,8 @@ def initiate_strategy_trader(strategy, strategy_trader):
                     l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                     l_to = None  # now
 
-                    watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
+                    watcher.historical_data(instrument.market_id, timeframe['timeframe'],
+                                            from_date=l_from, to_date=l_to)
 
             # initialization processed, waiting for data be ready
             with strategy_trader._mutex:
@@ -341,7 +346,8 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
                     l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                     l_to = from_date - timedelta(seconds=1)
 
-                    watcher.historical_data(instrument.market_id, timeframe['timeframe'], from_date=l_from, to_date=l_to)
+                    watcher.historical_data(instrument.market_id, timeframe['timeframe'],
+                                            from_date=l_from, to_date=l_to)
 
             # create a feeder per instrument and fetch ticks and candles + ticks
             feeder = StrategyDataFeeder(strategy, instrument.market_id, [], True)
@@ -357,6 +363,7 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
         with strategy_trader._mutex:
             strategy_trader._initialized = 0
 
+
 #
 # live setup
 #
@@ -370,11 +377,11 @@ def alpha_setup_live(strategy):
     # load the strategy-traders and traders for this strategy/account
     trader = strategy.trader()
 
-    Database.inst().load_user_trades(strategy.service, strategy, trader.name,
-                                     trader.account.name, strategy.identifier)
-
     Database.inst().load_user_traders(strategy.service, strategy, trader.name,
                                       trader.account.name, strategy.identifier)
+
+    Database.inst().load_user_trades(strategy.service, strategy, trader.name,
+                                     trader.account.name, strategy.identifier)
 
     for market_id, instrument in strategy._instruments.items():
         # wake-up all for initialization

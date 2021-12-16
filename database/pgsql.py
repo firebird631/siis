@@ -72,7 +72,8 @@ class PgSql(Database):
             self._db = self.psycopg2.connect(self._conn_str)
 
         if not self._db:
-            raise DatabaseException("Unable to connect to postgresql database ! Verify you have psycopg2 installed and your user database.json file.")
+            raise DatabaseException("Unable to connect to postgresql database ! Verify you have psycopg2 "
+                                    "installed and your user database.json file.")
 
     def disconnect(self):
         # postresql db
@@ -665,10 +666,11 @@ class PgSql(Database):
 
                 query = ' '.join((
                     "INSERT INTO user_trader(broker_id, account_id, market_id, strategy_id, activity, data, regions, alerts) VALUES",
-                    ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s', '%s')" % (ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
-                            json.dumps(ut[5]).replace("'", "''"),
-                            json.dumps(ut[6]).replace("'", "''"),
-                            json.dumps(ut[7]).replace("'", "''")) for ut in uti]),
+                    ','.join(["('%s', '%s', '%s', '%s', %i, '%s', '%s', '%s')" % (
+                        ut[0], ut[1], ut[2], ut[3], 1 if ut[4] else 0,
+                        json.dumps(ut[5]).replace("'", "''"),
+                        json.dumps(ut[6]).replace("'", "''"),
+                        json.dumps(ut[7]).replace("'", "''")) for ut in uti]),
                     "ON CONFLICT (broker_id, account_id, market_id, strategy_id) DO UPDATE SET activity = EXCLUDED.activity, data = EXCLUDED.data, regions = EXCLUDED.regions, alerts = EXCLUDED.alerts"
                 ))
 
@@ -980,7 +982,7 @@ class PgSql(Database):
 
     @property
     def connected(self):
-        return self._db != None
+        return self._db is not None
 
     #
     # Extra
