@@ -810,10 +810,10 @@ class StrategyMarginTrade(StrategyTrade):
                         self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
 
                     if data['status'] in ('closed', 'deleted'):
-                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data['id'], data['ref-id'], instrument)
 
                     elif data['status'] in ('expired', 'canceled'):
-                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data['id'], data['ref-id'], instrument)
 
         #
         # exit
@@ -841,10 +841,10 @@ class StrategyMarginTrade(StrategyTrade):
                         self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
 
                     if data['status'] in ('closed', 'deleted'):
-                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data['id'], data['ref-id'], instrument)
 
                     elif data['status'] in ('expired', 'canceled'):
-                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data['id'], data['ref-id'], instrument)
 
         if self.limit_oid:
             data = trader.order_info(self.limit_oid, instrument)
@@ -868,10 +868,10 @@ class StrategyMarginTrade(StrategyTrade):
                         self.order_signal(Signal.SIGNAL_ORDER_TRADED, data, data['ref-id'], instrument)
 
                     if data['status'] in ('closed', 'deleted'):
-                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data, data['ref-id'], instrument)
+                        self.order_signal(Signal.SIGNAL_ORDER_DELETED, data['id'], data['ref-id'], instrument)
 
                     elif data['status'] in ('expired', 'canceled'):
-                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data, data['ref-id'], instrument)
+                        self.order_signal(Signal.SIGNAL_ORDER_CANCELED, data['id'], data['ref-id'], instrument)
 
         return result
 

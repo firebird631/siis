@@ -1025,7 +1025,7 @@ class StrategyAssetTrade(StrategyTrade):
                     self.entry_oid = None
                     self.entry_ref_oid = None
                 else:
-                    self.fix_by_order(data, instrument)
+                    self.fix_entry_by_order(data, instrument)
 
         #
         # exit
@@ -1047,7 +1047,7 @@ class StrategyAssetTrade(StrategyTrade):
                     self.oco_oid = None
                     self.oco_ref_oid = None
                 else:
-                    self.fix_by_order(data, instrument)
+                    self.fix_exit_by_order(data, instrument)
         else:
             if self.stop_oid:
                 data = trader.order_info(self.stop_oid, instrument)
@@ -1064,7 +1064,7 @@ class StrategyAssetTrade(StrategyTrade):
                         self.stop_oid = None
                         self.stop_ref_oid = None
                     else:
-                        self.fix_by_order(data, instrument)
+                        self.fix_exit_by_order(data, instrument)
 
             if self.limit_oid:
                 data = trader.order_info(self.limit_oid, instrument)
@@ -1077,15 +1077,41 @@ class StrategyAssetTrade(StrategyTrade):
                         # cannot retrieve the order, wrong id
                         result = 0
 
-                        # no longer stop order
+                        # no longer limit order
                         self.limit_oid = None
                         self.limit_ref_oid = None
                     else:
-                        self.fix_by_order(data, instrument)
+                        self.fix_exit_by_order(data, instrument)
 
         return result
 
-    def fix_by_order(self, order_data, instrument):
+    def fix_entry_by_order(self, order_data, instrument):
+        """
+        Mostly an internal method used to fix a missed and closed order, fixing the realized quantity.
+
+        @param order_data:
+        @param instrument:
+        @return:
+        """
+        if not order_data or not instrument:
+            return False
+
+        if 'cumulative-filled' not in order_data or 'fully-filled' not in order_data:
+            return False
+
+        if order_data['cumulative-filled'] > self.e or order_data['fully-filled']:
+            self.order_signal(Signal.SIGNAL_ORDER_TRADED, order_data, order_data['ref-id'], instrument)
+
+        if 'ref-id' not in order_data or 'status' not in order_data:
+            return False
+
+        if order_data['status'] in ('closed', 'deleted'):
+            self.order_signal(Signal.SIGNAL_ORDER_DELETED, order_data['id'], order_data['ref-id'], instrument)
+
+        elif order_data['status'] in ('expired', 'canceled'):
+            self.order_signal(Signal.SIGNAL_ORDER_CANCELED, order_data['id'], order_data['ref-id'], instrument)
+
+    def fix_exit_by_order(self, order_data, instrument):
         """
         Mostly an internal method used to fix a missed and closed order, fixing the realized quantity.
 
@@ -1106,10 +1132,10 @@ class StrategyAssetTrade(StrategyTrade):
             return False
 
         if order_data['status'] in ('closed', 'deleted'):
-            self.order_signal(Signal.SIGNAL_ORDER_DELETED, order_data, order_data['ref-id'], instrument)
+            self.order_signal(Signal.SIGNAL_ORDER_DELETED, order_data['id'], order_data['ref-id'], instrument)
 
         elif order_data['status'] in ('expired', 'canceled'):
-            self.order_signal(Signal.SIGNAL_ORDER_CANCELED, order_data, order_data['ref-id'], instrument)
+            self.order_signal(Signal.SIGNAL_ORDER_CANCELED, order_data['id'], order_data['ref-id'], instrument)
 
         return True
 
