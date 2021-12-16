@@ -3,7 +3,9 @@
 # @license Copyright (c) 2020 Dream Overflow
 # General script handler.
 
-from importlib import import_module
+import sys
+
+from importlib import import_module, reload
 
 import logging
 logger = logging.getLogger('siis.app.script')
@@ -37,14 +39,25 @@ def setup_script(action, module, watcher_service, trader_service, strategy_servi
         results['error'] = True
         return results
 
-    try:
-        script_module = import_module("userscripts.%s" % module, package='')
-    except ModuleNotFoundError as e:
-        results['messages'].append("Module %s not found" % module)
-        results['error'] = True
-        return results
-
     if action == "exec":
+        # an exec first reload the module in case its content has changed
+        try:
+            module_name = "userscripts.%s" % module
+
+            if module_name in sys.modules.keys():
+                # next imports
+                results['messages'].append("User script %s previously loaded, reload it..." % module)
+                script_module = reload(sys.modules[module_name])
+            else:
+                # initial import
+                results['messages'].append("User script %s initial load..." % module)
+                script_module = import_module(module_name, package='')
+
+        except ModuleNotFoundError as e:
+            results['messages'].append("Module %s not found" % module)
+            results['error'] = True
+            return results
+
         if hasattr(script_module, 'run_once'):
             # run once script
             run_once = getattr(script_module, 'run_once')
@@ -56,11 +69,22 @@ def setup_script(action, module, watcher_service, trader_service, strategy_servi
                 results['error'] = True
                 return results
         else:
-            results['messages'].append("Unsupported script module %s format" % module)
+            results['messages'].append("The script %s does not have a run_once method" % module)
             results['error'] = True
             return results
 
     elif action == "remove":
+        # a remove use the current loaded module, not the new version
+        module_name = "userscripts.%s" % module
+
+        # reuse last import
+        if module_name in sys.modules.keys():
+            script_module = sys.modules[module_name]
+        else:
+            results['messages'].append("Module %s not found, it cannot be removed" % module)
+            results['error'] = True
+            return results
+
         if hasattr(script_module, 'remove'):
             # remove script
             remove = getattr(script_module, 'remove')
@@ -72,8 +96,28 @@ def setup_script(action, module, watcher_service, trader_service, strategy_servi
                 results['error'] = True
                 return results
         else:
-            results['messages'].append("Unsupported script module %s format" % module)
+            results['messages'].append("The script %s does not have a remove method" % module)
+            results['error'] = True
+
+            return results
+
+    elif action == "unload":
+        # unload current loaded module
+        module_name = "userscripts.%s" % module
+
+        # reuse last import
+        if module_name in sys.modules.keys():
+            script_module = sys.modules[module_name]
+        else:
+            results['messages'].append("Module %s not found, it cannot be unloaded" % module)
             results['error'] = True
             return results
+
+        results['messages'].append("Unload module %s" % module)
+
+        script_module = None  # unref
+        del sys.modules[module_name]
+
+        return results
 
     return results

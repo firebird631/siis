@@ -4,6 +4,7 @@
 # terminal trading commands and registration
 
 import re
+import sys
 
 from terminal.command import Command
 from strategy.strategy import Strategy
@@ -2076,7 +2077,7 @@ class SetReinvestGainCommand(Command):
 class ScriptCommand(Command):
     SUMMARY = "to execute a python script file"
     HELP = (
-        "param1: [exec|remove] Execute a python script or remove an installable script",
+        "param1: [exec|remove|unload] Execute a python script or remove an installable script",
         "param2: <module> python module to execute or to remove",
     )
 
@@ -2096,8 +2097,8 @@ class ScriptCommand(Command):
         if len(args) > 2:
             return False, "Too many parameters"
 
-        if args[0] not in ('exec', 'remove'):
-            return False, "First parameter must be 'exec' or 'remove'"
+        if args[0] not in ('exec', 'remove', 'unload'):
+            return False, "First parameter must be 'exec', 'remove' or 'unload'"
 
         action = args[0]
         module = args[1]
@@ -2113,7 +2114,16 @@ class ScriptCommand(Command):
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
-            return self.iterate(0, ('exec', 'remove'), args, tab_pos, direction)
+            return self.iterate(0, ('exec', 'remove', 'unload'), args, tab_pos, direction)
+
+        if len(args) <= 2 and args[0] in ('remove', 'unload'):
+            modules = []
+
+            for module in sys.modules.keys():
+                if module.startswith('userscripts.'):
+                    modules.append(module.split('.')[-1])
+
+            return self.iterate(1, modules, args, tab_pos, direction)
 
         return args, 0
 
