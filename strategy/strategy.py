@@ -872,7 +872,7 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_LIST:
                     # for each market load the corresponding trades to the strategy trader
-                    logger.debug("Received signal data for strategy list of trades data. Process to loading...")
+                    logger.debug("Received signal data for strategy list of trades data. Processing data...")
 
                     for data in signal.data:
                         strategy_trader = self._strategy_traders.get(data[0])
@@ -887,7 +887,7 @@ class Strategy(Runnable):
 
                 elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADER_LIST:
                     # for each market load the corresponding settings and regions to the strategy trader
-                    logger.debug("Received signal data for strategy traders data. Process to loading...")
+                    logger.debug("Received signal data for strategy traders data. Processing data...")
 
                     for data in signal.data:
                         strategy_trader = self._strategy_traders.get(data[0])

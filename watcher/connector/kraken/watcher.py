@@ -85,8 +85,11 @@ class KrakenWatcher(Watcher):
         if ws['lost']:
             return True
 
-        # above 5 seconds without activity then reconnect
-        if ws['timestamp'] > 0.0 and time.time() - ws['timestamp'] > 5.0:
+        # 15 seconds during maintenance, 5 the rest of the time (post_only, cancel_only, online, offline)
+        delay = 15.0 if self.maintenance else 5.0
+
+        # above a delay without activity then reconnect
+        if ws['timestamp'] > 0.0 and time.time() - ws['timestamp'] > delay:
             # if maintenance need to wait 5 sec before try to reconnect
             # if ws['status'] == "maintenance" and ws['retry'] <= 0.0:
             #     ws['retry'] = time.time() + 5.0
@@ -99,12 +102,15 @@ class KrakenWatcher(Watcher):
         # if ws['retry'] > 0.0 and time.time() < ws['retry']:
         #     return
 
-        logger.debug("%s re-subscribe %s to markets data stream..." % (self.name, name))
+        # logger.debug("%s subscribe %s to markets data stream..." % (self.name, name))
 
         with self._mutex:
             try:
                 self._connector.ws.stop_socket(name)
                 self.__reset_ws_state(ws)
+
+                # try now, if fail it will retry later
+                ws['timestamp'] = time.time()
 
                 pairs = []
                 instruments = self._instruments
@@ -129,7 +135,7 @@ class KrakenWatcher(Watcher):
         # if self._ws_open_orders['retry'] > 0.0 and time.time() < self._ws_open_orders['retry']:
         #     return
 
-        logger.debug("%s re-subscribe to user data stream..." % self.name)
+        # logger.debug("%s subscribe to user data stream..." % self.name)
 
         with self._mutex:
             try:
@@ -141,6 +147,10 @@ class KrakenWatcher(Watcher):
                 if ws_token and ws_token.get('token'):
                     self.__reset_ws_state(self._ws_own_trades)
                     self.__reset_ws_state(self._ws_open_orders)
+
+                    # try now, if fail it will retry later
+                    self._ws_own_trades['timestamp'] = time.time()
+                    self._ws_open_orders['timestamp'] = time.time()
 
                     self._connector.ws.subscribe_private(
                         token=ws_token['token'],
@@ -154,7 +164,7 @@ class KrakenWatcher(Watcher):
                         callback=self.__on_open_orders
                     )
                 else:
-                    # error retrieving the token, retry
+                    # error retrieving the token, retry later
                     self._ws_own_trades['timestamp'] = time.time()
                     self._ws_open_orders['timestamp'] = time.time()
 
@@ -331,8 +341,6 @@ class KrakenWatcher(Watcher):
 
                                 # @todo order book
 
-                                logger.debug("%s re-subscribe to markets succeed" % self.name)
-
                             except Exception as e:
                                 error_logger.error(repr(e))
                                 traceback_logger.error(traceback.format_exc())
@@ -341,7 +349,7 @@ class KrakenWatcher(Watcher):
                         self._ready = True
                         self._connecting = False
 
-                        logger.debug("%s connection succeed" % self.name)
+                        logger.debug("%s API connection succeed" % self.name)
 
             except Exception as e:
                 error_logger.error(repr(e))
@@ -386,6 +394,10 @@ class KrakenWatcher(Watcher):
     @property
     def authenticated(self):
         return self._connector and self._connector.authenticated
+
+    @property
+    def maintenance(self):
+        return self._ws_own_trades['status'] == "maintenance" or self._ws_open_orders['status'] == "maintenance"
 
     #
     # instruments
@@ -568,25 +580,25 @@ class KrakenWatcher(Watcher):
         # mostly in case of EGeneral:Internal Error or ESession:Invalid session
         if not self.service.paper_mode:
             if self.__check_reconnect(self._ws_own_trades) or self.__check_reconnect(self._ws_open_orders):
-                logger.debug("%s try to reconnect to user trades and user orders data stream" % self.name)
+                # logger.debug("%s reconnecting to user trades and user orders data stream..." % self.name)
                 self.__reconnect_user_ws()
 
         # disconnected for a public socket, and auto-reconnect failed
         if self.__check_reconnect(self._ws_ticker_data):
-            logger.debug("%s try to reconnect to tickers data stream" % self.name)
+            # logger.debug("%s reconnecting to tickers data stream..." % self.name)
             self.__reconnect_ws(self._ws_ticker_data, self.__on_ticker_data, 'ticker')
 
         if self.__check_reconnect(self._ws_trade_data):
-            logger.debug("%s try to reconnect to trades data stream" % self.name)
+            # logger.debug("%s reconnecting to trades data stream..." % self.name)
             self.__reconnect_ws(self._ws_trade_data, self.__on_trade_data, 'trade')
 
         if KrakenWatcher.USE_SPREAD:
             if self.__check_reconnect(self._ws_spread_data):
-                logger.debug("%s try to reconnect to spreads data stream" % self.name)
+                # logger.debug("%s reconnecting to spreads data stream..." % self.name)
                 self.__reconnect_ws(self._ws_spread_data, self.__on_spread_data, 'spread')
 
         if self.__check_reconnect(self._ws_depth_data):
-            logger.debug("%s try to reconnect to depths data stream" % self.name)
+            # logger.debug("%s reconnecting to depths data stream..." % self.name)
             self.__reconnect_ws(self._ws_depth_data, self.__on_depth_data, 'depth')
 
         #
@@ -845,11 +857,13 @@ class KrakenWatcher(Watcher):
 
                 if data['status'] == "subscribed" and data['channelName'] == "ticker":
                     self._ws_ticker_data['subscribed'] = True
-                    logger.debug("tickers data subscriptionStatus : subscribed")
+                    logger.debug("tickers data subscriptionStatus : subscribed to %s" %
+                                 self._ws_ticker_data.get('pair', 'any'))
 
                 elif data['status'] == "unsubscribed" and data['channelName'] == "ticker":
                     self._ws_ticker_data['subscribed'] = False
-                    logger.debug("tickers data subscriptionStatus : unsubscribed")
+                    logger.debug("tickers data subscriptionStatus : unsubscribed from %s" %
+                                 self._ws_ticker_data.get('pair', 'any'))
 
                 elif data['status'] == "error":
                     self._ws_ticker_data['status'] = "offline"
@@ -905,11 +919,13 @@ class KrakenWatcher(Watcher):
 
                 if data['status'] == "subscribed" and data['channelName'] == "spread":
                     self._ws_spread_data['subscribed'] = True
-                    logger.debug("spreads data subscriptionStatus : subscribed")
+                    logger.debug("spreads data subscriptionStatus : subscribed to %s" %
+                                 self._ws_spread_data.get('pair', 'any'))
 
                 elif data['status'] == "unsubscribed" and data['channelName'] == "spread":
                     self._ws_spread_data['subscribed'] = False
-                    logger.debug("spreads data subscriptionStatus : unsubscribed")
+                    logger.debug("spreads data subscriptionStatus : unsubscribed from %s" %
+                                 self._ws_spread_data.get('pair', 'any'))
 
                 elif data['status'] == "error":
                     self._ws_spread_data['status'] = "offline"
@@ -983,11 +999,13 @@ class KrakenWatcher(Watcher):
 
                 if data['status'] == "subscribed" and data['channelName'] == "trade":
                     self._ws_trade_data['subscribed'] = True
-                    logger.debug("trades data subscriptionStatus : subscribed")
+                    logger.debug("trades data subscriptionStatus : subscribed to %s" %
+                                 self._ws_trade_data.get('pair', 'any'))
 
                 elif data['status'] == "unsubscribed" and data['channelName'] == "trade":
                     self._ws_trade_data['subscribed'] = False
-                    logger.debug("trades data subscriptionStatus : unsubscribed")
+                    logger.debug("trades data subscriptionStatus : unsubscribed from %s" %
+                                 self._ws_trade_data.get('pair', 'any'))
 
                 elif data['status'] == "error":
                     self._ws_trade_data['status'] = "offline"
