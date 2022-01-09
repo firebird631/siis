@@ -49,7 +49,8 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
             return 0.0
 
         elif data.stop_loss.type == data.PRICE_ATR_SR:
-            atr_stop_loss = search_atrsr(-direction, data.stop_loss.timeframe, data.stop_loss.orientation, data.stop_loss.depth, entry_price, price_epsilon)
+            atr_stop_loss = search_atrsr(-direction, data.stop_loss.timeframe, data.stop_loss.orientation,
+                                         data.stop_loss.depth, entry_price, price_epsilon)
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
@@ -105,7 +106,8 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
             return 0.0
 
         elif data.stop_loss.type == data.PRICE_ATR_SR:
-            atr_stop_loss = search_atrsr(-direction, data.stop_loss.timeframe, data.stop_loss.orientation, data.stop_loss.depth, entry_price, price_epsilon)
+            atr_stop_loss = search_atrsr(-direction, data.stop_loss.timeframe, data.stop_loss.orientation,
+                                         data.stop_loss.depth, entry_price, price_epsilon)
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
@@ -263,7 +265,8 @@ def dynamic_stop_loss_atrsr_short(timeframe, last_price, curr_stop_loss_price, d
     return 0.0
 
 
-def dynamic_stop_loss_cur_atrsr_long(timeframe, entry_price, last_price, curr_stop_loss_price, depth, orientation, price_epsilon=0.0):
+def dynamic_stop_loss_cur_atrsr_long(timeframe, entry_price, last_price, curr_stop_loss_price,
+                                     depth, orientation, price_epsilon=0.0):
     stop_loss = 0.0
 
     if timeframe.atrsr and len(timeframe.atrsr._tdn):
@@ -283,7 +286,8 @@ def dynamic_stop_loss_cur_atrsr_long(timeframe, entry_price, last_price, curr_st
     return 0.0
 
 
-def dynamic_stop_loss_cur_atrsr_short(timeframe, entry_price, last_price, curr_stop_loss_price, depth, orientation, price_epsilon=0.0):
+def dynamic_stop_loss_cur_atrsr_short(timeframe, entry_price, last_price, curr_stop_loss_price,
+                                      depth, orientation, price_epsilon=0.0):
     stop_loss = 0.0
 
     if timeframe.atrsr and len(timeframe.atrsr._tup):

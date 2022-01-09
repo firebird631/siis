@@ -280,7 +280,7 @@ class ATRSRIndicator(Indicator):
         for i in range(2, size):
             if bbe[i-1] < bbe[i] and bbe[i-2] > bbe[i-1]:
                 self._tdn[i] = bbe[i]
-            else:   
+            else:
                 self._tdn[i] = np.NaN
 
         highest = ta_MAX(high, 3)
