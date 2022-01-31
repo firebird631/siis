@@ -90,7 +90,7 @@ class ATRSRIndicator(Indicator):
 
     @property
     def last_atr(self):
-        """Last ATR value of the serie"""
+        """Last ATR value of the series"""
         return self._last_atr
 
     @property

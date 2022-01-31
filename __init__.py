@@ -3,9 +3,9 @@
 # @license Copyright (c) 2018 Dream Overflow
 # 
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 
 APP_SHORT_NAME = "siis"
 APP_LONG_NAME = "Self Investor Income System"
-APP_VERSION = (0, 3, 0)
-APP_RELEASE = 459
+APP_VERSION = (0, 3, 1)
+APP_RELEASE = 460

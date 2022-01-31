@@ -76,7 +76,7 @@ class EntryExit(object):
         self.orientation = StrategyTraderContext.ORIENTATION_UP
         self.timeout = 0.0
 
-        self.distance = 0.0
+        self.distance = 0.0  # usage depends of distance_type, could be a fixed distance or a max distance
         self.distance_type = StrategyTraderContext.PRICE_NONE
 
         self.timeout_distance = 0.0
@@ -108,6 +108,7 @@ class EntryExit(object):
         self.multi = params.get('multi', False)
         self.orientation = StrategyTraderContext.ORIENTATION.get(params.get('orientation', 'up'))
 
+        # standard distance
         distance = params.get('distance', "0.0")
 
         if distance.endswith('%'):
@@ -125,6 +126,7 @@ class EntryExit(object):
             self.distance = float(distance)
             self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
+        # timeout distance
         timeout_distance = params.get('timeout-distance', "0.0")
 
         if timeout_distance.endswith('%'):

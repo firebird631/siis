@@ -363,10 +363,10 @@ def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, cur
         elif method == StrategyTraderContext.PRICE_FIXED_PCT and distance > 0.0:
             return dynamic_stop_loss_fixed_pct_long(timeframe, last_price, curr_stop_loss_price, distance)
 
-        elif method == StrategyTraderContext.PRICE_HMA:
+        elif method == StrategyTraderContext.PRICE_FIXED_DIST and distance > 0.0:
             return dynamic_stop_loss_fixed_dist_long(timeframe, last_price, curr_stop_loss_price, distance)
 
-        elif method == StrategyTraderContext.PRICE_HMA and distance > 0.0:
+        elif method == StrategyTraderContext.PRICE_HMA:
             return dynamic_stop_loss_fixed_hma_long(timeframe, last_price, curr_stop_loss_price, price_epsilon)
 
         elif method == StrategyTraderContext.PRICE_VOL_SR:
