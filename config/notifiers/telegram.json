@@ -1,0 +1,9 @@
+{
+	"status": "load",
+	"name": "telegram",
+	"classpath": "notifier.telegram.telegramnotifier.TelegramNotifier",
+    "bot-token": "",
+	"chats": {},
+    "commands": {},
+	"op-commands": {}
+}

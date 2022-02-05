@@ -28,7 +28,6 @@ class DiscordNotifier(Notifier):
     """
     Discord notifier for webhooks.
     @todo Active and history tables but this will need at least a timer or usage of API to delete the previous table.
-    @todo Strategy alert notifications
     """
 
     def __init__(self, identifier, service, options):
@@ -58,10 +57,10 @@ class DiscordNotifier(Notifier):
                 "entry",
                 "exit",
                 # "update",
-                # "error",
                 # "take-profit",
                 # "stop-loss",
                 # "quantity",
+                # "error",
             ))
 
         self._strategy_service = None
@@ -72,7 +71,7 @@ class DiscordNotifier(Notifier):
                 self.name, self.identifier))
             return False
         elif self._webhooks.get('signals'):
-            # only of signals webhook is defined
+            # only if signals webhook is defined
 
             # could validate url format
             for k, url in self._webhooks.items():
