@@ -529,27 +529,47 @@ class StrategyTrade(object):
     def cancel_close(self, trader, instrument):
         """
         Cancel the entire or remaining close order.
+
+        @param trader: Trader instance.
+        @param instrument: Related Instrument instance.
+
         @todo Not implemented in specialized class for now
         """
         return StrategyTrade.NOTHING_TO_DO
 
-    def modify_take_profit(self, trader, instrument, limit_price):
+    def modify_take_profit(self, trader, instrument, limit_price, hard=True):
         """
         Create/modify the take-order limit order or position limit.
         A limit_price of 0 remove an existing order.
+
+        @param trader: Trader instance.
+        @param instrument: Related Instrument instance.
+        @param limit_price: Limit (take-profit) price or 0 to remove
+        @param hard Create a take profit or limit order, else it is a soft market price managed by the strategy.
         """
         return self.NOTHING_TO_DO
 
-    def modify_stop_loss(self, trader, instrument, stop_price):
+    def modify_stop_loss(self, trader, instrument, stop_price, hard=True):
         """
         Create/modify the stop-loss taker order or position limit.
         A stop_price of 0 remove an existing order.
+
+        @param trader: Trader instance.
+        @param instrument: Related Instrument instance.
+        @param stop_price: Stop market (stop-loss or stop-profit) price or 0 to remove
+        @param hard Create a market stop loss (or profit) order, else it is a soft market price managed by the strategy.
         """
         return self.NOTHING_TO_DO
 
-    def modify_oco(self, trader, instrument, limit_price, stop_price):
+    def modify_oco(self, trader, instrument, limit_price, stop_price, hard=True):
         """
         Create/modify the OCO order with both take-profit and stop-loss orders.
+
+        @param trader: Trader instance.
+        @param instrument: Related Instrument instance.
+        @param limit_price: Limit (take-profit) price or 0 to remove
+        @param stop_price: Stop market (stop-loss or stop-profit) price or 0 to remove
+        @param hard Create a take profit or limit order, else it is a soft market price managed by the strategy.
         """
         return self.NOTHING_TO_DO
 

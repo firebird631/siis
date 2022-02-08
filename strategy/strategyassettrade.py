@@ -301,10 +301,12 @@ class StrategyAssetTrade(StrategyTrade):
 
         return self.NOTHING_TO_DO
 
-    def modify_take_profit(self, trader, instrument, limit_price):
+    def modify_take_profit(self, trader, instrument, limit_price, hard=True):
         """
         @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
         to create a new order.
+
+        @note If hard is True and an hard stop order exists it will be removed.
         """
         if self._closing:
             # already closing order
@@ -340,7 +342,7 @@ class StrategyAssetTrade(StrategyTrade):
                     else:
                         return self.ERROR
 
-            if self.stop_oid:
+            if self.stop_oid and hard:
                 # cancel the sell stop order (only one or the other)
                 if trader.cancel_order(self.stop_oid, instrument) > 0:
                     # REST sync
@@ -367,7 +369,7 @@ class StrategyAssetTrade(StrategyTrade):
                 # all entry qty is filled
                 return self.NOTHING_TO_DO
 
-            if limit_price:
+            if limit_price and hard:
                 order = Order(trader, instrument.market_id)
                 order.direction = -self.dir  # neg dir
                 order.order_type = Order.ORDER_LIMIT
@@ -406,16 +408,21 @@ class StrategyAssetTrade(StrategyTrade):
                     self.limit_order_qty = 0.0
 
                     return self.REJECTED
+            elif limit_price:
+                # soft take-profit
+                self.tp = limit_price
             else:
                 # remove take-profit
                 self.tp = 0.0
 
             return self.NOTHING_TO_DO
 
-    def modify_stop_loss(self, trader, instrument, stop_price):
+    def modify_stop_loss(self, trader, instrument, stop_price, hard=True):
         """
         @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
         to create a new order.
+
+        @note If hard is True and an hard limit order exists it will be removed.
         """
         if self._closing:
             # already closing order
@@ -452,7 +459,7 @@ class StrategyAssetTrade(StrategyTrade):
                     else:
                         return self.ERROR
 
-            if self.limit_oid:
+            if self.limit_oid and hard:
                 # cancel the sell limit order (only one or the other)
                 if trader.cancel_order(self.limit_oid, instrument) > 0:
                     # REST sync
@@ -479,7 +486,7 @@ class StrategyAssetTrade(StrategyTrade):
                 # all entry qty is filled
                 return self.NOTHING_TO_DO
 
-            if stop_price:
+            if stop_price and hard:
                 order = Order(trader, instrument.market_id)
                 order.direction = -self.dir  # neg dir
                 order.order_type = Order.ORDER_STOP
@@ -518,13 +525,16 @@ class StrategyAssetTrade(StrategyTrade):
                     self.stop_order_qty = 0.0
 
                     return self.REJECTED
+            elif stop_price:
+                # soft stop-loss
+                self.sl = stop_price
             else:
                 # remove stop-loss
                 self.sl = 0.0
 
             return self.NOTHING_TO_DO
 
-    def modify_oco(self, trader, instrument, limit_price, stop_price):
+    def modify_oco(self, trader, instrument, limit_price, stop_price, hard=True):
         # @todo
 
         return self.REJECTED
@@ -683,17 +693,18 @@ class StrategyAssetTrade(StrategyTrade):
             else:
                 try:
                     if self.has_limit_order() and self.tp > 0.0:
-                        result = self.modify_take_profit(trader, instrument, self.tp)
+                        result = self.modify_take_profit(trader, instrument, self.tp, True)
                         if result <= 0:
                             done = False
 
                     if self.has_stop_order() and self.sl > 0.0:
-                        result = self.modify_stop_loss(trader, instrument, self.sl)
+                        result = self.modify_stop_loss(trader, instrument, self.sl, True)
                         if result <= 0:
                             done = False
 
                 except Exception as e:
                     error_logger.error(str(e))
+                    return
 
             if done:
                 # clean dirty flag if all the order have been updated

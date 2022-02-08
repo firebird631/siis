@@ -93,10 +93,10 @@ def cmd_trade_modify(strategy, strategy_trader, data):
                     if stop_loss_price == 0.0:
                         results['messages'].append("Remove stop-loss for trade %i" % trade.id)
 
-                    if trade.has_stop_order() or data.get('force', False):
-                        trade.modify_stop_loss(strategy.trader(), strategy_trader.instrument, stop_loss_price)
-                    else:
-                        trade.sl = stop_loss_price
+                    # if have a previous hard order it will update it, else it will create the order only if
+                    # force is defined. It could eventually remove the take-profit order on spot market
+                    strategy_trader.trade_modify_stop_loss(
+                        trade, stop_loss_price, trade.has_stop_order() or data.get('force', False))
 
                     # update strategy-trader
                     strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
@@ -153,10 +153,10 @@ def cmd_trade_modify(strategy, strategy_trader, data):
                     if take_profit_price == 0.0:
                         results['messages'].append("Remove take-profit for trade %i" % trade.id)
 
-                    if trade.has_limit_order() or data.get('force', False):
-                        trade.modify_take_profit(strategy.trader(), strategy_trader.instrument, take_profit_price)
-                    else:
-                        trade.tp = take_profit_price
+                    # if have a previous hard order it will update it, else it will create the order only if
+                    # force is defined. It could eventually remove the stop order on spot market
+                    strategy_trader.trade_modify_take_profit(
+                        trade, take_profit_price, trade.has_limit_order() or data.get('force', False))
 
                     # update strategy-trader
                     strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)

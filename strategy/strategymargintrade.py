@@ -226,7 +226,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         return self.NOTHING_TO_DO
 
-    def modify_take_profit(self, trader, instrument, limit_price):
+    def modify_take_profit(self, trader, instrument, limit_price, hard=True):
         if self._closing:
             # already closing order
             return self.NOTHING_TO_DO
@@ -260,7 +260,7 @@ class StrategyMarginTrade(StrategyTrade):
             # all entry qty is filled, if lesser something wrong but its ok
             return self.NOTHING_TO_DO
 
-        if limit_price:
+        if limit_price and hard:
             # only if filled entry partially or totally
             order = Order(self, instrument.market_id)
             order.direction = -self.direction
@@ -300,13 +300,16 @@ class StrategyMarginTrade(StrategyTrade):
                 self.limit_order_qty = 0.0
 
                 return self.REJECTED
+        elif limit_price:
+            # soft take-profit
+            self.tp = limit_price
         else:
             # remove take-profit
             self.tp = 0.0
 
         return self.NOTHING_TO_DO
 
-    def modify_stop_loss(self, trader, instrument, stop_price):
+    def modify_stop_loss(self, trader, instrument, stop_price, hard=True):
         if self._closing:
             # already closing order
             return self.NOTHING_TO_DO
@@ -340,7 +343,7 @@ class StrategyMarginTrade(StrategyTrade):
             # all entry qty is filled, if lesser something wrong but its ok
             return self.NOTHING_TO_DO
 
-        if stop_price:
+        if stop_price and hard:
             # only if filled entry partially or totally
             order = Order(self, instrument.market_id)
             order.direction = -self.direction
@@ -360,7 +363,7 @@ class StrategyMarginTrade(StrategyTrade):
             if create_order_result > 0:
                 self.stop_oid = order.order_id
                 self.stop_order_qty = order.quantity
-                
+
                 self.last_stop_ot[0] = order.created_time
                 self.last_stop_ot[1] += 1
 
@@ -380,6 +383,9 @@ class StrategyMarginTrade(StrategyTrade):
                 self.stop_order_qty = 0.0
 
                 return self.REJECTED
+        elif stop_price:
+            # soft stop-loss
+            self.sl = stop_price
         else:
             # remove stop-loss
             self.sl = 0.0

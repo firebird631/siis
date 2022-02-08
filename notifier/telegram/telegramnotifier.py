@@ -3,9 +3,11 @@
 # @license Copyright (c) 2022 Dream Overflow
 # Telegram notification handler
 
+import copy
 import time
 import traceback
 import re
+import pytz
 
 from tabulate import tabulate
 from datetime import datetime, timedelta
@@ -22,7 +24,7 @@ from strategy.helpers.activetradetable import trades_stats_table
 
 import logging
 
-from common.utils import timeframe_to_str
+from common.utils import timeframe_to_str, timeframe_from_str
 
 logger = logging.getLogger('siis.notifier.telegram')
 error_logger = logging.getLogger('siis.error.notifier.telegram')
@@ -70,6 +72,10 @@ class TelegramNotifier(Notifier):
         ))
 
         self._strategy_service = None
+
+        self._opened_trades = {}
+        self._closed_trades = {}
+        self._canceled_trades = {}
 
     def start(self, options):
         if self._backtesting:
@@ -155,45 +161,162 @@ class TelegramNotifier(Notifier):
 
     def process_signal(self, signal):
         message = ""
+        locale = "fr"
 
-        # @todo update message formatting
         if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
-            if signal.data['way'] not in self._signals_opts:
+            # trade local copy
+            if signal.data['symbol'] not in self._opened_trades:
+                self._opened_trades[signal.data['symbol']] = {}
+            opened_trades = self._opened_trades[signal.data['symbol']]
+
+            if signal.data['symbol'] not in self._closed_trades:
+                self._closed_trades[signal.data['symbol']] = {}
+            closed_trades = self._closed_trades[signal.data['symbol']]
+
+            if signal.data['symbol'] not in self._canceled_trades:
+                self._canceled_trades[signal.data['symbol']] = {}
+            canceled_trades = self._canceled_trades[signal.data['symbol']]
+
+            if signal.data['way'] == 'entry':
+                # opened
+                opened_trades[signal.data['id']] = copy.copy(signal.data)
+
+            elif signal.data['way'] == 'update':
+                if signal.data['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
+                    # canceled
+                    if signal.data['id'] in opened_trades:
+                        del opened_trades[signal.data['id']]
+
+                    canceled_trades[signal.data['id']] = copy.copy(signal.data)
+                else:
+                    # updated
+                    opened_trades[signal.data['id']] = copy.copy(signal.data)
+
+            elif signal.data['way'] == 'exit':
+                if signal.data['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
+                    # canceled
+                    if signal.data['id'] in opened_trades:
+                        del opened_trades[signal.data['id']]
+
+                    canceled_trades[signal.data['id']] = copy.copy(signal.data)
+                else:
+                    # closed
+                    if signal.data['id'] in opened_trades:
+                        del opened_trades[signal.data['id']]
+
+                    closed_trades[signal.data['id']] = copy.copy(signal.data)
+
+        #
+        # messages
+        #
+
+        if signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY:
+            t = signal.data
+
+            trade_id = t['id']
+            symbol = t['symbol']
+
+            messages = []
+
+            open_dt = TelegramNotifier.parse_utc_datetime(t['entry-open-time'])
+
+            op = float(t.get('order-price', "0"))
+            aep = float(t.get('avg-entry-price', "0"))
+
+            if 'entry-order-type' in t['stats']:
+                order_type = t['stats']['entry-order-type']
+            elif aep:
+                order_type = "market"
+            elif op:
+                order_type = "limit"
+            else:
+                order_type = "undefined"
+
+            messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), symbol, trade_id))
+            messages.append("- %s: %s" % (order_type, TelegramNotifier.format_datetime(open_dt, locale)))
+
+            if aep:
+                messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+            elif op:
+                messages.append("- Order-Price: %s" % t['order-price'])
+
+            if t['timeframe']:
+                messages.append("- Timeframe %s" % t['timeframe'])
+
+            if t['label']:
+                messages.append("- Context %s" % t['label'])
+
+            if t['entry-timeout'] and not aep:
+                # before in position
+                et_tf = timeframe_from_str(t['entry-timeout'])
+                if et_tf > 0.0:
+                    entry_timeout_dt = open_dt + timedelta(seconds=et_tf)
+                    messages.append("- Cancel entry after : %s" % TelegramNotifier.format_datetime(entry_timeout_dt))
+
+            if t['expiry'] and aep:
+                # until in position
+                expiry_dt = open_dt + timedelta(seconds=t['expiry'])
+                messages.append("- Close expiry after : %s" % TelegramNotifier.format_datetime(expiry_dt))
+
+            if float(t['take-profit-price']):
+                messages.append("- Take-Profit: %s" % t['take-profit-price'])
+            if float(t['stop-loss-price']):
+                messages.append("- Stop-Loss: %s" % t['stop-loss-price'])
+
+            message = '\n'.join(messages)
+
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            t = signal.data
+
+            trade_id = t['id']
+            symbol = t['symbol']
+
+            messages = []
+
+            messages.append("%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), symbol, trade_id))
+
+            if t['timeframe']:
+                messages.append("- Timeframe %s" % t['timeframe'])
+
+            if float(t['take-profit-price']):
+                messages.append("- Take-Profit: %s" % t['take-profit-price'])
+            if float(t['stop-loss-price']):
+                messages.append("- Stop-Loss: %s" % t['stop-loss-price'])
+
+            message = '\n'.join(messages)
+
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_EXIT:
+            t = signal.data
+
+            trade_id = t['id']
+            symbol = t['symbol']
+
+            messages = []
+
+            axp = float(t.get('avg-exit-price', "0"))
+
+            messages.append("%s %s:%s [ CLOSE ]" % (t['direction'].capitalize(), symbol, trade_id))
+
+            if axp:
+                messages.append("- Exit-Price: %s" % t['avg-exit-price'])
+
+            if signal.data['exit-reason'] != "undefined":
+                messages.append("- Cause: %s" % t['exit-reason'].title())
+
+            message = '\n'.join(messages)
+
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ERROR:
+            if 'error' not in self._signals_opts:
                 return
 
-            # generic signal reason
-            action = signal.data['way']
-
-            # specified exit reason
-            if action == "exit" and 'stats' in signal.data and 'exit-reason' in signal.data['stats']:
-                action = signal.data['stats']['exit-reason']
+            border = "orange"
 
             ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
-            message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
-                signal.data['symbol'],
-                signal.data['order-price'],
-                signal.data['app-name'],
-                action,
-                signal.data['direction'],
+            message = "Trade error at %s - #%s on %s" % (
                 ldatetime,
-                signal.data['id'],
-                signal.data['timeframe'])
-
-            if signal.data.get('stop-loss-price') and 'stop-loss' in self._signals_opts:
-                message += " SL@%s" % (signal.data['stop-loss-price'],)
-
-            if signal.data.get('take-profit-price') and 'take-profit' in self._signals_opts:
-                message += " TP@%s" % (signal.data['take-profit-price'],)
-
-            if signal.data.get('profit-loss-pct') is not None:
-                message += " (%.2f%%)" % (signal.data['profit-loss-pct'],)
-
-            if signal.data.get('order-qty') is not None and 'order-qty' in self._signals_opts:
-                message += " Q:%s" % signal.data['order-qty']
-
-            if signal.data.get('label') is not None:
-                message += " (%s)" % signal.data['label']
+                signal.data['trade-id'],
+                signal.data['symbol'])
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_ALERT:
             if 'alert' not in self._signals_opts:
@@ -223,19 +346,6 @@ class TelegramNotifier(Notifier):
 
             if signal.data.get('user') is not None:
                 message += " (%s)" % signal.data['user']
-
-        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ERROR:
-            if 'error' not in self._signals_opts:
-                return
-
-            border = "orange"
-
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-
-            message = "Trade error at %s - #%s on %s" % (
-                ldatetime,
-                signal.data['trade-id'],
-                signal.data['symbol'])
 
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return
@@ -279,8 +389,6 @@ class TelegramNotifier(Notifier):
                 # not a command
                 continue
 
-            logger.info("trade command %s : %s" % (chat_id, parts))
-
             cmd = parts[0].lstrip('/')
             if cmd not in self._commands:
                 # ignored command
@@ -298,8 +406,8 @@ class TelegramNotifier(Notifier):
                     error_logger.error(repr(e))
                     traceback_logger.error(traceback.format_exc())
 
-    def process_trade_command(self, command, chat_id):
-        message = None
+    def process_trade_command(self, command, chat_id, locale="fr"):
+        messages = []
 
         if len(command) == 1:
             symbol = command[0]
@@ -315,91 +423,185 @@ class TelegramNotifier(Notifier):
             # invalid parameters
             return False
 
-        strategy = self.service.strategy_service.strategy()
-        strategy_trader = None
+        if not symbol:
+            # invalid parameters
+            return False
 
-        if symbol:
-            instrument = strategy.find_instrument(symbol)
-            market_id = instrument.market_id if instrument else None
+        if symbol not in self._strategy_service.strategy.symbols_ids():
+            # not managed symbol
+            return True
 
-            strategy_trader = strategy._strategy_traders.get(market_id)
+        opened_trades = self._opened_trades.get(symbol, {})
+        canceled_trades = self._canceled_trades.get(symbol, {})
+        closed_trades = self._closed_trades.get(symbol, {})
 
-        if not strategy_trader:
-            message = "The market %s is not supported" % symbol
-
-        # retrieve the list of trades
-        elif not trade_id:
-            trade_list = strategy_trader.list_trades()
-            if trade_list:
-                message = "There is %s trades for %s : \n%s" % (
-                    symbol, len(trade_list), ', '.join([str(tid) for tid in trade_list]))
+        if not trade_id:
+            # retrieve the list of trades
+            if opened_trades:
+                messages.append("There is %s opened trades for %s :" % (len(opened_trades), symbol))
+                messages.append(', '.join([str(t['id']) for k, t in opened_trades.items()]))
             else:
-                message = "There is not trades for %s" % symbol
+                messages.append("There is no opened trades for %s" % symbol)
 
-        # retrieve the specified trade
+            if canceled_trades:
+                messages.append("There is %s canceled trades for %s :" % (len(canceled_trades), symbol))
+                messages.append(', '.join([str(t['id']) for k, t in canceled_trades.items()]))
+            else:
+                messages.append("There is no canceled trades for %s" % symbol)
+
+            if closed_trades:
+                messages.append("There is %s closed trades for %s :" % (len(closed_trades), symbol))
+                messages.append(', '.join([str(t['id']) for k, t in closed_trades.items()]))
+            else:
+                messages.append("There is no closed trades for %s" % symbol)
+
         else:
-            with strategy_trader._trade_mutex:
-                found_trade = None
+            # retrieve the specified trade
+            if trade_id in opened_trades:
+                t = opened_trades[trade_id]
 
-                for trade in strategy_trader.trades:
-                    if trade.id == trade_id:
-                        found_trade = trade
-                        break
-
-                if found_trade:
-                    if found_trade.first_realized_entry_time:
-                        open_dt = datetime.fromtimestamp(found_trade.first_realized_entry_time).strftime(
-                            '%Y-%m-%d %H:%M:%S')
-                    elif found_trade.eot:
-                        open_dt = datetime.fromtimestamp(found_trade.eot).strftime('%Y-%m-%d %Hh%M:%S')
-                    else:
-                        open_dt = '???'
-
-                    if found_trade.axp:
-                        message = "Trade %s:%s. Opened: %s [ CLOSING ]" % (
-                            symbol, trade_id, open_dt)
-                    elif found_trade.aep:
-                        message = "Trade %s:%s. Opened: %s [ ACTIVE ]" % (
-                            symbol, trade_id, open_dt)
-                    else:
-                        message = "Trade %s:%s. Signaled: %s [ WAITING ]" % (
-                            symbol, trade_id, open_dt)
-
-                    if found_trade.timeframe:
-                        message += "\n- Timeframe %s" % found_trade.timeframe_to_str()
-
-                    if found_trade.entry_timeout and found_trade.eot:
-                        entry_timeout = found_trade.eot + timedelta(seconds=found_trade.entry_timeout)
-                        message += "\n- Cancel entry after : %s" % entry_timeout.strftime('%Y-%m-%d %H:%M:%S')
-
-                    if found_trade.expiry and found_trade.first_realized_entry_time:
-                        expiry = found_trade.eot + timedelta(seconds=found_trade.entry_timeout)
-                        message += "\n- Close expiry after : %s" % expiry.strftime('%Y-%m-%d %H:%M:%S')
-
-                    if found_trade.aep:
-                        message += "\n- Entry-Price: %s" % strategy_trader.instrument.format_price(trade.aep)
-                    elif found_trade.op:
-                        message += "\n- Entry-Price: %s" % strategy_trader.instrument.format_price(trade.op)
-
-                    if found_trade.take_profit:
-                        message += "\n- Take-Profit: %s" % strategy_trader.instrument.format_price(trade.take_profit)
-                    if found_trade.stop_loss:
-                        message += "\n- Stop-Loss: %s" % strategy_trader.instrument.format_price(trade.stop_loss)
-
-                    if found_trade.aep:
-                        upnl = found_trade.estimate_profit_loss(strategy_trader.instrument)
-                        if upnl:
-                            message += "\n- Unrealized-PNL %.2f%%" % (upnl * 100.0,)
+                if 'first-realized-entry-datetime' in t['stats']:
+                    open_dt = TelegramNotifier.parse_utc_datetime(t['stats']['first-realized-entry-datetime'])
                 else:
-                    message = "There is no trade for %s with identifier %s" % (symbol, trade_id)
+                    open_dt = TelegramNotifier.parse_utc_datetime(t['entry-open-time'])
 
-            # lookup for trade history
-            # @todo
+                aep = float(t.get('avg-entry-price', "0"))
+                axp = float(t.get('avg-exit-price', "0"))
+                op = float(t.get('order-price', "0"))
 
-        if message and chat_id:
+                if axp:
+                    messages.append("%s %s:%s [ CLOSING ]" % (t['direction'].capitalize(), symbol, trade_id))
+                    messages.append("- Opened: %s" % TelegramNotifier.format_datetime(open_dt, locale))
+                elif aep:
+                    messages.append("%s %s:%s [ ACTIVE ]" % (t['direction'].capitalize(), symbol, trade_id))
+                    messages.append("- Opened: %s" % TelegramNotifier.format_datetime(open_dt, locale))
+                else:
+                    messages.append("%s %s:%s [ PENDING ]" % (t['direction'].capitalize(), symbol, trade_id))
+                    messages.append("- Signaled: %s" % TelegramNotifier.format_datetime(open_dt, locale))
+
+                if t['timeframe']:
+                    messages.append("- Timeframe %s" % t['timeframe'])
+
+                if t['label']:
+                    messages.append("- Context %s" % t['label'])
+
+                if t['entry-timeout'] and not aep:
+                    # before in position
+                    et_tf = timeframe_from_str(t['entry-timeout'])
+                    if et_tf > 0.0:
+                        entry_timeout_dt = open_dt + timedelta(seconds=et_tf)
+                        messages.append("- Cancel entry after : %s" % TelegramNotifier.format_datetime(entry_timeout_dt))
+
+                if t['expiry'] and aep:
+                    # until in position
+                    expiry_dt = open_dt + timedelta(seconds=t['expiry'])
+                    messages.append("- Close expiry after : %s" % TelegramNotifier.format_datetime(expiry_dt))
+
+                if aep:
+                    messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+                elif op:
+                    messages.append("- Order-Price: %s" % t['order-price'])
+
+                if float(t['take-profit-price']):
+                    messages.append("- Take-Profit: %s" % t['take-profit-price'])
+                if float(t['stop-loss-price']):
+                    messages.append("- Stop-Loss: %s" % t['stop-loss-price'])
+
+                if aep:
+                    instrument = self.service.strategy_service.strategy().instrument(symbol)
+
+                    upnl = TelegramNotifier.estimate_profit_loss(instrument, t)
+                    messages.append("- Unrealized-PNL %.2f%%" % (upnl * 100.0,))
+
+            elif trade_id in canceled_trades:
+                t = canceled_trades[trade_id]
+                messages.append("Trade %s for %s was canceled before entering" % (trade_id, symbol))
+
+            elif trade_id in closed_trades:
+                t = closed_trades[trade_id]
+
+                if 'last-realized-exit-datetime' in t['stats']:
+                    close_dt = TelegramNotifier.parse_utc_datetime(t['stats']['last-realized-exit-datetime'])
+                else:
+                    close_dt = TelegramNotifier.parse_utc_datetime(t['exit-open-time'])
+
+                aep = float(t['avg-entry-price'])
+                axp = float(t['avg-exit-price'])
+                op = float(t['order-price'])
+
+                messages.append("%s %s:%s. Closed: %s [ CLOSED ]" % (
+                    t['direction'].capitalize(), symbol, trade_id, TelegramNotifier.format_datetime(
+                        close_dt, locale)))
+
+                if t['timeframe']:
+                    messages.append("- Timeframe %s" % t['timeframe'])
+
+                if t['label']:
+                    messages.append("- Context %s" % t['label'])
+
+                if aep:
+                    messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+                elif op:
+                    messages.append("- Order-Price: %s" % t['order-price'])
+
+                if axp:
+                    messages.append("- Exit-Price: %s" % t['avg-exit-price'])
+
+                if float(t['take-profit-price']):
+                    messages.append("- Take-Profit: %s" % t['take-profit-price'])
+                if float(t['stop-loss-price']):
+                    messages.append("- Stop-Loss: %s" % t['stop-loss-price'])
+
+                if t['profit-loss-pct']:
+                    messages.append("- Realized PNL: %.2f%% (including common fees)" % t['profit-loss-pct'])
+
+            else:
+                messages.append("Trade %s:%s does not exists" % (symbol, trade_id))
+
+        if messages and chat_id:
             try:
-                send_to_telegram(self._bot_token, chat_id, message)
+                send_to_telegram(self._bot_token, chat_id, '\n'.join(messages))
             except:
                 pass
 
         return True
+
+    @staticmethod
+    def format_datetime(dt, local="fr"):
+        if local == "fr":
+            dt = dt.replace(tzinfo=pytz.timezone('Europe/Paris'))
+            return dt.strftime('%Y-%m-%d %H:%M:%S (Paris)') if dt else ''
+        else:
+            return dt.strftime('%Y-%m-%d %H:%M:%S (UTC)') if dt else ''
+
+    @staticmethod
+    def estimate_profit_loss(instrument, trade):
+        """
+        Estimate PLN without fees.
+        """
+        direction = 1 if trade['direction'] == "long" else -1
+
+        # estimation at close price
+        close_exec_price = instrument.close_exec_price(direction)
+
+        # no current price update
+        if not close_exec_price:
+            return 0.0
+
+        entry_price = float(trade['avg-entry-price'])
+
+        if direction > 0 and entry_price > 0:
+            profit_loss = (close_exec_price - entry_price) / entry_price
+        elif direction < 0 and entry_price > 0:
+            profit_loss = (entry_price - close_exec_price) / entry_price
+        else:
+            profit_loss = 0.0
+
+        return profit_loss
+
+    @staticmethod
+    def parse_utc_datetime(utc_dt):
+        if utc_dt:
+            return datetime.strptime(utc_dt, '%Y-%m-%dT%H:%M:%S.%fZ')
+        else:
+            return datetime.now()

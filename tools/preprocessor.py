@@ -6,9 +6,11 @@
 import sys
 import logging
 import traceback
+from importlib import import_module
 
 from tools.tool import Tool
-    
+from config import utils
+
 from terminal.terminal import Terminal
 from database.database import Database
 
@@ -60,6 +62,7 @@ class Preprocessor(Tool):
         self._timestep = options.get('timestep', 60.0)
         self._timeframe = options.get('timeframe', 0.0)
 
+        self._strategy_service = None
         self._strategy = None
 
     def check_options(self, options):
@@ -82,12 +85,12 @@ class Preprocessor(Tool):
 
     def run(self, options):
         Terminal.inst().info("Starting strategy's service...")
-        self._strategy_service = StrategyService(options)
+        self._strategy_service = StrategyService(None, None, None, options)
 
         markets = options['market'].split(',')
 
         for market_id in markets:
-            preprocessor = self.create_strategy() self._strategy_service.create_preprocessor(options, options['broker'], market_id)
+            preprocessor = self.create_preprocessor()
 
             if preprocessor:
                 logger.info("Pre-process market %s..." % (market_id,))
@@ -115,7 +118,7 @@ class Preprocessor(Tool):
         # indicators
         for k, indicator in self._indicators_config.items():
             if indicator.get("status") is not None and indicator.get("status") == "load":
-                # retrieve the classname and instanciate it
+                # retrieve the classname and instantiate it
                 parts = indicator.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -132,7 +135,7 @@ class Preprocessor(Tool):
                 continue
 
             if strategy.get("status") is not None and strategy.get("status") == "load":
-                # retrieve the classname and instanciate it
+                # retrieve the classname and instantiate it
                 parts = strategy.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -149,7 +152,7 @@ class Preprocessor(Tool):
         if not strategy_profile or strategy_profile.get('name', "") == "default":
             return
 
-        # overrided strategy parameters
+        # overridden strategy parameters
         parameters = strategy_profile.get('parameters', {})
 
         if not strategy_profile or not strategy_profile.get('name'):
@@ -167,5 +170,6 @@ class Preprocessor(Tool):
 
     def preprocess(self, broker, market):
         pass
+
 
 tool = Preprocessor

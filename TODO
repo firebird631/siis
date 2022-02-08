@@ -233,3 +233,11 @@ Client Web
 - tracer bougie sur client web
 - tracer volume bar sur client web
 - tracer volume delta sur client web
+
+
+- modify_take_profit / modify_stop_loss ammélioration :
+    1) handler sur le strategytrader
+    2) si modifie localement alors doit générer un notify update car il n'y aura pas de signal du broker
+    3) si modifie et 'forced' (command) mais que asset trade et pas encore is_open alors danger de créer un ordre sur 0 qty or autre qty d'un autre trade
+    4) utilisation du handler partout en lieu et place (strategies, command, operation)
+    5) commnent gérer si has_xxx_order dans operation, dans command, autres cas... niveau handler ?

@@ -209,7 +209,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         return self.NOTHING_TO_DO
 
-    def modify_take_profit(self, trader, instrument, limit_price):
+    def modify_take_profit(self, trader, instrument, limit_price, hard=True):
         if self.position_id:
             # if not accepted as modification do it as limit order
             if trader.modify_position(self.position_id, instrument,
@@ -222,7 +222,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         return self.NOTHING_TO_DO
 
-    def modify_stop_loss(self, trader, instrument, stop_price):
+    def modify_stop_loss(self, trader, instrument, stop_price, hard=True):
         if self.position_id:
             # if not accepted as modification do it as stop order
             if trader.modify_position(self.position_id, instrument,

@@ -850,6 +850,10 @@ class StrategyTrader(object):
                     if trade.is_target_order(order_id, ref_order_id):
                         trade.order_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
 
+                        # notify update only if trade is not closed by the signal
+                        if not trade.is_closed():
+                            self.notify_trade_update(self.strategy.timestamp, trade)
+
             except Exception as e:
                 error_logger.error(traceback.format_exc())
                 error_logger.error(repr(e))
@@ -867,6 +871,10 @@ class StrategyTrader(object):
 
                     if trade.is_target_position(position_id, ref_order_id):
                         trade.position_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
+
+                        # notify update only if trade is not closed by the signal
+                        if not trade.is_closed():
+                            self.notify_trade_update(self.strategy.timestamp, trade)
 
             except Exception as e:
                 error_logger.error(traceback.format_exc())
@@ -975,7 +983,7 @@ class StrategyTrader(object):
                     mutated = False
 
                     for operation in trade.operations:
-                        mutated |= operation.test_and_operate(trade, self.instrument, trader)
+                        mutated |= operation.test_and_operate(trade, self, trader)
 
                     if mutated:
                         trade.cleanup_operations()
@@ -987,9 +995,6 @@ class StrategyTrader(object):
                 if trade.is_active():
                     # for statistics usage
                     trade.update_stats(self.instrument, timestamp)
-
-                    # update data stream
-                    self.notify_trade_update(timestamp, trade)
 
                 #
                 # asset trade
@@ -1033,12 +1038,12 @@ class StrategyTrader(object):
 
                 elif trade.trade_type in (StrategyTrade.TRADE_MARGIN, StrategyTrade.TRADE_POSITION,
                                           StrategyTrade.TRADE_IND_MARGIN):
+                    if trade.is_closed():
+                        continue
+
                     # process only on active trades
                     if not trade.is_active():
                         # @todo timeout if not filled before condition...
-                        continue
-
-                    if trade.is_closed():
                         continue
 
                     if trade.is_closing():
@@ -1185,6 +1190,116 @@ class StrategyTrader(object):
         When receive initial or update of market/instrument data.
         """
         pass
+
+    #
+    # trade method handler (uses this method, not directly them from the trade class
+    #
+
+    def trade_modify_take_profit(self, trade: StrategyTrade, limit_price: float, hard=True):
+        """
+        Modify the take-profit limit or market price of a trade.
+        @param trade: Valid trade model
+        @param limit_price: Limit price if hard else market price once reached
+        @param hard: True create an order if possible depending of the market type else software order at market
+            with possible slippage and at market price
+        @return: A StrategyTrade status code.
+
+        @node On spot market either a take-profit limit or a market stop-loss order can be defined. One of them
+            will be a soft order (meaning managed by strategy when the market will reach the price).
+
+        @note If the trade is not active (not full or partially realized) an hard order cannot be created.
+        @note If there is too many attempt to modify an order (hard) the modification will be rejected temporarily.
+        """
+        if trade:
+            if trade.is_active():
+                if trade.can_modify_limit_order(self.strategy.timestamp):
+                    # create an order, can cancel some previous, broker will send signals
+                    return trade.modify_take_profit(self.strategy.trader(), self.instrument, limit_price, hard)
+                else:
+                    # must be retried later
+                    return StrategyTrade.REJECTED
+            else:
+                # soft only until active
+                trade.tp = limit_price
+
+                # local notification
+                self.notify_trade_update(self.strategy.timestamp, trade)
+
+                return StrategyTrade.ACCEPTED
+
+        return StrategyTrade.NOTHING_TO_DO
+
+    def trade_modify_stop_loss(self, trade: StrategyTrade, stop_price: float, hard=True):
+        """
+        Modify the stop-loss (or in profit) stop or market price of a trade.
+        @param trade: Valid trade model
+        @param stop_price: Stop market price if hard else market price once reached
+        @param hard: True create an order if possible depending of the market type else software order at market
+            with possible slippage and at market price
+        @return: A StrategyTrade status code.
+
+        @node On spot market either a take-profit limit or a market stop-loss order can be defined. One of them
+            will be a soft order (meaning managed by strategy when the market will reach the price).
+
+        @note If the trade is not active (not full or partially realized) an hard order cannot be created.
+        @note If there is too many attempt to modify an order (hard) the modification will be rejected temporarily.
+        """
+        if trade:
+            if trade.is_active():
+                if trade.can_modify_stop_order(self.strategy.timestamp):
+                    # cancel previous order, create new if hard is defined. broker will send signals
+                    return trade.modify_stop_loss(self.strategy.trader(), self.instrument, stop_price, hard)
+                else:
+                    # must be retried later
+                    return StrategyTrade.REJECTED
+            else:
+                # soft only until active
+                trade.sl = stop_price
+
+                # local notification
+                self.notify_trade_update(self.strategy.timestamp, trade)
+
+                return StrategyTrade.ACCEPTED
+
+        return StrategyTrade.NOTHING_TO_DO
+
+    def trade_modify_oco(self, trade: StrategyTrade, limit_price: float, stop_price: float, hard=True):
+        """
+        Modify the take-profit (limit or market) and stop-loss (or in profit) stop or market price of a trade.
+        It will create if possible an OCO order.
+
+        @param trade: Valid trade model
+        @param limit_price: Limit price if hard else market price once reached
+        @param stop_price: Stop market price if hard else market price once reached
+        @param hard: True create an order if possible depending of the market type else software order at market
+            with possible slippage and at market price
+        @return: A StrategyTrade status code.
+
+        @note If the trade is not active (not full or partially realized) an hard order cannot be created.
+        @note Available only for spot market, and allowing to place a stop-loss and a take-profit order at the
+            same time, execution of One will Cancel the Other.
+
+        @warning Not fully implemented. Should be not used for now.
+        """
+        if trade:
+            if trade.is_active():
+                if trade.can_modify_limit_order(self.strategy.timestamp):
+                    # cancel previous order, create new if hard is defined. broker will send signals
+                    return trade.modify_oco(self.strategy.trader(), self.instrument, limit_price, stop_price, hard)
+                else:
+                    # must be retried later
+                    return StrategyTrade.REJECTED
+            else:
+                # soft only until active
+                trade.tp = limit_price
+                trade.sl = stop_price
+
+                # local notification
+                self.notify_trade_update(self.strategy.timestamp, trade)
+
+                return StrategyTrade.ACCEPTED
+
+        return StrategyTrade.NOTHING_TO_DO
 
     #
     # watcher signals
@@ -1830,7 +1945,10 @@ class StrategyTrader(object):
 
     def notify_trade_update(self, timestamp, trade):
         if trade:
-            # stream only but could be removed, client will update using tickers, and only receive amends update
+            # system notification
+            self.strategy.notify_trade_update(timestamp, trade, self)
+
+            # stream
             if self._trade_update_streamer:
                 try:
                     self._trade_update_streamer.member('trade-update').update(self, trade, timestamp)
