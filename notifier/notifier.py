@@ -95,7 +95,10 @@ class Notifier(Runnable):
         while self._signals:
             signal = self._signals.popleft()
             if signal:
-                self.process_signal(signal)
+                try:
+                    self.process_signal(signal)
+                except Exception as e:
+                    logger.error(repr(e))
 
             count += 1
             if count > 10:

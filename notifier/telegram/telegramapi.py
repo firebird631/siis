@@ -9,8 +9,6 @@ import requests
 PROTOCOL = "https:/"
 API_URL = "api.telegram.org"
 
-# tradeitxsiis_bot / bot chat_id 1026569787 / group chat_id : -710360325
-
 
 def send_to_telegram(bot_token, chat_id, message):
     """
@@ -66,25 +64,32 @@ def get_telegram_updates(bot_token, update_id=0):
             continue
 
         message = result.get('message')
-        if not message:
+        if message is None:
             continue
 
         chat = message.get('chat')
-        if not chat:
+        if chat is None:
             continue
 
         chat_id = chat.get('id')
-        if not chat_id:
+        if chat_id is None:
             continue
 
         text = message.get('text')
+        if text is None:
+            continue
+
         is_bot_command = False
 
-        entities = message.get('entities', [])
-        if entities and entities[0].get('type', "") == "bot_command":
+        # entities = message.get('entities', [])
+
+        # could have in place "url":"tg://bot_command?command=trade" and "type":"text_link" ...
+        # if entities and entities[0].get('type', "") == "bot_command":
+        #     is_bot_command = True
+        if text.startswith('/') and len(text) < 256:
             is_bot_command = True
 
-        if is_bot_command and text.startswith('/'):
+        if is_bot_command:
             commands.append((chat_id, text))
 
     return last_update_id, commands

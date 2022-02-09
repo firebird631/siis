@@ -71,8 +71,6 @@ class TelegramNotifier(Notifier):
             # "error",
         ))
 
-        self._strategy_service = None
-
         self._opened_trades = {}
         self._closed_trades = {}
         self._canceled_trades = {}
@@ -167,7 +165,7 @@ class TelegramNotifier(Notifier):
         # messages
         #
 
-        if signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY:
+        if signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ENTRY:
             t = signal.data
 
             trade_id = t['id']
@@ -183,7 +181,7 @@ class TelegramNotifier(Notifier):
             order_type = t['stats']['entry-order-type']
 
             messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), symbol, trade_id))
-            messages.append("- %s: %s" % (order_type, TelegramNotifier.format_datetime(open_dt, locale)))
+            messages.append("- %s: %s" % (order_type.title(), TelegramNotifier.format_datetime(open_dt, locale)))
 
             if aep:
                 messages.append("- Entry-Price: %s" % t['avg-entry-price'])
@@ -191,10 +189,10 @@ class TelegramNotifier(Notifier):
                 messages.append("- Order-Price: %s" % t['order-price'])
 
             if t['timeframe']:
-                messages.append("- Timeframe %s" % t['timeframe'])
+                messages.append("- Timeframe: %s" % t['timeframe'])
 
             if t['label']:
-                messages.append("- Context %s" % t['label'])
+                messages.append("- Context: %s" % t['label'])
 
             if t['entry-timeout'] and not aep:
                 # before in position
@@ -233,28 +231,26 @@ class TelegramNotifier(Notifier):
                 if pt['avg-entry-price'] != t['avg-entry-price']:
                     accept = True
                     execute = True
-                elif pt['take-profit-price'] != t['take-profit-price']:
+                if pt['take-profit-price'] != t['take-profit-price']:
                     accept = True
                     modify_tp = True
-                elif pt['stop-loss-price'] != t['stop-loss-price']:
+                if pt['stop-loss-price'] != t['stop-loss-price']:
                     accept = True
                     modify_sl = True
 
-            if not accept:
-                return
+            if accept:
+                messages = []
 
-            messages = []
+                messages.append("%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), symbol, trade_id))
 
-            messages.append("%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), symbol, trade_id))
+                if execute and float(t['avg-entry-price']):
+                    messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+                if modify_tp and float(t['take-profit-price']):
+                    messages.append("- Modify-Take-Profit: %s" % t['take-profit-price'])
+                if modify_sl and float(t['stop-loss-price']):
+                    messages.append("- Modify-Stop-Loss: %s" % t['stop-loss-price'])
 
-            if execute and float(t['avg-entry-price']):
-                messages.append("- Entry-Price: %s" % t['avg-entry-price'])
-            if modify_tp and float(t['take-profit-price']):
-                messages.append("- Modify-Take-Profit: %s" % t['take-profit-price'])
-            if modify_sl and float(t['stop-loss-price']):
-                messages.append("- Modify-Stop-Loss: %s" % t['stop-loss-price'])
-
-            message = '\n'.join(messages)
+                message = '\n'.join(messages)
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_EXIT:
             t = signal.data
@@ -271,8 +267,8 @@ class TelegramNotifier(Notifier):
             if axp:
                 messages.append("- Exit-Price: %s" % t['avg-exit-price'])
 
-            if signal.data['exit-reason'] != "undefined":
-                messages.append("- Cause: %s" % t['exit-reason'].title())
+            if signal.data['stats']['exit-reason'] != "undefined":
+                messages.append("- Cause: %s" % t['stats']['exit-reason'].title())
 
             message = '\n'.join(messages)
 
@@ -318,14 +314,23 @@ class TelegramNotifier(Notifier):
             if signal.data.get('user') is not None:
                 message += " (%s)" % signal.data['user']
 
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY:
+            # @todo
+            return
+
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_EXIT:
+            # @todo
+            return
+
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
+            # @todo
             return
 
         #
         # store for comparison and queries
         #
 
-        if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+        if Signal.SIGNAL_STRATEGY_TRADE_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
             # trade local copy
             if signal.data['symbol'] not in self._opened_trades:
                 self._opened_trades[signal.data['symbol']] = {}
@@ -344,7 +349,7 @@ class TelegramNotifier(Notifier):
                 opened_trades[signal.data['id']] = copy.copy(signal.data)
 
             elif signal.data['way'] == 'update':
-                if signal.data['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
+                if signal.data['stats']['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
                     # canceled
                     if signal.data['id'] in opened_trades:
                         del opened_trades[signal.data['id']]
@@ -355,7 +360,7 @@ class TelegramNotifier(Notifier):
                     opened_trades[signal.data['id']] = copy.copy(signal.data)
 
             elif signal.data['way'] == 'exit':
-                if signal.data['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
+                if signal.data['stats']['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
                     # canceled
                     if signal.data['id'] in opened_trades:
                         del opened_trades[signal.data['id']]
@@ -449,7 +454,7 @@ class TelegramNotifier(Notifier):
             # invalid parameters
             return False
 
-        if symbol not in self._strategy_service.strategy.symbols_ids():
+        if symbol not in self.service.strategy_service.strategy().symbols_ids():
             # not managed symbol
             return True
 
@@ -502,10 +507,10 @@ class TelegramNotifier(Notifier):
                     messages.append("- Signaled: %s" % TelegramNotifier.format_datetime(open_dt, locale))
 
                 if t['timeframe']:
-                    messages.append("- Timeframe %s" % t['timeframe'])
+                    messages.append("- Timeframe: %s" % t['timeframe'])
 
                 if t['label']:
-                    messages.append("- Context %s" % t['label'])
+                    messages.append("- Context: %s" % t['label'])
 
                 if t['entry-timeout'] and not aep:
                     # before in position
@@ -556,10 +561,10 @@ class TelegramNotifier(Notifier):
                         close_dt, locale)))
 
                 if t['timeframe']:
-                    messages.append("- Timeframe %s" % t['timeframe'])
+                    messages.append("- Timeframe: %s" % t['timeframe'])
 
                 if t['label']:
-                    messages.append("- Context %s" % t['label'])
+                    messages.append("- Context: %s" % t['label'])
 
                 if aep:
                     messages.append("- Entry-Price: %s" % t['avg-entry-price'])
@@ -591,7 +596,7 @@ class TelegramNotifier(Notifier):
     @staticmethod
     def format_datetime(dt, local="fr"):
         if local == "fr":
-            dt = dt.replace(tzinfo=pytz.timezone('Europe/Paris'))
+            dt = dt.replace(tzinfo=pytz.UTC).astimezone(pytz.timezone('Europe/Paris'))
             return dt.strftime('%Y-%m-%d %H:%M:%S (Paris)') if dt else ''
         else:
             return dt.strftime('%Y-%m-%d %H:%M:%S (UTC)') if dt else ''
