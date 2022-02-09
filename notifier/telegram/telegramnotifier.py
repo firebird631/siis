@@ -163,49 +163,6 @@ class TelegramNotifier(Notifier):
         message = ""
         locale = "fr"
 
-        if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
-            # trade local copy
-            if signal.data['symbol'] not in self._opened_trades:
-                self._opened_trades[signal.data['symbol']] = {}
-            opened_trades = self._opened_trades[signal.data['symbol']]
-
-            if signal.data['symbol'] not in self._closed_trades:
-                self._closed_trades[signal.data['symbol']] = {}
-            closed_trades = self._closed_trades[signal.data['symbol']]
-
-            if signal.data['symbol'] not in self._canceled_trades:
-                self._canceled_trades[signal.data['symbol']] = {}
-            canceled_trades = self._canceled_trades[signal.data['symbol']]
-
-            if signal.data['way'] == 'entry':
-                # opened
-                opened_trades[signal.data['id']] = copy.copy(signal.data)
-
-            elif signal.data['way'] == 'update':
-                if signal.data['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
-                    # canceled
-                    if signal.data['id'] in opened_trades:
-                        del opened_trades[signal.data['id']]
-
-                    canceled_trades[signal.data['id']] = copy.copy(signal.data)
-                else:
-                    # updated
-                    opened_trades[signal.data['id']] = copy.copy(signal.data)
-
-            elif signal.data['way'] == 'exit':
-                if signal.data['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
-                    # canceled
-                    if signal.data['id'] in opened_trades:
-                        del opened_trades[signal.data['id']]
-
-                    canceled_trades[signal.data['id']] = copy.copy(signal.data)
-                else:
-                    # closed
-                    if signal.data['id'] in opened_trades:
-                        del opened_trades[signal.data['id']]
-
-                    closed_trades[signal.data['id']] = copy.copy(signal.data)
-
         #
         # messages
         #
@@ -223,14 +180,7 @@ class TelegramNotifier(Notifier):
             op = float(t.get('order-price', "0"))
             aep = float(t.get('avg-entry-price', "0"))
 
-            if 'entry-order-type' in t['stats']:
-                order_type = t['stats']['entry-order-type']
-            elif aep:
-                order_type = "market"
-            elif op:
-                order_type = "limit"
-            else:
-                order_type = "undefined"
+            order_type = t['stats']['entry-order-type']
 
             messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), symbol, trade_id))
             messages.append("- %s: %s" % (order_type, TelegramNotifier.format_datetime(open_dt, locale)))
@@ -271,17 +221,38 @@ class TelegramNotifier(Notifier):
             trade_id = t['id']
             symbol = t['symbol']
 
+            # filter only if a change occurs on targets or from entry execution state
+            pt = self._opened_trades.get(symbol, {}).get(trade_id)
+
+            accept = False
+            execute = False
+            modify_tp = False
+            modify_sl = False
+
+            if pt:
+                if pt['avg-entry-price'] != t['avg-entry-price']:
+                    accept = True
+                    execute = True
+                elif pt['take-profit-price'] != t['take-profit-price']:
+                    accept = True
+                    modify_tp = True
+                elif pt['stop-loss-price'] != t['stop-loss-price']:
+                    accept = True
+                    modify_sl = True
+
+            if not accept:
+                return
+
             messages = []
 
             messages.append("%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), symbol, trade_id))
 
-            if t['timeframe']:
-                messages.append("- Timeframe %s" % t['timeframe'])
-
-            if float(t['take-profit-price']):
-                messages.append("- Take-Profit: %s" % t['take-profit-price'])
-            if float(t['stop-loss-price']):
-                messages.append("- Stop-Loss: %s" % t['stop-loss-price'])
+            if execute and float(t['avg-entry-price']):
+                messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+            if modify_tp and float(t['take-profit-price']):
+                messages.append("- Modify-Take-Profit: %s" % t['take-profit-price'])
+            if modify_sl and float(t['stop-loss-price']):
+                messages.append("- Modify-Stop-Loss: %s" % t['stop-loss-price'])
 
             message = '\n'.join(messages)
 
@@ -349,6 +320,57 @@ class TelegramNotifier(Notifier):
 
         elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
             return
+
+        #
+        # store for comparison and queries
+        #
+
+        if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            # trade local copy
+            if signal.data['symbol'] not in self._opened_trades:
+                self._opened_trades[signal.data['symbol']] = {}
+            opened_trades = self._opened_trades[signal.data['symbol']]
+
+            if signal.data['symbol'] not in self._closed_trades:
+                self._closed_trades[signal.data['symbol']] = {}
+            closed_trades = self._closed_trades[signal.data['symbol']]
+
+            if signal.data['symbol'] not in self._canceled_trades:
+                self._canceled_trades[signal.data['symbol']] = {}
+            canceled_trades = self._canceled_trades[signal.data['symbol']]
+
+            if signal.data['way'] == 'entry':
+                # opened
+                opened_trades[signal.data['id']] = copy.copy(signal.data)
+
+            elif signal.data['way'] == 'update':
+                if signal.data['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
+                    # canceled
+                    if signal.data['id'] in opened_trades:
+                        del opened_trades[signal.data['id']]
+
+                    canceled_trades[signal.data['id']] = copy.copy(signal.data)
+                else:
+                    # updated
+                    opened_trades[signal.data['id']] = copy.copy(signal.data)
+
+            elif signal.data['way'] == 'exit':
+                if signal.data['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
+                    # canceled
+                    if signal.data['id'] in opened_trades:
+                        del opened_trades[signal.data['id']]
+
+                    canceled_trades[signal.data['id']] = copy.copy(signal.data)
+                else:
+                    # closed
+                    if signal.data['id'] in opened_trades:
+                        del opened_trades[signal.data['id']]
+
+                    closed_trades[signal.data['id']] = copy.copy(signal.data)
+
+        #
+        # send the message
+        #
 
         if message:
             dst = self._chats.get('signals')
