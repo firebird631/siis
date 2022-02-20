@@ -102,8 +102,6 @@ class KrakenWatcher(Watcher):
         # if ws['retry'] > 0.0 and time.time() < ws['retry']:
         #     return
 
-        # logger.debug("%s subscribe %s to markets data stream..." % (self.name, name))
-
         with self._mutex:
             try:
                 self._connector.ws.stop_socket(name)
@@ -125,6 +123,8 @@ class KrakenWatcher(Watcher):
                     pair=pairs,
                     callback=callback
                 )
+
+                logger.debug("%s subscribe %s to markets data stream..." % (self.name, name))
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
@@ -134,8 +134,6 @@ class KrakenWatcher(Watcher):
         #     return
         # if self._ws_open_orders['retry'] > 0.0 and time.time() < self._ws_open_orders['retry']:
         #     return
-
-        # logger.debug("%s subscribe to user data stream..." % self.name)
 
         with self._mutex:
             try:
@@ -163,6 +161,8 @@ class KrakenWatcher(Watcher):
                         subscription='openOrders',
                         callback=self.__on_open_orders
                     )
+
+                    logger.debug("%s subscribe to user data stream..." % self.name)
                 else:
                     # error retrieving the token, retry later
                     self._ws_own_trades['timestamp'] = time.time()
@@ -857,13 +857,11 @@ class KrakenWatcher(Watcher):
 
                 if data['status'] == "subscribed" and data['channelName'] == "ticker":
                     self._ws_ticker_data['subscribed'] = True
-                    logger.debug("tickers data subscriptionStatus : subscribed to %s" %
-                                 self._ws_ticker_data.get('pair', 'any'))
+                    logger.debug("tickers data subscriptionStatus : subscribed to %s" % data.get('pair', 'any'))
 
                 elif data['status'] == "unsubscribed" and data['channelName'] == "ticker":
                     self._ws_ticker_data['subscribed'] = False
-                    logger.debug("tickers data subscriptionStatus : unsubscribed from %s" %
-                                 self._ws_ticker_data.get('pair', 'any'))
+                    logger.debug("tickers data subscriptionStatus : unsubscribed from %s" % data.get('pair', 'any'))
 
                 elif data['status'] == "error":
                     self._ws_ticker_data['status'] = "offline"
@@ -919,13 +917,11 @@ class KrakenWatcher(Watcher):
 
                 if data['status'] == "subscribed" and data['channelName'] == "spread":
                     self._ws_spread_data['subscribed'] = True
-                    logger.debug("spreads data subscriptionStatus : subscribed to %s" %
-                                 self._ws_spread_data.get('pair', 'any'))
+                    logger.debug("spreads data subscriptionStatus : subscribed to %s" % data.get('pair', 'any'))
 
                 elif data['status'] == "unsubscribed" and data['channelName'] == "spread":
                     self._ws_spread_data['subscribed'] = False
-                    logger.debug("spreads data subscriptionStatus : unsubscribed from %s" %
-                                 self._ws_spread_data.get('pair', 'any'))
+                    logger.debug("spreads data subscriptionStatus : unsubscribed from %s" % data.get('pair', 'any'))
 
                 elif data['status'] == "error":
                     self._ws_spread_data['status'] = "offline"
@@ -999,13 +995,11 @@ class KrakenWatcher(Watcher):
 
                 if data['status'] == "subscribed" and data['channelName'] == "trade":
                     self._ws_trade_data['subscribed'] = True
-                    logger.debug("trades data subscriptionStatus : subscribed to %s" %
-                                 self._ws_trade_data.get('pair', 'any'))
+                    logger.debug("trades data subscriptionStatus : subscribed to %s" % data.get('pair', 'any'))
 
                 elif data['status'] == "unsubscribed" and data['channelName'] == "trade":
                     self._ws_trade_data['subscribed'] = False
-                    logger.debug("trades data subscriptionStatus : unsubscribed from %s" %
-                                 self._ws_trade_data.get('pair', 'any'))
+                    logger.debug("trades data subscriptionStatus : unsubscribed from %s" % data.get('pair', 'any'))
 
                 elif data['status'] == "error":
                     self._ws_trade_data['status'] = "offline"

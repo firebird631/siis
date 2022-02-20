@@ -62,6 +62,10 @@ class KrakenClientProtocol(WebSocketClientProtocol):
                     error_logger.error(repr(e))
                     traceback_logger.error(traceback.format_exc())
 
+    # def connectionLost(self, reason):
+    #     WebSocketClientProtocol.connectionLost(self, reason)
+    #     error_logger.error("Kraken WS public connection lost: Reason is {}".format(reason))
+
 
 class KrakenPrivateClientProtocol(WebSocketClientProtocol):
 
@@ -103,15 +107,22 @@ class KrakenPrivateClientProtocol(WebSocketClientProtocol):
                     error_logger.error(repr(e))
                     traceback_logger.error(traceback.format_exc())
 
+    # def connectionLost(self, reason):
+    #     WebSocketClientProtocol.connectionLost(self, reason)
+    #     error_logger.error("Kraken WS private connection lost: Reason is {}".format(reason))
+
 
 class KrakenReconnectingClientFactory(ReconnectingClientFactory):
+    """
+    Finally manage at watcher level (reconnect = False)
+    """
 
     # set initial delay to a short time
     initialDelay = 0.1
 
-    maxDelay = 20
+    maxDelay = 2  # 20
 
-    maxRetries = 30
+    maxRetries = 3  # 30
 
 
 class KrakenClientFactory(WebSocketClientFactory, KrakenReconnectingClientFactory):
@@ -134,11 +145,19 @@ class KrakenClientFactory(WebSocketClientFactory, KrakenReconnectingClientFactor
     }
 
     def clientConnectionFailed(self, connector, reason):
+        if not self.reconnect:
+            return
+
+        error_logger.info("retry")
         self.retry(connector)
         if self.retries > self.maxRetries:
             self.callback(self._reconnect_error_payload)
 
     def clientConnectionLost(self, connector, reason):
+        if not self.reconnect:
+            return
+
+        error_logger.info("retry")
         self.retry(connector)
         if self.retries > self.maxRetries:
             self.callback(self._reconnect_error_payload)
@@ -205,7 +224,7 @@ class KrakenSocketManager(threading.Thread):
         factory.base_client = self
         factory.protocol = KrakenClientProtocol
         factory.callback = callback
-        factory.reconnect = True
+        factory.reconnect = False  # True
         self.factories[id_] = factory
         reactor.callFromThread(self.add_connection, id_, factory_url)
 
@@ -218,7 +237,7 @@ class KrakenSocketManager(threading.Thread):
         factory.base_client = self
         factory.protocol = KrakenPrivateClientProtocol
         factory.callback = callback
-        factory.reconnect = True
+        factory.reconnect = False  # True
         self.factories[id_] = factory
         reactor.callFromThread(self.add_private_connection, id_, factory_url)
 
@@ -327,7 +346,8 @@ class KrakenSocketManager(threading.Thread):
             return
 
         # disable reconnecting if we are closing
-        self._conns[conn_key].factory = WebSocketClientFactory(self.STREAM_URL)
+        self._conns[conn_key].factory.reconnect = False
+        # self._conns[conn_key].factory = WebSocketClientFactory(self.STREAM_URL)
         self._conns[conn_key].disconnect()
         del self._conns[conn_key]
 
@@ -348,7 +368,8 @@ class KrakenSocketManager(threading.Thread):
             return
 
         # disable reconnecting if we are closing
-        self._private_conns[conn_key].factory = WebSocketClientFactory(self.PRIVATE_STREAM_URL)
+        self._conns[conn_key].factory.reconnect = False
+        # self._private_conns[conn_key].factory = WebSocketClientFactory(self.PRIVATE_STREAM_URL)
         self._private_conns[conn_key].disconnect()
         del self._private_conns[conn_key]
 
