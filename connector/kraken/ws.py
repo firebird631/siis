@@ -148,7 +148,6 @@ class KrakenClientFactory(WebSocketClientFactory, KrakenReconnectingClientFactor
         if not self.reconnect:
             return
 
-        error_logger.info("retry")
         self.retry(connector)
         if self.retries > self.maxRetries:
             self.callback(self._reconnect_error_payload)
@@ -157,7 +156,6 @@ class KrakenClientFactory(WebSocketClientFactory, KrakenReconnectingClientFactor
         if not self.reconnect:
             return
 
-        error_logger.info("retry")
         self.retry(connector)
         if self.retries > self.maxRetries:
             self.callback(self._reconnect_error_payload)
@@ -186,11 +184,17 @@ class KrakenPrivateClientFactory(WebSocketClientFactory, KrakenReconnectingClien
     }
 
     def clientConnectionFailed(self, connector, reason):
+        if not self.reconnect:
+            return
+
         self.retry(connector)
         if self.retries > self.maxRetries:
             self.callback(self._reconnect_error_payload)
 
     def clientConnectionLost(self, connector, reason):
+        if not self.reconnect:
+            return
+
         self.retry(connector)
         if self.retries > self.maxRetries:
             self.callback(self._reconnect_error_payload)
@@ -368,7 +372,7 @@ class KrakenSocketManager(threading.Thread):
             return
 
         # disable reconnecting if we are closing
-        self._conns[conn_key].factory.reconnect = False
+        self._private_conns[conn_key].factory.reconnect = False
         # self._private_conns[conn_key].factory = WebSocketClientFactory(self.PRIVATE_STREAM_URL)
         self._private_conns[conn_key].disconnect()
         del self._private_conns[conn_key]
