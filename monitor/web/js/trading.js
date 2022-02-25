@@ -366,9 +366,10 @@ let on_active_trade_update_message = function(market_id, trade_id, timestamp, va
     update_active_trade(market_id, value);
 
     // remove from pending trades once the entry quantity is filled
-    let idx = window.pending_trades.indexOf(trade_id);
+    let key = market_id + ':' + trade_id;
+    let idx = window.pending_trades.indexOf(key);
     if (idx >= 0 && parseFloat(value['filled-entry-qty']) > 0.0) {
-        window.pending_trades = window.pending_trades.splice(idx, 1);
+        window.pending_trades.splice(idx, 1);
 
         // and update global counters
         update_status_trades();
@@ -385,9 +386,10 @@ let on_active_trade_exit_message = function(market_id, trade_id, timestamp, valu
     }
 
     // remove from pending trades
-    let idx = window.pending_trades.indexOf(trade_id);
+    let key = market_id + ':' + trade_id;
+    let idx = window.pending_trades.indexOf(key);
     if (idx >= 0) {
-        window.pending_trades = window.pending_trades.splice(idx, 1);
+       window.pending_trades.splice(idx, 1);
     }
 
     // update global counters

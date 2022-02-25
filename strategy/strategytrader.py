@@ -996,6 +996,14 @@ class StrategyTrader(object):
                     # for statistics usage
                     trade.update_stats(self.instrument, timestamp)
 
+                    # stream
+                    if self._trade_update_streamer:
+                        try:
+                            self._trade_update_streamer.member('trade-update').update(self, trade, timestamp)
+                            self._trade_update_streamer.publish()
+                        except Exception as e:
+                            logger.error(repr(e))
+
                 #
                 # asset trade
                 #
