@@ -29,7 +29,7 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal) {
     let pnl = compute_price_pct(signal['take-profit-price'], signal['order-price'], signal.direction == "long" ? 1 : -1);
     let signal_percent = $('<span class="signal-percent"></span>').text((pnl * 100).toFixed(2) + '%');
 
-    let signal_copy = $('<button class="signal-copy btn btn-info fa fa-copy"></button>');
+    let signal_copy = $('<button class="signal-copy btn btn-info fas fa-copy"></button>');
 
     signal_elt.append($('<td></td>').append(lsignal_id));
     signal_elt.append($('<td></td>').append(signal_symbol));

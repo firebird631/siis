@@ -1,7 +1,7 @@
-// @todo add price cross alert with popup alert on browser, popup sound alert (differents sounds)
+// @todo add price cross alert with popup alert on browser, popup sound alert (different sounds)
 // @todo remove alert
 
-function on_strategy_alert(market_id, alert_id, timestamp, alert) {
+function on_strategy_signal_alert(market_id, alert_id, timestamp, alert) {
     let alert_elt = $('<tr class="alert"></tr>');
     let key = market_id + ':' + alert.id;
     alert_elt.attr('alert-key', key);
@@ -40,8 +40,16 @@ function on_strategy_alert(market_id, alert_id, timestamp, alert) {
     audio_notify('alert');
 }
 
-function on_strategy_active_alert(market_id, alert_id, timestamp, alert) {
+function on_strategy_create_alert(market_id, alert_id, timestamp, alert) {
     // @todo
+//    let key = ""
+//
+//    window.alerts[key] = alert;
+}
 
-    window.alerts[key] = alert;
+function on_strategy_remove_alert(market_id, alert_id, timestamp, alert) {
+    // @todo
+//    let key = ""
+//
+//    del window.alerts[key];
 }

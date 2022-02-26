@@ -648,14 +648,14 @@ function add_active_trade(market_id, trade) {
         trade.direction == "long" ? 1 : -1);
     trade_stop_loss.attr('title', (stop_loss_price_rate * 100).toFixed(2) + '%');
 
-    let trade_stop_loss_chg = $('<button class="btn btn-light trade-modify-stop-loss fa fa-pencil"></button>');
+    let trade_stop_loss_chg = $('<button class="btn btn-light trade-modify-stop-loss fas fa-pencil"></button>');
 
     // take-profit
     let trade_take_profit = $('<span class="trade-take-profit"></span>').text(trade['take-profit-price']);  // + UP/DN buttons
     trade_take_profit.attr('data-toggle', "tooltip");
     trade_take_profit.attr('data-placement', "top");
     
-    let trade_take_profit_chg = $('<button class="btn btn-light trade-modify-take-profit fa fa-pencil"></button>');
+    let trade_take_profit_chg = $('<button class="btn btn-light trade-modify-take-profit fas fa-pencil"></button>');
 
     let take_profit_price_rate = compute_price_pct(trade['take-profit-price'],
         trade['avg-entry-price'] || trade['order-price'],
@@ -666,9 +666,9 @@ function add_active_trade(market_id, trade) {
     colorize_pnl(trade, trade_percent, stop_loss_price_rate, take_profit_price_rate);
 
     // actions
-    let trade_close = $('<button class="trade-close btn btn-danger fa fa-close"></button>');
-    let trade_breakeven = $('<button class="trade-be btn btn-light fa fa-random"></button>');
-    let trade_details = $('<button class="trade-details btn btn-info fa fa-info"></button>');
+    let trade_close = $('<button class="trade-close btn btn-danger fas fa-window-close"></button>');
+    let trade_breakeven = $('<button class="trade-be btn btn-light fas fa-random"></button>');
+    let trade_details = $('<button class="trade-details btn btn-info fas fa-info"></button>');
 
     trade_elt.append($('<td></td>').append(trade_id));
     trade_elt.append($('<td></td>').append(trade_symbol));
@@ -927,7 +927,7 @@ function add_historical_trade(market_id, trade) {
         trade['avg-entry-price'], trade.direction == "long" ? 1 : -1);
     trade_take_profit.attr('title', (take_profit_price_rate * 100).toFixed(2) + '%');
 
-    let trade_details = $('<button class="trade-details btn btn-info fa fa-info"></button>');
+    let trade_details = $('<button class="trade-details btn btn-info fas fa-info"></button>');
 
     trade_elt.append($('<td></td>').append(trade_id));
     trade_elt.append($('<td></td>').append(trade_symbol));
@@ -1250,10 +1250,10 @@ function on_details_active_trade(elt) {
 
     if (trade.direction == "long") {
         direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
-        $('<td class="data-value"><span class="trade-direction fa trade-long fa-arrow-up"></span></td>'));
+        $('<td class="data-value"><span class="trade-direction fas trade-long fa-arrow-up"></span></td>'));
     } else if (trade.direction == "short") {
        direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
-        $('<td class="data-value"><span class="trade-direction fa trade-short fa-arrow-dn"></span></td>'));
+        $('<td class="data-value"><span class="trade-direction fas trade-short fa-arrow-dn"></span></td>'));
     }
 
     let state = $('<tr></tr>').append($('<td class="data-name">State</td>')).append(
@@ -1455,10 +1455,10 @@ function on_details_historical_trade(elt) {
 
     if (trade.direction == "long") {
         direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
-        $('<td class="data-value"><span class="trade-direction fa trade-long fa-arrow-up"></span></td>'));
+        $('<td class="data-value"><span class="trade-direction fas trade-long fa-arrow-up"></span></td>'));
     } else if (trade.direction == "short") {
        direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
-        $('<td class="data-value"><span class="trade-direction fa trade-short fa-arrow-dn"></span></td>'));
+        $('<td class="data-value"><span class="trade-direction fas trade-short fa-arrow-dn"></span></td>'));
     }
 
     let state = $('<tr></tr>').append($('<td class="data-name">State</td>')).append(

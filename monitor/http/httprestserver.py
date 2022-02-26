@@ -500,6 +500,236 @@ class HistoricalTradeRestAPI(resource.Resource):
         return json.dumps(results).encode("utf-8")
 
 
+class StrategyAlertRestAPI(resource.Resource):
+    isLeaf = True
+
+    def __init__(self, monitor_service, strategy_service):
+        super().__init__()
+
+        self._strategy_service = strategy_service
+
+        self._allow_view = monitor_service.has_strategy_view_perm
+        self._allow_open_alert = monitor_service.has_strategy_open_trade_perm
+        self._allow_clean_alert = monitor_service.has_strategy_clean_trade_perm
+
+    def render_GET(self, request):
+        # list active alert or alert specific
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_view:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
+        alert_id = -1
+
+        results = {
+            'error': False,
+            'messages': [],
+            'data': None
+        }
+
+        if b'alert' in request.args:
+            try:
+                alert_id = int(request.args[b'alert'][0].decode("utf-8"))
+            except ValueError:
+                return NoResource("Incorrect alert value")
+
+        if alert_id > 0:
+            # @todo
+            results['data'] = None
+        else:
+            # current active alert list
+            results['data'] = self._strategy_service.strategy().dumps_trades_update()
+
+        return json.dumps(results).encode("utf-8")
+
+    def render_POST(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
+            command = content.get('command', "")
+
+            if command == "alert-create":
+                if not self._allow_open_alert:
+                    return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
+                # @todo
+                # results = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
+
+            else:
+                results['messages'].append("Missing command.")
+                results['error'] = True
+
+        except Exception as e:
+            logger.debug(e)
+
+        return json.dumps(results).encode("utf-8")
+
+    def render_DELETE(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_clean_alert:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        content = json.loads(request.content.read().decode("utf-8"))
+
+        # @todo
+        # results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+
+        return json.dumps(results).encode("utf-8")
+
+
+class HistoricalAlertRestAPI(resource.Resource):
+    isLeaf = True
+
+    def __init__(self, monitor_service, strategy_service):
+        super().__init__()
+
+        self._strategy_service = strategy_service
+
+        self._allow_view = monitor_service.has_strategy_view_perm
+
+    def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_view:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
+        alert_id = -1
+
+        results = {
+            'error': False,
+            'messages': [],
+            'data': None
+        }
+
+        if b'alert' in request.args:
+            try:
+                alert_id = int(request.args[b'alert'][0].decode("utf-8"))
+            except ValueError:
+                return NoResource("Incorrect alert value")
+
+        if alert_id > 0:
+            # @todo
+            results['data'] = None
+        else:
+            # triggered alert list
+            history_alerts = self._strategy_service.strategy().dumps_alerts_history()
+
+            # sort by last execution timestamp
+            results['data'] = sorted(history_alerts, key=lambda alert: alert['timestamp'])
+
+        return json.dumps(results).encode("utf-8")
+
+
+class StrategyRegionRestAPI(resource.Resource):
+    isLeaf = True
+
+    def __init__(self, monitor_service, strategy_service):
+        super().__init__()
+
+        self._strategy_service = strategy_service
+
+        self._allow_view = monitor_service.has_strategy_view_perm
+        self._allow_open_region = monitor_service.has_strategy_open_trade_perm
+        self._allow_clean_region = monitor_service.has_strategy_clean_trade_perm
+
+    def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_view:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
+        region_id = -1
+
+        results = {
+            'error': False,
+            'messages': [],
+            'data': None
+        }
+
+        if b'region' in request.args:
+            try:
+                region_id = int(request.args[b'region'][0].decode("utf-8"))
+            except ValueError:
+                return NoResource("Incorrect trade value")
+
+        if region_id > 0:
+            # @todo
+            results['data'] = None
+        else:
+            # strategy trader region for a specific market
+            trade_regions = []  # self._strategy_service.strategy().dumps_regions()
+
+            # sort by last created timestamp
+            results['data'] = sorted(trade_regions, key=lambda region: region['created'])
+
+        return json.dumps(results).encode("utf-8")
+
+    def render_POST(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
+            command = content.get('command', "")
+
+            if command == "region-create":
+                if not self._allow_open_region:
+                    return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
+                # @todo
+                # results = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
+
+            else:
+                results['messages'].append("Missing command.")
+                results['error'] = True
+
+        except Exception as e:
+            logger.debug(e)
+
+        return json.dumps(results).encode("utf-8")
+
+    def render_DELETE(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_clean_region:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        content = json.loads(request.content.read().decode("utf-8"))
+
+        # @todo
+        # results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+
+        return json.dumps(results).encode("utf-8")
+
+
 class TraderRestAPI(resource.Resource):
     isLeaf = False
 
@@ -556,6 +786,20 @@ class Charting(resource.Resource):
 
         self._allow_chart = monitor_service.has_strategy_chart_perm
 
+        self._template = self.init_template()
+
+    def init_template(self):
+        data = ""
+
+        try:
+            with open("monitor/web/charting.html", "rb") as f:
+                data = f.read()
+
+        except FileNotFoundError:
+            error_logger.error("Template charting.html was not found, not template available")
+
+        return data
+
     def render_GET(self, request):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
@@ -566,12 +810,8 @@ class Charting(resource.Resource):
         uri = request.uri.split('/')
         result = {}
 
-        template = open("monitor/web/charting.html", "rb")
-
-        # @todo replace template part
+        # @todo fill template
         result = ""
-
-        close(template)
 
         return json.dumps(result).encode("utf-8")
 
@@ -666,7 +906,8 @@ class HttpRestServer(object):
     ALLOWED_IPS = None
     DENIED_IPS = None
 
-    def __init__(self, host, port, api_key, api_secret, monitor_service, strategy_service, trader_service, watcher_service):
+    def __init__(self, host, port, api_key, api_secret, monitor_service,
+                 strategy_service, trader_service, watcher_service):
         self._listener = None
 
         self._host = host
@@ -695,14 +936,29 @@ class HttpRestServer(object):
         strategy_api = StrategyInfoRestAPI(self._monitor_service, self._strategy_service, self._trader_service)
         api_v1.putChild(b"strategy", strategy_api)
 
+        # strategy instrument
         instrument_api = InstrumentRestAPI(self._monitor_service, self._strategy_service, self._trader_service)
         strategy_api.putChild(b"instrument", instrument_api)
 
+        # strategy trade
         trade_api = StrategyTradeRestAPI(self._monitor_service, self._strategy_service, self._trader_service)
         strategy_api.putChild(b"trade", trade_api)
 
+        # strategy trader history
         historical_trade_api = HistoricalTradeRestAPI(self._monitor_service, self._strategy_service, self._trader_service)
         strategy_api.putChild(b"historical", historical_trade_api)
+
+        # strategy trader alert
+        alert_api = StrategyAlertRestAPI(self._monitor_service, self._strategy_service)
+        strategy_api.putChild(b"alert", alert_api)
+
+        # strategy trader alert history
+        historical_alert_api = HistoricalAlertRestAPI(self._monitor_service, self._strategy_service)
+        strategy_api.putChild(b"historical-alert", historical_alert_api)
+
+        # strategy trader region
+        region_api = StrategyRegionRestAPI(self._monitor_service, self._strategy_service)
+        strategy_api.putChild(b"region", region_api)
 
         # trader
         trader_api = TraderRestAPI(self._monitor_service, self._trader_service)

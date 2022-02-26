@@ -81,10 +81,12 @@ $(window).ready(function() {
         'binance.com': ['BINANCE', ''],
         'binancefutures.com': ['BINANCE', 'PERP'],
         'ig.com': ['OANDA' , ''],
+        'kraken.com': ['KRAKEN', ''],
     };
 
     // map a symbol to a market on trading-view for some specials case, like indices
     window.symbol_to_tv = {
+        // ig.com mapping
         'IX.D.DAX.IFMM.IP': ['OANDA', 'DE30EUR'],
         'IX.D.DOW.IFE.IP': ['OANDA', 'US30USD'],
         'IX.D.NASDAQ.IFE.IP': ['OANDA', 'NAS100USD'],
@@ -101,6 +103,30 @@ $(window).ready(function() {
         'CS.D.GBPUSD.MINI.IP': ['OANDA', 'GBPUSD'],
 
         'CS.D.CFEGOLD.CFE.IP': ['OANDA', 'XAUUSD'],
+
+        // kraken.com mapping
+        'XLTCZEUR': ['KRAKEN', 'LTCEUR'],
+        'XLTCZUSD': ['KRAKEN', 'LTCUSD'],
+        'XETCZEUR': ['KRAKEN', 'ETCEUR'],
+        'XETCZUSD': ['KRAKEN', 'ETCUSD'],
+        'XETHZEUR': ['KRAKEN', 'ETHEUR'],
+        'XETHZUSD': ['KRAKEN', 'ETHUSD'],
+        'XMLNZEUR': ['KRAKEN', 'MLNEUR'],
+        'XMLNZUSD': ['KRAKEN', 'MLNUSD'],
+        'XREPZEUR': ['KRAKEN', 'REPEUR'],
+        'XREPZUSD': ['KRAKEN', 'REPUSD'],
+        'XXDGZEUR': ['KRAKEN', 'XDGEUR'],
+        'XXDGZUSD': ['KRAKEN', 'XDGUSD'],
+        'XXLMZEUR': ['KRAKEN', 'XLMEUR'],
+        'XXLMZUSD': ['KRAKEN', 'XLMUSD'],
+        'XXMRZEUR': ['KRAKEN', 'XMREUR'],
+        'XXMRZUSD': ['KRAKEN', 'XMRUSD'],
+        'XXRPZEUR': ['KRAKEN', 'XRPEUR'],
+        'XXRPZUSD': ['KRAKEN', 'XRPUSD'],
+        'XZECZEUR': ['KRAKEN', 'ZECEUR'],
+        'XZECZUSD': ['KRAKEN', 'ZECUSD'],
+        'XXBTZEUR': ['KRAKEN', 'BTCEUR'],
+        'XXBTZUSD': ['KRAKEN', 'BTCUSD'],
     };
 
     window.markets = {
@@ -1655,11 +1681,11 @@ function retrieve_trade_id(elt) {
 }
 
 function add_long_short_actions(id, market_id, to) {
-    let tv_btn = $('<button class="btn btn-secondary trading-view-action" name="trading-view-action"><span class="fa fa-link"></span>&nbsp;TV</button>');
+    let tv_btn = $('<button class="btn btn-secondary trading-view-action" name="trading-view-action"><span class="fas fa-link"></span>&nbsp;TV</button>');
     let long_btn = $('<button class="btn btn-success long-action" name="long-action">Long</button>');
     let short_btn = $('<button class="btn btn-danger short-action" name="short-action">Short</button>');
-    let auto_btn = $('<button class="btn btn-secondary siis-chart-auto" name="siis-chart-auto"><span class="fa fa-play"></span></button>');
-    let chart_btn = $('<button class="btn btn-secondary siis-chart-action" name="siis-chart-action"><span class="fa fa-bar-chart"></span></button>');
+    let auto_btn = $('<button class="btn btn-secondary siis-chart-auto" name="siis-chart-auto"><span class="fas fa-play"></span></button>');
+    let chart_btn = $('<button class="btn btn-secondary siis-chart-action" name="siis-chart-action"><span class="fas fa-chart-bar"></span></button>');
 
     long_btn.attr('trader-id', id);
     short_btn.attr('trader-id', id);
@@ -1958,10 +1984,11 @@ function on_update_performances() {
                 continue;
             }
 
+            let asset_symbol = get_currency_display(asset, false);
             let precision = balance.precision;
 
             let row_entry = $('<tr class="balance-entry"></tr>');
-            row_entry.append($('<td class="balance-symbol">' + asset + '</td>'));
+            row_entry.append($('<td class="balance-symbol">' + asset_symbol + '</td>'));
 
             if (balance.type == "asset") {
                 if ((precision === undefined || precision === null) && (asset in CURRENCIES)) {

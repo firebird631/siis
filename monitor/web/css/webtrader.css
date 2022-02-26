@@ -181,8 +181,8 @@ span.quantity-value {
 }
 
 a.menu-btn {
-    width: 90%;
-    margin-left: 10%;
+    width: 95%;
+    margin-left: 5%;
     margin-top: 0px;
     margin-bottom: 0px;
     border-right: none;
@@ -193,9 +193,20 @@ a.menu-btn {
     padding-bottom: 3px;
 }
 
-a.menu-btn:nth-of-type(1) {
-    border-top: 1px solid gray;
+a.menu-btn-half-left {
+    width: 47%;
 }
+
+a.menu-btn-half-right {
+    width: 90px;
+    margin-left: -3px;
+    border-bottom-left-radius: 0px;
+    border-top-left-radius: 0px;
+}
+
+/*a.menu-btn:nth-of-type(1) {
+    border-top: 1px solid gray;
+}*/
 
 a.menu-btn {
     border-top: none;

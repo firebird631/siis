@@ -13,10 +13,10 @@ class Streamable(object):
     'd': data
     'T': timestamp
     'n': name
-    'i': index for timeserie
+    'i': index for time-series
     't': data type
-    'b': data timestamp for timesterie
-    'o': data look'n'feel (glyph...)
+    'b': data timestamp for time-series
+    'o': data look n feel (glyph...)
     """
 
     # command/category
@@ -30,6 +30,7 @@ class Streamable(object):
     STREAM_STRATEGY_ALERT = 7
     STREAM_STRATEGY_SIGNAL = 8
     STREAM_WATCHER = 9
+    STREAM_STRATEGY_REGION = 10
 
     def __init__(self, monitor_service, stream_category, stream_group, stream_name):
         self._monitor_service = monitor_service
@@ -52,7 +53,7 @@ class Streamable(object):
 
     @property
     def name(self):
-        return self._name
+        return self._stream_name
 
     @property
     def activity(self):
@@ -73,7 +74,8 @@ class Streamable(object):
             for k, member in self._members.items():
                 if member.has_update():
                     # publish and cleanup
-                    self._monitor_service.publish(self._stream_category, self._stream_group, self._stream_name, member.content())
+                    self._monitor_service.publish(self._stream_category, self._stream_group,
+                                                  self._stream_name, member.content())
                     member.clean()
 
     def use(self):
@@ -102,10 +104,6 @@ class StreamMember(object):
     @property
     def name(self):
         return self._name
-
-    @property
-    def value(self):
-        return self._value
 
     def update(self, value):
         pass
@@ -176,7 +174,7 @@ class StreamMemberIntList(StreamMember):
         self._value = 0
 
     def update(self, int_array):
-        self._value = value
+        self._value = int_array
         self._updated = True
 
     def content(self):
@@ -224,7 +222,7 @@ class StreamMemberFloatTuple(StreamMember):
 
 class StreamMemberFloatSerie(StreamMember):
     """
-    Specialization for a signal float serie value.
+    Specialization for a signal float series value.
     """
 
     TYPE_FLOAT_SERIE = "fs"
@@ -248,7 +246,7 @@ class StreamMemberFloatSerie(StreamMember):
 
 class StreamMemberFloatBarSerie(StreamMember):
     """
-    Specialization for a signal float bar serie value.
+    Specialization for a signal float bar series value.
     """
 
     TYPE_FLOAT_BAR_SERIE = "fbs"
@@ -477,7 +475,7 @@ class StreamMemberWatcherTicker(StreamMember):
     TYPE_WATCHER_TICKER = "tk"
 
     def __init__(self, name):
-        super().__init__(name, StreamMemberTradeExit.TYPE_WATCHER_TICKER)
+        super().__init__(name, StreamMemberWatcherTicker.TYPE_WATCHER_TICKER)
 
         self._timestamp = 0.0
         self._ticker = {}

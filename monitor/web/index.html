@@ -12,7 +12,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.3.1/darkly/bootstrap.min.css">
 
     <!-- Font Awesome -->
-    <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/fontawesome.min.css" integrity="sha384-jLKHWM3JRmfMU0A5x5AkjWkw/EYfGUAGagvnfryNV3F9VqM98XiIH7VBGVoxVSc7" crossorigin="anonymous">-->
+    <!--<link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">-->
 
     <!-- Tempus Dominus Bootstrap 4 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.1.2/css/tempusdominus-bootstrap-4.min.css" crossorigin="anonymous"/>
@@ -215,11 +217,11 @@
       <div id="ws_state" title="WS Status"></div>
       <div id="strategy_state" title="Strategy"></div>
       <div id="trader_state" title="Trader"></div>
-      <div id="watcher1_state" title="watcher1 : unused"></div>
-      <div id="watcher2_state" title="watcher2 : unused"></div>
-      <div id="watcher3_state" title="watcher3 : unused"></div>
-      <div id="watcher4_state" title="watcher4 : unused"></div>
-      <div id="watcher5_state" title="watcher5 : unused"></div>
+      <div id="watcher1_state" title="watcher1: unused"></div>
+      <div id="watcher2_state" title="watcher2: unused"></div>
+      <div id="watcher3_state" title="watcher3: unused"></div>
+      <div id="watcher4_state" title="watcher4: unused"></div>
+      <div id="watcher5_state" title="watcher5: unused"></div>
       <div id="state_values">
         <span id="toggle_trades_status" title="Show/Hide trades counters"> [X] </span>
         <span id="trades_status">
@@ -308,14 +310,18 @@
         <span id="trade_list_sizer" class="btn btn-default" title="Maximize/Restore"></span>
         <div class="trade-list-menu">
             <p class="sub-menu">
-                <a class="btn btn-default menu-btn" id="list_active_trades" view="active-trade-list-entries" href="#"><span class="fa fa-crosshairs"></span>&nbsp;Actives trades</a>
-                <a class="btn btn-default menu-btn" id="list_historical_trades" view="historical-trade-list-entries" href="#"><span class="fa fa-history"></span>&nbsp;Trade history</a>
-                <a class="btn btn-default menu-btn" id="list_signals" view="signal-list-entries" href="#"><span class="fa fa-signal"></span>&nbsp;Signals</a>
-                <a class="btn btn-default menu-btn" id="list_alerts" view="alert-list-entries" href="#"><span class="fa fa-bell-slash"></span>&nbsp;Alerts</a>
-                <a class="btn btn-default menu-btn" id="list_active_alerts" view="active-alert-list-entries" href="#"><span class="fa fa-bell"></span>&nbsp;Active alerts</a>
-                <a class="btn btn-default menu-btn" id="list_performances" view="performance-list-entries" href="#"><span class="fa fa-tasks"></span>&nbsp;Performances</a>
-                <a class="btn btn-default menu-btn" id="options_layer" view="options-list-entries" href="#"><span class="fa fa-cogs"></span>&nbsp;Options</a>
-                <a class="btn btn-default menu-btn" id="console_layer" view="console-list-entries" href="#"><span class="fa fa-terminal"></span>&nbsp;Console</a>
+                <span>
+                    <a class="btn btn-default menu-btn menu-btn-half-left" id="list_active_trades" view="active-trade-list-entries" href="#" title="Active and pending trades"><span class="fas fa-crosshairs"></span>&nbsp;Trade</a>
+                    <a class="btn btn-default menu-btn menu-btn-half-right" id="list_historical_trades" view="historical-trade-list-entries" href="#" title="Closed trades"><span class="fas fa-history"></span>&nbsp;Hist</a>
+                </span>
+                <a class="btn btn-default menu-btn" id="list_signals" view="signal-list-entries" href="#"><span class="fas fa-signal"></span>&nbsp;Signals</a>
+                <span>
+                    <a class="btn btn-default menu-btn menu-btn-half-left" id="list_active_alerts" view="active-alert-list-entries" href="#" title="Programmed alerts"><span class="fas fa-concierge-bell"></span>&nbsp;Alerts</a>
+                    <a class="btn btn-default menu-btn menu-btn-half-right" id="list_alerts" view="alert-list-entries" href="#"><span class="fas fa-bell" title="Alerts notifications"></span>&nbsp;Notif</a>
+                </span>
+                <a class="btn btn-default menu-btn" id="list_performances" view="performance-list-entries" href="#"><span class="fas fa-tasks"></span>&nbsp;Performances</a>
+                <a class="btn btn-default menu-btn" id="options_layer" view="options-list-entries" href="#"><span class="fas fa-cogs"></span>&nbsp;Options</a>
+                <a class="btn btn-default menu-btn" id="console_layer" view="console-list-entries" href="#"><span class="fas fa-terminal"></span>&nbsp;Console</a>
             </p>
         </div>
         <div class="trade-list-context">
@@ -325,21 +331,21 @@
                     <tr>
                       <th style="width: 55px;">#</th>
                       <th style="width: 150px;">Symbol</th>
-                      <th style="width: 30px;"><span class="fa fa-arrows-v" style="padding-left: 4px;"></span></th>
+                      <th style="width: 30px;"><span class="fas fa-arrows-alt-v" style="padding-left: 4px;"></span></th>
                       <th style="width: 165px;">Date (Entry)</th>
                       <th>Order (Qty)</th>
                       <th>Entry (Qty)</th>
                       <th>Exit (Qty)</th>
-                      <th style="width: 30px;"><span class="fa fa-android"></span></th>
+                      <th style="width: 30px;"><span class="fas fa-robot"></span></th>
                       <th>Context</th>
                       <th style="width: 75px;">%</th>
                       <th style="width: 85px;">UPNL</th>
                       <th style="width: 45px;">Fees</th>
                       <th>Stop-Loss</th>
                       <th>Take-Profit</th>
-                      <th style="width: 35px; padding-left: 15px;"><span class="fa fa-close"></span></th>
-                      <th style="width: 35px; padding-left: 15px;"><span class="fa fa-random"></span></th>
-                      <th style="width: 35px; padding-left: 15px;"><span class="fa fa-info"></span></th>
+                      <th style="width: 35px; padding-left: 15px;"><span class="fas fa-window-close"></span></th>
+                      <th style="width: 35px; padding-left: 15px;"><span class="fas fa-random"></span></th>
+                      <th style="width: 35px; padding-left: 15px;"><span class="fas fa-info"></span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -352,7 +358,7 @@
                     <tr>
                       <th style="width: 55px;">#</th>
                       <th style="width: 150px;">Symbol</th>
-                      <th style="width: 30px;"><span class="fa fa-arrows-v" style="padding-left: 4px;"></span></th>
+                      <th style="width: 30px;"><span class="fas fa-arrows-alt-v" style="padding-left: 4px;"></span></th>
                       <th style="width: 165px;">Date (Exit)</th>
                       <th>Order (Qty)</th>
                       <th>Entry (Qty)</th>
@@ -363,7 +369,7 @@
                       <th style="width: 45px;">Fees</th>
                       <th>Stop-Loss</th>
                       <th>Take-Profit</th>
-                      <th style="width: 35px; padding-left: 15px;"><span class="fa fa-info"></span></th>
+                      <th style="width: 35px; padding-left: 15px;"><span class="fas fa-info"></span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -376,8 +382,8 @@
                     <tr>
                       <th style="width: 55px;">#</th>
                       <th style="width: 150px;">Symbol</th>
-                      <th style="width: 30px;"><span class="fa fa-arrows-v" style="padding-left: 4px;"></span></th>
-                      <th style="width: 30px;"><span class="fa fa-arrows-h" style="padding-left: 4px;"></span></th>
+                      <th style="width: 30px;"><span class="fas fa-arrows-alt-v" style="padding-left: 4px;"></span></th>
+                      <th style="width: 30px;"><span class="fas fa-arrows-alt-h" style="padding-left: 4px;"></span></th>
                       <th style="width: 165px;">Date</th>
                       <th>Order</th>
                       <th>Context</th>
@@ -385,7 +391,7 @@
                       <th>Take-Profit</th>
                       <th>Reason</th>
                       <th style="width: 75px;">%</th>
-                      <th style="width: 35px; padding-left: 15px;"><span class="fa fa-copy"></span></th>
+                      <th style="width: 35px; padding-left: 15px;"><span class="fas fa-copy"></span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -405,7 +411,7 @@
                       <th>Condition</th>
                       <th>Cancellation</th>
                       <th>Message</th>
-                      <th style="width: 35px; padding-left: 15px;"><span class="fa fa-delete"></span></th>
+                      <th style="width: 35px; padding-left: 15px;"><span class="fas fa-delete"></span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -419,7 +425,7 @@
                       <th style="width: 55px;">#</th>
                       <th style="width: 150px;">Symbol</th>
                       <th>Label</th>
-                      <th style="width: 30px;"><span class="fa fa-arrows-v" style="padding-left: 4px;"></span></th>
+                      <th style="width: 30px;"><span class="fas fa-arrows-alt-v" style="padding-left: 4px;"></span></th>
                       <th>Timeframe</th>
                       <th>Last Price</th>
                       <th>Reason</th>

@@ -8,6 +8,7 @@ const STREAM_STRATEGY_TRADE = 6;
 const STREAM_STRATEGY_ALERT = 7;
 const STREAM_STRATEGY_SIGNAL = 8;
 const STREAM_WATCHER = 9;
+const STREAM_STRATEGY_REGION = 10;
 
 function read_value(data) {
     if (data.t == "b") {
@@ -45,7 +46,17 @@ function read_value(data) {
     } else if (data.t == "ts") {
         return read_signal(data);
     } else if (data.t == "sa") {
+        return read_signal_alert(data);
+    } else if (data.t == "ca") {
         return read_alert(data);
+    } else if (data.t == "ra") {
+        return read_alert(data);
+    } else if (data.t == "sr") {
+        return read_signal_region(data);
+    } else if (data.t == "cr") {
+        return read_region(data);
+    } else if (data.t == "rr") {
+        return read_region(data);
     } else if (data.t == "ab") {
         return read_account_balance(data);
     } else {
@@ -117,7 +128,19 @@ function read_signal(data) {
     return data.v;
 }
 
+function read_signal_alert(data) {
+    return data.v;
+}
+
 function read_alert(data) {
+    return data.v;
+}
+
+function read_signal_region(data) {
+    return data.v;
+}
+
+function read_region(data) {
     return data.v;
 }
 
@@ -127,7 +150,7 @@ function read_account_balance(data) {
 
 function on_ws_message(data) {
     // n i o g c v b s t
-    // c categorie, g groupe, s name
+    // c category, g group, s name
     let component = data.g;
 
     if (data.c == STREAM_GENERAL) {
@@ -200,7 +223,23 @@ function on_ws_message(data) {
         let value = read_value(data);
 
         if (value && data.t == 'sa') {
-            on_strategy_alert(data.s, value.id, data.b*1000, value);
+            on_strategy_signal_alert(data.s, value.id, data.b*1000, value);
+        } else if (value && data.t == 'ca') {
+            on_strategy_create_alert(data.s, value.id, data.b*1000, value);
+        } else if (value && data.t == 'ra') {
+            on_strategy_remove_alert(data.s, value.id, data.b*1000, value);
+        }
+
+    } else if (data.c == STREAM_STRATEGY_REGION) {
+        // strategy trader region
+        let value = read_value(data);
+
+        if (value && data.t == 'sr') {
+            // @todo signal region
+        } else if (value && data.t == 'cr') {
+           // @todo create region
+        } else if (value && data.t == 'rr') {
+            // @todo remove region
         }
 
     } else if (data.c == STREAM_STRATEGY_SIGNAL) {
