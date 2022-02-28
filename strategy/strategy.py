@@ -559,13 +559,19 @@ class Strategy(Runnable):
         """
         return self._strategy_service.indicator(name)
 
-    def set_activity(self, status, market_id=None):
+    def set_activity(self, status: bool, market_id=None):
         """
         Enable/disable execution of orders (create_order, stop_loss) for any of the strategy traders or 
         a specific instrument if market_id is defined.
+
+        @param status: bool New activity status.
+        @param market_id: str Market id or symbol or None for any.
         """
         if market_id:
             with self._mutex:
+                instrument = self.find_instrument(market_id)
+                market_id = instrument.market_id if instrument else None
+
                 strategy_trader = self._strategy_traders.get(market_id)
                 if strategy_trader:
                     strategy_trader.set_activity(status)
