@@ -11,7 +11,7 @@ import pathlib
 
 from importlib import import_module
 
-from indicator.models import Limits, VolumeProfile
+from strategy.indicator.models import Limits, VolumeProfile
 
 from config import utils
 
