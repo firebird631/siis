@@ -3,8 +3,6 @@
 # @license Copyright (c) 2020 Dream Overflow
 # www.binance.com futures data fetcher
 
-import json
-import time
 import traceback
 
 from common.utils import timeframe_to_str
@@ -105,7 +103,8 @@ class BinanceFuturesFetcher(Fetcher):
         trades = []
 
         try:
-            trades = self._connector.client.futures_aggregate_trade_iter(market_id, start_str=int(from_date.timestamp() * 1000), end_str=int(to_date.timestamp() * 1000))
+            trades = self._connector.client.futures_aggregate_trade_iter(
+                market_id, start_str=int(from_date.timestamp() * 1000), end_str=int(to_date.timestamp() * 1000))
         except Exception as e:
             logger.error("Fetcher %s cannot retrieve aggregated trades on market %s" % (self.name, market_id))
 
@@ -114,7 +113,7 @@ class BinanceFuturesFetcher(Fetcher):
         for trade in trades:
             count += 1
             # timestamp, bid, ask, last, volume, direction
-            yield((trade['T'], trade['p'], trade['p'], trade['p'], trade['q'], -1 if trade['m'] else 1))
+            yield trade['T'], trade['p'], trade['p'], trade['p'], trade['q'], -1 if trade['m'] else 1
 
         logger.info("Fetcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))
 
@@ -128,7 +127,8 @@ class BinanceFuturesFetcher(Fetcher):
         tf = self.TF_MAP[timeframe]
 
         try:
-            candles = self._connector.client.futures_historical_klines(market_id, tf, int(from_date.timestamp() * 1000), int(to_date.timestamp() * 1000))
+            candles = self._connector.client.futures_historical_klines(
+                market_id, tf, int(from_date.timestamp() * 1000), int(to_date.timestamp() * 1000))
         except Exception as e:
             logger.error("Fetcher %s cannot retrieve candles %s on market %s" % (self.name, tf, market_id))
 
@@ -137,6 +137,7 @@ class BinanceFuturesFetcher(Fetcher):
         for candle in candles:
             count += 1
             # (timestamp, open, high, low, close, spread, volume)
-            yield((candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]))
+            yield candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]
 
-        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe_to_str(timeframe)))
+        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (
+            self.name, market_id, count, timeframe_to_str(timeframe)))

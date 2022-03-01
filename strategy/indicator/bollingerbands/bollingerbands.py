@@ -119,13 +119,13 @@ class BollingerBandsIndicator(Indicator):
         return self._mas
 
     @staticmethod
-    def BB(N, data):
-        mm = MM_n(N, data)
+    def BB(n, data):
+        mm = MM_n(n, data)
         up_bol = copy.deepcopy(mm)
         bottom_bol = copy.deepcopy(mm)
 
         for (j, d) in enumerate(data):
-            i = min(j, N)
+            i = min(j, n)
             sample = data[j-i:j+1]
             sigma = 0 if j == 0 else np.sqrt(stat.variance(sample, up_bol[j]))
             up_bol[j] = up_bol[j] + 2*sigma
@@ -133,8 +133,8 @@ class BollingerBandsIndicator(Indicator):
 
         return bottom_bol, mm, up_bol
 
-    # @staticmethod
-    def BB_sf(N, data, step=1, filtering=False):
+    @staticmethod
+    def BB_sf(n: int, data, step=1, filtering=False):
         """
         Calcul des bandes de Bollinger
         N est le nombre de periodes à observer pour calculer la MM et sigma
@@ -142,22 +142,22 @@ class BollingerBandsIndicator(Indicator):
         Retourne 3 courbes : Bollinger bas ; MM_N ; Bollinger haut, interpolees linéairement
         """
         sub_data = down_sample(data, step) if filtering else data [::step]
-        t_subdata = range(0,len(data),step)
+        t_subdata = range(0, len(data), step)
 
         mm = MM_n(N, sub_data)
         up_bol = copy.deepcopy(mm)
         bottom_bol = copy.deepcopy(mm)
 
         for (j, d) in enumerate(sub_data):
-            i = min(j, N)
+            i = min(j, n)
             sample = sub_data[j-i:j+1]
             sigma = 0 if j == 0 else np.sqrt(stat.variance(sample, up_bol[j]))
             up_bol[j] = up_bol[j] + 2*sigma
             bottom_bol[j] = bottom_bol[j] - 2*sigma
 
         return (np.interp(range(len(data)), t_subdata,bottom_bol),
-            np.interp(range(len(data)), t_subdata, mm),
-            np.interp(range(len(data)), t_subdata, up_bol))
+                np.interp(range(len(data)), t_subdata, mm),
+                np.interp(range(len(data)), t_subdata, up_bol))
 
     def compute(self, timestamp, prices):
         self._prev_top = self._last_top

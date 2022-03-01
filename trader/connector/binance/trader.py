@@ -306,7 +306,8 @@ class BinanceTrader(Trader):
                 return Order.REASON_OK
 
         # unknown error
-        error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(), quantity, symbol))
+        error_logger.error("Trader %s rejected order %s %s %s !" % (self.name, order.direction_to_str(),
+                                                                    quantity, symbol))
         order_logger.error(result)
 
         return Order.REASON_ERROR
@@ -464,14 +465,14 @@ class BinanceTrader(Trader):
         """
         Fetch recent asset and update the average unit price per asset and set it into positions.
 
-        @note Asset must be fetch before from DB if existings.
+        @note Asset must be fetch before from DB if existing.
         """
         query_time = time.time()
 
         try:
             balances_list = self._watcher.connector.balances()
             dust_log = self._watcher.connector.get_dust_log()
-            exchange_info = self._watcher._symbols_data # self._watcher.connector.client.get_exchange_info()
+            exchange_info = self._watcher._symbols_data  # self._watcher.connector.client.get_exchange_info()
         except Exception as e:
             error_logger.error("__fetch_assets: %s" % repr(e))
             raise TraderException(self.name, "__fetch_assets: %s" % repr(e))
@@ -569,7 +570,8 @@ class BinanceTrader(Trader):
                 #
 
                 for deposit in deposits:
-                    # only success deposits at insertTime (we don't known precisely the moment and the price of the buy buy its all we have to deal with)
+                    # only success deposits at insertTime (we don't known precisely the moment and the price of
+                    # the buy buy its all we have to deal with)
                     if deposit['status'] == 1:
                         timestamp = float(deposit['insertTime'])*0.001
                         if timestamp > last_update_time:  # strictly greater than
@@ -624,7 +626,8 @@ class BinanceTrader(Trader):
                         for trade in trades_per_quote:
                             timestamp = float(trade['time'])*0.001
 
-                            # check only recent trades not strictly because multiple trade at same last time are possibles
+                            # check only recent trades not strictly because multiple trade at same
+                            # last time are possibles
                             if timestamp >= last_update_time and trade['id'] > last_trade_id:
                                 # compute the prefered quote-price
                                 quote_base = market['quoteAsset']
@@ -632,8 +635,9 @@ class BinanceTrader(Trader):
                                 quote_price = 1.0
 
                                 if (quote_base != quote_symbol) and (quote_base != quote_quote):
-                                    # find a quote price if trade quote is not the prefered quote symbol for this asset
-                                    # and if we have a quote for it (contre-exemple is USDT asset, its a base with price constant to 1.0)
+                                    # find a quote price if trade quote is not the preferred quote symbol for this asset
+                                    # and if we have a quote for it (contre-exemple is USDT asset,
+                                    # its a base with price constant to 1.0)
                                     quote_quote = balances[quote_base]['quote']
 
                                     if self._watcher.has_instrument(quote_base+quote_quote):
@@ -688,8 +692,8 @@ class BinanceTrader(Trader):
 
             asset = self.__get_or_add_asset(asset_name)
 
-            # ordered by time first and id second, olders first, remove trades when quantity reach 0
-            trades = sorted(balance['trades'], key=lambda trade: (trade['time'], trade['id']))
+            # ordered by time first and id second, older first, remove trades when quantity reach 0
+            trades = sorted(balance['trades'], key=lambda _trade: (_trade['time'], _trade['id']))
 
             # compute the entry price
             last_update_time = asset.last_update_time
@@ -703,7 +707,7 @@ class BinanceTrader(Trader):
 
             quantity = free + locked
 
-            # use prefered quote
+            # use preferred quote
             quote_symbol = asset.quote
 
             # only if qty is not zero or zero but asset previous qty is not zero
@@ -779,16 +783,18 @@ class BinanceTrader(Trader):
                             self._name, asset_name, curr_qty, quantity))
 
                 # store in database with the last computed entry price
-                Database.inst().store_asset((self._name, self.account.name,
-                        asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
-                        asset.quantity, asset.format_price(asset.price), asset.quote))
+                Database.inst().store_asset((
+                    self._name, self.account.name,
+                    asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
+                    asset.quantity, asset.format_price(asset.price), asset.quote))
             else:
                 # no more quantity at time just before the query was made
                 asset.update_price(query_time, asset.last_trade_id, 0.0, quote_symbol)
                 asset.set_quantity(0.0, 0.0)
 
                 # store in database with the last computed entry price
-                Database.inst().store_asset((self._name, self.account.name,
+                Database.inst().store_asset((
+                    self._name, self.account.name,
                     asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
                     0.0, 0.0, asset.quote))
 
@@ -804,13 +810,15 @@ class BinanceTrader(Trader):
             if asset_name+qs in self._markets:
                 asset.add_market_id(asset_name+qs)
 
-        # find the most appriopriate quote of an asset.                
+        # find the most appropriate quote of an asset.
         quote_symbol = None
         
-        if asset.symbol == self._account.currency and self._watcher.has_instrument(asset.symbol+self._account.alt_currency):
+        if asset.symbol == self._account.currency and self._watcher.has_instrument(
+                asset.symbol+self._account.alt_currency):
             # probably BTCUSDT
             quote_symbol = self._account.alt_currency
-        elif asset.symbol != self._account.currency and self._watcher.has_instrument(asset.symbol+self._account.currency):
+        elif asset.symbol != self._account.currency and self._watcher.has_instrument(
+                asset.symbol+self._account.currency):
             # any pair based on BTC
             quote_symbol = self._account.currency
         else:
@@ -917,10 +925,11 @@ class BinanceTrader(Trader):
     #
 
     def on_update_market(self, market_id, tradable, last_update_time, bid, ask,
-            base_exchange_rate, contract_size=None, value_per_pip=None,
-            vol24h_base=None, vol24h_quote=None):
+                         base_exchange_rate, contract_size=None, value_per_pip=None,
+                         vol24h_base=None, vol24h_quote=None):
 
-        super().on_update_market(market_id, tradable, last_update_time, bid, ask, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
+        super().on_update_market(market_id, tradable, last_update_time, bid, ask, base_exchange_rate,
+                                 contract_size, value_per_pip, vol24h_base, vol24h_quote)
 
         # update trades profit/loss for the related market id
         market = self.market(market_id)
@@ -951,7 +960,8 @@ class BinanceTrader(Trader):
         if asset is not None:
             # significant deviation...
             if abs((locked+free)-asset.quantity) / ((locked+free) or 1.0) >= 0.001:
-                logger.debug("%s deviation of computed quantity for %s from %s but must be %s" % (self._name, asset_name, asset.quantity, (locked+free)))
+                logger.debug("%s deviation of computed quantity for %s from %s but must be %s" % (
+                    self._name, asset_name, asset.quantity, (locked+free)))
 
             asset.set_quantity(locked, free)
 
@@ -970,8 +980,8 @@ class BinanceTrader(Trader):
 
     def __update_asset(self, order_type, asset, market, trade_id, exec_price, trade_qty, buy_or_sell, timestamp):
         """
-        @note Taking last quote price might be at the timestamp of the trade but it cost an API call credit and plus a delay.
-              Then assume the last tick price is enough precise.
+        @note Taking last quote price might be at the timestamp of the trade but it cost an API call
+        credit and plus a delay. Then assume the last tick price is enough precise.
         """
         curr_price = asset.price   # might be in BTC
         curr_qty = asset.quantity
@@ -983,11 +993,11 @@ class BinanceTrader(Trader):
         if market and asset.symbol != self._account.currency and market.quote != self._account.currency:
             # asset is not BTC, quote is not BTC, get its price at trade time
             if self._watcher.has_instrument(market.quote+self._account.currency):
-                # direct
-                quote_price = self.history_price(market.quote+self._account.currency, timestamp)  # potential REST call
+                # direct (potential REST call)
+                quote_price = self.history_price(market.quote+self._account.currency, timestamp)
             elif self._watcher.has_instrument(self._account.currency+market.quote):
-                # indirect
-                quote_price = 1.0 / self.history_price(self._account.currency+market.quote, timestamp)  # potenteil REST call
+                # indirect (potential REST call)
+                quote_price = 1.0 / self.history_price(self._account.currency+market.quote, timestamp)
             else:
                 quote_price = 0.0  # might not occurs
                 logger.warning("Unsupported quote asset " + market.quote)
@@ -1059,7 +1069,7 @@ class BinanceTrader(Trader):
     @Trader.mutexed
     def on_order_traded(self, market_id, data, ref_order_id):
         """
-        Order update, trade order in that case, is always successed by an asset update signal.
+        Order update, trade order in that case, is always successes by an asset update signal.
         Binance order modification is not possible, need cancel and recreate.
 
         @note Consume 1 API credit to get the asset quote price at the time of the trade.
@@ -1110,7 +1120,7 @@ class BinanceTrader(Trader):
             base_trade_qty = data['filled']
             base_exec_price = data['exec-price']
 
-            # price of the quote asset expressed in prefered quote at time of the trade (need a REST call)
+            # price of the quote asset expressed in preferred quote at time of the trade (need a REST call)
             quote_trade_qty = data['quote-transacted']  # or base_trade_qty * base_exec_price
             quote_exec_price = 1.0
 
@@ -1126,14 +1136,17 @@ class BinanceTrader(Trader):
                     quote_exec_price = 1.0 / self.history_price(quote_asset.quote+quote_asset.symbol, data['timestamp'])
 
             # base asset
-            self.__update_asset(order.order_type, base_asset, market, data['trade-id'], base_exec_price, base_trade_qty, buy_or_sell, data['timestamp'])
+            self.__update_asset(order.order_type, base_asset, market, data['trade-id'], base_exec_price,
+                                base_trade_qty, buy_or_sell, data['timestamp'])
 
             # quote asset
-            self.__update_asset(order.order_type, quote_asset, quote_market, None, quote_exec_price, quote_trade_qty, not buy_or_sell, data['timestamp'])
+            self.__update_asset(order.order_type, quote_asset, quote_market, None, quote_exec_price,
+                                quote_trade_qty, not buy_or_sell, data['timestamp'])
 
             # commission asset
             if data['commission-asset'] == base_asset.symbol:
-                self.__update_asset(Order.ORDER_MARKET, base_asset, market, None, base_exec_price, data['commission-amount'], False, data['timestamp'])
+                self.__update_asset(Order.ORDER_MARKET, base_asset, market, None, base_exec_price,
+                                    data['commission-amount'], False, data['timestamp'])
             else:
                 commission_asset = self.__get_or_add_asset(data['commission-asset'])
                 commission_asset_market = None
@@ -1148,10 +1161,11 @@ class BinanceTrader(Trader):
 
                     elif self._watcher.has_instrument(commission_asset.quote+commission_asset.symbol):
                         # indirect, but cannot have the market
-                        quote_exec_price = 1.0 / self.history_price(commission_asset.quote+commission_asset.symbol, data['timestamp'])
+                        quote_exec_price = 1.0 / self.history_price(commission_asset.quote+commission_asset.symbol,
+                                                                    data['timestamp'])
 
                 self.__update_asset(Order.ORDER_MARKET, commission_asset, commission_asset_market, None,
-                    quote_exec_price, data['commission-amount'], False, data['timestamp'])
+                                    quote_exec_price, data['commission-amount'], False, data['timestamp'])
 
         if data.get('fully-filled', False):
             # fully filled, need to delete
@@ -1169,7 +1183,7 @@ class BinanceTrader(Trader):
                 del self._orders[order_id]
 
     #
-    # miscs
+    # misc
     #
 
     def asset_quantities(self):

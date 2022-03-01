@@ -102,9 +102,9 @@ class HttpWebSocketServer(object):
         factory.protocol.monitor_service = self._monitor_service
         factory.setProtocolOptions(maxConnections=5)
 
-        def listen(server, port, factory):
-            server._listener = reactor.listenTCP(port, factory)
-            if server._listener:
+        def listen(_server, _port, _factory):
+            _server._listener = reactor.listenTCP(_port, _factory)
+            if _server._listener:
                 MonitorService.use_reactor(installSignalHandlers=False)
 
         reactor.callFromThread(listen, self, self._port, factory)

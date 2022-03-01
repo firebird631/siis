@@ -50,7 +50,8 @@ def import_siis_any(market, symbol, prefix="full"):
         return
 
     print("Import %s in %s from %s" % (market, "any", src_path))
-    with subprocess.Popen(["python", "siis.py", "real", "--import", "--filename=%s/full-%s-%s-any.siis" % (src_path, BROKER, market)]):
+    with subprocess.Popen(["python", "siis.py", "real", "--import",
+                           "--filename=%s/full-%s-%s-any.siis" % (src_path, BROKER, market)]):
         print("-- Done")
 
 
@@ -64,7 +65,8 @@ def import_siis(market, symbol, prefix="full"):
             return
 
         print("Import %s in %s from %s" % (market, tf, src_path))
-        with subprocess.Popen(["python", "siis.py", "real", "--import", "--filename=%s/full-%s-%s-%s.siis" % (src_path, BROKER, market, tf)]):
+        with subprocess.Popen(["python", "siis.py", "real", "--import",
+                               "--filename=%s/full-%s-%s-%s.siis" % (src_path, BROKER, market, tf)]):
             print("-- Done")
 
 
@@ -77,6 +79,6 @@ if __name__ == "__main__":
         # overrides
         PREFIX = sys.argv[2]
 
-    for market, symbol in MARKETS.items():
+    for _market, _symbol in MARKETS.items():
         # use unique file
-        import_siis_any(market, symbol, PREFIX)
+        import_siis_any(_market, _symbol, PREFIX)

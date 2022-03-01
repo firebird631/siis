@@ -112,8 +112,11 @@ def import_mt5_tick(market, symbol, from_to):
     dt_from = from_to[0]
 
     print("Import %s in %s from tick" % (market, src_path))
-    with subprocess.Popen(["python", "siis.py", "real", "--import", "--broker=%s" % BROKER, "--market=%s" % market,
-            "--timeframe=t", "--from=%s" % dt_from.strftime("%Y-%m-%dT%H:%M"), "--filename=%s/%s_%s_%s.csv" % (
+    with subprocess.Popen(["python", "siis.py", "real", "--import",
+                           "--broker=%s" % BROKER,
+                           "--market=%s" % market,
+                           "--timeframe=t", "--from=%s" % dt_from.strftime("%Y-%m-%dT%H:%M"),
+                           "--filename=%s/%s_%s_%s.csv" % (
                 src_path, symbol, FROM, TO)]) as p:
         p.wait()
         print("-- Done")
@@ -121,8 +124,12 @@ def import_mt5_tick(market, symbol, from_to):
     # build OHLCs
     for to_tf, (lfrom, from_tf) in GENERATE_TFS.items():
         print("+ Rebuild %s OHLCs from %s for %s" % (to_tf, from_tf, market))
-        with subprocess.Popen(["python", "siis.py", "real", "--rebuild", "--broker=%s" % BROKER, "--market=%s" % market,
-                "--timeframe=%s" % from_tf, "--target=%s" % to_tf, "--from=%s" % lfrom]) as p:
+        with subprocess.Popen(["python", "siis.py", "real", "--rebuild",
+                               "--broker=%s" % BROKER,
+                               "--market=%s" % market,
+                               "--timeframe=%s" % from_tf,
+                               "--target=%s" % to_tf,
+                               "--from=%s" % lfrom]) as p:
 
             p.wait()
             print("-- Done")
@@ -140,8 +147,12 @@ def import_mt5_tick_files(market, symbol, dt_from, dt_to, files):
     # filename = "%s/%s_%s_%s.csv" % (src_path, symbol, dt_from.strftime("%Y%m%d%H%M"), dt_to.strftime("%Y%m%d%H%M"))
 
     print("Import %s in %s from tick" % (market, src_path))
-    with subprocess.Popen(["python", "siis.py", "real", "--import", "--broker=%s" % BROKER, "--market=%s" % market,
-            "--timeframe=t", "--from=%s" % dt_from.strftime("%Y-%m-%dT%H:%M"), "--filename=%s" % filename]) as p:
+    with subprocess.Popen(["python", "siis.py", "real", "--import",
+                           "--broker=%s" % BROKER,
+                           "--market=%s" % market,
+                           "--timeframe=t",
+                           "--from=%s" % dt_from.strftime("%Y-%m-%dT%H:%M"),
+                           "--filename=%s" % filename]) as p:
 
         p.wait()
         print("-- Done")
@@ -149,12 +160,13 @@ def import_mt5_tick_files(market, symbol, dt_from, dt_to, files):
     # build OHLCs
     for to_tf, (_, from_tf) in GENERATE_TFS.items():
         print("+ Rebuild %s OHLCs from %s for %s" % (to_tf, from_tf, market))
-        with subprocess.Popen(["python", "siis.py", "real", "--rebuild", "--broker=%s" % BROKER, "--market=%s" % market,
-                    "--timeframe=%s" % from_tf,
-                    "--target=%s" % to_tf,
-                    "--from=%s" % dt_from.strftime("%Y-%m-%dT%H:%M"),
-                    "--to=%s" % dt_to.strftime("%Y-%m-%dT%H:%M")
-                ]) as p:
+        with subprocess.Popen(["python", "siis.py", "real", "--rebuild",
+                               "--broker=%s" % BROKER,
+                               "--market=%s" % market,
+                               "--timeframe=%s" % from_tf,
+                               "--target=%s" % to_tf,
+                               "--from=%s" % dt_from.strftime("%Y-%m-%dT%H:%M"),
+                               "--to=%s" % dt_to.strftime("%Y-%m-%dT%H:%M")]) as p:
 
             p.wait()
             print("-- Done")
@@ -170,16 +182,16 @@ if __name__ == "__main__":
             BASE_PATH = arg.split('=')[1]
 
     if MODE == "tick":
-        for market, symbol in MARKETS.items():
+        for _market, _symbol in MARKETS.items():
             # use unique file
-            import_mt5_tick(market, symbol, [(FROM, TO)])
+            import_mt5_tick(_market, _symbol, [(FROM, TO)])
 
     elif MODE == "tick-bt":
-        for market, symbol in MARKETS.items():
+        for _market, _symbol in MARKETS.items():
             # use unique file
-            import_mt5_tick_files(market, symbol, FROM, TO, FILES_INITIAL)
+            import_mt5_tick_files(_market, _symbol, FROM, TO, FILES_INITIAL)
 
     elif MODE == "tick-lw":
-        for market, symbol in MARKETS.items():
+        for _market, _symbol in MARKETS.items():
             # use unique file
-            import_mt5_tick_files(market, symbol, FROM, TO, FILES_NEXT)
+            import_mt5_tick_files(_market, _symbol, FROM, TO, FILES_NEXT)

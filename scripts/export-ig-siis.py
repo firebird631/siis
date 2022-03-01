@@ -52,8 +52,11 @@ def export_any(market, symbol, prefix="full"):
     lfrom = "2000-01-01T00:00:00"
 
     print("Export %s in %s from %s to %s" % (market, "any", lfrom, dst_path))
-    with subprocess.Popen(["python", "siis.py", "real", "--export", "--broker=%s" % BROKER, "--market=%s" % market, "--from=%s" % lfrom,
-            "--filename=%s/%s" % (dst_path, prefix)]):
+    with subprocess.Popen(["python", "siis.py", "real", "--export",
+                           "--broker=%s" % BROKER,
+                           "--market=%s" % market,
+                           "--from=%s" % lfrom,
+                           "--filename=%s/%s" % (dst_path, prefix)]):
 
         print("-- Done")
 
@@ -67,8 +70,11 @@ def export(market, symbol, prefix="full"):
             dst_path.mkdir(parents=True)
 
         print("Export %s in %s from %s to %s" % (market, tf, lfrom, dst_path))
-        with subprocess.Popen(["python", "siis.py", "real", "--export", "--broker=%s" % BROKER, "--market=%s" % market, "--from=%s" % lfrom,
-                "--filename=%s/%s" % (dst_path, prefix), "--timeframe=%s" % tf]):
+        with subprocess.Popen(["python", "siis.py", "real", "--export",
+                               "--broker=%s" % BROKER,
+                               "--market=%s" % market, "--from=%s" % lfrom,
+                               "--filename=%s/%s" % (dst_path, prefix),
+                               "--timeframe=%s" % tf]):
 
             print("-- Done")
 
@@ -82,6 +88,6 @@ if __name__ == "__main__":
         # overrides
         PREFIX = sys.argv[2]
 
-    for market, symbol in MARKETS.items():
+    for _market, _symbol in MARKETS.items():
         # use unique file
-        export_any(market, symbol, PREFIX)
+        export_any(_market, _symbol, PREFIX)

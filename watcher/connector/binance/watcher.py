@@ -3,11 +3,8 @@
 # @license Copyright (c) 2018 Dream Overflow
 # www.binance.com watcher implementation
 
-import re
-import json
 import time
 import traceback
-import bisect
 import math
 
 from datetime import datetime
@@ -22,7 +19,6 @@ from trader.market import Market
 
 from instrument.instrument import Instrument, Candle
 
-from terminal.terminal import Terminal
 from database.database import Database
 
 import logging
@@ -121,7 +117,8 @@ class BinanceWatcher(Watcher):
 
                         instruments = self._connector.client.get_exchange_info().get('symbols', [])
                         configured_symbols = self.configured_symbols()
-                        matching_symbols = self.matching_symbols_set(configured_symbols, [instrument['symbol'] for instrument in instruments])
+                        matching_symbols = self.matching_symbols_set(configured_symbols, [
+                            instrument['symbol'] for instrument in instruments])
 
                         # cache them
                         self.__configured_symbols = configured_symbols
@@ -151,7 +148,7 @@ class BinanceWatcher(Watcher):
                         self._ready = True
                         self._connecting = False
 
-                        logger.debug("%s connection successed" % (self.name))
+                        logger.debug("%s connection successes" % (self.name))
 
             except Exception as e:
                 logger.debug(repr(e))
@@ -167,7 +164,7 @@ class BinanceWatcher(Watcher):
     def disconnect(self):
         super().disconnect()
 
-        logger.debug("%s disconnecting..." % (self.name))
+        logger.debug("%s disconnecting..." % self.name)
 
         with self._mutex:
             try:
@@ -184,7 +181,7 @@ class BinanceWatcher(Watcher):
                 self._ready = False
                 self._connecting = False
 
-                logger.debug("%s disconnected" % (self.name))
+                logger.debug("%s disconnected" % self.name)
 
             except Exception as e:
                 logger.debug(repr(e))
@@ -207,7 +204,8 @@ class BinanceWatcher(Watcher):
             reconnect = False
 
             with self._mutex:
-                if not self._ready or self._connector is None or not self._connector.connected or not self._connector.ws_connected:
+                if (not self._ready or self._connector is None or not self._connector.connected or
+                        not self._connector.ws_connected):
                     # cleanup
                     self._ready = False
                     self._connector = None
@@ -239,7 +237,7 @@ class BinanceWatcher(Watcher):
                 # aggreged trade
                 multiplex.append(symbol + '@aggTrade')
 
-                # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggreged trades
+                # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggregated trades
                 # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
 
                 # fetch from source
@@ -313,7 +311,8 @@ class BinanceWatcher(Watcher):
                     self.insert_watched_instrument(market_id, [0])
 
                     # trade+depth
-                    self._multiplex_handlers[market_id] = self._connector.ws.start_multiplex_socket(multiplex, self.__on_multiplex_data)
+                    self._multiplex_handlers[market_id] = self._connector.ws.start_multiplex_socket(
+                        multiplex, self.__on_multiplex_data)
 
                 result = True
 
@@ -454,9 +453,11 @@ class BinanceWatcher(Watcher):
 
             if quote_asset != self.BASE_QUOTE:
                 if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
-                    market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
+                    market.base_exchange_rate = float(self._tickers_data.get(
+                        quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
                 elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
-                    market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
+                    market.base_exchange_rate = 1.0 / float(self._tickers_data.get(
+                        self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
                 else:
                     market.base_exchange_rate = 1.0
             else:
@@ -475,7 +476,8 @@ class BinanceWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
 
             # store the last market info to be used for backtesting
-            Database.inst().store_market_info((self.name, market.market_id, market.symbol,
+            Database.inst().store_market_info((
+                self.name, market.market_id, market.symbol,
                 market.market_type, market.unit_type, market.contract_type,  # type
                 market.trade, market.orders,  # type
                 market.base, market.base_display, market.base_precision,  # base
@@ -486,7 +488,8 @@ class BinanceWatcher(Watcher):
                 *size_limits,
                 *notional_limits,
                 *price_limits,
-                str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))
+                str(market.maker_fee), str(market.taker_fee),
+                str(market.maker_commission), str(market.taker_commission))
             )
 
         return market
@@ -534,15 +537,19 @@ class BinanceWatcher(Watcher):
                 # @todo compute base_exchange_rate
                 # if quote_asset != self.BASE_QUOTE:
                 #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
-                #         market.base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
+                #         market.base_exchange_rate = float(self._tickers_data.get(
+                #             quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
                 #     elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
-                #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
+                #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(
+                #             self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
                 #     else:
                 #         market.base_exchange_rate = 1.0
                 # else:
                 #     market.base_exchange_rate = 1.0
 
-                market_data = (symbol, last_update_time > 0, last_update_time, bid, ask, None, None, None, vol24_base, vol24_quote)
+                market_data = (symbol, last_update_time > 0, last_update_time, bid, ask,
+                               None, None, None, vol24_base, vol24_quote)
+
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_depth_data(self, data):
@@ -598,7 +605,7 @@ class BinanceWatcher(Watcher):
     def __on_multiplex_data(self, data):
         """
         Intercepts ticker all, depth for followed symbols.
-        Klines are generated from tickers data. Its a prefered way to recuce network traffic and API usage.
+        Klines are generated from tickers data. Its a preferred way to reduce network traffic and API usage.
         """
         if not data.get('stream'):
             return
@@ -633,7 +640,8 @@ class BinanceWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
             if self._store_trade:
-                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['p'], data['q'], buyer_maker))
+                Database.inst().store_market_trade((self.name, symbol, int(data['T']), data['p'], data['p'], data['p'],
+                                                    data['q'], buyer_maker))
 
             for tf in Watcher.STORED_TIMEFRAMES:
                 # generate candle per timeframe
@@ -871,7 +879,7 @@ class BinanceWatcher(Watcher):
                 self.service.notify(Signal.SIGNAL_ASSET_UPDATED, self.name, (asset_name, float(locked), float(free)))
 
     #
-    # miscs
+    # misc
     #
 
     def price_history(self, market_id, timestamp):
@@ -882,7 +890,8 @@ class BinanceWatcher(Watcher):
             d = self.connector.price_for_at(market_id, timestamp)
             return (float(d[0][1]) + float(d[0][4]) + float(d[0][3])) / 3.0
         except Exception as e:
-            logger.error("Cannot found price history for %s at %s" % (market_id, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
+            logger.error("Cannot found price history for %s at %s" % (
+                market_id, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')))
             return None
 
     def update_markets_info(self):
@@ -900,12 +909,14 @@ class BinanceWatcher(Watcher):
 
             elif market.is_open:
                 # market exists and tradable
-                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ask,
-                        market.base_exchange_rate, market.contract_size, market.value_per_pip,
-                        market.vol24h_base, market.vol24h_quote)
+                market_data = (
+                    market_id, market.is_open, market.last_update_time, market.bid, market.ask,
+                    market.base_exchange_rate, market.contract_size, market.value_per_pip,
+                    market.vol24h_base, market.vol24h_quote)
             else:
                 # market exists but closed
-                market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
+                market_data = (market_id, market.is_open, market.last_update_time,
+                               None, None, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
@@ -913,7 +924,9 @@ class BinanceWatcher(Watcher):
         trades = []
 
         try:
-            trades = self._connector.client.aggregate_trade_iter(market_id, start_str=int(from_date.timestamp() * 1000), end_str=int(to_date.timestamp() * 1000))
+            trades = self._connector.client.aggregate_trade_iter(market_id,
+                                                                 start_str=int(from_date.timestamp() * 1000),
+                                                                 end_str=int(to_date.timestamp() * 1000))
         except Exception as e:
             logger.error("Watcher %s cannot retrieve aggregated trades on market %s" % (self.name, market_id))
 
@@ -922,7 +935,7 @@ class BinanceWatcher(Watcher):
         for trade in trades:
             count += 1
             # timestamp, bid, ask, last, volume, direction
-            yield((trade['T'], trade['p'], trade['p'], trade['p'], trade['q'], -1 if trade['m'] else 1))
+            yield trade['T'], trade['p'], trade['p'], trade['p'], trade['q'], -1 if trade['m'] else 1
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         TF_MAP = {
@@ -952,7 +965,9 @@ class BinanceWatcher(Watcher):
         tf = TF_MAP[timeframe]
 
         try:
-            candles = self._connector.client.get_historical_klines(market_id, tf, int(from_date.timestamp() * 1000), int(to_date.timestamp() * 1000))
+            candles = self._connector.client.get_historical_klines(market_id, tf,
+                                                                   int(from_date.timestamp() * 1000),
+                                                                   int(to_date.timestamp() * 1000))
         except Exception as e:
             logger.error("Watcher %s cannot retrieve candles %s on market %s (%s)" % (self.name, tf, market_id, str(e)))
 
@@ -961,4 +976,4 @@ class BinanceWatcher(Watcher):
         for candle in candles:
             count += 1
             # (timestamp, open, high, low, close, spread, volume)
-            yield((candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]))
+            yield candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]

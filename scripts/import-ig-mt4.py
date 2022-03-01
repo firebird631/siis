@@ -67,21 +67,33 @@ def import_mt4_ohlc(market, symbol):
             return
 
         print("Import %s in %s from %s" % (market, tf, src_path))
-        with subprocess.Popen(["python", "siis.py", "real", "--import", "--broker=%s" % BROKER, "--market=%s" % market,
-                "--timeframe=%s" % tf, "--from=%s" % lfrom, "--filename=%s/%s%s.csv" % (src_path, symbol, TFS_TO_MT4[tf])]) as p:
+        with subprocess.Popen(["python", "siis.py", "real", "--import",
+                               "--broker=%s" % BROKER,
+                               "--market=%s" % market,
+                               "--timeframe=%s" % tf,
+                               "--from=%s" % lfrom,
+                               "--filename=%s/%s%s.csv" % (src_path, symbol, TFS_TO_MT4[tf])]) as p:
             p.wait()
             print("-- Done")
 
     # build 3m and 2h
     print("+ Rebuild 3m OHLCs from 1m for %s" % market)
-    with subprocess.Popen(["python", "siis.py", "real", "--rebuild", "--broker=%s" % BROKER, "--market=%s" % market,
-            "--timeframe=1m", "--target=3m", "--from=%s" % IMPORT_TFS['1m']]) as p:
+    with subprocess.Popen(["python", "siis.py", "real", "--rebuild",
+                           "--broker=%s" % BROKER,
+                           "--market=%s" % market,
+                           "--timeframe=1m",
+                           "--target=3m",
+                           "--from=%s" % IMPORT_TFS['1m']]) as p:
         p.wait()
         print("-- Done")
 
     print("+ Rebuild 2h OHLCs from 1h for %s" % market)
-    with subprocess.Popen(["python", "siis.py", "real", "--rebuild", "--broker=%s" % BROKER, "--market=%s" % market,
-            "--timeframe=1h", "--target=2h", "--from=%s" % IMPORT_TFS['1h']]) as p:
+    with subprocess.Popen(["python", "siis.py", "real", "--rebuild",
+                           "--broker=%s" % BROKER,
+                           "--market=%s" % market,
+                           "--timeframe=1h",
+                           "--target=2h",
+                           "--from=%s" % IMPORT_TFS['1h']]) as p:
         p.wait()
         print("-- Done")
 
@@ -96,6 +108,6 @@ if __name__ == "__main__":
         MODE = sys.argv[2]
 
     if MODE == "ohlc":
-        for market, symbol in MARKETS.items():
+        for _market, _symbol in MARKETS.items():
             # use unique file
-            import_mt4_ohlc(market, symbol)
+            import_mt4_ohlc(_market, _symbol)

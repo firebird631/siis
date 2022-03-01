@@ -277,7 +277,7 @@ class BitMEXWebsocket():
             self.exit()
 
     def __get_auth(self):
-        '''Return auth headers. Will use API Keys.'''
+        """Return auth headers. Will use API Keys."""
         if self.should_auth is False:
             return []
 

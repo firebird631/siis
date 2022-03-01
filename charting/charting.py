@@ -725,10 +725,10 @@ class Charting(threading.Thread):
 def my_pause(interval):
 	backend = plt.rcParams['backend']
 	if backend in matplotlib.rcsetup.interactive_bk:
-        figManager = matplotlib._pylab_helpers.Gcf.get_active()
-        if figManager is not None:
-            canvas = figManager.canvas
-            if canvas.figure.stale:
-                canvas.draw()
-            canvas.start_event_loop(interval)
-            return
+		figManager = matplotlib._pylab_helpers.Gcf.get_active()
+		if figManager is not None:
+			canvas = figManager.canvas
+			if canvas.figure.stale:
+				canvas.draw()
+			canvas.start_event_loop(interval)
+			return

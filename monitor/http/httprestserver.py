@@ -971,9 +971,9 @@ class HttpRestServer(object):
         factory = AllowedIPOnlyFactory(root)
         factory.sessionFactory = LongSession
 
-        def listen(server, port, factory):
-            server._listener = reactor.listenTCP(port, factory)
-            if server._listener:
+        def listen(_server, _port, _factory):
+            _server._listener = reactor.listenTCP(_port, _factory)
+            if _server._listener:
                 MonitorService.use_reactor(installSignalHandlers=False)
 
         reactor.callFromThread(listen, self, self._port, factory)      

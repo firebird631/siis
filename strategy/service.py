@@ -366,13 +366,13 @@ class StrategyService(Service):
                     def run(self):
                         Terminal.inst().info("Backtesting started...", view='status')
 
-                        strategy = self.service.strategy()
-                        trader = strategy.trader() if strategy else None
+                        _strategy = self.service.strategy()
+                        trader = _strategy.trader() if _strategy else None
                         wait = False                      
 
                         self.begin_ts = time.time()   # bench
 
-                        if strategy and trader:
+                        if _strategy and trader:
                             while self.current < self.end + self.timestep:
                                 if not self.service._backtesting_play:
                                     time.sleep(0.01)
@@ -381,7 +381,7 @@ class StrategyService(Service):
                                 # now sync the trader base time
                                 trader.set_timestamp(self.current)
 
-                                strategy.backtest_update(self.current, self.end)
+                                _strategy.backtest_update(self.current, self.end)
 
                                 if self.time_factor > 0:
                                     # wait factor of time step, so 1 mean realtime simulation, 0 mean as fast as possible

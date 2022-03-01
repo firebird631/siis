@@ -675,6 +675,7 @@ class Watcher(Runnable):
         @param market_id Specific name of the market
         @param from_date
         @param to_date
+        @param n_last:
         """
         return []
 
@@ -687,7 +688,7 @@ class Watcher(Runnable):
         @param to_date
         @param n_last Last n data
         """
-        pass
+        return []
 
     def store_candle(self, market_id, timeframe, candle):
         Database.inst().store_market_ohlc((

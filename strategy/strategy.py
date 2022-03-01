@@ -1536,14 +1536,14 @@ class Strategy(Runnable):
 
     @staticmethod
     def parse_parameters(parameters):
-        def convert(param, key):
-            param.setdefault(key, None)
+        def convert(_param, _key):
+            _param.setdefault(_key, None)
 
-            if isinstance(param[key], str):
-                # convert timeframe code to float in second
-                param[key] = timeframe_from_str(param[key])
-            elif not isinstance(param[key], (int, float)):
-                param[key] = None
+            # convert timeframe code to float in second
+            if isinstance(_param[_key], str):
+                _param[_key] = timeframe_from_str(_param[_key])
+            elif not isinstance(_param[_key], (int, float)):
+                _param[_key] = None
 
         parameters.setdefault('reversal', True)
         parameters.setdefault('market-type', 0)

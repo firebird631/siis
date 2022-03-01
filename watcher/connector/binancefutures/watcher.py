@@ -445,7 +445,8 @@ class BinanceFuturesWatcher(Watcher):
             market.trade = Market.TRADE_MARGIN | Market.TRADE_IND_MARGIN
 
             # @todo orders capacities
-            # symbol['orderTypes'] in ['LIMIT', 'MARKET', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT', 'TAKE_PROFIT_MARKET', 'TRAILING_STOP_MARKET']
+            # symbol['orderTypes'] in ['LIMIT', 'MARKET', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT',
+            #   'TAKE_PROFIT_MARKET', 'TRAILING_STOP_MARKET']
             # market.orders = 
 
             # @todo order time in force
@@ -644,8 +645,8 @@ class BinanceFuturesWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
             if self._store_trade:
-                Database.inst().store_market_trade((self.name, symbol, int(data['T']),
-                                                    data['p'], data['p'], data['p'], data['q'], buyer_maker))
+                Database.inst().store_market_trade((
+                    self.name, symbol, int(data['T']), data['p'], data['p'], data['p'], data['q'], buyer_maker))
 
             for tf in Watcher.STORED_TIMEFRAMES:
                 # generate candle per timeframe

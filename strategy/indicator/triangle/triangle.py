@@ -61,8 +61,8 @@ class TriangleIndicator(Indicator):
     def triangles_reg(bottom, top):
         # On perd la 1ere valeur:
         variations = np.diff(top-bottom)
-        inversion_tendance_index = [ i+1 for (i,x) in enumerate( list(variations[1:] * variations[:-1])) if x < 0 ]
-        data_splitter = lambda data, split_idx: [data[0:split_idx[0]]] + [ data[split_idx[i]:split_idx[i+1]] for i in range(len(split_idx) - 1) ] + [data[split_idx[-1]:]]
+        inversion_tendance_index = [ i+1 for (i,x) in enumerate( list(variations[1:] * variations[:-1])) if x < 0]
+        data_splitter = lambda data, _split_idx: [data[0:_split_idx[0]]] + [data[_split_idx[i]:_split_idx[i + 1]] for i in range(len(_split_idx) - 1)] + [data[_split_idx[-1]:]]
 
         if not inversion_tendance_index:
             return [], [], []
@@ -77,8 +77,8 @@ class TriangleIndicator(Indicator):
     def triangles_reg_sf(bottom, top, step=1, filtering=False):
         # On perd la 1ere valeur:
         variations = np.diff(down_sample(top[::step], step)- down_sample(bottom[::step], step)) if filtering else np.diff( top[::step]-bottom[::step])
-        inversion_tendance_index = [ i+1 for (i,x) in enumerate( list(variations[1:] * variations[:-1])) if x < 0 ]
-        data_splitter = lambda data, split_idx: [data[0:split_idx[0]]] + [ data[split_idx[i]:split_idx[i+1]] for i in range(len(split_idx) - 1) ] + [data[split_idx[-1]:]]
+        inversion_tendance_index = [ i+1 for (i,x) in enumerate( list(variations[1:] * variations[:-1])) if x < 0]
+        data_splitter = lambda data, _split_idx: [data[0:_split_idx[0]]] + [data[_split_idx[i]:_split_idx[i + 1]] for i in range(len(_split_idx) - 1)] + [data[_split_idx[-1]:]]
 
         if not inversion_tendance_index:
             return [], [], []

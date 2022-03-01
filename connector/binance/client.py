@@ -736,6 +736,18 @@ class Client(object):
                     time.sleep(5.0)
                     continue
 
+            except BinanceAPIException as e:
+                if e.status_code == 429:
+                    # cool-down, retry in 5 seconds
+                    time.sleep(5.0)
+                    continue
+                elif e.status_code == 418:
+                    # cool-down, retry in 3 minutes
+                    time.sleep(60*3.0)
+                    continue
+                else:
+                    raise
+
             # fromId=n returns a set starting with id n, but we already have
             # that one. So get rid of the first item in the result set.
             trades = trades[1:]
@@ -895,6 +907,18 @@ class Client(object):
                     # retry in 5 seconds
                     time.sleep(5.0)
                     continue
+
+            except BinanceAPIException as e:
+                if e.status_code == 429:
+                    # cool-down, retry in 5 seconds
+                    time.sleep(5.0)
+                    continue
+                elif e.status_code == 418:
+                    # cool-down, retry in 3 minutes
+                    time.sleep(60*3.0)
+                    continue
+                else:
+                    raise
 
             # handle the case where exactly the limit amount of data was returned last loop
             if not len(temp_data):
@@ -2559,6 +2583,18 @@ class Client(object):
                     time.sleep(5.0)
                     continue
 
+            except BinanceAPIException as e:
+                if e.status_code == 429:
+                    # cool-down, retry in 5 seconds
+                    time.sleep(5.0)
+                    continue
+                elif e.status_code == 418:
+                    # cool-down, retry in 3 minutes
+                    time.sleep(60*3.0)
+                    continue
+                else:
+                    raise
+
             # fromId=n returns a set starting with id n, but we already have
             # that one. So get rid of the first item in the result set.
             trades = trades[1:]
@@ -2684,6 +2720,18 @@ class Client(object):
                     # retry in 5 seconds
                     time.sleep(5.0)
                     continue
+
+            except BinanceAPIException as e:
+                if e.status_code == 429:
+                    # cool-down, retry in 5 seconds
+                    time.sleep(5.0)
+                    continue
+                elif e.status_code == 418:
+                    # cool-down, retry in 3 minutes
+                    time.sleep(60*3.0)
+                    continue
+                else:
+                    raise
 
             # handle the case where exactly the limit amount of data was returned last loop
             if not len(temp_data):

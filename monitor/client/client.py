@@ -73,7 +73,7 @@ def install(options):
 def application(argv):
     fix_thread_set_name()
 
-    # init terminal displayer
+    # init terminal display
     Terminal()
 
     options = {
@@ -125,7 +125,7 @@ def application(argv):
     try:
         Charting.inst().start()
     except Exception as e:
-        has_exception(e)
+        has_exception(logger, e)
 
     dispatcher = Dispatcher()
 
@@ -144,7 +144,7 @@ def application(argv):
             try:
                 Charting.inst().start()
             except Exception as e:
-                has_exception(e)
+                has_exception(logger, e)
 
         if Charting.inst().running:
             Charting.inst().show()
