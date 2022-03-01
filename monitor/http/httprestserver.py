@@ -4,10 +4,6 @@
 # http rest server
 
 import json
-import time, datetime
-import tempfile, os, posix
-import threading
-import traceback
 import base64
 import uuid
 
@@ -16,10 +12,8 @@ from monitor.service import MonitorService
 from twisted.web import server, resource, static
 from twisted.web.server import Session
 from twisted.web.resource import NoResource
-from twisted.internet import threads, reactor
-from twisted.application import internet, service
+from twisted.internet import reactor
 from twisted.python.components import registerAdapter
-from twisted.web.client import getPage
 
 from zope.interface import Interface, Attribute, implementer
 
