@@ -950,8 +950,6 @@ class Connector(object):
 
         self._public_conn_cond.wait()
 
-        results = None
-
         pair = data.get('pair', "")
 
         if pair not in self._public_pairs_conn_conds:

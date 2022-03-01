@@ -7,9 +7,14 @@ import hashlib
 import hmac
 import requests
 import time
+import threading
+
 from operator import itemgetter
 from .helpers import date_to_milliseconds, interval_to_milliseconds
 from .exceptions import BinanceAPIException, BinanceRequestException, BinanceWithdrawException
+
+import logging
+logger = logging.getLogger('siis.watcher.connector.binance')
 
 
 class Client(object):
@@ -88,6 +93,8 @@ class Client(object):
     AGG_BUYER_MAKES = 'm'
     AGG_BEST_MATCH = 'M'
 
+    QUERY_MAX_RETRY = 3
+
     def __init__(self, api_key, api_secret, requests_params=None, tld='com'):
         """Binance API Client constructor (spot support, margin support, no margin, no lending)
 
@@ -110,6 +117,9 @@ class Client(object):
         self.API_SECRET = api_secret
         self.session = self._init_session()
         self._requests_params = requests_params
+
+        self._request_exclusive = threading.Lock()
+        self._exclusive = False
 
         # init DNS and SSL cert
         self.ping()
@@ -224,7 +234,90 @@ class Client(object):
             kwargs['params'] = '&'.join('%s=%s' % (data[0], data[1]) for data in kwargs['data'])
             del(kwargs['data'])
 
-        response = getattr(self.session, method)(uri, **kwargs)
+        # in place of a single call
+        # response = getattr(self.session, method)(uri, **kwargs)
+        # return self._handle_response(response)
+
+        response = None
+
+        # do a retry query
+        retry_count = 0
+        exclusive = False
+
+        self._request_exclusive.acquire(timeout=180.0)
+
+        while 1:
+            # wait until exclusivity is released
+            # if not exclusive:
+            #     self._request_exclusive.acquire(timeout=180.0)
+            #     delay = 5.0 if self._exclusive else 0.0
+            #     self._request_exclusive.release()
+            #
+            #     if delay:
+            #         time.sleep(delay)
+            #         continue
+
+            try:
+                response = getattr(self.session, method)(uri, **kwargs)
+            except requests.exceptions.HTTPError as e:
+                if 500 <= e.response.status_code <= 599 or 1000 <= e.response.status_code <= 1100:
+                    # bad gateway service, retry for 3 times delayed by 5 seconds
+                    time.sleep(5.0)
+
+                    retry_count += 1
+
+                    if retry_count > Client.QUERY_MAX_RETRY:
+                        raise
+
+                    continue
+
+            if response.status_code == 429:
+                # cool-down, retry in 5 seconds (could look at header Retry-After)
+                # self._request_exclusive.acquire(timeout=180.0)
+                # self._exclusive = True
+                # self._request_exclusive.release()
+
+                # exclusive = True
+                time.sleep((retry_count+1)*5.0)
+                logger.debug("wait 5x%i 429!" % retry_count)
+
+                retry_count += 1
+
+                if retry_count > Client.QUERY_MAX_RETRY:
+                    logger.debug("uncompleted 429!")
+                    break
+
+                continue
+
+            elif response.status_code == 418:
+                # ban, retry in 3 minutes (could look at header Retry-After)
+                # self._request_exclusive.acquire(timeout=180.0)
+                # self._exclusive = True
+                # self._request_exclusive.release()
+
+                # exclusive = True
+                time.sleep(180.0)
+                logger.debug("wait 418!")
+
+                retry_count += 1
+
+                if retry_count > Client.QUERY_MAX_RETRY:
+                    logger.debug("uncompleted 418!")
+                    break
+
+                continue
+
+            else:
+                break
+
+                # # release the exclusive locker
+                # if exclusive:
+                #     self._request_exclusive.acquire(timeout=180.0)
+                #     self._exclusive = False
+                #     self._request_exclusive.release()
+
+        self._request_exclusive.release()
+
         return self._handle_response(response)
 
     def _request_api(self, method, path, signed=False, version=PUBLIC_API_VERSION, **kwargs):
@@ -736,18 +829,6 @@ class Client(object):
                     time.sleep(5.0)
                     continue
 
-            except BinanceAPIException as e:
-                if e.status_code == 429:
-                    # cool-down, retry in 5 seconds
-                    time.sleep(5.0)
-                    continue
-                elif e.status_code == 418:
-                    # cool-down, retry in 3 minutes
-                    time.sleep(60*3.0)
-                    continue
-                else:
-                    raise
-
             # fromId=n returns a set starting with id n, but we already have
             # that one. So get rid of the first item in the result set.
             trades = trades[1:]
@@ -907,18 +988,6 @@ class Client(object):
                     # retry in 5 seconds
                     time.sleep(5.0)
                     continue
-
-            except BinanceAPIException as e:
-                if e.status_code == 429:
-                    # cool-down, retry in 5 seconds
-                    time.sleep(5.0)
-                    continue
-                elif e.status_code == 418:
-                    # cool-down, retry in 3 minutes
-                    time.sleep(60*3.0)
-                    continue
-                else:
-                    raise
 
             # handle the case where exactly the limit amount of data was returned last loop
             if not len(temp_data):
@@ -2583,18 +2652,6 @@ class Client(object):
                     time.sleep(5.0)
                     continue
 
-            except BinanceAPIException as e:
-                if e.status_code == 429:
-                    # cool-down, retry in 5 seconds
-                    time.sleep(5.0)
-                    continue
-                elif e.status_code == 418:
-                    # cool-down, retry in 3 minutes
-                    time.sleep(60*3.0)
-                    continue
-                else:
-                    raise
-
             # fromId=n returns a set starting with id n, but we already have
             # that one. So get rid of the first item in the result set.
             trades = trades[1:]
@@ -2720,18 +2777,6 @@ class Client(object):
                     # retry in 5 seconds
                     time.sleep(5.0)
                     continue
-
-            except BinanceAPIException as e:
-                if e.status_code == 429:
-                    # cool-down, retry in 5 seconds
-                    time.sleep(5.0)
-                    continue
-                elif e.status_code == 418:
-                    # cool-down, retry in 3 minutes
-                    time.sleep(60*3.0)
-                    continue
-                else:
-                    raise
 
             # handle the case where exactly the limit amount of data was returned last loop
             if not len(temp_data):
