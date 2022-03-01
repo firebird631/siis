@@ -385,7 +385,7 @@ class PaperTrader(Trader):
                             if market.indivisible_position:
                                 # use order price because could have non realistic spread/slippage
                                 # exec_indmargin_order(self, order, market, open_exec_price, close_exec_price)
-                                exec_indmargin_order(self, order, market, order.price, order.price)
+                                exec_indmargin_order(self, order, market, order.stop_price, order.stop_price)
                             else:
                                 exec_margin_order(self, order, market, open_exec_price, close_exec_price)
                         elif not order.margin_trade and market.has_spot:
