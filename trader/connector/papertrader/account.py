@@ -4,7 +4,6 @@
 # Account/user model
 
 from trader.account import Account
-from terminal.terminal import Terminal
 
 
 class PaperTraderAccount(Account):

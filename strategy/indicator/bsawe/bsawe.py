@@ -9,8 +9,6 @@ from strategy.indicator.utils import down_sample, crossunder, crossover
 import numpy as np
 from talib import EMA as ta_EMA, SMA as ta_SMA
 
-import numpy as np
-
 import logging
 logger = logging.getLogger('siis.strategy.indicator')
 

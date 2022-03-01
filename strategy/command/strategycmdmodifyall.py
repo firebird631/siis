@@ -20,6 +20,7 @@ def cmd_strategy_trader_modify_all(strategy, data):
     except Exception:
         results['error'] = True
         results['messages'].append("Invalid trader action")
+        return results
 
     # @todo activity
 

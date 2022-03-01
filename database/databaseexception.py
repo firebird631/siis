@@ -23,4 +23,4 @@ class DatabaseException(DatabaseServiceException):
         self.database_name = database_name
 
     def __str__(self):
-        return 'DatabaseException (%s:%s) : %s' % (self.database_name, self.message)
+        return 'DatabaseException (%s) : %s' % (self.database_name, self.message)

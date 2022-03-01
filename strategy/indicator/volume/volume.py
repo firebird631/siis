@@ -36,14 +36,6 @@ class VolumeIndicator(Indicator):
         self._last = 0.0
 
     @property
-    def length(self):
-        return self._length
-    
-    @length.setter
-    def length(self, length):
-        self._length = length
-
-    @property
     def prev(self):
         return self._prev
 

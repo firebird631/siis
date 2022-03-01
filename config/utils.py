@@ -35,17 +35,17 @@ def identities(config_path):
     """
     Get a dict containing any configured identities from user identity.json.
     """
-    identities = {}
+    _identities = {}
 
     user_file = pathlib.Path(config_path, 'identities.json')
     if user_file.exists():
         try:
             with open(str(user_file), 'r') as f:
-                identities = json.load(f)
+                _identities = json.load(f)
         except Exception as e:
             error_logger.error("During parsing of %s %s" % (config_path, repr(e)))
 
-    return identities
+    return _identities
 
 
 def load_config(options, attr_name):
@@ -68,6 +68,6 @@ def load_config(options, attr_name):
                 user_config = json.load(f)
         except Exception as e:
             error_logger.error("%s %s%s" % (repr(e), attr_name, '.json'))
-            error_logger.error("During parsing of %s" % (user_file, repr(e)))
+            error_logger.error("During parsing of %s : %s" % (user_file, repr(e)))
 
     return merge_parameters(default_config, user_config)

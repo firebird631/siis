@@ -312,9 +312,11 @@ class OhlcStreamer(object):
     def query(self, timeframe, from_date, to_date, limit_or_last_n, auto_close=True):
         """
         Query ohlcs for a timeframe.
+        @param timeframe:
         @param from_date Optional
         @param to_date Optional
         @param limit_or_last_n Optional
+        @param auto_close:
         """
         cursor = self._db.cursor()
 
@@ -328,8 +330,8 @@ class OhlcStreamer(object):
                 self.query_from_limit(cursor, timeframe, from_ts, limit_or_last_n)
             elif to_date:
                 to_ts = int(to_date.timestamp() * 1000.0)
-                self.query_from_limit(cursor, timeframe, to_ts)
-            elif limit:
+                self.query_from_limit(cursor, timeframe, 0, to_ts)
+            elif limit_or_last_n:
                 self.query_last(cursor, timeframe, limit_or_last_n)
             else:
                 self.query_all(cursor, timeframe)

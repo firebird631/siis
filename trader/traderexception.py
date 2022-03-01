@@ -23,4 +23,4 @@ class TraderException(TraderServiceException):
         self.trader_name = trader_name
 
     def __str__(self):
-        return 'TraderException (%s:%s) : %s' % (self.trader_name, self.message)
+        return 'TraderException (%s) : %s' % (self.trader_name, self.message)

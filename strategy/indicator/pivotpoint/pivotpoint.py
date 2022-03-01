@@ -53,7 +53,8 @@ class PivotPointIndicator(Indicator):
     METHOD_WOODIE = 4
     METHOD_FIBONACCI = 5
 
-    __slots__ = '_method', '_pivot', '_supports', '_resistances', '_last_supports', '_last_resistances', '_last_pivot', '_num'
+    __slots__ = '_method', '_pivot', '_supports', '_resistances', '_last_supports', '_last_resistances', \
+                '_last_pivot', '_num'
 
     @classmethod
     def indicator_type(cls):
@@ -91,20 +92,12 @@ class PivotPointIndicator(Indicator):
         self._last_pivot = 0.0
 
     @property
-    def length(self):
-        return self._length
-    
-    @length.setter
-    def length(self, length):
-        self._length = length
-
-    @property
     def method(self):
         return self._method
     
-    @property
-    def price_mode(self):
-        return self._price_mode
+    # @property
+    # def price_mode(self):
+    #     return self._price_mode
     
     @property
     def last_supports(self):
@@ -118,17 +111,17 @@ class PivotPointIndicator(Indicator):
     def last_pivot(self):
         return self._last_pivot
 
-    @property
-    def prev_supports(self):
-        return self._prev_supports
-    
-    @property
-    def prev_resistances(self):
-        return self._prev_resistances
-
-    @property
-    def prev_pivot(self):
-        return self._prev_pivot
+    # @property
+    # def prev_supports(self):
+    #     return self._prev_supports
+    #
+    # @property
+    # def prev_resistances(self):
+    #     return self._prev_resistances
+    #
+    # @property
+    # def prev_pivot(self):
+    #     return self._prev_pivot
 
     @property
     def pivot(self):

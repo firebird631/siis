@@ -3,9 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Account/user model
 
-import http.client
-import urllib
-import json
 import time
 
 from trader.account import Account

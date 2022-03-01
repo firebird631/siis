@@ -15,7 +15,7 @@ class AppException(Exception):
 
 class CommandHandlerException(AppException):
 
-    def __init__(self, command_name, message):
+    def __init__(self, message):
         super().__init__(message)
 
     def __str__(self):

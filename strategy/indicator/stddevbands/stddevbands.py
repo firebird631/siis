@@ -19,7 +19,9 @@ class StdDevBandsIndicator(Indicator):
     Standard Deviation Bands indicator
     """
 
-    __slots__ = '_length', '_mult',  '_prev_bottom', '_prev_ma', '_prev_top', '_last_bottom', '_last_ma', '_last_top', '_bottoms', '_tops', '_mas'
+    __slots__ = '_length', '_mult',  '_prev_bottom', '_prev_ma', '_prev_top', '_prev_tr', \
+                '_last_bottom', '_last_ma', '_last_top', '_last_tr', \
+                '_bottoms', '_tops', '_mas', '_trs'
 
     @classmethod
     def indicator_type(cls):
@@ -33,15 +35,17 @@ class StdDevBandsIndicator(Indicator):
         super().__init__("stddevbands", timeframe)
         
         self._length = length   # periods number
-        self._mult = mult       # multipier coef
+        self._mult = mult       # multiplier coef
 
         self._prev_bottom = 0.0
         self._prev_ma = 0.0
         self._prev_top = 0.0
+        self._prev_tr = 0.0
 
         self._last_bottom = 0.0
         self._last_ma = 0.0
         self._last_top = 0.0
+        self._last_tr = 0.0
 
         self._bottoms = np.array([])
         self._mas = np.array([])
@@ -128,7 +132,7 @@ class StdDevBandsIndicator(Indicator):
         self._bottoms = basis - dev
 
         self._mas = basis
-        self._tr = basis2
+        self._trs = basis2
 
         self._last_top = self._tops[-1]
         self._last_ma = self._mas[-1]

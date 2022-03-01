@@ -100,7 +100,7 @@ TFS_TO_MT5 = {
 }
 
 
-def import_mt5_tick(market, symbol, from_to=[]):
+def import_mt5_tick(market, symbol, from_to):
     """One file of tick"""
     # @todo from/to list from glob
     src_path = pathlib.Path(BASE_PATH, symbol)
@@ -109,9 +109,12 @@ def import_mt5_tick(market, symbol, from_to=[]):
         print("! Missing path for %s" % symbol)
         return
 
+    dt_from = from_to[0]
+
     print("Import %s in %s from tick" % (market, src_path))
     with subprocess.Popen(["python", "siis.py", "real", "--import", "--broker=%s" % BROKER, "--market=%s" % market,
-            "--timeframe=t", "--from=%s" % lfrom, "--filename=%s/%s_%s_%s.csv" % (src_path, symbol, FROM, TO)]) as p:
+            "--timeframe=t", "--from=%s" % dt_from.strftime("%Y-%m-%dT%H:%M"), "--filename=%s/%s_%s_%s.csv" % (
+                src_path, symbol, FROM, TO)]) as p:
         p.wait()
         print("-- Done")
 

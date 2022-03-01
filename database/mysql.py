@@ -812,7 +812,7 @@ class MySql(Database):
 
     @property
     def connected(self):
-        return self._db != None
+        return self._db is not None
 
     #
     # Extra

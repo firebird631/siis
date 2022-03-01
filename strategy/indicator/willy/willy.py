@@ -52,7 +52,7 @@ class WillyIndicator(Indicator):
     def len_EMA(self):
         return self._len_EMA
     
-    @length.setter
+    @len_EMA.setter
     def len_EMA(self, len_EMA):
         self._len_EMA = len_EMA
 

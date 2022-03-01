@@ -266,7 +266,7 @@ class HistDataFetcher(Fetcher):
 
     def parse_min(self, row):
         parts = row.rstrip('\n').split(';')
-        ts = int(datetime.strptime(parts[0], '%Y%m%d %H%M%S').replace(tzinfo=UTC()) * 1000)
+        ts = int(datetime.strptime(parts[0], '%Y%m%d %H%M%S').replace(tzinfo=UTC()).timestamp() * 1000)
 
         return ts, parts[1], parts[2], parts[3], parts[4], 0.0, parts[5]
 

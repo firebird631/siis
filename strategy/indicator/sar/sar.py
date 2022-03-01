@@ -37,14 +37,6 @@ class SARIndicator(Indicator):
         self._sars = np.array([])
 
     @property
-    def length(self):
-        return self._length
-    
-    @length.setter
-    def length(self, length):
-        self._length = length
-
-    @property
     def prev(self):
         return self._prev
 
@@ -72,7 +64,7 @@ class SARIndicator(Indicator):
     def sars(self):
         return self._sars
 
-    def compute(self, timestamp, prices):
+    def compute(self, timestamp, high, low):
         self._prev = self._last
         self._sars = ta_SAR(high, low, acceleration=self._acceleration, maximum=self._maximum)
 

@@ -89,6 +89,14 @@ class Candle(object):
     def set_volume(self, ltv):
         self._volume = ltv
 
+    def set_ohlc_s_v(self, o, h, l, c, s, v):
+        self._open = o
+        self._high = h
+        self._low = l
+        self._close = c
+        self._spread = s
+        self._volume = v
+
     def set_spread(self, spread):
         self._spread = spread
 

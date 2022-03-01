@@ -9,7 +9,7 @@ from strategy.indicator import utils
 
 class Comparator(object):
     """
-    Base class for indicator compartor.
+    Base class for indicator comparator.
     Need an update per frame to be pertinent.
     """
 
@@ -19,8 +19,8 @@ class Comparator(object):
 
 class RangeComparator(Comparator):
     """
-    Signal indicator compartor.
-    Usefull for RSI 30/70, Stochastic 20/80... or any other horizontal low&high comparisons.
+    Signal indicator comparator.
+    Useful for RSI 30/70, Stochastic 20/80... or any other horizontal low&high comparisons.
     Need an update per frame to be pertinent.
     """
 
@@ -49,11 +49,11 @@ class RangeComparator(Comparator):
             self._distance = data[-1] - self._data[-1]
 
             # goes below low
-            if self._data[-1] > self.low and data[-1] <= self.low:
+            if self._data[-1] > self._low and data[-1] <= self._low:
                 self._cross = -1
 
             # goes upper high
-            elif self._data[-1] < self.high and data[-1] >= self.high:
+            elif self._data[-1] < self._high and data[-1] >= self._high:
                 self._cross = 1
 
             # range
@@ -79,7 +79,7 @@ class RangeComparator(Comparator):
 
 class CrossComparator(Comparator):
     """
-    Dual signal indicator compartor.
+    Dual signal indicator comparator.
     Detect trend and crossing of two signals.
     """
 
@@ -114,6 +114,7 @@ class CrossComparator(Comparator):
         return self._ind2
 
     def update(self, data1, data2):
+        pass
         # @todo
         # if len(self._data) >= 1 and len(data) >= 1:
         #   self._distance = data[-1] - self._data[-1]
@@ -143,6 +144,6 @@ class CrossComparator(Comparator):
     @property
     def rd(self):
         """
-        Relative distance at lastest sample.
+        Relative distance at latest sample.
         """
         return self._rd

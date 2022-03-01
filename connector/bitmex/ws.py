@@ -343,7 +343,7 @@ class BitMEXWebsocket():
         try:
             message = json.loads(message)
         except Exception as e:
-            logger.error("Unable to loads json message for : " % (str(message)))
+            logger.error("Unable to loads json message for : %s" % (str(message)))
             message = []
 
         table = message['table'] if 'table' in message else None

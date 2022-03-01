@@ -84,7 +84,7 @@ class ForexAlphaStrategySubC(ForexAlphaStrategySub):
         ema_sma_height = 0
 
         if self.rsi:
-            self.rsi.compute(to_ts, prices)[-1]
+            rsi = self.rsi.compute(to_ts, prices)[-1]
 
             if self.rsi.last < self.rsi_low:
                 rsi_30_70 = 1.0

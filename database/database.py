@@ -7,24 +7,17 @@ import os
 import json
 import time
 import threading
-import copy
-import traceback
 import pathlib
 
 from importlib import import_module
 
-from watcher.service import WatcherService
-
-from instrument.instrument import Candle
-
-from trader.market import Market
-from trader.asset import Asset
+from indicator.models import Limits, VolumeProfile
 
 from config import utils
 
 from .tickstorage import TickStorage, TickStreamer, FirstTickFinder, LastTickFinder
 from .ohlcstorage import OhlcStorage, OhlcStreamer
-from .quotestorage import QuoteStorage, QuoteStreamer
+from .quotestorage import QuoteStorage, QuoteStreamer, LastQuoteFinder
 
 import logging
 logger = logging.getLogger('siis.database')
@@ -37,7 +30,7 @@ class DatabaseException(Exception):
 
 class Database(object):
     """
-    Persistance database.
+    Persistence database.
     Timestamp during storing are in ms except if there is an object (not raw data).
     Timestamp fetched are in accordance with the object property (mostly second timestamp).
 
@@ -45,8 +38,8 @@ class Database(object):
 
     All markets information are stored in postgresql DB.
     User asset are stored in postgresql DB.
-    User trades and stored in postgresl DB.
-    OHLC are stored in posgresql DB.
+    User trades and stored in postgresql DB.
+    OHLC are stored in postgresql DB.
 
     Ticks are run in exclusive read or write mode :
         - first case is when watcher or fetcher are writing some news data.
@@ -55,7 +48,7 @@ class Database(object):
     OHLCs
     =======
 
-    Prefered ohlc of interest are 1m, 5m, 15m, 1h, 4h, daily, weekly.
+    Preferred ohlc of interest are 1m, 5m, 15m, 1h, 4h, daily, weekly.
 
         - Weekly, daily, 4h and 3h ohlc are always kept and store in the SQL DB.
         - 2h, 1h and 45m ohlc are kept for 90 days (if the cleaner is executed).
@@ -69,7 +62,7 @@ class Database(object):
     Ticks
     =====
 
-    Ticks are stored per market into mutliple text files that can be optimized.
+    Ticks are stored per market into multiple text files that can be optimized.
     Organisation is one file per month.
 
     They essentially exists for backtesting purpose. But could serve as source to recreate ohlc also.
@@ -78,7 +71,8 @@ class Database(object):
     Optimizer can be used to detect gaps, but some crypto market have few trades per hours.
 
     If you launch many watcher writing to the same market it could multiply the ticks entries,
-    or if you make a manual fetch of a specific market. Then the tick file will be broken and need to be optimized or re-fetched.
+    or if you make a manual fetch of a specific market. Then the tick file will be broken and need to be optimized
+    or re-fetched.
     """
     __instance = None
 
@@ -181,7 +175,7 @@ class Database(object):
 
         self.connect(config)
 
-        # optionnal tables creation
+        # optional tables creation
         self.setup_market_sql()
         self.setup_userdata_sql()
         self.setup_ohlc_sql()
@@ -194,7 +188,7 @@ class Database(object):
         self._thread.start()
 
     def enable_fetch_mode(self):
-        # is fetch mode fush tick continueously
+        # is fetch mode flush tick continuously
         self._fetch = True
 
     def connect(self, config):
@@ -270,7 +264,7 @@ class Database(object):
         pass
 
     #
-    # asyncs saves
+    # async saves
     #
 
     def store_market_trade(self, data):
@@ -291,7 +285,8 @@ class Database(object):
             tickstorage = self._tick_storages.get(key)
 
             if not tickstorage:
-                tickstorage = TickStorage(self._markets_path, data[0], data[1], text=self._store_trade_text, binary=self._store_trade_binary)
+                tickstorage = TickStorage(self._markets_path, data[0], data[1], text=self._store_trade_text,
+                                          binary=self._store_trade_binary)
                 self._tick_storages[key] = tickstorage
 
             tickstorage.store(data)
@@ -316,6 +311,7 @@ class Database(object):
             str broker_id (not empty)
             str market_id (not empty)
             integer timestamp (ms since epoch)
+            integer timeframe (time unit un seconds)
             str open (>= 0)
             str high (>= 0)
             str low (>= 0)
@@ -329,7 +325,9 @@ class Database(object):
             quotestorage = self._quote_storages.get(key)
 
             if not quotestorage:
-                quotestorage = QuoteStorage(self._markets_path, data[0], data[1], text=self._store_trade_text, binary=self._store_trade_binary)
+                quotestorage = QuoteStorage(self._markets_path, data[0], data[1], data[3],
+                                            text=self._store_trade_text, binary=self._store_trade_binary)
+
                 self._quote_storages[key] = quotestorage
 
             quotestorage.store(data)
@@ -430,12 +428,12 @@ class Database(object):
             self._condition.notify()
 
     #
-    # asyncs loads
+    # async loads
     #
 
     def load_market_ohlc(self, service, broker_id, market_id, timeframe, from_datetime=None, to_datetime=None):
         """
-        Load a set of market ohlc, fill the intermetiades missing ohlcs if necessary
+        Load a set of market ohlc, fill the intermediates missing ohlcs if necessary
         @param service to be notified once done
         @param from_datetime Timestamp in ms
         @param to_datetime Timestamp in ms
@@ -451,7 +449,7 @@ class Database(object):
 
     def load_market_ohlc_last_n(self, service, broker_id, market_id, timeframe, last_n):
         """
-        Load a set of market ohlc, fill the intermetiades missing ohlcs if necessary
+        Load a set of market ohlc, fill the intermediates missing ohlcs if necessary
         @param service to be notified once done
         @param last_n last max n ohlcs to load
         """
@@ -495,9 +493,9 @@ class Database(object):
         """Load and return only the last found and most recent stored tick."""
         return LastTickFinder(self._markets_path, broker_id, market_id, binary=True).last()
 
-    def get_last_quote(self, broker_id, market_id):
+    def get_last_quote(self, broker_id, market_id, timeframe):
         """Load and return only the last found and most recent stored tick."""
-        return LastQuoteFinder(self._markets_path, broker_id, market_id, binary=True).last()
+        return LastQuoteFinder(self._markets_path, broker_id, market_id, timeframe, binary=True).last()
 
     def get_last_ohlc(self, broker_id, market_id, timeframe):
         """Load and return only the last found and most recent stored OHLC from a specific timeframe."""
@@ -819,18 +817,21 @@ class Database(object):
             db = None
 
             if row:
-                return TALimits(
+                return Limits(
                     float(row[0]) * 0.001, float(row[1]) * 0.001,
                     float(row[2]), float(row[3])
                 )
             else:
                 return None
         except Exception as e:
-            self.on_error(e)
+            error_logger.error(repr(e))
             raise DatabaseException("Unable to get cached limits for %s %s" % (broker_id, market_id))
 
-    def get_cached_volume_profile(self, broker_id, market_id, strategy_id, timeframe, from_date, to_date=None, sensibility=10, volume_area=70):
-        """Load TA Volume Profile cache for a specific broker id market id and strategy identifier and inclusive period."""
+    def get_cached_volume_profile(self, broker_id, market_id, strategy_id, timeframe, from_date, to_date=None,
+                                  sensibility=10, volume_area=70):
+        """
+        Load TA Volume Profile cache for a specific broker id market id and strategy identifier and inclusive period.
+        """
         from_ts = from_date.timestamp()
         to_ts = to_date.timestamp() if to_date else time.time()
 
@@ -854,16 +855,16 @@ class Database(object):
             for row in rows:
                 timestamp = float(row[0]) * 0.001  # to float second timestamp
                 vp = VolumeProfile(timestamp, timeframe, float(row[1]),  float(row[2]), float(row[3]),
-                    {b: v for b, v in json.loads(row[4])},
-                    json.loads(row[5]),
-                    json.loads(row[6]))
+                                   {b: v for b, v in json.loads(row[4])},
+                                   json.loads(row[5]),
+                                   json.loads(row[6]))
 
                 results.append(vp)
 
             return results
 
         except Exception as e:
-            self.on_error(e)
+            error_logger.error(repr(e))
             raise DatabaseException("Unable to get a range of cached Volume Profile for %s %s" % (broker_id, market_id))
 
     def store_cached_limits(self, broker_id, market_id, strategy_id, limits):
@@ -885,10 +886,11 @@ class Database(object):
             db.close()
             db = None
         except self.sqlite3.IntegrityError as e:
-            self.on_error(e)
+            error_logger.error(repr(e))
             raise DatabaseException("SQlite Integrity Error: Failed to insert cached Limits for %s.\n" % (market_id,) + str(e))
 
-    def store_cached_volume_profile(self, broker_id, market_id, strategy_id, timeframe, data, sensibility=10, volume_area=70):
+    def store_cached_volume_profile(self, broker_id, market_id, strategy_id, timeframe, data,
+                                    sensibility=10, volume_area=70):
         """
         @param data A single tuple or a list of tuple.
 
@@ -912,7 +914,7 @@ class Database(object):
 
                 db.commit()
             except self.sqlite3.IntegrityError as e:
-                self.on_error(e)
+                error_logger.error(repr(e))
                 raise DatabaseException("SQlite Integrity Error: Failed to insert cached Volume Profile for %s %s.\n" % (broker_id, market_id,) + str(e))
 
         elif type(data) is tuple:
@@ -927,5 +929,5 @@ class Database(object):
 
                 db.commit()
             except self.sqlite3.IntegrityError as e:
-                self.on_error(e)
+                error_logger.error(repr(e))
                 raise DatabaseException("SQlite Integrity Error: Failed to insert cached Volume Profile for %s %s.\n" % (broker_id, market_id,) + str(e))

@@ -255,7 +255,7 @@ class CommandsHandler(object):
         Register a new command with unique id, optional alias and optional accelerator.
         """
         if not command.name:
-            raise CommandHandlerException("", "Missing command name")
+            raise CommandHandlerException("Missing command name")
 
         if command.name in self._commands:
             raise CommandException(command.name, "Already registered")

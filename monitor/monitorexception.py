@@ -23,4 +23,4 @@ class MonitorException(MonitorServiceException):
         self.monitor_name = monitor_name
 
     def __str__(self):
-        return 'MonitorException (%s:%s) : %s' % (self.monitor_name, self.message)
+        return 'MonitorException (%s) : %s' % (self.monitor_name, self.message)

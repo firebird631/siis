@@ -52,21 +52,21 @@ class HMAIndicator(Indicator):
     def last(self):
         return self._last
 
-    @property
-    def step(self):
-        return self._step
+    # @property
+    # def step(self):
+    #     return self._step
+    #
+    # @step.setter
+    # def step(self, step):
+    #     self._step = step
 
-    @step.setter
-    def step(self, step):
-        self._step = step
-
-    @property
-    def filtering(self):
-        return self._filtering
-
-    @filtering.setter
-    def filtering(self, filtering):
-        self._filtering = filtering
+    # @property
+    # def filtering(self):
+    #     return self._filtering
+    #
+    # @filtering.setter
+    # def filtering(self, filtering):
+    #     self._filtering = filtering
 
     @property
     def hmas(self):
@@ -103,8 +103,8 @@ class HMAIndicator(Indicator):
         Calcule un HMA sur N periodes en prenant un echantillon tous les step avec ou sans filtrage prealable
         Retourne un array de la même taille que data. Lorsque step > 1, les valeurs sont interpolees lineairement.
         """
-        sub_data = down_sample(data, step) if filtering else data [::step]
-        t_subdata = range(0,len(data),step)
+        sub_data = down_sample(data, step) if filtering else data[::step]
+        t_subdata = range(0,len(data), step)
 
         N_2 = int(N / 2)
         N_sqrt = int(math.sqrt(N))

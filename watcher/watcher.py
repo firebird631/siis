@@ -631,7 +631,7 @@ class Watcher(Runnable):
 
         # keep the current OHLC for each timeframe
         with self._mutex:
-            if not market_id in self._last_ohlc:
+            if market_id not in self._last_ohlc:
                 self._last_ohlc[market_id] = {}
 
             for k, ohlc in current_ohlc.items():
@@ -640,7 +640,7 @@ class Watcher(Runnable):
 
     def fetch_ticks(self, market_id, tick_depth=None):
         """
-        For initial fetching of the recents ticks.
+        For initial fetching of the recent ticks.
         """
         # compute a from date
         today = datetime.now().astimezone(UTC())

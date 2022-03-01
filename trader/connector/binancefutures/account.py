@@ -3,9 +3,6 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Account/user model for binance futures
 
-import http.client
-import urllib
-import json
 import time
 
 from trader.account import Account

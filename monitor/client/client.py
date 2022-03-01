@@ -6,12 +6,10 @@
 from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME
 
 import sys
-sys.path.append('../..')
 
 import time
 import json
-import termios, fcntl, os
-import signal
+import os
 import pathlib
 import logging
 import traceback
@@ -23,13 +21,17 @@ from charting.charting import Charting
 from monitor.client.dispatcher import Dispatcher
 from common.utils import fix_thread_set_name
 
+sys.path.append('../..')
+
 
 def display_help():
     pass
 
+
 def has_exception(_logger, e):
     _logger.error(repr(e))
     _logger.error(traceback.format_exc())
+
 
 def install(options):
     config_path = "./"
@@ -189,7 +191,7 @@ def application(argv):
             except (BrokenPipeError, IOError) as e:
                 logger.error(repr(e))
             except (TypeError, ValueError) as e:
-                logger.error("Error sending message : %s" % repr(c))
+                logger.error("Error sending message : %s" % repr(e))
 
         fifo_rpc.flush()
 

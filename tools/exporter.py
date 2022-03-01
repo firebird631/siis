@@ -197,6 +197,8 @@ def do_exporter(options):
     from_date_str = from_date.strftime("%Y-%m-%dT%H:%M:%SZ")
     to_date_str = to_date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    dst = None
+
     try:
         # exporting data...
         if timeframe is None:
@@ -262,8 +264,10 @@ def do_exporter(options):
         pass
     except Exception as e:
         error_logger.error(str(e))
-        dst.close()
-        dst = None
+
+        if dst is not None:
+            dst.close()
+            dst = None
     finally:
         pass
 

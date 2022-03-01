@@ -95,7 +95,7 @@ class BinanceTrader(Trader):
         try:
             balances = self._watcher.connector.balances()
         except Exception as e:
-            pass
+            balances = []
 
         with self._mutex:
             try:

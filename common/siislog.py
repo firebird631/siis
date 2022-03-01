@@ -13,7 +13,7 @@ from terminal.terminal import Terminal
 
 class ColoredFormatter(logging.Formatter):
 
-    def __init__(self, fmt, use_color = True):
+    def __init__(self, fmt, use_color=True):
         logging.Formatter.__init__(self, fmt, datefmt='%H:%M:%S')
         self.use_color = use_color
 
@@ -138,7 +138,7 @@ class SiisLog(object):
         self.console.setLevel(logging.DEBUG)
 
         # self.term_formatter = logging.Formatter('- %(name)-12s: %(levelname)-8s %(message)s')
-        self.term_formatter = ColoredFormatter('%(asctime)s %(name)-s%(message)s', style)
+        self.term_formatter = ColoredFormatter('%(asctime)s %(name)-s%(message)s', True)
         self.console.setFormatter(self.term_formatter)
 
         # add the handler to the root logger
@@ -148,7 +148,8 @@ class SiisLog(object):
         self.file_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
         # a siis logger with siis.log
-        self.file_logger = RotatingFileHandler(options['log-path'] + '/' + options['log-name'], maxBytes=1024*1024, backupCount=5)
+        self.file_logger = RotatingFileHandler(options['log-path'] + '/' + options['log-name'],
+                                               maxBytes=1024*1024, backupCount=5)
         # self.file_logger = logging.FileHandler(options['log-path'] + '/' + options['log-name'])
         self.file_logger.setFormatter(self.file_formatter)
         self.file_logger.setLevel(logging.DEBUG)
@@ -157,7 +158,8 @@ class SiisLog(object):
 
         # a siis logger with exec.siis.log
         # self.exec_file_logger = logging.FileHandler(options['log-path'] + '/' + "exec." + options['log-name'])
-        self.exec_file_logger = RotatingFileHandler(options['log-path'] + '/' + "exec." + options['log-name'], maxBytes=1024*1024, backupCount=5)
+        self.exec_file_logger = RotatingFileHandler(options['log-path'] + '/' + "exec." + options['log-name'],
+                                                    maxBytes=1024*1024, backupCount=5)
         self.exec_file_logger.setFormatter(self.file_formatter)
         self.exec_file_logger.setLevel(logging.INFO)
 
@@ -166,7 +168,8 @@ class SiisLog(object):
 
         # a siis logger with error.siis.log
         # self.error_file_logger = logging.FileHandler(options['log-path'] + '/' + "error." + options['log-name'])
-        self.error_file_logger = RotatingFileHandler(options['log-path'] + '/' + "error." + options['log-name'], maxBytes=1024*1024, backupCount=5)
+        self.error_file_logger = RotatingFileHandler(options['log-path'] + '/' + "error." + options['log-name'],
+                                                     maxBytes=1024*1024, backupCount=5)
         self.error_file_logger.setFormatter(self.file_formatter)
         self.error_file_logger.setLevel(logging.INFO)
 
@@ -175,7 +178,8 @@ class SiisLog(object):
 
         # a siis logger with signal.siis.log
         # self.signal_file_logger = logging.FileHandler(options['log-path'] + '/' + "signal." + options['log-name'])
-        self.signal_file_logger = RotatingFileHandler(options['log-path'] + '/' + "signal." + options['log-name'], maxBytes=1024*1024, backupCount=5)
+        self.signal_file_logger = RotatingFileHandler(options['log-path'] + '/' + "signal." + options['log-name'],
+                                                      maxBytes=1024*1024, backupCount=5)
         self.signal_file_logger.setFormatter(self.file_formatter)
         self.signal_file_logger.setLevel(logging.INFO)
 
@@ -184,7 +188,8 @@ class SiisLog(object):
 
         # a siis logger with order.siis.log
         # self.order_file_logger = logging.FileHandler(options['log-path'] + '/' + "order." + options['log-name'])
-        self.order_file_logger = RotatingFileHandler(options['log-path'] + '/' + "order." + options['log-name'], maxBytes=1024*1024, backupCount=5)
+        self.order_file_logger = RotatingFileHandler(options['log-path'] + '/' + "order." + options['log-name'],
+                                                     maxBytes=1024*1024, backupCount=5)
         self.order_file_logger.setFormatter(self.file_formatter)
         self.order_file_logger.setLevel(logging.INFO)
 
@@ -193,7 +198,8 @@ class SiisLog(object):
 
         # a siis logger with traceback.siis.log
         # self.traceback_file_logger = logging.FileHandler(options['log-path'] + '/' + "traceback." + options['log-name'])
-        self.traceback_file_logger = RotatingFileHandler(options['log-path'] + '/' + "traceback." + options['log-name'], maxBytes=1024*1024, backupCount=5)
+        self.traceback_file_logger = RotatingFileHandler(options['log-path'] + '/' + "traceback." + options['log-name'],
+                                                         maxBytes=1024*1024, backupCount=5)
         self.traceback_file_logger.setFormatter(self.file_formatter)
         self.traceback_file_logger.setLevel(logging.INFO)
 

@@ -496,7 +496,8 @@ class BitMexWatcher(Watcher):
                 for trade in data[3]:
                     # trade data
                     market_id = trade['symbol']
-                    trade_time = datetime.strptime(trade['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
+                    trade_time = datetime.strptime(trade['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+                        tzinfo=UTC()).timestamp()
                     # direction = Order.LONG if trade['side'] == 'Buy' else Order.SHORT
                     volume = trade['size']
                     price = trade['price']
@@ -520,7 +521,8 @@ class BitMexWatcher(Watcher):
 
                     if self._store_trade:
                         # store trade
-                        Database.inst().store_market_trade((self.name, symbol, int(trade_time*1000), price, price, price, volume, bid_ask))
+                        Database.inst().store_market_trade((self.name, market_id, int(trade_time*1000), price, price,
+                                                            price, volume, bid_ask))
 
                     for tf in Watcher.STORED_TIMEFRAMES:
                         # generate candle per each timeframe
@@ -589,7 +591,7 @@ class BitMexWatcher(Watcher):
 
                             elif base_symbol == 'XRP':
                                 # XRPUSD Contract Size 0,0002 XBT per 1 USD (Currently 0,00005642 XBT per contract) @ XBTUSD 10140$
-                                base_exchange_rate =  1.0 / (instrument.get('lastPrice', 1.0) * 0.0002)
+                                base_exchange_rate = 1.0 / (instrument.get('lastPrice', 1.0) * 0.0002)
                                 contract_size = instrument.get('lastPrice', 1.0) * 0.0002
                                 value_per_pip = contract_size * instrument.get('lastPrice', 1.0)
 
@@ -601,7 +603,9 @@ class BitMexWatcher(Watcher):
                         vol24h = instrument.get('volume24h')
                         vol24hquote = instrument.get('foreignNotional24h')
 
-                        market_data = (market_id, tradeable, update_time, bid, ask, base_exchange_rate, contract_size, value_per_pip, vol24h, vol24hquote)
+                        market_data = (market_id, tradeable, update_time, bid, ask, base_exchange_rate, 
+                                       contract_size, value_per_pip, vol24h, vol24hquote)
+
                         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
             #
@@ -734,7 +738,8 @@ class BitMexWatcher(Watcher):
             market.taker_fee = instrument.get('takerFee', 0.0)
 
             # store the last market info to be used for backtesting
-            Database.inst().store_market_info((self.name, market_id, market.symbol,
+            Database.inst().store_market_info((
+                self.name, market_id, market.symbol,
                 market.market_type, market.unit_type, market.contract_type,  # type
                 market.trade, market.orders,  # type
                 market.base, market.base_display, market.base_precision,  # base

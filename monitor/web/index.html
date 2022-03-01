@@ -84,11 +84,11 @@
       <div class="modal-body">
         <form>
             <div class="form-group">
-                <label for="recipient-name" class="col-form-label">Identifier :</label>
+                <label for="identifier" class="col-form-label">Identifier :</label>
                 <input autocomplete="off" type="text" class="form-control" id="identifier" name="identifier">
             </div>
             <div class="form-group">
-                <label for="recipient-name" class="col-form-label">Password :</label>
+                <label for="password" class="col-form-label">Password :</label>
                 <input autocomplete="off" type="text" class="form-control" id="password" name="password">
             </div>
         </form>
@@ -109,16 +109,16 @@
       <div class="modal-body">
         <div>
           <div class="form-group">
-            <label for="recipient-name" class="col-form-label">Price :</label>
+            <label for="modified_stop_loss_price" class="col-form-label">Price :</label>
             <input type="number" class="price form-control" id="modified_stop_loss_price" style="width: 200px;" lang="en">
           </div>
           <div class="form-group">
-            <label for="recipient-name" class="col-form-label">Stepper :</label>
+            <label for="modified_stop_loss_range" class="col-form-label">Stepper :</label>
             <input type="range" class="amount form-control" id="modified_stop_loss_range" name="amount" style="width: 190px;">
             <span id="modified_stop_loss_range_relative">0.0%</span>
           </div>
           <div class="form-group">
-            <label for="recipient-name" class="col-form-label">Stepper mode:</label>
+            <label for="modified_stop_loss_type" class="col-form-label">Stepper mode:</label>
             <select class="amount-type" name="amount-type" id="modified_stop_loss_type">
               <option value="percent">%</option>
               <option value="pip">pip</option>
@@ -128,11 +128,11 @@
         <hr>
         <div>
           <div class="form-group">
-            <label for="recipient-name" class="col-form-label">Step trigger-price:</label>
+            <label for="step_stop_loss_trigger_price" class="col-form-label">Step trigger-price:</label>
             <input type="number" class="trigger form-control" name="trigger" id="step_stop_loss_trigger_price"  placeholder="trigger" style="width: 150px;" lang="en">
           </div>
           <div class="form-group">
-            <label for="recipient-name" class="col-form-label">Step stop-price:</label>
+            <label for="step_stop_loss_price" class="col-form-label">Step stop-price:</label>
             <input type="number" class="trigger form-control" name="price" id="step_stop_loss_price" placeholder="price" style="width: 150px;">
           </div>
           <button type="button" class="btn btn-info" id="apply_trade_add_dynamic_stop_loss">Add</button>
@@ -159,16 +159,16 @@
       <div class="modal-body">
         <div>
           <div class="form-group">
-              <label for="recipient-name" class="col-form-label">Price :</label>
+              <label for="modified_take_profit_price" class="col-form-label">Price :</label>
               <input type="number" class="price form-control" id="modified_take_profit_price" style="width: 200px;" lang="en">
           </div>
           <div class="form-group">
-              <label for="recipient-name" class="col-form-label">Stepper :</label>
+              <label for="modified_take_profit_range" class="col-form-label">Stepper :</label>
               <input type="range" class="amount form-control" id="modified_take_profit_range" name="amount" style="width: 190px;">
               <span id="modified_take_profit_range_relative">0.0%</span>
           </div>
           <div class="form-group">
-              <label for="recipient-name" class="col-form-label">Stepper mode:</label>
+              <label for="modified_take_profit_type" class="col-form-label">Stepper mode:</label>
               <select class="amount-type" name="amount-type" id="modified_take_profit_type">
                 <option value="percent">%</option>
                 <option value="pip">pip</option>

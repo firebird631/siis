@@ -44,14 +44,6 @@ class FibonacciIndicator(Indicator):
         self._pattern = FibonacciIndicator.PATTERN_UNKNOWN
 
     @property
-    def length(self):
-        return self._length
-    
-    @length.setter
-    def length(self, length):
-        self._length = length
-
-    @property
     def lowers(self):
         return self._lowers
     

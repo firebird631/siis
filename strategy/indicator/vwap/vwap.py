@@ -1,4 +1,4 @@
-7# @date 2020-06-30
+# @date 2020-06-30
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2020 Dream Overflow
 # Volume Weighted Average indicator
@@ -21,8 +21,8 @@ class VWAPIndicator(Indicator):
     @todo Complete finalize and check time ranges
     """
 
-    __slots__ = '_days', '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \
-        '_last_top', '_last_bottom', '_session_offset'
+    __slots__ = '_days', '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', \
+                '_tops', '_bottoms', '_last_top', '_last_bottom', '_session_offset', '_volumes_dev', '_dev2'
 
     @classmethod
     def indicator_type(cls):
@@ -132,7 +132,7 @@ class VWAPIndicator(Indicator):
                 # avg price based on HLC3
                 hlc3 = (highs[b] + lows[b] + closes[b]) / 3
 
-                # cumulatives
+                # cumulative
                 self._pvs += hlc3 * volumes[b]
                 self._volumes += volumes[b]              
 
@@ -171,7 +171,7 @@ class TickBarVWAPIndicator(Indicator):
     """
 
     __slots__ = '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \
-        '_last_top', '_last_bottom', '_session_offset'
+        '_last_top', '_last_bottom', '_session_offset', '_volumes_dev', '_dev2'
 
     @classmethod
     def indicator_type(cls):
@@ -261,7 +261,7 @@ class TickBarVWAPIndicator(Indicator):
             self._dev2 = 0.0
             self._open_timestamp = Instrument.basetime(Instrument.TF_1D, timestamp) + self._session_offset
 
-        # cumulatives
+        # cumulative
         self._pvs += tick[3] * tick[4]  # price * volume
         self._volumes += tick[4]   
 
@@ -303,7 +303,7 @@ class TickVWAPIndicator(Indicator):
     """
 
     __slots__ = '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_tops', '_bottoms', \
-        '_last_top', '_last_bottom', '_session_offset', '_prev_top', '_prev_bottom'
+        '_last_top', '_last_bottom', '_session_offset', '_prev_top', '_prev_bottom', '_volumes_dev', '_dev2'
 
     @classmethod
     def indicator_type(cls):
@@ -382,7 +382,7 @@ class TickVWAPIndicator(Indicator):
             self._dev2 = 0.0
             self._open_timestamp = Instrument.basetime(Instrument.TF_1D, timestamp) + self._session_offset
 
-        # cumulatives
+        # cumulative
         self._pvs += tick[3] * tick[4]  # price * volume
         self._volumes += tick[4]   
 

@@ -71,6 +71,9 @@ def get_tick_streamer(strategy, strategy_trader, duration=None, from_date=None, 
 def beta_preprocess(strategy, strategy_trader):
     """
     Load previous cached data and compute missing part of data, cache them.
+
+    @todo to be continued and tested
+    @todo must be configurable to take quote streamer in place of trade streamer
     """
     with strategy_trader._mutex:
         if strategy_trader._preprocessing >= 2:
@@ -82,6 +85,10 @@ def beta_preprocess(strategy, strategy_trader):
 
     # @todo non blocking preprocessing       
     instrument = strategy_trader.instrument       
+
+    limits = None
+    from_date = None
+    to_date = None
 
     try:
         if strategy_trader._preprocessing == 2:
@@ -97,10 +104,10 @@ def beta_preprocess(strategy, strategy_trader):
             if limits is None:
                 limits = Limits()
 
-            # @todo must be configurable to take quote streamer in place of trade streamer
+            from_date = datetime.now()  # @todo initial
 
             if limits.min_price <= 0.0 or limits.max_price <= 0.0:
-                # compute limits from the oldtest tick
+                # compute limits from the oldest tick
                 first_tick = Database.inst().get_first_tick(strategy.trader_service.trader().name, instrument.market_id)
                 from_date = datetime.fromtimestamp(first_tick[0], tz=UTC()) if first_tick else None
 
@@ -111,8 +118,7 @@ def beta_preprocess(strategy, strategy_trader):
                     strategy_trader._preprocessing = 0
 
                 return
-                strategy_trader._preprocess_streamer = get_tick_streamer(
-                    strategy, strategy_trader, from_date=from_date)
+                # strategy_trader._preprocess_streamer = get_tick_streamer(strategy, strategy_trader, from_date=from_date)
             else:
                 # update limits from last computed date
                 strategy_trader._preprocess_streamer = strategy_trader.get_tick_streamer(
@@ -172,7 +178,7 @@ def beta_preprocess(strategy, strategy_trader):
             strategy_trader.preprocess_load_cache(from_date, to_date)
 
             with strategy_trader._mutex:
-                # now can update using more recents data
+                # now can update using more recent data
                 strategy_trader._preprocessing = 4
 
         if strategy_trader._preprocessing == 4:
@@ -413,6 +419,7 @@ def beta_async_update_strategy(strategy, strategy_trader):
     """
     Override this method to compute a strategy step per instrument.
     Default implementation supports bootstrapping.
+    @param strategy
     @param strategy_trader StrategyTrader Instance of the strategy trader to process.
     @note Thread-safe method.
     """

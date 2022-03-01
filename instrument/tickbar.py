@@ -18,8 +18,8 @@ class TickBarBase(object):
     @note Ofr is a synonym for ask.
     """
 
-    __slots__ = '_timestamp', '_last_timestamp', '_volume', '_ended', '_open', '_close', '_ticks', \
-        '_pov', '_pov_bid', '_pov_ask', '_vol_bid', '_vol_ask', '_avg_size', '_low', '_high', '_dir'
+    __slots__ = '_timestamp', '_last_timestamp', '_volume', '_ended', '_open', '_close', '_ticks', '_num_trades', \
+        '_pov', '_pov_bid', '_pov_ask', '_vol_bid', '_vol_ask', '_avg_size', '_num_trades', '_low', '_high', '_dir'
 
     def __init__(self, timestamp, price):
         """
@@ -44,8 +44,8 @@ class TickBarBase(object):
         self._vol_bid = 0.0
         self._vol_ask = 0.0
 
-        self._avg_size = 0.0  # trade average size or aggreged trades average size ( = volume / num_trades)
-        self._num_trades = 0  # num of total trades or aggreged trades ( +1 at each trade)
+        self._avg_size = 0.0  # trade average size or aggregated trades average size ( = volume / num_trades)
+        self._num_trades = 0  # num of total trades or aggregated trades ( +1 at each trade)
 
         self._pov = 0.0
         self._pov_bid = 0.0
@@ -131,6 +131,7 @@ class TickBarBase(object):
 
     def add_tick(self, price, volume):
         if price in self._ticks:
+            # @todo not index
             pos = self._ticks.index(price)
             self._ticks[pos] += volume
         else:
@@ -197,21 +198,12 @@ class TickBarBidAsk(TickBarBase):
     def __init__(self, timestamp, price):
         super().__init__(timestamp, price)
 
-    @property
     def bid_vol(self, price):
         if price in self._ticks:
             return self._ticks[price][0]
 
         return 0.0
 
-    @property
-    def ask_vol(self, price):
-        if price in self._ticks:
-            return self._ticks[price][1]
-
-        return 0.0
-
-    @property
     def ask_vol(self, price):
         if price in self._ticks:
             return self._ticks[price][1]
@@ -227,7 +219,6 @@ class TickBarVolume(TickBarBase):
     def __init__(self, timestamp, price):
         super().__init__(timestamp, price)
 
-    @property
     def vol(self, price):
         if price in self._ticks:
             return self._ticks[price]

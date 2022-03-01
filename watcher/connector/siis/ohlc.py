@@ -20,7 +20,7 @@ class SiisOHLC(Watcher):
     """
 
     def __init__(self, service, name="ohlc.siis.com"):
-        super().__init__(name, service)
+        super().__init__(name, service, Watcher.WATCHER_PRICE_AND_VOLUME)
 
         self._host = "siis.com"
         self._base_url = "/api/v1/"

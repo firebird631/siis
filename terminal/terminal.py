@@ -187,10 +187,10 @@ class View(object):
                 # self._win = stdscr.subpad(*self._rect)
 
             if mode == View.MODE_STREAM:
-                # self._win.scrollok(1)
-                self._win.scrollok(0)
+                # self._win.scrollok(True)
+                self._win.scrollok(False)
             elif mode == View.MODE_BLOCK:
-                self._win.scrollok(0)
+                self._win.scrollok(False)
 
             # WINDOW *subpad(WINDOW *orig, int nlines, int ncols, int begin_y, int begin_x);
             # int prefresh(WINDOW *pad, int pminrow, int pmincol, int sminrow, int smincol, int smaxrow, int 
@@ -477,10 +477,10 @@ class View(object):
             self._dirty = True
 
             if self._mode == View.MODE_STREAM:
-                self._win.scrollok(0)
+                self._win.scrollok(False)
                 self._first_row = 0
             elif self._mode == View.MODE_BLOCK:
-                self._win.scrollok(0)
+                self._win.scrollok(False)
 
     def redraw(self):
         with self._mutex:

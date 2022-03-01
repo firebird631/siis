@@ -5,7 +5,7 @@
 
 DEFAULT_PARAMS = {
     "reversal": True,
-    "max-trades": 3,    # max number of simultaned trades for a same market
+    "max-trades": 3,    # max number of simultaneous trades for a same market
     "trade-delay": 30,  # at least wait 30 seconds before sending another signal 
     "min-traded-timeframe": "1m",
     "max-traded-timeframe": "1m",
@@ -115,7 +115,7 @@ DEFAULT_PARAMS = {
             }   
         },
         "hourly": {
-            "timeframe": "1h,"
+            "timeframe": "1h",
             "mode": "A",
             "depth": 22,
             "history": 22,
@@ -215,7 +215,7 @@ DEFAULT_PARAMS = {
             }
         },
         "1min": {
-            "timeframe": "1m,"
+            "timeframe": "1m",
             "mode": "A",
             "depth": 20,
             "history": 20,

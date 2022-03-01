@@ -168,8 +168,12 @@ class KrakenFetcher(Fetcher):
 
                 if fees:
                     taker_fee = round(fees[0][1] * 0.01, 6)
+                else:
+                    taker_fee = 0.0
                 if fees_maker:
                     maker_fee = round(fees_maker[0][1] * 0.01, 6)
+                else:
+                    maker_fee = 0.0
 
                 if instrument.get('fee_volume_currency'):
                     fee_currency = instrument['fee_volume_currency']
@@ -177,7 +181,7 @@ class KrakenFetcher(Fetcher):
                 if quote_asset != self.BASE_QUOTE:
                     # from XXBTZUSD / XXBTZEUR ...
                     # @todo
-                    pass
+                    base_exchange_rate = 1.0
                     # if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
                     #     base_exchange_rate = float(self._tickers_data.get(quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
                     # elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
@@ -192,7 +196,8 @@ class KrakenFetcher(Fetcher):
                 # value_per_pip = contract_size / mid_price
 
                 # store the last market info to be used for backtesting
-                Database.inst().store_market_info((self.name, market_id, symbol,
+                Database.inst().store_market_info((
+                    self.name, market_id, symbol,
                     market_type, unit_type, contract_type,  # type
                     trade, orders,  # type
                     base_asset, base_display, base_precision,  # base
@@ -210,7 +215,6 @@ class KrakenFetcher(Fetcher):
         else:
             logger.error("Fetcher %s cannot retrieve market %s on local data" % (self.name, market_id))
 
-
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
         trades = []
 
@@ -224,7 +228,7 @@ class KrakenFetcher(Fetcher):
         for trade in trades:
             count += 1
             # timestamp, bid, ask, last, volume, direction
-            yield(trade)
+            yield trade
 
         logger.info("Fetcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))
 
@@ -250,9 +254,10 @@ class KrakenFetcher(Fetcher):
             count += 1
             # store (timestamp, open, high, low, close, spread, volume)
             if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
-                yield((candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]))
+                yield candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]
 
-        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe_to_str(timeframe)))
+        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (
+            self.name, market_id, count, timeframe_to_str(timeframe)))
 
     def fetch_closed_orders(self, from_date, to_date):
         results = []

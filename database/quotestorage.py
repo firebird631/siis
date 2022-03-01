@@ -4,11 +4,8 @@
 # Quote streaming per market
 
 import os
-import json
-import copy
 import time
 import threading
-import traceback
 import pathlib
 import struct
 import collections
@@ -29,7 +26,7 @@ class QuoteStorage(object):
     File format is a tab separated file with no header and :
     timestamp(int ms since epoch) open(str) high(str) low(str) close(str) spread(str) volume(str)
 
-    Price and volume should be formated with the asset precision if possible but scientific notation
+    Price and volume should be formatted with the asset precision if possible but scientific notation
     is tolerate.
     """
 
@@ -75,7 +72,8 @@ class QuoteStorage(object):
     def open(self, date_utc):
         if self._text and not self._text_file:
             try:
-                broker_path = pathlib.Path(self._markets_path, self._broker_id, self._market_id, self._timeframe_str)  # use broker name as directory
+                broker_path = pathlib.Path(self._markets_path, self._broker_id, self._market_id,
+                                           self._timeframe_str)  # use broker name as directory
                 if not broker_path.exists():
                     broker_path.mkdir(parents=True)
 
@@ -89,7 +87,8 @@ class QuoteStorage(object):
 
         if self._binary and not self._binary_file:
             try:
-                broker_path = pathlib.Path(self._markets_path, self._broker_id, self._market_id, self._timeframe_str)  # use broker name as directory
+                broker_path = pathlib.Path(self._markets_path, self._broker_id, self._market_id,
+                                           self._timeframe_str)  # use broker name as directory
                 if not broker_path.exists():
                     broker_path.mkdir(parents=True)
 
@@ -138,12 +137,14 @@ class QuoteStorage(object):
 
                 if self._text_file: 
                     # convert to a tabular row          
-                    content = "%i\t%s\t%s\t%s\t%s\t%s\t%s\n" % (d.timestamp, d.open, d.high, d.low, d.close, d.spread, d.volume)  # t o h l c s v
+                    content = "%i\t%s\t%s\t%s\t%s\t%s\t%s\n" % (d.timestamp, d.open, d.high, d.low, d.close,
+                                                                d.spread, d.volume)  # t o h l c s v
                     self._text_file.write(content)
 
                 if self._binary_file:
                     # convert to a struct
-                    f = (float(d[2]) * 0.001, float(d[3]), float(d[4]), float(d[5]), float(d[6]), float(d[7]), float(d[8]))  # t o h l c s v (t in second)
+                    f = (float(d[2]) * 0.001, float(d[3]), float(d[4]), float(d[5]), float(d[6]),
+                         float(d[7]), float(d[8]))  # t o h l c s v (t in second)
                     # s = struct.pack('<ddddddd', *f)
                     s = self._struct.pack(*f)
 
@@ -172,7 +173,8 @@ class QuoteStreamer(object):
 
     QUOTE_SIZE = 7*8  # 56bytes
 
-    def __init__(self, markets_path, broker_id, market_id, timeframe, from_date, to_date=None, buffer_size=1000, binary=True):
+    def __init__(self, markets_path, broker_id, market_id, timeframe, from_date, to_date=None,
+                 buffer_size=1000, binary=True):
         """
         @param from_date datetime Object
         @param to_date datetime Object
@@ -198,7 +200,8 @@ class QuoteStreamer(object):
         self._is_binary = False
 
         self._struct = struct.Struct('ddddddd')
-        self._format = np.dtype([('t', 'float64'), ('o', 'float64'), ('h', 'float64'), ('l', 'float64'), ('c', 'float64'), ('s', 'float64'), ('v', 'float64')])
+        self._format = np.dtype([('t', 'float64'), ('o', 'float64'), ('h', 'float64'), ('l', 'float64'),
+                                 ('c', 'float64'), ('s', 'float64'), ('v', 'float64')])
 
     @property
     def from_date(self):
@@ -229,7 +232,7 @@ class QuoteStreamer(object):
                 st = os.stat(pathname)
                 file_size = st.st_size
 
-                # directly seek to intial position to avoid useless parsing
+                # directly seek to initial position to avoid useless parsing
                 timestamp = self._curr_date.timestamp()
                 prev_timestamp = 0
                 pos = 0
@@ -257,7 +260,7 @@ class QuoteStreamer(object):
                         left = pos + QuoteStreamer.QUOTE_SIZE
                         prev_timestamp = timestamp
 
-                    elif quotes[0] > timestamp:
+                    elif quote[0] > timestamp:
                         # move backward
                         right = pos - QuoteStreamer.QUOTE_SIZE
 
@@ -319,7 +322,7 @@ class QuoteStreamer(object):
                 # results.append(self._buffer.pop(0))
                 elt = self._buffer.popleft()
 
-                quote = Quote(elt[0], self._timeframe)
+                quote = Candle(elt[0], self._timeframe)
                 quote.set_ohlc_s_v(elt[1], elt[2], elt[3], elt[4], elt[5], elt[6])
 
                 results.append(quote)
@@ -340,7 +343,7 @@ class QuoteStreamer(object):
             while self._buffer and self._buffer[0][0] <= timestamp:
                 elt = self._buffer.popleft()
 
-                quote = Quote(elt[0], self._timeframe)
+                quote = Candle(elt[0], self._timeframe)
                 quote.set_ohlc_s_v(elt[1], elt[2], elt[3], elt[4], elt[5], elt[6])
 
                 dest.append(quote)
@@ -364,171 +367,7 @@ class QuoteStreamer(object):
                     data = self._struct.iter_unpack(arr)
 
                     if len(arr) < self._buffer_size:
-                       file_end = True
-
-                    # speedup using numpy fromfile but its a one shot loads
-                    # data = np.fromfile(self._file, dtype=self._format)
-                    # file_end = True
-
-                    self._buffer.extend(data)
-
-                    # not really necessary, its slow
-                    # no longer necessary because open() at the best initial position
-                    # for d in data:
-                    #     if d[0] >= self._from_date.timestamp():
-                    #         self._buffer.append(d)
-                else:
-                    # text
-                    for n in range(0, self._buffer_size):
-                        row = self._file.readline()
-
-                        if not row:
-                            file_end = True
-                            break
-
-                        ts, o, h, l, c, s, vol = row.rstrip('\n').split('\t')
-
-                        ts = float(ts) * 0.001
-                        if ts < self._from_date.timestamp():
-                            # ignore older than initial date
-                            continue
-
-                        self._buffer.append((ts, float(o), float(h), float(l), float(c), spread(s), float(vol)))
-            else:
-                file_end = True
-
-            if file_end:
-                self.close()
-
-                # next month/year
-                if self._curr_date.month == 12:
-                    self._curr_date = datetime(year=self._curr_date.year+1, month=1, day=1, tzinfo=UTC())
-                else:
-                    self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1, tzinfo=UTC())
-
-
-class LastQuoteFinder(object):
-    """
-    Last quote find helper.
-    """
-
-    QUOTE_SIZE = 7*8  # 56bytes
-
-    def __init__(self, markets_path, broker_id, market_id, timeframe, buffer_size=1000, binary=True):
-        self._markets_path = markets_path
-
-        self._broker_id = broker_id
-        self._market_id = market_id
-
-        self._timeframe = timeframe
-        self._timeframe_str = timeframe_to_str(timeframe)
-
-        self._curr_date = datetime.now()
-
-        self._buffer_size = buffer_size
-        self._binary = binary  # use binary format
-
-        self._struct = struct.Struct('ddddddd')
-        self._format = np.dtype([('t', 'float64'), ('o', 'float64'), ('h', 'float64'), ('l', 'float64'), ('c', 'float64'), ('s', 'float64'), ('v', 'float64')])
-
-    def open(self):
-        data_path = pathlib.Path(self._markets_path, self._broker_id, self._market_id, self._timeframe_str)
-        if not data_path.exists():
-            return None
-
-        # try first with binary file
-        if self._binary:
-            # with .dat extension
-            filename = "%s%s_%s.dat" % (self._curr_date.strftime('%Y%m'), self._market_id, self._timeframe_str)
-            pathname = '/'.join((str(data_path), filename))
-
-            quote = None
-
-            if os.path.isfile(pathname):
-                bfile = open(pathname, "rb")
-
-                # directly seek to the last quote entry
-                try:
-                    bfile.seek(-QuoteStreamer.QUOTE_SIZE, 2)
-                    arr = bfile.read(QuoteStreamer.QUOTE_SIZE)
-
-                    elt = self._struct.unpack(arr)
-
-                    quote = Quote(elt[0], self._timeframe)
-                    quote.set_ohlc_s_v(elt[1], elt[2], elt[3], elt[4], elt[5], elt[6])
-                except:
-                    pass
-
-                bfile.close()
-
-            return quote
-
-        # if not binary asked or binary not found try with text file
-        else:
-            # no extension
-            filename = "%s%s_%s" % (self._curr_date.strftime('%Y%m'), self._market_id, self._timeframe_str)
-            pathname = '/'.join((str(data_path), filename))
-
-            quote = None
-
-            if os.path.isfile(pathname):
-                tfile = open(pathname, "rb")
-
-                # directly seek to the last quote entry
-                tfile.seek(-self._buffer_size, 2)
-
-                data = tfile.read(self._buffer_size)
-                content = data.decode('utf-8').rstrip('\n')
-                pos = content.rfind('\n')
-
-                if pos >= 0:
-                    row = content[pos+1:]
-                    ts, o, h, l, c, s, vol = row.rstrip('\n').split('\t')
-
-                    # timestamp in seconds
-                    quote = Quote(float(ts) * 0.001, self._timeframe)
-                    quote.set_ohlc_s_v(float(o), float(h), float(l), float(c), float(s), float(vol))
-
-                tfile.close()
-
-            return quote
-
-        return None
-
-    def last(self):
-        quote = None
-
-        while 1:
-            quote = self.open()
-
-            if quote:
-                break
-
-            # prev month/year
-            if self._curr_date.month == 1:
-                if self._curr_date.year < 2000:
-                    return None
-
-                self._curr_date = self._curr_date.replace(year=self._curr_date.year-1, month=12, day=1, hour=0, minute=0, second=0, microsecond=0)
-            else:
-                self._curr_date = self._curr_date.replace(month=self._curr_date.month-1, day=1, hour=0, minute=0, second=0, microsecond=0)
-
-        return quote
-
-    def __bufferize(self):
-        if self._curr_date < self._to_date:
-            if not self._file:
-                self.open()
-
-            file_end = False
-
-            if self._file:
-                if self._is_binary:
-                    arr = self._file.read(LastQuoteFinder.QUOTE_SIZE*self._buffer_size)
-                    data = self._struct.iter_unpack(arr)
-
-                    if len(arr) < self._buffer_size:
-                       file_end = True
+                        file_end = True
 
                     # speedup using numpy fromfile but its a one shot loads
                     # data = np.fromfile(self._file, dtype=self._format)
@@ -564,8 +403,177 @@ class LastQuoteFinder(object):
             if file_end:
                 self.close()
 
-                # prev month/year
-                if self._curr_date.month == 1:
-                    self._curr_date = datetime(year=self._curr_date.year-1, month=12, day=1, tzinfo=UTC())
+                # next month/year
+                if self._curr_date.month == 12:
+                    self._curr_date = datetime(year=self._curr_date.year+1, month=1, day=1, tzinfo=UTC())
                 else:
-                    self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month-1, day=1, tzinfo=UTC())
+                    self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1,
+                                               day=1, tzinfo=UTC())
+
+
+class LastQuoteFinder(object):
+    """
+    Last quote find helper.
+    """
+
+    QUOTE_SIZE = 7*8  # 56bytes
+
+    def __init__(self, markets_path, broker_id, market_id, timeframe, buffer_size=1000, binary=True):
+        self._markets_path = markets_path
+
+        self._broker_id = broker_id
+        self._market_id = market_id
+
+        self._timeframe = timeframe
+        self._timeframe_str = timeframe_to_str(timeframe)
+
+        self._curr_date = datetime.now()
+
+        self._buffer_size = buffer_size
+        self._binary = binary  # use binary format
+
+        self._struct = struct.Struct('ddddddd')
+        self._format = np.dtype([('t', 'float64'), ('o', 'float64'), ('h', 'float64'), ('l', 'float64'),
+                                 ('c', 'float64'), ('s', 'float64'), ('v', 'float64')])
+
+    def open(self):
+        data_path = pathlib.Path(self._markets_path, self._broker_id, self._market_id, self._timeframe_str)
+        if not data_path.exists():
+            return None
+
+        # try first with binary file
+        if self._binary:
+            # with .dat extension
+            filename = "%s%s_%s.dat" % (self._curr_date.strftime('%Y%m'), self._market_id, self._timeframe_str)
+            pathname = '/'.join((str(data_path), filename))
+
+            quote = None
+
+            if os.path.isfile(pathname):
+                bfile = open(pathname, "rb")
+
+                # directly seek to the last quote entry
+                try:
+                    bfile.seek(-QuoteStreamer.QUOTE_SIZE, 2)
+                    arr = bfile.read(QuoteStreamer.QUOTE_SIZE)
+
+                    elt = self._struct.unpack(arr)
+
+                    quote = Candle(elt[0], self._timeframe)
+                    quote.set_ohlc_s_v(elt[1], elt[2], elt[3], elt[4], elt[5], elt[6])
+                except:
+                    pass
+
+                bfile.close()
+
+            return quote
+
+        # if not binary asked or binary not found try with text file
+        else:
+            # no extension
+            filename = "%s%s_%s" % (self._curr_date.strftime('%Y%m'), self._market_id, self._timeframe_str)
+            pathname = '/'.join((str(data_path), filename))
+
+            quote = None
+
+            if os.path.isfile(pathname):
+                tfile = open(pathname, "rb")
+
+                # directly seek to the last quote entry
+                tfile.seek(-self._buffer_size, 2)
+
+                data = tfile.read(self._buffer_size)
+                content = data.decode('utf-8').rstrip('\n')
+                pos = content.rfind('\n')
+
+                if pos >= 0:
+                    row = content[pos+1:]
+                    ts, o, h, l, c, s, vol = row.rstrip('\n').split('\t')
+
+                    # timestamp in seconds
+                    quote = Candle(float(ts) * 0.001, self._timeframe)
+                    quote.set_ohlc_s_v(float(o), float(h), float(l), float(c), float(s), float(vol))
+
+                tfile.close()
+
+            return quote
+
+        return None
+
+    def last(self):
+        quote = None
+
+        while 1:
+            quote = self.open()
+
+            if quote:
+                break
+
+            # prev month/year
+            if self._curr_date.month == 1:
+                if self._curr_date.year < 2000:
+                    return None
+
+                self._curr_date = self._curr_date.replace(year=self._curr_date.year-1, month=12, day=1, hour=0,
+                                                          minute=0, second=0, microsecond=0)
+            else:
+                self._curr_date = self._curr_date.replace(month=self._curr_date.month-1, day=1, hour=0,
+                                                          minute=0, second=0, microsecond=0)
+
+        return quote
+
+    # def __bufferize(self):
+    #     if self._curr_date < self._to_date:
+    #         if not self._file:
+    #             self.open()
+    #
+    #         file_end = False
+    #
+    #         if self._file:
+    #             if self._is_binary:
+    #                 arr = self._file.read(LastQuoteFinder.QUOTE_SIZE*self._buffer_size)
+    #                 data = self._struct.iter_unpack(arr)
+    #
+    #                 if len(arr) < self._buffer_size:
+    #                    file_end = True
+    #
+    #                 # speedup using numpy fromfile but its a one shot loads
+    #                 # data = np.fromfile(self._file, dtype=self._format)
+    #                 # file_end = True
+    #
+    #                 self._buffer.extend(data)
+    #
+    #                 # not really necessary, its slow
+    #                 # no longer necessary because open() at the best initial position
+    #                 # for d in data:
+    #                 #     if d[0] >= self._from_date.timestamp():
+    #                 #         self._buffer.append(d)
+    #             else:
+    #                 # text
+    #                 for n in range(0, self._buffer_size):
+    #                     row = self._file.readline()
+    #
+    #                     if not row:
+    #                         file_end = True
+    #                         break
+    #
+    #                     ts, o, h, l, c, s, vol = row.rstrip('\n').split('\t')
+    #
+    #                     ts = float(ts) * 0.001
+    #                     if ts < self._from_date.timestamp():
+    #                         # ignore older than initial date
+    #                         continue
+    #
+    #                     self._buffer.append((ts, float(o), float(h), float(l), float(c), float(s), float(vol)))
+    #         else:
+    #             file_end = True
+    #
+    #         if file_end:
+    #             self.close()
+    #
+    #             # prev month/year
+    #             if self._curr_date.month == 1:
+    #                 self._curr_date = datetime(year=self._curr_date.year-1, month=12, day=1, tzinfo=UTC())
+    #             else:
+    #                 self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month-1,
+    #                                            day=1, tzinfo=UTC())

@@ -17,12 +17,12 @@ class Score(object):
 		self._current_score = 0.0
 		self._last_score = 0.0
 		self._sum_factor = 0.0
-		self._scores = [0]*min_scores
+		self._scores = [0.0]*min_scores
 		self._range = [min_scores, max_scores]
 		self._map = {}
 
 	def reset(self):
-		self._scores = [0]*min_scores
+		self._scores = [0.0]*len(self._scores)
 		self._last_score = 0.0
 		self._sum_factor = 0.0
 		self._current_score = 0.0
@@ -76,16 +76,16 @@ class Score(object):
 
 	def distance(self):
 		"""Distance of the two lasts scores."""
-		if len(self._scores < 2):
+		if len(self._scores) < 2:
 			return 0.0
 
 		return self[-1] - self[-2]
 
 	def is_cross_last(self, with_score):
-		if len(self._scores < 2):
+		if len(self._scores) < 2:
 			return False
 
-		return utils.cross((self._scores[-2], with_score._scores[-2]), self._scores[-1], with_score._scores[-1]) != 0
+		return utils.cross((self._scores[-2], with_score._scores[-2]), (self._scores[-1], with_score._scores[-1])) != 0
 
 	def cross_at(self, with_score):
 		# Cross along the whole array and return a list with -1 0 or 1 where cross down, no cross or cross up
@@ -111,7 +111,8 @@ class Scorify(object):
 	and use a temporal regression factor.
 	"""
 
-	__slots__ = '_trigger_level', '_increase_factor', '_regression_factor', '_buy_or_sell', '_score', '_last_score', '_score_accum', '_scalar', '_sum_factor'
+	__slots__ = '_trigger_level', '_increase_factor', '_regression_factor', '_buy_or_sell', '_score', '_last_score', \
+				'_score_accum', '_scalar', '_sum_factor'
 
 	def __init__(self, trigger_level, increase_factor=1.0, regression_factor=1.0):
 		"""
@@ -158,7 +159,7 @@ class Scorify(object):
 			# signal
 			self._buy_or_sell = np.sign(self._score)  # self._score_accum)
 
-			# regression to avoid multiples successives signals
+			# regression to avoid multiples successive signals
 			self._score_accum *= self._regression_factor
 
 			# store it as final score

@@ -307,6 +307,7 @@ class Connector(object):
                 params['startTime'] = self._format_datetime(last_datetime)
 
             params['start'] = start  # offset if timestamp are same
+            results = []
 
             try:
                 results = self.request(path=endpoint, query=params, verb='GET')
@@ -404,8 +405,11 @@ class Connector(object):
         # last_datetime = from_date + timedelta(seconds=delta)
         last_datetime = from_date + delta_time
         ot = from_date  # init
+        retry_count = 0
 
         while 1:
+            results = []
+
             if last_datetime:
                 params['startTime'] = self._format_datetime(last_datetime)
 

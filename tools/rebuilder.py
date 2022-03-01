@@ -5,6 +5,7 @@
 
 import sys
 import logging
+import time
 import traceback
 
 from datetime import datetime, timedelta
@@ -193,8 +194,10 @@ def do_rebuilder(options):
 
         if timeframe == Instrument.TF_TICK:
             tick_streamer = Database.inst().create_tick_streamer(options['broker'], market, from_date=from_date, to_date=to_date)
+            ohlc_streamer = None
         else:
             ohlc_streamer = Database.inst().create_ohlc_streamer(options['broker'], market, timeframe, from_date=from_date, to_date=to_date)
+            tick_streamer = None
     
         # cascaded generation of candles
         if cascaded:
@@ -214,8 +217,9 @@ def do_rebuilder(options):
         if options.get('target'):
             target = TIMEFRAME_FROM_STR_MAP.get(options.get('target'))
 
-            if (timeframe > 0 and target % timeframe != 0):
-                logger.error("Timeframe %s is not a multiple of %s !" % (timeframe_to_str(target), timeframe_to_str(timeframe)))
+            if timeframe > 0 and target % timeframe != 0:
+                logger.error("Timeframe %s is not a multiple of %s !" % (
+                    timeframe_to_str(target), timeframe_to_str(timeframe)))
                 sys.exit(-1)
 
             generators.append(CandleGenerator(timeframe, target))
@@ -268,7 +272,8 @@ def do_rebuilder(options):
                 if timestamp - prev_update >= progression_incr:
                     progression += 1
 
-                    Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
+                    Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (
+                        progression, format_datetime(timestamp), count, total_count))
 
                     prev_update = timestamp
                     count = 0
@@ -280,10 +285,11 @@ def do_rebuilder(options):
 
                 # calm down the storage of tick, if parsing is faster
                 while Database.inst().num_pending_ticks_storage() > TICK_STORAGE_DELAY:
-                   time.sleep(TICK_STORAGE_DELAY)  # wait a little before continue
+                    time.sleep(TICK_STORAGE_DELAY)  # wait a little before continue
 
             if progression < 100:
-                Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
+                Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (
+                    format_datetime(timestamp), count, total_count))
 
         elif timeframe > 0:
             while not ohlc_streamer.finished():
@@ -322,7 +328,8 @@ def do_rebuilder(options):
                 if timestamp - prev_update >= progression_incr:
                     progression += 1
 
-                    Terminal.inst().info("%i%% on %s, %s ohlcs per bulk of 100, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
+                    Terminal.inst().info("%i%% on %s, %s ohlcs per bulk of 100, current total of %s..." % (
+                        progression, format_datetime(timestamp), count, total_count))
 
                     prev_update = timestamp
                     count = 0
@@ -334,7 +341,8 @@ def do_rebuilder(options):
                     timestamp += timeframe * 100
 
             if progression < 100:
-                Terminal.inst().info("100%% on %s, %s ohlcs per bulk of 100, current total of %s..." % (format_datetime(timestamp), count, total_count))
+                Terminal.inst().info("100%% on %s, %s ohlcs per bulk of 100, current total of %s..." % (
+                    format_datetime(timestamp), count, total_count))
 
     Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 

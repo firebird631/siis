@@ -23,4 +23,4 @@ class WatcherException(WatcherServiceException):
         self.watcher_name = watcher_name
 
     def __str__(self):
-        return 'WatcherException (%s:%s) : %s' % (self.watcher_name, self.message)
+        return 'WatcherException (%s) : %s' % (self.watcher_name, self.message)

@@ -461,6 +461,8 @@ class BinanceFuturesWatcher(Watcher):
 
             if leverage:
                 market.margin_factor = 1.0 / leverage[1]  # leverage[0] to know if isolated margin
+            else:
+                market.margin_factor = 1.0 / 125  # no account data let to maximum
 
             # only order book can give us bid/ask
             market.bid = float(ticker['bidPrice'])

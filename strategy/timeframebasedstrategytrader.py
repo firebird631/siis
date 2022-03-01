@@ -131,7 +131,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
     def compute(self, timestamp):
         """
-        Compute the signals for the differents timeframes depending of the update policy.
+        Compute the signals for the different timeframes depending of the update policy.
         """
         # split entries from exits signals
         entries = []
@@ -166,25 +166,32 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
     def setup_streaming(self):
         # global stream about compute status, once per compute frame
-        self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO, self.strategy.identifier, self.instrument.market_id)
+        self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO,
+                                           self.strategy.identifier, self.instrument.market_id)
         self._global_streamer.add_member(StreamMemberFloatSerie('performance', 0))
 
         # trade streams
-        self._trade_entry_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
+        self._trade_entry_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE,
+                                                self.strategy.identifier, self.instrument.market_id)
         self._trade_entry_streamer.add_member(StreamMemberTradeEntry('trade-entry'))
 
-        self._trade_update_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
+        self._trade_update_streamer = Streamable(self.strategy.service.monitor_service,
+                                                 Streamable.STREAM_STRATEGY_TRADE,
+                                                 self.strategy.identifier, self.instrument.market_id)
         self._trade_update_streamer.add_member(StreamMemberTradeUpdate('trade-update'))
 
-        self._trade_exit_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
+        self._trade_exit_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE,
+                                               self.strategy.identifier, self.instrument.market_id)
         self._trade_exit_streamer.add_member(StreamMemberTradeExit('trade-exit'))
 
         # signal stream
-        self._signal_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_SIGNAL, self.strategy.identifier, self.instrument.market_id)
+        self._signal_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_SIGNAL,
+                                           self.strategy.identifier, self.instrument.market_id)
         self._signal_streamer.add_member(StreamMemberTradeSignal('signal'))
 
         # alert stream
-        self._alert_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_ALERT, self.strategy.identifier, self.instrument.market_id)
+        self._alert_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_ALERT,
+                                          self.strategy.identifier, self.instrument.market_id)
         self._alert_streamer.add_member(StreamMemberStrategyAlert('alert'))
 
     def stream(self):
@@ -194,7 +201,8 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 self._global_streamer.publish()
 
     def create_chart_streamer(self, sub):
-        streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART, self.strategy.identifier, "%s:%i" % (self.instrument.market_id, sub.tf))
+        streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
+                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, sub.tf))
         streamer.add_member(StreamMemberInt('tf'))
 
         sub.setup_streamer(streamer)

@@ -243,7 +243,7 @@ class Chart(object):
 		if self._prices is not None:
 			self._prices.destroy()
 
-		self.destroy_figure
+		self.destroy_figure()
 
 	def destroy_figure(self):
 		if self._fig is not None:
@@ -680,17 +680,17 @@ class Charting(threading.Thread):
 			# 	# fig = None
 
 			if self._visible:
-			 	self.lock()
-			 	for k, chart in self._charts.items():
-			 		if chart.need_redraw:
-			 			chart.render()
-			 	self.unlock()
+				self.lock()
+				for k, chart in self._charts.items():
+					if chart.need_redraw:
+						chart.render()
+				self.unlock()
 
 			if self._visible:
 				if self._rendering and len(self._charts):
 					# plt.show(block=False)
 					try:
-						# thats suck but it's like it is
+						# that suck but it's like it is
 						# plt.pause(2.0)
 						my_pause(5.0)
 						pass
@@ -723,8 +723,8 @@ class Charting(threading.Thread):
 		return self._running
 
 def my_pause(interval):
-    backend = plt.rcParams['backend']
-    if backend in matplotlib.rcsetup.interactive_bk:
+	backend = plt.rcParams['backend']
+	if backend in matplotlib.rcsetup.interactive_bk:
         figManager = matplotlib._pylab_helpers.Gcf.get_active()
         if figManager is not None:
             canvas = figManager.canvas
