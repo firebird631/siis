@@ -1969,8 +1969,8 @@ class Trader(Runnable):
                 assets[self.account.currency] = {
                     'type': 'margin',
                     'free': self.account.margin_balance,
-                    'locked': self.account.balance,
-                    'total': self.account.quantity,
+                    'locked': self.account.margin_level,
+                    'total': self.account.net_worth,
                     'upnl': self.account.profit_loss,
                     'margin-level': self.account.margin_level,
                     'precision': 2

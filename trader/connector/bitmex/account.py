@@ -41,7 +41,7 @@ class BitMexAccount(Account):
         if connector is None or not connector.connected or not connector.ws_connected:
             return
 
-        # get results from the data array of the WS object, but now this can be done throught signals
+        # get results from the data array of the WS object, but now this can be done through signals
         funds = connector.ws.funds()
         if not funds:
             return
