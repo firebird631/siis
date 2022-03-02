@@ -352,16 +352,16 @@ class BinanceWatcher(Watcher):
             self.update_from_tick()
 
         #
-        # market info update (each 4h), might be a Timer
+        # market info update (each 4h)
         #
 
         if time.time() - self._last_market_update >= BinanceWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
             try:
-                logger.info("%s update market info" % self.name)
                 self.update_markets_info()
-                self._last_market_update = time.time()
             except Exception as e:
-                error_logger.error("update_update_markets_info %s" % str(e))
+                error_logger.error("update_markets_info %s" % str(e))
+            finally:
+                self._last_market_update = time.time()
 
         return True
 

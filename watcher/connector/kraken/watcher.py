@@ -633,7 +633,7 @@ class KrakenWatcher(Watcher):
             try:
                 self.update_markets_info()
             except Exception as e:
-                error_logger.error("update_update_markets_info %s" % str(e))
+                error_logger.error("update_markets_info %s" % str(e))
             finally:
                 self._last_market_update = time.time()
 

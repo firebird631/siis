@@ -6,8 +6,6 @@
 import traceback
 import threading
 import json
-import hmac
-import hashlib
 import logging
 
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS

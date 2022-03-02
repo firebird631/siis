@@ -8,7 +8,7 @@ import threading
 import traceback
 
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
-from twisted.internet import ssl
+from twisted.internet import reactor, ssl
 from twisted.internet.protocol import ReconnectingClientFactory
 
 from connector.binance.client import Client
@@ -73,6 +73,12 @@ class BinanceClientFactory(WebSocketClientFactory, BinanceReconnectingClientFact
 
 
 class BinanceSocketManager(threading.Thread):
+    """
+    Binance spot and futures WS socket and subscription manager.
+
+    @todo Reuse the same connection for multiplex to avoid multiple sockets (have to do like in the kraken WS).
+        Also have to be sure to stay connected after 24h.
+    """
 
     STREAM_URL = 'wss://stream.binance.com:9443/'
     FUTURES_STREAM_URL = 'wss://fstream.binance.com/'
@@ -476,6 +482,38 @@ class BinanceSocketManager(threading.Thread):
         """
         stream_path = 'streams={}'.format('/'.join(streams))
         return self._start_socket(stream_path, callback, 'stream?')
+
+    # def subscribe_multiplex(self, subscription, callback):
+    #     stream_path = 'streams={}'.format('/'.join(subscription))
+    #     exists = False
+    #
+    #     params = {
+    #         "method": "SUBSCRIBE",
+    #         "params": subscription,
+    #         # "id": int
+    #     }
+    #
+    #     for conn in self._conns.keys():
+    #         if conn.startswith('streams='):
+    #             exists = True
+    #             break
+    #
+    #     if not exists:
+    #         stream_path = 'streams={}'.format('/'.join(streams))
+    #         return self._start_socket(stream_path, callback, 'stream?')
+    #     else:
+    #         reactor.callFromThread(self.send_subscribe, id_, subscription, pair)
+    #
+    # def unsubscribe_multiplex(self, subscription, pair):
+    #     id_ = "_".join([subscription])
+    #     params = {
+    #         "method": "UNSUBSCRIBE",
+    #         "params": subscription,
+    #         # "id": int
+    #     }
+    #
+    #     if id_ in self._private_conns:
+    #         reactor.callFromThread(self.send_unsubscribe, id_, subscription, pair)
 
     def start_user_socket(self, callback):
         """Start a websocket for user data

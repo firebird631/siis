@@ -18,6 +18,9 @@ logger = logging.getLogger('siis.watcher.connector.binance')
 
 
 class Client(object):
+    """
+    Binance spot and futures REST API endpoints.
+    """
 
     KLINES_HISTORY_MAX_RETRY = 3
     AGG_TRADES_HISTORY_MAX_RETRY = 3
@@ -120,6 +123,7 @@ class Client(object):
 
         self._request_exclusive = threading.Lock()
         self._exclusive = False
+        self._condition = threading.Condition()
 
         # init DNS and SSL cert
         self.ping()
@@ -244,19 +248,16 @@ class Client(object):
         retry_count = 0
         exclusive = False
 
-        self._request_exclusive.acquire(timeout=180.0)
+        if self._condition.acquire():  # timeout=30.0):
+            if self._exclusive:
+                self._condition.wait()
+            # while self._exclusive:
+            #     self._condition.wait(5.0)
+            self._condition.release()
+
+        # self._request_exclusive.acquire(timeout=180.0)
 
         while 1:
-            # wait until exclusivity is released
-            # if not exclusive:
-            #     self._request_exclusive.acquire(timeout=180.0)
-            #     delay = 5.0 if self._exclusive else 0.0
-            #     self._request_exclusive.release()
-            #
-            #     if delay:
-            #         time.sleep(delay)
-            #         continue
-
             try:
                 response = getattr(self.session, method)(uri, **kwargs)
             except requests.exceptions.HTTPError as e:
@@ -274,17 +275,18 @@ class Client(object):
             if response.status_code == 429:
                 # cool-down, retry in 5 seconds (could look at header Retry-After)
                 # self._request_exclusive.acquire(timeout=180.0)
-                # self._exclusive = True
+                # self._exclusive = exclusive = True
                 # self._request_exclusive.release()
 
-                # exclusive = True
+                if self._condition.acquire():  # timeout=5.0):
+                    self._exclusive = exclusive = True
+                    self._condition.release()
+
                 time.sleep((retry_count+1)*5.0)
-                logger.debug("wait 5x%i 429!" % retry_count)
 
                 retry_count += 1
 
                 if retry_count > Client.QUERY_MAX_RETRY:
-                    logger.debug("uncompleted 429!")
                     break
 
                 continue
@@ -292,17 +294,18 @@ class Client(object):
             elif response.status_code == 418:
                 # ban, retry in 3 minutes (could look at header Retry-After)
                 # self._request_exclusive.acquire(timeout=180.0)
-                # self._exclusive = True
+                # self._exclusive = exclusive = True
                 # self._request_exclusive.release()
 
-                # exclusive = True
+                if self._condition.acquire():  # timeout=5.0):
+                    self._exclusive = exclusive = True
+                    self._condition.release()
+
                 time.sleep(180.0)
-                logger.debug("wait 418!")
 
                 retry_count += 1
 
                 if retry_count > Client.QUERY_MAX_RETRY:
-                    logger.debug("uncompleted 418!")
                     break
 
                 continue
@@ -310,13 +313,14 @@ class Client(object):
             else:
                 break
 
-                # # release the exclusive locker
-                # if exclusive:
-                #     self._request_exclusive.acquire(timeout=180.0)
-                #     self._exclusive = False
-                #     self._request_exclusive.release()
+        # self._request_exclusive.release()
 
-        self._request_exclusive.release()
+        if exclusive:
+            # wake-up pending requests
+            if self._condition.acquire():  # timeout=5.0):
+                self._exclusive = False
+                self._condition.notify()
+                self._condition.release()
 
         return self._handle_response(response)
 
