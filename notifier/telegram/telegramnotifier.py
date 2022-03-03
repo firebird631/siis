@@ -60,6 +60,8 @@ class TelegramNotifier(Notifier):
         self._last_update_id = 0
         self._last_command_update = 0.0
 
+        self._template = notifier_config.get('template', "default")
+
         self._signals_opts = notifier_config.get('signals', (
             "alert",
             "entry",
@@ -117,6 +119,10 @@ class TelegramNotifier(Notifier):
 
         # @todo op-commands
 
+        # template
+        if self._template not in ("default", "light", "verbose"):
+            raise NotifierException(self.name, self.identifier, "Invalid template name %s" % self._template)
+
         if has_signal:
             return super().start(options)
         else:
@@ -157,29 +163,20 @@ class TelegramNotifier(Notifier):
     def notify(self):
         pass
 
-    def process_signal(self, signal):
-        message = ""
-        locale = "fr"
+    def format_trade_entry(self, t, locale):
+        messages = []
 
-        #
-        # messages
-        #
+        trade_id = t['id']
+        symbol = t['symbol']
 
-        if signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ENTRY:
-            t = signal.data
+        open_dt = TelegramNotifier.parse_utc_datetime(t['entry-open-time'])
 
-            trade_id = t['id']
-            symbol = t['symbol']
+        op = float(t.get('order-price', "0"))
+        aep = float(t.get('avg-entry-price', "0"))
 
-            messages = []
+        order_type = t['stats']['entry-order-type']
 
-            open_dt = TelegramNotifier.parse_utc_datetime(t['entry-open-time'])
-
-            op = float(t.get('order-price', "0"))
-            aep = float(t.get('avg-entry-price', "0"))
-
-            order_type = t['stats']['entry-order-type']
-
+        if self._template in ("default", "verbose"):
             messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), symbol, trade_id))
             messages.append("- %s: %s" % (order_type.title(), TelegramNotifier.format_datetime(open_dt, locale)))
 
@@ -206,70 +203,98 @@ class TelegramNotifier(Notifier):
                 expiry_dt = open_dt + timedelta(seconds=t['expiry'])
                 messages.append("- Close expiry after : %s" % TelegramNotifier.format_datetime(expiry_dt))
 
-            if float(t['take-profit-price']):
-                messages.append("- Take-Profit: %s" % t['take-profit-price'])
-            if float(t['stop-loss-price']):
-                messages.append("- Stop-Loss: %s" % t['stop-loss-price'])
+        elif self._template == "light":
+            messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), symbol, trade_id))
 
+            if aep:
+                messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+            elif op:
+                messages.append("- Entry-Price: %s" % t['order-price'])
+
+        if float(t['take-profit-price']):
+            messages.append("- Take-Profit: %s" % t['take-profit-price'])
+        if float(t['stop-loss-price']):
+            messages.append("- Stop-Loss: %s" % t['stop-loss-price'])
+
+        return messages
+
+    def format_trade_update(self, t, locale):
+        messages = []
+
+        trade_id = t['id']
+        symbol = t['symbol']
+
+        # filter only if a change occurs on targets or from entry execution state
+        pt = self._opened_trades.get(symbol, {}).get(trade_id)
+
+        accept = False
+        execute = False
+        modify_tp = False
+        modify_sl = False
+
+        if pt:
+            if pt['avg-entry-price'] != t['avg-entry-price']:
+                accept = True
+                execute = True
+            if pt['take-profit-price'] != t['take-profit-price']:
+                accept = True
+                modify_tp = True
+            if pt['stop-loss-price'] != t['stop-loss-price']:
+                accept = True
+                modify_sl = True
+
+        if accept:
+            messages.append("%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), symbol, trade_id))
+
+            if self._template in ("default", "verbose"):
+                if execute and float(t['avg-entry-price']):
+                    messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+
+            if modify_tp and float(t['take-profit-price']):
+                messages.append("- Modify-Take-Profit: %s" % t['take-profit-price'])
+            if modify_sl and float(t['stop-loss-price']):
+                messages.append("- Modify-Stop-Loss: %s" % t['stop-loss-price'])
+
+        return messages
+
+    def format_trade_exit(self, t, locale):
+        messages = []
+
+        trade_id = t['id']
+        symbol = t['symbol']
+
+        messages = []
+
+        axp = float(t.get('avg-exit-price', "0"))
+
+        messages.append("%s %s:%s [ CLOSE ]" % (t['direction'].capitalize(), symbol, trade_id))
+
+        if axp:
+            messages.append("- Exit-Price: %s" % t['avg-exit-price'])
+
+        if t['stats']['exit-reason'] != "undefined":
+            messages.append("- Cause: %s" % t['stats']['exit-reason'].title())
+
+        return messages
+
+    def process_signal(self, signal):
+        message = ""
+        locale = "fr"
+
+        #
+        # messages
+        #
+
+        if signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ENTRY:
+            messages = self.format_trade_entry(signal.data, locale)
             message = '\n'.join(messages)
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
-            t = signal.data
-
-            trade_id = t['id']
-            symbol = t['symbol']
-
-            # filter only if a change occurs on targets or from entry execution state
-            pt = self._opened_trades.get(symbol, {}).get(trade_id)
-
-            accept = False
-            execute = False
-            modify_tp = False
-            modify_sl = False
-
-            if pt:
-                if pt['avg-entry-price'] != t['avg-entry-price']:
-                    accept = True
-                    execute = True
-                if pt['take-profit-price'] != t['take-profit-price']:
-                    accept = True
-                    modify_tp = True
-                if pt['stop-loss-price'] != t['stop-loss-price']:
-                    accept = True
-                    modify_sl = True
-
-            if accept:
-                messages = []
-
-                messages.append("%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), symbol, trade_id))
-
-                if execute and float(t['avg-entry-price']):
-                    messages.append("- Entry-Price: %s" % t['avg-entry-price'])
-                if modify_tp and float(t['take-profit-price']):
-                    messages.append("- Modify-Take-Profit: %s" % t['take-profit-price'])
-                if modify_sl and float(t['stop-loss-price']):
-                    messages.append("- Modify-Stop-Loss: %s" % t['stop-loss-price'])
-
-                message = '\n'.join(messages)
+            messages = self.format_trade_update(signal.data, locale)
+            message = '\n'.join(messages)
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_EXIT:
-            t = signal.data
-
-            trade_id = t['id']
-            symbol = t['symbol']
-
-            messages = []
-
-            axp = float(t.get('avg-exit-price', "0"))
-
-            messages.append("%s %s:%s [ CLOSE ]" % (t['direction'].capitalize(), symbol, trade_id))
-
-            if axp:
-                messages.append("- Exit-Price: %s" % t['avg-exit-price'])
-
-            if signal.data['stats']['exit-reason'] != "undefined":
-                messages.append("- Cause: %s" % t['stats']['exit-reason'].title())
-
+            messages = self.format_trade_exit(signal.data, locale)
             message = '\n'.join(messages)
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ERROR:
