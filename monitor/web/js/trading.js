@@ -648,14 +648,14 @@ function add_active_trade(market_id, trade) {
         trade.direction == "long" ? 1 : -1);
     trade_stop_loss.attr('title', (stop_loss_price_rate * 100).toFixed(2) + '%');
 
-    let trade_stop_loss_chg = $('<button class="btn btn-light trade-modify-stop-loss fas fa-pencil"></button>');
+    let trade_stop_loss_chg = $('<button class="btn btn-light trade-modify-stop-loss fas fa-pencil-alt"></button>');
 
     // take-profit
     let trade_take_profit = $('<span class="trade-take-profit"></span>').text(trade['take-profit-price']);  // + UP/DN buttons
     trade_take_profit.attr('data-toggle', "tooltip");
     trade_take_profit.attr('data-placement', "top");
     
-    let trade_take_profit_chg = $('<button class="btn btn-light trade-modify-take-profit fas fa-pencil"></button>');
+    let trade_take_profit_chg = $('<button class="btn btn-light trade-modify-take-profit fas fa-pencil-alt"></button>');
 
     let take_profit_price_rate = compute_price_pct(trade['take-profit-price'],
         trade['avg-entry-price'] || trade['order-price'],
