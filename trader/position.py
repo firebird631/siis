@@ -22,7 +22,8 @@ class Position(Keyed):
 
     __slots_ = '_trader', '_position_id', '_state', '_symbol', '_shared', '_symbol', '_quantity', \
                '_profit_loss', '_profit_loss_rate', '_profit_loss_currency', \
-               '_profit_loss_market', '_profit_loss_market_rate', '_created_time', '_market_close', \
+               '_profit_loss_market', '_profit_loss_market_rate', '_raw_profit_loss', '_raw_profit_loss_rate', \
+               '_created_time', '_market_close', \
                '_leverage', '_entry_price', '_exit_price' \
                '_stop_loss', '_take_profit', '_trailing_stop', '_direction'
 
@@ -44,6 +45,9 @@ class Position(Keyed):
         self._symbol = ""
         self._shared = False
         self._quantity = 0.0
+
+        self._raw_profit_loss = 0.0
+        self._raw_profit_loss_rate = 0.0
 
         self._profit_loss = 0.0
         self._profit_loss_rate = 0.0
@@ -146,6 +150,14 @@ class Position(Keyed):
     @property
     def profit_loss_currency(self):
         return self._profit_loss_currency
+
+    @property
+    def raw_profit_loss(self):
+        return self._raw_profit_loss
+
+    @property
+    def raw_profit_loss_rate(self):
+        return self._raw_profit_loss_rate
 
     @property
     def profit_loss(self):
@@ -290,6 +302,10 @@ class Position(Keyed):
 
         # raw_profit_loss = self.quantity * (delta_price / (market.one_pip_means or 1.0)) * market.value_per_pip
         raw_profit_loss = self.quantity * delta_price * market.contract_size
+
+        # without fees neither commissions
+        self._raw_profit_loss = raw_profit_loss
+        self._raw_profit_loss_rate = (self._profit_loss / position_cost) if position_cost != 0.0 else 0.0
 
         # use maker fee and commission
         self._profit_loss = raw_profit_loss - (position_cost * market.maker_fee) - market.maker_commission

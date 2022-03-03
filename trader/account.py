@@ -202,6 +202,9 @@ class Account(object):
     def set_balance(self, balance):
         self._balance = balance
 
+    def use_balance(self, amount):
+        self._balance -= amount
+
     def set_asset_balance(self, balance, free):
         self._asset_balance = balance
         self._free_asset_balance = free
@@ -240,6 +243,12 @@ class Account(object):
 
     def set_risk_limit(self, risk_limit):
         self._risk_limit = risk_limit
+
+    def set_margin_level(self, margin_level):
+        self._margin_level = margin_level
+
+    def set_net_worth(self, net_worth):
+        self._net_worth = net_worth
 
     def initial(self, balance, currency, currency_display):
         self._balance = balance

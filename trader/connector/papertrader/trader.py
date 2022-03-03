@@ -242,25 +242,44 @@ class PaperTrader(Trader):
             with self._mutex:
                 self._account.update(None)
 
-            if self._account.account_type & PaperTraderAccount.TYPE_MARGIN:
+            if self._account.account_type & PaperTraderAccount.TYPE_MARGIN == PaperTraderAccount.TYPE_MARGIN:
                 # support margin
-                used_margin = 0
-                profit_loss = 0
+                used_margin = 0.0
+                used_cost = 0.0
+                profit_loss = 0.0
 
                 with self._mutex:
+                    # dynamic balance over profit/loss
+                    self.account.use_balance(self.account.profit_loss)
+
                     for k, position in self._positions.items():
                         market = self._markets.get(position.symbol)
 
                         # only for non empty positions
                         if market and position.quantity > 0.0:
                             # manually compute here because of paper trader
-                            profit_loss += position.profit_loss_market / market.base_exchange_rate
+                            profit_loss += position.raw_profit_loss / market.base_exchange_rate
                             used_margin += position.margin_cost(market) / market.base_exchange_rate
+                            used_cost += position.position_cost(market) / market.base_exchange_rate
 
                     self.account.set_used_margin(used_margin-profit_loss)
                     self.account.set_unrealized_profit_loss(profit_loss)
 
-            if self._account.account_type & PaperTraderAccount.TYPE_ASSET:
+                    # dynamic balance over profit/loss
+                    self.account.use_balance(-self.account.profit_loss)
+                    self.account.set_net_worth(self.account.balance)
+
+                    # risk limit (no reality on paper)
+                    # risk_limit =
+                    # self.account.set_risk_limit(risk_limit)
+
+                    # margin level
+                    if used_cost > 0.0:
+                        self.account.set_margin_level(self.account.margin_balance / used_cost)
+                    else:
+                        self.account.set_margin_level(0.0)
+
+            if self._account.account_type & PaperTraderAccount.TYPE_ASSET == PaperTraderAccount.TYPE_ASSET:
                 # support spot
                 balance = 0.0
                 free_balance = 0.0

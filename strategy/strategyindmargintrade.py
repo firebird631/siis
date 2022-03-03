@@ -620,6 +620,8 @@ class StrategyIndMarginTrade(StrategyTrade):
             filled = 0
 
             if data['id'] == self.create_oid:
+                prev_e = self.e
+
                 # a single order for the entry, then its OK and preferred to uses cumulative-filled and avg-price
                 # because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -654,23 +656,29 @@ class StrategyIndMarginTrade(StrategyTrade):
                 # fees/commissions
                 #
 
-                maker = data.get('maker', None)
+                # realized fees : in cumulated or compute from filled quantity and trade execution
+                if 'cumulative-commission-amount' in data:
+                    self._stats['entry-fees'] = data['cumulative-commission-amount']
+                elif 'commission-amount' in data:
+                    self._stats['entry-fees'] += data['commission-amount']
+                else:
+                    maker = data.get('maker', None)
 
-                if maker is None:
-                    # no information, try to detect it
-                    if self._stats.get('entry-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
-                        # @todo only if execution price is equal or better then order price (depends of direction)
-                        maker = True
-                    else:
-                        maker = False
+                    if maker is None:
+                        # no information, try to detect it
+                        if self._stats.get('entry-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
+                            # @todo only if execution price is equal or better then order price (depends of direction)
+                            maker = True
+                        else:
+                            maker = False
 
-                if filled > 0 and self.e == 0:
-                    # initial fill we count the commission fee
-                    self._stats['entry-fees'] = instrument.maker_commission if maker else instrument.taker_commission
+                    if filled > 0 and prev_e == 0:
+                        # initial fill we count the commission fee
+                        self._stats['entry-fees'] = instrument.maker_commission if maker else instrument.taker_commission
 
-                # realized fees
-                if filled > 0:
-                    self._stats['entry-fees'] += filled * (instrument.maker_fee if maker else instrument.taker_fee)
+                    # realized fees
+                    if filled > 0:
+                        self._stats['entry-fees'] += filled * (instrument.maker_fee if maker else instrument.taker_fee)
 
                 #
                 # cleanup
@@ -697,6 +705,8 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
             elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
+                prev_x = self.x
+
                 # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twice
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     filled = data['cumulative-filled'] - self.x   # computed filled qty
@@ -753,23 +763,29 @@ class StrategyIndMarginTrade(StrategyTrade):
                 # fees/commissions
                 #
 
-                maker = data.get('maker', None)
+                # realized fees : in cumulated or compute from filled quantity and trade execution
+                if 'cumulative-commission-amount' in data:
+                    self._stats['exit-fees'] = data['cumulative-commission-amount']
+                elif 'commission-amount' in data:
+                    self._stats['exit-fees'] += data['commission-amount']
+                else:
+                    maker = data.get('maker', None)
 
-                if maker is None:
-                    if data['id'] == self.limit_oid and self._stats.get(
-                            'take-profit-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
-                        # @todo only if execution price is equal or better then order price (depends of direction)
-                        maker = True
-                    else:
-                        maker = False
+                    if maker is None:
+                        if data['id'] == self.limit_oid and self._stats.get(
+                                'take-profit-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
+                            # @todo only if execution price is equal or better then order price (depends of direction)
+                            maker = True
+                        else:
+                            maker = False
 
-                if filled > 0 and self.x == 0:
-                    # initial fill we count the commission fee
-                    self._stats['exit-fees'] = instrument.maker_commission if maker else instrument.taker_commission
+                    if filled > 0 and prev_x == 0:
+                        # initial fill we count the commission fee
+                        self._stats['exit-fees'] = instrument.maker_commission if maker else instrument.taker_commission
 
-                # realized fees
-                if filled > 0:
-                    self._stats['exit-fees'] += filled * (instrument.maker_fee if maker else instrument.taker_fee)
+                    # realized fees
+                    if filled > 0:
+                        self._stats['exit-fees'] += filled * (instrument.maker_fee if maker else instrument.taker_fee)
 
                 #
                 # cleanup

@@ -2077,6 +2077,7 @@ function on_update_balances(symbol, asset, timestamp, data) {
                 row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
                 row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + '</td>'));
                 row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '</td>'));
+
             } else if (balance.type == "margin") {
                 row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
                 row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + ' (level '+ balance['margin-level'] * 100).toFixed(2) + '%)</td>');

@@ -28,7 +28,7 @@ class PaperTraderAccount(Account):
         self._account_leverage = 30.0
 
         self._leverage = [1, 200]    # min/max leverage
-        self._risk_limit = 0
+        self._risk_limit = 0.0
 
         self._balance = 1000.0
         self._margin_balance = self._balance

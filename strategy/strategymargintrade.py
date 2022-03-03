@@ -25,6 +25,7 @@ class StrategyMarginTrade(StrategyTrade):
         if we use cumulative-filled and avg-price we have the same problem here too.
     @todo have to check about position_updated qty with direction maybe or take care to have trade signal and 
         distinct entry from exit
+    @todo fees and commissions
     """
 
     __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', \
@@ -596,6 +597,8 @@ class StrategyMarginTrade(StrategyTrade):
             filled = 0
 
             if data['id'] == self.create_oid:
+                prev_e = self.e
+
                 # a single order for the entry, then its OK and preferred to uses cumulative-filled and avg-price
                 # because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -644,6 +647,8 @@ class StrategyMarginTrade(StrategyTrade):
                 self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
             elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
+                prev_x = self.x
+
                 # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twice
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     filled = data['cumulative-filled'] - self.x   # computed filled qty

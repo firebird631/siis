@@ -626,7 +626,8 @@ class Trader(Runnable):
             self.account.set_risk_limit(risk_limit)
 
         # stream
-        self.notify_balance_update(self.timestamp,
+        self.notify_balance_update(
+            self.timestamp,
             self.account.currency, free_margin,
             self.account.margin_balance, balance,
             unrealized_pnl,
@@ -1025,7 +1026,7 @@ class Trader(Runnable):
         """
         columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip',
                    'Lot', 'Contract', 'Min Size', 'Max Size', 'Step Size', 'Min Price', 'Max Price', 'Step Price',
-                   'Min Notional', 'Max Notional', 'Step Notional', 'Leverage')
+                   'Min Notional', 'Max Notional', 'Step Notional', 'Leverage', 'Base ER')
         total_size = (len(columns), 0)
         data = []
 
@@ -1070,7 +1071,8 @@ class Trader(Runnable):
                     market.min_notional or '-',
                     market.max_notional or '-',
                     market.step_notional or '-',
-                    "%.2f" % (1.0 / market.margin_factor if market.margin_factor > 0.0 else 1.0)
+                    "%.2f" % (1.0 / market.margin_factor if market.margin_factor > 0.0 else 1.0),
+                    "%.g" % market.base_exchange_rate
                 )
 
                 data.append(row[0:2] + row[2+col_ofs:])
@@ -1965,18 +1967,18 @@ class Trader(Runnable):
                 }
 
             # append account margin if available
-            if self.account.account_type | self.account.TYPE_MARGIN == self.account.TYPE_MARGIN:
+            if self.account.account_type & self.account.TYPE_MARGIN == self.account.TYPE_MARGIN:
                 assets[self.account.currency] = {
                     'type': 'margin',
                     'free': self.account.margin_balance,
-                    'locked': self.account.margin_level,
+                    'locked': self.account.balance - self.account.margin_balance,
                     'total': self.account.net_worth,
                     'upnl': self.account.profit_loss,
                     'margin-level': self.account.margin_level,
                     'precision': 2
                 }
 
-            if self.account.account_type | self.account.TYPE_ASSET == self.account.TYPE_ASSET:
+            if self.account.account_type & self.account.TYPE_ASSET == self.account.TYPE_ASSET:
                 assets['Spot'] = {
                     'type': 'asset',
                     'free': self.account.free_asset_balance,

@@ -190,7 +190,7 @@ def close_position(trader, market, position, close_exec_price, order_type=Order.
     prev_entry_price = position.entry_price or close_exec_price
     leverage = order.leverage
 
-    # most of thoose data rarely change except the base_exchange_rate
+    # most of those data rarely change except the base_exchange_rate
     value_per_pip = market.value_per_pip
     contract_size = market.contract_size
     lot_size = market.lot_size
@@ -242,10 +242,12 @@ def close_position(trader, market, position, close_exec_price, order_type=Order.
         # display only for debug
         if position_gain_loss > 0.0:
             Terminal.inst().high("Close profitable position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
-                position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
+                position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0,
+                market.format_price(close_exec_price)), view='debug')
         elif position_gain_loss < 0.0:
             Terminal.inst().low("Close loosing position with %.2f on %s (%.2fpips) (%.2f%%) at %s" % (
-                position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0, market.format_price(close_exec_price)), view='debug')
+                position_gain_loss, order.symbol, delta_price/one_pip_means, gain_loss_rate*100.0,
+                market.format_price(close_exec_price)), view='debug')
     else:
         gain_loss_rate = 0.0
 
@@ -271,7 +273,8 @@ def close_position(trader, market, position, close_exec_price, order_type=Order.
     }
 
     # signal as watcher service (opened + fully traded qty)
-    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (order.symbol, order_data, order.ref_order_id))
+    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (
+        order.symbol, order_data, order.ref_order_id))
 
     order_data = {
         'id': order.order_id,
@@ -295,7 +298,8 @@ def close_position(trader, market, position, close_exec_price, order_type=Order.
         'commission-asset': trader.account.currency
     }
 
-    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (order.symbol, order_data, order.ref_order_id))
+    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
+        order.symbol, order_data, order.ref_order_id))
 
     #
     # position signal
@@ -317,10 +321,12 @@ def close_position(trader, market, position, close_exec_price, order_type=Order.
         'profit-loss-currency': market.quote
     }
 
-    trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_DELETED, trader.name, (order.symbol, position_data, order.ref_order_id))
+    trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_DELETED, trader.name, (
+        order.symbol, position_data, order.ref_order_id))
 
     # and then deleted order
-    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (order.symbol, order.order_id, ""))
+    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (
+        order.symbol, order.order_id, ""))
 
     position.exit(exec_price)
 

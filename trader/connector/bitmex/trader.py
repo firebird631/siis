@@ -467,7 +467,7 @@ class BitMexTrader(Trader):
                 position.profit_loss_market = (float(pos['unrealisedPnl']) * ratio)
                 position.profit_loss_market_rate = float(pos['unrealisedPnlPcnt'])
 
-                # compute profit loss in base currency (disabled, uses values aboves)
+                # compute profit loss in base currency (disabled, uses values above)
                 # position.update_profit_loss(market)
 
     def __update_orders(self):

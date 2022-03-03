@@ -1,9 +1,7 @@
 # @date 2018-09-07
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Paper trader, indivisible margin ordering/postion.
-
-from datetime import datetime
+# Paper trader, indivisible margin ordering/position.
 
 from common.signal import Signal
 
@@ -63,7 +61,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         realized_position_cost = 0.0  # realized cost of the position in base currency
 
         # effective meaning of delta price in base currency
-        effective_price = (delta_price / one_pip_means) * value_per_pip
+        effective_delta_price = delta_price  # (delta_price / one_pip_means) * value_per_pip
 
         # in base currency
         position_gain_loss = 0.0
@@ -87,7 +85,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
 
             # still in long, position size increase and adjust the entry price
             entry_price = ((current_position.entry_price * current_position.quantity) + (
-                    open_exec_price * order.quantity)) / 2
+                    open_exec_price * order.quantity)) / (current_position.quantity + order.quantity)
 
             current_position.entry_price = entry_price
             current_position.quantity += order.quantity
@@ -103,7 +101,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             if current_position.quantity > order.quantity:
                 # first case the direction still the same, reduce the position and the margin
                 # take the profit/loss from the difference by order.quantity and adjust the entry price and quantity
-                position_gain_loss = effective_price * order.quantity
+                position_gain_loss = effective_delta_price * order.quantity
 
                 realized_position_cost = market.effective_cost(order.quantity, close_exec_price)
                 margin_cost = market.margin_cost(order.quantity, close_exec_price)
@@ -111,8 +109,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 # and decrease used margin
                 trader.account.free_margin(margin_cost)
 
-                # entry price might not move...
-                # current_position.entry_price = ((current_position.entry_price * current_position.quantity) - (close_exec_price * order.quantity)) / 2
+                # average position entry price does not move because only reduce
                 current_position.quantity -= order.quantity
                 exec_price = close_exec_price
 
@@ -122,12 +119,13 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             elif current_position.quantity == order.quantity:
                 # second case the position is closed, exact quantity in the opposite direction
 
-                position_gain_loss = effective_price * current_position.quantity
+                position_gain_loss = effective_delta_price * current_position.quantity
                 current_position.quantity = 0.0
 
                 realized_position_cost = market.effective_cost(order.quantity, close_exec_price)
                 margin_cost = market.margin_cost(order.quantity, close_exec_price)
 
+                # average position entry price does not move because only reduce
                 # directly executed quantity
                 order.executed = order.quantity
                 exec_price = close_exec_price
@@ -137,7 +135,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             else:
                 # third case the position is reversed
                 # 1) get the profit loss
-                position_gain_loss = effective_price * current_position.quantity
+                position_gain_loss = effective_delta_price * current_position.quantity
 
                 realized_position_cost = market.effective_cost(current_position.quantity, close_exec_price)
                 margin_cost = market.margin_cost(current_position.quantity, close_exec_price)
@@ -145,7 +143,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 # first decrease of released margin
                 trader.account.free_margin(margin_cost)
 
-                # 2) adjust the position entry
+                # 2) adjust the position entry, average position is based on the open exec price
                 current_position.quantity = order.quantity - current_position.quantity
                 current_position.entry_price = open_exec_price
 
@@ -163,7 +161,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
 
         # transaction time is current timestamp
         order.transact_time = trader.timestamp
-        #order.set_position_id(current_position.position_id)
+        # order.set_position_id(current_position.position_id)
 
         if position_gain_loss != 0.0 and realized_position_cost > 0.0:
             # ratio
@@ -181,6 +179,17 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             trader.account.add_realized_profit_loss(position_gain_loss / base_exchange_rate)
         else:
             gain_loss_rate = 0.0
+
+        # retain the fee on the account currency
+        commission_asset = trader.account.currency
+
+        if order.is_market():
+            commission_amount = realized_position_cost * market.taker_fee + market.taker_commission
+        else:
+            commission_amount = realized_position_cost * market.maker_fee + market.maker_commission
+
+        # fees are realized loss
+        trader.account.use_balance(commission_amount)
 
         # unlock before notify signals
         trader.unlock()
@@ -227,8 +236,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             'stop-loss': order.stop_loss,
             'take-profit': order.take_profit,
             'time-in-force': order.time_in_force,
-            'commission-amount': 0,  # @todo
-            'commission-asset': trader.account.currency
+            'commission-amount': commission_amount,
+            'commission-asset': commission_asset
         }
 
         trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
@@ -281,7 +290,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             # take care this does not make an issue
             current_position.exit(None)
 
-            # dont a next update
+            # don't a next update
             # trader.lock()
 
             # if current_position.symbol in trader._positions:
@@ -338,6 +347,17 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         # increase used margin
         trader.account.use_margin(margin_cost)
 
+        # retain the fee on the account currency
+        commission_asset = trader.account.currency
+
+        if order.is_market():
+            commission_amount = realized_position_cost * market.taker_fee + market.taker_commission
+        else:
+            commission_amount = realized_position_cost * market.maker_fee + market.maker_commission
+
+        # fees are realized loss
+        trader.account.use_balance(commission_amount)
+
         # unlock before notify signals
         trader.unlock()
 
@@ -383,11 +403,11 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             'stop-loss': order.stop_loss,
             'take-profit': order.take_profit,
             'time-in-force': order.time_in_force,
-            'commission-amount': 0,  # @todo
-            'commission-asset': trader.account.currency
+            'commission-amount': commission_amount,
+            'commission-asset': commission_asset
         }
 
-        #logger.info("%s %s %s" % (position.entry_price, position.quantity, order.direction))
+        # logger.info("%s %s %s" % (position.entry_price, position.quantity, order.direction))
         trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
             order.symbol, order_data, order.ref_order_id))
 

@@ -65,7 +65,7 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
         prev_entry_price = current_position.entry_price or close_exec_price
         leverage = order.leverage
 
-        # most of thoose data rarely change except the base_exchange_rate
+        # most of those data rarely change except the base_exchange_rate
         value_per_pip = market.value_per_pip
         contract_size = market.contract_size
         lot_size = market.lot_size
@@ -77,7 +77,7 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
         realized_position_cost = 0.0  # realized cost of the position in base currency
 
         # effective meaning of delta price in base currency
-        effective_price = (delta_price / one_pip_means) * value_per_pip
+        effective_price = delta_price  # (delta_price / one_pip_means) * value_per_pip
 
         # in base currency
         position_gain_loss = 0.0
@@ -101,7 +101,8 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
 
             # still in long, position size increase and adjust the entry price
             entry_price = ((current_position.entry_price * current_position.quantity) + (
-                    open_exec_price * order.quantity)) / 2
+                    open_exec_price * order.quantity)) / (current_position.quantity + order.quantity)
+
             current_position.entry_price = entry_price
             current_position.quantity += order.quantity
 
@@ -124,8 +125,7 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
                 # and decrease used margin
                 trader.account.free_margin(margin_cost)
 
-                # entry price might not move...
-                # current_position.entry_price = ((current_position.entry_price * current_position.quantity) - (close_exec_price * order.quantity)) / 2
+                # average position entry price does not move because only reduce
                 current_position.quantity -= order.quantity
                 current_position.exit_price = close_exec_price
 
@@ -144,6 +144,7 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
                 realized_position_cost = market.effective_cost(order.quantity, close_exec_price)
                 margin_cost = market.margin_cost(order.quantity, close_exec_price)
 
+                # average position entry price does not move because only reduce
                 # directly executed quantity
                 order.executed = order.quantity
                 exec_price = close_exec_price
@@ -161,7 +162,7 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
                 # first decrease of released margin
                 trader.account.free_margin(margin_cost)
 
-                # 2) adjust the position entry
+                # 2) adjust the position entry, average position is based on the open exec price
                 current_position.quantity = order.quantity - current_position.quantity
                 current_position.entry_price = open_exec_price
 
@@ -198,6 +199,14 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
             trader.account.add_realized_profit_loss(position_gain_loss / base_exchange_rate)
         else:
             gain_loss_rate = 0.0
+
+        # retain the fee on the account currency
+        commission_asset = trader.account.currency
+
+        if order.is_market():
+            commission_amount = order.executed * market.taker_fee + market.taker_commission
+        else:
+            commission_amount = order.executed * market.maker_fee + market.maker_commission
 
         # unlock before notify signals
         trader.unlock()
@@ -244,8 +253,8 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
             'stop-loss': order.stop_loss,
             'take-profit': order.take_profit,
             'time-in-force': order.time_in_force,
-            'commission-amount': 0,  # @todo
-            'commission-asset': trader.account.currency
+            'commission-amount': commission_amount,
+            'commission-asset': commission_asset
         }
 
         trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
@@ -359,6 +368,14 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
         # increase used margin
         trader.account.use_margin(margin_cost)
 
+        # retain the fee on the account currency
+        commission_asset = trader.account.currency
+
+        if order.is_market():
+            commission_amount = order.executed * market.taker_fee + market.taker_commission
+        else:
+            commission_amount = order.executed * market.maker_fee + market.maker_commission
+
         # unlock before notify signals
         trader.unlock()
 
@@ -404,8 +421,8 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
             'stop-loss': order.stop_loss,
             'take-profit': order.take_profit,
             'time-in-force': order.time_in_force,
-            'commission-amount': 0,  # @todo
-            'commission-asset': trader.account.currency
+            'commission-amount': commission_amount,
+            'commission-asset': commission_asset
         }
 
         #logger.info("%s %s %s" % (position.entry_price, position.quantity, order.direction))
