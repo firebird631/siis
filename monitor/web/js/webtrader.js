@@ -2001,9 +2001,9 @@ function on_update_performances() {
             } else if (balance.type == "margin") {
                 row_entry.append($('<td class="balance-free">' + format_value(balance.free, precision) + '</td>'));
                 row_entry.append($('<td class="balance-locked">' + format_value(balance.locked, precision) +
-                    ' (level '+ (balance['margin-level'] * 100).toFixed(2) + ')</td>'));
+                    ' (level '+ (balance['margin-level'] * 100).toFixed(2) + '%)</td>'));
                 row_entry.append($('<td class="balance-total">' + format_value(balance.total, precision) +
-                    ' (upnl ' + balance.upnl + ')</td>'));
+                    ' (upnl ' + format_value(balance.upnl, precision) + ')</td>'));
             }
 
             table.append(row_entry);

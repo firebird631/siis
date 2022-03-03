@@ -244,8 +244,6 @@ class TelegramNotifier(Notifier):
                 modify_sl = True
 
         if accept:
-            messages.append("%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), symbol, trade_id))
-
             if self._template in ("default", "verbose"):
                 if execute and float(t['avg-entry-price']):
                     messages.append("- Entry-Price: %s" % t['avg-entry-price'])
@@ -254,6 +252,10 @@ class TelegramNotifier(Notifier):
                 messages.append("- Modify-Take-Profit: %s" % t['take-profit-price'])
             if modify_sl and float(t['stop-loss-price']):
                 messages.append("- Modify-Stop-Loss: %s" % t['stop-loss-price'])
+
+            if messages:
+                # prepend update message if there is some content to publish
+                messages.insert(0, "%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), symbol, trade_id))
 
         return messages
 

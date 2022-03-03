@@ -616,6 +616,7 @@ class Trader(Runnable):
         Update account details.
         """
         self.account.set_balance(balance)
+        # self.account.set_net_worth(balance)
         self.account.set_used_margin(balance - free_margin)
         self.account.set_unrealized_profit_loss(unrealized_pnl)
 
@@ -1972,10 +1973,10 @@ class Trader(Runnable):
                     'type': 'margin',
                     'free': self.account.margin_balance,
                     'locked': self.account.balance - self.account.margin_balance,
-                    'total': self.account.net_worth,
+                    'total': self.account.net_worth or self.account.balance,
                     'upnl': self.account.profit_loss,
                     'margin-level': self.account.margin_level,
-                    'precision': 2
+                    'precision': self.account.currency_precision
                 }
 
             if self.account.account_type & self.account.TYPE_ASSET == self.account.TYPE_ASSET:
@@ -1986,7 +1987,7 @@ class Trader(Runnable):
                     'total': self.account.asset_balance,
                     'upnl': 0.0,
                     'margin-level': 0.0,
-                    'precision': 2
+                    'precision': self.account.currency_precision
                 }
 
         return assets

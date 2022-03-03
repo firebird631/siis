@@ -741,6 +741,15 @@ class TraderRestAPI(resource.Resource):
         if not self._allow_view:
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
+        trader = self._trader_service.trader()
+        if trader is None:
+            results = {
+                'error': True,
+                'messages': ["Undefined trader"],
+                'data': None
+            }
+            return json.dumps(results).encode("utf-8")
+
         uri = request.uri.decode("utf-8").split('/')
 
         trader_name = self._trader_service.trader_name()
@@ -764,7 +773,7 @@ class TraderRestAPI(resource.Resource):
             results['data'] = None
         else:
             # asset list + margin
-            results['data'] = self._trader_service.trader().fetch_assets_balances()
+            results['data'] = trader.fetch_assets_balances()
 
         return json.dumps(results).encode("utf-8")
 
@@ -852,9 +861,18 @@ class StatusInfoRestAPI(resource.Resource):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
+        trader = self._trader_service.trader()
+        if trader is None:
+            results = {
+                'error': True,
+                'messages': ["Undefined trader"],
+                'data': None
+            }
+            return json.dumps(results).encode("utf-8")
+
         trader_data = {
-            'name': self._trader_service.trader().name,
-            'connected': self._trader_service.trader().connected,
+            'name': trader.name,
+            'connected': trader.connected,
         }
 
         watchers_data = []
