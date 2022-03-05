@@ -3,8 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Trader asset
 
-import math
-
 from common.utils import truncate
 
 
@@ -14,6 +12,10 @@ class Asset(object):
     use with binance.com but will be extended to any balance even for EUR or USD margin based broker,
     in such we would check the asset balance before opening a position.
     """
+
+    __slots__ = '_trader', '_symbol', '_precision', '_locked', '_free', '_price', '_quote', \
+                '_last_update_time', '_last_trade_id', '_market_ids', '_raw_profit_loss', '_raw_profit_loss_rate', \
+                '_profit_loss', '_profit_loss_rate', '_profit_loss_market', '_profit_loss_market_rate'
 
     def __init__(self, trader, symbol, precision=8):
         super().__init__()
@@ -32,6 +34,9 @@ class Asset(object):
         self._last_trade_id = 0
 
         self._market_ids = []
+
+        self._raw_profit_loss = 0.0
+        self._raw_profit_loss_rate = 0.0
 
         self._profit_loss = 0.0
         self._profit_loss_rate = 0.0
@@ -115,8 +120,8 @@ class Asset(object):
         if quote:
             self._quote = quote
 
-    def add_market_id(self, market_id, prefered=False):
-        if prefered:
+    def add_market_id(self, market_id, preferred=False):
+        if preferred:
             self._market_ids.insert(0, market_id)
         else:
             self._market_ids.append(market_id)
@@ -124,6 +129,14 @@ class Asset(object):
     @property
     def market_ids(self):
         return self._market_ids
+
+    @property
+    def raw_profit_loss(self):
+        return self._raw_profit_loss
+
+    @property
+    def raw_profit_loss_rate(self):
+        return self._raw_profit_loss_rate
 
     @property
     def profit_loss(self):
@@ -144,7 +157,7 @@ class Asset(object):
     def update_profit_loss(self, market):
         """
         Compute profit_loss and profit_loss_rate for maker and taker.
-        @param market A valid market object related to the symbol of the position.
+        @param market: A valid market object related to the symbol of the position.
         """
         if market is None or not market.bid or not market.ask:
             # market must be valid with valid price
@@ -155,7 +168,7 @@ class Asset(object):
             return
 
         if market.quote != self.quote:
-            # market quote must be the same as the asset prefered quote
+            # market quote must be the same as the asset preferred quote
             return
 
         if self.quantity <= 0.0 or self._price <= 0.0:
@@ -175,6 +188,10 @@ class Asset(object):
         cost = self.quantity * self._price
         raw_profit_loss = self.quantity * delta_price
 
+        # without fees neither commissions
+        self._raw_profit_loss = raw_profit_loss
+        self._raw_profit_loss_rate = (self._raw_profit_loss / cost) if cost != 0.0 else 0.0
+
         # use maker fee and commission
         self._profit_loss = raw_profit_loss - (cost * market.maker_fee) - (cost * market.maker_commission)
         self._profit_loss_rate = (self._profit_loss / cost) if cost != 0.0 else 0.0
@@ -186,7 +203,6 @@ class Asset(object):
     def format_price(self, price):
         """
         Format the price according to the precision.
-        @param use_quote True use quote display or quote, False base, None no symbol only price.
         """
         formatted_price = "{:0.0{}f}".format(truncate(price, self._precision), self._precision)
 
@@ -194,3 +210,47 @@ class Asset(object):
             formatted_price = formatted_price.rstrip('0').rstrip('.')
 
         return formatted_price
+
+    #
+    # persistence
+    #
+
+    def dumps(self):
+        """
+        @todo Could humanize timestamp into datetime
+        @return: dict
+        """
+        return {
+            'symbol': self._symbol,
+            'locked-qty': self._locked,
+            'free-qty': self._free,
+            'last-price': self._price,
+            'quote': self._quote,
+            'last-update-time': self._last_update_time,
+            'last-trade-id': self._last_trade_id,
+            'raw-profit-loss': self._raw_profit_loss,
+            'raw-profit-loss-rate': self._raw_profit_loss_rate,
+            'profit-loss': self._profit_loss,
+            'profit-loss-rate': self._profit_loss_rate,
+            'profit-loss-market': self._profit_loss_market,
+            'profit-loss-market-rate': self._profit_loss_market_rate,
+        }
+
+    def loads(self, data):
+        if data.get('symbol', "") == self._symbol:
+            # quantity
+            self._locked = data.get('locked-qty', 0.0)
+            self._free = data.get('free-qty', 0.0)
+
+        if data.get('quote', "") == self._quote:
+            # only if the same quote
+            self._price = data.get('last-price', 0.0)
+            self._last_update_time = data.get('last-update-time', 0.0)
+            self._last_trade_id = data.get('last-trade-id', 0.0)
+
+            self._raw_profit_loss = data.get('raw-profit-loss', 0.0)
+            self._raw_profit_loss_rate = data.get('raw-profit-loss-rate', 0.0)
+            self._profit_loss = data.get('profit-loss', 0.0)
+            self._profit_loss_rate = data.get('profit-loss-rate', 0.0)
+            self._profit_loss_market = data.get('profit-loss-market', 0.0)
+            self._profit_loss_market_rate = data.get('profit-loss-market-rate', 0.0)

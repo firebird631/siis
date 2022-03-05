@@ -61,13 +61,13 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
     dataset = data.get('dataset', "history")
     pending = data.get('pending', False)
-    export_format = data.get('export-format', "csv")
+    export_format = data.get('export-format', "json")
     merged = data.get('merged', False)
     header = data.get('header', True)
     first = data.get('first', True)
     filename = data.get('filename', "")
 
-    if dataset not in ('active', 'history', 'alert', 'region'):
+    if dataset not in ('active', 'history', 'alert', 'region', 'strategy'):
         results = {'message': "Unsupported export dataset", 'error': True}
         return results
 
@@ -162,6 +162,28 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
         data_dumps.sort(key=lambda x: x['created'])
 
+    elif dataset == "strategy":
+        # only json supported
+        if export_format != "json":
+            results['messages'].append("Unsupported export format %s" % export_format)
+            results['error'] = True
+            return results
+
+        if not filename:
+            if merged:
+                filename = "siis_strategy.%s" % export_format
+            else:
+                filename = "siis_strategy_%s.%s" % (strategy_trader.instrument.symbol, export_format)
+
+        try:
+            with strategy_trader._mutex:
+                data_dump = strategy_trader.dumps()
+                data_dumps.append(data_dump)
+
+        except Exception as e:
+            results['messages'].append(repr(e))
+            results['error'] = True
+
     if not data_dumps:
         results['messages'].append("No data to export")
         return results
@@ -219,7 +241,7 @@ def cmd_strategy_trader_export_all(strategy, data):
     export_format = data.get('export-format', "csv")
     filename = data.get('filename', "")
 
-    if dataset not in ('active', 'history', 'alert', 'region'):
+    if dataset not in ('active', 'history', 'alert', 'region', 'strategy'):
         results = {'message': "Unsupported export dataset", 'error': True}
         return results
 
@@ -236,6 +258,8 @@ def cmd_strategy_trader_export_all(strategy, data):
             filename = "siis_alerts.%s" % export_format
         elif dataset == "region":
             filename = "siis_regions.%s" % export_format
+        elif dataset == "strategy":
+            filename = "siis_strategy.%s" % export_format
 
     with open(filename, "w") as f:
         if export_format == "json":

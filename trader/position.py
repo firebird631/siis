@@ -16,11 +16,10 @@ class Position(Keyed):
 
     The rollover is not computed into the profit/loss, it might be done at the account level
 
-    @todo A currency string formatter, using the currency_symbol if defined and with the correct decimal
     and position of the symbol (ex: $1000.01 or 1175.37€ or 11.3751B)
     """
 
-    __slots_ = '_trader', '_position_id', '_state', '_symbol', '_shared', '_symbol', '_quantity', \
+    __slots_ = '_trader', '_position_id', '_state', '_symbol', '_symbol', '_quantity', \
                '_profit_loss', '_profit_loss_rate', '_profit_loss_currency', \
                '_profit_loss_market', '_profit_loss_market_rate', '_raw_profit_loss', '_raw_profit_loss_rate', \
                '_created_time', '_market_close', \
@@ -43,7 +42,6 @@ class Position(Keyed):
         self._state = Position.STATE_PENDING
 
         self._symbol = ""
-        self._shared = False
         self._quantity = 0.0
 
         self._raw_profit_loss = 0.0
@@ -142,10 +140,6 @@ class Position(Keyed):
     @property
     def leverage(self):
         return self._leverage
-
-    @property
-    def shared(self):
-        return self._shared
 
     @property
     def profit_loss_currency(self):
@@ -247,10 +241,6 @@ class Position(Keyed):
     def entry_price(self, entry_price):
         self._entry_price = entry_price
 
-    @shared.setter
-    def shared(self, shared):
-        self._shared = shared
-
     @leverage.setter
     def leverage(self, leverage):
         self._leverage = leverage
@@ -305,7 +295,7 @@ class Position(Keyed):
 
         # without fees neither commissions
         self._raw_profit_loss = raw_profit_loss
-        self._raw_profit_loss_rate = (self._profit_loss / position_cost) if position_cost != 0.0 else 0.0
+        self._raw_profit_loss_rate = (self._raw_profit_loss / position_cost) if position_cost != 0.0 else 0.0
 
         # use maker fee and commission
         self._profit_loss = raw_profit_loss - (position_cost * market.maker_fee) - market.maker_commission
@@ -374,3 +364,69 @@ class Position(Keyed):
             self._direction = -1
         else:
             self._direction = 0
+
+    #
+    # persistence
+    #
+
+    def dumps(self):
+        """
+        @todo Could humanize str and timestamp into datetime
+        @return: dict
+        """
+        return {
+            'id': self._position_id,
+            'state': self._state,
+            'symbol': self._symbol,
+            'quantity': self._quantity,
+            'direction': self._direction,
+            'created': self._created_time,
+            'closed': self._closed_time,
+            'market-close': self._market_close,
+            'leverage': self._leverage,
+            'entry-price': self._entry_price,
+            'exit-price': self._exit_price,
+            'take-profit-price': self._take_profit,
+            'stop-loss-price': self._stop_loss,
+            'trailing-stop': self._trailing_stop,
+            'profit-loss-currency': self._profit_loss_currency,
+            'raw-profit-loss': self._raw_profit_loss,
+            'raw-profit-loss-rate': self._raw_profit_loss_rate,
+            'profit-loss': self._profit_loss,
+            'profit-loss-rate': self._profit_loss_rate,
+            'profit-loss-market': self._profit_loss_market,
+            'profit-loss-market-rate': self._profit_loss_market_rate,
+        }
+
+    def loads(self, data):
+        # if data.get('symbol', "") == self._symbol:
+        #     # @todo could merge with current
+
+        self._position_id = data.get('id', None)
+        self._state = data.get('state', Position.STATE_PENDING)
+
+        self._symbol = data.get('symbol', "")
+        self._quantity = data.get('quantity', 0.0)
+        self._direction = data.get('direction', Position.LONG)
+
+        self._created_time = data.get('created', 0.0)
+        self._closed_time = data.get('closed', 0.0)
+
+        self._market_close = data.get('market-close', False)
+        self._leverage = data.get('leverage', 1.0)
+        self._entry_price = data.get('entry-price', 0.0)
+        self._exit_price = data.get('exit-price', 0.0)
+        self._take_profit = data.get('take-profit-price', None)
+        self._stop_loss = data.get('stop-loss-price', None)
+        self._trailing_stop = data.get('trailing-stop', False)
+
+        # if data.get('profit-loss-currency', "") == self._profit_loss_currency:
+        #     # @todo could merge with current
+
+        self._profit_loss_currency = data.get('profit-loss-currency', "")
+        self._raw_profit_loss = data.get('raw-profit-loss', 0.0)
+        self._raw_profit_loss_rate = data.get('raw-profit-loss-rate', 0.0)
+        self._profit_loss = data.get('profit-loss', 0.0)
+        self._profit_loss_rate = data.get('profit-loss-rate', 0.0)
+        self._profit_loss_market = data.get('profit-loss-market', 0.0)
+        self._profit_loss_market_rate = data.get('profit-loss-market-rate', 0.0)

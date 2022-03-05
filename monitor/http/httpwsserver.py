@@ -4,20 +4,12 @@
 # http websocket server
 
 import json
-import time, datetime
-import tempfile, os, posix
 import threading
-import traceback
-import collections
-import base64, hashlib
-
-import asyncio
 
 from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
 from autobahn.websocket.protocol import WebSocketProtocol
 from autobahn.websocket.types import ConnectionDeny
 
-from twisted.python import log
 from twisted.internet import reactor, ssl
 
 from monitor.service import MonitorService
@@ -58,13 +50,21 @@ class ServerProtocol(WebSocketServerProtocol):
         payload = json.dumps(data, ensure_ascii=False).encode('utf8')
         for c in set(cls.connections):
             if c.state == WebSocketProtocol.STATE_OPEN:
-                reactor.callFromThread(cls.sendMessage, c, payload)
+                # reactor.callFromThread(cls.sendMessage, c, payload)
+                reactor.callFromThread(cls.send_message, c, payload)
 
     @classmethod
     def close_all(cls, data):
         for c in set(cls.connections):
             if c.state == WebSocketProtocol.STATE_OPEN:
                 reactor.callFromThread(cls.sendClose, c, 1000)  # normal close
+
+    @classmethod
+    def send_message(cls, c, payload):
+        try:
+            cls.sendMessage(c, payload)
+        except RuntimeError as e:
+            error_logger.error(repr(e))
 
 
 class AllowedIPOnlyFactory(WebSocketServerFactory):

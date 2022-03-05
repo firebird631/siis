@@ -416,6 +416,10 @@ class Market(object):
     #
 
     @property
+    def size_limits(self):
+        return self._size_limits
+
+    @property
     def min_size(self):
         return self._size_limits[0]
 
@@ -432,6 +436,10 @@ class Market(object):
         return self._size_limits[3]
 
     @property
+    def notional_limits(self):
+        return self._notional_limits
+
+    @property
     def min_notional(self):
         return self._notional_limits[0]
 
@@ -446,6 +454,10 @@ class Market(object):
     @property
     def notional_precision(self):
         return self._notional_limits[3]
+
+    @property
+    def price_limits(self):
+        return self._price_limits
 
     @property
     def min_price(self):

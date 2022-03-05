@@ -197,9 +197,9 @@ class StrategyInfoRestAPI(resource.Resource):
                 'currency': instr.currency,
                 'tradeable': instr.tradeable,
                 'value-per-pip': instr.value_per_pip,
-                'price-limits': instr._price_limits,
-                'notional-limits': instr._notional_limits,
-                'size-limits': instr._size_limits,
+                'price-limits': instr.price_limits,
+                'notional-limits': instr.notional_limits,
+                'size-limits': instr.size_limits,
                 'bid': instr.market_bid,
                 'ask': instr.market_ask,
                 'mid': instr.market_price,
@@ -266,6 +266,7 @@ class StrategyInfoRestAPI(resource.Resource):
         results = {}
 
         # @todo to add dynamically a new instrument
+        #       affinity, trade-mode, instrument quantity
 
         return json.dumps(results).encode("utf-8")
 
@@ -957,7 +958,8 @@ class HttpRestServer(object):
         strategy_api.putChild(b"trade", trade_api)
 
         # strategy trader history
-        historical_trade_api = HistoricalTradeRestAPI(self._monitor_service, self._strategy_service, self._trader_service)
+        historical_trade_api = HistoricalTradeRestAPI(self._monitor_service, self._strategy_service,
+                                                      self._trader_service)
         strategy_api.putChild(b"historical", historical_trade_api)
 
         # strategy trader alert

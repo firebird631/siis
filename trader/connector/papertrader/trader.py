@@ -5,6 +5,7 @@
 
 import base64
 import copy
+import json
 import time
 import uuid
 
@@ -297,7 +298,7 @@ class PaperTrader(Trader):
                                 price = 0.0
                                 base_exchange_rate = 1.0
 
-                                if asset.symbol == self._account._currency:
+                                if asset.symbol == self._account.currency:
                                     # as primary currency
                                     price = 1.0
                                     base_exchange_rate = 1.0
@@ -314,7 +315,7 @@ class PaperTrader(Trader):
                                     free_balance += free * price              # current total free balance
 
                                     # current total P/L in primary account currency
-                                    profit_loss += asset.profit_loss_market / base_exchange_rate
+                                    profit_loss += asset.raw_profit_loss / base_exchange_rate
 
                     self.account.set_asset_balance(balance, free_balance)
                     self.account.set_unrealized_asset_profit_loss(profit_loss)
@@ -899,3 +900,159 @@ class PaperTrader(Trader):
                 for k, position in self._positions.items():
                     if position.symbol == market.market_id:
                         position.update_profit_loss(market)
+
+    #
+    # persistence
+    #
+
+    def cmd_export(self, data):
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        # clear the file
+        dataset = data.get('dataset', "full")
+        export_format = data.get('export-format', "json")
+        filename = data.get('filename', "")
+
+        if dataset not in ('trader',):
+            results = {'message': "Unsupported export dataset", 'error': True}
+            return results
+
+        if export_format not in ('json',):
+            results = {'message': "Unsupported export format", 'error': True}
+            return results
+
+        if not filename:
+            if dataset == "trader":
+                filename = "siis_trader.%s" % export_format
+
+        with self._mutex:
+            try:
+                # account state
+                account_dumps = self._account.dumps()
+
+                # orders
+                orders_dumps = []
+                for order_id, order in self._orders.items():
+                    order_dumps = order.dumps()
+                    orders_dumps.append(order_dumps)
+
+                # positions
+                positions_dumps = []
+                for position_id, position in self._positions.items():
+                    position_dumps = position.dumps()
+                    positions_dumps.append(position_dumps)
+
+                # assets (qty)
+                assets_dumps = []
+                for asset_id, asset in self._assets.items():
+                    asset_dumps = asset.dumps()
+                    assets_dumps.append(asset_dumps)
+
+            except Exception as e:
+                error_logger.error(repr(e))
+
+        dataset = {
+            'name': self._name,
+            'activity': self._activity,
+            'account': account_dumps,
+            'orders': orders_dumps,
+            'positions': positions_dumps,
+            'assets': assets_dumps
+        }
+
+        if export_format == "json":
+            try:
+                with open(filename, "w") as f:
+                    json.dump(dataset, f, indent=4)
+
+            except Exception as e:
+                results['messages'].append(repr(e))
+                results['error'] = True
+
+        # with open(filename, "w") as f:
+        #     f.write(json.dumps(dataset))
+
+        return results
+
+    def cmd_import(self, data):
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        filename = data.get('filename', "")
+        dataset = data.get('dataset', "trader")
+
+        if dataset not in ('trader',):
+            results = {'message': "Unsupported import dataset", 'error': True}
+            return results
+
+        if not filename:
+            if dataset == 'trader':
+                filename = "siis_trader.json"
+
+        try:
+            with open(filename, "rt") as f:
+                data_dumps = json.loads(f.read())
+        except FileNotFoundError:
+            results = {'message': "File %s not found or no permissions" % filename, 'error': True}
+            return results
+        except json.JSONDecodeError as e:
+            results = {'message': ["Error during parsing %s" % filename, repr(e)], 'error': True}
+            return results
+
+        try:
+            self._activity = data_dumps.get('activity', self._activity)
+            self._account.loads(data_dumps.get('account', {}))
+        except Exception as e:
+            error_logger.error(repr(e))
+            results = {'message': ["Error during loading %s" % filename, repr(e)], 'error': True}
+
+        orders_dumps = data_dumps.get('orders', [])
+        for order_data in orders_dumps:
+            try:
+                symbol = order_data.get('symbol', "")
+
+                order = Order(self, symbol)
+                order.loads(order_data)
+
+                with self._mutex:
+                    self._orders[order.order_id] = order
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                results = {'message': ["Error during loading  %s order" % filename, repr(e)], 'error': True}
+
+        positions_dumps = data_dumps.get('positions', [])
+        for position_data in positions_dumps:
+            try:
+                symbol = position_data.get('symbol', "")
+
+                position = Position(self)
+                position.loads(position_data)
+
+                with self._mutex:
+                    self._positions[position.position_id] = position
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                results = {'message': ["Error during loading %s position" % filename, repr(e)], 'error': True}
+
+        asset_dumps = data_dumps.get('assets', [])
+        for asset_data in asset_dumps:
+            try:
+                symbol = asset_data.get('symbol', "")
+
+                with self._mutex:
+                    asset = self._assets.get(symbol)
+                    if asset is not None:
+                        asset.loads(asset_data)
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                results = {'message': ["Error during loading %s asset" % filename, repr(e)], 'error': True}
+
+        return results

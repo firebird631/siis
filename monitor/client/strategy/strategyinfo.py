@@ -23,7 +23,8 @@ class StrategyInfo(object):
 
 		self.strategy_identifier = group_name
 		self.instrument_symbol = stream_name
-		self.tfs = ()
+		self.tfs = tuple()
+		self.depth = tuple()
 
 		self._visible = False
 

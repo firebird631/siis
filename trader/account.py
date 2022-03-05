@@ -56,8 +56,6 @@ class Account(object):
         self._asset_balance = 0.0
         self._free_asset_balance = 0.0
 
-        self._shared = False   # share shared trades xD
-
         # copy options
         self._leverage = [1, 200]    # min/max leverage
 
@@ -102,10 +100,6 @@ class Account(object):
     @property
     def balance(self):
         return self._balance
-
-    @property
-    def shared(self):
-        return self._shared
 
     @property
     def currency(self):
@@ -304,3 +298,31 @@ class Account(object):
             formatted_price = formatted_price.rstrip('0').rstrip('.')
 
         return formatted_price
+
+    #
+    # persistence
+    #
+
+    def dumps(self):
+        return {
+            'balance': self._balance,
+            'net-worth': self._net_worth,
+            'margin-balance': self._margin_balance,
+            'risk-limit': self._risk_limit,
+            'margin-level': self._margin_level,
+            'profit-loss': self._profit_loss,
+            'asset-profit-loss': self._asset_profit_loss,
+            'asset-balance': self._asset_balance,
+            'free-asset-balance': self._free_asset_balance
+        }
+
+    def loads(self, data):
+        self._balance = data.get('balance', 0.0)
+        self._net_worth = data.get('net-worth', 0.0)
+        self._margin_balance = data.get('margin-balance', 0.0)
+        self._risk_limit = data.get('risk-limit', 0.0)
+        self._margin_level = data.get('margin-level', 0.0)
+        self._profit_loss = data.get('profit-loss', 0.0)
+        self._asset_profit_loss = data.get('asset-profit-loss', 0.0)
+        self._asset_balance = data.get('asset-balance', 0.0)
+        self._free_asset_balance = data.get('free-asset-balance', 0.0)

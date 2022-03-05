@@ -1167,14 +1167,19 @@ function fetch_strategy() {
                 let profile = market['profiles'][profile_id];
                 let take_profit_method = null;
                 let stop_loss_method = null;
+                console.log(profile)
 
                 if (profile['take-profit']) {
                     take_profit_method = "";
 
                     if (profile['take-profit']['distance-type'] == 'percent') {
                         take_profit_method = 'percent-' + profile['take-profit']['distance'].toFixed(2);
-                    } else {
+                    } else if (profile['take-profit']['distance-type'] == 'pip') {
                         take_profit_method = 'pip-' + profile['take-profit']['distance'];
+                    } else if (profile['take-profit']['distance-type'] == 'dist') {
+                        take_profit_method = 'price-' + profile['take-profit']['distance'];
+                    } else {
+                        take_profit_method = profile['take-profit']['distance-type'];
                     }
 
                     if (!(take_profit_method in window.methods)) {
@@ -1182,8 +1187,15 @@ function fetch_strategy() {
 
                         if (profile['take-profit']['distance-type'] == 'percent') {
                             label = profile['take-profit']['distance'].toFixed(2) + '%';
-                        } else {
+                        } else if (profile['take-profit']['distance-type'] == 'pip') {
                             label = profile['take-profit']['distance'] + 'pips';
+                        } else if (profile['take-profit']['distance-type'] == 'dist') {
+                            if (profile['take-profit']['distance'] == 0.0) {
+                                continue;
+                            }
+                            label = profile['take-profit']['distance'] + 'price';
+                        } else {
+                            label = profile['take-profit']['distance-type'];
                         }
 
                         window.methods[take_profit_method] = {
@@ -1197,8 +1209,12 @@ function fetch_strategy() {
                 if (profile['stop-loss']) {
                     if (profile['stop-loss']['distance-type'] == 'percent') {
                         stop_loss_method = 'percent-' + profile['stop-loss']['distance'].toFixed(2);
-                    } else {
+                    } else if (profile['stop-loss']['distance-type'] == 'pip') {
                         stop_loss_method = 'pip-' + profile['stop-loss']['distance'];
+                    } else if (profile['stop-loss']['distance-type'] == 'dist') {
+                        stop_loss_method = 'price-' + profile['stop-loss']['distance'];
+                    } else {
+                        stop_loss_method = profile['stop-loss'];
                     }
 
                     if (!(stop_loss_method in window.methods)) {
@@ -1206,8 +1222,15 @@ function fetch_strategy() {
 
                         if (profile['stop-loss']['distance-type'] == 'percent') {
                             label = profile['stop-loss']['distance'].toFixed(2) + '%';
-                        } else {
+                        } else if (profile['stop-loss']['distance-type'] == 'pip') {
                             label = profile['stop-loss']['distance'] + 'pips';
+                        } else if (profile['stop-loss']['distance-type'] == 'dist') {
+                            if (profile['stop-loss']['distance'] == 0.0) {
+                                continue;
+                            }
+                            label = profile['stop-loss']['distance'] + 'price';
+                        } else {
+                            label = profile['stop-loss']['distance-type'];
                         }
 
                         window.methods[stop_loss_method] = {

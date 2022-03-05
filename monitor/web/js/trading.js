@@ -618,7 +618,7 @@ function add_active_trade(market_id, trade) {
     // status
     let trade_auto = $('<span class="trade-auto fa"></span>')
         .addClass(trade['is-user-trade'] ? 'trade-auto-no' : 'trade-auto-yes')
-        .addClass(trade['is-user-trade'] ? 'fa-pause' : 'fa-play');
+        .addClass(trade['is-user-trade'] ? 'fa-user' : 'fa-robot');
 
     // pnl
     let trade_percent = $('<span class="trade-percent"></span>');

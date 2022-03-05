@@ -75,6 +75,8 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
     dataset = data.get('dataset', "active")
 
     if dataset == 'active':
+        trader = strategy_trader.strategy.trader()
+
         for trade_dump in data_dumps:
             try:
                 dehumanize_trade(trade_dump)
@@ -83,11 +85,12 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
                 operations = trade_dump.get('operations', [])
 
                 strategy_trader.loads_trade(trade_id, trade_type, trade_dump, operations, check=True)
-                time.sleep(2)
+                if not trader.paper_mode:
+                    time.sleep(2)
 
             except Exception as e:
                 results['messages'].append("Error during import of trade %s for %s" % (
-                    trade_dump.get('id'), trade_dump.get('symbol')))
+                    trade_dump.get('id'), strategy_trader.instrument.market_id))
                 results['messages'].append(repr(e))
                 results['error'] = True
 
@@ -104,7 +107,7 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
 
             except Exception as e:
                 results['messages'].append("Error during import of trade history %s for %s" % (
-                    trade_dump.get('id'), trade_dump.get('symbol')))
+                    trade_dump.get('id'), strategy_trader.instrument.market_id))
                 results['messages'].append(repr(e))
                 results['error'] = True
 
@@ -118,7 +121,7 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
                 strategy_trader.loads_alert(alert_id, alert_type, alert_dump)
             except Exception as e:
                 results['messages'].append("Error during import of alert %s for %s" % (
-                    alert_dump.get('id'), alert_dump.get('symbol')))
+                    alert_dump.get('id'), strategy_trader.instrument.market_id))
                 results['messages'].append(repr(e))
                 results['error'] = True
 
@@ -132,7 +135,42 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
                 strategy_trader.loads_region(region_id, region_type, region_dump)
             except Exception as e:
                 results['messages'].append("Error during import of region %s for %s" % (
-                    region_dump.get('id'), region_dump.get('symbol')))
+                    region_dump.get('id'), strategy_trader.instrument.market_id))
+                results['messages'].append(repr(e))
+                results['error'] = True
+
+    elif dataset == 'strategy':
+        for strategy_dump in data_dumps:
+            trader_dump = strategy_dump.get('trader', {})
+            trades_dump = strategy_dump.get('trades', [])
+            alerts_dump = strategy_dump.get('alerts', [])
+            regions_dump = strategy_dump.get('regions', [])
+
+            trader = strategy_trader.strategy.trader()
+
+            for trade_dump in trades_dump:
+                try:
+                    # dehumanize_trade(trade_dump)
+                    trade_id = trade_dump['id']
+                    trade_type = trade_dump['trade']
+                    operations = trade_dump.get('operations', [])
+
+                    strategy_trader.loads_trade(trade_id, trade_type, trade_dump,
+                                                operations, check=True, force_id=True)
+                    if not trader.paper_mode:
+                        time.sleep(2)
+
+                except Exception as e:
+                    results['messages'].append("Error during import of trade %s for %s" % (
+                        trade_dump.get('id'), strategy_trader.instrument.market_id))
+                    results['messages'].append(repr(e))
+                    results['error'] = True
+
+            try:
+                strategy_trader.loads(trader_dump, regions_dump, alerts_dump, force_id=True)
+            except Exception as e:
+                results['messages'].append("Error during import of strategy-trader for %s" %
+                                           strategy_trader.instrument.market_id)
                 results['messages'].append(repr(e))
                 results['error'] = True
 
@@ -148,7 +186,7 @@ def cmd_strategy_trader_import_all(strategy, data):
     filename = data.get('filename', "")
     dataset = data.get('dataset', "active")
 
-    if dataset not in ('active', 'history', 'alert', 'region'):
+    if dataset not in ('active', 'history', 'alert', 'region', 'strategy'):
         results = {'message': "Unsupported import dataset", 'error': True}
         return results
 
@@ -161,6 +199,8 @@ def cmd_strategy_trader_import_all(strategy, data):
             filename = "siis_alerts.json"
         if dataset == 'region':
             filename = "siis_regions.json"
+        if dataset == 'strategy':
+            filename = "siis_strategy.json"
 
     try:
         with open(filename, "rt") as f:

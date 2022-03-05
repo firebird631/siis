@@ -46,35 +46,36 @@ Sum order :
     - finir WS des positions (margin)
     - comment savoir si trade maker ou taker ?
     - revoir que si besoin ownTrade pour signal ORDER_TRADED
-    - 'cumulative-commission-amount' pour les fees à gérer sur indmargintrade
     - calcule des qty locked par asset en fonction des ordres ouverts (attention aux arrondis)
 
 #103 WebTrader
-    - gérer affinity par market (+ streaming de change car il peut être produit depuis le term ou un autre client)
-    - WS sur retour status strategie (activity, affinity, qty/factor)
-    - charting OHLC et ticks (streaming) + performance
-    - goto charting historique sur un trade passé
+    - HTTP :
+        - POST/GET strategy-trader trade mode
+        - POST/GET strategy-trader instrument quantity (if no reinvest handler)
+        - POST/GET strategy-trader affinity
+        - POST/GET strategy-trader active alertes
+        - POST/GET strategy-trader trade operation
+        - POST/GET strategy-trader regions
+    - WS :
+        - strategy-trader state play/pause
+        - strategy-trader instrument trade mode
+        - strategy-trader instrument quantity (if no reinvest handler)
+        - strategy-trader affinity
+        - strategy-trader active-alert (count-down, completed, added, removed)
+        - strategy-trader regions (added, removed, timeout, hit)
+    - charting :
+        - charting OHLC et ticks (streaming) + performance
+        - goto charting historique sur un trade passé
+        - ticker WS, basé sur quoi ? trader ticker ? strategy instrument ?
+            - plutôt sur le trader car pas besoin de surcharger encore le strategy trader
     - session expiry message to renew
-    - active alerts prefetch à la connexion, WS d'update et de delete (à chaque trigger countdown peu changer)
-    - ticker WS, basé sur quoi ? trader ticker ? strategy instrument ?
-        - plutôt sur le trader car pas besoin de surcharger encore le strategy trader
-    - copy de signal (bouton)
     - toggle audio et alt sound alerts (et save conf)
-    - rajouter des tris (% pnl+-, market+-, date+-, upnl+-)
-    - dans la vue console ajouter un edit pour saisir des commande comme depuis le terminal
-        - pour la commande quit rajouter un validateur ou rejetter cette commande
-
-#115 tool withdraw (ou command) simple avec pin code (2AF) paire et addresse
-    - peut utiliser un alias d'adresse ou l'adresse enregistré par défaut (wallets.json)
-    - montant de la transaction
-
-#121 tool withdraw emergency (ou command) qui annule tout les buy pending ou incomplet,
-    et qui transfert sur les hard wallets (ou soft wallet)
-
-#117 tool withdraw emergency (ou command) comme précédente mais qui va revendre toutes les paires
-    sur une seule de reference (exemple tout sur ZEC) et ensuite transferer sur le le
-    hard wallet de reference (ou soft wallet)
-        - la même mais avec un découpe en % sur N asset, et N wallet (hard ou soft)
+    - listes :
+        - tiers par (% pnl+-, market+-, date+-, upnl+-)
+        - paginer si list > 100 élements
+    - copy de signal (bouton)
+        - CTRL + click copie direct en l'état
+        - click ouvre une popup pour modifier EP/SL/TP et valider ou annuler
 
 
 ########
@@ -96,9 +97,6 @@ Sum order :
 
 #75 TD9 countdown a debug et tester
 
-#123 RPLN sur un history negatif alors pourcent positif, pl en pourcent juste, mais RPNL en quote negatif et faux
-    - produit une seule fois... origine inconnu
-
 
 ##########
 # Urgent #
@@ -106,8 +104,7 @@ Sum order :
 
 #122 send an error notification in case of a trade goes to ERROR state
 
-#120 Kraken have maintenance, cancel-only and post-only market status, could be useful
-    to manage this state at the strategytrader level.
+#126 interdire un trade de direction opposé si margin trade and hedging non actvité
 
 #57 Verification des trades par la method check :
     - implementer order_info pour le trader bitmex et verifier
@@ -130,11 +127,6 @@ Sum order :
     - avoir un object OrderBook facile à mettre à jour et à exploiter
     - utiliser DepthCacheManager pour binance et binancefutures
 
-
-#############
-# Important #
-#############
-
 #60 Gérer la partie locked sur le paper trader en mode asset
     - ne pas tout gérer en free, peu important car ça n'empêche pas de fonctionner
 
@@ -142,8 +134,6 @@ Sum order :
 #########
 # Bonus #
 #########
-
-#100 active regions view
 
 #118 Commande de fusion et split des trades pour un instrument donné (à réfléchir)
 
@@ -153,9 +143,16 @@ Sum order :
 #117 A chaque fois que un espace (separateur de parametre) est inséré, lors d'une commande, proposer l'entrée suivante
     de HELP de la commande, en fonction de l'index
 
-#124 sur webtrader remplacer les icones play/pause du mode auto/user par android/human
+#115 tool withdraw (ou command) simple avec pin code (2AF) paire et addresse
+    - peut utiliser un alias d'adresse ou l'adresse enregistré par défaut (wallets.json)
+    - montant de la transaction
 
-#125 faire import des trade history (command traderimport)
+#121 tool withdraw emergency (ou command) qui annule tout les buy pending ou incomplet,
+    et qui transfert sur les hard wallets (ou soft wallet)
+
+#117 tool withdraw emergency (ou command) comme précédente mais qui va revendre toutes les paires
+    sur une seule de reference et ensuite transferer sur le le wallet de reference
+        - la même mais avec un découpe en % sur N asset, et N wallet (hard ou soft)
 
 
 ####################

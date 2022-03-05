@@ -47,6 +47,8 @@ class Trader(Runnable):
     COMMAND_INFO = 1
     COMMAND_TRADER_FROZE_ASSET_QUANTITY = 2   # froze a free quantity of an asset that could not be used
     COMMAND_TICKER_MEMSET = 3                 # memorize the last market price for any or a specific ticker
+    COMMAND_EXPORT = 4                        # export trader state (supported for paper-trader only)
+    COMMAND_IMPORT = 5                        # import previous trader state (supported for paper-trader only)
 
     # order commands
     COMMAND_CLOSE_MARKET = 110                # close a managed or unmanaged position at market now
@@ -71,7 +73,6 @@ class Trader(Runnable):
         self._assets = {}
 
         self._commands = []
-        self._last_alerts = {}
 
         self._markets = {}
 
@@ -335,6 +336,10 @@ class Trader(Runnable):
             return self.cmd_sell_all_asset(data)
         elif command_type == Trader.COMMAND_CANCEL_ORDER:
             return self.cmd_cancel_order(data)
+        elif command_type == Trader.COMMAND_EXPORT:
+            return self.cmd_export(data)
+        elif command_type == Trader.COMMAND_IMPORT:
+            return self.cmd_import(data)
 
         return None
 
@@ -1991,3 +1996,19 @@ class Trader(Runnable):
                 }
 
         return assets
+
+    #
+    # persistence
+    #
+
+    def cmd_export(self, data):
+        """
+        Persistence to file.
+        """
+        return {}
+
+    def cmd_import(self, data):
+        """
+        Previous state from file.
+        """
+        return {}

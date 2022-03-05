@@ -11,7 +11,6 @@ class Order(Keyed):
     Order for execution on a trader.
 
     @todo GTD could be distinct and need an expiry_time field
-    @todo __slots__
     """
 
     __slots__ = "_order_id", "_ref_order_id", "_trader", "_symbol", "_created_time", "_position_id", "_quantity", \
@@ -337,6 +336,76 @@ class Order(Keyed):
 
         return "unknown"
 
+    #
+    # persistence
+    #
+
+    def dumps(self):
+        """
+        @todo Could humanize str and timestamp into datetime
+        @return: dict
+        """
+        return {
+            'id': self._order_id,
+            'ref-id': self._ref_order_id,
+            'position-id': self._position_id,
+            'symbol': self._symbol,
+            'quantity': self._quantity,
+            'direction': self._direction,
+            'created': self._created_time,
+            'transact-time': self._transact_time,
+            'order-type': self._order_type,
+            'price': self._price,
+            'stop-price': self._stop_price,
+            'stop-mode': self._stop_mode,
+            'reduce-only': self._reduce_only,
+            'hedging': self._hedging,
+            'post-only': self._post_only,
+            'close-only': self._close_only,
+            'price-type': self._price_type,
+            'margin-trade': self._margin_trade,
+            'time-in-force': self._time_in_force,
+            'executed': self._executed,
+            'fully_filled': self._fully_filled,
+            'avg-price': self._avg_price,
+            'leverage': self._leverage,
+            'take-profit-price': self._take_profit,
+            'stop-loss-price': self._stop_loss,
+            'trailing-stop': self._trailing_stop,
+        }
+
+    def loads(self, data):
+        self._order_id = data.get('id', "")
+        self._ref_order_id = data.get('ref-id', "")
+        self._position_id = data.get('position-id', None)
+
+        self._symbol = data.get('symbol', "")
+        self._quantity = data.get('quantity', 0.0)
+        self._direction = data.get('direction', Order.LONG)
+
+        self._created_time = data.get('created', 0.0)
+        self._transact_time = data.get('transact-time', 0.0)
+
+        self._leverage = data.get('leverage', 1.0)
+        self._take_profit = data.get('take-profit-price', None)
+        self._stop_loss = data.get('stop-loss-price', None)
+        self._trailing_stop = data.get('trailing-stop', False)
+
+        self._executed = data.get('executed', 0.0)
+        self._fully_filled = data.get('fully-filled', False)
+        self._avg_price = data.get('avg-price', 0.0)
+        self._order_type = data.get('order-type', Order.ORDER_MARKET)
+        self._price = data.get('price', None)
+        self._stop_price = data.get('stop-price', None)
+        self._stop_mode = data.get('stop-mode', Order.STOP_NONE)
+        self._reduce_only = data.get('reduce-only', False)
+        self._hedging = data.get('hedging', False)
+        self._post_only = data.get('post-only', True)
+        self._close_only = data.get('close-only', False)
+        self._price_type = data.get('price-type', Order.PRICE_LAST)
+        self._margin_trade = data.get('margin-trade', False)
+        self._time_in_force = data.get('time-in-force', Order.TIME_IN_FORCE_GTC)
+
 
 def order_type_to_str(order_type):
     if order_type == Order.ORDER_MARKET:
@@ -388,4 +457,3 @@ def order_reason_to_str(reason):
         return "cancel-only"
     else:
         return "undefined"
-

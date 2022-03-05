@@ -685,13 +685,73 @@ class StrategyTrader(object):
                 trader.name, trader.account.name, self.instrument.market_id,
                 self.strategy.identifier, self.activity, trader_data, regions_data, alerts_data))
 
-    def loads(self, data, regions, alerts):
+    def dumps(self):
+        """
+        Trader state, context and trades persistence.
+        """
+        trader = self.strategy.trader()
+
+        trades_data = []
+        contexts_data = []  # @todo
+
+        with self._mutex:
+            with self._trade_mutex:
+                for trade in self._trades:
+                    t_data = trade.dumps()
+                    t_data['operations'] = [operation.dumps() for operation in trade.operations]
+
+                    trades_data.append(t_data)
+
+            # dumps of trader data, regions and alerts
+            trader_data = {
+                'activity': self._activity,
+                'affinity': self._affinity,
+                'next-trade-id': self._next_trade_id,
+                'next-alert-id': self._next_alert_id,
+                'next-region-id': self._next_region_id,
+                'contexts': contexts_data
+            }
+
+            regions_data = [region.dumps() for region in self._regions]
+            alerts_data = [alert.dumps() for alert in self._alerts]
+
+        return {
+            'trader-name': trader.name,
+            'account-name': trader.account.name,
+            'strategy': self.strategy.identifier,
+            'symbol': self.instrument.market_id,
+            'market-id': self.instrument.market_id,
+            'trader': trader_data,
+            'trades': trades_data,
+            'regions': regions_data,
+            'alerts': alerts_data
+        }
+
+    def loads(self, data, regions, alerts, force_id=False):
         """
         Load strategy trader state and regions.
+        @param data: Strategy-trader data dump dict
+        @param regions: list of data dump dict of regions
+        @param alerts: list of data dump dict of alerts
+        @param force_id: To reuse original id, take care to update next_alert_id and next_region_id
+            and to don't override.
         """
         # trader data
+        if 'activity' in data and type(data['activity']) is int:
+            self._activity = data['activity']
+
         if 'affinity' in data and type(data['affinity']) is int:
             self._affinity = data['affinity']
+
+        # specific data
+        if 'next-trade-id' in data and type(data['next-trade-id']) is int:
+            self._next_trade_id = data['next-trade-id']
+
+        if 'next-alert-id' in data and type(data['next-alert-id']) is int:
+            self._next_alert_id = data['next-alert-id']
+
+        if 'next-region-id' in data and type(data['next-region-id']) is int:
+            self._next_region_id = data['next-region-id']
 
         # contexts data
         # @todo
@@ -705,7 +765,11 @@ class StrategyTrader(object):
                     region.loads(r)
 
                     if region.check():
-                        self.add_region(region)
+                        if force_id:
+                            with self._mutex:
+                                self._regions.append(region)
+                        else:
+                            self.add_region(region)
                     else:
                         error_logger.error("During loads, region checking error %s" % r['name'])
                 except Exception as e:
@@ -722,7 +786,11 @@ class StrategyTrader(object):
                     alert.loads(a)
 
                     if alert.check():
-                        self.add_alert(alert)
+                        if force_id:
+                            with self._mutex:
+                                self._alerts.append(alert)
+                        else:
+                            self.add_alert(alert)
                     else:
                         error_logger.error("During loads, alert checking error %s" % a['name'])
                 except Exception as e:
@@ -730,10 +798,16 @@ class StrategyTrader(object):
             else:
                 error_logger.error("During loads, unsupported alert %s" % a['name'])
 
-    def loads_trade(self, trade_id, trade_type, data, operations, check=False):
+    def loads_trade(self, trade_id, trade_type, data, operations, check=False, force_id=False):
         """
         Load a strategy trader trade and its operations.
         There is many scenarios where the trade state changed, trade executed, order modified or canceled...
+        @param trade_id: Original trade id
+        @param trade_type: Trade type integer constant
+        @param data: Trade data dump dict
+        @param operations: Trade operation data dump dict into a list
+        @param check: Check trade related orders and position according to the trader
+        @param force_id: To reuse original id, take care to update next_trade_id and to don't override.
         """
         # trade builder
         if trade_type == StrategyTrade.TRADE_BUY_SELL:
@@ -774,14 +848,21 @@ class StrategyTrader(object):
             trade.check(self.strategy.trader(), self.instrument)
 
         # and finally add the trade
-        self.add_trade(trade)
+        if force_id:
+            # conserve original trade id
+            with self._trade_mutex:
+                self._trades.append(trade)
+        else:
+            # add and assign a new trade id
+            self.add_trade(trade)
 
-    def loads_alert(self, alert_id, alert_type, data):
+    def loads_alert(self, alert_id, alert_type, data, force_id=False):
         """
         Load a strategy trader alert.
         @param alert_id Above 0 original alert identifier
         @param alert_type String type name of the alert to instantiate (optional use data['name'])
         @param data Loaded data a dict
+        @param force_id: To reuse original id, take care to update next_alert_id and to don't override.
         """
         alert_name = data.get('name')
 
@@ -798,18 +879,23 @@ class StrategyTrader(object):
             alert.loads(data)
 
             if alert.check():
-                self.add_alert(alert)
+                if force_id:
+                    with self._mutex:
+                        self._alerts.append(alert)
+                else:
+                    self.add_alert(alert)
             else:
                 error_logger.error("During loads, alert checking error %s %i" % (alert_name, alert_id))
         except Exception as e:
             error_logger.error(repr(e))
 
-    def loads_region(self, region_id, region_type, data):
+    def loads_region(self, region_id, region_type, data, force_id=False):
         """
         Load a strategy trader region.
         @param region_id Above 0 original region identifier
         @param region_type String type name of the region to instantiate (optional use data['name'])
         @param data Loaded data a dict
+        @param force_id: To reuse original id, take care to update next_region_id and to don't override.
         """
         region_name = data.get('name')
 
@@ -826,7 +912,11 @@ class StrategyTrader(object):
             region.loads(data)
 
             if region.check():
-                self.add_region(region)
+                if force_id:
+                    with self._mutex:
+                        self._regions.append(region)
+                else:
+                    self.add_region(region)
             else:
                 error_logger.error("During loads, region checking error %s %i" % (region_name, region_id))
         except Exception as e:
