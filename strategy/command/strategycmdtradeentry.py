@@ -108,7 +108,7 @@ def cmd_trade_entry(strategy, strategy_trader, data):
 
     if price <= 0.0:
         results['error'] = True
-        results['messages'].append("Price must be greater than zero for %s" % (strategy_trader.instrument.market_id,))
+        results['messages'].append("Price must be greater than zero for %s" % strategy_trader.instrument.market_id)
         return results
 
     if context_id:
@@ -158,6 +158,18 @@ def cmd_trade_entry(strategy, strategy_trader, data):
                 trader.get_needed_margin(strategy_trader.instrument.market_id, order_quantity, price),))
 
     elif strategy_trader.instrument.has_margin and strategy_trader.instrument.indivisible_position:
+        # check if hedging is supported and if not check if there is no position in the opposite direction
+        if not strategy_trader.instrument.hedging:
+            with strategy_trader.trade_mutex:
+                if strategy_trader.trades:
+                    for trade in strategy_trader.trades:
+                        if trade.direction != direction:
+                            results['error'] = True
+                            results['messages'].append("Hedging is not allowed for market %s" %
+                                                       strategy_trader.instrument.market_id)
+
+                            return results
+
         trade = StrategyIndMarginTrade(timeframe)
 
         if strategy_trader.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:

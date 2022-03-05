@@ -131,6 +131,10 @@ class StrategyTrader(object):
     def is_tickbars_based(self):
         return False
 
+    @property
+    def mutex(self):
+        return self._mutex
+
     def check_option(self, option, value):
         """
         Check for a local option. Validate the option name and value format.
@@ -973,6 +977,10 @@ class StrategyTrader(object):
     #
     # trade
     #
+
+    @property
+    def trade_mutex(self):
+        return self._trade_mutex
 
     @property
     def trades(self):
