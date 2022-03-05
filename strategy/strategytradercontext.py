@@ -425,6 +425,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
         pass
 
     def dumps(self):
+        # @todo others members (and specializations)
         result = {
             'name': self.name
         }
@@ -457,7 +458,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
             return 'signal'
         elif self.mode == StrategyTraderContext.MODE_TRADE:
             return 'trade'
-        
+
         return 'unknown'
 
     def trade_quantity_type_to_str(self):

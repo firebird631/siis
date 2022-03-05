@@ -28,7 +28,6 @@ class PriceCrossAlertCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
         timeframe = 0
 
         action = "add-alert"
@@ -163,10 +162,7 @@ class RemoveAlertCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
-
         action = 'del-alert'
-        alert_id = None        
 
         # ie ":rmalert EURUSD 1"
         if len(args) < 2:
@@ -208,9 +204,6 @@ class AlertInfoCommand(Command):
     def execute(self, args):
         if not args:
             return False, "Missing parameters"
-
-        market_id = None
-        alert_id = None
 
         if len(args) >= 1:
             try:

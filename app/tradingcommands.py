@@ -230,7 +230,6 @@ class SetAffinityCommand(Command):
 
         action = "set-affinity"
         market_id = None
-        affinity = 0
 
         is_int = True
 
@@ -443,10 +442,7 @@ class LongCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        # ie: ":long BTCUSDT L@8500 SL%5 TP@9600"
-        market_id = None
-
-        # direction base on command name
+        # ie: ":long BTCUSDT L@8500 SL%5 TP@9600", direction base on command name
         direction = 1
         method = 'market'
         limit_price = None
@@ -610,10 +606,7 @@ class ShortCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        # ie: ":long BTCUSDT L@8500 SL@8300 TP@9600 1.0"
-        market_id = None
-
-        # direction base on command name
+        # ie: ":long BTCUSDT L@8500 SL@8300 TP@9600 1.0", direction base on command name
         direction = -1
         method = 'market'
         limit_price = None
@@ -766,8 +759,6 @@ class CloseCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
-        trade_id = None
         action = "close"
 
         # ie ":close EURUSD 5"
@@ -815,8 +806,6 @@ class CleanCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
-        trade_id = None
         action = "clean"
 
         # ie ":clean XRPUSDT 5"
@@ -865,14 +854,8 @@ class StepStopLossOperationCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
-        trade_id = None
-
         action = "add-op"
         op = "step-stop-loss"
-
-        trigger = 0.0
-        stop_loss = 0.0
 
         # ie ":SSL EURUSD 4 1.12 1.15"
         if len(args) != 4:
@@ -925,11 +908,7 @@ class RemoveOperationCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
-        trade_id = None
-
         action = 'del-op'
-        operation_id = None
 
         # ie ":D EURUSD 1 5"
         if len(args) < 3:
@@ -977,9 +956,6 @@ class CheckTradeCommand(Command):
     def execute(self, args):
         if not args:
             return False, "Missing parameters"
-
-        market_id = None
-        trade_id = None
 
         repair = False
 
@@ -1033,12 +1009,8 @@ class ModifyStopLossCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
-        trade_id = None
-
         action = 'stop-loss'
         method = 'price'
-        stop_loss = 0.0
         force = False
 
         # ie ":SL EURUSD 1 1.10"
@@ -1126,12 +1098,8 @@ class ModifyTakeProfitCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
-        trade_id = None
-
         action = 'take-profit'
         method = 'price'
-        take_profit = 0.0
         force = False
 
         # ie ":TP EURUSD 1 1.15"
@@ -1215,9 +1183,6 @@ class TradeInfoCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
-        trade_id = None
-
         if len(args) >= 1:
             try:
                 market_id = args[0]
@@ -1273,10 +1238,7 @@ class AssignCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        # ie: ":assign BTCUSDT EP@8500 SL@8300 TP@9600 0.521"
-        market_id = None
-
-        # direction base on command name
+        # ie: ":assign BTCUSDT EP@8500 SL@8300 TP@9600 0.521", direction base on command name
         direction = 1
         order_type = 'limit'
         entry_price = None
@@ -1594,7 +1556,6 @@ class SetQuantityCommand(Command):
         # ie: ":setquantity BTCUSDT 1000"
         action = "set-quantity"
         market_id = None
-        quantity = 0.0
 
         if len(args) < 1:
             return False, "Missing parameters"
@@ -1841,10 +1802,6 @@ class CancelOrderCommand(Command):
 
     def execute(self, args):
         # ie: ":!rmorder BTCUSDT xxx-yyy-zzz"
-        market_id = None
-        options = set()
-        arg_offset = 0
-
         if len(args) != 2:
             return False, "Missing parameters"
 

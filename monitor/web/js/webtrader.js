@@ -1157,7 +1157,7 @@ function fetch_strategy() {
                 'profiles': {}
             };
 
-            // append the default profiles
+            // append the default profiles from contexts
             for (let def_profile_id in window.default_profiles) {
                 window.markets[market_id].profiles[def_profile_id] = window.default_profiles[def_profile_id];
             }

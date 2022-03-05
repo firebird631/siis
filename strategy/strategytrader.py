@@ -679,7 +679,7 @@ class StrategyTrader(object):
             # dumps of trader data, regions and alerts
             trader_data = {
                 'affinity': self._affinity,
-                # @todo context data
+                # @todo context data or into a distinct column
             }
 
             regions_data = [region.dumps() for region in self._regions]

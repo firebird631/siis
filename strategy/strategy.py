@@ -206,6 +206,18 @@ class Strategy(Runnable):
         else:
             return self._parameters
 
+    @property
+    def mutex(self):
+        return self._mutex
+
+    @property
+    def strategy_traders(self):
+        return self._strategy_traders
+
+    def strategy_trader(self, market_id):
+        """Retrieve a strategy trader according to its unique market-id."""
+        return self._strategy_traders.get(market_id)
+
     #
     # monitoring notification
     #
@@ -712,7 +724,7 @@ class Strategy(Runnable):
         if not strategy_trader:
             return []
 
-        with strategy_trader._mutex:
+        with strategy_trader.mutex:
             try:
                 contexts_ids = strategy_trader.contexts_ids()              
             except Exception as e:
@@ -730,7 +742,7 @@ class Strategy(Runnable):
         if not strategy_trader:
             return None
 
-        with strategy_trader._mutex:
+        with strategy_trader.mutex:
             try:
                 context = strategy_trader.dumps_context(context_id)
             except Exception as e:
@@ -846,7 +858,7 @@ class Strategy(Runnable):
                             if trader:
                                 trader.set_market(market)
 
-                            with strategy_trader._mutex:
+                            with strategy_trader.mutex:
                                 instrument = strategy_trader.instrument
 
                                 # put interesting market data into the instrument
@@ -883,7 +895,7 @@ class Strategy(Runnable):
                     for data in signal.data:
                         strategy_trader = self._strategy_traders.get(data[0])
                         if strategy_trader:
-                            with strategy_trader._mutex:
+                            with strategy_trader.mutex:
                                 strategy_trader.loads_trade(data[1], data[2], data[3], data[4], check=True)
                                 time.sleep(2)
 
@@ -898,7 +910,7 @@ class Strategy(Runnable):
                     for data in signal.data:
                         strategy_trader = self._strategy_traders.get(data[0])
                         if strategy_trader:
-                            with strategy_trader._mutex:
+                            with strategy_trader.mutex:
                                 # activity, trader-data, regions-data, alerts-data
                                 strategy_trader.set_activity(data[1])
                                 strategy_trader.loads(data[2], data[3], data[4])
@@ -921,7 +933,7 @@ class Strategy(Runnable):
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         # add the new tick to the instrument in live mode
-                        with strategy_trader._mutex:
+                        with strategy_trader.mutex:
                             if strategy_trader.instrument.ready():
                                 strategy_trader.instrument.add_tick(signal.data[1])
 
@@ -932,7 +944,7 @@ class Strategy(Runnable):
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         # add the new candle to the instrument in live mode
-                        with strategy_trader._mutex:
+                        with strategy_trader.mutex:
                             if strategy_trader.instrument.ready():
                                 strategy_trader.instrument.add_candle(signal.data[1])
 
@@ -942,13 +954,13 @@ class Strategy(Runnable):
                     # incoming bulk of history ticks
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
-                        with strategy_trader._mutex:
+                        with strategy_trader.mutex:
                             initial = strategy_trader.instrument.is_want_timeframe(0)
 
                         # insert the bulk of ticks into the instrument
                         if signal.data[1]:
-                            with strategy_trader._mutex:
-                                # can accum before ready status
+                            with strategy_trader.mutex:
+                                # can accumulate before ready status
                                 strategy_trader.instrument.add_ticks(signal.data[1])
 
                                 if initial:
@@ -961,13 +973,13 @@ class Strategy(Runnable):
                     # incoming bulk of history candles
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
-                        with strategy_trader._mutex:
+                        with strategy_trader.mutex:
                             initial = strategy_trader.instrument.is_want_timeframe(signal.data[1])
 
                         # insert the bulk of candles into the instrument
                         if signal.data[2]:
                             # in live mode directly add candles to instrument
-                            with strategy_trader._mutex:
+                            with strategy_trader.mutex:
                                 strategy_trader.instrument.add_candles(signal.data[2])
 
                             # initials candles loaded
@@ -978,7 +990,7 @@ class Strategy(Runnable):
                                     len(signal.data[2]), instrument.market_id, timeframe_to_str(signal.data[1])))
 
                                 # append the current OHLC from the watcher on live mode
-                                with strategy_trader._mutex:
+                                with strategy_trader.mutex:
                                     if not self.service.backtesting:
                                         instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
                                                               .current_ohlc(instrument.market_id, signal.data[1]))
@@ -995,7 +1007,7 @@ class Strategy(Runnable):
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         # update instrument data
-                        with strategy_trader._mutex:
+                        with strategy_trader.mutex:
                             instrument = strategy_trader.instrument
                             instrument.tradeable = signal.data[1]
 
@@ -1026,7 +1038,7 @@ class Strategy(Runnable):
                     if market:
                         strategy_trader = self._strategy_traders.get(signal.data[0])
                         if strategy_trader:
-                            with strategy_trader._mutex:
+                            with strategy_trader.mutex:
                                 instrument = strategy_trader.instrument
 
                                 # put interesting market data into the instrument @todo using message data
@@ -1040,7 +1052,8 @@ class Strategy(Runnable):
                                 instrument.set_quote(market.quote)
 
                                 instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
-                                instrument.set_notional_limits(market.min_notional, market.max_notional, market.step_notional)
+                                instrument.set_notional_limits(market.min_notional, market.max_notional,
+                                                               market.step_notional)
                                 instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
 
                                 instrument.set_fees(market.maker_fee, market.taker_fee)
@@ -1063,7 +1076,7 @@ class Strategy(Runnable):
                         if self.check_watchers():
                             strategy_trader = self._strategy_traders.get(signal.data[0])
                             if strategy_trader:
-                                with strategy_trader._mutex:
+                                with strategy_trader.mutex:
                                     # force to reinitialize
                                     # @todo could be done only after a certain delay
                                     # strategy_trader._initialized = 1
@@ -1080,7 +1093,7 @@ class Strategy(Runnable):
 
                             # need to reinitialize and recheck the traces
                             for k, strategy_trader in self._strategy_traders.items():
-                                with strategy_trader._mutex:
+                                with strategy_trader.mutex:
                                     # force to reinitialize
                                     # @todo could be done only after a certain delay
                                     # strategy_trader._initialized = 1

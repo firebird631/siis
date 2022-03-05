@@ -29,7 +29,6 @@ class RangeRegionCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
         timeframe = 0.0
 
         action = "add-region"
@@ -39,8 +38,6 @@ class RangeRegionCommand(Command):
         expiry = 0.0
         created = self._strategy_service.timestamp
 
-        low = 0.0
-        high = 0.0
         cancellation = 0.0
 
         # ie ":RR EURUSD 1.12 1.15"
@@ -124,7 +121,6 @@ class TrendRegionCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
         timeframe = 0.0
 
         action = "add-region"
@@ -134,10 +130,6 @@ class TrendRegionCommand(Command):
         expiry = 0.0
         created = self._strategy_service.timestamp
 
-        low_a = 0.0
-        high_a = 0.0
-        low_b = 0.0
-        high_b = 0.0
         cancellation = 0.0
 
         # ie ":TR EURUSD 1.12 1.15 1.15 1.2"
@@ -219,10 +211,7 @@ class RemoveRegionCommand(Command):
         if not args:
             return False, "Missing parameters"
 
-        market_id = None
-
         action = 'del-region'
-        region_id = None        
 
         # ie ":rmregion EURUSD 1"
         if len(args) < 2:
@@ -264,9 +253,6 @@ class RegionInfoCommand(Command):
     def execute(self, args):
         if not args:
             return False, "Missing parameters"
-
-        market_id = None
-        region_id = None
 
         if len(args) >= 1:
             try:

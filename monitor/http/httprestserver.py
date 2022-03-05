@@ -68,8 +68,11 @@ class AuthRestAPI(resource.Resource):
 
         if api_key == self.__api_key:
             # @todo use a JWT
-            auth_token = base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace('/', '_').replace('+', '0')
-            ws_auth_token = base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace('/', '_').replace('+', '0')
+            auth_token = base64.b64encode(
+                uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace('/', '_').replace('+', '0')
+
+            ws_auth_token = base64.b64encode(
+                uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace('/', '_').replace('+', '0')
 
             self._monitor_service.register_ws_auth_token(auth_token, ws_auth_token)
         else:
@@ -225,25 +228,10 @@ class StrategyInfoRestAPI(resource.Resource):
 
             for context_id in contexts_ids:
                 context = self._strategy_service.strategy().dumps_context(market_id, context_id)
+                context['strategy'] = strategy_name  # related strategy
+                context['profile-id'] = context_id   # context id to profile id
 
-                profiles[context_id] = {
-                    'strategy': strategy_name,
-                    'profile-id': context_id,
-                    'entry': {
-                        'timeframe': context['entry']['timeframe'],
-                        'type': context['entry']['type'],
-                    },
-                    'take-profit': {
-                        'timeframe': context['take-profit']['timeframe'],
-                        'distance': context['take-profit']['distance'],
-                        'distance-type': context['take-profit']['distance-type'],
-                    },
-                    'stop-loss': {
-                        'timeframe': context['stop-loss']['timeframe'],
-                        'distance': context['stop-loss']['distance'],
-                        'distance-type': context['stop-loss']['distance-type'],
-                    }
-                }
+                profiles[context_id] = context
 
         results = {
             'broker': {
@@ -263,10 +251,26 @@ class StrategyInfoRestAPI(resource.Resource):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        results = {}
+        results = {
+            'messages': [],
+            'error': False
+        }
 
-        # @todo to add dynamically a new instrument
-        #       affinity, trade-mode, instrument quantity
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
+            command = content.get('command', "")
+
+            if command == "subscribe":
+                pass  # @todo
+                # results =
+            elif command == "unsubscribe":
+                pass  # @todo
+                # results =
+            else:
+                results['messages'].append("Missing command.")
+                results['error'] = True
+        except Exception as e:
+            logger.debug(e)
 
         return json.dumps(results).encode("utf-8")
 
@@ -275,8 +279,6 @@ class StrategyInfoRestAPI(resource.Resource):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
         results = {}
-
-        # @todo to remove dynamically an instrument
 
         return json.dumps(results).encode("utf-8")
 
@@ -299,7 +301,7 @@ class InstrumentRestAPI(resource.Resource):
         uri = request.uri.decode("utf-8").split('/')
         results = {}
 
-        # @todo get state info
+        # @todo get state info activity, affinity, trade-mode
 
         return json.dumps(results).encode("utf-8")
 
@@ -323,6 +325,8 @@ class InstrumentRestAPI(resource.Resource):
                 results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
             elif command == "affinity":
                 results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+            elif command == "trade-mode":
+                results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
             else:
                 results['messages'].append("Missing command.")
                 results['error'] = True
@@ -339,8 +343,6 @@ class InstrumentRestAPI(resource.Resource):
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         results = {}
-
-        # @todo remove an instrument and watcher subscription
 
         return json.dumps(results).encode("utf-8")
 
@@ -361,7 +363,7 @@ class StrategyTradeRestAPI(resource.Resource):
         self._allow_clean_trade = monitor_service.has_strategy_clean_trade_perm
 
     def render_GET(self, request):
-        # list active trade or trade specific
+        # list active/pending trades without theirs operations or a specific trade with its operations in details
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
@@ -369,6 +371,7 @@ class StrategyTradeRestAPI(resource.Resource):
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         trade_id = -1
+        market_id = None
 
         results = {
             'error': False,
@@ -382,9 +385,34 @@ class StrategyTradeRestAPI(resource.Resource):
             except ValueError:
                 return NoResource("Incorrect trade value")
 
+        if b'market-id' in request.args:
+            try:
+                market_id = request.args[b'market-id'][0].decode("utf-8")
+            except ValueError:
+                return NoResource("Incorrect market-id value")
+
         if trade_id > 0:
-            # @todo
-            results['data'] = None
+            with self._mutex:
+                strategy_trader = self._strategy_service.strategy.strategy_traders.get(market_id)
+                if strategy_trader is None:
+                    return NoResource("Unknown market-id %s" % market_id)
+
+                found_trade = None
+
+                with strategy_trader.trade_mutex:
+                    for trade in strategy_trader.trades:
+                        if trade.id == trade_id:
+                            found_trade = trade
+                            break
+
+                    if found_trade:
+                        # trade dumps with its operations
+                        trade_dumps = trade.dumps_notify_update(self._strategy_service.timestamp, strategy_trader)
+                        trade_dumps['operations'] = [operation.dumps() for operation in trade.operations]
+
+                        results['data'] = trade_dumps
+                    else:
+                        return NoResource("Unknown trade-id %s for market %s" % (trade_id, market_id))
         else:
             # current active trade list
             results['data'] = self._strategy_service.strategy().dumps_trades_update()
@@ -469,6 +497,7 @@ class HistoricalTradeRestAPI(resource.Resource):
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         trade_id = -1
+        market_id = None
 
         results = {
             'error': False,
@@ -482,11 +511,16 @@ class HistoricalTradeRestAPI(resource.Resource):
             except ValueError:
                 return NoResource("Incorrect trade value")
 
+        if b'market-id' in request.args:
+            try:
+                market_id = request.args[b'market-id'][0].decode("utf-8")
+            except ValueError:
+                return NoResource("Incorrect market-id value")
+
         if trade_id > 0:
-            # @todo
-            results['data'] = None
+            results['data'] = None  # @todo
         else:
-            # current active trade list
+            # historical trades list
             history_trades = self._strategy_service.strategy().dumps_trades_history()
 
             # sort by last realized exit trade timestamp
@@ -508,7 +542,7 @@ class StrategyAlertRestAPI(resource.Resource):
         self._allow_clean_alert = monitor_service.has_strategy_clean_trade_perm
 
     def render_GET(self, request):
-        # list active alert or alert specific
+        # list active alert or a specific alert
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
@@ -516,6 +550,7 @@ class StrategyAlertRestAPI(resource.Resource):
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
         alert_id = -1
+        market_id = None
 
         results = {
             'error': False,
@@ -529,12 +564,17 @@ class StrategyAlertRestAPI(resource.Resource):
             except ValueError:
                 return NoResource("Incorrect alert value")
 
+        if b'market-id' in request.args:
+            try:
+                market_id = request.args[b'market-id'][0].decode("utf-8")
+            except ValueError:
+                return NoResource("Incorrect market-id value")
+
         if alert_id > 0:
-            # @todo
-            results['data'] = None
+            results['data'] = None  # @todo
         else:
             # current active alert list
-            results['data'] = self._strategy_service.strategy().dumps_trades_update()
+            results['data'] = None  # @todo self._strategy_service.strategy().alerts
 
         return json.dumps(results).encode("utf-8")
 
@@ -555,9 +595,7 @@ class StrategyAlertRestAPI(resource.Resource):
                 if not self._allow_open_alert:
                     return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
-                # @todo
-                # results = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
-
+                results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
             else:
                 results['messages'].append("Missing command.")
                 results['error'] = True
@@ -574,15 +612,12 @@ class StrategyAlertRestAPI(resource.Resource):
         if not self._allow_clean_alert:
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
-        results = {
-            'messages': [],
-            'error': False
-        }
-
         content = json.loads(request.content.read().decode("utf-8"))
 
-        # @todo
-        # results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+        if content.get('action') != 'del-alert':
+            return json.dumps({'error': True, 'messages': ['inconsistent-content']}).encode("utf-8")
+
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
 
         return json.dumps(results).encode("utf-8")
 
@@ -693,9 +728,7 @@ class StrategyRegionRestAPI(resource.Resource):
                 if not self._allow_open_region:
                     return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
-                # @todo
-                # results = self._strategy_service.command(Strategy.COMMAND_TRADE_ENTRY, content)
-
+                results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
             else:
                 results['messages'].append("Missing command.")
                 results['error'] = True
