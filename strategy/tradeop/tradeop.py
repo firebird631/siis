@@ -2,14 +2,19 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
 # Strategy trade operation base class.
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from strategy.strategytrader import StrategyTrader
+
 import traceback
 
 from trader.trader import Trader
 
 from strategy.strategytrade import StrategyTrade
-from strategy.strategytrader import StrategyTrader
-
-from trader.order import Order
 
 import logging
 logger = logging.getLogger('siis.strategy.tradeop')
@@ -21,7 +26,6 @@ class TradeOp(object):
     """
     Strategy trade operation base class.
     """
-
     VERSION = "1.0.0"
 
     OP_UNDEFINED = 0
@@ -99,7 +103,6 @@ class TradeOp(object):
 
         @return True when the use counter reach zero. Meaning the operation must be removed.
         """
-
         # undefined trade
         if not trade:
             return False
@@ -348,7 +351,7 @@ class TradeTwoVarsOpCondStopLoss(TradeOp):
     OP = TradeOp.OP_TWO_VARS_CONDITION
     NAME = '2vars-cond-stop-loss'
 
-    def __init__(self, condition, variable):
+    def __init__(self, condition: int, variable: float):
         super().__init__(TradeOp.STAGE_EXIT)
 
         self._count = 1

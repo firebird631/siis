@@ -3,10 +3,20 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy base model and implementation
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from trader.trader import Trader
+
 import threading
 import time
 import collections
 
+from typing import Union, List, Dict
+
+from .alert.alert import Alert
 from terminal.terminal import Terminal
 
 from common.runnable import Runnable
@@ -20,32 +30,34 @@ from watcher.watcher import Watcher
 
 from database.database import Database
 
-from strategy.process import alphaprocess
+from .strategytrader import StrategyTrader
 
-from strategy.command.strategycmdexitalltrade import cmd_strategy_exit_all_trade
-from strategy.command.strategycmdmodifyall import cmd_strategy_trader_modify_all
-from strategy.command.strategycmdcancelallpendingtrade import cmd_strategy_cancel_all_pending_trade
-from strategy.command.strategycmdreinvestgain import cmd_strategy_reinvest_gain
+from .process import alphaprocess
 
-from strategy.command.strategycmdstrategytraderinfo import cmd_strategy_trader_info
-from strategy.command.strategycmdstrategytradermodify import cmd_strategy_trader_modify
-from strategy.command.strategycmdstrategytraderstream import cmd_strategy_trader_stream
-from strategy.command.strategycmdstrategytraderrestart import cmd_strategy_trader_restart
-from strategy.command.strategycmdstrategytraderrecheck import cmd_strategy_trader_recheck, \
+from .command.strategycmdexitalltrade import cmd_strategy_exit_all_trade
+from .command.strategycmdmodifyall import cmd_strategy_trader_modify_all
+from .command.strategycmdcancelallpendingtrade import cmd_strategy_cancel_all_pending_trade
+from .command.strategycmdreinvestgain import cmd_strategy_reinvest_gain
+
+from .command.strategycmdstrategytraderinfo import cmd_strategy_trader_info
+from .command.strategycmdstrategytradermodify import cmd_strategy_trader_modify
+from .command.strategycmdstrategytraderstream import cmd_strategy_trader_stream
+from .command.strategycmdstrategytraderrestart import cmd_strategy_trader_restart
+from .command.strategycmdstrategytraderrecheck import cmd_strategy_trader_recheck, \
     cmd_strategy_trader_recheck_all
-from strategy.command.strategycmdstrategytraderexport import cmd_strategy_trader_export, \
+from .command.strategycmdstrategytraderexport import cmd_strategy_trader_export, \
     cmd_strategy_trader_export_all
-from strategy.command.strategycmdstrategytraderimport import cmd_strategy_trader_import_all
+from .command.strategycmdstrategytraderimport import cmd_strategy_trader_import_all
 
-from strategy.command.strategycmdtradeassign import cmd_trade_assign
-from strategy.command.strategycmdtradeclean import cmd_trade_clean
-from strategy.command.strategycmdtradeentry import cmd_trade_entry
-from strategy.command.strategycmdtradeexit import cmd_trade_exit
-from strategy.command.strategycmdtradeinfo import cmd_trade_info
-from strategy.command.strategycmdtrademodify import cmd_trade_modify
-from strategy.command.strategycmdtradecheck import cmd_trade_check
+from .command.strategycmdtradeassign import cmd_trade_assign
+from .command.strategycmdtradeclean import cmd_trade_clean
+from .command.strategycmdtradeentry import cmd_trade_entry
+from .command.strategycmdtradeexit import cmd_trade_exit
+from .command.strategycmdtradeinfo import cmd_trade_info
+from .command.strategycmdtrademodify import cmd_trade_modify
+from .command.strategycmdtradecheck import cmd_trade_check
 
-from strategy.command.strategycmdtraderinfo import cmd_trader_info
+from .command.strategycmdtraderinfo import cmd_trader_info
 
 from monitor.streamable import Streamable, StreamMemberInt
 
@@ -93,10 +105,16 @@ class Strategy(Runnable):
     COMMAND_TRADER_EXPORT_ALL = 28
     COMMAND_TRADER_IMPORT_ALL = 29
 
-    def __init__(self, name,
-                 strategy_service, watcher_service, trader_service,
+    _strategy_traders: Dict[str, StrategyTrader]
+
+    def __init__(self, name: str,
+                 strategy_service,
+                 watcher_service,
+                 trader_service,
                  strategy_trader_clazz,
-                 options, default_parameters=None, user_parameters=None,
+                 options: dict,
+                 default_parameters=None,
+                 user_parameters=None,
                  processor=alphaprocess):
 
         super().__init__("st-%s" % name)
@@ -170,7 +188,7 @@ class Strategy(Runnable):
                 logger.error("Watcher %s not found during strategy __init__" % k)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
@@ -186,20 +204,20 @@ class Strategy(Runnable):
         return self._strategy_service
 
     @property
-    def identifier(self):
+    def identifier(self) -> str:
         """Unique strategy identifier"""
         return self._identifier
 
-    def set_identifier(self, identifier):
+    def set_identifier(self, identifier: str):
         """Unique strategy identifier"""
         self._identifier = identifier
 
     @property
-    def parameters(self):
+    def parameters(self) -> dict:
         """Configuration default merge with users"""
         return self._parameters
 
-    def specific_parameters(self, market_id):
+    def specific_parameters(self, market_id: str) -> dict:
         """Strategy trader parameters overloaded by per market-id specific if exists"""
         if market_id in self._parameters['markets']:
             return merge_parameters(self._parameters, self._parameters['markets'][market_id])
@@ -207,14 +225,14 @@ class Strategy(Runnable):
             return self._parameters
 
     @property
-    def mutex(self):
+    def mutex(self) -> threading.RLock:
         return self._mutex
 
     @property
-    def strategy_traders(self):
+    def strategy_traders(self) -> Dict[str, StrategyTrader]:
         return self._strategy_traders
 
-    def strategy_trader(self, market_id):
+    def strategy_trader(self, market_id: str) -> Union[StrategyTrader, None]:
         """Retrieve a strategy trader according to its unique market-id."""
         return self._strategy_traders.get(market_id)
 
@@ -222,7 +240,7 @@ class Strategy(Runnable):
     # monitoring notification
     #
 
-    def notify_signal(self, timestamp, signal, strategy_trader):
+    def notify_signal(self, timestamp: float, signal, strategy_trader):
         """
         Notify a strategy signal (entry/take-profit) to the user. It must be called by the strategy-trader.
         """
@@ -235,7 +253,7 @@ class Strategy(Runnable):
             elif signal.signal < 0:
                 self.service.notify(Signal.SIGNAL_STRATEGY_SIGNAL_EXIT, self._name, signal_data)
 
-    def notify_signal_exit(self, timestamp, signal, strategy_trader):
+    def notify_signal_exit(self, timestamp: float, signal, strategy_trader):
         """
         Notify a strategy signal (entry/take-profit) to the user. It must be called by the strategy-trader.
         """
@@ -243,7 +261,7 @@ class Strategy(Runnable):
             signal_data = signal.dumps_notify(timestamp, strategy_trader)
             self.service.notify(Signal.SIGNAL_STRATEGY_SIGNAL_EXIT, self._name, signal_data)
 
-    def notify_trade_entry(self, timestamp, trade, strategy_trader):
+    def notify_trade_entry(self, timestamp: float, trade, strategy_trader):
         """
         Notify a strategy trade entry to the user. It must be called by the strategy-trader.
         """
@@ -251,7 +269,7 @@ class Strategy(Runnable):
             signal_data = trade.dumps_notify_entry(timestamp, strategy_trader)
             self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_ENTRY, self._name, signal_data)
 
-    def notify_trade_exit(self, timestamp, trade, strategy_trader):
+    def notify_trade_exit(self, timestamp: float, trade, strategy_trader):
         """
         Notify a strategy trade exit to the user. It must be called by the strategy-trader.
         """
@@ -267,7 +285,7 @@ class Strategy(Runnable):
             signal_data = trade.dumps_notify_update(timestamp, strategy_trader)
             self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_UPDATE, self._name, signal_data)
 
-    def notify_trade_error(self, timestamp, trade_id, strategy_trader):
+    def notify_trade_error(self, timestamp: float, trade_id: int, strategy_trader):
         """
         Notify a strategy trade update to cause an unmanageable error to the user.
         It must be called by the strategy-trader.
@@ -281,7 +299,7 @@ class Strategy(Runnable):
             }
             self.service.notify(Signal.SIGNAL_STRATEGY_TRADE_ERROR, self._name, signal_data)
 
-    def notify_alert(self, timestamp, alert, result, strategy_trader):
+    def notify_alert(self, timestamp: float, alert: Alert, result: dict, strategy_trader):
         """
         Notify a strategy alert to the user. It must be called by the strategy-trader.
         """
@@ -289,7 +307,7 @@ class Strategy(Runnable):
             signal_data = alert.dumps_notify(timestamp, result, strategy_trader)
             self.service.notify(Signal.SIGNAL_STRATEGY_ALERT, self._name, signal_data)
 
-    def subscribe_stream(self, market_id, timeframe):
+    def subscribe_stream(self, market_id: str, timeframe: float) -> bool:
         """
         Override to create a specific streamer.
         """
@@ -300,7 +318,7 @@ class Strategy(Runnable):
 
         return strategy_trader.subscribe_stream(timeframe)
 
-    def unsubscribe_stream(self, market_id, timeframe):
+    def unsubscribe_stream(self, market_id: str, timeframe: float) -> bool:
         """
         Override to delete a specific streamer.
         """
@@ -316,7 +334,7 @@ class Strategy(Runnable):
     #
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> float:
         """
         Current time or last time if backtesting
         """
@@ -326,10 +344,10 @@ class Strategy(Runnable):
             return time.time()
 
     @property
-    def cpu_load(self):
+    def cpu_load(self) -> float:
         return self._cpu_load
 
-    def check_watchers(self):
+    def check_watchers(self) -> bool:
         """
         Returns true if all watchers are retrieved and connected.
         """
@@ -414,7 +432,7 @@ class Strategy(Runnable):
     # strategy-trader processing
     #
 
-    def create_trader(self, instrument):
+    def create_trader(self, instrument: Instrument):
         return self._strategy_trader_clazz(self, instrument, self.specific_parameters(instrument.market_id))
 
     def preset(self):
@@ -523,7 +541,7 @@ class Strategy(Runnable):
         # one done once after startup and first connection
         self._preset = True
 
-    def start(self, options):
+    def start(self, options: dict) -> bool:
         if super().start(options):
             # reset data
             self.reset()
@@ -565,7 +583,7 @@ class Strategy(Runnable):
                 for k, strategy_trader in self._strategy_traders.items():
                     strategy_trader.save()
 
-    def indicator(self, name):
+    def indicator(self, name: str):
         """
         Get an indicator by its name
         """
@@ -598,7 +616,7 @@ class Strategy(Runnable):
         """
         return self._trader
 
-    def mapped_instrument(self, symbol):
+    def mapped_instrument(self, symbol: str) -> Union[Instrument, None]:
         """
         Return the string name of the market-id relating the symbol.
         """
@@ -624,7 +642,7 @@ class Strategy(Runnable):
     # symbols/instruments accessors
     #
 
-    def symbols_ids(self):
+    def symbols_ids(self) -> List[str]:
         """
         Returns the complete list containing market-ids, theirs alias and theirs related symbol name.
         """
@@ -646,7 +664,7 @@ class Strategy(Runnable):
 
         return names
 
-    def instruments_ids(self):
+    def instruments_ids(self) -> List[str]:
         """
         Returns the complete list containing market-ids (instruments only).
         """
@@ -660,7 +678,7 @@ class Strategy(Runnable):
 
         return names
 
-    def instrument(self, symbol_or_market_id):
+    def instrument(self, symbol_or_market_id: str) -> Union[Instrument, None]:
         """
         Return the mapped instrument data from the watcher/strategy adapted to the trader
         """
@@ -680,7 +698,7 @@ class Strategy(Runnable):
 
         return None
 
-    def symbol_for_market_id(self, market_id):
+    def symbol_for_market_id(self, market_id: str) -> Union[str, None]:
         if self._trader_conf is None or not self._trader_conf.get('instruments'):
             return None
 
@@ -691,7 +709,7 @@ class Strategy(Runnable):
 
         return None
 
-    def find_instrument(self, symbol_or_market_id):
+    def find_instrument(self, symbol_or_market_id: str) -> Union[Instrument, None]:
         """
         Return instrument from its market-id or name or symbol or alias.
         """
@@ -714,7 +732,7 @@ class Strategy(Runnable):
     # strategy-trader profiles/context
     #
 
-    def contexts_ids(self, market_id):
+    def contexts_ids(self, market_id: str) -> List[str]:
         contexts_ids = []
 
         if not market_id:
@@ -732,7 +750,7 @@ class Strategy(Runnable):
 
         return contexts_ids
 
-    def dumps_context(self, market_id, context_id):
+    def dumps_context(self, market_id: str, context_id: str):
         context = None
 
         if not market_id or not context_id:
@@ -754,7 +772,7 @@ class Strategy(Runnable):
     # feeder for backtesting
     #
 
-    def feeder(self, market_id):
+    def feeder(self, market_id: str):
         return self._feeders.get(market_id)
 
     def add_feeder(self, feeder):
@@ -772,14 +790,14 @@ class Strategy(Runnable):
     #
 
     @property
-    def base_timeframe(self):
+    def base_timeframe(self) -> float:
         """
         Return the base timeframe at which the strategy process, and accept ticks or candles data from signals.
         Default returns at tick level. Override this method to change this value.
         """
         return Instrument.TF_TICK
 
-    def send_initialize_strategy_trader(self, market_id):
+    def send_initialize_strategy_trader(self, market_id: str):
         """
         Force to wakeup a strategy-trader. This could be useful when the market is sleeping and there is
         a user operation to perform.
@@ -798,7 +816,7 @@ class Strategy(Runnable):
         else:
             self._add_signal(signal)
 
-    def send_update_strategy_trader(self, market_id):
+    def send_update_strategy_trader(self, market_id: str):
         """
         Force to wakeup a strategy-trader. This could be useful when the market is sleeping and there is
         a user operation to perform.
@@ -817,7 +835,7 @@ class Strategy(Runnable):
         else:
             self._add_signal(signal)
 
-    def update(self):
+    def update(self) -> bool:
         """
         Does not override this method. Internal update mechanism.
         """
@@ -1154,11 +1172,11 @@ class Strategy(Runnable):
     # backtesting
     #
 
-    def query_backtest_update(self, timestamp, total_ts):
+    def query_backtest_update(self, timestamp: float, total_ts: float):
         with self._mutex:
             self._next_backtest_update = (timestamp, total_ts)
 
-    def backtest_update_instrument(self, trader, strategy_trader, timestamp):
+    def backtest_update_instrument(self, trader: Trader, strategy_trader: StrategyTrader, timestamp: float):
         # retrieve the feeder by market_id
         instrument = strategy_trader.instrument
 
@@ -1179,7 +1197,7 @@ class Strategy(Runnable):
         if updated:
             self._update_strategy(self, strategy_trader)
 
-    def backtest_update(self, timestamp, total_ts):
+    def backtest_update(self, timestamp: float, total_ts: float):
         """
         Process the backtesting update, for any instrument feeds candles to instruments and does the necessary updates.
         Override only if necessary. This default implementation should suffice.
@@ -1217,7 +1235,7 @@ class Strategy(Runnable):
         self._last_done_ts = 0
         self._timestamp = 0
 
-    def backtest_ready(self):
+    def backtest_ready(self) -> bool:
         """
         Must return True once the strategy is ready te begin for the backtesting.
         Override only if necessary. This default implementation should suffice.
@@ -1246,7 +1264,7 @@ class Strategy(Runnable):
     # setup and processing state and condition
     #
 
-    def finished(self):
+    def finished(self) -> bool:
         """
         In backtesting return True once all data are consumed.
         """
@@ -1264,7 +1282,7 @@ class Strategy(Runnable):
 
         return finished
 
-    def progress(self):
+    def progress(self) -> float:
         """
         During backtesting return the last processed timestamp.
         """
@@ -1278,7 +1296,7 @@ class Strategy(Runnable):
     # signals/slots
     #
 
-    def _add_signal(self, signal):
+    def _add_signal(self, signal: Signal):
         if self._condition.acquire(timeout=1.0):
             self._signals.append(signal)
             self._condition.notify()
@@ -1290,7 +1308,7 @@ class Strategy(Runnable):
         #     self._signals.append(signal)
         #     self._condition.notify()
 
-    def receiver(self, signal):
+    def receiver(self, signal: Signal):
         if signal.source == Signal.SOURCE_STRATEGY:
             if signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                 if signal.data[0] not in self._strategy_traders:
@@ -1370,7 +1388,7 @@ class Strategy(Runnable):
                 # signal of interest
                 self._add_signal(signal)
 
-    def position_signal(self, signal_type, data):
+    def position_signal(self, signal_type: int, data: dict):
         """
         Receive of the position signals. Dispatch if mapped instrument.
         """
@@ -1378,7 +1396,7 @@ class Strategy(Runnable):
         if strategy_trader:
             strategy_trader.position_signal(signal_type, data)
 
-    def order_signal(self, signal_type, data):
+    def order_signal(self, signal_type: int, data: dict):
         """
         Receive of the order signals. Dispatch if mapped instrument.
         """
@@ -1390,7 +1408,7 @@ class Strategy(Runnable):
     # helpers
     #
 
-    def dumps_trades_update(self):  # -> list[dict]:
+    def dumps_trades_update(self) -> List[dict]:
         """
         Dumps trade update notify of any trades of any strategy traders.
         """
@@ -1405,7 +1423,7 @@ class Strategy(Runnable):
 
         return trades
 
-    def dumps_trades_history(self):  # -> list[dict]:
+    def dumps_trades_history(self) -> List[dict]:
         """
         Dumps trade records of any historical trades of any strategy traders. Not sorted.
         """
@@ -1424,7 +1442,7 @@ class Strategy(Runnable):
     # commands
     #
 
-    def command(self, command_type, data):
+    def command(self, command_type: int, data: dict) -> Union[dict, None]:
         """
         Apply a command to the strategy and return a results dict or an array of dict or None.
         """
@@ -1477,7 +1495,7 @@ class Strategy(Runnable):
 
         return None
 
-    def strategy_trader_command(self, label, data, func):
+    def strategy_trader_command(self, label: str, data: dict, func: callable) -> Union[dict, None]:
         # manually trade modify a trader state, or manage alerts
         market_id = data.get('market-id')
 
@@ -1510,7 +1528,7 @@ class Strategy(Runnable):
 
         return None
 
-    def trade_command(self, label, data, func):
+    def trade_command(self, label: name, data: dict, func: callable) -> Union[dict, None]:
         # manually trade modify a trade (add/remove an operation)
         market_id = data.get('market-id')
 
@@ -1548,7 +1566,7 @@ class Strategy(Runnable):
     #
 
     @staticmethod
-    def parse_parameters(parameters):
+    def parse_parameters(parameters: dict) -> dict:
         def convert(_param, _key):
             _param.setdefault(_key, None)
 

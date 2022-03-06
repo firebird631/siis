@@ -4,7 +4,7 @@
 # Strategy trade region.
 
 from datetime import datetime
-from common.utils import timeframe_to_str, timeframe_from_str
+from common.utils import timeframe_to_str
 
 
 class Region(object):
@@ -31,7 +31,7 @@ class Region(object):
     NAME = "undefined"
     REGION = REGION_UNDEFINED
 
-    def __init__(self, created, stage, direction, timeframe):
+    def __init__(self, created: float, stage: int, direction: int, timeframe: float):
         self._id = -1                # operation unique identifier
         self._created = created      # creation timestamp (always defined)
         self._stage = stage          # apply on entry, exit or both signal stage
@@ -44,21 +44,21 @@ class Region(object):
     #
 
     @classmethod
-    def name(cls):
+    def name(cls) -> str:
         """
         String type name of the region.
         """
         return cls.NAME
 
     @classmethod
-    def region(cls):
+    def region(cls) -> int:
         """
         Integer type of region.
         """
         return cls.REGION
 
     @classmethod
-    def version(cls):
+    def version(cls) -> str:
         return cls.VERSION
 
     @property
@@ -69,42 +69,42 @@ class Region(object):
         return self._id
 
     @property
-    def created(self):
+    def created(self) -> float:
         """
         Creation timestamp.
         """
         return self._created
 
     @property
-    def stage(self):
+    def stage(self) -> int:
         """
         Zone for entry, exit or both
         """
         return self._stage
 
     @property
-    def direction(self):
+    def direction(self) -> int:
         """
         Direction of the allowed signals, long, short of both.
         """
         return self._dir
 
     @property
-    def dir(self):
+    def dir(self) -> int:
         """
         Direction of the allowed signals, long, short of both.
         """
         return self._dir
 
     @property
-    def expiry(self):
+    def expiry(self) -> float:
         """
         Expiry timestamp in second.
         """
         return self._expiry
 
     @property
-    def timeframe(self):
+    def timeframe(self) -> float:
         """
         Timeframe to check for.
         """
@@ -114,17 +114,17 @@ class Region(object):
     # setters
     #
 
-    def set_id(self, _id):
+    def set_id(self, _id: float):
         self._id = _id
 
-    def set_expiry(self, expiry):
+    def set_expiry(self, expiry: float):
         self._expiry = expiry
 
     #
     # processing
     #
 
-    def test_region(self, timestamp, signal):
+    def test_region(self, timestamp: float, signal):
         """
         Each time the market price change perform to this test. If the test pass then
         it is executed and removed from the list or kept if its a persistent operation.
@@ -153,26 +153,26 @@ class Region(object):
     # overrides
     #
 
-    def init(self, parameters):
+    def init(self, parameters: dict):
         """
         Override this method to setup region parameters from the parameters dict.
         """
         pass
 
-    def check(self):
+    def check(self) -> bool:
         """
         Perform an integrity check on the data defined to the region.
         @return True if the check pass.
         """
         return True
 
-    def test(self, timestamp, signal_price):
+    def test(self, timestamp: float, signal_price: float) -> bool:
         """
         Perform the test of the region on the signal price.
         """
         return False
 
-    def can_delete(self, timestamp, bid, ask):
+    def can_delete(self, timestamp: float, bid: float, ask: float) -> bool:
         """
         By default perform a test on expiration time, but more deletion cases can be added,
         like a cancellation price trigger.
@@ -183,13 +183,13 @@ class Region(object):
         """
         return 0 < self._expiry <= timestamp
 
-    def str_info(self):
+    def str_info(self) -> str:
         """
         Override this method to implement the single line message info of the region.
         """
         return ""
 
-    def parameters(self):
+    def parameters(self) -> dict:
         """
         Override this method and add specific parameters to be displayed into an UI or a table.
         """
@@ -204,7 +204,7 @@ class Region(object):
             'expiry': self.expiry_to_str()
         }
 
-    def dumps(self):
+    def dumps(self) -> dict:
         """
         Override this method and add specific parameters for dumps parameters for persistence model.
         """
@@ -220,7 +220,7 @@ class Region(object):
             'expiry': self._expiry,     # datetime.utcfromtimestamp(self._expiry).strftime('%Y-%m-%dT%H:%M:%SZ'),
         }
 
-    def loads(self, data):
+    def loads(self, data: dict):
         """
         Override this method and add specific parameters for loads parameters from persistence model.
         """
@@ -231,7 +231,7 @@ class Region(object):
         self._timeframe = data.get('timeframe', 0.0)   # timeframe_from_str(data.get('timeframe', 't'))
         self._expiry = data.get('expiry', 0.0)    # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
 
-    def stage_to_str(self):
+    def stage_to_str(self) -> str:
         if self._stage == Region.STAGE_ENTRY:
             return "entry"
         elif self._stage == Region.STAGE_EXIT:
@@ -241,7 +241,7 @@ class Region(object):
         else:
             return "both"
 
-    def stage_from_str(self, stage_str):
+    def stage_from_str(self, stage_str: str) -> int:
         if stage_str == "entry":
             return Region.STAGE_ENTRY
         elif stage_str == "exit":
@@ -251,7 +251,7 @@ class Region(object):
         else:
             return Region.STAGE_BOTH
 
-    def direction_to_str(self):
+    def direction_to_str(self) -> str:
         if self._dir == Region.LONG:
             return "long"
         elif self._dir == Region.SHORT:
@@ -261,7 +261,7 @@ class Region(object):
         else:
             return "both"
 
-    def direction_from_str(self, direction_str):
+    def direction_from_str(self, direction_str: str) -> int:
         if direction_str == "long":
             return Region.LONG
         elif direction_str == "short":
@@ -271,30 +271,30 @@ class Region(object):
         else:
             return Region.BOTH
 
-    def timeframe_to_str(self):
+    def timeframe_to_str(self) -> str:
         if self._timeframe > 0:
             return timeframe_to_str(self._timeframe)
         else:
             return "any"
 
-    def created_to_str(self):
+    def created_to_str(self) -> str:
         """In local time"""
         return datetime.fromtimestamp(self._created).strftime('%Y-%m-%d %H:%M:%S')
 
-    def expiry_to_str(self):
+    def expiry_to_str(self) -> str:
         """In local time"""
         if self._expiry > 0:
             return datetime.fromtimestamp(self._expiry).strftime('%Y-%m-%d %H:%M:%S')
         else:
             return "never"
 
-    def cancellation_str(self):
+    def cancellation_str(self) -> str:
         """
         Dump a string with region cancellation details.
         """
         return ""
 
-    def condition_str(self):
+    def condition_str(self) -> str:
         """
         Dump a string with region condition simplified details.
         """

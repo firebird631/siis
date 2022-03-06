@@ -1289,7 +1289,7 @@ class Instrument(object):
     #
 
     @staticmethod
-    def basetime(tf, timestamp):
+    def basetime(tf: float, timestamp: float) -> float:
         if tf <= 0.0:
             return timestamp
         elif tf < 7*24*60*60:
@@ -1306,4 +1306,4 @@ class Instrument(object):
             dt = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
             return dt.timestamp()
 
-        return 0
+        return 0.0

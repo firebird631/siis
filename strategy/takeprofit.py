@@ -5,7 +5,7 @@
 
 import numpy as np
 
-from strategy.strategytradercontext import StrategyTraderContext
+from .strategytradercontext import StrategyTraderContext
 
 
 def search_std_atrsr(direction, timeframe, orientation, depth, price, epsilon=0.0):

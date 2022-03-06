@@ -52,21 +52,21 @@ class Streamable(object):
         self._activity = False
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._stream_name
 
     @property
-    def activity(self):
+    def activity(self) -> bool:
         return self._activity
 
     def add_member(self, member):
         self._members[member.name] = member
 
-    def remove_member(self, member_name):
+    def remove_member(self, member_name: str):
         if member_name in self._members:
             del self._members[member_name]
 
-    def member(self, member_name):
+    def member(self, member_name: str):
         return self._members.get(member_name)
 
     def publish(self):
@@ -85,7 +85,7 @@ class Streamable(object):
         if self._count > 0:
             self._count -= 1
 
-    def is_free(self):
+    def is_free(self) -> bool:
         return self._count == 0
 
 
@@ -378,7 +378,7 @@ class StreamMemberTradeSignal(StreamMember):
 
 class StreamMemberStrategyAlert(StreamMember):
     """
-    Specialization for a strategy alert.
+    Specialization for a strategy triggered alert signal.
     """
 
     TYPE_STRATEGY_ALERT = "sa"
@@ -396,6 +396,116 @@ class StreamMemberStrategyAlert(StreamMember):
 
     def content(self):
         return {'n': self._name, 't': self._type, 'v': self._alert, 'b': self._timestamp}
+
+
+class StreamMemberStrategyAlertCreate(StreamMember):
+    """
+    Specialization for a strategy active alert creation.
+    """
+
+    TYPE_STRATEGY_ALERT_CREATE = "ca"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberStrategyAlertCreate.TYPE_STRATEGY_ALERT_CREATE)
+
+        self._timestamp = 0.0
+        self._alert_data = {}
+
+    def update(self, strategy_trader, active_alert, result, timestamp):
+        self._alert_data = active_alert.dumps()
+        self._timestamp = timestamp
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._alert_data, 'b': self._timestamp}
+
+
+class StreamMemberStrategyAlertRemove(StreamMember):
+    """
+    Specialization for a strategy active alert removed.
+    """
+
+    TYPE_STRATEGY_ALERT_REMOVE = "ra"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberStrategyAlertRemove.TYPE_STRATEGY_ALERT_REMOVE)
+
+        self._timestamp = 0.0
+        self._active_alert_id = -1
+
+    def update(self, strategy_trader, active_alert_id, result, timestamp):
+        self._active_alert_id = active_alert_id
+        self._timestamp = timestamp
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._active_alert_id, 'b': self._timestamp}
+
+
+class StreamMemberStrategyRegion(StreamMember):
+    """
+    Specialization for a strategy region.
+    """
+
+    TYPE_STRATEGY_REGION = "sr"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberStrategyRegion.TYPE_STRATEGY_REGION)
+
+        self._timestamp = 0.0
+        self._alert = {}
+
+    def update(self, strategy_trader, alert, result, timestamp):
+        self._alert = alert.dumps_notify(timestamp, result, strategy_trader)
+        self._timestamp = timestamp
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._alert, 'b': self._timestamp}
+
+
+class StreamMemberStrategyRegionCreate(StreamMember):
+    """
+    Specialization for a strategy active region creation.
+    """
+
+    TYPE_STRATEGY_REGION_CREATE = "cr"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberStrategyRegionCreate.TYPE_STRATEGY_REGION_CREATE)
+
+        self._timestamp = 0.0
+        self._region_data = {}
+
+    def update(self, strategy_trader, region_alert, result, timestamp):
+        self._region_data = region_alert.dumps()
+        self._timestamp = timestamp
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._region_data, 'b': self._timestamp}
+
+
+class StreamMemberStrategyRegionRemove(StreamMember):
+    """
+    Specialization for a strategy active region removed.
+    """
+
+    TYPE_STRATEGY_REGION_REMOVE = "rr"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberStrategyRegionRemove.TYPE_STRATEGY_REGION_REMOVE)
+
+        self._timestamp = 0.0
+        self._active_region_id = -1
+
+    def update(self, strategy_trader, active_region_id, result, timestamp):
+        self._active_region_id = active_region_id
+        self._timestamp = timestamp
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._active_region_id, 'b': self._timestamp}
 
 
 class StreamMemberSerie(StreamMember):

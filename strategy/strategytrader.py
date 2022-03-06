@@ -3,27 +3,39 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy trader base class.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .strategy import Strategy
+    from .alert.alert import Alert
+    from .region.region import Region
+    from .tradeop.tradeop import TradeOp
+    from trader.trader import Trader
+
 import pathlib
 import threading
 import time
 import traceback
 
 from datetime import datetime
-from typing import Optional
+from typing import Union, Optional, List
 
-from strategy.strategyassettrade import StrategyAssetTrade
-from strategy.strategyindmargintrade import StrategyIndMarginTrade
-from strategy.strategymargintrade import StrategyMarginTrade
-from strategy.strategypositiontrade import StrategyPositionTrade
-from strategy.strategytrade import StrategyTrade
+from .strategyassettrade import StrategyAssetTrade
+from .strategyindmargintrade import StrategyIndMarginTrade
+from .strategymargintrade import StrategyMarginTrade
+from .strategypositiontrade import StrategyPositionTrade
+from .strategytrade import StrategyTrade
 
-from strategy.strategytradercontext import StrategyTraderContext
+from .strategytradercontext import StrategyTraderContext, StrategyTraderContextBuilder
 
-from strategy.indicator.models import Limits
+from .indicator.models import Limits
 
 from instrument.instrument import Instrument
 
 from common.utils import timeframe_to_str
+from strategy.strategysignal import StrategySignal
 from terminal.terminal import Terminal
 
 from database.database import Database
@@ -39,7 +51,6 @@ class StrategyTrader(object):
     """
     A strategy can manage multiple instrument. Strategy trader is on of the managed instruments.
     """
-
     MARKET_TYPE_MAP = {
         'asset': Instrument.TRADE_SPOT,
         'spot': Instrument.TRADE_SPOT,
@@ -56,7 +67,9 @@ class StrategyTrader(object):
         'verbose': REPORTING_VERBOSE,
     }
 
-    def __init__(self, strategy, instrument):
+    _trade_context_builder: Union[StrategyTraderContextBuilder, None]
+
+    def __init__(self, strategy: Strategy, instrument: Instrument):
         self.strategy = strategy
         self.instrument = instrument
 
@@ -98,6 +111,7 @@ class StrategyTrader(object):
         self._trade_exit_streamer = None
         self._signal_streamer = None
         self._alert_streamer = None
+        self._region_streamer = None
 
         self._reporting = StrategyTrader.REPORTING_NONE
         self._report_filename = None
@@ -135,7 +149,9 @@ class StrategyTrader(object):
     def mutex(self):
         return self._mutex
 
-    def check_option(self, option, value):
+    def check_option(self,
+                     option: Union[str, None],
+                     value: Union[int, float, str, None]) -> Union[str, None]:
         """
         Check for a local option. Validate the option name and value format.
         @return None or a str with the message of the error.
@@ -266,7 +282,9 @@ class StrategyTrader(object):
 
         return None
 
-    def set_option(self, option, value):
+    def set_option(self,
+                   option: Union[str, None],
+                   value: Union[int, float, str, None]) -> bool:
         """
         Set for a local option. Validate the option name and value format and apply it.
         @return True if the option was modified.
@@ -492,27 +510,27 @@ class StrategyTrader(object):
     #
 
     @property
-    def activity(self):
+    def activity(self) -> bool:
         """
         Strategy trader Local state.
         """
         return self._activity
 
-    def set_activity(self, status):
+    def set_activity(self, status: bool):
         """
         Enable/disable execution of the automated orders.
         """
         self._activity = status
 
     @property
-    def affinity(self):
+    def affinity(self) -> int:
         """
         Strategy trader affinity rate.
         """
         return self._affinity
 
     @affinity.setter
-    def affinity(self, affinity):
+    def affinity(self, affinity: int):
         """
         Set strategy trader affinity rate.
         """
@@ -539,23 +557,23 @@ class StrategyTrader(object):
     # pre-processing
     #
 
-    def preprocess_load_cache(self, from_date, to_date):
+    def preprocess_load_cache(self, from_date: datetime, to_date: datetime):
         """
         Override this method to load the cached data before performing preprocess.
         """
         pass
 
-    def preprocess(self, trade):
+    def preprocess(self, trade: StrategyTrade):
         """
         Override this method to preprocess trade per trade each most recent data than the cache.
         """
         pass
 
-    def preprocess_store_cache(self, from_date, to_date):
+    def preprocess_store_cache(self, from_date: datetime, to_date: datetime):
         """
         Override this method to store in cache the preprocessed data.
         """
-        pass   
+        pass
 
     #
     # processing
@@ -570,7 +588,7 @@ class StrategyTrader(object):
         """
         pass
 
-    def bootstrap(self, timestamp):
+    def bootstrap(self, timestamp: float):
         """
         Override this method to do all the initial strategy work using the preloaded OHLCs history.
         No trade must be done here, but signal pre-state could be computed.
@@ -580,7 +598,7 @@ class StrategyTrader(object):
         """
         pass
 
-    def process(self, timestamp):
+    def process(self, timestamp: float):
         """
         Override this method to do her all the strategy work.
         You must call the update_trades method during the process in way to manage the trades.
@@ -589,7 +607,7 @@ class StrategyTrader(object):
         """
         pass
 
-    def check_trades(self, timestamp):
+    def check_trades(self, timestamp: float):
         """
         Recheck actives or pending trades. Useful after a reconnection.
         """
@@ -689,7 +707,7 @@ class StrategyTrader(object):
                 trader.name, trader.account.name, self.instrument.market_id,
                 self.strategy.identifier, self.activity, trader_data, regions_data, alerts_data))
 
-    def dumps(self):
+    def dumps(self) -> dict:
         """
         Trader state, context and trades persistence.
         """
@@ -731,7 +749,7 @@ class StrategyTrader(object):
             'alerts': alerts_data
         }
 
-    def loads(self, data, regions, alerts, force_id=False):
+    def loads(self, data: dict, regions: List[Region], alerts: List[Alert], force_id: bool = False):
         """
         Load strategy trader state and regions.
         @param data: Strategy-trader data dump dict
@@ -802,7 +820,8 @@ class StrategyTrader(object):
             else:
                 error_logger.error("During loads, unsupported alert %s" % a['name'])
 
-    def loads_trade(self, trade_id, trade_type, data, operations, check=False, force_id=False):
+    def loads_trade(self, trade_id: int, trade_type: int, data: dict, operations: List[TradeOp],
+                    check: bool = False, force_id: bool = False):
         """
         Load a strategy trader trade and its operations.
         There is many scenarios where the trade state changed, trade executed, order modified or canceled...
@@ -1095,12 +1114,7 @@ class StrategyTrader(object):
                     trade.update_stats(self.instrument, timestamp)
 
                     # stream
-                    if self._trade_update_streamer:
-                        try:
-                            self._trade_update_streamer.member('trade-update').update(self, trade, timestamp)
-                            self._trade_update_streamer.publish()
-                        except Exception as e:
-                            logger.error(repr(e))
+                    self.stream_trade_update(timestamp, trade)
 
                 #
                 # asset trade
@@ -1739,7 +1753,7 @@ class StrategyTrader(object):
 
         return self.apply_trade_context(trade, context)
 
-    def contexts_ids(self) -> list:
+    def contexts_ids(self) -> List[str]:
         """
         Returns the list of context ids.
         Must be override.
@@ -1855,7 +1869,7 @@ class StrategyTrader(object):
             except Exception as e:
                 error_logger.error(repr(e))
 
-    def report(self, trade, is_entry):
+    def report(self, trade: StrategyTrade, is_entry: bool):
         """
         Override this method to write trade entry (when is_entry is True) and exit.
         """
@@ -1871,7 +1885,7 @@ class StrategyTrader(object):
     # checks
     #
 
-    def compute_asset_quantity(self, trader, price, trade_quantity=0.0):
+    def compute_asset_quantity(self, trader: Trader, price: float, trade_quantity: float = 0.0) -> float:
         quantity = 0.0
 
         if not trade_quantity:
@@ -1898,7 +1912,7 @@ class StrategyTrader(object):
 
         return quantity
 
-    def compute_margin_quantity(self, trader, price, trade_quantity=0.0):
+    def compute_margin_quantity(self, trader: Trader, price: float, trade_quantity: float = 0.0) -> float:
         quantity = 0.0
 
         if not trade_quantity:
@@ -1924,7 +1938,7 @@ class StrategyTrader(object):
 
         return quantity
 
-    def check_min_notional(self, order_quantity, order_price):
+    def check_min_notional(self, order_quantity: float, order_price: float) -> bool:
         if order_quantity <= 0 or order_quantity * order_price < self.instrument.min_notional:
             # min notional not reached
             msg = "Min notional not reached for %s, order %s%s => %s%s but need %s%s" % (
@@ -1940,7 +1954,7 @@ class StrategyTrader(object):
 
         return True
 
-    def has_max_trades(self, max_trades, same_timeframe=0, same_timeframe_num=0):
+    def has_max_trades(self, max_trades: int, same_timeframe: int = 0, same_timeframe_num: int = 0) -> bool:
         """
         @param max_trades Max simultaneous trades for this instrument.
         @param same_timeframe Compared timeframe.
@@ -1969,7 +1983,7 @@ class StrategyTrader(object):
 
         return False
 
-    def has_max_trades_by_context(self, max_trades, same_context=None):
+    def has_max_trades_by_context(self, max_trades: int, same_context: Optional[StrategyTraderContext] = None) -> bool:
         """
         @param max_trades Max simultaneous trades for this instrument or context or 0.
         @param same_context Context to check with
@@ -2011,10 +2025,10 @@ class StrategyTrader(object):
         return False
 
     #
-    # notification
+    # notification helpers
     #
 
-    def notify_signal(self, timestamp, signal):
+    def notify_signal(self, timestamp: float, signal: StrategySignal):
         if signal:
             # system notification
             self.strategy.notify_signal(timestamp, signal, self)
@@ -2027,7 +2041,7 @@ class StrategyTrader(object):
                 except Exception as e:
                     logger.error(repr(e))
 
-    def notify_trade_entry(self, timestamp, trade):
+    def notify_trade_entry(self, timestamp: float, trade: StrategyTrade):
         if trade:
             # system notification
             self.strategy.notify_trade_entry(timestamp, trade, self)
@@ -2049,7 +2063,7 @@ class StrategyTrader(object):
                 with self._mutex:
                     self._handlers[trade.context.name].on_trade_opened(self, trade)
 
-    def notify_trade_update(self, timestamp, trade):
+    def notify_trade_update(self, timestamp: float, trade: StrategyTrade):
         if trade:
             # system notification
             self.strategy.notify_trade_update(timestamp, trade, self)
@@ -2062,7 +2076,7 @@ class StrategyTrader(object):
                 except Exception as e:
                     logger.error(repr(e))
 
-    def notify_trade_exit(self, timestamp, trade):
+    def notify_trade_exit(self, timestamp: float, trade: StrategyTrade):
         if trade:
             # system notification
             self.strategy.notify_trade_exit(timestamp, trade, self)
@@ -2084,12 +2098,14 @@ class StrategyTrader(object):
                 with self._mutex:
                     self._handlers[trade.context.name].on_trade_exited(self, trade)
 
-    def notify_trade_error(self, timestamp, trade):
+    def notify_trade_error(self, timestamp: float, trade: StrategyTrade):
         if trade:
             # system notification
             self.strategy.notify_trade_error(timestamp, trade.id, self)
 
-    def notify_alert(self, timestamp, alert, result):
+            # @todo could have a stream
+
+    def notify_alert(self, timestamp: float, alert: Alert, result: dict):
         if alert and result:
             # system notification
             self.strategy.notify_alert(timestamp, alert, result, self)
@@ -2101,3 +2117,47 @@ class StrategyTrader(object):
                     self._alert_streamer.publish()
                 except Exception as e:
                     logger.error(repr(e))
+
+    #
+    # stream helpers
+    #
+
+    def stream_trade_update(self, timestamp: float, trade: StrategyTrade):
+        if self._trade_update_streamer:
+            try:
+                self._trade_update_streamer.member('trade-update').update(self, trade, timestamp)
+                self._trade_update_streamer.publish()
+            except Exception as e:
+                logger.error(repr(e))
+
+    def stream_alert_create(self, timestamp: float, alert: Alert):
+        if self._alert_streamer:
+            try:
+                self._alert_streamer.member('add-alert').update(self, alert, timestamp)
+                self._alert_streamer.publish()
+            except Exception as e:
+                logger.error(repr(e))
+
+    def stream_alert_remove(self, timestamp: float, alert_id: int):
+        if self._alert_streamer:
+            try:
+                self._alert_streamer.member('rm-alert').update(self, alert_id, timestamp)
+                self._alert_streamer.publish()
+            except Exception as e:
+                logger.error(repr(e))
+
+    def stream_region_create(self, timestamp: float, region: Region):
+        if self._region_streamer:
+            try:
+                self._region_streamer.member('add-region').update(self, region, timestamp)
+                self._region_streamer.publish()
+            except Exception as e:
+                logger.error(repr(e))
+
+    def stream_region_remove(self, timestamp: float, region_id: int):
+        if self._region_streamer:
+            try:
+                self._region_streamer.member('rm-region').update(self, region_id, timestamp)
+                self._region_streamer.publish()
+            except Exception as e:
+                logger.error(repr(e))

@@ -3,11 +3,17 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Strategy alert base model
 
-from datetime import datetime
-from common.signal import Signal
+from __future__ import annotations
 
-from trader.order import Order, order_type_to_str
-from common.utils import timeframe_to_str, direction_to_str
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from strategy.strategytrader import StrategyTrader
+
+from typing import Union
+from datetime import datetime
+
+from common.utils import timeframe_to_str
 
 from instrument.instrument import Instrument
 
@@ -41,23 +47,23 @@ class Alert(object):
     NAME = "undefined"
     REGION = ALERT_UNDEFINED
 
-    def __init__(self, created, timeframe):
+    def __init__(self, created: float, timeframe: float):
         self._id = -1                # alert unique identifier
         self._created = created      # creation timestamp (always defined)
-        self._expiry = 0             # expiration timestamp (<=0 never)
+        self._expiry = 0.0           # expiration timestamp (<=0 never)
         self._countdown = -1         # max trigger occurrences, -1 mean forever (until expiry)
         self._timeframe = timeframe  # specific timeframe or 0 for any
         self._message = ""           # optional user short message
 
     @classmethod
-    def name(cls):
+    def name(cls) -> str:
         """
         String type name of the alert.
         """
         return cls.NAME
 
     @classmethod
-    def alert(cls):
+    def alert(cls) -> int:
         """
         Integer type of alert.
         """
@@ -75,59 +81,59 @@ class Alert(object):
         return self._id
 
     @property
-    def created(self):
+    def created(self) -> float:
         """
         Creation timestamp.
         """
         return self._created
 
     @property
-    def expiry(self):
+    def expiry(self) -> float:
         """
         Expiry timestamp in second.
         """
         return self._expiry
 
     @property
-    def timeframe(self):
+    def timeframe(self) -> float:
         """
         Timeframe to check for.
         """
         return self._timeframe
 
     @property
-    def countdown(self):
+    def countdown(self) -> int:
         """
         Expiry countdown integer. -1 for infinite. 0 means terminated.
         """
         return self._countdown
 
     @property
-    def message(self):
+    def message(self) -> str:
         return self._message
 
     #
     # setters
     #
 
-    def set_id(self, _id):
+    def set_id(self, _id: int):
         self._id = _id
 
-    def set_expiry(self, expiry):
+    def set_expiry(self, expiry: float):
         self._expiry = expiry
 
-    def set_countdown(self, countdown):
+    def set_countdown(self, countdown: int):
         self._countdown = countdown
   
     @message.setter
-    def message(self, message):
+    def message(self, message: str):
         self.message = message
 
     #
     # processing
     #
 
-    def test_alert(self, timestamp, bid, ask, timeframes):
+    def test_alert(self, timestamp: float, bid: float, ask: float, timeframes: dict):
         """
         Each time the market price change perform to this test. If the test pass then
         it is executed and removed from the list or kept if its a persistent alert (until its expiry).
@@ -158,20 +164,20 @@ class Alert(object):
     # overrides
     #
 
-    def init(self, parameters):
+    def init(self, parameters: dict):
         """
         Override this method to setup alert parameters from the parameters dict.
         """
         pass
 
-    def check(self):
+    def check(self) -> bool:
         """
         Perform an integrity check on the data defined to the alert.
         @return True if the check pass.
         """
         return True
 
-    def test(self, timestamp, bid, ask, timeframes):
+    def test(self, timestamp: float, bid: float, ask: float, timeframes: dict) -> Union[dict, None]:
         """
         Perform the test of the alert on the last price and timeframes data.
 
@@ -179,7 +185,7 @@ class Alert(object):
         """
         return None
 
-    def can_delete(self, timestamp, bid, ask):
+    def can_delete(self, timestamp: float, bid: float, ask: float) -> bool:
         """
         By default perform a test on expiration time, but more deletion cases can be added,
         like a cancellation price trigger.
@@ -190,7 +196,7 @@ class Alert(object):
         """
         return (0 < self._expiry <= timestamp) or self._countdown == 0
 
-    def str_info(self):
+    def str_info(self) -> str:
         """
         Override this method to implement the single line message info of the alert.
         """
@@ -200,7 +206,7 @@ class Alert(object):
     # helpers
     #
 
-    def basetime(self, timestamp):
+    def basetime(self, timestamp: float) -> float:
         """
         Related candle base time of the timestamp of the signal.
         """
@@ -210,31 +216,31 @@ class Alert(object):
     # helpers
     #
 
-    def timeframe_to_str(self):
+    def timeframe_to_str(self) -> str:
         return timeframe_to_str(self._timeframe)
 
-    def created_to_str(self):
+    def created_to_str(self) -> str:
         return datetime.fromtimestamp(self._created).strftime('%Y-%m-%d %H:%M:%S')
 
-    def expiry_to_str(self):
+    def expiry_to_str(self) -> str:
         if self._expiry > 0:
             return datetime.fromtimestamp(self._expiry).strftime('%Y-%m-%d %H:%M:%S')
         else:
             return "never"
 
-    def countdown_to_str(self):
+    def countdown_to_str(self) -> str:
         if self._countdown >= 0:
             return str(self._countdown)
         else:
             return "inf"
 
-    def condition_str(self):
+    def condition_str(self) -> str:
         """
         Dump a string with alert condition details.
         """
         return ""
 
-    def cancellation_str(self):
+    def cancellation_str(self) -> str:
         """
         Dump a string with alert cancellation details.
         """
@@ -244,13 +250,13 @@ class Alert(object):
     # dumps for notify/history
     #
 
-    def dump_timestamp(self, timestamp, v1=False):
+    def dump_timestamp(self, timestamp: float, v1: bool = False):
         if v1:
             return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%SZ')
         else:
             return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
-    def dumps_notify(self, timestamp, alert_result, strategy_trader):
+    def dumps_notify(self, timestamp: float, alert_result: dict, strategy_trader: StrategyTrader) -> dict:
         """
         Dumps to dict for notify/history.
         """
@@ -275,7 +281,7 @@ class Alert(object):
     # persistence
     #
 
-    def parameters(self):
+    def parameters(self) -> dict:
         """
         Override this method and add specific parameters to be displayed into an UI or a table.
         """
@@ -289,7 +295,7 @@ class Alert(object):
             'message': self._message
         }
 
-    def dumps(self):
+    def dumps(self) -> dict:
         """
         Override this method and add specific parameters for dumps parameters for persistence model.
         """
@@ -305,7 +311,7 @@ class Alert(object):
             'message': self._message       # str user message
         }
 
-    def loads(self, data):
+    def loads(self, data: dict):
         """
         Override this method and add specific parameters for loads parameters from persistence model.
         """

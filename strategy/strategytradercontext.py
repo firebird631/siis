@@ -36,10 +36,10 @@ class StrategyTraderContextBase(object):
     def __init__(self):
         pass
 
-    def dumps(self):
+    def dumps(self) -> dict:
         return {}
 
-    def loads(self, strategy_trader, params):
+    def loads(self, strategy_trader, params: dict):
         pass
 
 
@@ -52,11 +52,11 @@ class EntryExit(object):
     EX_BREAKEVEN = 4
 
     @classmethod
-    def ex(cls):
+    def ex(cls) -> int:
         return cls.EX_UNDEFINED
 
     @classmethod
-    def name(cls):
+    def name(cls) -> str:
         if cls.ex() == cls.EX_ENTRY:
             return "entry"
         elif cls.ex() == cls.EX_TAKE_PROFIT:
@@ -82,7 +82,7 @@ class EntryExit(object):
         self.timeout_distance = 0.0
         self.timeout_distance_type = StrategyTraderContext.PRICE_NONE
 
-    def loads(self, strategy_trader, params):
+    def loads(self, strategy_trader, params: dict):
         if 'type' not in params or params.get('type') not in StrategyTraderContext.PRICE:
             raise ValueError("Undefined or unsupported 'type' value for %s" % self.name())
 
@@ -160,7 +160,7 @@ class EntryExit(object):
             self.distance = float(distance)
             self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
-    def modify_timeout_distance(self, strategy_trader, timeout_distance):
+    def modify_timeout_distance(self, strategy_trader, timeout_distance: str):
         if type(timeout_distance) is str and timeout_distance.endswith('%'):
             # in percent from entry price or limit price
             self.timeout_distance = float(timeout_distance[:-1]) * 0.01
@@ -176,10 +176,10 @@ class EntryExit(object):
             self.timeout_distance = float(timeout_distance)
             self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
-    def modify_orientation(self, orientation):
+    def modify_orientation(self, orientation: str):
         self.orientation = StrategyTraderContext.ORIENTATION.get(orientation, StrategyTraderContext.ORIENTATION_UP)
 
-    def distance_to_str(self, strategy_trader):
+    def distance_to_str(self, strategy_trader) -> str:
         if self.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
             return "%.2f%%" % (self.distance * 100.0)
         elif self.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
@@ -187,7 +187,7 @@ class EntryExit(object):
         else:
             return strategy_trader.instrument.format_price(self.distance)
 
-    def timeout_distance_to_str(self, strategy_trader):
+    def timeout_distance_to_str(self, strategy_trader) -> str:
         if self.timeout_distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
             return "%.2f%%" % (self.timeout_distance * 100.0)
         elif self.timeout_distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
@@ -195,7 +195,7 @@ class EntryExit(object):
         else:
             return strategy_trader.instrument.format_price(self.timeout_distance)
 
-    def orientation_to_str(self):
+    def orientation_to_str(self) -> str:
         return StrategyTraderContext.ORIENTATION_FROM_STR_MAP.get(self.orientation)
 
     def type_to_str(self):
@@ -209,7 +209,7 @@ class EntryExit(object):
         elif strategy_trader.is_tickbars_based:
             self.timeframe = None
 
-    def dumps(self):
+    def dumps(self) -> dict:
         result = {}
 
         # @todo
@@ -220,7 +220,7 @@ class EntryExit(object):
 class EXEntry(EntryExit):
 
     @classmethod
-    def ex(cls):
+    def ex(cls) -> int:
         return cls.EX_ENTRY
 
     def __init__(self):
@@ -232,7 +232,7 @@ class EXEntry(EntryExit):
         self.reward = 0.0
         self.max_spread = 0.0
 
-    def loads(self, strategy_trader, params):
+    def loads(self, strategy_trader, params: dict):
         super().loads(strategy_trader, params)
 
         # mandatory timeout
@@ -247,7 +247,7 @@ class EXEntry(EntryExit):
         self.reward = params.get('reward', 0.0)
         self.max_spread = params.get('max-spread', 0.0)
 
-    def dumps(self):
+    def dumps(self) -> dict:
         result = super().dumps()
 
         # @todo
@@ -258,16 +258,16 @@ class EXEntry(EntryExit):
 class EXTakeProfit(EntryExit):
 
     @classmethod
-    def ex(cls):
+    def ex(cls) -> int:
         return cls.EX_TAKE_PROFIT
 
     def __init__(self):
         super().__init__()
 
-    def loads(self, strategy_trader, params):
+    def loads(self, strategy_trader, params: dict):
         super().loads(strategy_trader, params)
 
-    def dumps(self):
+    def dumps(self) -> dict:
         result = super().dumps()
 
         # @todo
@@ -284,10 +284,10 @@ class EXStopLoss(EntryExit):
     def __init__(self):
         super().__init__()
 
-    def loads(self, strategy_trader, params):
+    def loads(self, strategy_trader, params: dict):
         super().loads(strategy_trader, params)
 
-    def dumps(self):
+    def dumps(self) -> dict:
         result = super().dumps()
 
         # @todo
@@ -304,10 +304,10 @@ class EXBreakeven(EntryExit):
     def __init__(self):
         super().__init__()
 
-    def loads(self, strategy_trader, params):
+    def loads(self, strategy_trader, params: dict):
         super().loads(strategy_trader, params)
 
-    def dumps(self):
+    def dumps(self) -> dict:
         result = super().dumps()
 
         # @todo
@@ -389,7 +389,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
         TRADE_QUANTITY_MANAGED: 'managed'
     }
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         super().__init__()
 
         self.name = name
@@ -418,13 +418,13 @@ class StrategyTraderContext(StrategyTraderContextBase):
         self.trade_quantity = 0.0       # last realized max trade exit quantity or specific value
         self.trade_quantity_step = 0.0  # step of increment
 
-    def loads(self, strategy_trader, params):
+    def loads(self, strategy_trader, params: dict):
         self.max_trades = max(0, params.get('max-trades', 0))
 
     def compile(self, strategy_trader):
         pass
 
-    def dumps(self):
+    def dumps(self) -> dict:
         # @todo others members (and specializations)
         result = {
             'name': self.name
@@ -432,7 +432,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
 
         return result
 
-    def compute_quantity(self, strategy_trader):
+    def compute_quantity(self, strategy_trader) -> float:
         if self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_NORMAL:
             # quantity is defined by instrument
             return strategy_trader.instrument.trade_quantity
@@ -451,7 +451,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
 
         return 0.0
 
-    def mode_to_str(self):
+    def mode_to_str(self) -> str:
         if self.mode == StrategyTraderContext.MODE_NONE:
             return 'none'
         elif self.mode == StrategyTraderContext.MODE_SIGNAL:
@@ -461,10 +461,10 @@ class StrategyTraderContext(StrategyTraderContextBase):
 
         return 'unknown'
 
-    def trade_quantity_type_to_str(self):
+    def trade_quantity_type_to_str(self) -> str:
         return StrategyTraderContext.TRADE_QUANTITY_FROM_STR_MAP.get(self.trade_quantity_type)
 
-    def modify_trade_quantity_type(self, instrument, trade_quantity_type, value=0.0):
+    def modify_trade_quantity_type(self, instrument, trade_quantity_type: str, value: float = 0.0):
         """
         @param instrument
         @param trade_quantity_type str String trade quantity type.

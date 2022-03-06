@@ -5,17 +5,17 @@
 
 import copy
 
-from strategy.strategy import Strategy
 from strategy.strategytrader import StrategyTrader
 from strategy.strategysignal import StrategySignal
 
-from instrument.instrument import Instrument, Candle
-from instrument.candlegenerator import CandleGenerator
+from instrument.instrument import Instrument
 from common.utils import timeframe_from_str
 
 from monitor.streamable import Streamable, StreamMemberInt, \
-                               StreamMemberTradeEntry, StreamMemberTradeUpdate, StreamMemberTradeExit, \
-                               StreamMemberFloatSerie, StreamMemberTradeSignal, StreamMemberStrategyAlert
+    StreamMemberTradeEntry, StreamMemberTradeUpdate, StreamMemberTradeExit, \
+    StreamMemberFloatSerie, StreamMemberTradeSignal, \
+    StreamMemberStrategyAlert, StreamMemberStrategyAlertCreate, StreamMemberStrategyAlertRemove, \
+    StreamMemberStrategyRegion, StreamMemberStrategyRegionCreate, StreamMemberStrategyRegionRemove
 
 import logging
 logger = logging.getLogger('siis.strategy.timeframebasedstrategytrader')
@@ -36,8 +36,8 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         """
         @param strategy Parent strategy (mandatory)
         @param instrument Related unique instance of instrument (mandatory)
-        @param base_timeframe Base time-frame signal accepted. Only this timeframe of incoming data serves as compute signal.
-            Default is at tick level, needing a lot of CPU usage but most reactive.
+        @param base_timeframe Base time-frame signal accepted. Only this timeframe of incoming data serves as
+            compute signal. Default is at tick level, needing a lot of CPU usage but most reactive.
         """
         super().__init__(strategy, instrument)
 
@@ -193,6 +193,15 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         self._alert_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_ALERT,
                                           self.strategy.identifier, self.instrument.market_id)
         self._alert_streamer.add_member(StreamMemberStrategyAlert('alert'))
+        self._alert_streamer.add_member(StreamMemberStrategyAlertCreate('add-alert'))
+        self._alert_streamer.add_member(StreamMemberStrategyAlertRemove('rm-alert'))
+
+        # region stream
+        self._region_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_REGION,
+                                           self.strategy.identifier, self.instrument.market_id)
+        self._region_streamer.add_member(StreamMemberStrategyRegion('region'))
+        self._region_streamer.add_member(StreamMemberStrategyRegionCreate('add-region'))
+        self._region_streamer.add_member(StreamMemberStrategyRegionRemove('rm-region'))
 
     def stream(self):
         # only once per compute frame
@@ -280,7 +289,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return result
 
-    def report_state(self, mode=0):
+    def report_state(self, mode: int = 0) -> dict:
         """
         Collect the state of the strategy trader (instant) and return a dataset.
         And add the per timeframe dataset.
@@ -297,7 +306,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     # helpers
     #
 
-    def timeframe_from_param(self, param):
+    def timeframe_from_param(self, param: dict) -> float:
         if isinstance(param, str):
             return timeframe_from_str(param)
         elif isinstance(param, float):

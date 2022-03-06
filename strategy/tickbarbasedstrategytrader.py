@@ -5,15 +5,15 @@
 
 import copy
 
-from strategy.strategy import Strategy
 from strategy.strategytrader import StrategyTrader
-from strategy.strategysignal import StrategySignal
 
 from instrument.instrument import Instrument
 
 from monitor.streamable import Streamable, StreamMemberInt, \
-                               StreamMemberTradeEntry, StreamMemberTradeUpdate, StreamMemberTradeExit, \
-                               StreamMemberFloatSerie, StreamMemberTradeSignal, StreamMemberStrategyAlert
+    StreamMemberTradeEntry, StreamMemberTradeUpdate, StreamMemberTradeExit, \
+    StreamMemberFloatSerie, StreamMemberTradeSignal, \
+    StreamMemberStrategyAlert, StreamMemberStrategyAlertCreate, StreamMemberStrategyAlertRemove, \
+    StreamMemberStrategyRegion, StreamMemberStrategyRegionCreate, StreamMemberStrategyRegionRemove
 
 import logging
 logger = logging.getLogger('siis.strategy.tickbarbasedstrategytrader')
@@ -26,7 +26,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     There is no OHLC in this abstraction. It is tick or trade based.
     It only works with a tick or trade data flow.
 
-    But it is possible to internaly compute OHLC for somes specifics needs.
+    But it is possible to internally compute OHLC for some specifics needs.
     There is no support of sub per timeframe.
     
     A single configuration of tick-bar array can be generated.
@@ -68,7 +68,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             if generated:
                 self.instrument.add_tickbar(generated)
 
-            self.instrument.add_tickbar(copy.copy(tickbar_generator.current), self.depth)
+            self.instrument.add_tickbar(copy.copy(self.tickbar_generator.current), self.depth)
 
             # keep prev and last price at processing step
             if self.instrument._ticks:
@@ -88,7 +88,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             if generated:
                 self.instrument.add_tickbar(generated)
 
-            self.instrument.add_tickbar(copy.copy(tickbar_generator.current), self.depth)
+            self.instrument.add_tickbar(copy.copy(self.tickbar_generator.current), self.depth)
 
             # keep prev and last price at processing step
             if self.instrument._ticks:
@@ -105,26 +105,42 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
     def setup_streaming(self):
         # global stream about compute status, once per compute frame
-        self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO, self.strategy.identifier, self.instrument.market_id)
+        self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO,
+                                           self.strategy.identifier, self.instrument.market_id)
         self._global_streamer.add_member(StreamMemberFloatSerie('performance', 0))
 
         # trade streams
-        self._trade_entry_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
+        self._trade_entry_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE,
+                                                self.strategy.identifier, self.instrument.market_id)
         self._trade_entry_streamer.add_member(StreamMemberTradeEntry('trade-entry'))
 
-        self._trade_update_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
+        self._trade_update_streamer = Streamable(self.strategy.service.monitor_service,
+                                                 Streamable.STREAM_STRATEGY_TRADE,
+                                                 self.strategy.identifier, self.instrument.market_id)
         self._trade_update_streamer.add_member(StreamMemberTradeUpdate('trade-update'))
 
-        self._trade_exit_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE, self.strategy.identifier, self.instrument.market_id)
+        self._trade_exit_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE,
+                                               self.strategy.identifier, self.instrument.market_id)
         self._trade_exit_streamer.add_member(StreamMemberTradeExit('trade-exit'))
 
         # signal stream
-        self._signal_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_SIGNAL, self.strategy.identifier, self.instrument.market_id)
+        self._signal_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_SIGNAL,
+                                           self.strategy.identifier, self.instrument.market_id)
         self._signal_streamer.add_member(StreamMemberTradeSignal('signal'))
 
         # alert stream
-        self._alert_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_ALERT, self.strategy.identifier, self.instrument.market_id)
+        self._alert_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_ALERT,
+                                          self.strategy.identifier, self.instrument.market_id)
         self._alert_streamer.add_member(StreamMemberStrategyAlert('alert'))
+        self._alert_streamer.add_member(StreamMemberStrategyAlertCreate('add-alert'))
+        self._alert_streamer.add_member(StreamMemberStrategyAlertRemove('rm-alert'))
+
+        # region stream
+        self._region_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_REGION,
+                                           self.strategy.identifier, self.instrument.market_id)
+        self._region_streamer.add_member(StreamMemberStrategyRegion('region'))
+        self._region_streamer.add_member(StreamMemberStrategyRegionCreate('add-region'))
+        self._region_streamer.add_member(StreamMemberStrategyRegionRemove('rm-region'))
 
     def stream(self):
         # only once per compute frame
@@ -133,7 +149,8 @@ class TickBarBasedStrategyTrader(StrategyTrader):
                 self._global_streamer.publish()
 
     def create_chart_streamer(self, sub):
-        streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART, self.strategy.identifier, "%s:%i" % (self.instrument.market_id, sub.tf))
+        streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
+                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, sub.tf))
         streamer.add_member(StreamMemberInt('tf'))
 
         sub.setup_streamer(streamer)
