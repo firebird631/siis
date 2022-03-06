@@ -2,24 +2,26 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Discord notification handler
-
-import traceback
+import copy
 import re
 
 from tabulate import tabulate
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from notifier.notifier import Notifier
-from terminal.terminal import Terminal, Color
+from terminal.terminal import Color
 
 from notifier.discord.webhooks import send_to_discord
 from notifier.notifierexception import NotifierException
 
 from common.signal import Signal
 
-from strategy.helpers.activetradetable import trades_stats_table
+# from strategy.helpers.activetradetable import trades_stats_table
 
 import logging
+
+from utils import timeframe_from_str
+
 logger = logging.getLogger('siis.notifier.discord')
 error_logger = logging.getLogger('siis.error.notifier.discord')
 
@@ -47,10 +49,13 @@ class DiscordNotifier(Notifier):
 
         self._who = notifier_config.get('who', 'SiiS')
         self._webhooks = notifier_config.get('webhooks', {})
+        self._avatar_url = notifier_config.get('avatar-url', None)
 
         self._display_percent = False
         self._active_trades = notifier_config.get('active-trades', False)
         self._historical_trades = notifier_config.get('historical-trades', False)
+
+        self._template = notifier_config.get('template', "default")
 
         self._signals_opts = notifier_config.get('signals', (
                 "alert",
@@ -65,12 +70,17 @@ class DiscordNotifier(Notifier):
 
         self._strategy_service = None
 
+        self._opened_trades = {}
+        self._closed_trades = {}
+        self._canceled_trades = {}
+
     def start(self, options):
         if self._backtesting:
             logger.warning("Notifier %s - %s : signals not started because of backtesting !" % (
                 self.name, self.identifier))
             return False
-        elif self._webhooks.get('signals'):
+
+        if self._webhooks.get('signals'):
             # only if signals webhook is defined
 
             # could validate url format
@@ -78,8 +88,20 @@ class DiscordNotifier(Notifier):
                 if re.match(self._url_re, url) is None:
                     raise NotifierException(self.name, self.identifier, "Malformed webhook url %s" % url)
 
+            has_signal = True
+
             logger.info("Notifier %s - %s : signals webhook found and valid, start it..." % (
                 self.name, self.identifier))
+        else:
+            logger.warning("Notifier %s - %s : signals webhook not found, not started !" % (
+                self.name, self.identifier))
+            return False
+
+        # template
+        if self._template not in ("default", "light", "verbose"):
+            raise NotifierException(self.name, self.identifier, "Invalid template name %s" % self._template)
+
+        if has_signal:
             return super().start(options)
         else:
             logger.warning("Notifier %s - %s : signals webhook not found, not started !" % (
@@ -92,46 +114,178 @@ class DiscordNotifier(Notifier):
     def notify(self):
         pass
 
+    def format_trade_entry(self, t, locale):
+        messages = []
+
+        trade_id = t['id']
+        symbol = t['symbol']
+
+        open_dt = Notifier.parse_utc_datetime(t['entry-open-time'])
+
+        op = float(t.get('order-price', "0"))
+        aep = float(t.get('avg-entry-price', "0"))
+
+        order_type = t['stats']['entry-order-type']
+
+        if self._template in ("default", "verbose"):
+            messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), symbol, trade_id))
+            messages.append("- %s: %s" % (order_type.title(), Notifier.format_datetime(open_dt, locale)))
+
+            if aep:
+                messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+            elif op:
+                messages.append("- Order-Price: %s" % t['order-price'])
+
+            if t['timeframe']:
+                messages.append("- Timeframe: %s" % t['timeframe'])
+
+            if t['label']:
+                messages.append("- Context: %s" % t['label'])
+
+            if t['entry-timeout'] and not aep:
+                # before in position
+                et_tf = timeframe_from_str(t['entry-timeout'])
+                if et_tf > 0.0:
+                    entry_timeout_dt = open_dt + timedelta(seconds=et_tf)
+                    messages.append("- Cancel entry after : %s" % Notifier.format_datetime(entry_timeout_dt))
+
+            if t['expiry'] and aep:
+                # until in position
+                expiry_dt = open_dt + timedelta(seconds=t['expiry'])
+                messages.append("- Close expiry after : %s" % Notifier.format_datetime(expiry_dt))
+
+        elif self._template == "light":
+            messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), symbol, trade_id))
+
+            if aep:
+                messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+            elif op:
+                messages.append("- Entry-Price: %s" % t['order-price'])
+
+        if float(t['take-profit-price']):
+            messages.append("- Take-Profit: %s" % t['take-profit-price'])
+        if float(t['stop-loss-price']):
+            messages.append("- Stop-Loss: %s" % t['stop-loss-price'])
+
+        return messages
+
+    def format_trade_update(self, t, locale):
+        messages = []
+
+        trade_id = t['id']
+        symbol = t['symbol']
+
+        # filter only if a change occurs on targets or from entry execution state
+        pt = self._opened_trades.get(symbol, {}).get(trade_id)
+
+        accept = False
+        execute = False
+        modify_tp = False
+        modify_sl = False
+
+        if pt:
+            if pt['avg-entry-price'] != t['avg-entry-price']:
+                accept = True
+                execute = True
+            if pt['take-profit-price'] != t['take-profit-price']:
+                accept = True
+                modify_tp = True
+            if pt['stop-loss-price'] != t['stop-loss-price']:
+                accept = True
+                modify_sl = True
+
+        if accept:
+            if self._template in ("default", "verbose"):
+                if execute and float(t['avg-entry-price']):
+                    messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+
+            if modify_tp and float(t['take-profit-price']):
+                messages.append("- Modify-Take-Profit: %s" % t['take-profit-price'])
+            if modify_sl and float(t['stop-loss-price']):
+                messages.append("- Modify-Stop-Loss: %s" % t['stop-loss-price'])
+
+            if messages:
+                # prepend update message if there is some content to publish
+                messages.insert(0, "%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), symbol, trade_id))
+
+        return messages
+
+    def format_trade_exit(self, t, locale):
+        messages = []
+
+        trade_id = t['id']
+        symbol = t['symbol']
+
+        axp = float(t.get('avg-exit-price', "0"))
+
+        messages.append("%s %s:%s [ CLOSE ]" % (t['direction'].capitalize(), symbol, trade_id))
+
+        if axp:
+            messages.append("- Exit-Price: %s" % t['avg-exit-price'])
+
+        if t['stats']['exit-reason'] != "undefined":
+            messages.append("- Cause: %s" % t['stats']['exit-reason'].title())
+
+        return messages
+
     def process_signal(self, signal):
         message = ""
+        locale = "fr"
 
-        if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
-            if signal.data['way'] not in self._signals_opts:
-                return
+        #
+        # messages
+        #
 
-            # generic signal reason
-            action = signal.data['way']
+        if signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ENTRY:
+            messages = self.format_trade_entry(signal.data, locale)
+            message = '\n'.join(messages)
 
-            # specified exit reason
-            if action == "exit" and 'stats' in signal.data and 'exit-reason' in signal.data['stats']:
-                action = signal.data['stats']['exit-reason']
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            messages = self.format_trade_update(signal.data, locale)
+            message = '\n'.join(messages)
 
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_EXIT:
+            messages = self.format_trade_exit(signal.data, locale)
+            message = '\n'.join(messages)
 
-            message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
-                signal.data['symbol'],
-                signal.data['order-price'],
-                signal.data['app-name'],
-                action,
-                signal.data['direction'],
-                ldatetime,
-                signal.data['id'],
-                signal.data['timeframe'])
-
-            if signal.data.get('stop-loss-price') and 'stop-loss' in self._signals_opts:
-                message += " SL@%s" % (signal.data['stop-loss-price'],)
-
-            if signal.data.get('take-profit-price') and 'take-profit' in self._signals_opts:
-                message += " TP@%s" % (signal.data['take-profit-price'],)
-
-            if signal.data.get('profit-loss-pct') is not None:
-                message += " (%.2f%%)" % (signal.data['profit-loss-pct'],)
-
-            if signal.data.get('order-qty') is not None and 'order-qty' in self._signals_opts:
-                message += " Q:%s" % signal.data['order-qty']
-
-            if signal.data.get('label') is not None:
-                message += " (%s)" % signal.data['label']
+        # if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+        #     if signal.data['way'] not in self._signals_opts:
+        #         return
+        #
+        #     # generic signal reason
+        #     action = signal.data['way']
+        #
+        #     # specified exit reason
+        #     if action == "exit" and 'stats' in signal.data and 'exit-reason' in signal.data['stats']:
+        #         action = signal.data['stats']['exit-reason']
+        #
+        #     ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+        #
+        #     message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
+        #         signal.data['symbol'],
+        #         signal.data['order-price'],
+        #         signal.data['app-name'],
+        #         action,
+        #         signal.data['direction'],
+        #         ldatetime,
+        #         signal.data['id'],
+        #         signal.data['timeframe'])
+        #
+        #     if signal.data.get('stop-loss-price') and 'stop-loss' in self._signals_opts:
+        #         message += " SL@%s" % (signal.data['stop-loss-price'],)
+        #
+        #     if signal.data.get('take-profit-price') and 'take-profit' in self._signals_opts:
+        #         message += " TP@%s" % (signal.data['take-profit-price'],)
+        #
+        #     if signal.data.get('profit-loss-pct') is not None:
+        #         message += " (%.2f%%)" % (signal.data['profit-loss-pct'],)
+        #
+        #     if signal.data.get('order-qty') is not None and 'order-qty' in self._signals_opts:
+        #         message += " Q:%s" % signal.data['order-qty']
+        #
+        #     if signal.data.get('label') is not None:
+        #         message += " (%s)" % signal.data['label']
+        #
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_ALERT:
             if 'alert' not in self._signals_opts:
@@ -175,14 +329,82 @@ class DiscordNotifier(Notifier):
                 signal.data['trade-id'],
                 signal.data['symbol'])
 
-        elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY:
+            # @todo
             return
+
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_EXIT:
+            # @todo
+            return
+
+        elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
+            # @todo
+            return
+
+        #
+        # store for comparison and queries
+        #
+
+        if Signal.SIGNAL_STRATEGY_TRADE_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            # trade local copy
+            if signal.data['symbol'] not in self._opened_trades:
+                self._opened_trades[signal.data['symbol']] = {}
+            opened_trades = self._opened_trades[signal.data['symbol']]
+
+            if signal.data['symbol'] not in self._closed_trades:
+                self._closed_trades[signal.data['symbol']] = {}
+            closed_trades = self._closed_trades[signal.data['symbol']]
+
+            if signal.data['symbol'] not in self._canceled_trades:
+                self._canceled_trades[signal.data['symbol']] = {}
+            canceled_trades = self._canceled_trades[signal.data['symbol']]
+
+            if signal.data['way'] == 'entry':
+                # opened
+                opened_trades[signal.data['id']] = copy.copy(signal.data)
+
+            elif signal.data['way'] == 'update':
+                if signal.data['stats']['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
+                    # canceled
+                    if signal.data['id'] in opened_trades:
+                        del opened_trades[signal.data['id']]
+
+                    canceled_trades[signal.data['id']] = copy.copy(signal.data)
+                else:
+                    # updated
+                    opened_trades[signal.data['id']] = copy.copy(signal.data)
+
+            elif signal.data['way'] == 'exit':
+                if signal.data['stats']['exit-reason'] in ("canceled-targeted", "canceled-timeout"):
+                    # canceled
+                    if signal.data['id'] in opened_trades:
+                        del opened_trades[signal.data['id']]
+
+                    canceled_trades[signal.data['id']] = copy.copy(signal.data)
+                else:
+                    # closed
+                    if signal.data['id'] in opened_trades:
+                        del opened_trades[signal.data['id']]
+
+                    closed_trades[signal.data['id']] = copy.copy(signal.data)
+
+        #
+        # send the message
+        #
 
         if message:
             dst = self._webhooks.get('signals')
+
+            if self._avatar_url:
+                extra = {
+                    'avatar_url': self._avatar_url
+                }
+            else:
+                extra = None
+
             if dst:
                 try:
-                    send_to_discord(dst, self._who, '```' + message + '```')
+                    send_to_discord(dst, self._who, '```' + message + '```', extra)
                 except:
                     pass
 
@@ -209,6 +431,13 @@ class DiscordNotifier(Notifier):
         rows = msg.split('\n')
         i = 0
 
+        if self._avatar_url:
+            extra = {
+                'avatar_url': self._avatar_url
+            }
+        else:
+            extra = None
+
         while i < len(rows):
             buf = ""
 
@@ -217,7 +446,7 @@ class DiscordNotifier(Notifier):
                 i += 1
 
             if buf:
-                send_to_discord(dst, self._who, '```' + buf + '```')
+                send_to_discord(dst, self._who, '```' + buf + '```', extra)
 
     def format_table(self, data):
         arr = tabulate(data, headers='keys', tablefmt='psql', showindex=False, floatfmt=".2f", disable_numparse=True)

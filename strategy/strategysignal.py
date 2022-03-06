@@ -3,6 +3,13 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Strategy signal
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from strategy.strategytrader import StrategyTrader
+
 from datetime import datetime
 
 from trader.order import Order, order_type_to_str
@@ -44,7 +51,7 @@ class StrategySignal(object):
     SIGNAL_ENTRY = 1  # entry signal (this does not mean long. @see dir)
     SIGNAL_EXIT = -1  # exit signal (this does not mean short. @see dir)
 
-    def __init__(self, timeframe, timestamp):
+    def __init__(self, timeframe: float, timestamp: float):
         self.timeframe = timeframe   # timeframe related to the signal
         self.ts = timestamp          # timestamps of the signal emit
         self.signal = StrategySignal.SIGNAL_NONE  # type of the signal : entry or exit
@@ -68,56 +75,56 @@ class StrategySignal(object):
         self._extra = {}
 
     @classmethod
-    def version(cls):
+    def version(cls) -> str:
         return cls.VERSION
 
     @property
-    def direction(self):
+    def direction(self) -> int:
         return self.dir
 
     @property
-    def price(self):
+    def price(self) -> float:
         return self.p
 
     @property
-    def stop_loss(self):
+    def stop_loss(self) -> float:
         return self.sl
     
     @property
-    def timestamp(self):
+    def timestamp(self) -> float:
         return self.ts    
 
     @property
-    def take_profit(self):
+    def take_profit(self) -> float:
         return self.tp
 
     @direction.setter
-    def direction(self, direction):
+    def direction(self, direction: int):
         self.dir = direction
 
     @price.setter
-    def price(self, price):
+    def price(self, price: float):
         self.p = price
 
     @stop_loss.setter
-    def stop_loss(self, stop_loss):
+    def stop_loss(self, stop_loss: float):
         self.sl = stop_loss
 
     @take_profit.setter
-    def take_profit(self, take_profit):
+    def take_profit(self, take_profit: float):
         self.tp = take_profit
 
     #
     # helpers
     #
 
-    def basetime(self):
+    def basetime(self) -> float:
         """
         Related candle base time of the timestamp of the signal.
         """
         return Instrument.basetime(self.timeframe, self.ts)
 
-    def as_exit(self):
+    def as_exit(self) -> Union[StrategySignal, None]:
         """
         If the signal is an entry signal, negate it as an exit signal on the opposite direction else return None.
         Stop-loss and take-profit are swapped.
@@ -135,7 +142,7 @@ class StrategySignal(object):
 
         return None
 
-    def signal_type_str(self):
+    def signal_type_str(self) -> str:
         if self.signal == StrategySignal.SIGNAL_ENTRY:
             return "entry"
         elif self.signal == StrategySignal.SIGNAL_EXIT:
@@ -143,7 +150,7 @@ class StrategySignal(object):
 
         return "none"
 
-    def direction_str(self):
+    def direction_str(self) -> str:
         if self.dir > 0:
             return "long"
         elif self.dir < 0:
@@ -151,7 +158,7 @@ class StrategySignal(object):
         else:
             return ""
 
-    def dup(self, _from):
+    def dup(self, _from: StrategySignal):
         self.timeframe = _from.timeframe
         self.ts = _from.ts
         self.signal = _from.signal
@@ -164,13 +171,13 @@ class StrategySignal(object):
         self.label = _from.label
         self.context = _from.context
 
-    def compare(self, _to):
+    def compare(self, _to: StrategySignal):
         """
         Return true of the the signal have the same type in the same direction, no more.
         """
         return self.signal == _to.signal and self.dir == _to.dir
 
-    def __str__(self):
+    def __str__(self) -> str:
         mydate = datetime.fromtimestamp(self.ts)
         date_str = mydate.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -182,7 +189,7 @@ class StrategySignal(object):
     # profit/loss
     #
 
-    def profit(self):
+    def profit(self) -> float:
         if self.dir > 0:
             return ((self.tp - self.p) / self.p) if self.p > 0.0 else 0.0
         elif self.dir < 0:
@@ -190,7 +197,7 @@ class StrategySignal(object):
 
         return 0.0
 
-    def loss(self):
+    def loss(self) -> float:
         if self.dir > 0:
             return ((self.p - self.sl) / self.p) if self.p > 0.0 else 0.0
         elif self.dir < 0:
@@ -198,13 +205,13 @@ class StrategySignal(object):
 
         return 0.0
 
-    def risk_reward(self):
+    def risk_reward(self) -> float:
         profit = self.profit()
         loss = self.loss()
 
         return loss / profit if profit > 0.0 else 0.0
 
-    def profit_dist(self):
+    def profit_dist(self) -> float:
         if self.dir > 0:
             return self.tp - self.p
         elif self.dir < 0:
@@ -212,7 +219,7 @@ class StrategySignal(object):
 
         return 0.0
 
-    def loss_dist(self):
+    def loss_dist(self) -> float:
         if self.dir > 0:
             return self.p - self.sl
         elif self.dir < 0:
@@ -224,7 +231,7 @@ class StrategySignal(object):
     # extra
     #
 
-    def set(self, key, value):
+    def set(self, key: str, value):
         """
         Add a key:value pair in the extra member dict of the signal.
         It allow to add you internal trade data, states you want to keep during the live of the trade and
@@ -232,12 +239,12 @@ class StrategySignal(object):
         """
         self._extra[key] = value
 
-    def unset(self, key):
+    def unset(self, key: str):
         """Remove a previously set extra key"""
         if key in self._extra:
             del self._extra[key]
 
-    def get(self, key, default=None):
+    def get(self, key: str, default=None):
         """Return a value for a previously defined key or default value if not exists"""
         return self._extra.get(key, default)
 
@@ -245,13 +252,13 @@ class StrategySignal(object):
     # helpers
     #
 
-    def timeframe_to_str(self):
+    def timeframe_to_str(self) -> str:
         return timeframe_to_str(self.timeframe)
 
-    def direction_to_str(self):
+    def direction_to_str(self) -> str:
         return direction_to_str(self.dir)
 
-    def direction_from_str(self, direction):
+    def direction_from_str(self, direction: int) -> str:
         return direction_from_str(direction)
 
     #
@@ -259,13 +266,13 @@ class StrategySignal(object):
     #
 
     @staticmethod
-    def dump_timestamp(timestamp, v1=False):
+    def dump_timestamp(timestamp: float, v1: bool = False):
         if v1:
             return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%SZ')
         else:
             return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
-    def dumps_notify(self, timestamp, strategy_trader):
+    def dumps_notify(self, timestamp: float, strategy_trader: StrategyTrader) -> dict:
         """
         Dumps to dict for notify/history, same format as for StrategyTrade.
         """

@@ -7,7 +7,7 @@ import json
 import requests
 
 
-def send_to_discord(webhook_url, who, message):
+def send_to_discord(webhook_url: str, who: str, message: str, data: dict = None):
     """
     Post a message to discord API via a Webhook.
 
@@ -21,6 +21,9 @@ def send_to_discord(webhook_url, who, message):
     headers = {
         'Content-Type': 'application/json',
     }
-    
+
+    if data is not None and type(data) is dict:
+        payload.update(data)
+
     response = requests.post(webhook_url, data=json.dumps(payload), headers=headers)
     return response

@@ -6,14 +6,10 @@
 import copy
 import time
 import traceback
-import re
-import pytz
 
-from tabulate import tabulate
 from datetime import datetime, timedelta
 
 from notifier.notifier import Notifier
-from terminal.terminal import Terminal, Color
 
 from notifier.telegram.telegramapi import send_to_telegram, get_telegram_updates
 from notifier.notifierexception import NotifierException
@@ -41,7 +37,7 @@ class TelegramNotifier(Notifier):
 
     WAIT_DELAY = 1.0  # 1 second to check bot command
 
-    def __init__(self, identifier, service, options):
+    def __init__(self, identifier: str, service, options: dict):
         super().__init__("telegram", identifier, service)
 
         self._backtesting = options.get('backtesting', False)
@@ -77,13 +73,11 @@ class TelegramNotifier(Notifier):
         self._closed_trades = {}
         self._canceled_trades = {}
 
-    def start(self, options):
+    def start(self, options: dict):
         if self._backtesting:
             logger.warning("Notifier %s - %s : signals not started because of backtesting !" % (
                 self.name, self.identifier))
             return False
-
-        has_signal = False
 
         if self._chats.get('signals'):
             # only if signals chat is defined
@@ -96,10 +90,10 @@ class TelegramNotifier(Notifier):
                     raise NotifierException(self.name, self.identifier, "Malformed chat-id %s for chat %s" % (
                         chat_id, k))
 
+            has_signal = True
+
             logger.info("Notifier %s - %s : signals chat-id found and valid, start it..." % (
                 self.name, self.identifier))
-
-            has_signal = True
         else:
             logger.warning("Notifier %s - %s : signals chat-id not found, not started !" % (
                 self.name, self.identifier))
@@ -169,7 +163,7 @@ class TelegramNotifier(Notifier):
         trade_id = t['id']
         symbol = t['symbol']
 
-        open_dt = TelegramNotifier.parse_utc_datetime(t['entry-open-time'])
+        open_dt = Notifier.parse_utc_datetime(t['entry-open-time'])
 
         op = float(t.get('order-price', "0"))
         aep = float(t.get('avg-entry-price', "0"))
@@ -264,8 +258,6 @@ class TelegramNotifier(Notifier):
 
         trade_id = t['id']
         symbol = t['symbol']
-
-        messages = []
 
         axp = float(t.get('avg-exit-price', "0"))
 
@@ -564,7 +556,7 @@ class TelegramNotifier(Notifier):
                 if aep:
                     instrument = self.service.strategy_service.strategy().instrument(symbol)
 
-                    upnl = TelegramNotifier.estimate_profit_loss(instrument, t)
+                    upnl = Notifier.estimate_profit_loss(instrument, t)
                     messages.append("- Unrealized-PNL %.2f%%" % (upnl * 100.0,))
 
             elif trade_id in canceled_trades:
@@ -575,16 +567,16 @@ class TelegramNotifier(Notifier):
                 t = closed_trades[trade_id]
 
                 if 'last-realized-exit-datetime' in t['stats']:
-                    close_dt = TelegramNotifier.parse_utc_datetime(t['stats']['last-realized-exit-datetime'])
+                    close_dt = Notifier.parse_utc_datetime(t['stats']['last-realized-exit-datetime'])
                 else:
-                    close_dt = TelegramNotifier.parse_utc_datetime(t['exit-open-time'])
+                    close_dt = Notifier.parse_utc_datetime(t['exit-open-time'])
 
                 aep = float(t['avg-entry-price'])
                 axp = float(t['avg-exit-price'])
                 op = float(t['order-price'])
 
                 messages.append("%s %s:%s. Closed: %s [ CLOSED ]" % (
-                    t['direction'].capitalize(), symbol, trade_id, TelegramNotifier.format_datetime(
+                    t['direction'].capitalize(), symbol, trade_id, Notifier.format_datetime(
                         close_dt, locale)))
 
                 if t['timeframe']:
@@ -619,43 +611,3 @@ class TelegramNotifier(Notifier):
                 pass
 
         return True
-
-    @staticmethod
-    def format_datetime(dt, local="fr"):
-        if local == "fr":
-            dt = dt.replace(tzinfo=pytz.UTC).astimezone(pytz.timezone('Europe/Paris'))
-            return dt.strftime('%Y-%m-%d %H:%M:%S (Paris)') if dt else ''
-        else:
-            return dt.strftime('%Y-%m-%d %H:%M:%S (UTC)') if dt else ''
-
-    @staticmethod
-    def estimate_profit_loss(instrument, trade):
-        """
-        Estimate PLN without fees.
-        """
-        direction = 1 if trade['direction'] == "long" else -1
-
-        # estimation at close price
-        close_exec_price = instrument.close_exec_price(direction)
-
-        # no current price update
-        if not close_exec_price:
-            return 0.0
-
-        entry_price = float(trade['avg-entry-price'])
-
-        if direction > 0 and entry_price > 0:
-            profit_loss = (close_exec_price - entry_price) / entry_price
-        elif direction < 0 and entry_price > 0:
-            profit_loss = (entry_price - close_exec_price) / entry_price
-        else:
-            profit_loss = 0.0
-
-        return profit_loss
-
-    @staticmethod
-    def parse_utc_datetime(utc_dt):
-        if utc_dt:
-            return datetime.strptime(utc_dt, '%Y-%m-%dT%H:%M:%S.%fZ')
-        else:
-            return datetime.now()
