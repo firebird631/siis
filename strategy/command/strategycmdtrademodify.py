@@ -3,7 +3,16 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy command trade modify
 
-def cmd_trade_modify(strategy, strategy_trader, data):
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from strategy.strategy import Strategy
+    from strategy.strategytrader import StrategyTrader
+
+
+def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: dict) -> dict:
     """
     Modify a trade according data on given strategy_trader.
 
@@ -197,6 +206,21 @@ def cmd_trade_modify(strategy, strategy_trader, data):
                 if not trade.remove_operation(trade_operation_id):
                     results['error'] = True
                     results['messages'].append("Unknown operation-id on trade %i" % trade.id)
+
+            # comment/uncomment a trade
+            elif action == 'comment':
+                comment = data.get('comment', "")
+
+                if type(comment) is str:
+                    if len(comment) <= 100:
+                        trade.comment = comment
+                    else:
+                        results['error'] = True
+                        results['messages'].append("Comment string is 100 characters max, for trade %i" % trade.id)
+                else:
+                    results['error'] = True
+                    results['messages'].append("Comment must be a string, for trade %i" % trade.id)
+
             else:
                 # unsupported action
                 results['error'] = True

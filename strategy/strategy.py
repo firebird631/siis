@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from trader.trader import Trader
@@ -589,7 +589,7 @@ class Strategy(Runnable):
         """
         return self._strategy_service.indicator(name)
 
-    def set_activity(self, status: bool, market_id=None):
+    def set_activity(self, status: bool, market_id: Optional[str] = None):
         """
         Enable/disable execution of orders (create_order, stop_loss) for any of the strategy traders or 
         a specific instrument if market_id is defined.
@@ -616,7 +616,7 @@ class Strategy(Runnable):
         """
         return self._trader
 
-    def mapped_instrument(self, symbol: str) -> Union[Instrument, None]:
+    def mapped_instrument(self, symbol: str) -> Union[dict, None]:
         """
         Return the string name of the market-id relating the symbol.
         """
@@ -627,14 +627,14 @@ class Strategy(Runnable):
             return self._trader_conf['instruments'][symbol]
 
         # or already a mapped name
-        for k, instrument in self._trader_conf['instruments'].items():
-            if instrument.get('market-id', '') == symbol:
-                return instrument
+        for k, mapped_symbol in self._trader_conf['instruments'].items():
+            if mapped_symbol.get('market-id', '') == symbol:
+                return mapped_symbol
 
             # wildcard mapping of the instrument name
             if k.startswith('*'):
                 if symbol.endswith(k[1:]):
-                    return instrument
+                    return mapped_symbol
 
         return None
 

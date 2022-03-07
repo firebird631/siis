@@ -1167,7 +1167,6 @@ function fetch_strategy() {
                 let profile = market['profiles'][profile_id];
                 let take_profit_method = null;
                 let stop_loss_method = null;
-                console.log(profile)
 
                 if (profile['take-profit']) {
                     take_profit_method = "";
@@ -1723,11 +1722,19 @@ function add_long_short_actions(id, market_id, to) {
     to.append(chart_btn);
 
     long_btn.on('click', function(elt) {
-        on_order_long(elt);
+        if (elt.ctrlKey) {
+            on_order_long(elt);
+        } else {
+            on_open_new_trade(elt, 1);
+        }
     });
 
     short_btn.on('click', function(elt) {
-        on_order_short(elt);
+        if (elt.ctrlKey) {
+            on_order_short(elt);
+        } else {
+            on_open_new_trade(elt, -1);
+        }
     });
 
     tv_btn.on('click', function(elt) {

@@ -167,6 +167,9 @@ class DiscordNotifier(Notifier):
         if float(t['stop-loss-price']):
             messages.append("- Stop-Loss: %s" % t['stop-loss-price'])
 
+        if t['comment']:
+            messages.append('- Comment: %s' % t['comment'])
+
         return messages
 
     def format_trade_update(self, t, locale):
@@ -182,6 +185,7 @@ class DiscordNotifier(Notifier):
         execute = False
         modify_tp = False
         modify_sl = False
+        modify_comment = False
 
         if pt:
             if pt['avg-entry-price'] != t['avg-entry-price']:
@@ -193,6 +197,9 @@ class DiscordNotifier(Notifier):
             if pt['stop-loss-price'] != t['stop-loss-price']:
                 accept = True
                 modify_sl = True
+            if pt['comment'] != t['comment']:
+                accept = True
+                modify_comment = True
 
         if accept:
             if self._template in ("default", "verbose"):
@@ -203,6 +210,9 @@ class DiscordNotifier(Notifier):
                 messages.append("- Modify-Take-Profit: %s" % t['take-profit-price'])
             if modify_sl and float(t['stop-loss-price']):
                 messages.append("- Modify-Stop-Loss: %s" % t['stop-loss-price'])
+
+            if modify_comment and t['comment']:
+                messages.append("- Comment: %s" % t['comment'])
 
             if messages:
                 # prepend update message if there is some content to publish

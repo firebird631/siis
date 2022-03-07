@@ -1337,6 +1337,59 @@ class AssignCommand(Command):
         return args, 0
 
 
+class CommentCommand(Command):
+    SUMMARY = "to set the comment of a trade"
+    HELP = (
+        "param1: <market-id> Market identifier",
+        "param2: <trade-id> Trade identifier",
+        "last: <str> Comment or empty"
+    )
+
+    def __init__(self, strategy_service):
+        super().__init__('comment', 'CC')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if not args:
+            return False, "Missing parameters"
+
+        action = 'comment'
+
+        # ie ":CC EURUSD 1 do a partial TP before"
+        if len(args) < 2:
+            return False, "Missing parameters"
+
+        try:
+            market_id = args[0]
+            trade_id = int(args[1])
+
+        except ValueError:
+            return False, "Invalid parameters"
+
+        if len(args) > 2:
+            comment = ' '.join(args[2:])
+        else:
+            comment = ""
+
+        results = self._strategy_service.command(Strategy.COMMAND_TRADE_MODIFY, {
+            'market-id': market_id,
+            'trade-id': trade_id,
+            'action': action,
+            'comment': comment
+        })
+
+        return self.manage_results(results)
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 class UserSaveCommand(Command):
     SUMMARY = "to save user data now (strategy traders states, options, regions, trades)"
 
@@ -2178,6 +2231,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(ModifyStopLossCommand(strategy_service))
     commands_handler.register(ModifyTakeProfitCommand(strategy_service))
     commands_handler.register(AssignCommand(strategy_service))
+    commands_handler.register(CommentCommand(strategy_service))
 
     #
     # strategy multi-trade operations

@@ -149,7 +149,6 @@
   </div>
 </div>
 
-
 <div class="modal" id="modify_trade_take_profit" tabindex="-1" role="dialog" aria-labelledby="modify-trade-take-profit" aria-hidden="true">
   <div class="modal-dialog modal-sm" role="document">
     <div class="modal-content">
@@ -206,6 +205,58 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="open_trade_adv" tabindex="-1" role="dialog" aria-labelledby="open-trade-adv" aria-hidden="true">
+  <div class="modal-dialog modal-md" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Open trade</h5>
+      </div>
+      <div class="modal-body">
+        <div>
+          <div class="form-group row">
+              <label for="limit_price" class="col-sm-6 col-form-label">Limit-Entry Price</label>
+              <div class="col-sm-6">
+                  <input type="text" readonly class="price form-control" id="limit_price" lang="en">
+              </div>
+          </div>
+          <div class="form-group row">
+              <label for="stop_loss_price" class="col-sm-6 col-form-label">Stop-Loss price</label>
+              <div class="col-sm-6">
+                  <input type="text" readonly class="price form-control" id="stop_loss_price" lang="en">
+              </div>
+          </div>
+          <div class="form-group row">
+              <label for="take_profit_price" class="col-sm-6 col-form-label">Take-Profit Price</label>
+              <div class="col-sm-6">
+                  <input type="text" readonly class="price form-control" id="take_profit_price" lang="en">
+              </div>
+          </div>
+          <div class="form-group row">
+              <label for="sec_take_profit_price" class="col-sm-6 col-form-label">Secure Take-Profit Price</label>
+              <div class="col-sm-6">
+                  <input type="number" class="price form-control" id="sec_take_profit_price" lang="en">
+              </div>
+          </div>
+          <div class="form-group row">
+              <label for="mid_take_profit_price" class="col-sm-6 col-form-label">Middle Take-Profit Price</label>
+              <div class="col-sm-6">
+                  <input type="number" class="price form-control" id="mid_take_profit_price" lang="en">
+              </div>
+          </div>
+          <div class="form-group">
+              <label for="trade_comment" class="col-form-label">Comment :</label>
+              <input type="text" class="col-sm-12 form-control" id="trade_comment" lang="en">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" id="open_trade_adv_open" data-dismiss="modal">Long</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
       </div>
     </div>
   </div>

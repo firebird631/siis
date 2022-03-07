@@ -3,7 +3,16 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy command trade info
 
-def cmd_trade_info(strategy, strategy_trader, data):
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from strategy.strategy import Strategy
+    from strategy.strategytrader import StrategyTrader
+
+
+def cmd_trade_info(strategy: Strategy, strategy_trader: StrategyTrader, data: dict) -> dict:
     """
     Get trade info according data on given strategy_trader.
 

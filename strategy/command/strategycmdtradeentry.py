@@ -3,6 +3,14 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy command trade entry
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from strategy.strategy import Strategy
+    from strategy.strategytrader import StrategyTrader
+
 from trader.order import Order
 from instrument.instrument import Instrument
 
@@ -17,7 +25,7 @@ logger = logging.getLogger('siis.strategy.cmd.tradeentry')
 error_logger = logging.getLogger('siis.error.strategy.cmd.tradeentry')
 
 
-def cmd_trade_entry(strategy, strategy_trader, data):
+def cmd_trade_entry(strategy: Strategy, strategy_trader: StrategyTrader, data: dict) -> dict:
     """
     Create a new trade according data on given strategy_trader.
     """
@@ -42,6 +50,7 @@ def cmd_trade_entry(strategy, strategy_trader, data):
     margin_trade = data.get('margin-trade', False)
     entry_timeout = data.get('entry-timeout', None)
     context_id = data.get('context', None)
+    comment = data.get('comment', "")
 
     if quantity_rate <= 0.0:
         results['messages'].append("Missing or empty quantity.")
@@ -54,6 +63,14 @@ def cmd_trade_entry(strategy, strategy_trader, data):
 
     if method in ('limit', 'limit-percent') and not limit_price:
         results['messages'].append("Limit price or distance is missing.")
+        results['error'] = True
+
+    if comment is not None and type(comment) is not str:
+        results['messages'].append("Comment must be a string.")
+        results['error'] = True
+
+    if comment and len(comment) > 100:
+        results['messages'].append("Comment string must not exceed 100 characters.")
         results['error'] = True
 
     if results['error']:
@@ -301,6 +318,9 @@ def cmd_trade_entry(strategy, strategy_trader, data):
         if context is not None:
             # apply context to the new trade
             strategy_trader.apply_trade_context(trade, context)
+
+        if comment:
+            trade.comment = comment
 
         # the new trade must be in the trades list if the event comes before, and removed after only it failed
         strategy_trader.add_trade(trade)

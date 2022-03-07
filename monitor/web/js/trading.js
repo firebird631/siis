@@ -1,4 +1,4 @@
-function on_order_long(elt) {
+function on_order_long(elt, extra=null) {
     let market_id = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
     let endpoint = "strategy/trade";
@@ -87,6 +87,19 @@ function on_order_long(elt) {
             data['timeframe'] = timeframe;
         }
 
+        // extra parameters
+        if (extra) {
+            if ('comment' in extra) {
+                data['comment'] = extra['comment'];
+            }
+            if ('sec-take-profit' in extra) {
+                data['sec-take-profit'] = extra['sec-take-profit'];
+            }
+            if ('mid-take-profit' in extra) {
+                data['mid-take-profit'] = extra['mid-take-profit'];
+            }
+        }
+
         $.ajax({
             type: "POST",
             url: url,
@@ -115,7 +128,7 @@ function on_order_long(elt) {
     }
 };
 
-function on_order_short(elt) {
+function on_order_short(elt, extra=null) {
     let market_id = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
     let endpoint = "strategy/trade";
@@ -202,6 +215,19 @@ function on_order_short(elt) {
             data['context'] = context;
         } else if (timeframe) {
             data['timeframe'] = timeframe;
+        }
+
+        // extra parameters
+        if (extra) {
+            if ('comment' in extra) {
+                data['comment'] = extra['comment'];
+            }
+            if ('sec-take-profit' in extra) {
+                data['sec-take-profit'] = extra['sec-take-profit'];
+            }
+            if ('mid-take-profit' in extra) {
+                data['mid-take-profit'] = extra['mid-take-profit'];
+            }
         }
 
         $.ajax({
@@ -1042,6 +1068,154 @@ function on_change_stop_loss_step() {
     $('#modified_stop_loss_price').val(stop_loss_price);
 }
 
+function on_open_new_trade(elt, direction) {
+    let market_id = retrieve_symbol(elt);
+    let trader_id = retrieve_trader_id(elt);
+
+    let market = window.markets[market_id];
+
+    if (!market) {
+        return;
+    }
+
+    let profile_name = retrieve_profile(trader_id);
+    let profile = market.profiles[profile_name];
+
+    let limit_price = 0.0;
+    let trigger_price = 0.0;
+    let quantity_rate = 1;
+
+    let stop_loss = 0.0;
+    let take_profit = 0.0;
+
+    let sec_take_profit = 0.0;
+    let mid_take_profit = 0.0;
+
+    let stop_loss_price_mode = window.methods[retrieve_stop_loss_method(trader_id)].type;
+    let take_profit_price_mode = window.methods[retrieve_take_profit_method(trader_id)].type;
+
+    if (direction > 0) {
+        title = "Open Long on " + market.symbol;
+        $("#open_trade_adv_open").text("Long");
+        $("#open_trade_adv_open").removeClass("btn-danger").addClass("btn-success");
+    } else {
+        title = "Open Short on " + market.symbol;
+        $("#open_trade_adv_open").text("Short");
+        $("#open_trade_adv_open").removeClass("btn-success").addClass("btn-danger");
+    }
+
+    if (stop_loss_price_mode == "price") {
+        stop_loss = retrieve_stop_loss_price(trader_id);
+    } else if (stop_loss_price_mode != "none") {
+        stop_loss = window.methods[retrieve_stop_loss_method(trader_id)].distance;
+    }
+
+    if (take_profit_price_mode == "price") {
+        take_profit = retrieve_take_profit_price(trader_id);
+    } else if (take_profit_price_mode != "none") {
+        take_profit = window.methods[retrieve_take_profit_method(trader_id)].distance;
+    }
+
+    let entry_price_mode = window.entry_methods[retrieve_entry_method(trader_id)].type;
+
+    if (entry_price_mode == "limit") {
+        limit_price = retrieve_entry_price(trader_id);
+        $('#limit_price').val("Limit @" + limit_price);
+    } else if (entry_price_mode == "limit-percent") {
+        limit_price = window.entry_methods[retrieve_entry_method(trader_id)].distance;
+        let sign = direction > 0 ? '-' : '+';
+        $('#limit_price').val("Limit " + sign + limit_price + "%");
+    } else if (entry_price_mode == "market") {
+        $('#limit_price').val("Market");
+    } else if (entry_price_mode == "best-1") {
+        $('#limit_price').val("Best-1");
+    } else if (entry_price_mode == "best-2") {
+        $('#limit_price').val("Best-2");
+    } else if (entry_price_mode == "best+1") {
+        $('#limit_price').val("Best+1");
+    } else if (entry_price_mode == "best+2") {
+        $('#limit_price').val("Best+2");
+    }
+
+    if (stop_loss_price_mode != "none") {
+        if (stop_loss_price_mode == "percent") {
+            let sign = direction > 0 ? '-' : '+';
+            $('#stop_loss_price').val(sign + stop_loss + "%");
+        } else if (stop_loss_price_mode == "pip") {
+            let sign = direction > 0 ? '-' : '+';
+            $('#stop_loss_price').val(sign + stop_loss + "pips");
+        } else if (stop_loss_price_mode == "dist") {
+            let sign = direction > 0 ? '-' : '+';
+            $('#stop_loss_price').val(sign + stop_loss);
+        } else {
+            $('#stop_loss_price').val(stop_loss);
+        }
+    }
+
+    if (take_profit_price_mode != "none") {
+        if (take_profit_price_mode == "percent") {
+            let sign = direction < 0 ? '-' : '+';
+            $('#take_profit_price').val(sign + take_profit + "%");
+        } else if (take_profit_price_mode == "pip") {
+            let sign = direction < 0 ? '-' : '+';
+            $('#take_profit_price').val(sign + take_profit + "pips");
+        } else if (take_profit_price_mode == "dist") {
+            let sign = direction < 0 ? '-' : '+';
+            $('#take_profit_price').val(sign + take_profit);
+        } else {
+            $('#take_profit_price').val(take_profit);
+        }
+    }
+
+    // @todo compute and display r:r, to be realized qty and capital possible raw win and lose
+    // quantity_rate = retrieve_quantity_rate(trader_id) * 0.01 * retrieve_quantity_factor(trader_id);
+
+    // reset fields
+    $('#trade_comment').val("");
+    $('#sec_take_profit_price').val("");
+    $('#mid_take_profit_price').val("");
+
+    // on update value
+    $('#sec_take_profit_price').off('input');
+    $('#sec_take_profit_price').on('input', function(elt) {
+    });
+
+    $('#mid_take_profit_price').off('input');
+    $('#mid_take_profit_price').on('input', function(elt) {
+    });
+
+    $('#open_trade_adv').modal({'show': true, 'backdrop': true, 'title': title});
+    $("#open_trade_adv").find(".modal-title").text(title);
+
+    $('#open_trade_adv_open').off('click');
+    $('#open_trade_adv_open').on('click', function(e) {
+        let comment = $('#trade_comment').val();
+        let sec_take_profit_val = $('#sec_take_profit_price').val();
+        let mid_take_profit_val = $('#mid_take_profit_price').val();
+
+        let extra = {
+        };
+
+        if (comment) {
+            extra['comment'] = comment;
+        }
+
+        if (sec_take_profit > 0.0) {
+            extra['sec-take-profit'] = sec_take_profit;
+        }
+
+        if (mid_take_profit > 0.0) {
+            extra['sec-take-profit'] = mid_take_profit;
+        }
+
+        if (direction > 0) {
+            on_order_long(elt, extra);
+        } else {
+            on_order_short(elt, extra);
+        }
+    });
+}
+
 function on_apply_modify_active_trade_take_profit() {
     let key = $('#modify_trade_take_profit').attr('trade-key');
 
@@ -1396,6 +1570,9 @@ function on_details_active_trade(elt) {
     let close_exec_price = $('<tr></tr>').append($('<td class="data-name">Last close exec price</td>')).append(
         $('<td class="data-value">' + format_price(market_id, trade.stats['close-exec-price']) + '</td>'));
 
+    let comment = $('<tr></tr>').append($('<td class="data-name">User comment</td>')).append(
+        $('<td class="data-value">' + (trade['comment'] || '-') + '</td>'));
+
     tbody.append(best_price);
     tbody.append(worst_price);
 
@@ -1410,6 +1587,7 @@ function on_details_active_trade(elt) {
     tbody.append(total_fees);
 
     tbody.append(close_exec_price);
+    tbody.append(comment);
 
     $('#trade_details').modal({'show': true, 'backdrop': true});
 }
@@ -1589,6 +1767,9 @@ function on_details_historical_trade(elt) {
     let exit_reason = $('<tr></tr>').append($('<td class="data-name">Exit reason</td>')).append(
         $('<td class="data-value">' + trade.stats['exit-reason'] + '</td>'));
 
+    let comment = $('<tr></tr>').append($('<td class="data-name">User comment</td>')).append(
+        $('<td class="data-value">' + (trade['comment'] || '-') + '</td>'));
+
     tbody.append(best_price);
     tbody.append(worst_price);
 
@@ -1603,6 +1784,7 @@ function on_details_historical_trade(elt) {
     tbody.append(total_fees);
 
     tbody.append(exit_reason);
+    tbody.append(comment);
 
     $('#trade_details').modal({'show': true, 'backdrop': true});
 }

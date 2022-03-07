@@ -29,7 +29,7 @@ class StrategyTrade(object):
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', \
                 '_next_operation_id', 'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', \
                 'pl', '_stats', 'last_tp_ot', 'last_stop_ot', 'exit_trades', '_label', '_entry_timeout', '_expiry', \
-                '_dirty', '_extra', 'context'
+                '_dirty', '_extra', 'context', '_comment'
 
     VERSION = "1.0.0"
 
@@ -141,6 +141,7 @@ class StrategyTrade(object):
         }
 
         self._extra = {}
+        self._comment = ""
 
     #
     # getters
@@ -330,6 +331,15 @@ class StrategyTrade(object):
     @property
     def is_dirty(self):
         return self._dirty
+
+    @property
+    def comment(self):
+        return self._comment
+
+    @comment.setter
+    def comment(self, comment: str):
+        if len(comment) <= 100:
+            self._comment = comment
 
     #
     # processing
@@ -864,6 +874,7 @@ class StrategyTrade(object):
             'last-stop-loss-order-time': self.last_stop_ot,
             'statistics': self._stats,
             'context': self.context.dumps() if self.context else None,
+            'comment': self._comment,
             'extra': self._extra,
         }
 
@@ -930,6 +941,7 @@ class StrategyTrade(object):
             'conditions': {}
         })
 
+        self._comment = data.get('comment', "")
         self._extra = data.get('extra', {})
 
         if context_builder and data.get('context'):
@@ -1162,6 +1174,7 @@ class StrategyTrade(object):
             'avg-entry-price': strategy_trader.instrument.format_price(self.aep),
             'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
             'entry-open-time': self.dump_timestamp(self.eot),
+            'comment': self._comment,
             'stats': {
                 'entry-order-type': order_type_to_str(self._stats['entry-order-type']),
                 'close-exec-price': strategy_trader.instrument.format_price(
@@ -1204,6 +1217,7 @@ class StrategyTrade(object):
             # minus fees
             'profit-loss-pct': round((self.pl - self.entry_fees_rate() - self.exit_fees_rate()) * 100.0, 2),
             'num-exit-trades': len(self.exit_trades),
+            'comment': self._comment,
             'stats': {
                 'best-price': strategy_trader.instrument.format_price(self._stats['best-price']),
                 'best-datetime': self.dump_timestamp(self._stats['best-timestamp']),
@@ -1259,6 +1273,7 @@ class StrategyTrade(object):
             'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
             'profit-loss-pct': round(self.estimate_profit_loss(strategy_trader.instrument) * 100.0, 2),
             'num-exit-trades': len(self.exit_trades),
+            'comment': self._comment,
             'stats': {
                 'best-price': strategy_trader.instrument.format_price(self._stats['best-price']),
                 'best-datetime': self.dump_timestamp(self._stats['best-timestamp']),
@@ -1340,21 +1355,28 @@ class StrategyTrade(object):
 
         assign_phrase.append(strategy_trader.instrument.format_quantity(self.e or self.oq))
 
+        msg1 = "Trade info - %s - id %s - on %s. Opened %s." % (
+                    self.trade_type_to_str(),
+                    self.id,
+                    strategy_trader.instrument.symbol,
+                    datetime.fromtimestamp(self.eot).strftime('%Y-%m-%d %H:%M:%S'))
+
+        msg2 = "Timeframe %s, Label %s, Entry timeout %s, Expiry %s, %s, Status %s." % (
+                    timeframe_to_str(self._timeframe),
+                    self._label,
+                    timeframe_to_str(self._entry_timeout),
+                    self._expiry or "Never",
+                    "Manual-Trade" if self._user_trade else "Auto-Trade", self.state_to_str())
+
+        data = [msg1, msg2]
+
+        if self._comment:
+            data.append("Comment: %s" % self._comment)
+
         # 'avg-entry-price' 'avg-exit-price' 'entry-open-time' 'exit-open-time'
         # 'filled-entry-qty' 'filled-exit-qty' 'profit-loss-pct' 'num-exit-trades'
 
-        return (
-            "Trade info - %s - id %s - on %s. Opened %s." % (
-                self.trade_type_to_str(),
-                self.id,
-                strategy_trader.instrument.symbol,
-                datetime.fromtimestamp(self.eot).strftime('%Y-%m-%d %H:%M:%S')),
-            "Timeframe %s, Label %s, Entry timeout %s, Expiry %s, %s, Status %s." % (
-                timeframe_to_str(self._timeframe),
-                self._label,
-                timeframe_to_str(self._entry_timeout),
-                self._expiry or "Never",
-                "Manual-Trade" if self._user_trade else "Auto-Trade", self.state_to_str()),
+        data.extend((
             "-----",
             "- %s" % ' '.join(entry_phrase),
             "- assign %s" % ' '.join(assign_phrase),
@@ -1362,4 +1384,6 @@ class StrategyTrade(object):
             "- clean-trade %s %s" % (strategy_trader.instrument.symbol, self.id),
             "-----",
             # specialize for add row with detail such as orders or positions ids
-        )
+        ))
+
+        return tuple(data)

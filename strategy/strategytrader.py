@@ -1002,10 +1002,10 @@ class StrategyTrader(object):
         return self._trade_mutex
 
     @property
-    def trades(self):
+    def trades(self) -> List[StrategyTrade]:
         return self._trades
 
-    def add_trade(self, trade):
+    def add_trade(self, trade: StrategyTrade):
         """
         Add a new trade.
         """
@@ -1018,7 +1018,7 @@ class StrategyTrader(object):
 
             self._trades.append(trade)
 
-    def remove_trade(self, trade):
+    def remove_trade(self, trade: StrategyTrade):
         """
         Remove an existing trade.
         """
@@ -1028,7 +1028,7 @@ class StrategyTrader(object):
         with self._trade_mutex:
             self._trades.remove(trade)
 
-    def has_trades(self):
+    def has_trades(self) -> bool:
         """
         Is pending or active trades.
         """
@@ -1037,7 +1037,7 @@ class StrategyTrader(object):
 
         return False
 
-    def list_trades(self):
+    def list_trades(self) -> List[StrategyTrade]:
         """
         List of ids of pending and actives trades.
         """
@@ -1049,7 +1049,7 @@ class StrategyTrader(object):
 
         return results
 
-    def dumps_trades_update(self):
+    def dumps_trades_update(self) -> List[dict]:
         """
         Dumps the update notify state of each existing trades.
         """
@@ -1061,7 +1061,7 @@ class StrategyTrader(object):
 
         return results
 
-    def dumps_trades_history(self):
+    def dumps_trades_history(self) -> List[dict]:
         """
         Dumps the historical record of each historical trades. Not sorted.
         """
@@ -1072,7 +1072,7 @@ class StrategyTrader(object):
 
         return results
 
-    def update_trades(self, timestamp):
+    def update_trades(self, timestamp: float):
         """
         Update managed trades per instruments and delete terminated trades.
         """
