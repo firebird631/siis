@@ -20,7 +20,7 @@ from common.signal import Signal
 
 import logging
 
-from utils import timeframe_from_str
+from common.utils import timeframe_from_str
 
 logger = logging.getLogger('siis.notifier.discord')
 error_logger = logging.getLogger('siis.error.notifier.discord')
