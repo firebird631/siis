@@ -1570,8 +1570,9 @@ function on_details_active_trade(elt) {
     let close_exec_price = $('<tr></tr>').append($('<td class="data-name">Last close exec price</td>')).append(
         $('<td class="data-value">' + format_price(market_id, trade.stats['close-exec-price']) + '</td>'));
 
-    let comment = $('<tr></tr>').append($('<td class="data-name">User comment</td>')).append(
-        $('<td class="data-value">' + (trade['comment'] || '-') + '</td>'));
+    let comment = $('<tr></tr>').append($('<td class="data-name">User comment</td>'));
+    let comment_value = $('<td class="data-value">' + (trade['comment'] || '-') + '</td>');
+    comment.append(comment_value);
 
     let comment_chg = $('<button class="btn btn-light trade-modify-comment fas fa-pencil-alt"></button>');
     comment.append(comment_chg);
@@ -1627,6 +1628,9 @@ function on_details_active_trade(elt) {
                         }
                     } else {
                         notify({'message': "Success", 'title': 'Modify Comment', 'type': 'success'});
+
+                        // local update
+                        comment_value.text(comment);
                     }
                 })
                 .fail(function(data) {
