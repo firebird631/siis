@@ -5,6 +5,7 @@ import threading
 
 from strategy.strategy import Strategy
 from common.utils import UTC
+from trader import Trader
 
 
 class CronExportScript(threading.Thread):
@@ -13,15 +14,21 @@ class CronExportScript(threading.Thread):
     BALANCE_DELAY = 60.0*60*24
     ALERT_DELAY = 60.0*5
     REGION_DELAY = 60.0*5
+    STRATEGY_DELAY = 60.0*5
+    TRADER_DELAY = 60.0*5
 
-    def __init__(self, strategy_service, unmanaged=False):
+    def __init__(self, strategy_service, trader_service, unmanaged=False):
         super().__init__()
 
         self._strategy_service = strategy_service
+        self._trader_service = trader_service
+
         self._trades_last_time = 0.0
         self._balances_last_time = 0.0
         self._alerts_last_time = 0.0
         self._regions_last_time = 0.0
+        self._strategy_last_time = 0.0
+        self._trader_last_time = 0.0
 
         self._process = True
         self._unmanaged = unmanaged
@@ -89,6 +96,28 @@ class CronExportScript(threading.Thread):
                         'filename': self._report_path + "/siis_regions.json",
                     })
 
+            if now - self._strategy_last_time >= CronExportScript.STRATEGY_DELAY:
+                self._strategy_last_time = now
+
+                if self._strategy_service.strategy():
+                    # export strategy traders with trades alerts and regions and states
+                    results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT_ALL, {
+                        'dataset': "strategy",
+                        'export-format': "json",
+                        'filename': self._report_path + "/siis_strategy.json",
+                    })
+
+            if now - self._trader_last_time >= CronExportScript.TRADER_DELAY:
+                self._trader_last_time = now
+
+                if self._trader_service.strategy():
+                    # export trader state, orders, assets, positions and account
+                    results = self._trader_service.command(Trader.COMMAND_EXPORT, {
+                        'dataset': "trader",
+                        'export-format': "json",
+                        'filename': self._report_path + "/siis_trader.json",
+                    })
+
             if self._unmanaged and self._strategy_service.strategy() is None:
                 # conditional break for older version
                 self._process = False
@@ -111,11 +140,11 @@ def run_once(watcher_service, trader_service, strategy_service, monitor_service,
 
     if hasattr(monitor_service, 'install_script'):
         if not monitor_service.has_script('cron-export'):
-            monitor_service.install_script('cron-export', CronExportScript(strategy_service))
+            monitor_service.install_script('cron-export', CronExportScript(strategy_service, trader_service))
     else:
         # for older version
         try:
-            instance = CronExportScript(strategy_service, True)
+            instance = CronExportScript(strategy_service, trader_service, True)
             instance.start()
         except Exception as e:
             results['error'] = True
