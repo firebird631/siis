@@ -3,7 +3,19 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy trade base class
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union, Optional, Tuple
+
+if TYPE_CHECKING:
+    from trader.trader import Trader
+    from instrument.instrument import Instrument
+    from tradeop.tradeop import TradeOp
+    from strategy.strategytrader import StrategyTrader
+    from strategytradercontext import StrategyTraderContextBuilder
+
 from datetime import datetime
+from typing import List
 
 from common.utils import timeframe_to_str, timeframe_from_str, UTC
 
@@ -68,7 +80,7 @@ class StrategyTrade(object):
     REASON_CANCELED_TARGETED = 7    # canceled before entering because take-profit price reached before entry price
     REASON_MARKET_TIMEOUT = 8       # closed (in profit or in loss) after a timeout
 
-    def __init__(self, trade_type, timeframe):
+    def __init__(self, trade_type: int, timeframe: float):
         self._trade_type = trade_type
 
         self._entry_state = StrategyTrade.STATE_NEW
@@ -148,61 +160,61 @@ class StrategyTrade(object):
     #
 
     @classmethod
-    def version(cls):
+    def version(cls) -> str:
         return cls.VERSION
 
     @classmethod
-    def is_margin(cls):
+    def is_margin(cls) -> bool:
         """
         Overrides, must return true if the trader is margin based.
         """
         return False
 
     @classmethod
-    def is_spot(cls):
+    def is_spot(cls) -> bool:
         """
         Overrides, must return true if the trader is spot based.
         """
         return False
 
     @property
-    def trade_type(self):
+    def trade_type(self) -> int:
         return self._trade_type
 
     @property
-    def entry_state(self):
+    def entry_state(self) -> int:
         return self._entry_state
 
     @property
-    def exit_state(self):
+    def exit_state(self) -> int:
         return self._exit_state   
 
     @property
-    def direction(self):
+    def direction(self) -> int:
         return self.dir
     
-    def close_direction(self):
+    def close_direction(self) -> int:
         return -self.dir
 
     @property
-    def entry_open_time(self):
+    def entry_open_time(self) -> float:
         return self.eot
 
     @property
-    def exit_open_time(self):
+    def exit_open_time(self) -> float:
         return self.xot
 
     @property
-    def order_quantity(self):
+    def order_quantity(self) -> float:
         return self.oq
 
     @property
-    def quantity(self):
+    def quantity(self) -> float:
         """Synonym for order_quantity"""
         return self.oq
 
     @property
-    def invested_quantity(self):
+    def invested_quantity(self) -> float:
         """
         Return the actively invested quantity or to be invested if not an active trade.
         @todo Implement for margin, ind-margin and position trade
@@ -213,127 +225,127 @@ class StrategyTrade(object):
             return self.oq * self.op
 
     @property  
-    def order_price(self):
+    def order_price(self) -> float:
         return self.op
 
     @property
-    def take_profit(self):
+    def take_profit(self) -> float:
         return self.tp
     
     @property
-    def stop_loss(self):
+    def stop_loss(self) -> float:
         return self.sl
 
     @property
-    def entry_price(self):
+    def entry_price(self) -> float:
         return self.aep
 
     @property
-    def exit_price(self):
+    def exit_price(self) -> float:
         return self.axp
 
     @property
-    def exec_entry_qty(self):
+    def exec_entry_qty(self) -> float:
         return self.e
     
     @property
-    def exec_exit_qty(self):
+    def exec_exit_qty(self) -> float:
         return self.x
 
     @property
-    def profit_loss(self):
+    def profit_loss(self) -> float:
         return self.pl
 
     @property
-    def timeframe(self):
+    def timeframe(self) -> float:
         return self._timeframe
 
     @timeframe.setter
-    def timeframe(self, timeframe):
+    def timeframe(self, timeframe: float):
         self._timeframe = timeframe
 
     @property
-    def expiry(self):
+    def expiry(self) -> float:
         return self._expiry
 
     @property
-    def entry_timeout(self):
+    def entry_timeout(self) -> float:
         return self._entry_timeout
 
     @property
-    def entry_order_type(self):
+    def entry_order_type(self) -> int:
         return self._stats['entry-order-type']
 
     @property
-    def first_realized_entry_time(self):
+    def first_realized_entry_time(self) -> float:
         return self._stats['first-realized-entry-timestamp']
 
     @property
-    def first_realized_exit_time(self):
+    def first_realized_exit_time(self) -> float:
         return self._stats['first-realized-exit-timestamp']
 
     @property
-    def last_realized_entry_time(self):
+    def last_realized_entry_time(self) -> float:
         return self._stats['last-realized-entry-timestamp']
 
     @property
-    def last_realized_exit_time(self):
+    def last_realized_exit_time(self) -> float:
         return self._stats['last-realized-exit-timestamp']
 
     @property
-    def unrealized_profit_loss(self):
+    def unrealized_profit_loss(self) -> float:
         return self._stats['unrealized-profit-loss']
 
     @property
-    def profit_loss_currency(self):
+    def profit_loss_currency(self) -> str:
         return self._stats['profit-loss-currency']
 
     @property
-    def exit_reason(self):
+    def exit_reason(self) -> int:
         return self._stats['exit-reason']
 
     @exit_reason.setter
-    def exit_reason(self, reason):
+    def exit_reason(self, reason: int):
         self._stats['exit-reason'] = reason
 
     @expiry.setter
-    def expiry(self, expiry):
+    def expiry(self, expiry: float):
         self._expiry = expiry
 
     @entry_timeout.setter
-    def entry_timeout(self, timeout):
+    def entry_timeout(self, timeout: float):
         self._entry_timeout = timeout
 
-    def set_user_trade(self, user_trade=True):
+    def set_user_trade(self, user_trade: bool = True):
         self._user_trade = user_trade
 
-    def is_user_trade(self):
+    def is_user_trade(self) -> bool:
         return self._user_trade
 
     @property
-    def last_take_profit(self):
+    def last_take_profit(self) -> List[float, float]:
         """Last take-profit order creation/modification timestamp"""
         return self.last_tp_ot
 
     @property
-    def last_stop_loss(self):
+    def last_stop_loss(self) -> List[float, float]:
         """Last stop-loss order creation/modification timestamp"""
         return self.last_stop_ot
 
     @property
-    def label(self):
+    def label(self) -> str:
         return self._label
 
     @label.setter
-    def label(self, label):
+    def label(self, label: str):
         self._label = label
 
     @property
-    def is_dirty(self):
+    def is_dirty(self) -> bool:
         return self._dirty
 
     @property
-    def comment(self):
+    def comment(self) -> str:
         return self._comment
 
     @comment.setter
@@ -345,8 +357,9 @@ class StrategyTrade(object):
     # processing
     #
 
-    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss,
-             leverage=1.0, hedging=None):
+    def open(self, trader: Trader, instrument: Instrument, direction: int, order_type: int,
+             order_price: float, quantity: float, take_profit: float, stop_loss: float,
+             leverage: float = 1.0, hedging: Optional[bool] = None) -> bool:
         """
         Order to open a position or to buy an asset.
 
@@ -363,7 +376,7 @@ class StrategyTrade(object):
         """
         return False
 
-    def reopen(self, trader, instrument, quantity):
+    def reopen(self, trader: Trader, instrument: Instrument, quantity: float) -> bool:
         """
         Order to reopen a position or to buy an asset by using previous parameters except the quantity.
 
@@ -373,8 +386,9 @@ class StrategyTrade(object):
         """
         return False
 
-    def assign(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss,
-               leverage=1.0, hedging=None):
+    def assign(self, trader: Trader, instrument: Instrument, direction: int, order_type: int,
+               order_price: float, quantity: float, take_profit: float, stop_loss: float,
+               leverage: float = 1.0, hedging: Optional[bool] = None) -> bool:
         """
         Assign an open a position on buy or sell.
 
@@ -413,14 +427,14 @@ class StrategyTrade(object):
 
         return True
 
-    def remove(self, trader, instrument):
+    def remove(self, trader: Trader, instrument: Instrument) -> bool:
         """
         Remove the trade and related remaining orders.
         @return True if all orders not longer exists.
         """
         return True
 
-    def can_delete(self):
+    def can_delete(self) -> bool:
         """
         Because of the slippage once a trade is closed deletion can only be done once all the quantity of the
         asset or the position are executed.
@@ -440,13 +454,13 @@ class StrategyTrade(object):
 
         return False
 
-    def is_error(self):
+    def is_error(self) -> bool:
         """
         Return true if the trade entry or exit are in error state.
         """
         return self._entry_state == StrategyTrade.STATE_ERROR or self._exit_state == StrategyTrade.STATE_ERROR
 
-    def is_active(self):
+    def is_active(self) -> bool:
         """
         Return true if the trade is active (non-null entry qty, and exit quantity non fully completed).
         """
@@ -456,13 +470,13 @@ class StrategyTrade(object):
         return (self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED or
                 self._entry_state == StrategyTrade.STATE_FILLED)
 
-    def is_opened(self):
+    def is_opened(self) -> bool:
         """
         Return true if the entry trade is opened but no qty filled at this moment time.
         """
         return self._entry_state == StrategyTrade.STATE_OPENED
 
-    def is_canceled(self):
+    def is_canceled(self) -> bool:
         """
         Return true if the trade is not active, canceled or rejected.
         """
@@ -474,26 +488,26 @@ class StrategyTrade(object):
 
         return False
 
-    def is_opening(self):
+    def is_opening(self) -> bool:
         """
         Is entry order in progress.
         """
         return (self._entry_state == StrategyTrade.STATE_OPENED or
                 self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED)
 
-    def is_closing(self):
+    def is_closing(self) -> bool:
         """
         Is close order in progress.
         """
         return self._closing and self._exit_state != StrategyTrade.STATE_FILLED
 
-    def is_closed(self):
+    def is_closed(self) -> bool:
         """
         Is trade fully closed (all qty sold).
         """
         return self._exit_state == StrategyTrade.STATE_FILLED
 
-    def is_entry_timeout(self, timestamp, timeout):
+    def is_entry_timeout(self, timestamp: float, timeout: float) -> bool:
         """
         Return true if the trade entry timeout.
 
@@ -502,7 +516,7 @@ class StrategyTrade(object):
         return ((self._entry_state == StrategyTrade.STATE_OPENED) and (self.e == 0) and (self.eot > 0) and
                 timeout > 0.0 and ((timestamp - self.eot) >= timeout))
 
-    def is_trade_timeout(self, timestamp):
+    def is_trade_timeout(self, timestamp: float) -> bool:
         """
         Return true if the trade timeout.
 
@@ -512,7 +526,7 @@ class StrategyTrade(object):
                 (self._expiry > 0.0) and (self.e > 0) and (self.eot > 0) and (timestamp > 0.0) and
                 ((timestamp - self.eot) >= self._expiry))
 
-    def is_duration_timeout(self, timestamp, duration):
+    def is_duration_timeout(self, timestamp: float, duration: float) -> bool:
         """
         Return true if the trade timeout after given duration.
 
@@ -522,7 +536,7 @@ class StrategyTrade(object):
                 (duration > 0.0) and (self.e > 0) and (self.eot > 0) and (timestamp > 0.0) and
                 ((timestamp - self.eot) >= duration))
 
-    def is_valid(self, timestamp, validity):
+    def is_valid(self, timestamp: float, validity: float) -> bool:
         """
         Return true if the trade is not expired (signal still acceptable) and entry quantity not fully filled.
         """
@@ -530,13 +544,13 @@ class StrategyTrade(object):
                   self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED) and
                  (validity > 0.0) and (timestamp > 0.0) and ((timestamp - self.entry_open_time) <= validity)))
 
-    def cancel_open(self, trader, instrument):
+    def cancel_open(self, trader: Trader, instrument: Instrument) -> int:
         """
         Cancel the entire or remaining open order.
         """
         return StrategyTrade.NOTHING_TO_DO
 
-    def cancel_close(self, trader, instrument):
+    def cancel_close(self, trader: Trader, instrument: Instrument) -> int:
         """
         Cancel the entire or remaining close order.
 
@@ -547,7 +561,7 @@ class StrategyTrade(object):
         """
         return StrategyTrade.NOTHING_TO_DO
 
-    def modify_take_profit(self, trader, instrument, limit_price, hard=True):
+    def modify_take_profit(self, trader: Trader, instrument: Instrument, limit_price: float, hard: bool = True) -> int:
         """
         Create/modify the take-order limit order or position limit.
         A limit_price of 0 remove an existing order.
@@ -559,7 +573,7 @@ class StrategyTrade(object):
         """
         return self.NOTHING_TO_DO
 
-    def modify_stop_loss(self, trader, instrument, stop_price, hard=True):
+    def modify_stop_loss(self, trader: Trader, instrument: Instrument, stop_price: float, hard: bool = True) -> int:
         """
         Create/modify the stop-loss taker order or position limit.
         A stop_price of 0 remove an existing order.
@@ -571,7 +585,8 @@ class StrategyTrade(object):
         """
         return self.NOTHING_TO_DO
 
-    def modify_oco(self, trader, instrument, limit_price, stop_price, hard=True):
+    def modify_oco(self, trader: Trader, instrument: Instrument, limit_price: float, stop_price: float,
+                   hard: bool = True) -> int:
         """
         Create/modify the OCO order with both take-profit and stop-loss orders.
 
@@ -583,37 +598,37 @@ class StrategyTrade(object):
         """
         return self.NOTHING_TO_DO
 
-    def close(self, trader, instrument):
+    def close(self, trader: Trader, instrument: Instrument) -> int:
         """
         Close the position or sell the asset.
         """
         return self.NOTHING_TO_DO
 
-    def has_stop_order(self):
+    def has_stop_order(self) -> bool:
         """
         Overrides, must return true if the trade have a broker side stop order, else local trigger stop.
         """
         return False
 
-    def has_limit_order(self):
+    def has_limit_order(self) -> bool:
         """
         Overrides, must return true if the trade have a broker side limit order, else local take-profit stop
         """
         return False
 
-    def has_oco_order(self):
+    def has_oco_order(self) -> bool:
         """
         Overrides, must return true if the trade have a broker side OCO order
         """
         return False
 
-    def support_both_order(self):
+    def support_both_order(self) -> bool:
         """
         Overrides, must return true if the trader support stop and limit order at the same time
         """
         return False
 
-    def can_modify_limit_order(self, timestamp, max_count=1, timeout=10.0):
+    def can_modify_limit_order(self, timestamp: float, max_count: int = 1, timeout: float = 10.0) -> bool:
         """
         Can modify the limit order according to current timestamp and previous limit order timestamp,
         and max change per count duration in seconds.
@@ -632,7 +647,7 @@ class StrategyTrade(object):
 
         return False
 
-    def can_modify_stop_order(self, timestamp, max_count=1, timeout=10.0):
+    def can_modify_stop_order(self, timestamp: float, max_count: int = 1, timeout: float = 10.0) -> bool:
         """
         Can modify the stop order according to current timestamp and previous stop order timestamp,
         and max change per count duration in seconds.
@@ -655,26 +670,26 @@ class StrategyTrade(object):
     # signals
     #
 
-    def order_signal(self, signal_type, data, ref_order_id, instrument):
+    def order_signal(self, signal_type: int, data: dict, ref_order_id: str, instrument: Instrument):
         pass
 
-    def position_signal(self, signal_type, data, ref_order_id, instrument):
+    def position_signal(self, signal_type: int, data: dict, ref_order_id: str, instrument: Instrument):
         pass
 
-    def is_target_order(self, order_id, ref_order_id):
+    def is_target_order(self, order_id: str, ref_order_id: str) -> bool:
         return False
 
-    def is_target_position(self, position_id, ref_order_id):
+    def is_target_position(self, position_id: str, ref_order_id: str) -> bool:
         return False
 
-    def update_dirty(self, trader, instrument):
+    def update_dirty(self, trader: Trader, instrument: Instrument):
         pass
 
     #
     # Helpers
     #
 
-    def direction_to_str(self):
+    def direction_to_str(self) -> str:
         if self.dir > 0:
             return 'long'
         elif self.dir < 0:
@@ -682,7 +697,7 @@ class StrategyTrade(object):
         else:
             return ''
 
-    def direction_from_str(self, direction):
+    def direction_from_str(self, direction: str):
         if direction == 'long':
             self.dir = 1
         elif direction == 'short':
@@ -690,7 +705,7 @@ class StrategyTrade(object):
         else:
             self.dir = 0
 
-    def state_to_str(self):
+    def state_to_str(self) -> str:
         """
         Get a string for the state of the trade (only for display usage).
         """
@@ -728,10 +743,10 @@ class StrategyTrade(object):
             # any others case meaning pending state
             return 'waiting'
 
-    def timeframe_to_str(self):
+    def timeframe_to_str(self) -> str:
         return timeframe_to_str(self._timeframe)
 
-    def trade_type_to_str(self):
+    def trade_type_to_str(self) -> str:
         if self._trade_type == StrategyTrade.TRADE_ASSET:
             return 'asset'
         elif self._trade_type == StrategyTrade.TRADE_MARGIN:
@@ -744,7 +759,7 @@ class StrategyTrade(object):
             return "undefined"
 
     @staticmethod
-    def trade_type_from_str(trade_type):
+    def trade_type_from_str(trade_type: str) -> int:
         if trade_type == 'asset':
             return StrategyTrade.TRADE_ASSET
         elif trade_type == 'margin':
@@ -757,7 +772,7 @@ class StrategyTrade(object):
             return StrategyTrade.TRADE_UNDEFINED
 
     @staticmethod
-    def trade_state_to_str(trade_state):
+    def trade_state_to_str(trade_state: int) -> str:
         if trade_state == StrategyTrade.STATE_NEW:
             return 'new'
         elif trade_state == StrategyTrade.STATE_REJECTED:
@@ -778,7 +793,7 @@ class StrategyTrade(object):
             return "undefined"
 
     @staticmethod
-    def trade_state_from_str(trade_state):
+    def trade_state_from_str(trade_state: str) -> int:
         if trade_state == 'new':
             return StrategyTrade.STATE_NEW
         elif trade_state == 'rejected':
@@ -799,7 +814,7 @@ class StrategyTrade(object):
             return StrategyTrade.STATE_UNDEFINED
 
     @staticmethod
-    def reason_to_str(reason):
+    def reason_to_str(reason: int) -> str:
         if reason == StrategyTrade.REASON_NONE:
             return "undefined"
         elif reason == StrategyTrade.REASON_MARKET_TIMEOUT:
@@ -821,7 +836,7 @@ class StrategyTrade(object):
         else:
             return "undefined"
 
-    def entry_order_type_to_str(self):
+    def entry_order_type_to_str(self) -> str:
         return order_type_to_str(self._stats['entry-order-type'])
 
     #
@@ -829,17 +844,17 @@ class StrategyTrade(object):
     #
 
     @staticmethod
-    def dump_timestamp(timestamp):
+    def dump_timestamp(timestamp: Optional[float]) -> Union[str, None]:
         return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ') if timestamp else None
 
     @staticmethod
-    def load_timestamp(datetime_str):
+    def load_timestamp(datetime_str: str) -> float:
         if datetime_str:
             return datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).timestamp()
         else:
-            return 0
+            return 0.0
 
-    def dumps(self):
+    def dumps(self) -> dict:
         """
         Override this method to make a dumps for the persistence.
         @return dict with at least as defined in this method.
@@ -878,7 +893,8 @@ class StrategyTrade(object):
             'extra': self._extra,
         }
 
-    def loads(self, data, strategy_trader, context_builder=None):
+    def loads(self, data: dict, strategy_trader: StrategyTrader,
+              context_builder: Optional[StrategyTraderContextBuilder] = None) -> bool:
         """
         Override this method to make a loads for the persistence model.
         @return True if success.
@@ -951,14 +967,14 @@ class StrategyTrade(object):
 
         return True
 
-    def check(self, trader, instrument):
+    def check(self, trader: Trader, instrument: Instrument) -> int:
         """
         Check orders and positions exists and quantities too.
         @return 1 if success, 0 if need repair, -1 if error.
         """
         return 1
 
-    def repair(self, trader, instrument):
+    def repair(self, trader: Trader, instrument: Instrument) -> bool:
         """
         Try to repair a trade with an error during retrieving some of its parts (orders, quantity, position).
         @return True if success.
@@ -969,7 +985,7 @@ class StrategyTrade(object):
     # stats
     #
 
-    def update_stats(self, instrument, timestamp):
+    def update_stats(self, instrument: Instrument, timestamp: float) :
         if self.is_active():
             last_price = instrument.close_exec_price(self.direction)
 
@@ -991,50 +1007,50 @@ class StrategyTrade(object):
                     self._stats['worst-price'] = last_price
                     self._stats['worst-timestamp'] = timestamp
 
-    def best_price(self):
+    def best_price(self) -> float:
         return self._stats['best-price']
 
-    def worst_price(self):
+    def worst_price(self) -> float:
         return self._stats['worst-price']
 
-    def best_price_timestamp(self):
+    def best_price_timestamp(self) -> float:
         return self._stats['best-timestamp']
 
-    def worst_price_timestamp(self):
+    def worst_price_timestamp(self) -> float:
         return self._stats['worst-timestamp']
 
-    def get_stats(self):
+    def get_stats(self) -> dict:
         return self._stats
 
-    def add_condition(self, name, data):
+    def add_condition(self, name: str, data):
         self._stats['conditions'][name] = data
 
     def get_conditions(self):
         return self._stats['conditions']
 
-    def entry_fees(self):
+    def entry_fees(self) -> float:
         """Realized entry fees cost (not rate)"""
         return self._stats['entry-fees']
 
-    def entry_fees_rate(self):
+    def entry_fees_rate(self) -> float:
         """Realized entry fees rate"""
         if self.e > 0 and self.aep > 0:
             return self._stats['entry-fees'] / (self.aep * self.e)
 
         return 0.0
 
-    def exit_fees(self):
+    def exit_fees(self) -> float:
         """Realized exit fees cost (not rate)"""
         return self._stats['exit-fees']
 
-    def exit_fees_rate(self):
+    def exit_fees_rate(self) -> float:
         """Realized entry fees rate"""
         if self.x > 0 and self.axp > 0:
             return self._stats['exit-fees'] / (self.axp * self.x)
 
         return 0.0
 
-    def estimate_profit_loss(self, instrument):
+    def estimate_profit_loss(self, instrument: Instrument) -> float:
         """
         During the trade open, compute an estimation of the unrealized profit/loss rate.
         """
@@ -1064,7 +1080,7 @@ class StrategyTrade(object):
 
         return profit_loss
 
-    def estimate_exit_fees_rate(self, instrument):
+    def estimate_exit_fees_rate(self, instrument: Instrument) -> float:
         """
         Return the estimate fees rate for the exit order.
         """
@@ -1083,7 +1099,7 @@ class StrategyTrade(object):
     # extra
     #
 
-    def set(self, key, value):
+    def set(self, key: str, value):
         """
         Add a key:value pair in the extra member dict of the trade.
         It allow to add you internal trade data, states you want to keep during the live of the trade and even in
@@ -1091,12 +1107,12 @@ class StrategyTrade(object):
         """
         self._extra[key] = value
 
-    def unset(self, key):
+    def unset(self, key: str):
         """Remove a previously set extra key"""
         if key in self._extra:
             del self._extra[key]
 
-    def get(self, key, default=None):
+    def get(self, key: str, default=None):
         """Return a value for a previously defined key or default value if not exists"""
         return self._extra.get(key, default)
 
@@ -1105,7 +1121,7 @@ class StrategyTrade(object):
     #
 
     @property
-    def operations(self):
+    def operations(self) -> List[TradeOp]:
         """
         List all pending/persistent operations
         """
@@ -1124,13 +1140,13 @@ class StrategyTrade(object):
         # replace the operations list
         self._operations = ops
 
-    def add_operation(self, trade_operation):
+    def add_operation(self, trade_operation: TradeOp):
         trade_operation.set_id(self._next_operation_id)
         self._next_operation_id += 1
 
         self._operations.append(trade_operation)
 
-    def remove_operation(self, trade_operation_id):
+    def remove_operation(self, trade_operation_id: int) -> bool:
         for operation in self._operations:
             if operation.id == trade_operation_id:
                 self._operations.remove(operation)
@@ -1138,14 +1154,14 @@ class StrategyTrade(object):
 
         return False
 
-    def has_operations(self):
+    def has_operations(self) -> bool:
         return len(self._operations) > 0
 
     #
     # dumps for notify/history
     #
 
-    def dumps_notify_entry(self, timestamp, strategy_trader):
+    def dumps_notify_entry(self, timestamp: float, strategy_trader: StrategyTrader) -> dict:
         """
         Dumps to dict for stream/notify/history.
         @note Data are humanized.
@@ -1182,7 +1198,7 @@ class StrategyTrade(object):
             }
         }
 
-    def dumps_notify_exit(self, timestamp, strategy_trader):
+    def dumps_notify_exit(self, timestamp: float, strategy_trader: StrategyTrader) -> dict:
         """
         Dumps to dict for stream/notify/history.
         @note Data are humanized.
@@ -1239,7 +1255,7 @@ class StrategyTrade(object):
             }
         }
 
-    def dumps_notify_update(self, timestamp, strategy_trader):
+    def dumps_notify_update(self, timestamp: float, strategy_trader: StrategyTrader) -> dict:
         """
         Dumps to dict for stream/notify/history.
         @note Data are humanized.
@@ -1295,7 +1311,7 @@ class StrategyTrade(object):
             }
         }
 
-    def info_report(self, strategy_trader):
+    def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
         """
         @todo leverage for phrase command
         """

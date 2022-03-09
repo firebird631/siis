@@ -4,7 +4,6 @@
 # Android notifier bot message post.
 
 import time
-import traceback
 
 from datetime import datetime
 

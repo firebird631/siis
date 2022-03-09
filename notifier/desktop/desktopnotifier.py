@@ -3,29 +3,17 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Desktop notification handler
 
-import collections
-import threading
 import os
 import copy
 import time
-import logging
 import subprocess
-import traceback
 
 from importlib import import_module
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from notifier.notifier import Notifier
 
-from config import utils
-
-from trader.position import Position
-from notifier.discord.webhooks import send_to_discord
-
-from common.baseservice import BaseService
 from common.signal import Signal
-
-from terminal.terminal import Terminal
 
 import logging
 logger = logging.getLogger('siis.notifier.desktop')

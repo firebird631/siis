@@ -1573,6 +1573,71 @@ function on_details_active_trade(elt) {
     let comment = $('<tr></tr>').append($('<td class="data-name">User comment</td>')).append(
         $('<td class="data-value">' + (trade['comment'] || '-') + '</td>'));
 
+    let comment_chg = $('<button class="btn btn-light trade-modify-comment fas fa-pencil-alt"></button>');
+    comment.append(comment_chg);
+
+    comment_chg.on('click', function(elt) {
+        $('#updated_trade_comment').val("");
+
+        $('#modify_comment').attr('trade-key', key);
+        $("#modify_comment").modal({'show': true, 'backdrop': true});
+
+        $("#modify_comment_apply").off('click');
+        $("#modify_comment_apply").on('click', function(elt) {
+            let key = $('#modify_comment').attr('trade-key');
+
+            let parts = key.split(':');
+            if (parts.length != 2) {
+                return false;
+            }
+
+            let market_id = parts[0];
+            let trade_id = parseInt(parts[1]);
+
+            let endpoint = "strategy/trade";
+            let url = base_url() + '/' + endpoint;
+
+            let market = window.markets[market_id];
+            let comment = $('#updated_trade_comment').val();
+
+            if (market_id && market && trade_id) {
+                let data = {
+                    'market-id': market['market-id'],
+                    'trade-id': trade_id,
+                    'command': "trade-modify",
+                    'action': "comment",
+                    'comment': comment
+                };
+
+                $.ajax({
+                    type: "POST",
+                    url: url,
+                    headers: {
+                        'Authorization': "Bearer " + server['auth-token'],
+                        'TWISTED_SESSION': server.session,
+                    },
+                    data: JSON.stringify(data),
+                    dataType: 'json',
+                    contentType: 'application/json'
+                })
+                .done(function(data) {
+                    if (data.error) {
+                        for (let msg in data.messages) {
+                            notify({'message': data.messages[msg], 'title': 'Modify Comment', 'type': 'error'});
+                        }
+                    } else {
+                        notify({'message': "Success", 'title': 'Modify Comment', 'type': 'success'});
+                    }
+                })
+                .fail(function(data) {
+                    for (let msg in data.messages) {
+                        notify({'message': msg, 'title': 'Modify Comment', 'type': 'error'});
+                    }
+                });
+            }
+        });
+    });
+
     tbody.append(best_price);
     tbody.append(worst_price);
 

@@ -26,6 +26,7 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
     # retrieve the trade
     trade_id = -1
     action = ""
+    notify = False  # excepted for modify SL/TP because they are managed directly
 
     try:
         trade_id = int(data.get('trade-id'))
@@ -185,6 +186,7 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                         if operation.check(trade):
                             # append the operation to the trade
                             trade.add_operation(operation)
+                            notify = True
                         else:
                             results['error'] = True
                             results['messages'].append("Operation checking error %s on trade %i" % (op_name, trade.id))
@@ -203,7 +205,9 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                 if 'operation-id' in data and type(data.get('operation-id')) is int:
                     trade_operation_id = data['operation-id']
 
-                if not trade.remove_operation(trade_operation_id):
+                if trade_operation_id > 0 and trade.remove_operation(trade_operation_id):
+                    notify = True
+                else:
                     results['error'] = True
                     results['messages'].append("Unknown operation-id on trade %i" % trade.id)
 
@@ -214,6 +218,7 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                 if type(comment) is str:
                     if len(comment) <= 100:
                         trade.comment = comment
+                        notify = True
                     else:
                         results['error'] = True
                         results['messages'].append("Comment string is 100 characters max, for trade %i" % trade.id)
@@ -229,5 +234,8 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
         else:
             results['error'] = True
             results['messages'].append("Invalid trade identifier %i" % trade_id)
+
+    if notify:
+        strategy_trader.notify_trade_update(strategy.timestamp, trade)
 
     return results
