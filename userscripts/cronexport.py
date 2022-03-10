@@ -110,7 +110,7 @@ class CronExportScript(threading.Thread):
             if now - self._trader_last_time >= CronExportScript.TRADER_DELAY:
                 self._trader_last_time = now
 
-                if self._trader_service.strategy():
+                if self._trader_service.trader():
                     # export trader state, orders, assets, positions and account
                     results = self._trader_service.command(Trader.COMMAND_EXPORT, {
                         'dataset': "trader",
