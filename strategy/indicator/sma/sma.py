@@ -8,7 +8,7 @@ from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample, MM_n
 
 import numpy as np
-from talib import SMA as ta_SMA
+from talib import SMA as TA_SMA
 
 
 class SMAIndicator(Indicator):
@@ -19,14 +19,14 @@ class SMAIndicator(Indicator):
     __slots__ = '_length', '_prev', '_last', '_smas'
 
     @classmethod
-    def indicator_type(cls):
+    def indicator_type(cls) -> int:
         return Indicator.TYPE_TREND
 
     @classmethod
-    def indicator_class(cls):
+    def indicator_class(cls) -> int:
         return Indicator.CLS_OSCILLATOR
 
-    def __init__(self, timeframe, length=9):
+    def __init__(self, timeframe: float, length: int = 9):
         super().__init__("sma", timeframe)
 
         self._length = length   # periods number
@@ -37,19 +37,19 @@ class SMAIndicator(Indicator):
         self._smas = np.array([])
 
     @property
-    def length(self):
+    def length(self) -> int:
         return self._length
     
     @length.setter
-    def length(self, length):
+    def length(self, length: int):
         self._length = length
 
     @property
-    def prev(self):
+    def prev(self) -> float:
         return self._prev
 
     @property
-    def last(self):
+    def last(self) -> float:
         return self._last
 
     @property
@@ -57,24 +57,24 @@ class SMAIndicator(Indicator):
         return self._smas
 
     @staticmethod
-    def SMA_n_sf(N, data, step=1, filtering=False):
+    def SMA_n_sf(length, data, step=1, filtering=False):
         """ 
         Calcule une SMA sur N periodes en prenant un echantillon tous les step avec ou sans filtrage prealable
         Retourne un array de la même taille que data. Lorsque step > 1, les valeurs sont interpolees lineairement.
         """
-        sub_data = down_sample(data, step) if filtering else data [::step]
-        t_subdata = range(0,len(data),step)
+        sub_data = down_sample(data, step) if filtering else data[::step]
+        t_subdata = range(0, len(data),step)
 
-        sma = MM_n(N, data)
+        sma = MM_n(length, data)
 
         return sma
 
-    def compute(self, timestamp, prices):
+    def compute(self, timestamp: float, prices):
         self._prev = self._last
 
         # self._smas = SMAIndicator.SMA_n_sf(self._length, prices)  # , self._step, self._filtering)
         # self._smas = MM_n(self._length, prices)
-        self._smas = ta_SMA(prices, self._length)
+        self._smas = TA_SMA(prices, self._length)
         self._last = self._smas[-1]
 
         self._last_timestamp = timestamp

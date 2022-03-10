@@ -7,7 +7,7 @@ from terminal.terminal import Terminal
 from trader.order import Order
 
 from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
-from strategy.strategyindmargintrade import StrategyIndMarginTrade
+from strategy.trade.strategyindmargintrade import StrategyIndMarginTrade
 
 from instrument.instrument import Instrument
 

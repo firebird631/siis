@@ -14,7 +14,7 @@ import traceback
 
 from trader.trader import Trader
 
-from strategy.strategytrade import StrategyTrade
+from strategy.trade.strategytrade import StrategyTrade
 
 import logging
 logger = logging.getLogger('siis.strategy.tradeop')

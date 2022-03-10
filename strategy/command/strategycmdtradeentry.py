@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 from trader.order import Order
 from instrument.instrument import Instrument
 
-from strategy.strategyassettrade import StrategyAssetTrade
-from strategy.strategymargintrade import StrategyMarginTrade
-from strategy.strategypositiontrade import StrategyPositionTrade
-from strategy.strategyindmargintrade import StrategyIndMarginTrade
+from strategy.trade.strategyassettrade import StrategyAssetTrade
+from strategy.trade.strategymargintrade import StrategyMarginTrade
+from strategy.trade.strategypositiontrade import StrategyPositionTrade
+from strategy.trade.strategyindmargintrade import StrategyIndMarginTrade
 
 import logging
 

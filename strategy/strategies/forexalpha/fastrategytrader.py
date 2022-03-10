@@ -5,7 +5,7 @@
 
 from trader.order import Order
 
-from strategy.strategypositiontrade import StrategyPositionTrade
+from strategy.trade.strategypositiontrade import StrategyPositionTrade
 from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
 
 from instrument.instrument import Instrument

@@ -34,7 +34,8 @@ class TimeframeBasedSub(object):
 
         self.last_signal = None
 
-        self.price = None  # price indicator
+        self.price = None   # price indicator
+        self.volume = None  # volume indicator
 
         self.open_price = None        # last OHLC open
         self.close_price = None       # last OHLC close
@@ -43,7 +44,7 @@ class TimeframeBasedSub(object):
 
     def setup_indicators(self, params):
         """
-        Standard implementation to instanciate and setup the indicator based on the timeframe,
+        Standard implementation to instantiate and setup the indicator based on the timeframe,
         from the parameters.
         """
         if 'indicators' not in params:
@@ -168,7 +169,7 @@ class TimeframeBasedSub(object):
     @property
     def samples_history_size(self):
         """
-        Number of Ohlc used for inititalization on kept in memory.
+        Number of Ohlc used for initialization on kept in memory.
         """
         return self.history
 

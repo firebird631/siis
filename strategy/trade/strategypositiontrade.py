@@ -3,9 +3,19 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy trade for margin individual position
 
-from common.signal import Signal
+from __future__ import annotations
 
+from typing import TYPE_CHECKING, Optional, Tuple
+
+if TYPE_CHECKING:
+    from trader.trader import Trader
+    from instrument.instrument import Instrument
+    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytradercontext import StrategyTraderContextBuilder
+
+from common.signal import Signal
 from trader.order import Order
+
 from .strategytrade import StrategyTrade
 
 import logging
@@ -38,12 +48,11 @@ class StrategyPositionTrade(StrategyTrade):
         self.leverage = 1.0
         self.hedging = False
 
-    def open(self, trader, instrument, direction, order_type, order_price, quantity,
-             take_profit, stop_loss, leverage=1.0, hedging=None):
+    def open(self, trader: Trader, instrument: Instrument, direction: int, order_type: int,
+             order_price: float, quantity: float, take_profit: float, stop_loss: float,
+             leverage: float = 1.0, hedging: Optional[bool] = None) -> bool:
         """
         Open a position or buy an asset.
-
-        @param hedging If defined use the defined value else use the default from the market.
         """
         if self._entry_state != StrategyTrade.STATE_NEW:
             return False
@@ -93,7 +102,7 @@ class StrategyPositionTrade(StrategyTrade):
             self._entry_state = StrategyTrade.STATE_REJECTED
             return False
 
-    def reopen(self, trader, instrument, quantity):
+    def reopen(self, trader: Trader, instrument: Instrument, quantity: float) -> bool:
         if self._entry_state != StrategyTrade.STATE_CANCELED:
             return False
 
@@ -134,7 +143,7 @@ class StrategyPositionTrade(StrategyTrade):
             self._entry_state = StrategyTrade.STATE_REJECTED
             return False
 
-    def remove(self, trader, instrument):
+    def remove(self, trader: Trader, instrument: Instrument) -> int:
         """
         Remove the order, but doesn't close the position.
         """
@@ -173,7 +182,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         return not error
 
-    def cancel_open(self, trader, instrument):
+    def cancel_open(self, trader: Trader, instrument: Instrument) -> int:
         if self.create_oid:
             # cancel the buy order
             if trader.cancel_order(self.create_oid, instrument) > 0:
@@ -209,7 +218,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         return self.NOTHING_TO_DO
 
-    def modify_take_profit(self, trader, instrument, limit_price, hard=True):
+    def modify_take_profit(self, trader: Trader, instrument: Instrument, limit_price: float, hard: bool = True) -> int:
         if self.position_id:
             # if not accepted as modification do it as limit order
             if trader.modify_position(self.position_id, instrument,
@@ -222,7 +231,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         return self.NOTHING_TO_DO
 
-    def modify_stop_loss(self, trader, instrument, stop_price, hard=True):
+    def modify_stop_loss(self, trader: Trader, instrument: Instrument, stop_price: float, hard: bool = True) -> int:
         if self.position_id:
             # if not accepted as modification do it as stop order
             if trader.modify_position(self.position_id, instrument,
@@ -235,7 +244,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         return self.NOTHING_TO_DO
 
-    def close(self, trader, instrument):
+    def close(self, trader: Trader, instrument: Instrument) -> int:
         """
         Close the position and cancel the related orders.
         """
@@ -276,28 +285,28 @@ class StrategyPositionTrade(StrategyTrade):
 
         return self.NOTHING_TO_DO
 
-    def has_stop_order(self):
+    def has_stop_order(self) -> bool:
         return self.position_stop > 0.0
 
-    def has_limit_order(self):
+    def has_limit_order(self) -> bool:
         return self.position_limit > 0.0
 
-    def support_both_order(self):
+    def support_both_order(self) -> bool:
         return True
 
     @classmethod
-    def is_margin(cls):
+    def is_margin(cls) -> bool:
         return True
 
     @classmethod
-    def is_spot(cls):
+    def is_spot(cls) -> bool:
         return False
 
     #
     # signal
     #
 
-    def order_signal(self, signal_type, data, ref_order_id, instrument):
+    def order_signal(self, signal_type: int, data: dict, ref_order_id: str, instrument: Instrument):
         if signal_type == Signal.SIGNAL_ORDER_OPENED:
             # already get at the return of create_order
             if ref_order_id == self.create_ref_oid:
@@ -401,7 +410,7 @@ class StrategyPositionTrade(StrategyTrade):
             if data.get('profit-currency'):
                 self._stats['profit-loss-currency'] = data['profit-currency']
 
-    def position_signal(self, signal_type, data, ref_order_id, instrument):
+    def position_signal(self, signal_type: int, data: dict, ref_order_id: str, instrument: Instrument):
         if signal_type == Signal.SIGNAL_POSITION_OPENED:
             self.position_id = data['id']
 
@@ -583,7 +592,7 @@ class StrategyPositionTrade(StrategyTrade):
             elif self.aep > 0 and instrument.close_exec_price(-1) > 0:
                 self.pl = (self.aep - instrument.close_exec_price(-1)) / self.aep
 
-    def is_target_order(self, order_id, ref_order_id):
+    def is_target_order(self, order_id: str, ref_order_id: str) -> bool:
         if order_id and (order_id == self.create_oid):
             return True
 
@@ -592,7 +601,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         return False
 
-    def is_target_position(self, position_id, ref_order_id):
+    def is_target_position(self, position_id: str, ref_order_id: str) -> bool:
         if position_id and (position_id == self.position_id):
             return True
 
@@ -605,7 +614,7 @@ class StrategyPositionTrade(StrategyTrade):
     # persistence
     #
 
-    def dumps(self):
+    def dumps(self) -> dict:
         data = super().dumps()
 
         data['create-ref-oid'] = self.create_ref_oid
@@ -617,7 +626,8 @@ class StrategyPositionTrade(StrategyTrade):
 
         return data
 
-    def loads(self, data, strategy_trader, context_builder=None):
+    def loads(self, data: dict, strategy_trader: StrategyTrader,
+              context_builder: Optional[StrategyTraderContextBuilder] = None) -> bool:
         if not super().loads(data, strategy_trader, context_builder):
             return False
 
@@ -630,7 +640,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         return True
 
-    def check(self, trader, instrument):
+    def check(self, trader: Trader, instrument: Instrument) -> int:
         #
         # order and position
         #
@@ -696,13 +706,13 @@ class StrategyPositionTrade(StrategyTrade):
     # stats
     #
 
-    def info_report(self, strategy_trader):
+    def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
         data = list(super().info_report(strategy_trader))
 
         if self.create_oid or self.create_ref_oid:
             data.append("Entry order id / ref : %s / %s" % (self.create_oid, self.create_ref_oid))
 
         if self.position_id:
-            data.append("Position id : %s" % self.position_id)
+            data.append("Position id : %s" % (self.position_id,))
 
         return tuple(data)

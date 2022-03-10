@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING, Union, Optional, Tuple
 if TYPE_CHECKING:
     from trader.trader import Trader
     from instrument.instrument import Instrument
-    from tradeop.tradeop import TradeOp
+    from strategy.tradeop.tradeop import TradeOp
     from strategy.strategytrader import StrategyTrader
-    from strategytradercontext import StrategyTraderContextBuilder
+    from strategy.strategytradercontext import StrategyTraderContextBuilder
 
 from datetime import datetime
 from typing import List
 
-from common.utils import timeframe_to_str, timeframe_from_str, UTC
+from common.utils import timeframe_to_str, UTC
 
 from trader.order import Order, order_type_to_str
 
@@ -901,7 +901,7 @@ class StrategyTrade(object):
         @note Data Must not be humanized.
         """
         self.id = data.get('id', -1)
-        self._trade_type = data.get('trade', 0)  # self.trade_type_from_str(data.get('type', ''))
+        self._trade_type = data.get('', 0)  # self.trade_type_from_str(data.get('type', ''))
         self._entry_timeout = data.get('entry-timeout', 0)
         self._expiry = data.get('expiry', 0)
         self._entry_state = data.get('entry-state', 0)  # self.trade_state_from_str(data.get('entry-state', ''))

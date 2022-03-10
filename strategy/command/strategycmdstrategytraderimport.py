@@ -7,7 +7,7 @@ import json
 import time
 
 from common.utils import timeframe_from_str, direction_from_str
-from strategy.strategytrade import StrategyTrade
+from strategy.trade.strategytrade import StrategyTrade
 
 
 def dehumanize_trade(trade_dump):

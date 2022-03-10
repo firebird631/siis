@@ -1,7 +1,16 @@
 # @date 2018-08-24
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Timeframe based strategy trader. 
+# Timeframe based strategy trader.
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from .strategy import Strategy
+    from instrument.instrument import Instrument
+    from timeframebasedsub import TimeframeBasedSub
 
 import copy
 
@@ -32,7 +41,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     @see Strategy.base_timeframe
     """
 
-    def __init__(self, strategy, instrument, base_timeframe=Instrument.TF_TICK):
+    def __init__(self, strategy: Strategy, instrument: Instrument, base_timeframe: float = Instrument.TF_TICK):
         """
         @param strategy Parent strategy (mandatory)
         @param instrument Related unique instance of instrument (mandatory)
@@ -50,21 +59,21 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         self.last_price = 0.0
 
     @property
-    def is_timeframes_based(self):
+    def is_timeframes_based(self) -> bool:
         return True
 
     @property
-    def base_timeframe(self):
+    def base_timeframe(self) -> float:
         return self._base_timeframe
 
     @property
-    def timeframes_parameters(self):
+    def timeframes_parameters(self) -> dict:
         """
         Returns the dict of timeframes with name as key and settings in value.
         """
         return self.strategy.parameters.get('timeframes', {})
 
-    def on_received_initial_candles(self, timeframe):
+    def on_received_initial_candles(self, timeframe: float):
         """
         Slot called once the initial bulk of candles are received for each timeframe.
         """
@@ -72,7 +81,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         if sub:
             sub.init_candle_generator()
 
-    def gen_candles_from_ticks(self, timestamp):
+    def gen_candles_from_ticks(self, timestamp: float):
         """
         Generate the news candles from ticks.
         @note Thread-safe method.
@@ -102,7 +111,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             # no longer need them
             self.instrument.clear_ticks()
 
-    def gen_candles_from_candles(self, timestamp):
+    def gen_candles_from_candles(self, timestamp: float):
         """
         Generate the news candles from the same base of candle.
         @note Thread-safe method.
@@ -129,7 +138,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 self.prev_price = self.last_price
                 self.last_price = self.instrument._candles[self._base_timeframe][-1].close  # last mid close
 
-    def compute(self, timestamp):
+    def compute(self, timestamp: float):
         """
         Compute the signals for the different timeframes depending of the update policy.
         """
@@ -209,7 +218,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             if self._global_streamer:
                 self._global_streamer.publish()
 
-    def create_chart_streamer(self, sub):
+    def create_chart_streamer(self, sub: TimeframeBasedSub) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
                               self.strategy.identifier, "%s:%i" % (self.instrument.market_id, sub.tf))
         streamer.add_member(StreamMemberInt('tf'))
@@ -218,7 +227,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return streamer
 
-    def subscribe_info(self):
+    def subscribe_info(self) -> bool:
         result = False
 
         with self._mutex:
@@ -231,7 +240,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return result
 
-    def unsubscribe_info(self):
+    def unsubscribe_info(self) -> bool:
         result = False
 
         with self._mutex:
@@ -245,7 +254,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return result
 
-    def subscribe_stream(self, tf):
+    def subscribe_stream(self, tf: Union[float, int, None]) -> bool:
         """
         Use or create a specific streamer.
         @param 
@@ -267,9 +276,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                     self._timeframe_streamers[timeframe.tf] = streamer
                     result = True
 
-        return False
+        return result
 
-    def unsubscribe_stream(self, tf):
+    def unsubscribe_stream(self, tf: Union[float, int, None]) -> bool:
         """
         Delete a specific streamer when no more subscribers.
         """

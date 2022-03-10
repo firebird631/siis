@@ -6,10 +6,7 @@
 from trader.order import Order
 from instrument.instrument import Instrument
 
-from strategy.strategyassettrade import StrategyAssetTrade
-from strategy.strategymargintrade import StrategyMarginTrade
-from strategy.strategypositiontrade import StrategyPositionTrade
-from strategy.strategyindmargintrade import StrategyIndMarginTrade
+from strategy.trade.strategyassettrade import StrategyAssetTrade
 
 
 def cmd_trade_assign(strategy, strategy_trader, data):

@@ -464,7 +464,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
     def trade_quantity_type_to_str(self) -> str:
         return StrategyTraderContext.TRADE_QUANTITY_FROM_STR_MAP.get(self.trade_quantity_type)
 
-    def modify_trade_quantity_type(self, instrument, trade_quantity_type: str, value: float = 0.0):
+    def modify_trade_quantity_type(self, instrument, trade_quantity_type: str, value: float = 0.0) -> bool:
         """
         @param instrument
         @param trade_quantity_type str String trade quantity type.
@@ -477,11 +477,15 @@ class StrategyTraderContext(StrategyTraderContextBase):
             self.trade_quantity_step = 0.0
             self.trade_quantity_type = trade_quantity_type
 
+            return True
+
         elif trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_SPECIFIC:
             if value >= 0.0:
                 self.trade_quantity = value
                 self.trade_quantity_step = 0.0
                 self.trade_quantity_type = trade_quantity_type
+
+                return True
 
         elif trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_INC_STEP:
             if value > 0.0:
@@ -492,10 +496,14 @@ class StrategyTraderContext(StrategyTraderContextBase):
                 self.trade_quantity_step = value
                 self.trade_quantity_type = trade_quantity_type
 
+                return True
+
         elif trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_MANAGED:
             if value > 0.0:
                 self.trade_quantity_step = value
                 self.trade_quantity_type = trade_quantity_type
+
+                return True
 
         elif trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_REINVEST_MAX_LAST:
             if self.trade_quantity <= 0.0:
@@ -504,3 +512,32 @@ class StrategyTraderContext(StrategyTraderContextBase):
 
             self.trade_quantity_step = 0.0
             self.trade_quantity_type = trade_quantity_type
+
+            return True
+
+        return False
+
+    def modify_trade_quantity(self, value: float = 0.0) -> bool:
+        """
+        Only if TRADE_QUANTITY_SPECIFIC is the current trade_quantity_type.
+        @param value trade quantity for specific type, or step value
+        @return True if value is greater or equal to zero and current trade quantity mode is set to specific.
+        """
+        if self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_SPECIFIC:
+            if value >= 0.0:
+                self.trade_quantity = value
+                return True
+
+        return False
+
+    def modify_trade_step(self, value: float = 0.0) -> bool:
+        """
+        Only if TRADE_QUANTITY_INC_STEP is the current trade_quantity_type.
+        @param value trade quantity step for specific type, or step value
+        """
+        if self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_INC_STEP:
+            if value >= 0.0:
+                self.trade_quantity_step = value
+                return True
+
+        return False

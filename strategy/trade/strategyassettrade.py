@@ -3,9 +3,19 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy trade for asset.
 
-from common.signal import Signal
+from __future__ import annotations
 
+from typing import TYPE_CHECKING, Optional, Tuple
+
+if TYPE_CHECKING:
+    from trader.trader import Trader
+    from instrument.instrument import Instrument
+    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytradercontext import StrategyTraderContextBuilder
+
+from common.signal import Signal
 from trader.order import Order
+
 from .strategytrade import StrategyTrade
 
 import logging
@@ -42,7 +52,7 @@ class StrategyAssetTrade(StrategyTrade):
     __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', 'entry_oid', 'stop_oid', \
                 'limit_oid', 'oco_oid', 'stop_order_qty', 'limit_order_qty', '_use_oco'
 
-    def __init__(self, timeframe):
+    def __init__(self, timeframe: float):
         super().__init__(StrategyTrade.TRADE_BUY_SELL, timeframe)
 
         self.entry_ref_oid = None
@@ -60,8 +70,9 @@ class StrategyAssetTrade(StrategyTrade):
         self.stop_order_qty = 0.0
         self.limit_order_qty = 0.0
 
-    def open(self, trader, instrument, direction, order_type, order_price, quantity, take_profit, stop_loss,
-             leverage=1.0, hedging=None, use_oco=False):
+    def open(self, trader: Trader, instrument: Instrument, direction: int, order_type: int,
+             order_price: float, quantity: float, take_profit: float, stop_loss: float,
+             leverage: float = 1.0, hedging: Optional[bool] = None, use_oco: Optional[bool] = None) -> bool:
         """
         Buy an asset.
         """
@@ -103,7 +114,7 @@ class StrategyAssetTrade(StrategyTrade):
             self._entry_state = StrategyTrade.STATE_REJECTED
             return False
 
-    def reopen(self, trader, instrument, quantity):
+    def reopen(self, trader: Trader, instrument: Instrument, quantity: float) -> bool:
         if self._entry_state != StrategyTrade.STATE_CANCELED:
             return False
 
@@ -135,7 +146,7 @@ class StrategyAssetTrade(StrategyTrade):
             self._entry_state = StrategyTrade.STATE_REJECTED
             return False
 
-    def remove(self, trader, instrument):
+    def remove(self, trader: Trader, instrument: Instrument) -> int:
         error = False
 
         if self.entry_oid:
@@ -262,7 +273,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         return not error
 
-    def cancel_open(self, trader, instrument):
+    def cancel_open(self, trader: Trader, instrument: Instrument) -> int:
         """
         @todo Before cancel, if the realized quantity is lesser than the min-notional it
         will be impossible to create an exit order.
@@ -301,7 +312,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         return self.NOTHING_TO_DO
 
-    def modify_take_profit(self, trader, instrument, limit_price, hard=True):
+    def modify_take_profit(self, trader: Trader, instrument: Instrument, limit_price: float, hard: bool = True) -> int:
         """
         @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
         to create a new order.
@@ -417,7 +428,7 @@ class StrategyAssetTrade(StrategyTrade):
 
             return self.NOTHING_TO_DO
 
-    def modify_stop_loss(self, trader, instrument, stop_price, hard=True):
+    def modify_stop_loss(self, trader: Trader, instrument: Instrument, stop_price: float, hard: bool = True) -> int:
         """
         @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
         to create a new order.
@@ -534,12 +545,13 @@ class StrategyAssetTrade(StrategyTrade):
 
             return self.NOTHING_TO_DO
 
-    def modify_oco(self, trader, instrument, limit_price, stop_price, hard=True):
+    def modify_oco(self, trader: Trader, instrument: Instrument, limit_price: float, stop_price: float,
+                   hard: bool = True) -> int:
         # @todo
 
         return self.REJECTED
 
-    def close(self, trader, instrument):
+    def close(self, trader: Trader, instrument: Instrument) -> int:
         """
         @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
         to create a new order.
@@ -655,16 +667,16 @@ class StrategyAssetTrade(StrategyTrade):
                 self.stop_ref_oid = None
                 return self.REJECTED
 
-    def has_stop_order(self):
+    def has_stop_order(self) -> bool:
         return self.stop_oid is not None and self.stop_oid != ""
 
-    def has_limit_order(self):
+    def has_limit_order(self) -> bool:
         return self.limit_oid is not None and self.limit_oid != ""
 
-    def has_oco_order(self):
+    def has_oco_order(self) -> bool:
         return self.oco_oid is not None and self.oco_oid != ""
 
-    def support_both_order(self):
+    def support_both_order(self) -> bool:
         if self.has_oco_order():
             # only if an OCO order is defined
             return True
@@ -672,18 +684,18 @@ class StrategyAssetTrade(StrategyTrade):
             return False
 
     @classmethod
-    def is_margin(cls):
+    def is_margin(cls) -> bool:
         return False
 
     @classmethod
-    def is_spot(cls):
+    def is_spot(cls) -> bool:
         return True
 
     #
     # signals
     #
 
-    def update_dirty(self, trader, instrument):
+    def update_dirty(self, trader: Trader, instrument: Instrument):
         if self._dirty:
             done = True
 
@@ -710,7 +722,7 @@ class StrategyAssetTrade(StrategyTrade):
                 # clean dirty flag if all the order have been updated
                 self._dirty = False
 
-    def is_target_order(self, order_id, ref_order_id):
+    def is_target_order(self, order_id: str, ref_order_id: str) -> bool:
         if order_id and (order_id == self.entry_oid or order_id == self.stop_oid or
                          order_id == self.limit_oid or order_id == self.oco_oid):
             return True
@@ -721,7 +733,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         return False
 
-    def order_signal(self, signal_type, data, ref_order_id, instrument):
+    def order_signal(self, signal_type: int, data: dict, ref_order_id: str, instrument: Instrument):
         if signal_type == Signal.SIGNAL_ORDER_OPENED:
             # already get at the return of create_order
             if ref_order_id == self.entry_ref_oid:
@@ -973,7 +985,7 @@ class StrategyAssetTrade(StrategyTrade):
                 self.limit_ref_oid = None
                 self.limit_oid = None
 
-    def dumps(self):
+    def dumps(self) -> dict:
         data = super().dumps()
 
         data['entry-ref-oid'] = self.entry_ref_oid
@@ -993,7 +1005,8 @@ class StrategyAssetTrade(StrategyTrade):
 
         return data
 
-    def loads(self, data, strategy_trader, context_builder=None):
+    def loads(self, data: dict, strategy_trader: StrategyTrader,
+              context_builder: Optional[StrategyTraderContextBuilder] = None) -> bool:
         if not super().loads(data, strategy_trader, context_builder):
             return False
 
@@ -1014,7 +1027,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         return True
 
-    def check(self, trader, instrument):
+    def check(self, trader: Trader, instrument: Instrument) -> int:
         result = 1
         
         #
@@ -1122,7 +1135,7 @@ class StrategyAssetTrade(StrategyTrade):
         elif order_data['status'] in ('expired', 'canceled'):
             self.order_signal(Signal.SIGNAL_ORDER_CANCELED, order_data['id'], order_data['ref-id'], instrument)
 
-    def fix_exit_by_order(self, order_data, instrument):
+    def fix_exit_by_order(self, order_data: dict, instrument: Instrument) -> bool:
         """
         Mostly an internal method used to fix a missed and closed order, fixing the realized quantity.
 
@@ -1150,7 +1163,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         return True
 
-    def repair(self, trader, instrument):
+    def repair(self, trader: Trader, instrument: Instrument) -> bool:
         # @todo fix the trade
         # is entry or exit in error
         # if entry is partially filled or none
@@ -1166,7 +1179,7 @@ class StrategyAssetTrade(StrategyTrade):
     # stats
     #
 
-    def update_stats(self, instrument, timestamp):
+    def update_stats(self, instrument: Instrument, timestamp: float):
         super().update_stats(instrument, timestamp)
 
         if self.is_active():
@@ -1189,7 +1202,7 @@ class StrategyAssetTrade(StrategyTrade):
             self._stats['unrealized-profit-loss'] = instrument.adjust_quote(
                 upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees'])
 
-    def info_report(self, strategy_trader):
+    def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
         data = list(super().info_report(strategy_trader))
 
         if self.entry_oid or self.entry_ref_oid:

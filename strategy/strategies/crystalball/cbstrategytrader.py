@@ -4,18 +4,10 @@
 # Crystal Ball indicator strategy trader.
 
 from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
-from strategy.strategyindmargintrade import StrategyIndMarginTrade
-from strategy.strategysignal import StrategySignal
 
 from instrument.instrument import Instrument
 
-from strategy.indicator import utils
-from strategy.indicator.score import Score
-
-from common.utils import timeframe_to_str
-
 from .cbsuba import CrystalBallStrategySubA
-from .cbparameters import DEFAULT_PARAMS
 
 import logging
 logger = logging.getLogger('siis.strategy.crystalball')

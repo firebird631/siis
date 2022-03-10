@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .strategy import Strategy
@@ -22,11 +22,11 @@ import traceback
 from datetime import datetime
 from typing import Union, Optional, List
 
-from .strategyassettrade import StrategyAssetTrade
-from .strategyindmargintrade import StrategyIndMarginTrade
-from .strategymargintrade import StrategyMarginTrade
-from .strategypositiontrade import StrategyPositionTrade
-from .strategytrade import StrategyTrade
+from strategy.trade.strategyassettrade import StrategyAssetTrade
+from strategy.trade.strategyindmargintrade import StrategyIndMarginTrade
+from strategy.trade.strategymargintrade import StrategyMarginTrade
+from strategy.trade.strategypositiontrade import StrategyPositionTrade
+from strategy.trade.strategytrade import StrategyTrade
 
 from .strategytradercontext import StrategyTraderContext, StrategyTraderContextBuilder
 
@@ -67,7 +67,7 @@ class StrategyTrader(object):
         'verbose': REPORTING_VERBOSE,
     }
 
-    _trade_context_builder: Union[StrategyTraderContextBuilder, None]
+    _trade_context_builder: Union[StrategyTraderContextBuilder, Any, None]
 
     def __init__(self, strategy: Strategy, instrument: Instrument):
         self.strategy = strategy
@@ -252,7 +252,8 @@ class StrategyTrader(object):
                         return "Forbidden, changes on this context are locked by a handler."
 
                     if keys[3] == 'type':
-                        choices = ('normal', 'specific', 'reinvest-max-last', 'increment-step')
+                        # other choices use keys[4]
+                        choices = ('normal', 'reinvest-max-last')
                         if value not in choices:
                             return "Type must be one of %s" % ' '.join(choices)
 
@@ -273,6 +274,20 @@ class StrategyTrader(object):
                             return "Value must be float"
                 else:
                     return "Invalid option %s" % keys[2]
+
+            elif len(keys) == 4:
+                if keys[2] == 'trade-quantity':
+                    if keys[3] not in ('type',):
+                        return "Invalid %s option %s" % (keys[2], keys[3])
+
+                    if context.trade_quantity_type == context.TRADE_QUANTITY_MANAGED:
+                        return "Forbidden, changes on this context are locked by a handler."
+
+                    if keys[3] == 'type':
+                        # other choices use keys[3]
+                        choices = ('specific', 'increment-step')
+                        if value not in choices:
+                            return "Type must be one of %s" % ' '.join(choices)
 
         elif keys[0] == 'max-trades':
             try:
@@ -449,48 +464,66 @@ class StrategyTrader(object):
                         return False
 
                     if context.trade_quantity_type == context.TRADE_QUANTITY_MANAGED:
-                        # this mode must be managed globally
+                        # this mode is globally managed and cannot be locally modified
                         return False
 
                     if keys[3] == 'type':
-                        if value not in ('normal', 'specific', 'reinvest-max-last', 'increment-step'):
+                        # other choices use keys[4]
+                        if value not in ('normal', 'reinvest-max-last'):
                             return False
 
-                        if value == 'normal':
-                            context.modify_trade_quantity_type('normal', 0.0)
-                        elif value == 'specific':
-                            try:
-                                specific = float(value)
-                            except ValueError:
-                                return False
+                        try:
+                            quantity = float(value)
+                        except ValueError:
+                            return False
 
-                            if specific <= 0:
-                                return False
+                        if quantity < 0:
+                            return False
 
-                            context.modify_trade_quantity_type('specific', specific)
-                        elif value == 'reinvest-max-last':
-                            try:
-                                specific = float(value)
-                            except ValueError:
-                                return False
-
-                            if specific <= 0:
-                                return False
-
-                            context.modify_trade_quantity_type('specific', specific)
-                        elif value == 'increment-step':
-                            pass
+                        return context.modify_trade_quantity_type(self.instrument, value, quantity)
 
                     elif keys[3] == 'quantity':
-                        pass  # @todo
-                        return False
+                        try:
+                            quantity = float(value)
+                        except ValueError:
+                            return False
+
+                        return context.modify_trade_quantity(quantity)
 
                     elif keys[3] == 'step':
-                        pass  # @todo
-                        return False
+                        try:
+                            step = float(value)
+                        except ValueError:
+                            return False
+
+                        return context.modify_trade_step(step)
 
                 else:
                     return False
+
+            elif len(keys) == 4:
+                if keys[2] == 'trade-quantity':
+                    if keys[3] not in ('type',):
+                        return False
+
+                    if context.trade_quantity_type == context.TRADE_QUANTITY_MANAGED:
+                        # this mode is globally managed and cannot be locally modified
+                        return False
+
+                    if keys[3] == 'type':
+                        # other choices use keys[3]
+                        if keys[4] not in ('specific', 'increment-step'):
+                            return False
+
+                        try:
+                            quantity = float(value)
+                        except ValueError:
+                            return False
+
+                        if quantity < 0:
+                            return False
+
+                        return context.modify_trade_quantity_type(self.instrument, keys[4], quantity)
 
         elif keys[0] == 'max-trades':
             try:
@@ -879,7 +912,7 @@ class StrategyTrader(object):
             # add and assign a new trade id
             self.add_trade(trade)
 
-    def loads_alert(self, alert_id, alert_type, data, force_id=False):
+    def loads_alert(self, alert_id: int, alert_type: int, data: dict, force_id: bool = False):
         """
         Load a strategy trader alert.
         @param alert_id Above 0 original alert identifier
@@ -912,7 +945,7 @@ class StrategyTrader(object):
         except Exception as e:
             error_logger.error(repr(e))
 
-    def loads_region(self, region_id, region_type, data, force_id=False):
+    def loads_region(self, region_id: int, region_type: int, data: dict, force_id: bool = False):
         """
         Load a strategy trader region.
         @param region_id Above 0 original region identifier
@@ -949,7 +982,7 @@ class StrategyTrader(object):
     # order/position slot
     #
 
-    def order_signal(self, signal_type, data):
+    def order_signal(self, signal_type: int, data: dict):
         """
         Update quantity/filled on a trade, deleted or canceled.
         """
@@ -971,7 +1004,7 @@ class StrategyTrader(object):
                 error_logger.error(traceback.format_exc())
                 error_logger.error(repr(e))
 
-    def position_signal(self, signal_type, data):
+    def position_signal(self, signal_type: int, data: dict):
         """
         Update quantity/filled on a trade, delete or cancel.
         """
@@ -998,7 +1031,7 @@ class StrategyTrader(object):
     #
 
     @property
-    def trade_mutex(self):
+    def trade_mutex(self) -> threading.RLock:
         return self._trade_mutex
 
     @property

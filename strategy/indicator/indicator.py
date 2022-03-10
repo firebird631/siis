@@ -3,6 +3,14 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Indicator base class
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from instrument.instrument import Instrument
+
+
 class Indicator(object):
     """
     Base class for an indicator.
@@ -32,50 +40,50 @@ class Indicator(object):
     BASE_TICK = 2
 
     @classmethod
-    def indicator_type(cls):
+    def indicator_type(cls) -> int:
         return Indicator.TYPE_UNKNOWN
 
     @classmethod
-    def indicator_class(cls):
+    def indicator_class(cls) -> int:
         return Indicator.TYPE_UNKNOWN
 
     @classmethod
-    def persistent(cls):
+    def persistent(cls) -> bool:
         return False
 
     @classmethod
-    def indicator_base(cls):
+    def indicator_base(cls) -> int:
         return Indicator.BASE_TIMEFRAME
 
     @classmethod
-    def indicator_tickbar_based(cls):
+    def indicator_tickbar_based(cls) -> bool:
         """
         Is timeframe bar based indicator.
         """
         return cls.indicator_base() == Indicator.BASE_TICKBAR
 
     @classmethod
-    def indicator_timeframe_based(cls):
+    def indicator_timeframe_based(cls) -> bool:
         """
         Is tick bar based indicator.
         """
         return cls.indicator_base() == Indicator.BASE_TIMEFRAME
 
     @classmethod
-    def indicator_tick_based(cls):
+    def indicator_tick_based(cls) -> bool:
         """
         Is tick based indicator.
         """
         return cls.indicator_base() == Indicator.BASE_TICK
 
-    def __init__(self, name, timeframe):
+    def __init__(self, name: str, timeframe: float):
         self._name = name
         self._timeframe = timeframe
 
         self._last_timestamp = 0  # last compute timestamp
         self._compute_at_close = False
 
-    def setup(self, instrument):
+    def setup(self, instrument: Instrument):
         """
         After the instantiation this method is called with the related instrument objet.
         To be overloaded.
@@ -83,19 +91,19 @@ class Indicator(object):
         pass
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def last_timestamp(self):
+    def last_timestamp(self) -> float:
         return self._last_timestamp
 
     @property
-    def timeframe(self):
+    def timeframe(self) -> float:
         return self._timeframe
 
     @property
-    def compute_at_close(self):
+    def compute_at_close(self) -> bool:
         """
         Some indicator could be only computed at an OHLC close
         """
@@ -105,7 +113,6 @@ class Indicator(object):
     # process
     #
 
-    def compute(self, timestamp):
-        # parameters are different depending of the indicator
-        return None
-
+    # def compute(self, timestamp: float) -> Any:
+    #     # parameters are different depending of the indicator
+    #     return None
