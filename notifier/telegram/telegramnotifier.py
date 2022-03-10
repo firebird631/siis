@@ -29,8 +29,7 @@ class TelegramNotifier(Notifier):
     """
     Telegram notifier using bot and API.
 
-    @todo getUpdates to receive command from users and check every second news command and reply
-    @todo commands
+    @todo trading commands
     """
 
     WAIT_DELAY = 1.0  # 1 second to check bot command
@@ -140,7 +139,7 @@ class TelegramNotifier(Notifier):
         if super().update():
             now = time.time()
 
-            if now - self._last_command_update >= TelegramNotifier.WAIT_DELAY:
+            if self._commands and now - self._last_command_update >= TelegramNotifier.WAIT_DELAY:
                 try:
                     self.retrieve_and_process_commands()
                 except:

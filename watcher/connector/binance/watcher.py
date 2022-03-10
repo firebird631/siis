@@ -519,9 +519,21 @@ class BinanceWatcher(Watcher):
 
     def __on_tickers_data(self, data):
         # market data instrument by symbol
+        if type(data) not in (list, tuple):
+            return
+
         for ticker in data:
-            symbol = ticker['s']
-            last_trade_id = ticker['L']
+            if type(ticker) is not dict:
+                continue
+
+            if 's' not in ticker:
+                continue
+
+            symbol = ticker.get('s')
+            if not symbol:
+                continue
+
+            last_trade_id = ticker.get('L', 0)
 
             if last_trade_id != self._last_trade_id.get(symbol, 0):
                 self._last_trade_id[symbol] = last_trade_id

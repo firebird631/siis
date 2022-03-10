@@ -3,9 +3,9 @@ import time
 from datetime import datetime
 import threading
 
+from trader.trader import Trader
 from strategy.strategy import Strategy
 from common.utils import UTC
-from trader import Trader
 
 
 class CronExportScript(threading.Thread):
