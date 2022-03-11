@@ -5,13 +5,6 @@
 
 import traceback
 
-from datetime import datetime
-
-from terminal.terminal import Color
-from terminal import charmap
-
-from common.utils import timeframe_to_str
-
 import logging
 logger = logging.getLogger('siis.strategy')
 error_logger = logging.getLogger('siis.error.strategy')
@@ -26,7 +19,7 @@ def get_strategy_trader_state(strategy, market_id, report_mode=0):
     results = {
         'market-id': market_id,
         'activity': False,
-        'bootstraping': False,
+        'bootstrapping': False,
         'ready': False,
         'members': [],
         'data': [],

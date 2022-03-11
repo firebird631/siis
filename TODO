@@ -104,8 +104,6 @@ Sum order :
 
 #122 send an error notification in case of a trade goes to ERROR state
 
-#126 interdire un trade de direction opposé si margin trade and hedging non actvité
-
 #57 Verification des trades par la method check :
     - implementer order_info pour le trader bitmex et verifier
     - implementer order_info pour le trader ig et verifier

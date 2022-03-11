@@ -47,12 +47,12 @@ def alpha_bootstrap(strategy, strategy_trader):
     Any received updates are ignored until the bootstrap is completed.
     """
     with strategy_trader._mutex:
-        if strategy_trader._bootstraping != 1:
+        if strategy_trader._bootstrapping != 1:
             # only if waiting for bootstrapping
             return
 
         # bootstrapping in progress, suspend live until complete
-        strategy_trader._bootstraping = 2
+        strategy_trader._bootstrapping = 2
 
     try:
         if strategy_trader.is_timeframes_based:
@@ -65,7 +65,7 @@ def alpha_bootstrap(strategy, strategy_trader):
 
     with strategy_trader._mutex:
         # bootstrapping done, can now branch to live
-        strategy_trader._bootstraping = 0
+        strategy_trader._bootstrapping = 0
 
 
 def timeframe_based_bootstrap(strategy, strategy_trader):
@@ -212,7 +212,7 @@ def alpha_update_strategy(strategy, strategy_trader):
         try:
             strategy_trader._processing = True
 
-            if strategy_trader._bootstraping == 1:
+            if strategy_trader._bootstrapping == 1:
                 # first : bootstrap using preloaded data history
                 alpha_bootstrap(strategy, strategy_trader)
 
@@ -255,7 +255,7 @@ def alpha_async_update_strategy(strategy, strategy_trader):
         try:
             strategy_trader._processing = True
 
-            if strategy_trader._bootstraping == 1:
+            if strategy_trader._bootstrapping == 1:
                 # first : bootstrap using preloaded data history
                 alpha_bootstrap(strategy, strategy_trader)
 

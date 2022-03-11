@@ -51,7 +51,7 @@ class TraderStateView(TableView):
         self._num_report_modes = 0
 
         self._reported_activity = False
-        self._reported_bootstraping = False
+        self._reported_bootstrapping = False
         self._reported_ready = False
         self._reported_affinity = 5
 
@@ -211,7 +211,7 @@ class TraderStateView(TableView):
 
         # for title
         self._reported_activity = strategy_trader_state.get('activity', False)
-        self._reported_bootstraping = strategy_trader_state.get('bootstraping', False)
+        self._reported_bootstrapping = strategy_trader_state.get('bootstrapping', False)
         self._reported_ready = strategy_trader_state.get('ready', False)
         self._reported_affinity = strategy_trader_state.get('affinity', 5)
         self._num_report_modes = strategy_trader_state.get('num-modes', 1)
@@ -257,7 +257,7 @@ class TraderStateView(TableView):
                 report_mode = 0
 
                 reported_activity = False
-                reported_bootstraping = False
+                reported_bootstrapping = False
                 reported_ready = False
                 reported_affinity = False
 
@@ -276,14 +276,14 @@ class TraderStateView(TableView):
                     num_report_modes = self._num_report_modes
 
                     reported_activity = self._reported_activity
-                    reported_bootstraping = self._reported_bootstraping
+                    reported_bootstrapping = self._reported_bootstrapping
                     reported_ready = self._reported_ready
                     reported_affinity = self._reported_affinity
 
                 state = " - ".join((
                     "active" if reported_activity else "pause",
                     ("ready" if reported_ready else "pending") + ("(%s)" % reported_affinity),
-                    "bootstraping" if reported_bootstraping else ""))
+                    "bootstrapping" if reported_bootstrapping else ""))
 
                 state = state.rstrip(" - ")
 

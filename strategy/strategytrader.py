@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from .strategy import Strategy
     from .alert.alert import Alert
     from .region.region import Region
-    from .tradeop.tradeop import TradeOp
     from trader.trader import Trader
 
 import pathlib
@@ -89,7 +88,7 @@ class StrategyTrader(object):
         self._preprocess_streamer = None       # current tick or quote streamer
         self._preprocess_from_timestamp = 0.0  # preprocessed date from this timestamp to limit last timestamp
 
-        self._bootstraping = 1      # 1 waited, 2 in progress, 0 normal, done from loaded OHLCs history
+        self._bootstrapping = 1      # 1 waited, 2 in progress, 0 normal, done from loaded OHLCs history
 
         self._processing = False   # True during processing
 
@@ -577,7 +576,7 @@ class StrategyTrader(object):
             self._initialized = 1
             self._checked = 1
             self._preprocessing = 1
-            self._bootstraping = 1
+            self._bootstrapping = 1
 
     def recheck(self):
         """
@@ -782,7 +781,7 @@ class StrategyTrader(object):
             'alerts': alerts_data
         }
 
-    def loads(self, data: dict, regions: List[Region], alerts: List[Alert], force_id: bool = False):
+    def loads(self, data: dict, regions: List[dict], alerts: List[dict], force_id: bool = False):
         """
         Load strategy trader state and regions.
         @param data: Strategy-trader data dump dict
@@ -853,7 +852,7 @@ class StrategyTrader(object):
             else:
                 error_logger.error("During loads, unsupported alert %s" % a['name'])
 
-    def loads_trade(self, trade_id: int, trade_type: int, data: dict, operations: List[TradeOp],
+    def loads_trade(self, trade_id: int, trade_type: int, data: dict, operations: List[dict],
                     check: bool = False, force_id: bool = False):
         """
         Load a strategy trader trade and its operations.
@@ -1839,7 +1838,7 @@ class StrategyTrader(object):
             'initialized': self._initialized == 0,
             'checked': self._checked == 0,
             'ready': self._initialized == 0 and self._checked == 0 and self.instrument.ready(),
-            'bootstraping': self._bootstraping > 1,
+            'bootstrapping': self._bootstrapping > 1,
             'preprocessing': self._preprocessing > 1,
             'members': [],
             'data': [],

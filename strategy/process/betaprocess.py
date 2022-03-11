@@ -229,12 +229,12 @@ def beta_bootstrap(strategy, strategy_trader):
     Any received updates are ignored until the bootstrap is completed.
     """
     with strategy_trader._mutex:
-        if strategy_trader._bootstraping == 2:
+        if strategy_trader._bootstrapping == 2:
             # in progress
             return
 
         # bootstrapping in progress, avoid live until complete
-        strategy_trader._bootstraping = 2
+        strategy_trader._bootstrapping = 2
 
     try:
         if strategy_trader.is_timeframes_based:
@@ -247,7 +247,7 @@ def beta_bootstrap(strategy, strategy_trader):
 
     with strategy_trader._mutex:
         # bootstrapping done, can now branch to live
-        strategy_trader._bootstraping = 0
+        strategy_trader._bootstrapping = 0
 
 
 def timeframe_based_bootstrap(strategy, strategy_trader):
@@ -398,7 +398,7 @@ def beta_update_strategy(strategy, strategy_trader):
                 # first : preprocessing and data caching
                 beta_preprocess(strategy, strategy_trader)
 
-            elif strategy_trader._bootstraping > 0:
+            elif strategy_trader._bootstrapping > 0:
                 # second : bootstrap using preloaded data history
                 beta_bootstrap(strategy, strategy_trader)
 
@@ -446,7 +446,7 @@ def beta_async_update_strategy(strategy, strategy_trader):
                 # first : preprocessing and data caching
                 beta_preprocess(strategy, strategy_trader)
 
-            elif strategy_trader._bootstraping > 0:
+            elif strategy_trader._bootstrapping > 0:
                 # second : bootstrap using preloaded data history
                 beta_bootstrap(strategy, strategy_trader)
 

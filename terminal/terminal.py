@@ -1,19 +1,19 @@
 # @date 2018-08-07
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# terminal displayer
+# terminal display
 
 import os
 import sys
-# import colorama
 import time
 import threading
 import platform
-import math
-import termios, fcntl
+import termios
+import fcntl
+# import colorama
 
 import curses
-from curses.textpad import Textbox, rectangle
+# from curses.textpad import Textbox, rectangle
 from tabulate import tabulate
 
 import logging
