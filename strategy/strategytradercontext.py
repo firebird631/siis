@@ -110,6 +110,8 @@ class EntryExit(object):
 
         # standard distance
         distance = params.get('distance', "0.0")
+        if type(distance) is not str:
+            raise ValueError("Invalid format 'distance' must be string for %s" % self.name())
 
         if distance.endswith('%'):
             # in percent from entry price or limit price
@@ -128,6 +130,8 @@ class EntryExit(object):
 
         # timeout distance
         timeout_distance = params.get('timeout-distance', "0.0")
+        if type(timeout_distance) is not str:
+            raise ValueError("Invalid format 'timeout-distance' must be string for %s" % self.name())
 
         if timeout_distance.endswith('%'):
             # in percent from entry price or limit price

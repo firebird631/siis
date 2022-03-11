@@ -103,11 +103,11 @@ function on_copy_signal(elt) {
 
     $('#copy_signal_take_profit_price').val(signal['take-profit-price']);
     $('#copy_signal_take_profit_range').slider('setValue', 50);
-    // $('#copy_signal_take_profit_type').select('percent');
+    $('#copy_signal_take_profit_type').selectpicker('val', 'percent').change();
 
     $('#copy_signal_stop_loss_price').val(signal['stop-loss-price']);
     $('#copy_signal_stop_loss_range').slider('setValue', 50);
-    // $('#copy_signal_stop_loss_type').select('percent');
+    $('#copy_signal_stop_loss_type').selectpicker('val', 'percent').change();
 
     $('#copy_signal').modal({'show': true, 'backdrop': true});
     $("#copy_signal").find(".modal-title").text(title);
