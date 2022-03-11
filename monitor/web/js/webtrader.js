@@ -1654,6 +1654,15 @@ function retrieve_trade_key(elt) {
     return "";
 }
 
+function retrieve_signal_key(elt) {
+    let tr = $(elt.target).parent().parent();
+    if (tr.length) {
+        return tr.attr('signal-key');
+    }
+
+    return "";
+}
+
 function retrieve_trader_id(elt) {
     return $(elt.target).attr('trader-id');
 }

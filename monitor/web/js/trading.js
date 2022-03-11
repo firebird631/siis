@@ -1184,7 +1184,7 @@ function on_open_new_trade(elt, direction) {
     $('#mid_take_profit_price').on('input', function(elt) {
     });
 
-    $('#open_trade_adv').modal({'show': true, 'backdrop': true, 'title': title});
+    $('#open_trade_adv').modal({'show': true, 'backdrop': true});
     $("#open_trade_adv").find(".modal-title").text(title);
 
     $('#open_trade_adv_open').off('click');
