@@ -98,8 +98,17 @@ function on_copy_signal(elt) {
         $("#copy_signal_open").removeClass("btn-success").addClass("btn-danger");
     }
 
-    $('#copy_signal_context').val(signal['context'] || signal['timeframe']);
-    $('#copy_signal_order_price').val(signal['order-price']);
+    if (signal['label'] && signal['timeframe']) {
+        $('#copy_signal_context').val(signal['label'] + ' (' + signal['timeframe'] + ')');
+    } else {
+        $('#copy_signal_context').val(signal['label'] || signal['timeframe']);
+    }
+
+    if (signal['order-price'] > 0.0) {
+        $('#copy_signal_order_price').attr('type', "number").val(signal['order-price']);
+    } else {
+        $('#copy_signal_order_price').attr('type', "text").val("Market");
+    }
 
     $('#copy_signal_take_profit_price').val(signal['take-profit-price']);
     $('#copy_signal_take_profit_range').slider('setValue', 50);
@@ -119,17 +128,21 @@ function on_copy_signal(elt) {
         let sec_take_profit_val = 0.0;  // $('#copy_signal_sec_take_profit_price').val();
         let mid_take_profit_val = 0.0;  // $('#copy_signal_mid_take_profit_price').val();
 
-        let limit_price = $('#copy_signal_order_price').val();
         let trigger_price = 0.0;
+        let limit_price = 0.0;
         let method = 'market';
+
+        if ($('#copy_signal_order_price').attr('type') == "text" && $('#copy_signal_order_price').val() == "Market") {
+            limit_price = 0.0;
+            method = 'market';
+        } else {
+            limit_price = $('#copy_signal_order_price').val();
+            method = 'limit';
+        }
 
         let quantity_rate = 1.0;
         let entry_timeout = 0.0;
         let leverage = 1.0;
-
-        if (limit_price > 0.0) {
-            method = 'limit';
-        }
 
         let take_profit = $('#copy_signal_take_profit_price').val();
         let stop_loss = $('#copy_signal_stop_loss_price').val();
