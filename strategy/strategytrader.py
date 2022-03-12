@@ -1097,10 +1097,24 @@ class StrategyTrader(object):
         """
         Dumps the historical record of each historical trades. Not sorted.
         """
+        with self._mutex:
+            results = self._stats['success'] + self._stats['failed'] + self._stats['roe']
+
+        return results
+
+    def dumps_active_alerts(self) -> List[dict]:
+        """
+        Dumps the active alerts. Not sorted.
+        """
         results = []
 
         with self._mutex:
-            results = self._stats['success'] + self._stats['failed'] + self._stats['roe']
+            for alert in self._alerts:
+                alert_dumps = alert.dumps()
+                alert_dumps['market-id'] = self.instrument.market_id
+                alert_dumps['symbol'] = self.instrument.symbol
+
+                results.append(alert_dumps)
 
         return results
 
@@ -1499,11 +1513,14 @@ class StrategyTrader(object):
             self._next_region_id += 1
             self._regions.append(region)
 
+        self.stream_region_create(self.strategy.timestamp, region)
+
     def remove_region(self, region_id):
         with self._mutex:
             for region in self._regions:
                 if region.id == region_id:
                     self._regions.remove(region)
+                    self.stream_region_remove(self.strategy.timestamp, region_id)
                     return True
 
         return False
@@ -1518,6 +1535,8 @@ class StrategyTrader(object):
         for region in self._regions:
             if not region.can_delete(timestamp, bid, ask):
                 regions.append(region)
+            else:
+                self.stream_region_remove(self.strategy.timestamp, region.id)
 
         # replace the regions list
         self._regions = regions
@@ -1568,11 +1587,14 @@ class StrategyTrader(object):
             self._next_alert_id += 1
             self._alerts.append(alert)
 
+        self.stream_alert_create(self.strategy.timestamp, alert)
+
     def remove_alert(self, alert_id):
         with self._mutex:
             for alert in self._alerts:
                 if alert.id == alert_id:
                     self._alerts.remove(alert)
+                    self.stream_alert_remove(self.strategy.timestamp, alert_id)
                     return True
 
         return False
@@ -1587,6 +1609,8 @@ class StrategyTrader(object):
         for alert in self._alerts:
             if not alert.can_delete(timestamp, bid, ask):
                 alerts.append(alert)
+            else:
+                self.stream_alert_remove(self.strategy.timestamp, alert.id)
 
         # replace the alerts list
         self._alerts = alerts

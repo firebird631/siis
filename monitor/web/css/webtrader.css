@@ -376,6 +376,10 @@ div.signal-list-entries {
     display: none;
 }
 
+div.region-list-entries {
+    display: none;
+}
+
 div.alert-list-entries {
     display: none;
 }

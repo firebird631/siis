@@ -34,8 +34,8 @@ def get_all_active_alerts(strategy):
                             'expiry': alert._expiry,
                             'ctd': alert._countdown,
                             'msg': alert._message,
-                            'cond': alert.condition_str(),
-                            'cancel': alert.cancellation_str(),
+                            'cond': alert.condition_str(strategy_trader.instrument),
+                            'cancel': alert.cancellation_str(strategy_trader.instrument),
                         })
 
         except Exception as e:

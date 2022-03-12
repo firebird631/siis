@@ -463,9 +463,12 @@
             <p class="sub-menu">
                 <span>
                     <a class="btn btn-default menu-btn menu-btn-half-left" id="list_active_trades" view="active-trade-list-entries" href="#" title="Active and pending trades"><span class="fas fa-crosshairs"></span>&nbsp;Trade</a>
-                    <a class="btn btn-default menu-btn menu-btn-half-right" id="list_historical_trades" view="historical-trade-list-entries" href="#" title="Closed trades"><span class="fas fa-history"></span>&nbsp;Hist</a>
+                    <a class="btn btn-default menu-btn menu-btn-half-right" id="list_historical_trades" view="historical-trade-list-entries" href="#" title="Closed trades"><span class="fas fa-history"></span>&nbsp;Hist.</a>
                 </span>
-                <a class="btn btn-default menu-btn" id="list_signals" view="signal-list-entries" href="#"><span class="fas fa-signal"></span>&nbsp;Signals</a>
+                <span>
+                    <a class="btn btn-default menu-btn menu-btn-half-left" id="list_signals" view="signal-list-entries" href="#" title="Last trades signals"><span class="fas fa-signal"></span>&nbsp;Sig.</a>
+                    <a class="btn btn-default menu-btn menu-btn-half-right" id="list_regions" view="region-list-entries" href="#" title="Active regions"><span class="fas fa-map"></span>&nbsp;Reg.</a>
+                </span>
                 <span>
                     <a class="btn btn-default menu-btn menu-btn-half-left" id="list_active_alerts" view="active-alert-list-entries" href="#" title="Programmed alerts"><span class="fas fa-concierge-bell"></span>&nbsp;Alerts</a>
                     <a class="btn btn-default menu-btn menu-btn-half-right" id="list_alerts" view="alert-list-entries" href="#"><span class="fas fa-bell" title="Alerts notifications"></span>&nbsp;Notif</a>
@@ -549,12 +552,33 @@
                   </tbody>
                 </table>
             </div>
+            <div class="region-list-entries list-entries">
+                <table class="content-table" style="width: 100%;">
+                  <thead style="width: 100%; border-bottom: 1px solid gray;">
+                    <tr>
+                      <th style="width: 55px;">#</th>
+                      <th style="width: 150px;">Symbol</th>
+                      <th style="width: 30px;"><span class="fas fa-arrows-alt-v" style="padding-left: 4px;"></span></th>
+                      <th style="width: 30px;"><span class="fas fa-arrows-alt-h" style="padding-left: 4px;"></span></th>
+                      <th>Timeframe</th>
+                      <th style="width: 165px;">Date</th>
+                      <th>Expiry</th>
+                      <th>Cancellation</th>
+                      <th>Inside</th>
+                      <th>Condition</th>
+                      <th style="width: 35px; padding-left: 15px;"><span class="fas fa-window-close"></span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  </tbody>
+                </table>
+            </div>
             <div class="active-alert-list-entries list-entries">
                 <table class="content-table" style="width: 100%;">
                   <thead style="width: 100%; border-bottom: 1px solid gray;">
                     <tr>
-                      <th style="width: 150px;">Symbol</th>
                       <th style="width: 55px;">#</th>
+                      <th style="width: 150px;">Symbol</th>
                       <th>Label</th>
                       <th>Timeframe</th>
                       <th>Expiry</th>
@@ -562,7 +586,7 @@
                       <th>Condition</th>
                       <th>Cancellation</th>
                       <th>Message</th>
-                      <th style="width: 35px; padding-left: 15px;"><span class="fas fa-delete"></span></th>
+                      <th style="width: 35px; padding-left: 15px;"><span class="fas fa-window-close"></span></th>
                     </tr>
                   </thead>
                   <tbody>

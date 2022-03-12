@@ -83,6 +83,7 @@ class MonitorService(Service):
         self._strategy_service = None
         self._trader_service = None
         self._watcher_service = None
+        self._view_service = None
 
         self._http = None
         self._ws = None
@@ -120,7 +121,8 @@ class MonitorService(Service):
         self._permissions = 0
 
         permissions = self._monitoring_config.get('permissions', (
-            "strategy-view", "strategy-open-trade", "strategy-close-trade", "strategy-modify-trade",
+            "strategy-view",
+            "strategy-open-trade", "strategy-close-trade", "strategy-modify-trade", "strategy-clean-trade",
             "strategy-trader",
             "trader-balance-view"))
 
@@ -132,10 +134,11 @@ class MonitorService(Service):
 
         self._scripts = {}  # user installed scripts registry
 
-    def setup(self, watcher_service, trader_service, strategy_service):
+    def setup(self, watcher_service, trader_service, strategy_service, view_service):
         self._watcher_service = watcher_service
         self._trader_service = trader_service
         self._strategy_service = strategy_service
+        self._view_service = view_service
 
     #
     # permissions
@@ -270,7 +273,8 @@ class MonitorService(Service):
                 from .http.httpwsserver import HttpWebSocketServer
 
                 self._http = HttpRestServer(self._host, self._port, self.__api_key, self.__api_secret,
-                                            self, self._strategy_service, self._trader_service, self._watcher_service)
+                                            self, self._strategy_service, self._trader_service,
+                                            self._watcher_service, self._view_service)
 
                 self._ws = HttpWebSocketServer(self._host, self._port+1, self)
 

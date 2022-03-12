@@ -43,7 +43,7 @@ function notify(notification) {
     let row_entry = $('<tr class="console-message"></tr>');
     row_entry.append($('<td class="message-datetime">' + datetime + '</td>'));
     row_entry.append($('<td class="message-type"><span class="badge badge-' + badge_type + '">' + type + '</span></td>'));
-    row_entry.append($('<td class="message-content">' + message + '</td>'));
+    row_entry.append($('<td class="message-content">' + title + ': ' + message + '</td>'));
 
     table.prepend(row_entry);
 

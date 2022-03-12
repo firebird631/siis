@@ -1,5 +1,5 @@
 
-function on_strategy_signal(market_id, signal_id, timestamp, signal) {
+function on_strategy_signal(market_id, signal_id, timestamp, signal, do_notify=true) {
     let signal_elt = $('<tr class="signal"></tr>');
     let key = market_id + ':' + signal.timestamp;
     signal_elt.attr('signal-key', key);
@@ -16,13 +16,13 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal) {
 
     let signal_datetime = $('<span class="signal-datetime"></span>').text(timestamp_to_datetime_str(signal.timestamp*1000));
 
-    let signal_order = $('<span class="signal-order"></span>').text(signal['order-type'] + '@' + signal['order-price']);
+    let signal_order = $('<span class="signal-order"></span>').text(signal['order-type'] + '@' + format_price(market_id, signal['order-price']));
     let signal_exit = $('<span class="signal-exit"></span>').text(signal.timeframe || "trade");
 
     let signal_context = $('<span class="signal-timeframe"></span>').text(signal.label + ' (' + signal.timeframe + ')');
 
-    let signal_stop_loss = $('<span class="signal-stop-loss"></span>').text(signal['stop-loss-price']);
-    let signal_take_profit = $('<span class="signal-take-profit"></span>').text(signal['take-profit-price']);
+    let signal_stop_loss = $('<span class="signal-stop-loss"></span>').text(format_price(market_id, signal['stop-loss-price']));
+    let signal_take_profit = $('<span class="signal-take-profit"></span>').text(format_price(market_id, signal['take-profit-price']));
 
     let signal_reason = $('<span class="signal-reason"></span>').text(signal.reason);
 
@@ -51,9 +51,12 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal) {
 
     window.signals[key] = signal;
 
-    let message = signal.label + " "  + (signal.reason || signal.way) + " " + signal.direction + " " + signal.symbol + " @" + signal['order-price'];
-    notify({'message': message, 'title': 'Trade Signal', 'type': 'info'});
-    audio_notify('signal');
+    if (do_notify) {
+        let message = signal.label + " "  + (signal.reason || signal.way) + " " + signal.direction + " " +
+            signal.symbol + " @" + format_price(market_id, signal['order-price']);
+        notify({'message': message, 'title': 'Trade Signal', 'type': 'info'});
+        audio_notify('signal');
+    }
 
     // limit to last 200 signals
     if ($('div.signal-list-entries tbody').children('tr').length > 200) {
@@ -118,6 +121,8 @@ function on_copy_signal(elt) {
     $('#copy_signal_stop_loss_range').slider('setValue', 50);
     $('#copy_signal_stop_loss_type').selectpicker('val', 'percent').change();
 
+    $('#copy_signal_comment').val("");
+
     $('#copy_signal').modal({'show': true, 'backdrop': true});
     $("#copy_signal").find(".modal-title").text(title);
 
@@ -169,6 +174,11 @@ function on_copy_signal(elt) {
             data['take-profit-price-mode'] = 'price';
         }
 
+        let market = window.markets[market_id];
+        if (!market) {
+            return;
+        }
+
         let profile_name = signal.context;
         let profile = market.profiles[profile_name];
 
@@ -201,7 +211,6 @@ function on_copy_signal(elt) {
 
         let endpoint = "strategy/trade";
         let url = base_url() + '/' + endpoint;
-        let market = window.markets[market_id];
         let title = direction > 0 ? 'Order Long' : 'Order Short';
 
         $.ajax({
@@ -321,3 +330,41 @@ $(window).ready(function() {
         on_change_copy_signal_take_profit_step();
     });
 });
+
+window.fetch_signals = function() {
+    // fetch last signal history
+    let endpoint = "strategy/historical-signal";
+    let url = base_url() + '/' + endpoint;
+
+    let params = {}
+
+    $.ajax({
+        type: "GET",
+        url: url,
+        data: params,
+        headers: {
+            'TWISTED_SESSION': server.session,
+            'Authorization': "Bearer " + server['auth-token'],
+        },
+        dataType: 'json',
+        contentType: 'application/json'
+    })
+    .done(function(result) {
+        window.signals = {};
+
+        let signals = result['data'];
+
+        // naturally ordered
+        for (let i = 0; i < signals.length; ++i) {
+            let signal = signals[i];
+
+            window.signals[signal['market-id'] + ':' + signal.timestamp] = signal;
+
+            // initial add
+            on_strategy_signal(signal['market-id'], signal.id, signal.timestamp, signal, false);
+        }
+    })
+    .fail(function() {
+        notify({'message': "Unable to obtains historical signals !", 'title': 'fetching"', 'type': 'error'});
+    });
+};

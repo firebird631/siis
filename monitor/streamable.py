@@ -411,8 +411,11 @@ class StreamMemberStrategyAlertCreate(StreamMember):
         self._timestamp = 0.0
         self._alert_data = {}
 
-    def update(self, strategy_trader, active_alert, result, timestamp):
+    def update(self, strategy_trader, active_alert, timestamp):
         self._alert_data = active_alert.dumps()
+        self._alert_data['market-id'] = strategy_trader.instrument.market_id
+        self._alert_data['symbol'] = strategy_trader.instrument.symbol
+
         self._timestamp = timestamp
         self._updated = True
 
@@ -433,7 +436,7 @@ class StreamMemberStrategyAlertRemove(StreamMember):
         self._timestamp = 0.0
         self._active_alert_id = -1
 
-    def update(self, strategy_trader, active_alert_id, result, timestamp):
+    def update(self, strategy_trader, active_alert_id, timestamp):
         self._active_alert_id = active_alert_id
         self._timestamp = timestamp
         self._updated = True
@@ -453,15 +456,15 @@ class StreamMemberStrategyRegion(StreamMember):
         super().__init__(name, StreamMemberStrategyRegion.TYPE_STRATEGY_REGION)
 
         self._timestamp = 0.0
-        self._alert = {}
+        self._region = {}
 
-    def update(self, strategy_trader, alert, result, timestamp):
-        self._alert = alert.dumps_notify(timestamp, result, strategy_trader)
+    def update(self, strategy_trader, region, result, timestamp):
+        self._region = region.dumps_notify(timestamp, result, strategy_trader)
         self._timestamp = timestamp
         self._updated = True
 
     def content(self):
-        return {'n': self._name, 't': self._type, 'v': self._alert, 'b': self._timestamp}
+        return {'n': self._name, 't': self._type, 'v': self._region, 'b': self._timestamp}
 
 
 class StreamMemberStrategyRegionCreate(StreamMember):
@@ -477,8 +480,11 @@ class StreamMemberStrategyRegionCreate(StreamMember):
         self._timestamp = 0.0
         self._region_data = {}
 
-    def update(self, strategy_trader, region_alert, result, timestamp):
-        self._region_data = region_alert.dumps()
+    def update(self, strategy_trader, region, result, timestamp):
+        self._region_data = region.dumps()
+        self._region_data['market-id'] = strategy_trader.instrument.market_id
+        self._region_data['symbol'] = strategy_trader.instrument.symbol
+
         self._timestamp = timestamp
         self._updated = True
 
@@ -497,15 +503,15 @@ class StreamMemberStrategyRegionRemove(StreamMember):
         super().__init__(name, StreamMemberStrategyRegionRemove.TYPE_STRATEGY_REGION_REMOVE)
 
         self._timestamp = 0.0
-        self._active_region_id = -1
+        self._region_id = -1
 
-    def update(self, strategy_trader, active_region_id, result, timestamp):
-        self._active_region_id = active_region_id
+    def update(self, strategy_trader, region_id, result, timestamp):
+        self._region_id = region_id
         self._timestamp = timestamp
         self._updated = True
 
     def content(self):
-        return {'n': self._name, 't': self._type, 'v': self._active_region_id, 'b': self._timestamp}
+        return {'n': self._name, 't': self._type, 'v': self._region_id, 'b': self._timestamp}
 
 
 class StreamMemberSerie(StreamMember):

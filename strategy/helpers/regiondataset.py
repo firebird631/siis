@@ -37,9 +37,9 @@ def get_all_regions(strategy):
                             'ts': region._created,
                             'tf': timeframe_to_str(region._timeframe),
                             'expiry': region._expiry,
-                            'cancel': region.cancellation_str(),
+                            'cancel': region.cancellation_str(strategy_trader.instrument),
                             'inside': is_inside,
-                            'cond': region.condition_str(),
+                            'cond': region.condition_str(strategy_trader.instrument),
                         })
 
         except Exception as e:

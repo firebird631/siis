@@ -3,6 +3,14 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Strategy trade region.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from strategy.strategytrader import StrategyTrader
+    from instrument.instrument import Instrument
+
 from datetime import datetime
 from common.utils import timeframe_to_str
 
@@ -183,7 +191,7 @@ class Region(object):
         """
         return 0 < self._expiry <= timestamp
 
-    def str_info(self) -> str:
+    def str_info(self, instrument : Instrument) -> str:
         """
         Override this method to implement the single line message info of the region.
         """
@@ -230,6 +238,27 @@ class Region(object):
         self._dir = data.get('direction', 0)      # self.direction_from_str(data.get('direction', ''))
         self._timeframe = data.get('timeframe', 0.0)   # timeframe_from_str(data.get('timeframe', 't'))
         self._expiry = data.get('expiry', 0.0)    # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
+
+    def dumps_notify(self, timestamp: float, region_result: dict, strategy_trader: StrategyTrader) -> dict:
+        """
+        Dumps to dict for notify/history.
+        """
+        return {
+            'version': self.version(),
+            'region': self.region(),
+            'name': self.name(),
+            'id': self._id,
+            'app-name': strategy_trader.strategy.name,
+            'app-id': strategy_trader.strategy.identifier,
+            'timestamp': timestamp,
+            'market-id': strategy_trader.instrument.market_id,
+            'symbol': strategy_trader.instrument.symbol,
+            'timeframe': timeframe_to_str(self._timeframe),
+            'last-price': strategy_trader.instrument.format_price(strategy_trader.instrument.market_price),
+            'stage': self._stage,
+            'direction': self._dir,
+            'reason': "",  # region specific detail of the trigger
+        }
 
     def stage_to_str(self) -> str:
         if self._stage == Region.STAGE_ENTRY:
@@ -288,13 +317,13 @@ class Region(object):
         else:
             return "never"
 
-    def cancellation_str(self) -> str:
+    def cancellation_str(self, instrument: Instrument) -> str:
         """
         Dump a string with region cancellation details.
         """
         return ""
 
-    def condition_str(self) -> str:
+    def condition_str(self, instrument: Instrument) -> str:
         """
         Dump a string with region condition simplified details.
         """

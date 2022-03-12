@@ -3,15 +3,16 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Signals view.
 
+import copy
 import threading
 import hashlib
 
 from datetime import datetime
+from typing import List
 
-from common.utils import timeframe_to_str
 from common.signal import Signal
 
-from terminal.terminal import Terminal, Color
+from terminal.terminal import Color
 from terminal import charmap
 
 from view.tableview import TableView
@@ -177,3 +178,13 @@ class SignalView(TableView):
                 num, self.display_mode_str(), strategy.name, strategy.identifier))
         else:
             self.set_title("Signal list - No configured strategy")
+
+    def dumps_signals(self) -> List[dict]:
+        signals = []
+
+        with self._mutex:
+            for app_id, signals_list in self._signals_list.items():
+                for signal in signals_list:
+                    signals.append(copy.copy(signal))
+
+        return signals

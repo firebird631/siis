@@ -3,15 +3,16 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Alerts view.
 
+import copy
 import threading
 import hashlib
 
 from datetime import datetime
+from typing import List
 
-from common.utils import timeframe_to_str
 from common.signal import Signal
 
-from terminal.terminal import Terminal, Color
+from terminal.terminal import Color
 from terminal import charmap
 
 from view.tableview import TableView
@@ -143,3 +144,13 @@ class AlertView(TableView):
                 num, self.display_mode_str(), strategy.name, strategy.identifier))
         else:
             self.set_title("Alert list - No configured strategy")
+
+    def dumps_alerts(self) -> List[dict]:
+        alerts = []
+
+        with self._mutex:
+            for app_id, alerts_list in self._alerts_list.items():
+                for alert in alerts_list:
+                    alerts.append(copy.copy(alert))
+
+        return alerts

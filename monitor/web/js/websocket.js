@@ -227,7 +227,7 @@ function on_ws_message(data) {
         } else if (value && data.t == 'ca') {
             on_strategy_create_alert(data.s, value.id, data.b*1000, value);
         } else if (value && data.t == 'ra') {
-            on_strategy_remove_alert(data.s, value.id, data.b*1000, value);
+            on_strategy_remove_alert(data.s, data.b*1000, value);
         }
 
     } else if (data.c == STREAM_STRATEGY_REGION) {

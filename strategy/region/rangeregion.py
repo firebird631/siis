@@ -3,6 +3,14 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Strategy trade range region.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from strategy.strategytrader import StrategyTrader
+    from instrument.instrument import Instrument
+
 from .region import Region
 
 
@@ -57,30 +65,31 @@ class RangeRegion(Region):
 
         return False
 
-    def str_info(self):
-        return "Range region from %g to %g, stage %s, direction %s, timeframe %s, expiry %s, cancellation %s" % (
-                self._low, self._high, self.stage_to_str(), self.direction_to_str(),
-                self.timeframe_to_str(), self.expiry_to_str(), self._cancellation)
+    def str_info(self, instrument: Instrument) -> str:
+        return "Range region from %s to %s, stage %s, direction %s, timeframe %s, expiry %s, cancellation %s" % (
+                instrument.format_price(self._low), instrument.format_price(self._high),
+                self.stage_to_str(), self.direction_to_str(),
+                self.timeframe_to_str(), self.expiry_to_str(), instrument.format_price(self._cancellation))
 
-    def cancellation_str(self):
+    def cancellation_str(self, instrument: Instrument) -> str:
         """
         Dump a string with short region cancellation str.
         """
         if self._dir == Region.LONG and self._cancellation > 0.0:
-            return"if ask price < %g" % (self._cancellation,)
+            return"if ask price < %s" % instrument.format_price(self._cancellation)
         elif self._dir == Region.SHORT and self._cancellation > 0.0:
-            return "if bid price > %g" % (self._cancellation,)
+            return "if bid price > %s" % instrument.format_price(self._cancellation)
         else:
             return "never"
 
-    def condition_str(self):
-        return "[%g - %g]" % (self._low, self._high)
+    def condition_str(self, instrument: Instrument) -> str:
+        return "[%s - %s]" % (instrument.format_price(self._low), instrument.format_price(self._high))
 
     def parameters(self):
         params = super().parameters()
 
         params['label'] = "Range region"
-        
+
         params['low'] = self._low,
         params['high'] = self._high
         

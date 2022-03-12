@@ -100,36 +100,36 @@ class PriceCrossAlert(Alert):
     def can_delete(self, timestamp, bid, ask):
         return (self._expiry > 0 and timestamp >= self._expiry) or self._countdown == 0
 
-    def str_info(self):
+    def str_info(self, instrument: Instrument) -> str:
         if self._dir > 0:
-            part = "if %s price goes above %s" % (self.price_src_to_str(), self._price)
+            part = "if %s price goes above %s" % (self.price_src_to_str(), instrument.format_price(self._price))
         elif self._dir < 0:
-            part = "if %s price goes below %s" % (self.price_src_to_str(), self._price)
+            part = "if %s price goes below %s" % (self.price_src_to_str(), instrument.format_price(self._price))
         else:
             part = "?"
 
         return "Price alert cross, %s, timeframe %s, expiry %s, cancellation %s" % (
-            part, self.timeframe_to_str(), self.expiry_to_str(), self._cancellation_price)
+            part, self.timeframe_to_str(), self.expiry_to_str(), instrument.format_price(self._cancellation_price))
 
-    def cancellation_str(self):
+    def cancellation_str(self, instrument: Instrument) -> str:
         """
         Dump a string with short alert cancellation str.
         """
         if self._dir > 0 and self._cancellation_price > 0.0:
-            return"if %s price < %s" % (self.price_src_to_str(), self._cancellation_price)
+            return "if %s price < %s" % (self.price_src_to_str(), instrument.format_price(self._cancellation_price))
         elif self._dir < 0 and self._cancellation_price > 0.0:
-            return "if %s price > %s" % (self.price_src_to_str(), self._cancellation_price)
+            return "if %s price > %s" % (self.price_src_to_str(), instrument.format_price(self._cancellation_price))
         else:
             return "never"
 
-    def condition_str(self):
+    def condition_str(self, instrument: Instrument) -> str:
         """
         Dump a string with short alert condition str.
         """
         if self._dir > 0:
-            return"if %s price > %s" % (self.price_src_to_str(), self._price)
+            return"if %s price > %s" % (self.price_src_to_str(), instrument.format_price(self._price))
         elif self._dir < 0:
-            return "if %s price < %s" % (self.price_src_to_str(), self._price)
+            return "if %s price < %s" % (self.price_src_to_str(), instrument.format_price(self._price))
         else:
             return ""
 
@@ -143,9 +143,9 @@ class PriceCrossAlert(Alert):
         result['trigger'] = alert_result['trigger']
 
         if alert_result['trigger'] > 0:
-            result['reason'] = "Price cross-up %s" % self._price
+            result['reason'] = "Price cross-up %s" % strategy_trader.instrument.format_price(self._price)
         elif alert_result['trigger'] < 0:
-            result['reason'] = "Price cross-down %s" % self._price
+            result['reason'] = "Price cross-down %s" % strategy_trader.instrument.format_price(self._price)
 
         return result
 

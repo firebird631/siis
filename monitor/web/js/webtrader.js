@@ -151,8 +151,10 @@ $(window).ready(function() {
     window.actives_trades = {};
     window.historical_trades = {};
     window.pending_trades = [];
+    window.active_alerts = {};
     window.alerts = {};
     window.signals = {};
+    window.regions = {};
     window.charts = {};
     window.account_balances = {};
 
@@ -1272,6 +1274,9 @@ function fetch_strategy() {
         if (server.permissions.indexOf("strategy-view") != -1) {
             fetch_trades();
             fetch_history();
+            fetch_alerts();
+            fetch_signals();
+            fetch_regions();
         } else {
             // remove menu
             $('#list_active_trades').remove();
@@ -1298,9 +1303,6 @@ function fetch_strategy() {
         // "trader-order-position-view"
         // "trader-cancel-order"
         // "trader-close-position"
-
-        // fetch_alerts();
-        // fetch_signals();
     })
     .fail(function() {
         notify({'message': "Unable to obtains markets list info !", 'title': 'fetching"', 'type': 'error'});
@@ -1658,6 +1660,15 @@ function retrieve_signal_key(elt) {
     let tr = $(elt.target).parent().parent();
     if (tr.length) {
         return tr.attr('signal-key');
+    }
+
+    return "";
+}
+
+function retrieve_alert_key(elt) {
+    let tr = $(elt.target).parent().parent();
+    if (tr.length) {
+        return tr.attr('active-alert-key');
     }
 
     return "";

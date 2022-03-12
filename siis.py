@@ -411,7 +411,7 @@ def application(argv):
     if options['monitor']:
         Terminal.inst().info("Starting monitor service...")
         try:
-            monitor_service.setup(watcher_service, trader_service, strategy_service)
+            monitor_service.setup(watcher_service, trader_service, strategy_service, view_service)
             monitor_service.start(options)
             watchdog_service.add_service(monitor_service)
         except Exception as e:

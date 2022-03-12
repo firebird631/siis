@@ -1438,6 +1438,21 @@ class Strategy(Runnable):
 
         return trades
 
+    def dumps_active_alerts(self) -> List[dict]:
+        """
+        Dumps actives alerts of any strategy traders. Not sorted.
+        """
+        alerts = []
+
+        with self._mutex:
+            for k, strategy_trader in self._strategy_traders.items():
+                try:
+                    alerts += strategy_trader.dumps_active_alerts()
+                except Exception as e:
+                    error_logger.error(repr(e))
+
+        return alerts
+
     #
     # commands
     #

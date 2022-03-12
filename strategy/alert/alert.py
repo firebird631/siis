@@ -196,7 +196,7 @@ class Alert(object):
         """
         return (0 < self._expiry <= timestamp) or self._countdown == 0
 
-    def str_info(self) -> str:
+    def str_info(self, instrument: Instrument) -> str:
         """
         Override this method to implement the single line message info of the alert.
         """
@@ -234,13 +234,13 @@ class Alert(object):
         else:
             return "inf"
 
-    def condition_str(self) -> str:
+    def condition_str(self, instrument: Instrument) -> str:
         """
         Dump a string with alert condition details.
         """
         return ""
 
-    def cancellation_str(self) -> str:
+    def cancellation_str(self, instrument: Instrument) -> str:
         """
         Dump a string with alert cancellation details.
         """

@@ -3,6 +3,14 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Strategy trade trend region.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from strategy.strategytrader import StrategyTrader
+    from instrument.instrument import Instrument
+
 from .region import Region
 
 
@@ -78,24 +86,26 @@ class TrendRegion(Region):
 
         return False
 
-    def str_info(self):
-        return "Trend region from [%g - %g] to [%g - %g], stage %s, direction %s, timeframe %s, expiry %s" % (
-                self._low_a, self._high_a, self._low_b, self._high_b,
+    def str_info(self, instrument: Instrument) -> str:
+        return "Trend region from [%s - %s] to [%s - %s], stage %s, direction %s, timeframe %s, expiry %s" % (
+                instrument.format_price(self._low_a), instrument.format_price(self._high_a),
+                instrument.format_price(self._low_b), instrument.format_price(self._high_b),
                 self.stage_to_str(), self.direction_to_str(), self.timeframe_to_str(), self.expiry_to_str())
 
-    def cancellation_str(self):
+    def cancellation_str(self, instrument: Instrument) -> str:
         """
         Dump a string with short region cancellation str.
         """
         if self._dir == Region.LONG and self._cancellation > 0.0:
-            return"if ask price < %g" % (self._cancellation,)
+            return"if ask price < %s" % instrument.format_price(self._cancellation)
         elif self._dir == Region.SHORT and self._cancellation > 0.0:
-            return "if bid price > %g" % (self._cancellation,)
+            return "if bid price > %s" % instrument.format_price(self._cancellation)
         else:
             return "never"
 
-    def condition_str(self):
-        return "[%g - %g] - [%g - %g]" % (self._low_a, self._high_a, self._low_b, self._high_b)
+    def condition_str(self, instrument: Instrument) -> str:
+        return "[%s - %s] - [%s - %s]" % (instrument.format_price(self._low_a), instrument.format_price(self._high_a),
+                                          instrument.format_price(self._low_b), instrument.format_price(self._high_b))
 
     def parameters(self):
         params = super().parameters()

@@ -5,32 +5,29 @@
 
 import collections
 import threading
-import os
 import time
-import logging
-import traceback
 
-from datetime import datetime, timedelta
-
-from trader.position import Position
+from typing import List
 
 from common.baseservice import BaseService
 from common.signal import Signal
 
 from terminal.terminal import Terminal
 
-from common.utils import timeframe_to_str
 from common.signalhandler import SignalHandler
 
-from view.view import View
 from view.viewexception import ViewServiceException
+
+import logging
+logger = logging.getLogger('siis.view.service')
+error_logger = logging.getLogger('siis.error.view.service')
+traceback_logger = logging.getLogger('siis.traceback.view.service')
 
 
 class ViewService(BaseService):
     """
     View manager service.
-    It support the refreh of actives views, receive signal from others services.
-    @todo
+    It support the refresh of actives views, receive signal from others services.
     """
 
     def __init__(self, options):
@@ -53,7 +50,7 @@ class ViewService(BaseService):
         self._mutex.release()
 
     def init(self):
-        self.setup_default()
+        pass
 
     def terminate(self):
         pass
@@ -127,7 +124,7 @@ class ViewService(BaseService):
 
         with self._mutex:
             if view in self._views:
-                raise ViewServiceException("View %s already registred" % view.id)
+                raise ViewServiceException("View %s already registered" % view.id)
 
             view.create()
             self._views[view.id] = view
@@ -188,3 +185,37 @@ class ViewService(BaseService):
             with self._mutex:
                 for k, view in self._views.items():
                     view.toggle_datetime_format()
+
+    #
+    # history API
+    #
+
+    def dumps_alerts_history(self) -> List[dict]:
+        """
+        Dumps triggered alerts records of any historical of any strategy traders. Sorted by timestamps.
+        """
+        alerts = []
+
+        with self._mutex:
+            try:
+                view = self._views.get('alert')
+                alerts = view.dumps_alerts()
+            except Exception as e:
+                error_logger.error(repr(e))
+
+        return alerts
+
+    def dumps_signals_history(self) -> List[dict]:
+        """
+        Dumps triggered signals records of last historical of any strategy traders. Sorted by timestamps.
+        """
+        signals = []
+
+        with self._mutex:
+            try:
+                view = self._views.get('signal')
+                signals = view.dumps_signals()
+            except Exception as e:
+                error_logger.error(repr(e))
+
+        return signals

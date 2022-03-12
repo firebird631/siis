@@ -538,8 +538,8 @@ class StrategyAlertRestAPI(resource.Resource):
         self._strategy_service = strategy_service
 
         self._allow_view = monitor_service.has_strategy_view_perm
-        self._allow_open_alert = monitor_service.has_strategy_open_trade_perm
-        self._allow_clean_alert = monitor_service.has_strategy_clean_trade_perm
+        self._allow_open_alert = monitor_service.has_strategy_trader_perm
+        self._allow_clean_alert = monitor_service.has_strategy_trader_perm
 
     def render_GET(self, request):
         # list active alert or a specific alert
@@ -573,8 +573,8 @@ class StrategyAlertRestAPI(resource.Resource):
         if alert_id > 0:
             results['data'] = None  # @todo
         else:
-            # current active alert list
-            results['data'] = None  # @todo self._strategy_service.strategy().alerts
+            # current active alerts list
+            results['data'] = self._strategy_service.strategy().dumps_active_alerts()
 
         return json.dumps(results).encode("utf-8")
 
@@ -625,10 +625,10 @@ class StrategyAlertRestAPI(resource.Resource):
 class HistoricalAlertRestAPI(resource.Resource):
     isLeaf = True
 
-    def __init__(self, monitor_service, strategy_service):
+    def __init__(self, monitor_service, view_service):
         super().__init__()
 
-        self._strategy_service = strategy_service
+        self._view_service = view_service
 
         self._allow_view = monitor_service.has_strategy_view_perm
 
@@ -658,7 +658,7 @@ class HistoricalAlertRestAPI(resource.Resource):
             results['data'] = None
         else:
             # triggered alert list
-            history_alerts = self._strategy_service.strategy().dumps_alerts_history()
+            history_alerts = self._view_service.dumps_alerts_history()
 
             # sort by last execution timestamp
             results['data'] = sorted(history_alerts, key=lambda alert: alert['timestamp'])
@@ -675,8 +675,8 @@ class StrategyRegionRestAPI(resource.Resource):
         self._strategy_service = strategy_service
 
         self._allow_view = monitor_service.has_strategy_view_perm
-        self._allow_open_region = monitor_service.has_strategy_open_trade_perm
-        self._allow_clean_region = monitor_service.has_strategy_clean_trade_perm
+        self._allow_open_region = monitor_service.has_strategy_trader_perm
+        self._allow_clean_region = monitor_service.has_strategy_trader_perm
 
     def render_GET(self, request):
         if not check_auth_token(request):
@@ -808,6 +808,50 @@ class TraderRestAPI(resource.Resource):
         else:
             # asset list + margin
             results['data'] = trader.fetch_assets_balances()
+
+        return json.dumps(results).encode("utf-8")
+
+
+class HistoricalSignalRestAPI(resource.Resource):
+    isLeaf = True
+
+    def __init__(self, monitor_service, view_service):
+        super().__init__()
+
+        self._view_service = view_service
+
+        self._allow_view = monitor_service.has_strategy_view_perm
+
+    def render_GET(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_view:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
+        signal_id = -1
+
+        results = {
+            'error': False,
+            'messages': [],
+            'data': None
+        }
+
+        if b'signal' in request.args:
+            try:
+                signal_id = int(request.args[b'signal'][0].decode("utf-8"))
+            except ValueError:
+                return NoResource("Incorrect signal value")
+
+        if signal_id > 0:
+            # @todo
+            results['data'] = None
+        else:
+            # triggered signal list
+            history_signals = self._view_service.dumps_signals_history()
+
+            # sort by last execution timestamp
+            results['data'] = sorted(history_signals, key=lambda signal: signal['timestamp'])
 
         return json.dumps(results).encode("utf-8")
 
@@ -953,7 +997,7 @@ class HttpRestServer(object):
     DENIED_IPS = None
 
     def __init__(self, host, port, api_key, api_secret, monitor_service,
-                 strategy_service, trader_service, watcher_service):
+                 strategy_service, trader_service, watcher_service, view_service):
         self._listener = None
 
         self._host = host
@@ -966,6 +1010,7 @@ class HttpRestServer(object):
         self._strategy_service = strategy_service
         self._trader_service = trader_service
         self._watcher_service = watcher_service
+        self._view_service = view_service
 
     def start(self):
         root = static.File("monitor/web")
@@ -1000,7 +1045,7 @@ class HttpRestServer(object):
         strategy_api.putChild(b"alert", alert_api)
 
         # strategy trader alert history
-        historical_alert_api = HistoricalAlertRestAPI(self._monitor_service, self._strategy_service)
+        historical_alert_api = HistoricalAlertRestAPI(self._monitor_service, self._view_service)
         strategy_api.putChild(b"historical-alert", historical_alert_api)
 
         # strategy trader region
@@ -1011,11 +1056,16 @@ class HttpRestServer(object):
         trader_api = TraderRestAPI(self._monitor_service, self._trader_service)
         api_v1.putChild(b"trader", trader_api)
 
+        # strategy signal history
+        historical_signal_api = HistoricalSignalRestAPI(self._monitor_service, self._view_service)
+        strategy_api.putChild(b"historical-signal", historical_signal_api)
+
         # monitor
         monitor_api = resource.Resource()
         api_v1.putChild(b"monitor", monitor_api)
 
-        status_api = StatusInfoRestAPI(self._monitor_service, self._strategy_service, self._trader_service, self._watcher_service)
+        status_api = StatusInfoRestAPI(self._monitor_service, self._strategy_service, self._trader_service,
+                                       self._watcher_service)
         monitor_api.putChild(b"status", status_api)
 
         # charting
