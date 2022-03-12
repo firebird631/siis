@@ -877,7 +877,8 @@ $(window).ready(function() {
     window.server['protocol'] = window.location.protocol;
 
     simple_connect = function(api_key) {
-        return siis_connect(api_key, window.location.hostname, parseInt(window.location.port), ws_port=parseInt(window.location.port)+1);
+        let port = parseInt(window.location.port || 80);
+        return siis_connect(api_key, window.location.hostname, port, port+1);
     }
 
     // update ping
@@ -982,12 +983,14 @@ function authenticate() {
     let identifier = $('#identifier').val();
     let password = $('#password').val();
 
+    let port = parseInt(window.location.port || 80);
+
     if (identifier && password) {
         // by login and password
-        siis_login(identifier, password, window.location.hostname, parseInt(window.location.port), ws_port=parseInt(window.location.port)+1);
+        siis_login(identifier, password, window.location.hostname, port, ws_port=port+1);
     } else if (identifier) {
         // by API key
-        siis_connect(identifier, window.location.hostname, parseInt(window.location.port), ws_port=parseInt(window.location.port)+1);
+        siis_connect(identifier, window.location.hostname, port, ws_port=port+1);
     }
 }
 

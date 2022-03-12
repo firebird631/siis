@@ -105,7 +105,7 @@ class MonitorService(Service):
         self.__api_secret = self._monitoring_config.get('api-secret', "")
 
         # allow deny rules
-        allowdeny = self._monitoring_config.get('allowdeny', "allowonly")
+        allowdeny = self._monitoring_config.get('allowdeny', "any")
 
         self._allowed_ips = None
         self._denied_ips = None

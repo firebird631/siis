@@ -53,16 +53,12 @@ Sum order :
         - POST/GET strategy-trader trade mode
         - POST/GET strategy-trader instrument quantity (if no reinvest handler)
         - POST/GET strategy-trader affinity
-        - POST/GET strategy-trader active alertes
-        - POST/GET strategy-trader trade operation
-        - POST/GET strategy-trader regions
     - WS :
         - strategy-trader state play/pause
         - strategy-trader instrument trade mode
         - strategy-trader instrument quantity (if no reinvest handler)
         - strategy-trader affinity
-        - strategy-trader active-alert (count-down, completed, added, removed)
-        - strategy-trader regions (added, removed, timeout, hit)
+        - strategy-trader regions hit ?
     - charting :
         - charting OHLC et ticks (streaming) + performance
         - goto charting historique sur un trade passé
@@ -75,7 +71,11 @@ Sum order :
         - paginer si list > 100 élements
     - copy de signal (bouton)
         - CTRL + click copie direct en l'état
-        - click ouvre une popup pour modifier EP/SL/TP et valider ou annuler
+    - créer une alerte price-cross
+    - créer une range region
+    - créer une trend region
+    - recevoir stream de bid/ask, abonnement/resiliation
+    - calculer r:r sur open trade, calcule % et montant risqué selon stop-loss
 
 
 ########
@@ -101,6 +101,9 @@ Sum order :
 ##########
 # Urgent #
 ##########
+
+#124 allow/deny monitoring IP list plus propre, mais attention aux conf des bots si changement de config
+    - methode pour ajouter/retirer des IP une fois lancé ? mais moyen sécure ...
 
 #122 send an error notification in case of a trade goes to ERROR state
 
