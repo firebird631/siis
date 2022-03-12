@@ -1,5 +1,4 @@
-// @todo add price cross alert with popup alert on browser, popup sound alert (different sounds)
-// @todo remove alert
+// @todo add price cross alert dialog
 
 function on_strategy_signal_alert(market_id, alert_id, timestamp, alert, do_notify=true) {
     let alert_elt = $('<tr class="alert"></tr>');
@@ -13,6 +12,7 @@ function on_strategy_signal_alert(market_id, alert_id, timestamp, alert, do_noti
         .addClass(alert.trigger > 0 ? 'fa-arrow-up' : 'fa-arrow-down');
 
     let alert_label = $('<span class="alert-label"></span>').text(alert.name);
+    // in seconds timestamp
     let alert_datetime = $('<span class="alert-datetime"></span>').text(timestamp_to_datetime_str(alert.timestamp));
 
     // timeframe is formatted
@@ -80,14 +80,16 @@ function on_strategy_create_alert(market_id, alert_id, timestamp, alert, do_noti
     if (alert.name == "price-cross") {
         if (alert.direction > 0) {
             condition_msg = `if ${price_src} price goes above ${format_price(market_id, alert.price)}`;
-            if (alert['cancellation-price'] > 0) {
-                cancellation_msg = `if ${price_src} price < ${format_price(market_id, alert['cancellation-price'])}`;
-            }
         } else if (alert.direction < 0) {
             condition_msg = `if ${price_src} price goes below ${format_price(market_id, alert.price)}`;
-            if (alert['cancellation-price'] > 0) {
-                cancellation_msg = `if ${price_src} price > ${format_price(market_id, alert['cancellation-price'])}`;
-            }
+        }
+    }
+
+    if (alert.cancellation > 0) {
+        if (alert.direction > 0) {
+            cancellation_msg = `if ${price_src} price < ${format_price(market_id, alert.cancellation)}`;
+        } else if (alert.direction < 0) {
+            cancellation_msg = `if ${price_src} price > ${format_price(market_id, alert.cancellation)}`;
         }
     }
 
@@ -95,13 +97,14 @@ function on_strategy_create_alert(market_id, alert_id, timestamp, alert, do_noti
     let alert_symbol = $('<span class="alert-symbol"></span>').text(market_id);
 
     let alert_label = $('<span class="alert-label"></span>').text(alert.name);
-    let alert_datetime = $('<span class="alert-datetime"></span>').text(timestamp_to_datetime_str(alert.created*1000));
+    let alert_datetime = $('<span class="alert-datetime"></span>').text(timestamp_to_datetime_str(alert.created));
 
     // timeframe is not formatted
     let alert_timeframe = $('<span class="alert-timeframe"></span>').text(alert.timeframe || "trade/tick");
-    let alert_expiry = $('<span class="alert-datetime"></span>');
+    let alert_expiry = $('<span class="alert-expiry"></span>');
     if (alert.expiry > 0) {
-        alert_expiry.text(timestamp_to_datetime_str(alert.created+alert.expiry*1000));
+        // absolute timestamp
+        alert_expiry.text(timestamp_to_datetime_str(alert.expiry));
     } else {
         alert_expiry.text("never");
     }
@@ -280,3 +283,7 @@ window.fetch_alerts = function() {
         notify({'message': "Unable to obtains historical alerts !", 'title': 'fetching"', 'type': 'error'});
     });
 };
+
+function on_add_price_cross_alert(elt) {
+    alert("TODO");
+}

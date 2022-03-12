@@ -480,7 +480,7 @@ class StreamMemberStrategyRegionCreate(StreamMember):
         self._timestamp = 0.0
         self._region_data = {}
 
-    def update(self, strategy_trader, region, result, timestamp):
+    def update(self, strategy_trader, region, timestamp):
         self._region_data = region.dumps()
         self._region_data['market-id'] = strategy_trader.instrument.market_id
         self._region_data['symbol'] = strategy_trader.instrument.symbol
@@ -505,7 +505,7 @@ class StreamMemberStrategyRegionRemove(StreamMember):
         self._timestamp = 0.0
         self._region_id = -1
 
-    def update(self, strategy_trader, region_id, result, timestamp):
+    def update(self, strategy_trader, region_id, timestamp):
         self._region_id = region_id
         self._timestamp = timestamp
         self._updated = True

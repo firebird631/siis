@@ -400,19 +400,23 @@ div.console-list-entries {
     display: none;
 }
 
-span.trade-long {
+span.trade-long, span.region-up {
     color: green;
 }
 
-span.trade-short {
+span.trade-short, span.region-down {
     color: red;
 }
 
-span.signal-entry {
+span.region-both {
+    color: white;
+}
+
+span.signal-entry, span.region-entry {
     color: cyan;
 }
 
-span.signal-exit {
+span.signal-exit, span.region-exit {
     color: orange;
 }
 

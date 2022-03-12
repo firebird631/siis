@@ -1118,6 +1118,26 @@ class StrategyTrader(object):
 
         return results
 
+    def dumps_regions(self) -> List[dict]:
+        """
+        Dumps the regions. Not sorted.
+        """
+        results = []
+
+        with self._mutex:
+            for region in self._regions:
+                region_dumps = region.dumps()
+                region_dumps['market-id'] = self.instrument.market_id
+                region_dumps['symbol'] = self.instrument.symbol
+
+                results.append(region_dumps)
+
+        return results
+
+    #
+    # trades processing
+    #
+
     def update_trades(self, timestamp: float):
         """
         Update managed trades per instruments and delete terminated trades.

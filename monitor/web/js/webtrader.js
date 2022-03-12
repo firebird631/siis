@@ -1674,6 +1674,15 @@ function retrieve_alert_key(elt) {
     return "";
 }
 
+function retrieve_region_key(elt) {
+    let tr = $(elt.target).parent().parent();
+    if (tr.length) {
+        return tr.attr('region-key');
+    }
+
+    return "";
+}
+
 function retrieve_trader_id(elt) {
     return $(elt.target).attr('trader-id');
 }

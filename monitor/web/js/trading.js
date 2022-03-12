@@ -879,7 +879,7 @@ function format_price(market_id, price) {
             price = parseFloat(price);
         }
 
-        return price.toFixed(market['price-limits'][3] || 2);
+        return price.toFixed(market['price-limits'][3] || 2).replace(/0+$/, '');
     }
 
     return "0.0";
@@ -892,7 +892,7 @@ function format_quote_price(market_id, price) {
             price = parseFloat(price);
         }
 
-        return price.toFixed(market['notional-limits'][3] || 2);
+        return price.toFixed(market['notional-limits'][3] || 2).replace(/0+$/, '');
     }
 
     return "0.0";

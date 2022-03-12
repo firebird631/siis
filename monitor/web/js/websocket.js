@@ -235,11 +235,11 @@ function on_ws_message(data) {
         let value = read_value(data);
 
         if (value && data.t == 'sr') {
-            // @todo signal region
+            on_strategy_signal_region(data.s, value.id, data.b*1000, value);
         } else if (value && data.t == 'cr') {
-           // @todo create region
+           on_strategy_create_region(data.s, value.id, data.b*1000, value);
         } else if (value && data.t == 'rr') {
-            // @todo remove region
+            on_strategy_remove_region(data.s, data.b*1000, value);
         }
 
     } else if (data.c == STREAM_STRATEGY_SIGNAL) {

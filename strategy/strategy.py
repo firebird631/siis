@@ -1453,6 +1453,21 @@ class Strategy(Runnable):
 
         return alerts
 
+    def dumps_regions(self) -> List[dict]:
+        """
+        Dumps regions of any strategy traders. Not sorted.
+        """
+        regions = []
+
+        with self._mutex:
+            for k, strategy_trader in self._strategy_traders.items():
+                try:
+                    regions += strategy_trader.dumps_regions()
+                except Exception as e:
+                    error_logger.error(repr(e))
+
+        return regions
+
     #
     # commands
     #

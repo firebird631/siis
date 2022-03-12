@@ -704,7 +704,7 @@ class StrategyRegionRestAPI(resource.Resource):
             results['data'] = None
         else:
             # strategy trader region for a specific market
-            trade_regions = []  # self._strategy_service.strategy().dumps_regions()
+            trade_regions = self._strategy_service.strategy().dumps_regions()
 
             # sort by last created timestamp
             results['data'] = sorted(trade_regions, key=lambda region: region['created'])
@@ -745,15 +745,12 @@ class StrategyRegionRestAPI(resource.Resource):
         if not self._allow_clean_region:
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
-        results = {
-            'messages': [],
-            'error': False
-        }
-
         content = json.loads(request.content.read().decode("utf-8"))
 
-        # @todo
-        # results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+        if content.get('action') != 'del-region':
+            return json.dumps({'error': True, 'messages': ['inconsistent-content']}).encode("utf-8")
+
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
 
         return json.dumps(results).encode("utf-8")
 

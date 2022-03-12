@@ -191,7 +191,7 @@ class Region(object):
         """
         return 0 < self._expiry <= timestamp
 
-    def str_info(self, instrument : Instrument) -> str:
+    def str_info(self, instrument: Instrument) -> str:
         """
         Override this method to implement the single line message info of the region.
         """
