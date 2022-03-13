@@ -14,7 +14,7 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal, do_notify=t
         .addClass(signal.way == "entry" ? 'signal-entry' : 'signal-exit')
         .addClass(signal.way == "entry" ? 'fa-arrow-right' : 'fa-arrow-left');
 
-    let signal_datetime = $('<span class="signal-datetime"></span>').text(timestamp_to_datetime_str(signal.timestamp*1000));
+    let signal_datetime = $('<span class="signal-datetime"></span>').text(timestamp_to_datetime_str(signal.timestamp));
 
     let signal_order = $('<span class="signal-order"></span>').text(signal['order-type'] + '@' + format_price(market_id, signal['order-price']));
     let signal_exit = $('<span class="signal-exit"></span>').text(signal.timeframe || "trade");
