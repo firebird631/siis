@@ -488,7 +488,7 @@ class StrategyService(Service):
         return self._strategy.identifier if self._strategy else None
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> float:
         """Current live or backtesting timestamp"""
         return self._timestamp if self._backtesting else time.time()
 
@@ -534,7 +534,7 @@ class StrategyService(Service):
         """Get the configurations for a tradeop as dict"""
         return self._tradeops_config.get(name, {})
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         if self._mutex.acquire(timeout=timeout):
             strategy = self._strategy
             if strategy:

@@ -204,14 +204,14 @@ class TraderService(Service):
         return str(nkey)
 
     @property
-    def backtesting(self):
+    def backtesting(self) -> bool:
         return self._backtesting
 
     @property
-    def paper_mode(self):
+    def paper_mode(self) -> bool:
         return self._paper_mode
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         if self._mutex.acquire(timeout=timeout):
             # if no deadlock lock for service ping trader
             if self._trader:
@@ -269,7 +269,7 @@ class TraderService(Service):
                 # preference from profile overrides
                 user_trader_config['preference'] = profile_trader_config['preference']
 
-            # keep overrided
+            # keep override
             trader_config = user_trader_config
 
         return trader_config

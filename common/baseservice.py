@@ -5,12 +5,12 @@
 
 class BaseService(object):
 
-	def __init__(self, name):
+	def __init__(self, name: str):
 		self._name = name
 
 	def receiver(self, signal):
 		pass
 
 	@property
-	def name(self):
+	def name(self) -> str:
 		return self._name

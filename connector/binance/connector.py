@@ -68,15 +68,15 @@ class Connector(object):
             self._session = None
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self.__api_key is not None
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._session is not None
 
     @property
-    def ws_connected(self):
+    def ws_connected(self) -> bool:
         return self._ws is not None
 
     @property

@@ -179,7 +179,7 @@ class IGWatcher(Watcher):
         return self._connector
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._ready and self._connector is not None and self._connector.connected
 
     def disconnect(self):

@@ -3,6 +3,14 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Trader asset
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List
+
+if TYPE_CHECKING:
+    from trader.trader import Trader
+    from trader.market import Market
+
 from common.utils import truncate
 
 
@@ -17,7 +25,7 @@ class Asset(object):
                 '_last_update_time', '_last_trade_id', '_market_ids', '_raw_profit_loss', '_raw_profit_loss_rate', \
                 '_profit_loss', '_profit_loss_rate', '_profit_loss_market', '_profit_loss_market_rate'
 
-    def __init__(self, trader, symbol, precision=8):
+    def __init__(self, trader: Trader, symbol: str, precision: int = 8):
         super().__init__()
         
         self._trader = trader
@@ -45,54 +53,54 @@ class Asset(object):
         self._profit_loss_market_rate = 0.0
 
     @property
-    def last_update_time(self):
+    def last_update_time(self) -> float:
         return self._last_update_time
 
     @property
-    def last_trade_id(self):
+    def last_trade_id(self) -> int:
         return self._last_trade_id
     
     @property
-    def symbol(self):
+    def symbol(self) -> str:
         return self._symbol
     
     @property
-    def trader(self):
+    def trader(self) -> Trader:
         return self._trader
 
     @property
-    def quantity(self):
+    def quantity(self) -> float:
         return round(self._locked + self._free, self._precision)
 
     @property
-    def free(self):
+    def free(self) -> float:
         return self._free
     
     @property
-    def locked(self):
+    def locked(self) -> float:
         return self._locked
     
     @property
-    def price(self):
+    def price(self) -> float:
         return self._price
 
     @property
-    def quote(self):
+    def quote(self) -> str:
         return self._quote
 
     @quote.setter
-    def quote(self, quote):
+    def quote(self, quote: str):
         self._quote = quote
 
     @property
-    def precision(self):
+    def precision(self) -> int:
         return self._precision
     
     @precision.setter
-    def precision(self, precision):
+    def precision(self, precision: int):
         self._precision = precision
 
-    def set_quantity(self, locked, free):
+    def set_quantity(self, locked: float, free: float):
         self._locked = locked
         self._free = free
 
@@ -104,7 +112,7 @@ class Asset(object):
             self._profit_loss_market = 0.0
             self._profit_loss_market_rate = 0.0
 
-    def update_price(self, last_update_time, last_trade_id, price, quote):
+    def update_price(self, last_update_time: float, last_trade_id: int, price: float, quote: str):
         """
         Update entry price at time and last trade id.
         """
@@ -120,41 +128,41 @@ class Asset(object):
         if quote:
             self._quote = quote
 
-    def add_market_id(self, market_id, preferred=False):
+    def add_market_id(self, market_id: str, preferred: bool = False):
         if preferred:
             self._market_ids.insert(0, market_id)
         else:
             self._market_ids.append(market_id)
 
     @property
-    def market_ids(self):
+    def market_ids(self) -> List[str]:
         return self._market_ids
 
     @property
-    def raw_profit_loss(self):
+    def raw_profit_loss(self) -> float:
         return self._raw_profit_loss
 
     @property
-    def raw_profit_loss_rate(self):
+    def raw_profit_loss_rate(self) -> float:
         return self._raw_profit_loss_rate
 
     @property
-    def profit_loss(self):
+    def profit_loss(self) -> float:
         return self._profit_loss
 
     @property
-    def profit_loss_rate(self):
+    def profit_loss_rate(self) -> float:
         return self._profit_loss_rate
 
     @property
-    def profit_loss_market(self):
+    def profit_loss_market(self) -> float:
         return self._profit_loss_market
 
     @property
-    def profit_loss_market_rate(self):
+    def profit_loss_market_rate(self) -> float:
         return self._profit_loss_market_rate
 
-    def update_profit_loss(self, market):
+    def update_profit_loss(self, market: Market):
         """
         Compute profit_loss and profit_loss_rate for maker and taker.
         @param market: A valid market object related to the symbol of the position.
@@ -200,7 +208,7 @@ class Asset(object):
         self._profit_loss_market = raw_profit_loss - (cost * market.taker_fee) - (cost * market.taker_commission)
         self._profit_loss_market_rate = (self._profit_loss_market / cost) if cost != 0.0 else 0.0
 
-    def format_price(self, price):
+    def format_price(self, price: float) -> str:
         """
         Format the price according to the precision.
         """
@@ -215,7 +223,7 @@ class Asset(object):
     # persistence
     #
 
-    def dumps(self):
+    def dumps(self) -> dict:
         """
         @todo Could humanize timestamp into datetime
         @return: dict
@@ -236,7 +244,7 @@ class Asset(object):
             'profit-loss-market-rate': self._profit_loss_market_rate,
         }
 
-    def loads(self, data):
+    def loads(self, data: dict):
         if data.get('symbol', "") == self._symbol:
             # quantity
             self._locked = data.get('locked-qty', 0.0)

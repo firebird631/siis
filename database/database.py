@@ -204,7 +204,7 @@ class Database(object):
         pass
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return False
 
     def close(self):

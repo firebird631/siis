@@ -1,7 +1,16 @@
 # @date 2018-08-25
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Trader/autotrader connector for ig.com
+# Trader connector for ig.com
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Union, Optional
+
+if TYPE_CHECKING:
+    from trader.service import TraderService
+    from trader.market import Market
+    from instrument.instrument import Instrument
 
 import traceback
 import time
@@ -12,16 +21,12 @@ import copy
 from datetime import datetime
 
 from trader.trader import Trader
+from trader.position import Position
+from trader.order import Order
 
 from .account import IGAccount
 
-from trader.position import Position
-from trader.order import Order
-from trader.account import Account
-from trader.market import Market
-
 from connector.ig.rest import IGException
-from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.trader.ig')
@@ -37,7 +42,7 @@ class IGTrader(Trader):
 
     REST_OR_WS = False  # True if REST API sync else do with the state returned by WS events
 
-    def __init__(self, service):
+    def __init__(self, service: TraderService):
         super().__init__("ig.com", service)
 
         self._watcher = None
@@ -48,11 +53,11 @@ class IGTrader(Trader):
         self._last_market_update = 0
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self.connected and self._watcher.connector.authenticated
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._watcher is not None and self._watcher.connector is not None and self._watcher.connector.connected
 
     def connect(self):
@@ -76,7 +81,7 @@ class IGTrader(Trader):
                 self.service.watcher_service.remove_listener(self)
                 self._watcher = None
 
-    def on_watcher_connected(self, watcher_name):
+    def on_watcher_connected(self, watcher_name: str):
         super().on_watcher_connected(watcher_name)
 
         logger.info("- Trader ig.com retrieving data...")
@@ -97,7 +102,7 @@ class IGTrader(Trader):
 
         logger.info("Trader ig.com got data. Running.")
 
-    def on_watcher_disconnected(self, watcher_name):
+    def on_watcher_disconnected(self, watcher_name: str):
         super().on_watcher_disconnected(watcher_name)
 
     def pre_update(self):
@@ -182,22 +187,24 @@ class IGTrader(Trader):
     # ordering
     #
 
-    def set_ref_order_id(self, order):
+    def set_ref_order_id(self, order: Order) -> Union[str, None]:
         """
         Generate a new reference order id to be setup before calling create order, else a default one wil be generated.
-        Generating it before is a prefered way to correctly manange order in strategy.
+        Generating it before is a preferred way to correctly manage order in strategy.
         @param order A valid or on to set the ref order id.
         @note If the given order already have a ref order id no change is made.
         @ref Pattern(regexp="[A-Za-z0-9_\\-]{1,30}")]
         """
         if order and not order.ref_order_id:
-            order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace('+', '-').replace('/', '_'))
-            # order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid5(uuid.NAMESPACE_DNS, 'siis.com').bytes).decode('utf8').rstrip('=\n'))
+            order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip(
+                '=\n').replace('+', '-').replace('/', '_'))
+            # order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid5(uuid.NAMESPACE_DNS,
+            #   'siis.com').bytes).decode('utf8').rstrip('=\n'))
             return order.ref_order_id
 
         return None
 
-    def create_order(self, order, market_or_instrument):
+    def create_order(self, order: Order, market_or_instrument: Union[Market, Instrument]) -> int:
         """
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
         """
@@ -313,7 +320,8 @@ class IGTrader(Trader):
                     order.created_time = self.timestamp
 
                 # executed price (no change in limit, but useful when market order)
-                order.entry_price = results.get('level')
+                order.set_executed(order.quantity, True, results.get('level'))
+
             else:
                 error_logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (
                     self.name, order.direction_to_str(), size, epic, results.get('reason')))
@@ -330,7 +338,7 @@ class IGTrader(Trader):
 
         return Order.REASON_OK
 
-    def cancel_order(self, order_id, market_or_instrument):
+    def cancel_order(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> int:
         if not order_id or not market_or_instrument:
             return Order.REASON_INVALID_ARGS
 
@@ -357,7 +365,9 @@ class IGTrader(Trader):
 
         return Order.REASON_OK
 
-    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
+    def close_position(self, position_id: str, market_or_instrument: Union[Market, Instrument],
+                       direction: int, quantity: float, market: bool = True,
+                       limit_price: Optional[float] = None) -> bool:
         """
         Close an existing position by its position identifier.
         @param position_id str Unique position identifier (dealId)
@@ -411,7 +421,9 @@ class IGTrader(Trader):
 
         return True
 
-    def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
+    def modify_position(self, position_id: str, market_or_instrument: Union[Market, Instrument],
+                        stop_loss_price: Optional[float] = None, take_profit_price: Optional[float] = None) -> bool:
+
         if not position_id or not market_or_instrument:
             return False
 
@@ -443,7 +455,7 @@ class IGTrader(Trader):
 
         return True
 
-    def order_info(self, order_id, market_or_instrument):
+    def order_info(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> Union[dict, None]:
         # @todo
         return None
 
@@ -451,7 +463,7 @@ class IGTrader(Trader):
     # global accessors
     #
 
-    def positions(self, market_id):
+    def positions(self, market_id: str) -> List[Position]:
         """
         Returns current positions for an instrument. If the trader does not use a WS API it is possible
         to detect a latency between the reality and what it returns. Prefers use WS API as possible.
@@ -466,7 +478,7 @@ class IGTrader(Trader):
 
         return positions
 
-    def market(self, market_id, force=False):
+    def market(self, market_id: str, force: bool = False) -> Union[Market, None]:
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
         @param market_id
@@ -520,9 +532,12 @@ class IGTrader(Trader):
 
             deal_id = pos.get('dealId')
 
-            market_update_time = datetime.strptime(market_data['updateTime'], '%H:%M:%S').timestamp() if market_data.get('updateTime') else None
+            market_update_time = datetime.strptime(
+                market_data['updateTime'], '%H:%M:%S').timestamp() if market_data.get('updateTime') else None
+
             market_status = (market_data['marketStatus'] == 'TRADEABLE')
-            self.on_update_market(epic, market_status, market_update_time, market_data['bid'], market_data['offer'], base_exchange_rate=None)
+            self.on_update_market(epic, market_status, market_update_time, market_data['bid'], market_data['offer'],
+                                  base_exchange_rate=None)
  
             market = self.market(epic)
             if market is None:
@@ -563,7 +578,8 @@ class IGTrader(Trader):
                 self._positions[deal_id] = position
 
             # account local tz, but createdDateUTC exists in API v2 (look at HTTP header v=2)
-            position.created_time = datetime.strptime(pos.get('createdDate', '1970/01/01 00:00:00:000'), "%Y/%m/%d %H:%M:%S:%f").timestamp()
+            position.created_time = datetime.strptime(pos.get('createdDate', '1970/01/01 00:00:00:000'),
+                                                      "%Y/%m/%d %H:%M:%S:%f").timestamp()
 
             position.entry_price = pos.get('openLevel', 0.0)
             position.stop_loss = pos.get('stopLevel', 0.0)
@@ -613,11 +629,13 @@ class IGTrader(Trader):
         # @todo add/update/remove orders
         # and this can be done by signals
 
-    def on_update_market(self, market_id, tradeable, last_update_time, bid, ask,
-                         base_exchange_rate, contract_size=None, value_per_pip=None,
-                         vol24h_base=None, vol24h_quote=None):
+    def on_update_market(self, market_id: str, tradeable: bool, last_update_time: float, bid: float, ask: float,
+                         base_exchange_rate: Optional[float] = None,
+                         contract_size: Optional[float] = None, value_per_pip: Optional[float] = None,
+                         vol24h_base: Optional[float] = None, vol24h_quote: Optional[float] = None):
 
-        super().on_update_market(market_id, tradeable, last_update_time, bid, ask, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
+        super().on_update_market(market_id, tradeable, last_update_time, bid, ask, base_exchange_rate,
+                                 contract_size, value_per_pip, vol24h_base, vol24h_quote)
 
         # update positions profit/loss for the related market id
         market = self.market(market_id)

@@ -101,11 +101,11 @@ class KrakenFetcher(Fetcher):
         return self._connector
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._connector is not None and self._connector.connected
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self._connector and self._connector.authenticated
 
     def install_market(self, market_id):

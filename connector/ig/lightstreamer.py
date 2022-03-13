@@ -279,7 +279,7 @@ class LSClient(object):
             logger.warning("No connection to Lightstreamer")
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._stream_connection is not None
 
     def destroy(self):

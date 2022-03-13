@@ -85,7 +85,7 @@ class Fetcher(object):
         pass
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return False
 
     def fetch_and_generate(self, market_id, timeframe, from_date=None, to_date=None, n_last=1000, fetch_option="", cascaded=None):

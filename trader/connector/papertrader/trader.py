@@ -3,6 +3,15 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Generic paper trader.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Union, Optional
+
+if TYPE_CHECKING:
+    from trader.service import TraderService
+    from trader.market import Market
+    from instrument.instrument import Instrument
+
 import base64
 import copy
 import json
@@ -40,7 +49,7 @@ class PaperTrader(Trader):
     @todo Simulation of a pseudo-random slippage.
     """
 
-    def __init__(self, service, name="papertrader.siis"):
+    def __init__(self, service: TraderService, name: str = "papertrader.siis"):
         super().__init__(name, service)
 
         self._slippage = 0  # slippage in ticks (not supported for now)
@@ -58,16 +67,16 @@ class PaperTrader(Trader):
         self._account = PaperTraderAccount(self)
 
     @property
-    def paper_mode(self):
+    def paper_mode(self) -> bool:
         return True
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         # always authenticated in paper-mode
         return True
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         if self.service.backtesting:
             # always connected in backtesting
             return True
@@ -99,7 +108,7 @@ class PaperTrader(Trader):
                 self.service.watcher_service.remove_listener(self)
                 self._watcher = None
 
-    def on_watcher_connected(self, watcher_name):
+    def on_watcher_connected(self, watcher_name: str):
         super().on_watcher_connected(watcher_name)
 
         logger.info("Paper trader %s retrieving data..." % self._name)
@@ -109,10 +118,10 @@ class PaperTrader(Trader):
 
         logger.info("Paper trader %s data retrieved." % self._name)
 
-    def on_watcher_disconnected(self, watcher_name):
+    def on_watcher_disconnected(self, watcher_name: str):
         super().on_watcher_disconnected(watcher_name)
 
-    def has_margin(self, market_id, quantity, price):
+    def has_margin(self, market_id: str, quantity: float, price: float) -> bool:
         """
         Return True for a margin trading if the account have sufficient free margin.
         """
@@ -127,7 +136,7 @@ class PaperTrader(Trader):
 
         return margin is not None and self.account.margin_balance >= margin
 
-    def has_quantity(self, asset_name, quantity):
+    def has_quantity(self, asset_name: str, quantity: float) -> bool:
         """
         Return True if a given asset has a minimum quantity.
         @note The benefit of this method is it can be overloaded and offers a generic way for a strategy
@@ -144,7 +153,7 @@ class PaperTrader(Trader):
 
         return result
 
-    def market(self, market_id, force=False):
+    def market(self, market_id: str, force: bool = False) -> Union[Market, None]:
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
         @param market_id Unique market identifier
@@ -176,7 +185,7 @@ class PaperTrader(Trader):
         time.sleep(0.005)
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> float:
         """
         Current real time or last timestamp in backtesting
         """
@@ -504,7 +513,7 @@ class PaperTrader(Trader):
     # ordering
     #
 
-    def create_order(self, order, market_or_instrument):
+    def create_order(self, order: Order, market_or_instrument: Union[Market, Instrument]) -> int:
         if not order or not market_or_instrument:
             return Order.REASON_INVALID_ARGS
 
@@ -607,7 +616,7 @@ class PaperTrader(Trader):
 
         return Order.REASON_ERROR
 
-    def cancel_order(self, order_id, market_or_instrument):
+    def cancel_order(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> int:
         if not order_id or not market_or_instrument:
             return Order.REASON_INVALID_ARGS
 
@@ -628,7 +637,10 @@ class PaperTrader(Trader):
 
         return Order.REASON_ERROR
 
-    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
+    def close_position(self, position_id: str, market_or_instrument: Union[Market, Instrument],
+                       direction: int, quantity: float, market: bool = True,
+                       limit_price: Optional[float] = None) -> bool:
+
         if not position_id or not market_or_instrument:
             return False
 
@@ -709,7 +721,9 @@ class PaperTrader(Trader):
 
         return result
 
-    def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
+    def modify_position(self, position_id: str, market_or_instrument: Union[Market, Instrument],
+                        stop_loss_price: Optional[float] = None, take_profit_price: Optional[float] = None) -> bool:
+
         if not position_id or not market_or_instrument:
             return False
 
@@ -732,7 +746,7 @@ class PaperTrader(Trader):
     # global accessors
     #
 
-    def positions(self, market_id):
+    def positions(self, market_id: str) -> List[Position]:
         """
         @deprecated
         """
@@ -745,7 +759,7 @@ class PaperTrader(Trader):
 
         return positions
 
-    def order_info(self, order_id, market_or_instrument):
+    def order_info(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> Union[dict, None]:
         """
         @todo for closed or canceled orders
         @todo Order should support the cumulative commission amount
@@ -788,7 +802,7 @@ class PaperTrader(Trader):
 
             return order_info
 
-    def set_market(self, market):
+    def set_market(self, market: Market):
         """
         Set market info object. Used during backtesting.
 
@@ -804,40 +818,42 @@ class PaperTrader(Trader):
     # slots
     #
 
-    def on_account_updated(self, balance, free_margin, unrealized_pnl, currency, risk_limit):
+    def on_account_updated(self, balance: float, free_margin: float, unrealized_pnl: float, currency: str,
+                           risk_limit: float):
         # not interested in account details
         pass
 
-    def on_position_opened(self, market_id, position_data, ref_order_id):
+    def on_position_opened(self, market_id: str, position_data: dict, ref_order_id: str):
         # not interested in account positions
         pass
 
-    def on_position_amended(self, market_id, position_data, ref_order_id):
+    def on_position_amended(self, market_id: str, position_data: dict, ref_order_id: str):
         pass
         
-    def on_position_updated(self, market_id, position_data, ref_order_id):
+    def on_position_updated(self, market_id: str, position_data: dict, ref_order_id: str):
         pass
 
-    def on_position_deleted(self, market_id, position_id, ref_order_id):
+    def on_position_deleted(self, market_id: str, position_data: dict, ref_order_id: str):
         pass
 
-    def on_order_opened(self, market_id, order_data, ref_order_id):
+    def on_order_opened(self, market_id: str, order_data: dict, ref_order_id: str):
         # not interested in account orders
         pass
 
-    def on_order_updated(self, market_id, order_data, ref_order_id):
+    def on_order_updated(self, market_id: str, order_data: dict, ref_order_id: str):
         pass
 
-    def on_order_deleted(self, market_id, order_id, ref_order_id):
+    def on_order_deleted(self, market_id: str, order_id: str, ref_order_id: str):
         pass
 
-    def on_order_traded(self, market_id, order_data, ref_order_id):
+    def on_order_traded(self, market_id: str, order_data: dict, ref_order_id: str):
         pass        
 
     @Trader.mutexed
-    def on_update_market(self, market_id, tradeable, last_update_time, bid, ask,
-                         base_exchange_rate, contract_size=None, value_per_pip=None,
-                         vol24h_base=None, vol24h_quote=None):
+    def on_update_market(self, market_id: str, tradeable: bool, last_update_time: float, bid: float, ask: float,
+                         base_exchange_rate: Optional[float] = None,
+                         contract_size: Optional[float] = None, value_per_pip: Optional[float] = None,
+                         vol24h_base: Optional[float] = None, vol24h_quote: Optional[float] = None):
 
         market = self._markets.get(market_id)
         if market is None:
@@ -905,7 +921,7 @@ class PaperTrader(Trader):
     # persistence
     #
 
-    def cmd_export(self, data):
+    def cmd_export(self, data: dict) -> dict:
         results = {
             'messages': [],
             'error': False
@@ -977,7 +993,7 @@ class PaperTrader(Trader):
 
         return results
 
-    def cmd_import(self, data):
+    def cmd_import(self, data: dict) -> dict:
         results = {
             'messages': [],
             'error': False

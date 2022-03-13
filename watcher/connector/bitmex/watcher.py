@@ -122,11 +122,11 @@ class BitMexWatcher(Watcher):
         return self._connector
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._connector is not None and self._connector.connected and self._connector.ws_connected
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self._connector and self._connector.authenticated
 
     def pre_update(self):
@@ -767,9 +767,10 @@ class BitMexWatcher(Watcher):
             market = self.fetch_market(market_id)
 
             if market.is_open:
-                market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ask,
-                        market.base_exchange_rate, market.contract_size, market.value_per_pip,
-                        market.vol24h_base, market.vol24h_quote)
+                market_data = (
+                    market_id, market.is_open, market.last_update_time, market.bid, market.ask,
+                    market.base_exchange_rate, market.contract_size, market.value_per_pip,
+                    market.vol24h_base, market.vol24h_quote)
             else:
                 market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
 
@@ -788,7 +789,7 @@ class BitMexWatcher(Watcher):
         for trade in trades:
             count += 1
             # timestamp, bid, ask, last, volume, direction
-            yield(trade)
+            yield trade
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         TF_MAP = {
@@ -805,7 +806,7 @@ class BitMexWatcher(Watcher):
         candles = []
 
         # second timeframe to bitmex bin size
-        bin_size = TF_MAP[timeframe]
+        bin_size = TF_MAP[int(timeframe)]
 
         try:
             candles = self._connector.get_historical_candles(market_id, bin_size, from_date, to_date, partial=True)
@@ -819,4 +820,4 @@ class BitMexWatcher(Watcher):
             count += 1
             # store (timestamp, open, high, low, close, spread, volume)
             if candle[0] is not None and candle[1] is not None and candle[2] is not None and candle[3] is not None:
-                yield((candle[0], candle[1], candle[2], candle[3], candle[4], candle[5], candle[6]))
+                yield candle[0], candle[1], candle[2], candle[3], candle[4], candle[5], candle[6]

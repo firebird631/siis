@@ -59,7 +59,7 @@ class ViewService(BaseService):
     def name(self):
         return "view"
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         pass
 
     def watchdog(self, watchdog_service, timeout):

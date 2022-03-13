@@ -8,6 +8,7 @@ import traceback
 import math
 
 from datetime import datetime
+from typing import Optional, List, Tuple
 
 from watcher.watcher import Watcher
 from common.signal import Signal
@@ -192,11 +193,11 @@ class BinanceWatcher(Watcher):
         return self._connector
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._connector is not None and self._connector.connected and self._connector.ws_connected
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self._connector and self._connector.authenticated
 
     def pre_update(self):
@@ -932,7 +933,9 @@ class BinanceWatcher(Watcher):
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
-    def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
+    def fetch_trades(self, market_id: str, from_date: Optional[datetime] = None, to_date: Optional[datetime] = None,
+                     n_last: Optional[int] = None) -> List[Tuple[float, float, float, float, float, float]]:
+
         trades = []
 
         try:

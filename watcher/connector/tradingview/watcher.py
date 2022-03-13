@@ -236,5 +236,5 @@ class TradingViewWatcher(Watcher):
 		time.sleep(0.01)
 
 	@property
-	def connected(self):
+	def connected(self) -> bool:
 		return self._server is not None

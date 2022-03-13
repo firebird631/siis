@@ -1,10 +1,15 @@
 # @date 2018-08-07
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# service worker
+# Watcher service
 
-import time
-import threading
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Union, Optional, Dict
+
+if TYPE_CHECKING:
+    from monitor.service import MonitorService
+    from .fetcher import Fetcher
 
 from importlib import import_module
 
@@ -15,15 +20,22 @@ from common.service import Service
 
 from common.signal import Signal
 from config.utils import merge_parameters
-from watcher.watcherexception import WatcherServiceException
+
+from watcher.watcher import Watcher
 
 import logging
 logger = logging.getLogger('siis.service.watcher')
 
 
 class WatcherService(Service):
+    """
+    Watcher service.
+    """
 
-    def __init__(self, monitor_service, options):
+    _monitor_service: Union[MonitorService, None]
+    _watchers: Dict[str, Watcher]
+
+    def __init__(self, monitor_service: Union[MonitorService, None], options: dict):
         super().__init__("watcher", options)
 
         self._monitor_service = monitor_service
@@ -62,10 +74,10 @@ class WatcherService(Service):
         self._paper_mode = options.get('paper-mode', False)
 
     @property
-    def monitor_service(self):
+    def monitor_service(self) -> Union[MonitorService, None]:
         return self._monitor_service
 
-    def create_fetcher(self, options, watcher_name):
+    def create_fetcher(self, options: dict, watcher_name: str) -> Union[Fetcher, None]:
         fetcher = self._fetchers_config.get(watcher_name)
         if not fetcher:
             logger.error("Fetcher %s not found !" % watcher_name)
@@ -78,7 +90,7 @@ class WatcherService(Service):
         # force fetcher config
         self._fetchers_config[watcher_name] = fetcher
 
-        # retrieve the classname and instanciate it
+        # retrieve the class-name and instantiate it
         parts = fetcher.get('classpath').split('.')
 
         module = import_module('.'.join(parts[:-1]))
@@ -86,7 +98,7 @@ class WatcherService(Service):
 
         return Clazz(self)
 
-    def create_watcher(self, options, watcher_name, markets):
+    def create_watcher(self, options: dict, watcher_name: str, markets: List[str]) -> Union[Watcher, None]:
         watcher_config = utils.load_config(options, 'watchers/' + watcher_name)
         if not watcher_config:
             logger.error("Watcher %s not found !" % watcher_name)
@@ -98,7 +110,7 @@ class WatcherService(Service):
         # force watcher config
         self._watchers_config[watcher_name] = watcher_config
 
-        # retrieve the classname and instanciate it
+        # retrieve the class-name and instantiate it
         parts = watcher_config.get('classpath').split('.')
 
         module = import_module('.'.join(parts[:-1]))
@@ -106,7 +118,7 @@ class WatcherService(Service):
 
         return Clazz(self)
 
-    def start(self, options):
+    def start(self, options: dict):
         from watcher.connector.dummywatcher.watcher import DummyWatcher
 
         for k, watcher in self._watchers_config.items():
@@ -116,7 +128,8 @@ class WatcherService(Service):
                 continue
 
             profile_watcher_config = self.profile(k)
-            if not profile_watcher_config or not profile_watcher_config.get('status', None) or profile_watcher_config['status'] != 'enabled':
+            if (not profile_watcher_config or not profile_watcher_config.get('status', None) or
+                    profile_watcher_config['status'] != 'enabled'):
                 # ignore watcher missing or disabled from the profile
                 continue
 
@@ -125,7 +138,7 @@ class WatcherService(Service):
                 continue
 
             if watcher.get("status") is not None and watcher.get("status") == "load":
-                # retrieve the classname and instantiate it
+                # retrieve the class-name and instantiate it
                 parts = watcher.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -153,7 +166,7 @@ class WatcherService(Service):
 
         self._watchers = {}
 
-    def notify(self, signal_type, source_name, signal_data):
+    def notify(self, signal_type: int, source_name: str, signal_data):
         if signal_data is None:
             return
 
@@ -162,7 +175,7 @@ class WatcherService(Service):
         with self._mutex:
             self._signals_handler.notify(signal)
 
-    def find_author(self, watcher_name, author_id):
+    def find_author(self, watcher_name: str, author_id: str):
         watcher = self._watchers.get(watcher_name)
         if watcher:
             author = watcher.find_author(author_id)
@@ -171,21 +184,21 @@ class WatcherService(Service):
 
         return None
 
-    def watcher(self, name):
+    def watcher(self, name: str) -> Union[Watcher, None]:
         return self._watchers.get(name)
 
-    def watchers_ids(self):
+    def watchers_ids(self) -> List[str]:
         return list(self._watchers.keys())
 
     @property
-    def backtesting(self):
+    def backtesting(self) -> bool:
         return self._backtesting
 
     @property
-    def paper_mode(self):
+    def paper_mode(self) -> bool:
         return self._paper_mode
 
-    def command(self, command_type, data):
+    def command(self, command_type: int, data: dict) -> dict:
         results = None
 
         if command_type == Watcher.COMMAND_INFO:
@@ -216,7 +229,7 @@ class WatcherService(Service):
 
         return results
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         if self._mutex.acquire(timeout=timeout):
             for k, watcher, in self._watchers.items():
                 watcher.ping(timeout)
@@ -225,7 +238,7 @@ class WatcherService(Service):
         else:
             Terminal.inst().action("Unable to join service %s for %s seconds" % (self.name, timeout), view='content')
 
-    def watchdog(self, watchdog_service, timeout):
+    def watchdog(self, watchdog_service, timeout: float):
         # try to acquire, see for deadlock
         if self._mutex.acquire(timeout=timeout):
             # if no deadlock lock for service ping watchers
@@ -234,9 +247,10 @@ class WatcherService(Service):
 
             self._mutex.release()
         else:
-            watchdog_service.service_timeout(self.name, "Unable to join service %s for %s seconds" % (self.name, timeout))
+            watchdog_service.service_timeout(self.name, "Unable to join service %s for %s seconds" % (
+                self.name, timeout))
 
-    def reconnect(self, name=None):
+    def reconnect(self, name: Optional[str] = None):
         # force disconnection for it will auto-reconnect
         if name and name in self._watchers:
             watcher = self._watchers[name]
@@ -251,37 +265,37 @@ class WatcherService(Service):
     #
 
     @property
-    def store_ohlc(self):
+    def store_ohlc(self) -> bool:
         return self._store_ohlc
 
     @property
-    def initial_fetch(self):
+    def initial_fetch(self) -> bool:
         return self._initial_fetch
 
     @property
-    def store_trade(self):
+    def store_trade(self) -> bool:
         return self._store_trade
 
     #
     # config
     #
 
-    def identity(self, name):
+    def identity(self, name: str) -> str:
         return self._identities_config.get(name, {}).get(self._identity)
 
-    def fetcher_config(self, name):
+    def fetcher_config(self, name: str) -> dict:
         """
         Get the configurations for a fetcher as dict.
         """
         return self._fetchers_config.get(name, {})
 
-    def watcher_config(self, name):
+    def watcher_config(self, name: str) -> dict:
         """
         Get the configurations for a watcher as dict.
         """
         return self._watchers_config.get(name, {})
 
-    def _init_watchers_config(self, options):
+    def _init_watchers_config(self, options: dict) -> dict:
         """
         Get the profile configuration for a specific watcher name.
         """
@@ -307,12 +321,12 @@ class WatcherService(Service):
                     # profile overrides any symbols
                     user_watcher_config['symbols'] = profile_watcher_config['symbols']
 
-                # keep overrided
+                # keep override
                 watchers_config[k] = user_watcher_config
 
         return watchers_config
 
-    def profile(self, name):
+    def profile(self, name: str) -> dict:
         """
         Get the profile configuration for a specific watcher name.
         """

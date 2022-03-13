@@ -388,15 +388,15 @@ class KrakenWatcher(Watcher):
         return self._connector
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._connector is not None and self._connector.connected and self._connector.ws_connected
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self._connector and self._connector.authenticated
 
     @property
-    def maintenance(self):
+    def maintenance(self) -> bool:
         return self._ws_own_trades['status'] == "maintenance" or self._ws_open_orders['status'] == "maintenance"
 
     #

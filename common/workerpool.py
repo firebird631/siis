@@ -105,15 +105,15 @@ class Worker(threading.Thread):
     def uid(self):
         return self._uid
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         self._ping = (0, None, True)
 
     def watchdog(self, watchdog_service, timeout):
         self._ping = (watchdog_service.gen_pid("worker-%s" % self._uid), watchdog_service, False)
 
-    def pong(self, timestamp, pid, watchdog_service, msg):
+    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
         if msg:
-            Terminal.inst().action("WokerPool::Worker %s is alive %s" % (self._uid, msg), view='content')
+            Terminal.inst().action("WorkerPool::Worker %s is alive %s" % (self._uid, msg), view='content')
 
         if watchdog_service:
             watchdog_service.service_pong(pid, timestamp, msg)
@@ -155,7 +155,7 @@ class WorkerPool(object):
 
         self._workers = []
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         if not self._workers:
             return
 

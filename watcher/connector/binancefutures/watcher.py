@@ -204,11 +204,11 @@ class BinanceFuturesWatcher(Watcher):
         return self._connector
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._connector is not None and self._connector.connected and self._connector.ws_connected
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self._connector and self._connector.authenticated
 
     def pre_update(self):

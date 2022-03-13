@@ -953,5 +953,5 @@ class IGService:
         return self.crud_session.lightstreamer_endpoint
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return 'LOGGED_IN' in self.crud_session.HEADERS

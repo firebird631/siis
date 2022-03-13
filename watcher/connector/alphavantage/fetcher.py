@@ -63,7 +63,7 @@ class AlphaVantageFetcher(Fetcher):
 		return self._connector
 
 	@property
-	def connected(self):
+	def connected(self) -> bool:
 		return self._connector is not None and self._connector.connected
 
 	def disconnect(self):
@@ -78,11 +78,11 @@ class AlphaVantageFetcher(Fetcher):
 			error_logger.error(traceback.format_exc())
 
 	@property
-	def authenticated(self):
+	def authenticated(self) -> bool:
 		# there is no authentication process, only an API key for each GET call.
-		return self._connector
+		return self._connector is not None
 
-	def has_instrument(self, instrument, fetch_option=""):
+	def has_instrument(self, instrument, fetch_option="") -> bool:
 		# we only have a list of currency so assume it can exists...
 		return True
 
@@ -128,6 +128,6 @@ class AlphaVantageFetcher(Fetcher):
 		for candle in candles:
 			count += 1
 			# (timestamp, open, high, low, close, spread, volume)
-			yield([candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]])
+			yield candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]
 
 		logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe))

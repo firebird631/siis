@@ -73,7 +73,7 @@ class IGFetcher(Fetcher):
         return self._connector
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._connector is not None and self._connector.connected
 
     def disconnect(self):
@@ -88,7 +88,7 @@ class IGFetcher(Fetcher):
             logger.error(repr(e))
             error_logger.error(traceback.format_exc())
 
-    def has_instrument(self, instrument, fetch_option=""):
+    def has_instrument(self, instrument, fetch_option="") -> bool:
         return True  # @todo check...
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None, fetch_option=""):

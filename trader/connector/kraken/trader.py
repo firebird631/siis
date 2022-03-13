@@ -3,6 +3,15 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Trader connector for kraken.com
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Union, Optional
+
+if TYPE_CHECKING:
+    from trader.service import TraderService
+    from trader.market import Market
+    from instrument.instrument import Instrument
+
 import traceback
 import time
 import base64
@@ -35,7 +44,7 @@ class KrakenTrader(Trader):
 
     REST_OR_WS = False  # True if REST API sync else do with the state returned by WS events
 
-    def __init__(self, service):
+    def __init__(self, service: TraderService):
         super().__init__("kraken.com", service)
 
         self._watcher = None
@@ -67,7 +76,7 @@ class KrakenTrader(Trader):
                 self.service.watcher_service.remove_listener(self)
                 self._watcher = None
 
-    def on_watcher_connected(self, watcher_name):
+    def on_watcher_connected(self, watcher_name: str):
         super().on_watcher_connected(watcher_name)
 
         # markets, orders and positions
@@ -83,10 +92,10 @@ class KrakenTrader(Trader):
 
         logger.info("Trader kraken.com got data. Running.")
 
-    def on_watcher_disconnected(self, watcher_name):
+    def on_watcher_disconnected(self, watcher_name: str):
         super().on_watcher_disconnected(watcher_name)
 
-    def market(self, market_id, force=False):
+    def market(self, market_id: str, force: bool = False) -> Union[Market, None]:
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
         @param market_id Unique market identifier
@@ -106,11 +115,11 @@ class KrakenTrader(Trader):
         return market
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self.connected and self._watcher.connector.authenticated
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._watcher is not None and self._watcher.connector is not None and self._watcher.connector.connected
 
     def pre_update(self):
@@ -161,7 +170,7 @@ class KrakenTrader(Trader):
         time.sleep(0.005)
 
     @Trader.mutexed
-    def on_asset_updated(self, asset_name, locked, free):
+    def on_asset_updated(self, asset_name: str, locked: float, free: float):
         asset = self._assets.get(asset_name)
         if asset is not None:
             asset.set_quantity(locked, free)
@@ -188,7 +197,7 @@ class KrakenTrader(Trader):
     def to_signed_int(i):
         return (i + 2**31) % 2**32 - 2**31
 
-    def set_ref_order_id(self, order):
+    def set_ref_order_id(self, order: Order) -> Union[str, None]:
         """
         Kraken wait for a 32 bits integer.
         """
@@ -201,7 +210,7 @@ class KrakenTrader(Trader):
 
         return None
 
-    def create_order(self, order, market_or_instrument):
+    def create_order(self, order: Order, market_or_instrument: Union[Market, Instrument]) -> int:
         if not order or not market_or_instrument:
             return Order.REASON_INVALID_ARGS
 
@@ -329,7 +338,7 @@ class KrakenTrader(Trader):
 
         return Order.REASON_ERROR
 
-    def cancel_order(self, order_id, market_or_instrument):
+    def cancel_order(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> int:
         if not order_id or not market_or_instrument:
             return Order.REASON_INVALID_ARGS
 
@@ -372,7 +381,10 @@ class KrakenTrader(Trader):
 
         return Order.REASON_ERROR
 
-    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
+    def close_position(self, position_id: str, market_or_instrument: Union[Market, Instrument],
+                       direction: int, quantity: float, market: bool = True,
+                       limit_price: Optional[float] = None) -> bool:
+
         if not position_id or not market_or_instrument:
             return False
 
@@ -390,11 +402,12 @@ class KrakenTrader(Trader):
 
         return True
 
-    def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
+    def modify_position(self, position_id: str, market_or_instrument: Union[Market, Instrument],
+                        stop_loss_price: Optional[float] = None, take_profit_price: Optional[float] = None) -> bool:
         """Not supported"""
         return False
 
-    def positions(self, market_id):
+    def positions(self, market_id: str) -> List[Position]:
         """
         @deprecated
         """
@@ -407,7 +420,7 @@ class KrakenTrader(Trader):
 
             return positions
 
-    def order_info(self, order_id, market_or_instrument):
+    def order_info(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> Union[dict, None]:
         if not order_id or not market_or_instrument:
             return None
 
@@ -778,7 +791,7 @@ class KrakenTrader(Trader):
     #
 
     @staticmethod
-    def error_code_to_reason(error_code):
+    def error_code_to_reason(error_code: str) -> int:
         # @ref https://support.kraken.com/hc/en-us/articles/360001491786-API-error-messages
         if error_code == "EAPI:Invalid nonce":
             return Order.REASON_INVALID_NONCE

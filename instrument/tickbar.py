@@ -64,11 +64,11 @@ class TickBarBase(object):
     #
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> float:
         return self._timestamp
 
     @property
-    def last_timestamp(self):
+    def last_timestamp(self) -> float:
         return self._last_timestamp
 
     @property

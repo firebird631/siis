@@ -65,6 +65,7 @@ class HistDataFetcher(Fetcher):
         super().__init__("histdata.com", service)
 
         self._connector = None
+        self._base_path = ""
 
     def connect(self):
         super().connect()
@@ -86,7 +87,7 @@ class HistDataFetcher(Fetcher):
         return self._connector
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return True  # self._connector is not None and self._connector.connected
 
     def disconnect(self):
@@ -101,10 +102,10 @@ class HistDataFetcher(Fetcher):
             logger.error(repr(e))
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return True  # self._connector  # and self._connector.authenticated
 
-    def has_instrument(self, instrument, fetch_option=""):
+    def has_instrument(self, instrument, fetch_option="") -> bool:
         # @todo could make a call to check if the market exists
         return True
 

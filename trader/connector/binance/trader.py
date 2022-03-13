@@ -1,14 +1,19 @@
 # @date 2018-08-25
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Trader/autotrader connector for binance.com
+# Trader connector for binance.com
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Union, Optional, Tuple
+
+if TYPE_CHECKING:
+    from trader.service import TraderService
+    from trader.position import Position
+    from instrument.instrument import Instrument
 
 import time
-import copy
 import traceback
-
-from operator import itemgetter, attrgetter
-from typing import Union, List
 
 from trader.trader import Trader
 
@@ -16,7 +21,6 @@ from .account import BinanceAccount
 
 from trader.asset import Asset
 from trader.order import Order
-from trader.account import Account
 from trader.market import Market
 
 from database.database import Database
@@ -42,11 +46,11 @@ class BinanceTrader(Trader):
 
     @todo Will support soon margin trading on majors pairs.
     @todo It seems sometimes that the quantity of the quote is not correctly adjusted on trade update,
-        then having a warning of ajustement at the balance update just after, so its not a major problem except
+        then having a warning of adjustment at the balance update just after, so its not a major problem except
         it can compute a wrong average entry price for the related quote asset
     """
 
-    def __init__(self, service):
+    def __init__(self, service: TraderService):
         super().__init__("binance.com", service)
 
         self._watcher = None
@@ -56,11 +60,11 @@ class BinanceTrader(Trader):
         self._ready = False
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self.connected and self._watcher.connector.authenticated
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._watcher is not None and self._watcher.connector is not None and self._watcher.connector.connected
 
     def connect(self):
@@ -86,7 +90,7 @@ class BinanceTrader(Trader):
                 self._watcher = None
                 self._ready = False
 
-    def on_watcher_connected(self, watcher_name):
+    def on_watcher_connected(self, watcher_name: str):
         super().on_watcher_connected(watcher_name)
 
         # markets and orders
@@ -121,7 +125,7 @@ class BinanceTrader(Trader):
 
         logger.info("Trader %s got data. Running." % self._name)
 
-    def on_watcher_disconnected(self, watcher_name):
+    def on_watcher_disconnected(self, watcher_name: str):
         super().on_watcher_disconnected(watcher_name)
 
     def pre_update(self):
@@ -174,7 +178,7 @@ class BinanceTrader(Trader):
     # ordering
     #
 
-    def create_order(self, order, market_or_instrument):
+    def create_order(self, order: Order, market_or_instrument: Union[Market, Instrument]) -> int:
         """
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
         """
@@ -313,7 +317,7 @@ class BinanceTrader(Trader):
 
         return Order.REASON_ERROR
 
-    def cancel_order(self, order_id, market_or_instrument):
+    def cancel_order(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> int:
         """
         Cancel a pending or partially filled order.
         """
@@ -365,7 +369,9 @@ class BinanceTrader(Trader):
         # ok
         return Order.REASON_OK
 
-    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
+    def close_position(self, position_id: str, market_or_instrument: Union[Market, Instrument],
+                       direction: int, quantity: float, market: bool = True,
+                       limit_price: Optional[float] = None) -> bool:
         """
         Not supported.
         """
@@ -378,7 +384,8 @@ class BinanceTrader(Trader):
 
         return False
 
-    def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
+    def modify_position(self, position_id: str, market_or_instrument: Union[Market, Instrument],
+                        stop_loss_price: Optional[float] = None, take_profit_price: Optional[float] = None) -> bool:
         """
         Not supported.
         """
@@ -391,20 +398,19 @@ class BinanceTrader(Trader):
 
         return False
 
-    def positions(self, market_id):
+    def positions(self, market_id: str) -> List[Position]:
         """
         Not supported.
         @deprecated
         """
         return []
 
-    def market(self, market_id, force=False):
+    def market(self, market_id: str, force: bool = False) -> Union[Market, None]:
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
+        @param market_id: str Market id
         @param force Force to update the cache
         """
-        market = None
-
         with self._mutex:
             market = self._markets.get(market_id)
 
@@ -799,7 +805,7 @@ class BinanceTrader(Trader):
                     asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
                     0.0, 0.0, asset.quote))
 
-    def __get_or_add_asset(self, asset_name, precision=8):
+    def __get_or_add_asset(self, asset_name: str, precision: int = 8):
         if asset_name in self._assets:
             return self._assets[asset_name]
 
@@ -925,9 +931,10 @@ class BinanceTrader(Trader):
     # markets
     #
 
-    def on_update_market(self, market_id, tradeable, last_update_time, bid, ask,
-                         base_exchange_rate, contract_size=None, value_per_pip=None,
-                         vol24h_base=None, vol24h_quote=None):
+    def on_update_market(self, market_id: str, tradeable: bool, last_update_time: float, bid: float, ask: float,
+                         base_exchange_rate: Optional[float] = None,
+                         contract_size: Optional[float] = None, value_per_pip: Optional[float] = None,
+                         vol24h_base: Optional[float] = None, vol24h_quote: Optional[float] = None):
 
         super().on_update_market(market_id, tradeable, last_update_time, bid, ask, base_exchange_rate,
                                  contract_size, value_per_pip, vol24h_base, vol24h_quote)
@@ -955,7 +962,7 @@ class BinanceTrader(Trader):
     #
 
     @Trader.mutexed
-    def on_asset_updated(self, asset_name, locked, free):
+    def on_asset_updated(self, asset_name: str, locked: float, free: float):
         asset = self.__get_or_add_asset(asset_name)
         # @todo update as kraken trader
         if asset is not None:
@@ -967,12 +974,13 @@ class BinanceTrader(Trader):
             asset.set_quantity(locked, free)
 
             if asset.quote and asset.symbol != asset.quote:
-                prefered_market = self._markets.get(asset.symbol+asset.quote)
-                if prefered_market:
-                    asset.update_profit_loss(prefered_market)
+                preferred_market = self._markets.get(asset.symbol+asset.quote)
+                if preferred_market:
+                    asset.update_profit_loss(preferred_market)
 
             # store in database with the last update quantity
-            Database.inst().store_asset((self._name, self.account.name,
+            Database.inst().store_asset((
+                self._name, self.account.name,
                 asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
                 asset.quantity, asset.price, asset.quote))
 
@@ -1050,32 +1058,33 @@ class BinanceTrader(Trader):
                 # taker, less free
                 asset.set_quantity(asset.locked, max(0.0, asset.free-trade_qty))
             else:
-                # maket, less locked
+                # market, less locked
                 asset.set_quantity(max(0.0, asset.locked-trade_qty), asset.free)
 
         if asset.quote and asset.symbol != asset.quote:
-            prefered_market = self._markets.get(asset.symbol+asset.quote)
-            if prefered_market:
-                asset.update_profit_loss(prefered_market)
+            preferred_market = self._markets.get(asset.symbol+asset.quote)
+            if preferred_market:
+                asset.update_profit_loss(preferred_market)
 
         # store in database with the last computed entry price
-        Database.inst().store_asset((self._name, self.account.name,
-                asset.symbol, asset.last_trade_id, int(asset.last_update_time*1000.0),
-                asset.quantity, asset.price, asset.quote))
+        Database.inst().store_asset((
+            self._name, self.account.name,
+            asset.symbol, asset.last_trade_id, int(asset.last_update_time*1000.0),
+            asset.quantity, asset.price, asset.quote))
 
     #
     # order slots
     #
 
     @Trader.mutexed
-    def on_order_traded(self, market_id, data, ref_order_id):
+    def on_order_traded(self, market_id: str, order_data: dict, ref_order_id: str):
         """
         Order update, trade order in that case, is always successes by an asset update signal.
         Binance order modification is not possible, need cancel and recreate.
 
         @note Consume 1 API credit to get the asset quote price at the time of the trade.
         """
-        market = self._markets.get(data['symbol'])
+        market = self._markets.get(order_data['symbol'])
 
         if market is None:
             # not interested by this market
@@ -1086,43 +1095,43 @@ class BinanceTrader(Trader):
 
         quote_market = None
 
-        order = self._orders.get(data['id'])
+        order = self._orders.get(order_data['id'])
 
         if order is None:
             # not found (might not occurs)
-            order = Order(self, data['symbol'])
-            order.set_order_id(data['id'])
+            order = Order(self, order_data['symbol'])
+            order.set_order_id(order_data['id'])
 
             # its might be the creation timestamp but it will be the trade execution
-            order.created_time = data['timestamp']
+            order.created_time = order_data['timestamp']
 
-            order.direction = data['direction']
-            order.order_type = data['type']
-            order.time_in_force = data['time-in-force']
+            order.direction = order_data['direction']
+            order.order_type = order_data['type']
+            order.time_in_force = order_data['time-in-force']
 
-            order.quantity = data['quantity']
+            order.quantity = order_data['quantity']
 
-            order.price = data.get('price')
-            order.stop_price = data.get('stop-price')
+            order.price = order_data.get('price')
+            order.stop_price = order_data.get('stop-price')
 
             self._orders[order.order_id] = order
 
-        order.executed += data['filled']
+        order.executed += order_data['filled']
 
         #
         # compute avg price and new qty
         #
 
-        if data['trade-id']:
+        if order_data['trade-id']:
             # same asset used for commission
-            buy_or_sell = data['direction'] == Order.LONG
+            buy_or_sell = order_data['direction'] == Order.LONG
 
             # base details in the trade order
-            base_trade_qty = data['filled']
-            base_exec_price = data['exec-price']
+            base_trade_qty = order_data['filled']
+            base_exec_price = order_data['exec-price']
 
             # price of the quote asset expressed in preferred quote at time of the trade (need a REST call)
-            quote_trade_qty = data['quote-transacted']  # or base_trade_qty * base_exec_price
+            quote_trade_qty = order_data['quote-transacted']  # or base_trade_qty * base_exec_price
             quote_exec_price = 1.0
 
             if quote_asset.quote and quote_asset.symbol != quote_asset.quote:
@@ -1130,26 +1139,28 @@ class BinanceTrader(Trader):
                 if self._watcher.has_instrument(quote_asset.symbol+quote_asset.quote):
                     # direct, and get the related market
                     quote_market = self._markets.get(quote_asset.symbol+quote_asset.quote)                    
-                    quote_exec_price = self.history_price(quote_asset.symbol+quote_asset.quote, data['timestamp'])
+                    quote_exec_price = self.history_price(quote_asset.symbol+quote_asset.quote,
+                                                          order_data['timestamp'])
 
                 elif self._watcher.has_instrument(quote_asset.quote+quote_asset.symbol):
                     # indirect, but cannot have the market
-                    quote_exec_price = 1.0 / self.history_price(quote_asset.quote+quote_asset.symbol, data['timestamp'])
+                    quote_exec_price = 1.0 / self.history_price(quote_asset.quote+quote_asset.symbol,
+                                                                order_data['timestamp'])
 
             # base asset
-            self.__update_asset(order.order_type, base_asset, market, data['trade-id'], base_exec_price,
-                                base_trade_qty, buy_or_sell, data['timestamp'])
+            self.__update_asset(order.order_type, base_asset, market, order_data['trade-id'], base_exec_price,
+                                base_trade_qty, buy_or_sell, order_data['timestamp'])
 
             # quote asset
             self.__update_asset(order.order_type, quote_asset, quote_market, None, quote_exec_price,
-                                quote_trade_qty, not buy_or_sell, data['timestamp'])
+                                quote_trade_qty, not buy_or_sell, order_data['timestamp'])
 
             # commission asset
-            if data['commission-asset'] == base_asset.symbol:
+            if order_data['commission-asset'] == base_asset.symbol:
                 self.__update_asset(Order.ORDER_MARKET, base_asset, market, None, base_exec_price,
-                                    data['commission-amount'], False, data['timestamp'])
+                                    order_data['commission-amount'], False, order_data['timestamp'])
             else:
-                commission_asset = self.__get_or_add_asset(data['commission-asset'])
+                commission_asset = self.__get_or_add_asset(order_data['commission-asset'])
                 commission_asset_market = None
                 quote_exec_price = 1.0
 
@@ -1163,22 +1174,22 @@ class BinanceTrader(Trader):
                     elif self._watcher.has_instrument(commission_asset.quote+commission_asset.symbol):
                         # indirect, but cannot have the market
                         quote_exec_price = 1.0 / self.history_price(commission_asset.quote+commission_asset.symbol,
-                                                                    data['timestamp'])
+                                                                    order_data['timestamp'])
 
                 self.__update_asset(Order.ORDER_MARKET, commission_asset, commission_asset_market, None,
-                                    quote_exec_price, data['commission-amount'], False, data['timestamp'])
+                                    quote_exec_price, order_data['commission-amount'], False, order_data['timestamp'])
 
-        if data.get('fully-filled', False):
+        if order_data.get('fully-filled', False):
             # fully filled, need to delete
             if order.order_id in self._orders:
                 del self._orders[order.order_id]
 
-    def on_order_deleted(self, market_id,  order_id, ref_order_id):
+    def on_order_deleted(self, market_id: str, order_id: str, ref_order_id: str):
         with self._mutex:
             if order_id in self._orders:
                 del self._orders[order_id]
 
-    def on_order_canceled(self, market_id, order_id, ref_order_id):
+    def on_order_canceled(self, market_id: str, order_id: str, ref_order_id: str):
         with self._mutex:
             if order_id in self._orders:
                 del self._orders[order_id]
@@ -1187,12 +1198,10 @@ class BinanceTrader(Trader):
     # misc
     #
 
-    def asset_quantities(self):
+    def asset_quantities(self) -> List[Tuple[str, float, float]]:
         """
         Returns a list of triplet with (symbol, locked qty, free qty) for any of the non empty balance of assets.
         """
         with self._mutex:
             balances = [(k, asset.locked, asset.free) for k, asset in self._assets.items()]
             return balances
-
-        return []

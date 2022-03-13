@@ -200,7 +200,7 @@ class Runnable(object):
     def sync(self):
         pass
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         if not self._running:
             return
         
@@ -218,10 +218,11 @@ class Runnable(object):
             self._ping = (watchdog_service.gen_pid(self._thread.name if self._thread else "unknown"), watchdog_service, False)
             self._mutex.release()
         else:
-            watchdog_service.service_timeout(self._thread.name if self._thread else "unknown",
-                    "Unable to join thread %s for %s seconds" % (self._thread.name if self._thread else "unknown", timeout))
+            watchdog_service.service_timeout(
+                self._thread.name if self._thread else "unknown",
+                "Unable to join thread %s for %s seconds" % (self._thread.name if self._thread else "unknown", timeout))
 
-    def pong(self, timestamp, pid, watchdog_service, msg):
+    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
         if msg:
             Terminal.inst().action("Thread %s is alive %s" % (self.name, msg), view='content')
 

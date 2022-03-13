@@ -3,6 +3,13 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Trader order
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from trader.trader import Trader
+
 from common.keyed import Keyed
 
 
@@ -58,7 +65,7 @@ class Order(Keyed):
     REASON_CANCEL_ONLY = -37          # Cancel only mode (temporary)
     REASON_POST_ONLY = -38            # Post-only mode (temporary)
 
-    def __init__(self, trader, symbol):
+    def __init__(self, trader: Trader, symbol: str):
         super().__init__()
 
         self._order_id = ""
@@ -104,196 +111,196 @@ class Order(Keyed):
     #
 
     @property
-    def quantity(self):
+    def quantity(self) -> float:
         return self._quantity
 
     @property
-    def executed(self):
+    def executed(self) -> float:
         return self._executed
 
     @property
-    def avg_price(self):
+    def avg_price(self) -> float:
         return self._avg_price
 
     @property
-    def fully_filled(self):
+    def fully_filled(self) -> bool:
         return self._fully_filled
 
     @property
-    def order_id(self):
+    def order_id(self) -> str:
         return self._order_id
 
     @property
-    def ref_order_id(self):
+    def ref_order_id(self) -> str:
         return self._ref_order_id
 
     @property
-    def position_id(self):
+    def position_id(self) -> Union[str, None]:
         return self._position_id
 
     @property
-    def symbol(self):
+    def symbol(self) -> str:
         return self._symbol
 
     @property
-    def direction(self):
+    def direction(self) -> int:
         return self._direction
     
     @property
-    def created_time(self):
+    def created_time(self) -> float:
         return self._created_time
 
     @property
-    def take_profit(self):
+    def take_profit(self) -> Union[float, None]:
         return self._take_profit
     
     @property
-    def stop_loss(self):
+    def stop_loss(self) -> Union[float, None]:
         return self._stop_loss
     
     @property
-    def price(self):
+    def price(self) -> Union[float, None]:
         return self._price
 
     @property
-    def stop_price(self):
+    def stop_price(self) -> Union[float, None]:
         return self._stop_price
 
     @property
-    def trailing_stop(self):
+    def trailing_stop(self) -> bool:
         return self._trailing_stop
     
     @property
-    def leverage(self):
+    def leverage(self) -> float:
         return self._leverage
 
     @property
-    def margin_trade(self):
+    def margin_trade(self) -> bool:
         return self._margin_trade
 
     @property
-    def reduce_only(self):
+    def reduce_only(self) -> bool:
         return self._reduce_only
 
     @property
-    def hedging(self):
+    def hedging(self) -> bool:
         return self._hedging
     
     @property
-    def post_only(self):
+    def post_only(self) -> bool:
         return self._post_only
     
     @property
-    def order_type(self):
+    def order_type(self) -> int:
         return self._order_type
     
     @property
-    def transact_time(self):
+    def transact_time(self) -> float:
         return self._transact_time
     
     @property
-    def close_only(self):
+    def close_only(self) -> bool:
         return self._close_only
     
     @property
-    def price_type(self):
+    def price_type(self) -> int:
         return self._price_type
 
     @property
-    def time_in_force(self):
+    def time_in_force(self) -> int:
         return self._time_in_force
 
     #
     # Setters
     #
 
-    def set_order_id(self, order_id):
+    def set_order_id(self, order_id: str):
         """Defines the result order id and set reason as OK."""
         self._order_id = order_id
 
-    def set_ref_order_id(self, ref_order_id):
+    def set_ref_order_id(self, ref_order_id: str):
         self._ref_order_id = ref_order_id
 
-    def set_position_id(self, position_id):
+    def set_position_id(self, position_id: str):
         self._position_id = position_id
 
     @quantity.setter
-    def quantity(self, quantity):
+    def quantity(self, quantity: float):
         self._quantity = quantity
 
     @executed.setter
-    def executed(self, executed):
+    def executed(self, executed: float):
         self._executed = executed
     
     @take_profit.setter
-    def take_profit(self, take_profit):
+    def take_profit(self, take_profit: float):
         self._take_profit = take_profit
 
     @stop_loss.setter
-    def stop_loss(self, stop_loss):
+    def stop_loss(self, stop_loss: float):
         self._stop_loss = stop_loss
 
     @price.setter
-    def price(self, price):
+    def price(self, price: float):
         self._price = price
 
     @stop_price.setter
-    def stop_price(self, stop_price):
+    def stop_price(self, stop_price: float):
         self._stop_price = stop_price
 
     @leverage.setter
-    def leverage(self, leverage):
+    def leverage(self, leverage: float):
         self._leverage = leverage
 
     @margin_trade.setter
-    def margin_trade(self, margin_trade):
+    def margin_trade(self, margin_trade: bool):
         self._margin_trade = margin_trade
 
     @direction.setter
-    def direction(self, direction):
+    def direction(self, direction: int):
         self._direction = direction
 
     @reduce_only.setter
-    def reduce_only(self, state):
+    def reduce_only(self, state: bool):
         self._reduce_only = state
 
     @hedging.setter
-    def hedging(self, state):
+    def hedging(self, state: bool):
         self._hedging = state
 
     @post_only.setter
-    def post_only(self, state):
+    def post_only(self, state: bool):
         self._post_only = state
 
     @trailing_stop.setter
-    def trailing_stop(self, state):
+    def trailing_stop(self, state: bool):
         self._trailing_stop = state
 
     @close_only.setter
-    def close_only(self, state):
+    def close_only(self, state: bool):
         self._close_only = state
- 
+
     @price_type.setter
-    def price_type(self, price_type):
+    def price_type(self, price_type: int):
         self._price_type = price_type
 
     @order_type.setter
-    def order_type(self, order_type):
+    def order_type(self, order_type: int):
         self._order_type = order_type
 
     @transact_time.setter
-    def transact_time(self, transact_time):
+    def transact_time(self, transact_time: float):
         self._transact_time = transact_time
 
     @created_time.setter
-    def created_time(self, created_time):
+    def created_time(self, created_time: float):
         self._created_time = created_time
 
     @time_in_force.setter
-    def time_in_force(self, time_in_force):
+    def time_in_force(self, time_in_force: int):
         self._time_in_force = time_in_force
 
-    def set_executed(self, quantity, fully_filled, avg_price):
+    def set_executed(self, quantity: float, fully_filled: bool, avg_price: float):
         self._executed = quantity
         self._fully_filled = fully_filled
         self._avg_price = avg_price
@@ -302,19 +309,19 @@ class Order(Keyed):
     # Helpers
     #
 
-    def direction_to_str(self):
+    def direction_to_str(self) -> str:
         return 'long' if self._direction == self.LONG else 'short'
 
-    def is_market(self):
+    def is_market(self) -> bool:
         """
         Returns true if the order would be executed as market.
         """
         return self._order_type in (Order.ORDER_MARKET, Order.ORDER_STOP, Order.ORDER_TAKE_PROFIT)
 
-    def order_type_to_str(self):
+    def order_type_to_str(self) -> str:
         return order_type_to_str(self._order_type)
 
-    def time_in_force_to_str(self):
+    def time_in_force_to_str(self) -> str:
         if self._time_in_force == Order.TIME_IN_FORCE_GTC:
             return "good-till-cancelled"
         elif self._order_type == Order.TIME_IN_FORCE_GTD:
@@ -326,7 +333,7 @@ class Order(Keyed):
 
         return "unknown"
 
-    def price_type_to_str(self):
+    def price_type_to_str(self) -> str:
         if self._price_type == Order.PRICE_LAST:
             return "last"
         elif self._price_type == Order.PRICE_INDEX:
@@ -340,7 +347,7 @@ class Order(Keyed):
     # persistence
     #
 
-    def dumps(self):
+    def dumps(self) -> dict:
         """
         @todo Could humanize str and timestamp into datetime
         @return: dict
@@ -374,7 +381,7 @@ class Order(Keyed):
             'trailing-stop': self._trailing_stop,
         }
 
-    def loads(self, data):
+    def loads(self, data: dict):
         self._order_id = data.get('id', "")
         self._ref_order_id = data.get('ref-id', "")
         self._position_id = data.get('position-id', None)
@@ -407,7 +414,7 @@ class Order(Keyed):
         self._time_in_force = data.get('time-in-force', Order.TIME_IN_FORCE_GTC)
 
 
-def order_type_to_str(order_type):
+def order_type_to_str(order_type: int) -> str:
     if order_type == Order.ORDER_MARKET:
         return "market"
     elif order_type == Order.ORDER_LIMIT:
@@ -426,7 +433,7 @@ def order_type_to_str(order_type):
     return "unknown"
 
 
-def order_reason_to_str(reason):
+def order_reason_to_str(reason: int) -> str:
     if reason == Order.REASON_OK:
         return "success"
     elif reason == Order.REASON_UNDEFINED:

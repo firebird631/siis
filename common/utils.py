@@ -6,6 +6,7 @@
 import math
 
 from datetime import datetime, timedelta, tzinfo
+from typing import Union, Set, Tuple, List
 
 
 class UTC(tzinfo):
@@ -57,19 +58,19 @@ TIMEFRAME_TO_STR_MAP = {
 TIMEFRAME_FROM_STR_MAP = {v: k for k, v in TIMEFRAME_TO_STR_MAP.items()}
 
 
-def timeframe_to_str(timeframe):
+def timeframe_to_str(timeframe: float) -> str:
     return TIMEFRAME_TO_STR_MAP.get(timeframe, "")
 
 
-def timeframe_from_str(timeframe):
+def timeframe_from_str(timeframe: str) -> float:
     return TIMEFRAME_FROM_STR_MAP.get(timeframe, 0.0)
 
 
-def is_solid_timeframe(timeframe):
+def is_solid_timeframe(timeframe: float) -> bool:
     return timeframe in TIMEFRAME_TO_STR_MAP
 
 
-def direction_to_str(direction):
+def direction_to_str(direction: int) -> str:
     if direction > 0:
         return 'long'
     elif direction < 0:
@@ -78,7 +79,7 @@ def direction_to_str(direction):
         return ''
 
 
-def direction_from_str(direction):
+def direction_from_str(direction: str) -> int:
     if direction == 'long':
         return 1
     elif direction == 'short':
@@ -87,7 +88,8 @@ def direction_from_str(direction):
         return 0
 
 
-def matching_symbols_set(configured_symbols, available_symbols):
+def matching_symbols_set(configured_symbols: Union[Tuple[str], List[str], Set[str]],
+                         available_symbols: Union[Tuple[str], List[str], Set[str]]) -> Set[str]:
     """
     Special '*' symbol mean every symbol.
     Starting with '!' mean except this symbol.
@@ -152,18 +154,18 @@ def fix_thread_set_name():
         error_logger.warning('prctl module is not installed. You will not be able to see thread names')
 
 
-def truncate(number, digits):
+def truncate(number: float, digits: int) -> float:
     stepper = pow(10.0, digits)
     # return math.trunc(stepper * number) / stepper
     # round to avoid some issue in case of some values like 2.43427459 and digits = 8
     return math.trunc(round(stepper * number)) / stepper
 
 
-def decimal_place(value):
+def decimal_place(value: float) -> float:
     return -int(math.floor(math.log10(value)))
 
 
-def format_quantity(self, quantity, precision):
+def format_quantity(quantity: float, precision: int) -> str:
     """
     Return a str version of the float quantity truncated to the precision.
     """
@@ -175,7 +177,7 @@ def format_quantity(self, quantity, precision):
     return qty
 
 
-def format_datetime(timestamp):
+def format_datetime(timestamp: float) -> str:
     """
     Format as human readable in UTC.
     """
@@ -184,7 +186,7 @@ def format_datetime(timestamp):
     # return datetime.fromtimestamp(timestamp, tz=UTC()).strftime('%Y-%m-%d %H:%M:%S UTC')
 
 
-def format_delta(td):
+def format_delta(td: float) -> str:
     """
     Format a time delta in a human readable format.
     """
@@ -213,7 +215,7 @@ def format_delta(td):
         return "%i days %i hours %i minutes %i seconds" % (d, h, m, s)
 
 
-def parse_utc_datetime(formatted):
+def parse_utc_datetime(formatted: str) -> Union[datetime, None]:
     if formatted:
         try:
             if formatted.endswith('Z'):
@@ -243,7 +245,7 @@ def parse_utc_datetime(formatted):
     return None
 
 
-def parse_datetime(formatted):
+def parse_datetime(formatted: str) -> Union[datetime, None]:
     if formatted:
         try:
             result = None

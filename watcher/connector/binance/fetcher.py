@@ -94,11 +94,11 @@ class BinanceFetcher(Fetcher):
         return self._connector
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._connector is not None and self._connector.connected
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self._connector and self._connector.authenticated
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
@@ -114,7 +114,7 @@ class BinanceFetcher(Fetcher):
         for trade in trades:
             count += 1
             # timestamp, bid, ask, last, volume, direction
-            yield((trade['T'], trade['p'], trade['p'], trade['p'], trade['q'], -1 if trade['m'] else 1))
+            yield trade['T'], trade['p'], trade['p'], trade['p'], trade['q'], -1 if trade['m'] else 1
 
         logger.info("Fetcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))
 
@@ -137,6 +137,6 @@ class BinanceFetcher(Fetcher):
         for candle in candles:
             count += 1
             # (timestamp, open, high, low, close, spread, volume)
-            yield((candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]))
+            yield candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]
 
         logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe_to_str(timeframe)))

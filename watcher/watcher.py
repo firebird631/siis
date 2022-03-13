@@ -3,6 +3,16 @@
 # @license Copyright (c) 2018 Dream Overflow
 # watcher interface
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Union, Optional, Dict, Tuple, Set
+
+if TYPE_CHECKING:
+    from .service import WatcherService
+    from .author import Author
+    from .position import Position
+    from trader.market import Market
+
 import time
 import collections
 
@@ -42,9 +52,9 @@ class Watcher(Runnable):
     WATCHER_UNDEFINED = 0
     WATCHER_PRICE_AND_VOLUME = 1
     WATCHER_BUY_SELL_SIGNAL = 2
-    WATCHER_ALL = 1|2
+    WATCHER_ALL = 1 | 2
 
-    DEFAULT_PREFETCH_SIZE = 100  # by defaut prefetch 100 OHLCs for each stored timeframe
+    DEFAULT_PREFETCH_SIZE = 100  # by default prefetch 100 OHLCs for each stored timeframe
 
     TICK_STORAGE_DELAY = 0.05  # 50ms
     MAX_PENDING_TICK = 10000
@@ -75,7 +85,10 @@ class Watcher(Runnable):
         Instrument.TF_DAY,
         Instrument.TF_WEEK)
 
-    def __init__(self, name, service, watcher_type):
+    _authors: Dict[str, Author]
+    _positions: Dict[str, Position]
+
+    def __init__(self, name: str, service: WatcherService, watcher_type: int):
         super().__init__("wt-%s" % (name,))
 
         self._name = name
@@ -91,7 +104,7 @@ class Watcher(Runnable):
 
         self._signals = collections.deque()
 
-        self._available_instruments = set()  # all avalaibles instruments
+        self._available_instruments = set()  # all available instruments
         self._watched_instruments = set()    # watched instruments
 
         self._data_streams = {}
@@ -124,21 +137,21 @@ class Watcher(Runnable):
             self._streamable.publish()
 
     @property
-    def watcher_type(self):
+    def watcher_type(self) -> int:
         """
         Type of watched data
         """
         return self._watcher_type
 
     @property
-    def has_prices_and_volumes(self):
+    def has_prices_and_volumes(self) -> bool:
         """
         This watchers looks for price and volumes data.
         """
         return self._watcher_type & Watcher.WATCHER_PRICE_AND_VOLUME == Watcher.WATCHER_PRICE_AND_VOLUME
 
     @property
-    def has_buy_sell_signals(self):
+    def has_buy_sell_signals(self) -> bool:
         """
         This watcher looks for buy/sell signals data.
         """
@@ -151,7 +164,7 @@ class Watcher(Runnable):
         pass
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return False
 
     @property
@@ -159,18 +172,18 @@ class Watcher(Runnable):
         return None
 
     @property
-    def ready(self):
+    def ready(self) -> bool:
         return self._ready
 
     @property
-    def initial_fetch(self):
+    def initial_fetch(self) -> bool:
         return self._initial_fetch
     
     @initial_fetch.setter
     def initial_fetch(self, value):
         self._initial_fetch = value
 
-    def stream_connection_status(self, status):
+    def stream_connection_status(self, status: bool):
         if self._streamable:
             self._streamable.member('conn').update(1 if status else -1)
 
@@ -178,7 +191,7 @@ class Watcher(Runnable):
     # instruments
     #
 
-    def insert_watched_instrument(self, market_id, timeframes):
+    def insert_watched_instrument(self, market_id: str, timeframes: Union[Tuple[float], List[float]]):
         """
         Must be called for each subscribed market to initialize the last price data structure.
 
@@ -197,7 +210,7 @@ class Watcher(Runnable):
                 if timeframe not in self._last_ohlc[market_id]:
                     self._last_ohlc[market_id][timeframe] = None
 
-    def configured_symbols(self):
+    def configured_symbols(self) -> Set[str]:
         """
         Configured instruments symbols from config of the watcher.
         @return A set of symbol, can contains '*' or any symbols prefixed by a '*'.
@@ -210,46 +223,50 @@ class Watcher(Runnable):
 
         return set(configured_symbols)
 
-    def matching_symbols_set(self, configured_symbols, available_symbols):
+    def matching_symbols_set(self, configured_symbols: Union[Tuple[str], List[str], Set[str]],
+                             available_symbols: Union[Tuple[str], List[str], Set[str]]) -> Set[str]:
         """
         Special '*' symbol mean every symbol.
         Starting with '!' mean except this symbol.
-        Starting with '*' mean every wildchar before the suffix.
+        Starting with '*' mean every wildcard before the suffix.
 
-        @param available_symbols List containing any supported markets symbol of the broker. Used when a wildchar is defined.
+        @param configured_symbols:
+        @param available_symbols List containing any supported markets symbol of the broker. Used when a
+               wildcard is defined.
         """
         return matching_symbols_set(configured_symbols, available_symbols)
 
-    def has_instrument(self, instrument):
+    def has_instrument(self, instrument: str) -> bool:
         return instrument in self._available_instruments
 
-    def is_watched_instrument(self, instrument):
+    def is_watched_instrument(self, instrument: str) -> bool:
         return instrument in self._watched_instruments
 
-    def available_instruments(self):
+    def available_instruments(self) -> Set[str]:
         """
-        All availables instruments.
+        All available instruments.
         """
         return self._available_instruments
 
-    def watched_instruments(self):
+    def watched_instruments(self) -> Set[str]:
         """
         Watched instruments.
         """
         return self._watched_instruments
 
-    def subscribe(self, market_id, ohlc_depths=None, tick_depth=None, order_book_depth=None):
+    def subscribe(self, market_id: str, ohlc_depths=None, tick_depth=None, order_book_depth=None):
         """
         Subscribes for receiving data from price source for a market and a timeframe.
 
         @param market_id str Valid market identifier
-        @param ohlc_dpeth A dict of timeframe with an integer value depth of history or -1 for full update from last stored point
-        @pram tick_deth An integer of depth value of ticks/trader or -1 for full update from last stored point
+        @param ohlc_depths A dict of timeframe with an integer value depth of history or -1 for full update from
+            last stored point
+        @param tick_depth An integer of depth value of ticks/trader or -1 for full update from last stored point
         @param order_book_depth An integer of order book size
         """
         return False
 
-    def unsubscribe(self, market_id, timeframe):
+    def unsubscribe(self, market_id: str, timeframe: float) -> bool:
         """
         Unsubscribes from receiving data for a market and a timeframe or any timeframe.
 
@@ -258,7 +275,7 @@ class Watcher(Runnable):
         """
         return False
 
-    def current_ohlc(self, market_id, timeframe):
+    def current_ohlc(self, market_id: str, timeframe: float):
         """
         Return current OHLC for a specific market-id and timeframe or None.
         """
@@ -271,7 +288,7 @@ class Watcher(Runnable):
     # processing
     #
 
-    def receiver(self, signal):
+    def receiver(self, signal: Signal):
         if signal.source == Signal.SOURCE_WATCHER:
             if signal.source_name != self._name:
                 # only interested by the watcher of the same name
@@ -313,21 +330,21 @@ class Watcher(Runnable):
         self.stream()
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
-    def find_author(self, author_id):
+    def find_author(self, author_id: str) -> Union[Author, None]:
         return self._authors.get(str(author_id))
 
     @property
-    def service(self):
+    def service(self) -> WatcherService:
         return self._service
 
-    def command(self, command_type, data):
+    def command(self, command_type: int, data: dict) -> Union[dict, None]:
         # @todo info, subscribe, unsubscribe commands
         return None
 
-    def pong(self, timestamp, pid, watchdog_service, msg):
+    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
         if msg:
             # display watcher activity
             if self.connected:
@@ -338,7 +355,7 @@ class Watcher(Runnable):
         if watchdog_service:
             watchdog_service.service_pong(pid, timestamp, msg)
 
-    def fetch_market(self, market_id):
+    def fetch_market(self, market_id: str) -> Union[Market, None]:
         """
         Retrieve market details for a specific market id and return a new Market instance if found.
         You should cache it to avoid multiple request.
@@ -352,14 +369,15 @@ class Watcher(Runnable):
         """
         pass
 
-    def historical_data(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
+    def historical_data(self, market_id: str, timeframe: float, from_date: Optional[datetime] = None,
+                        to_date: Optional[datetime] = None, n_last: Optional[int] = None):
         """
         Async fetch the historical candles data for an unit of time and certain a period of date.
         @param market_id Specific name of the market
         @param timeframe Non zero time unit in second
         @param from_date date object
         @param to_date date object
-        @param n Last n data
+        @param n_last Last n data
         """
         if timeframe <= 0:
             return
@@ -369,7 +387,7 @@ class Watcher(Runnable):
         else:
             Database.inst().load_market_ohlc(self.service, self.name, market_id, timeframe, from_date, to_date)       
 
-    def price_history(self, market_id, timestamp):
+    def price_history(self, market_id: str, timestamp: float) -> Union[float, None]:
         """
         Retrieve the historical price for a specific market id.
         """
@@ -379,14 +397,15 @@ class Watcher(Runnable):
     # utils
     #
 
-    def update_ohlc(self, market_id, tf, ts, last, spread, volume):
+    def update_ohlc(self, market_id: str, tf: float, ts: float, last: float, spread: float, volume: float):
         """
         Update the current OHLC or create a new one, and save them.
-        @param market_id str Unique market identifier
-        @param tf float Timeframe (normalized timeframe at second)
-        @param ts float Timestamp of the update or of the tick/trade
-        @param last float Last price.
-        @param last float Spread.
+
+        @param market_id: str Unique market identifier
+        @param tf: float Timeframe (normalized timeframe at second)
+        @param ts: float Timestamp of the update or of the tick/trade
+        @param last: float Last price.
+        @param spread: float Spread.
         @param volume float Volume transacted or 0 if unspecified.
         """
         ended_ohlc = None
@@ -497,7 +516,7 @@ class Watcher(Runnable):
                         if ohlc:
                             self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, ohlc))
 
-    def fetch_and_generate(self, market_id, timeframe, n_last=1, cascaded=None):
+    def fetch_and_generate(self, market_id: str, timeframe: float, n_last: int = 1, cascaded: Optional[float] = None):
         """
         For initial fetching of the last OHLCs.
         """
@@ -638,7 +657,7 @@ class Watcher(Runnable):
                 # set current OHLC
                 self._last_ohlc[market_id][k] = ohlc
 
-    def fetch_ticks(self, market_id, tick_depth=None):
+    def fetch_ticks(self, market_id: str, tick_depth: Optional[int] = None):
         """
         For initial fetching of the recent ticks.
         """
@@ -669,7 +688,8 @@ class Watcher(Runnable):
             while Database.inst().num_pending_ticks_storage() > Watcher.MAX_PENDING_TICK:
                 time.sleep(Watcher.TICK_STORAGE_DELAY)  # wait a little before continue
 
-    def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
+    def fetch_trades(self, market_id: str, from_date: Optional[datetime] = None, to_date: Optional[datetime] = None,
+                     n_last: Optional[int] = None) -> List[Tuple[float, float, float, float, float, float]]:
         """
         Retrieve the historical trades data for a certain a period of date.
         @param market_id Specific name of the market
@@ -679,7 +699,8 @@ class Watcher(Runnable):
         """
         return []
 
-    def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
+    def fetch_candles(self, market_id: str, timeframe: float, from_date: Optional[datetime] = None,
+                      to_date: Optional[datetime] = None, n_last: Optional[int] = None) -> List[Candle]:
         """
         Retrieve the historical candles data for an unit of time and certain a period of date.
         @param market_id Specific name of the market
@@ -690,7 +711,7 @@ class Watcher(Runnable):
         """
         return []
 
-    def store_candle(self, market_id, timeframe, candle):
+    def store_candle(self, market_id: str, timeframe: float, candle: Candle):
         Database.inst().store_market_ohlc((
             self.name, market_id, int(candle.timestamp*1000.0), int(timeframe),
             str(candle.open), str(candle.high), str(candle.low), str(candle.close),

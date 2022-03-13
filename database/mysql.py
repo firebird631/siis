@@ -811,7 +811,7 @@ class MySql(Database):
         pass  # @todo
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._db is not None
 
     #

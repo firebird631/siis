@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, List, Union, Optional, Dict
 
 if TYPE_CHECKING:
     from watcher.watcher import Watcher
+    from .service import TraderService
     from .account import Account
     from .market import Market
     from instrument.instrument import Instrument
@@ -51,9 +52,6 @@ traceback_logger = logging.getLogger('siis.traceback.trader')
 class Trader(Runnable):
     """
     Trader base class to specialize per broker.
-
-    @todo Move table/dataset like as strategy
-    @todo Move command to specific files like as strategy
     """
 
     MAX_SIGNALS = 1000                        # max signals queue size before ignore some market data updates
@@ -81,7 +79,7 @@ class Trader(Runnable):
     _assets: Dict[str, Asset]
     _markets: Dict[str, Market]
 
-    def __init__(self, name: str, service):
+    def __init__(self, name: str, service: TraderService):
         super().__init__("td-%s" % name)
 
         self._name = name
@@ -132,7 +130,7 @@ class Trader(Runnable):
         return self._account
     
     @property
-    def service(self):
+    def service(self) -> TraderService:
         return self._service
 
     @property
@@ -210,7 +208,7 @@ class Trader(Runnable):
 
         return None
 
-    def has_market(self, market_id):
+    def has_market(self, market_id: str) -> bool:
         with self._mutex:
             return market_id in self._markets
 
@@ -437,8 +435,11 @@ class Trader(Runnable):
         @note If the given order already have a ref order id no change is made.
         """
         if order and not order.ref_order_id:
-            # order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid5(uuid.NAMESPACE_DNS, 'siis.com').bytes).decode('utf8').rstrip('=\n').replace('/', '_').replace('+', '0'))
-            order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace('/', '_').replace('+', '0'))
+            # order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid5(
+            #    uuid.NAMESPACE_DNS, 'siis.com').bytes).decode('utf8').rstrip(
+            #    '=\n').replace('/', '_').replace('+', '0'))
+            order.set_ref_order_id("siis_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip(
+                '=\n').replace('/', '_').replace('+', '0'))
             return order.ref_order_id
 
         return None
@@ -961,7 +962,7 @@ class Trader(Runnable):
 
     @Runnable.mutexed
     def on_update_market(self, market_id: str, tradeable: bool, last_update_time: float, bid: float, ask: float,
-                         base_exchange_rate: float,
+                         base_exchange_rate: Optional[float] = None,
                          contract_size: Optional[float] = None, value_per_pip: Optional[float] = None,
                          vol24h_base: Optional[float] = None, vol24h_quote: Optional[float] = None):
         """
@@ -1158,13 +1159,13 @@ class Trader(Runnable):
     # persistence
     #
 
-    def cmd_export(self, data: dict):
+    def cmd_export(self, data: dict) -> dict:
         """
         Persistence to file.
         """
         return {}
 
-    def cmd_import(self, data: dict):
+    def cmd_import(self, data: dict) -> dict:
         """
         Previous state from file.
         """

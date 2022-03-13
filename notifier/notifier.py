@@ -142,13 +142,13 @@ class Notifier(Runnable):
         if not self._playpause:
             return
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         pass
 
     def watchdog(self, watchdog_service, timeout):
         pass
 
-    def pong(self, timestamp, pid, watchdog_service, msg):
+    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
         pass
 
     @staticmethod

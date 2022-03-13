@@ -5,11 +5,8 @@
 
 import threading
 
-from importlib import import_module
-
 from common.signalhandler import SignalHandler
 from common.baseservice import BaseService
-from common.signal import Signal
 
 from terminal.terminal import Terminal
 
@@ -19,19 +16,19 @@ class Service(BaseService):
     Base class for any service.
     """
 
-    def __init__(self, name, options):
+    def __init__(self, name: str, options: dict):
         super().__init__(name)
 
         self._signals_handler = SignalHandler(self)
         self._mutex = threading.RLock()
 
-    def lock(self, blocking=True, timeout=-1):
+    def lock(self, blocking: bool = True, timeout: float = -1):
         self._mutex.acquire(blocking, timeout)
 
     def unlock(self):
         self._mutex.release()
 
-    def start(self, options):
+    def start(self, options: dict):
         pass
 
     def terminate(self):
@@ -40,7 +37,7 @@ class Service(BaseService):
     def sync(self):
         pass
 
-    def notify(self, signal_type, source_name, signal_data):
+    def notify(self, signal_type: int, source_name: str, signal_data):
         pass
 
     def add_listener(self, base_service):
@@ -51,20 +48,20 @@ class Service(BaseService):
         with self._mutex:
             self._signals_handler.remove_listener(base_service)
 
-    def command(self, command_type, data):
+    def command(self, command_type: int, data):
         return None
 
     def receiver(self, signal):
         pass
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         # try to acquire, see for deadlock
         if self._mutex.acquire(timeout=timeout):
             self._mutex.release()
         else:
             Terminal.inst().action("%s is not joinable for %s seconds !" % (self.name, timeout))
 
-    def watchdog(self, watchdog_service, timeout):
+    def watchdog(self, watchdog_service, timeout: float):
         # try to acquire, see for deadlock
         if self._mutex.acquire(timeout=timeout):
             self._mutex.release()

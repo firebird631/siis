@@ -981,7 +981,7 @@ class PgSql(Database):
                 n -= 1
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._db is not None
 
     #

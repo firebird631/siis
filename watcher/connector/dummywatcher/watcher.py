@@ -34,7 +34,7 @@ class DummyWatcher(Watcher):
         self._ready = False
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._connected
 
     def update(self):

@@ -105,6 +105,6 @@ class WatchdogService(Service):
 
         return r
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         for service in self._services:
             service.ping(timeout)

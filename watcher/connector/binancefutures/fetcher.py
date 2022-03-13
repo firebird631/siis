@@ -92,11 +92,11 @@ class BinanceFuturesFetcher(Fetcher):
         return self._connector
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._connector is not None and self._connector.connected
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self._connector and self._connector.authenticated
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):

@@ -35,11 +35,11 @@ class Candle(object):
         self._ended = True
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> float:
         return self._timestamp
 
     @property
-    def timeframe(self):
+    def timeframe(self) -> float:
         return self._timeframe
 
     @property
@@ -137,11 +137,11 @@ class BuySellSignal(object):
         self._params = {}
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> float:
         return self._timestamp
 
     @property
-    def timeframe(self):
+    def timeframe(self) -> float:
         return self._timeframe
 
     @property

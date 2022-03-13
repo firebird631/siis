@@ -96,7 +96,7 @@ class IGConnector(object):
         return self._client_id
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._session is not None and self._ig_service is not None and self._ig_service.connected
 
     def update_session(self):

@@ -470,9 +470,10 @@ class BitMEXWebsocket():
         self._connected = False
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         # return self.ws and hasattr(self.ws, 'sock') and self.ws.sock and self.ws.sock.connected
         return self.ws is not None and self._connected
+
 
 def find_item_by_keys(keys, table, match_data):
     for item in table:

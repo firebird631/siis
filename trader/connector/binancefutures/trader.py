@@ -3,6 +3,15 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Trader connector for binancefutures.com
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Union, Optional
+
+if TYPE_CHECKING:
+    from trader.service import TraderService
+    from trader.market import Market
+    from instrument.instrument import Instrument
+
 import time
 import copy
 import traceback
@@ -31,7 +40,7 @@ class BinanceFuturesTrader(Trader):
     @todo hedging, IOC/FIK mode
     """
 
-    def __init__(self, service):
+    def __init__(self, service: TraderService):
         super().__init__("binancefutures.com", service)
 
         self._watcher = None
@@ -41,11 +50,11 @@ class BinanceFuturesTrader(Trader):
         self._ready = False
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self.connected and self._watcher.connector.authenticated
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self._watcher is not None and self._watcher.connector is not None and self._watcher.connector.connected
 
     def connect(self):
@@ -71,7 +80,7 @@ class BinanceFuturesTrader(Trader):
                 self._watcher = None
                 self._ready = False
 
-    def on_watcher_connected(self, watcher_name):
+    def on_watcher_connected(self, watcher_name: str):
         super().on_watcher_connected(watcher_name)
 
         # markets, orders and positions
@@ -89,7 +98,7 @@ class BinanceFuturesTrader(Trader):
 
         logger.info("Trader %s got data. Running." % self._name)
 
-    def on_watcher_disconnected(self, watcher_name):
+    def on_watcher_disconnected(self, watcher_name: str):
         super().on_watcher_disconnected(watcher_name)
 
     def pre_update(self):
@@ -142,7 +151,7 @@ class BinanceFuturesTrader(Trader):
     # ordering
     #
 
-    def create_order(self, order, market_or_instrument):
+    def create_order(self, order: Order, market_or_instrument: Union[Market, Instrument]) -> int:
         """
         Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
         @todo Hedging with positionSide
@@ -307,7 +316,7 @@ class BinanceFuturesTrader(Trader):
 
         return Order.REASON_ERROR
 
-    def cancel_order(self, order_id, market_or_instrument):
+    def cancel_order(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> int:
         """
         Cancel a pending or partially filled order.
         """
@@ -370,7 +379,7 @@ class BinanceFuturesTrader(Trader):
         # ok, done
         return Order.REASON_OK
 
-    def cancel_all_orders(self, market_or_instrument):
+    def cancel_all_orders(self, market_or_instrument: Union[Market, Instrument]) -> bool:
         """
         Cancel any existing order for a specific market.
         """
@@ -415,15 +424,18 @@ class BinanceFuturesTrader(Trader):
 
         return False
 
-    def close_position(self, position_id, market_or_instrument, direction, quantity, market=True, limit_price=None):
+    def close_position(self, position_id: str, market_or_instrument: Union[Market, Instrument],
+                       direction: int, quantity: float, market: bool = True,
+                       limit_price: Optional[float] = None) -> bool:
         """Not supported, use create_order for that"""
         return False
 
-    def modify_position(self, position_id, market_or_instrument, stop_loss_price=None, take_profit_price=None):
+    def modify_position(self, position_id: str, market_or_instrument: Union[Market, Instrument],
+                        stop_loss_price: Optional[float] = None, take_profit_price: Optional[float] = None) -> bool:
         """Not supported, use cancel_order/create_order for that"""
         return False
 
-    def positions(self, market_id):
+    def positions(self, market_id: str) -> List[Position]:
         """
         @deprecated
         """
@@ -438,7 +450,7 @@ class BinanceFuturesTrader(Trader):
 
         return positions
 
-    def market(self, market_id, force=False):
+    def market(self, market_id: str, force: bool = False) -> Union[Market, None]:
         """
         Fetch from the watcher and cache it. It rarely changes so assume it once per connection.
         @param market_id
@@ -462,7 +474,7 @@ class BinanceFuturesTrader(Trader):
 
         return market
 
-    def order_info(self, order_id, market_or_instrument):
+    def order_info(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> Union[dict, None]:
         """
         Retrieve the detail of an order.
         """
@@ -823,9 +835,10 @@ class BinanceFuturesTrader(Trader):
     # markets
     #
 
-    def on_update_market(self, market_id, tradeable, last_update_time, bid, ask,
-                         base_exchange_rate, contract_size=None, value_per_pip=None,
-                         vol24h_base=None, vol24h_quote=None):
+    def on_update_market(self, market_id: str, tradeable: bool, last_update_time: float, bid: float, ask: float,
+                         base_exchange_rate: Optional[float] = None,
+                         contract_size: Optional[float] = None, value_per_pip: Optional[float] = None,
+                         vol24h_base: Optional[float] = None, vol24h_quote: Optional[float] = None):
 
         super().on_update_market(market_id, tradeable, last_update_time, bid, ask, base_exchange_rate,
                                  contract_size, value_per_pip, vol24h_base, vol24h_quote)

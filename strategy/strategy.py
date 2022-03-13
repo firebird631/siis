@@ -387,7 +387,7 @@ class Strategy(Runnable):
     def close_streaming(self):
         self._streamable = None
 
-    def ping(self, timeout):
+    def ping(self, timeout: float):
         if self._condition.acquire(timeout=timeout):
             self._ping = (0, None, True)
             self._condition.notify()
@@ -407,7 +407,7 @@ class Strategy(Runnable):
                                              "Unable to join appliance %s - %s for %s seconds" % (
                                                  self._name, self._identifier, timeout))
 
-    def pong(self, timestamp, pid, watchdog_service, msg):
+    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
         if msg:
             # display strategy activity
             Terminal.inst().action("Strategy worker %s - %s is alive %s" % (
