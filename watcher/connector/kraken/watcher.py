@@ -752,7 +752,8 @@ class KrakenWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
 
             # store the last market info to be used for backtesting
-            Database.inst().store_market_info((self.name, market.market_id, market.symbol,
+            Database.inst().store_market_info((
+                self.name, market.market_id, market.symbol,
                 market.market_type, market.unit_type, market.contract_type,  # type
                 market.trade, market.orders,  # type
                 market.base, market.base_display, market.base_precision,  # base

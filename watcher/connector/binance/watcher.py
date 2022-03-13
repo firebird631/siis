@@ -920,7 +920,7 @@ class BinanceWatcher(Watcher):
                 market_data = (market_id, False, time.time(), None, None, None, None, None, None, None)
 
             elif market.is_open:
-                # market exists and tradable
+                # market exists and tradeable
                 market_data = (
                     market_id, market.is_open, market.last_update_time, market.bid, market.ask,
                     market.base_exchange_rate, market.contract_size, market.value_per_pip,

@@ -925,11 +925,11 @@ class BinanceTrader(Trader):
     # markets
     #
 
-    def on_update_market(self, market_id, tradable, last_update_time, bid, ask,
+    def on_update_market(self, market_id, tradeable, last_update_time, bid, ask,
                          base_exchange_rate, contract_size=None, value_per_pip=None,
                          vol24h_base=None, vol24h_quote=None):
 
-        super().on_update_market(market_id, tradable, last_update_time, bid, ask, base_exchange_rate,
+        super().on_update_market(market_id, tradeable, last_update_time, bid, ask, base_exchange_rate,
                                  contract_size, value_per_pip, vol24h_base, vol24h_quote)
 
         # update trades profit/loss for the related market id

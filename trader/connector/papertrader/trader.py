@@ -835,7 +835,7 @@ class PaperTrader(Trader):
         pass        
 
     @Trader.mutexed
-    def on_update_market(self, market_id, tradable, last_update_time, bid, ask,
+    def on_update_market(self, market_id, tradeable, last_update_time, bid, ask,
                          base_exchange_rate, contract_size=None, value_per_pip=None,
                          vol24h_base=None, vol24h_quote=None):
 
@@ -864,8 +864,8 @@ class PaperTrader(Trader):
             # defined and not 0
             market.last_update_time = last_update_time
 
-        if tradable is not None:
-            market.is_open = tradable
+        if tradeable is not None:
+            market.is_open = tradeable
 
         if contract_size is not None:
             market.contract_size = contract_size

@@ -2350,7 +2350,11 @@ function format_value(value, precision) {
     /**
      * Format number value as string according ot a fixed precision and remove trailing 0 and dot.
      */
-    return value.toFixed(precision).replace(/\.?0+$/, "");
+     if (typeof(value) === 'string') {
+        value = parseFloat(value);
+     }
+
+    return value.toFixed(precision).replace(/\.?0+$/, '');
 }
 
 // function rcv_ws_data() {

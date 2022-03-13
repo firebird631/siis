@@ -79,6 +79,7 @@ class Trader(Runnable):
     _orders: Dict[str, Order]
     _positions: Dict[str, Position]
     _assets: Dict[str, Asset]
+    _markets: Dict[str, Market]
 
     def __init__(self, name: str, service):
         super().__init__("td-%s" % name)
@@ -959,7 +960,7 @@ class Trader(Runnable):
     #
 
     @Runnable.mutexed
-    def on_update_market(self, market_id: str, tradable: bool, last_update_time: float, bid: float, ask: float,
+    def on_update_market(self, market_id: str, tradeable: bool, last_update_time: float, bid: float, ask: float,
                          base_exchange_rate: float,
                          contract_size: Optional[float] = None, value_per_pip: Optional[float] = None,
                          vol24h_base: Optional[float] = None, vol24h_quote: Optional[float] = None):
@@ -987,8 +988,8 @@ class Trader(Runnable):
             # defined and not 0
             market.last_update_time = last_update_time
 
-        if tradable is not None:
-            market.is_open = tradable
+        if tradeable is not None:
+            market.is_open = tradeable
 
         if contract_size is not None:
             market.contract_size = contract_size

@@ -113,16 +113,16 @@ function on_copy_signal(elt) {
     }
 
     if (signal['order-price'] > 0.0) {
-        $('#copy_signal_order_price').attr('type', "number").val(signal['order-price']);
+        $('#copy_signal_order_price').attr('type', "number").val(parseFloat(signal['order-price']));
     } else {
         $('#copy_signal_order_price').attr('type', "text").val("Market");
     }
 
-    $('#copy_signal_take_profit_price').val(signal['take-profit-price']);
+    $('#copy_signal_take_profit_price').val(parseFloat(signal['take-profit-price']));
     $('#copy_signal_take_profit_range').slider('setValue', 50);
     $('#copy_signal_take_profit_type').selectpicker('val', 'percent').change();
 
-    $('#copy_signal_stop_loss_price').val(signal['stop-loss-price']);
+    $('#copy_signal_stop_loss_price').val(parseFloat(signal['stop-loss-price']));
     $('#copy_signal_stop_loss_range').slider('setValue', 50);
     $('#copy_signal_stop_loss_type').selectpicker('val', 'percent').change();
 
@@ -134,8 +134,8 @@ function on_copy_signal(elt) {
     $('#copy_signal_open').on('click', function(e) {
         let comment = $('#copy_signal_comment').val();
 
-        let sec_take_profit_val = 0.0;  // $('#copy_signal_sec_take_profit_price').val();
-        let mid_take_profit_val = 0.0;  // $('#copy_signal_mid_take_profit_price').val();
+        let sec_take_profit = 0.0;  // parseFloat($('#copy_signal_sec_take_profit_price').val());
+        let mid_take_profit = 0.0;  // parseFloat($('#copy_signal_mid_take_profit_price').val());
 
         let trigger_price = 0.0;
         let limit_price = 0.0;
@@ -145,7 +145,7 @@ function on_copy_signal(elt) {
             limit_price = 0.0;
             method = 'market';
         } else {
-            limit_price = $('#copy_signal_order_price').val();
+            limit_price = parseFloat($('#copy_signal_order_price').val());
             method = 'limit';
         }
 
@@ -153,8 +153,8 @@ function on_copy_signal(elt) {
         let entry_timeout = 0.0;
         let leverage = 1.0;
 
-        let take_profit = $('#copy_signal_take_profit_price').val();
-        let stop_loss = $('#copy_signal_stop_loss_price').val();
+        let take_profit = parseFloat($('#copy_signal_take_profit_price').val());
+        let stop_loss = parseFloat($('#copy_signal_stop_loss_price').val());
 
         let data = {
             'command': 'trade-entry',

@@ -613,11 +613,11 @@ class IGTrader(Trader):
         # @todo add/update/remove orders
         # and this can be done by signals
 
-    def on_update_market(self, market_id, tradable, last_update_time, bid, ask,
-            base_exchange_rate, contract_size=None, value_per_pip=None,
-            vol24h_base=None, vol24h_quote=None):
+    def on_update_market(self, market_id, tradeable, last_update_time, bid, ask,
+                         base_exchange_rate, contract_size=None, value_per_pip=None,
+                         vol24h_base=None, vol24h_quote=None):
 
-        super().on_update_market(market_id, tradable, last_update_time, bid, ask, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
+        super().on_update_market(market_id, tradeable, last_update_time, bid, ask, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
 
         # update positions profit/loss for the related market id
         market = self.market(market_id)

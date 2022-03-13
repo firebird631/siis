@@ -1212,7 +1212,7 @@ class Instrument(object):
 
     def adjust_quantity(self, quantity, min_is_zero=True):
         """
-        From quantity return the floor tradable quantity according to min, max and rounded to step size.
+        From quantity return the floor tradeable quantity according to min, max and rounded to step size.
         To make a precise value for trade use format_value from this returned value.
 
         @param quantity float Quantity to adjust
