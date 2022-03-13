@@ -3,6 +3,14 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Bitcoin Alpha strategy trader.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict
+
+if TYPE_CHECKING:
+    from .bcasub import BitcoinAlphaStrategySub
+    from strategy.strategy import Strategy
+
 from terminal.terminal import Terminal
 from trader.order import Order
 
@@ -31,7 +39,9 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     - Stop are taker (market order)
     """
 
-    def __init__(self, strategy, instrument, params):
+    timeframes: Dict[float, BitcoinAlphaStrategySub]
+
+    def __init__(self, strategy: Strategy, instrument: Instrument, params: dict):
         super().__init__(strategy, instrument, Instrument.TF_TICK)
 
         # mean when there is already a position on the same direction does not increase in the same

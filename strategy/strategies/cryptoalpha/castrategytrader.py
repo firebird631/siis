@@ -3,6 +3,14 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Crypto Alpha strategy trader.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict
+
+if TYPE_CHECKING:
+    from .casub import CryptoAlphaStrategySub
+    from strategy.strategy import Strategy
+
 from terminal.terminal import Terminal
 from trader.order import Order
 
@@ -35,7 +43,9 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     timeout only cancel the buy order, keep the trade active of course.
     """
 
-    def __init__(self, strategy, instrument, params):
+    timeframes: Dict[float, CryptoAlphaStrategySub]
+
+    def __init__(self, strategy: Strategy, instrument: Instrument, params: dict):
         super().__init__(strategy, instrument, Instrument.TF_TICK)
 
         # mean when there is already a position on the same direction does not increase in the

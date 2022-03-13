@@ -12,6 +12,19 @@ class CryptoAlphaStrategySub(TimeframeBasedSub):
     """
 
     def __init__(self, strategy_trader, params):
+        self.rsi = None
+        self.sma = None
+        self.ema = None
+        self.stochrsi = None
+        self.tomdemark = None
+        self.bollingerbands = None
+        self.bsawe = None
+        self.sma55 = None
+        self.sma200 = None
+        self.atr = None
+        self.mama = None
+        self.pivotpoint = None
+
         super().__init__(strategy_trader, params['timeframe'], params['depth'], params['history'], params)
 
         self.setup_indicators(params)

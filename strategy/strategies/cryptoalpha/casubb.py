@@ -19,28 +19,9 @@ class CryptoAlphaStrategySubB(CryptoAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
-        # default indicators
-        self.sma55 = None
-        self.sma200 = None
-
-        self.atr = None
-        self.bollingerbands = None
-        self.mama = None
-
-        # default indicators
-        self.tomdemark = None
-        self.stochrsi = None
-        self.pivotpoint = None
-
-        self.rsi = None
-        self.atr = None
-
-        self.sma = None
-        self.ema = None
+        super().__init__(strategy_trader, params)
 
         self.mama_cross = (0, 0, 0)
-
-        super().__init__(strategy_trader, params)
 
         if 'scores' in params:
             # for older method

@@ -26,19 +26,6 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
-        self.rsi = None
-        self.sma = None
-        self.ema = None
-        self.atr = None
-        self.vwma = None
-        self.sma200 = None
-        self.sma55 = None
-        self.bsawe = None
-        self.stochrsi = None
-        self.tomdemark = None
-        self.bollingerbands = None
-        self.pivotpoint = None
-
         super().__init__(strategy_trader, params)
 
         if 'scores' in params:

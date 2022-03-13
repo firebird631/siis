@@ -20,14 +20,6 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
-        self.rsi = None
-        self.sma = None
-        self.ema = None
-        self.stochrsi = None
-        self.tomdemark = None
-        self.bollingerbands = None
-        self.bsawe = None
-
         super().__init__(strategy_trader, params)
 
         self.rsi_low = params['constants']['rsi_low']

@@ -3,6 +3,14 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Forex Alpha strategy
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict
+
+if TYPE_CHECKING:
+    from .fasub import ForexAlphaStrategySub
+    from strategy.strategy import Strategy
+
 from trader.order import Order
 
 from strategy.trade.strategypositiontrade import StrategyPositionTrade
@@ -23,7 +31,9 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     Forex Alpha strategy trader.
     """
 
-    def __init__(self, strategy, instrument, params):
+    timeframes: Dict[float, ForexAlphaStrategySub]
+
+    def __init__(self, strategy: Strategy, instrument: Instrument, params: dict):
         super().__init__(strategy, instrument, Instrument.TF_TICK)
 
         # mean when there is already a position on the same direction does not increase in the same

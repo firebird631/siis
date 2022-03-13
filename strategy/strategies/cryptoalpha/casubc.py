@@ -19,17 +19,6 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
-        # default indicators
-        self.tomdemark = None
-        self.stochrsi = None
-        self.pivotpoint = None
-
-        self.rsi = None
-        self.atr = None
-
-        self.sma = None
-        self.ema = None
-
         super().__init__(strategy_trader, params)
 
         self.rsi_low = params['constants']['rsi_low']

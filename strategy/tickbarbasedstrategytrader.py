@@ -4,7 +4,7 @@
 # Tick-bar based strategy trader. 
 
 import copy
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 from strategy.strategytrader import StrategyTrader
 

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple, List, Dict
+from typing import TYPE_CHECKING, Tuple, List, Dict, Union
 
 if TYPE_CHECKING:
     from .strategy import Strategy
@@ -318,7 +318,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     # helpers
     #
 
-    def timeframe_from_param(self, param: dict) -> float:
+    def timeframe_from_param(self, param: Union[str, float, int]) -> float:
         if isinstance(param, str):
             return timeframe_from_str(param)
         elif isinstance(param, float):

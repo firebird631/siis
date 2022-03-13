@@ -20,20 +20,6 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
-        # default indicators
-        self.sma55 = None
-        self.sma200 = None
-
-        self.atr = None
-        self.bollingerbands = None
-        self.mama = None
-
-        self.rsi = None
-        self.sma = None
-        self.ema = None
-        self.pivotpoint = None
-        self.tomdemark = None
-
         super().__init__(strategy_trader, params)
 
         if 'scores' in params:
