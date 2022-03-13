@@ -4,6 +4,7 @@
 # Ticker view.
 
 from view.tableview import TableView
+from trader.helpers.markettickertable import markets_tickers_table
 
 import logging
 error_logger = logging.getLogger('siis.view.ticker')
@@ -35,8 +36,10 @@ class TickerView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.markets_tickers_table(
-                    *self.table_format(), prev_timestamp=self._last_update, group=self._group, ordering=self._ordering)
+                columns, table, total_size = markets_tickers_table(
+                    trader, *self.table_format(), prev_timestamp=self._last_update,
+                    group=self._group, ordering=self._ordering)
+
                 self.table(columns, table, total_size)
                 num = total_size[1]
                 self._last_update = trader.timestamp

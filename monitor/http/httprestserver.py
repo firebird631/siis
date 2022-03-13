@@ -18,8 +18,10 @@ from twisted.python.components import registerAdapter
 from zope.interface import Interface, Attribute, implementer
 
 from strategy.strategy import Strategy
+from trader.trader import Trader
 
 import logging
+
 logger = logging.getLogger('siis.monitor.httpserver')
 error_logger = logging.getLogger('siis.error.monitor.httpserver')
 traceback_logger = logging.getLogger('siis.traceback.monitor.httpserver')
@@ -301,7 +303,7 @@ class InstrumentRestAPI(resource.Resource):
         uri = request.uri.decode("utf-8").split('/')
         results = {}
 
-        # @todo get state info activity, affinity, trade-mode
+        # @todo get state info activity, affinity, quantity, context
 
         return json.dumps(results).encode("utf-8")
 
@@ -321,11 +323,7 @@ class InstrumentRestAPI(resource.Resource):
             content = json.loads(request.content.read().decode("utf-8"))
             command = content.get('command', "")
 
-            if command == "activity":
-                results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
-            elif command == "affinity":
-                results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
-            elif command == "trade-mode":
+            if command in ("activity", "affinity", "quantity", "max-trades", "option"):
                 results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
             else:
                 results['messages'].append("Missing command.")
@@ -465,11 +463,6 @@ class StrategyTradeRestAPI(resource.Resource):
 
         if not self._allow_close_trade:
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
-
-        results = {
-            'messages': [],
-            'error': False
-        }
 
         content = json.loads(request.content.read().decode("utf-8"))
 
@@ -805,6 +798,35 @@ class TraderRestAPI(resource.Resource):
         else:
             # asset list + margin
             results['data'] = trader.fetch_assets_balances()
+
+        return json.dumps(results).encode("utf-8")
+
+    def render_POST(self, request):
+        if not check_auth_token(request):
+            return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
+
+        if not self._allow_chart:
+            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+
+        results = {
+            'messages': [],
+            'error': False
+        }
+
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
+            command = content.get('command', "")
+
+            # subscribe/unsubscribe to trader market data
+            if command == "subscribe-trade":
+                results = self._trader_service.command(Trader.COMMAND_STREAM, content)
+            elif command == "unsubscribe-trade":
+                results = self._trader_service.command(Trader.COMMAND_STREAM, content)
+            else:
+                results['messages'].append("Missing command.")
+                results['error'] = True
+        except Exception as e:
+            logger.debug(e)
 
         return json.dumps(results).encode("utf-8")
 

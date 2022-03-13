@@ -8,6 +8,7 @@ import copy
 import traceback
 
 from operator import itemgetter, attrgetter
+from typing import Union, List
 
 from trader.trader import Trader
 
@@ -424,7 +425,7 @@ class BinanceTrader(Trader):
     # slots
     #
 
-    def on_assets_loaded(self, assets):
+    def on_assets_loaded(self, assets: Union[List[Asset], None]):
         if assets is None:
             return
 

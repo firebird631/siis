@@ -40,7 +40,7 @@ class SignalView(TableView):
         self._strategy_service = strategy_service
         self._ordering = True  # initially most recent first
 
-        self._signals_list = {}
+        self._signals_list = []
 
         # listen to its service
         self.service.add_listener(self)
@@ -56,24 +56,30 @@ class SignalView(TableView):
             return
 
         if signal.source == Signal.SOURCE_STRATEGY:
-            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            # if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_SIGNAL_EXIT:
                 with self._mutex:
-                    if signal.data.get('app-id'):
-                        if signal.data['app-id'] not in self._signals_list:
-                            self._signals_list[signal.data['app-id']] = []
+                    self._signals_list.append(signal.data)
 
-                        signals_list = self._signals_list[signal.data['app-id']]
-                        signals_list.append(signal.data)
+                    if len(self._signals_list) > SignalView.MAX_SIGNALS:
+                        self._signals_list.pop(0)
 
-                        if len(signals_list) > SignalView.MAX_SIGNALS:
-                            signals_list.pop(0)
-
-                        self._refresh = 0.0
+                    self._refresh = 0.0
 
     def signals_table(self, strategy, style='', offset=None, limit=None, col_ofs=None):
+        """
+        Generate the table of signal according to current signal list.
+        @note This method is not thread safe.
+        @param strategy:
+        @param style:
+        @param offset:
+        @param limit:
+        @param col_ofs:
+        @return:
+        """
         data = []
 
-        signals = self._signals_list.get(strategy.identifier, [])
+        signals = self._signals_list
         total_size = (len(SignalView.COLUMNS), len(signals))
 
         if offset is None:
@@ -119,16 +125,22 @@ class SignalView(TableView):
         for signal in signals:
             ldatetime = datetime.fromtimestamp(signal['timestamp']).strftime(self._datetime_format)
             direction = Color.colorize_cond(charmap.ARROWUP if signal['direction'] == "long" else charmap.ARROWDN,
-                    signal['direction'] == "long", style, true=Color.GREEN, false=Color.RED)
+                                            signal['direction'] == "long", style, true=Color.GREEN, false=Color.RED)
 
-            symbol_color = int(hashlib.sha1(signal['symbol'].encode("utf-8")).hexdigest(), 16) % Color.count()-1
-            id_color = signal['id'] % Color.count()-1
+            signal_id = '-'
+            id_color = 0
 
-            lid = Color.colorize(str(signal['id']), Color.color(id_color), style)
+            if signal['id'] > 0:
+                signal_id = str(signal['id'])
+                id_color = signal['id'] % Color.count()
+
+            symbol_color = int(hashlib.sha1(signal['symbol'].encode("utf-8")).hexdigest(), 16) % Color.count()
+
+            lid = Color.colorize(signal_id, Color.color(id_color), style)
             lsymbol = Color.colorize(signal['symbol'], Color.color(symbol_color), style)
 
             way = Color.colorize_cond(charmap.ARROWR if signal['way'] == "entry" else charmap.ARROWL,
-                    signal['way'] == "entry", style, true=Color.BLUE, false=Color.ORANGE)
+                                      signal['way'] == "entry", style, true=Color.BLUE, false=Color.ORANGE)
 
             if signal['way'] == "entry":
                 reason = signal['stats'].get('entry-order-type', "") if 'stats' in signal else ""
@@ -183,8 +195,7 @@ class SignalView(TableView):
         signals = []
 
         with self._mutex:
-            for app_id, signals_list in self._signals_list.items():
-                for signal in signals_list:
-                    signals.append(copy.copy(signal))
+            for signal in self._signals_list:
+                signals.append(copy.copy(signal))
 
         return signals

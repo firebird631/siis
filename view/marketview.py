@@ -3,8 +3,8 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Market view.
 
-from terminal.terminal import Terminal
 from view.tableview import TableView
+from trader.helpers.markettable import markets_table
 
 import logging
 error_logger = logging.getLogger('siis.view.market')
@@ -35,8 +35,8 @@ class MarketView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.markets_table(
-                    *self.table_format(), group=self._group, ordering=self._ordering)
+                columns, table, total_size = markets_table(
+                    trader, *self.table_format(), group=self._group, ordering=self._ordering)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]

@@ -3,8 +3,8 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Asset view.
 
-from terminal.terminal import Terminal
 from view.tableview import TableView
+from trader.helpers.assettable import assets_table
 
 import logging
 error_logger = logging.getLogger('siis.view.asset')
@@ -35,8 +35,8 @@ class AssetView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.assets_table(
-                    *self.table_format(), group=self._group, ordering=self._ordering)
+                columns, table, total_size = assets_table(
+                    trader, *self.table_format(), group=self._group, ordering=self._ordering)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]

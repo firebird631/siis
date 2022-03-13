@@ -225,10 +225,6 @@ class Strategy(Runnable):
             return self._parameters
 
     @property
-    def mutex(self) -> threading.RLock:
-        return self._mutex
-
-    @property
     def strategy_traders(self) -> Dict[str, StrategyTrader]:
         return self._strategy_traders
 
@@ -242,7 +238,7 @@ class Strategy(Runnable):
 
     def notify_signal(self, timestamp: float, signal, strategy_trader):
         """
-        Notify a strategy signal (entry/take-profit) to the user. It must be called by the strategy-trader.
+        Notify a strategy signal (entry/exit) to the user. It must be called by the strategy-trader.
         """
         if signal:
             signal_data = signal.dumps_notify(timestamp, strategy_trader)
@@ -252,14 +248,6 @@ class Strategy(Runnable):
                 self.service.notify(Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY, self._name, signal_data)
             elif signal.signal < 0:
                 self.service.notify(Signal.SIGNAL_STRATEGY_SIGNAL_EXIT, self._name, signal_data)
-
-    def notify_signal_exit(self, timestamp: float, signal, strategy_trader):
-        """
-        Notify a strategy signal (entry/take-profit) to the user. It must be called by the strategy-trader.
-        """
-        if signal:
-            signal_data = signal.dumps_notify(timestamp, strategy_trader)
-            self.service.notify(Signal.SIGNAL_STRATEGY_SIGNAL_EXIT, self._name, signal_data)
 
     def notify_trade_entry(self, timestamp: float, trade, strategy_trader):
         """

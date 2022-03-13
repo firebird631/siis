@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Tuple, List
 
 if TYPE_CHECKING:
     from .strategy import Strategy
@@ -101,12 +101,15 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                     # last OHLC close
                     sub._last_closed = True
 
-                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # with the non consolidated
+                # with the non consolidated
+                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)
 
             # keep prev and last price at processing step
-            if self.instrument._ticks:
+            if self.instrument.ticks():
                 self.prev_price = self.last_price
-                self.last_price = (self.instrument._ticks[-1][1] + self.instrument._ticks[-1][2]) * 0.5  # last tick mid
+
+                # last tick mid
+                self.last_price = (self.instrument.ticks()[-1][1] + self.instrument.ticks()[-1][2]) * 0.5
 
             # no longer need them
             self.instrument.clear_ticks()
@@ -134,11 +137,11 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # with the non consolidated
 
             # keep prev and last price at processing step
-            if self.instrument._candles.get(self._base_timeframe):
+            if self.instrument.candles(self._base_timeframe):
                 self.prev_price = self.last_price
-                self.last_price = self.instrument._candles[self._base_timeframe][-1].close  # last mid close
+                self.last_price = self.instrument.candles(self._base_timeframe)[-1].close  # last mid close
 
-    def compute(self, timestamp: float):
+    def compute(self, timestamp: float) -> Tuple[List[StrategySignal], List[StrategySignal]]:
         """
         Compute the signals for the different timeframes depending of the update policy.
         """

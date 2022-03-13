@@ -7,7 +7,6 @@ import traceback
 import threading
 import time
 
-from app.appexception import AppException
 from terminal.terminal import Terminal
 
 import logging
@@ -34,8 +33,12 @@ class Runnable(object):
         self._avg_time = 0
 
     @property
-    def thread(self):
+    def thread(self) -> threading.Thread:
         return self._thread
+
+    @property
+    def mutex(self) -> threading.RLock:
+        return self._mutex
 
     def start(self, options):
         if not self._running:

@@ -4,6 +4,7 @@
 # Tick-bar based strategy trader. 
 
 import copy
+from typing import List, Tuple
 
 from strategy.strategytrader import StrategyTrader
 
@@ -55,7 +56,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     def is_tickbars_based(self):
         return True
 
-    def update_tickbar(self, timestamp):
+    def update_tickbar(self, timestamp: float):
         """
         Update the current tickbar according to the last trade and timestamp or create a new tickbar.
         @note Thread-safe method.
@@ -71,14 +72,16 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             self.instrument.add_tickbar(copy.copy(self.tickbar_generator.current), self.depth)
 
             # keep prev and last price at processing step
-            if self.instrument._ticks:
+            if self.instrument.ticks():
                 self.prev_price = self.last_price
-                self.last_price = (self.instrument._ticks[-1][1] + self.instrument._ticks[-1][2]) * 0.5  # last tick mid
+
+                # last tick mid
+                self.last_price = (self.instrument.ticks()[-1][1] + self.instrument.ticks()[-1][2]) * 0.5
 
             # no longer need them
             self.instrument.clear_ticks()
 
-    def update_tickbar_ext(self, timestamp):
+    def update_tickbar_ext(self, timestamp: float) -> List[Tuple]:
         # update data at tick level
         with self._mutex:
             # update at tick or trade
@@ -91,13 +94,13 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             self.instrument.add_tickbar(copy.copy(self.tickbar_generator.current), self.depth)
 
             # keep prev and last price at processing step
-            if self.instrument._ticks:
+            if self.instrument.ticks():
                 self.prev_price = self.last_price
-                self.last_price = (self.instrument._ticks[-1][1] + self.instrument._ticks[-1][2]) * 0.5  # last tick mid
+
+                # last tick mid
+                self.last_price = (self.instrument.ticks()[-1][1] + self.instrument.ticks()[-1][2]) * 0.5
 
             return ticks
-
-        return []
 
     #
     # streaming
@@ -157,7 +160,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
         return streamer
 
-    def subscribe_info(self):
+    def subscribe_info(self) -> bool:
         result = False
 
         with self._mutex:
@@ -170,7 +173,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
         return result
 
-    def unsubscribe_info(self):
+    def unsubscribe_info(self) -> bool:
         result = False
 
         with self._mutex:
@@ -184,7 +187,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
         return result
 
-    def subscribe_stream(self, tf):
+    def subscribe_stream(self, tf: float) -> bool:
         """
         Use or create a specific streamer.
         @param 
@@ -196,7 +199,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
         return False
 
-    def unsubscribe_stream(self, tf):
+    def unsubscribe_stream(self, tf: float) -> bool:
         """
         Delete a specific streamer when no more subscribers.
         """
@@ -207,7 +210,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
         return result
 
-    def report_state(self, mode=0):
+    def report_state(self, mode: int = 0) -> dict:
         """
         Collect the state of the strategy trader (instant) and return a dataset.
         And add the per timeframe dataset.

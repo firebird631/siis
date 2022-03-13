@@ -4,14 +4,15 @@
 # Tick bar and reversal generators.
 
 from datetime import datetime, timedelta
-from common.utils import UTC
+from common.utils import UTC, truncate
 
 from instrument.tickbar import TickBarBidAsk, TickBarVolume
 
 
 class TickBarBaseGenerator(object):
 
-    __slots__ = '_size', '_last_timestamp', '_last_consumed', '_current', '_tick_size', '_price_precision', '_tick_scale'
+    __slots__ = '_size', '_last_timestamp', '_last_consumed', '_current', '_tick_size', \
+                '_price_precision', '_tick_scale'
 
     def __init__(self, size, tick_scale=1.0):
         """

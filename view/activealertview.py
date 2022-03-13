@@ -6,13 +6,9 @@
 import threading
 import hashlib
 
-from datetime import datetime
-
-from common.utils import timeframe_to_str
 from common.signal import Signal
 
 from terminal.terminal import Terminal, Color
-from terminal import charmap
 
 from view.tableview import TableView
 
@@ -33,7 +29,6 @@ class ActiveAlertView(TableView):
 
         self._mutex = threading.RLock()
         self._strategy_service = strategy_service
-        self._alerts_list = {}
 
         # listen to its service
         self.service.add_listener(self)
@@ -51,8 +46,7 @@ class ActiveAlertView(TableView):
         if signal.source == Signal.SOURCE_STRATEGY:
             if signal.signal_type == Signal.SIGNAL_STRATEGY_ALERT:
                 with self._mutex:
-                    if signal.data.get('app-id'):
-                        self._refresh = 0.0
+                    self._refresh = 0.0
 
     def refresh(self):
         if not self._strategy_service:
@@ -70,7 +64,7 @@ class ActiveAlertView(TableView):
 
                     for row in table:
                         # colorize by symbol
-                        symbol_color = int(hashlib.sha1(row[0].encode("utf-8")).hexdigest(), 16) % Color.count()-1
+                        symbol_color = int(hashlib.sha1(row[0].encode("utf-8")).hexdigest(), 16) % Color.count()
                         row[0] = Color.colorize(row[0], Color.color(symbol_color), Terminal.inst().style())
 
                     self.table(columns, table, total_size)

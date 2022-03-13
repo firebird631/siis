@@ -4,6 +4,7 @@
 # Account view.
 
 from view.tableview import TableView
+from trader.helpers.accounttable import account_table
 
 import logging
 error_logger = logging.getLogger('siis.view.account')
@@ -34,7 +35,7 @@ class AccountView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.account_table(*self.table_format())
+                columns, table, total_size = account_table(trader, *self.table_format())
                 self.table(columns, table, total_size)
                 num = total_size[1]
             except Exception as e:

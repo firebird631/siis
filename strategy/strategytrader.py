@@ -1868,6 +1868,12 @@ class StrategyTrader(object):
         """
         return False
 
+    def subscribe_info(self) -> bool:
+        return False
+
+    def unsubscribe_info(self) -> bool:
+        return False
+
     def report_state(self, mode=0):
         """
         Collect the state of the strategy trader (instant) and return a dataset.

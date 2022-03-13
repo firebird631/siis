@@ -3,20 +3,16 @@
 # @license Copyright (c) 2018 Dream Overflow
 # service worker
 
-import time
-import threading
-
-from datetime import datetime, timedelta
-from importlib import import_module
-
 from config import utils
 from common.service import Service
 from common.signal import Signal
 
 from terminal.terminal import Terminal
-from trader.position import Position
 from trader.connector.papertrader.trader import PaperTrader
-from trader.traderexception import TraderServiceException
+
+import logging
+logger = logging.getLogger('siis.trader.service')
+error_logger = logging.getLogger('siis.trader.service')
 
 
 class TraderService(Service):
@@ -24,11 +20,11 @@ class TraderService(Service):
     Trader service is responsible of build, initialize, load configuration, start/stop the trader.
     """
 
-    def __init__(self, watcher_service, monitor_service, options):
+    def __init__(self, watcher_service, monitor_service, options: dict):
         super().__init__("trader", options)
 
         self._trader = None
-        
+
         self._keys_map_to_trader = {}
         self._next_trader_key = 1
         self._next_trader_uid = 1
@@ -72,10 +68,10 @@ class TraderService(Service):
         return self._monitor_service
 
     @property
-    def report_path(self):
+    def report_path(self) -> str:
         return self._report_path
 
-    def start(self, options):
+    def start(self, options: dict):
         # no trader in watcher only
         if self._watcher_only:
             return
@@ -96,10 +92,10 @@ class TraderService(Service):
             return
 
         if trader_config.get("status") is not None and trader_config.get("status") == "load":
-            # retrieve the classname and instantiate it
+            # retrieve the class-name and instantiate it
             parts = trader_config.get('classpath').split('.')
 
-            module = __import__('.'.join(parts[:-1]), None, locals(), [parts[-1],], 0)
+            module = __import__('.'.join(parts[:-1]), None, locals(), [parts[-1], ], 0)
             Clazz = getattr(module, parts[-1])
 
             # backtesting always create paper traders

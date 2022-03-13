@@ -3,8 +3,8 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Order view.
 
-from terminal.terminal import Terminal
 from view.tableview import TableView
+from trader.helpers.activeordertable import active_orders_table
 
 import logging
 error_logger = logging.getLogger('siis.view.order')
@@ -35,8 +35,8 @@ class OrderView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.active_orders_table(
-                    *self.table_format(), quantities=True, datetime_format=self._datetime_format,
+                columns, table, total_size = active_orders_table(
+                    trader, *self.table_format(), quantities=True, datetime_format=self._datetime_format,
                     group=self._group, ordering=self._ordering)
 
                 self.table(columns, table, total_size)

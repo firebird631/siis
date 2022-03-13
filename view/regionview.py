@@ -56,7 +56,7 @@ class RegionView(TableView):
 
                     for row in table:
                         # colorize by symbol
-                        symbol_color = int(hashlib.sha1(row[0].encode("utf-8")).hexdigest(), 16) % Color.count()-1
+                        symbol_color = int(hashlib.sha1(row[0].encode("utf-8")).hexdigest(), 16) % Color.count()
                         row[0] = Color.colorize(row[0], Color.color(symbol_color), Terminal.inst().style())
 
                     self.table(columns, table, total_size)

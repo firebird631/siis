@@ -3,8 +3,8 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Position view.
 
-from terminal.terminal import Terminal
 from view.tableview import TableView
+from trader.helpers.positionstatstable import positions_stats_table
 
 import logging
 error_logger = logging.getLogger('siis.view.position')
@@ -35,8 +35,8 @@ class PositionView(TableView):
             num = 0
 
             try:
-                columns, table, total_size = trader.positions_stats_table(
-                    *self.table_format(), quantities=True, datetime_format=self._datetime_format)
+                columns, table, total_size = positions_stats_table(
+                    trader, *self.table_format(), quantities=True, datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]

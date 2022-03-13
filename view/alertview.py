@@ -37,7 +37,7 @@ class AlertView(TableView):
 
         self._mutex = threading.RLock()
         self._strategy_service = strategy_service
-        self._alerts_list = {}
+        self._alerts_list = []
 
         # listen to its service
         self.service.add_listener(self)
@@ -64,22 +64,27 @@ class AlertView(TableView):
         if signal.source == Signal.SOURCE_STRATEGY:
             if signal.signal_type == Signal.SIGNAL_STRATEGY_ALERT:
                 with self._mutex:
-                    if signal.data.get('app-id'):
-                        if signal.data['app-id'] not in self._alerts_list:
-                            self._alerts_list[signal.data['app-id']] = []
+                    self._alerts_list.append(signal.data)
 
-                        alerts_list = self._alerts_list[signal.data['app-id']]
-                        alerts_list.append(signal.data)
+                    if len(self._alerts_list) > AlertView.MAX_ALERTS:
+                        self._alerts_list.pop(0)
 
-                        if len(alerts_list) > AlertView.MAX_ALERTS:
-                            alerts_list.pop(0)
-
-                        self._refresh = 0.0
+                    self._refresh = 0.0
 
     def alerts_table(self, strategy, style='', offset=None, limit=None, col_ofs=None):
+        """
+        Generate the table of alert according to current alerts list.
+        @note This method is not thread safe.
+        @param strategy:
+        @param style:
+        @param offset:
+        @param limit:
+        @param col_ofs:
+        @return:
+        """
         data = []
 
-        alerts = self._alerts_list.get(strategy.identifier, [])
+        alerts = self._alerts_list
         total_size = (len(AlertView.COLUMNS), len(alerts))
 
         if offset is None:
@@ -98,10 +103,10 @@ class AlertView(TableView):
         for alert in alerts:
             ldatetime = datetime.fromtimestamp(alert['timestamp']).strftime(self._datetime_format)
             trigger = Color.colorize_cond(charmap.ARROWUP if alert['trigger'] > 0 else charmap.ARROWDN,
-                    alert['trigger'] > 0, style, true=Color.GREEN, false=Color.RED)
+                                          alert['trigger'] > 0, style, true=Color.GREEN, false=Color.RED)
 
-            symbol_color = int(hashlib.sha1(alert['symbol'].encode("utf-8")).hexdigest(), 16) % Color.count()-1
-            id_color = alert['id'] % Color.count()-1
+            symbol_color = int(hashlib.sha1(alert['symbol'].encode("utf-8")).hexdigest(), 16) % Color.count()
+            id_color = alert['id'] % Color.count()
 
             lid = Color.colorize(str(alert['id']), Color.color(id_color), style)
             lsymbol = Color.colorize(alert['symbol'], Color.color(symbol_color), style)
@@ -149,8 +154,7 @@ class AlertView(TableView):
         alerts = []
 
         with self._mutex:
-            for app_id, alerts_list in self._alerts_list.items():
-                for alert in alerts_list:
-                    alerts.append(copy.copy(alert))
+            for alert in self._alerts_list:
+                alerts.append(copy.copy(alert))
 
         return alerts
