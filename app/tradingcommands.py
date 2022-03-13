@@ -1872,12 +1872,7 @@ class CancelOrderCommand(Command):
         if len(args) <= 1:
             trader = self._trader_service.trader()
             if trader:
-                return self.iterate(0, list(CancelAllOrderCommand.CHOICES) + trader.symbols_ids(), args, tab_pos,
-                                    direction)
-        elif len(args) > 1:
-            return self.iterate(len(args) - 1, CancelAllOrderCommand.CHOICES, args, tab_pos, direction)
-
-        return args, 0
+                return self.iterate(0, trader.symbols_ids(), args, tab_pos, direction)
 
 
 class TickerMemSetCommand(Command):

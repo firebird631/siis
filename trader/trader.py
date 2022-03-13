@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from .market import Market
     from instrument.instrument import Instrument
 
-import traceback
 import time
 import copy
 import base64
@@ -23,6 +22,14 @@ import collections
 from datetime import datetime
 
 from .command.tradercmdstream import cmd_trader_stream
+from .command.tradercmdinfo import cmd_trader_info
+from .command.tradercmdfrozeassetquantity import cmd_trader_froze_asset_quantity
+from .command.tradercmdtradertickermemset import cmd_trader_ticker_memset
+from .command.tradercmdclosemarket import cmd_close_market
+from .command.tradercmdcloseallmarket import cmd_close_all_market
+from .command.tradercmdcancelallorder import cmd_cancel_all_order
+from .command.tradercmdsellallasset import cmd_sell_all_asset
+from .command.tradercmdcancelorder import cmd_cancel_order
 
 from common.signal import Signal
 
@@ -33,8 +40,7 @@ from .position import Position
 from monitor.streamable import Streamable, StreamMemberInt, StreamMemberTraderBalance
 from common.runnable import Runnable
 
-from terminal.terminal import Terminal, Color
-from terminal import charmap
+from terminal.terminal import Terminal
 
 import logging
 logger = logging.getLogger('siis.trader')
@@ -338,25 +344,25 @@ class Trader(Runnable):
         Some parts are mutex some others are not.
         """
         if command_type == Trader.COMMAND_INFO:
-            return self.cmd_trader_info(data)
+            return cmd_trader_info(self, data)
         elif command_type == Trader.COMMAND_TRADER_FROZE_ASSET_QUANTITY:
-            return self.cmd_trader_froze_asset_quantity(data)
+            return cmd_trader_froze_asset_quantity(self, data)
         elif command_type == Trader.COMMAND_TICKER_MEMSET:
-            return self.cmd_trader_ticker_memset(data)
+            return cmd_trader_ticker_memset(self, data)
         elif command_type == Trader.COMMAND_CLOSE_MARKET:
-            return self.cmd_close_market(data)
+            return cmd_close_market(self, data)
         elif command_type == Trader.COMMAND_CLOSE_ALL_MARKET:
-            return self.cmd_close_all_market(data)
+            return cmd_close_all_market(self, data)
         elif command_type == Trader.COMMAND_CANCEL_ALL_ORDER:
-            return self.cmd_cancel_all_order(data)
+            return cmd_cancel_all_order(self, data)
         elif command_type == Trader.COMMAND_SELL_ALL_ASSET:
-            return self.cmd_sell_all_asset(data)
+            return cmd_sell_all_asset(self, data)
         elif command_type == Trader.COMMAND_CANCEL_ORDER:
-            return self.cmd_cancel_order(data)
+            return cmd_cancel_order(self, data)
         elif command_type == Trader.COMMAND_EXPORT:
-            return self.cmd_export(data)
+            return self.cmd_export(data)  # override
         elif command_type == Trader.COMMAND_IMPORT:
-            return self.cmd_import(data)
+            return self.cmd_import(data)  # override
         elif command_type == Trader.COMMAND_STREAM:
             return cmd_trader_stream(self, data)
 
@@ -1054,279 +1060,6 @@ class Trader(Runnable):
                     self._name, market_id,))
 
         return price
-
-    #
-    # commands
-    #
-
-    def cmd_trader_info(self, data: dict):
-        """
-        Info on the global trader instance.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        # @todo
-
-        return results
-
-    def cmd_trader_froze_asset_quantity(self, data: dict):
-        """
-        Lock a quantity of an asset to be not available for trading.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        asset_name = data.get('asset')
-        quantity = data.get('quantity', -1.0)
-
-        if not asset_name:
-            Terminal.inst().error("Asset to froze quantity must be specified")
-
-        if quantity < 0.0:
-            Terminal.inst().error("Asset quantity to froze must be specified and greater or equal to zero")
-
-        # @todo
-
-        return results
-
-    def cmd_trader_ticker_memset(self, data: dict):
-        """
-        Memorize the last market price for any or a specific market.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        market_id = data.get('market-id')
-
-        if market_id:
-            market = self.find_market(market_id)
-
-            if market is None:
-                results['messages'].append("Market %s not found !" % market_id)
-                results['error'] = True
-                return results
-
-            with self._mutex:
-                market.mem_set()
-        else:
-            with self._mutex:
-                for market_id, market in self._markets.items():
-                    market.mem_set()
-
-        return results
-
-    def cmd_close_market(self, data: dict):
-        """
-        Manually close a specified position at market now.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        position_id = None
-        direction = 0
-        quantity = 0.0
-        market = None
-
-        with self._mutex:
-            for k, position in self._positions.items():
-                if position.key == data['key']:
-                    position_id = position.position_id
-                    direction = position.direction
-                    quantity = position.quantity
-
-                    market = self.market(position.symbol)
-
-        if position_id:
-            # query close position
-            if market:
-                try:
-                    self.close_position(position_id, market, direction, quantity, True, None)
-                    Terminal.inst().action("Closing position %s..." % (position_id, ))
-                except Exception as e:
-                    error_logger.error(repr(e))
-            else:
-                Terminal.inst().error("No market found to close position %s" % (position_id, ))
-        else:
-            Terminal.inst().error("No position found to close for key %s" % (data['key'], ))
-
-        return results
-
-    def cmd_close_all_market(self, data: dict):
-        """
-        Manually close any positions related to this account/trader at market now.
-        """
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        positions = []
-
-        with self._mutex:
-            for k, position in self._positions.items():
-                market = self.market(position.symbol)
-
-                if market:
-                    positions.append((position.position_id, market, position.direction, position.quantity))
-                else:
-                    Terminal.inst().error("No market found to close position %s..." % position.position_id)
-
-        for position in positions:
-            # query close position
-            try:
-                self.close_position(position[0], position[1], position[2], position[3], True, None)
-                Terminal.inst().action("Closing position %s..." % position[0])
-            except Exception as e:
-                error_logger.error(repr(e))
-
-        return results
-
-    def cmd_cancel_all_order(self, data: dict):
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        orders = []
-
-        # None or a specific market only
-        market_id = data.get('market-id')
-        options = data.get('options')
-
-        with self._mutex:
-            for k, order in self._orders.items():
-                market = self.market(order.symbol)
-
-                if market is None:
-                    Terminal.inst().error("No market found to cancel order %s..." % (order.order_id, ))
-                    continue
-
-                if market_id and market_id != market.market_id:
-                    # ignored market-id
-                    continue
-
-                if options:
-                    # ("spot-entry", "spot-exit", "margin-entry", "margin-exit")
-                    accept = False
-
-                    if "spot-entry" in options:
-                        if market.has_spot and order.direction > 0:
-                            accept = True
-
-                    if "spot-exit" in options:
-                        if market.has_spot and order.direction < 0:
-                            accept = True
-
-                    if "margin-entry" in options:
-                        if market.has_margin and not order.reduce_only and not order.close_only:
-                            accept = True
-
-                    if "margin-exit" in options:
-                        if market.has_margin and order.reduce_only or order.close_only:
-                            accept = True
-
-                    if not accept:
-                        continue               
-
-                orders.append((order.order_id, market))
-
-        for order in orders:
-            # query cancel order
-            try:
-                if self.cancel_order(order[0], order[1]) > 0:
-                    Terminal.inst().action("Cancel order %s..." % order[0])
-            except Exception as e:
-                error_logger.error(repr(e))
-
-        return results
-
-    def cmd_sell_all_asset(self, data: dict):
-        results = {
-            'messages': [],
-            'error': False
-        }
-
-        assets = []
-
-        with self._mutex:
-            try:
-                for k, asset in self._assets.items():
-                    # query create order to sell any asset quantity
-                    # try over the primary currency, then over the alt one
-                    # user could have to to it in two phase
-                    market = None
-
-                    if k == self._account.currency:
-                        # don't sell account currency
-                        continue
-
-                    for market_id in asset.market_ids:
-                        m = self.market(market_id)
-
-                        if m.quote == self._account.currency:
-                            market = m  # first choice
-                            break
-
-                        # elif m.quote == self._account.alt_currency:
-                        #     market = m  # second choice
-
-                    if asset.free <= 0.0:
-                        continue
-
-                    if market:
-                        assets.append((asset.symbol, market, asset.free))
-                    else:
-                        Terminal.inst().error("No market found to sell all for asset %s..." % (asset.symbol, ))
-
-                for asset in assets:
-                    market = asset[1]
-
-                    order = Order(self, market.market_id)
-                    order.direction = Order.SHORT
-                    order.order_type = Order.ORDER_MARKET
-                    order.quantity = asset[2]
-
-                    # generated a reference order id
-                    self.set_ref_order_id(order)
-
-                    if self.create_order(order, market) > 0:
-                        Terminal.inst().action("Create order %s to sell all of %s on %s..." % (
-                            order.order_id, asset[0], market.market_id))
-                    else:
-                        Terminal.inst().action("Rejected order to sell all of %s on %s..." % (
-                            asset[0], market.market_id))
-            except Exception as e:
-                error_logger.error(repr(e))
-                traceback_logger.error(traceback.format_exc())
-
-        return results
-
-    def cmd_cancel_order(self, data: dict):
-        orders = []
-
-        market_id = data.get('market-id')
-        order_id = data.get('order-id')
-
-        market = self.market(market_id)
-
-        if market is None:
-            Terminal.inst().error("No market found to cancel order %s..." % (order_id, ))
-
-        # query cancel order
-        try:
-            if self.cancel_order(order_id, market) > 0:
-                Terminal.inst().action("Cancel order %s..." % order_id)
-        except Exception as e:
-            error_logger.error(repr(e))
 
     #
     # stream
