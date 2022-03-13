@@ -3,15 +3,9 @@
 # @license Copyright (c) 2018 Dream Overflow
 # OHLC watcher querying on SIIS-DSS (siis datastore service)
 
-import http.client
-import urllib
-import json
 import time
 
 from watcher.watcher import Watcher
-from common.signal import Signal
-
-from terminal.terminal import Terminal
 
 
 class SiisOHLC(Watcher):
@@ -27,6 +21,7 @@ class SiisOHLC(Watcher):
         self._end_point = "ohlc/"
         self._connected = False
         self._checkout = False
+        self._conn = None
 
         # identity
         identity = service.identity(self._name)

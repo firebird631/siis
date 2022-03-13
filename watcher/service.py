@@ -198,7 +198,7 @@ class WatcherService(Service):
     def paper_mode(self) -> bool:
         return self._paper_mode
 
-    def command(self, command_type: int, data: dict) -> dict:
+    def command(self, command_type: int, data: dict) -> Union[dict, None]:
         results = None
 
         if command_type == Watcher.COMMAND_INFO:
@@ -280,7 +280,7 @@ class WatcherService(Service):
     # config
     #
 
-    def identity(self, name: str) -> str:
+    def identity(self, name: str) -> dict:
         return self._identities_config.get(name, {}).get(self._identity)
 
     def fetcher_config(self, name: str) -> dict:

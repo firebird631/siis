@@ -42,11 +42,12 @@ class StrategyTraderException(StrategyException):
 
 class StrategySubTraderException(StrategyTraderException):
 
-    def __init__(self, name, strategy_identifier, instrument_id, sub_id, message):
+    def __init__(self, strategy_name, strategy_identifier, instrument_id, sub_id, message):
         super().__init__(strategy_name, strategy_identifier, instrument_id, message)
 
         self.instrument_id = instrument_id
+        self.sub_id = sub_id
 
     def __str__(self):
         return 'StrategySubTraderException (%s:%s:%s:%s) : %s' % (
-            self.strategy_name, self.strategy_identifier, self.instrument_id, self.instrument_id, self.message)
+            self.strategy_name, self.strategy_identifier, self.instrument_id, self.sub_id, self.message)

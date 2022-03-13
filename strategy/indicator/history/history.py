@@ -3,6 +3,8 @@
 # @license Copyright (c) 2019 Dream Overflow
 # History indicator.
 
+import numpy as np
+
 from strategy.indicator.indicator import Indicator
 
 import logging
@@ -23,14 +25,14 @@ class HistoryIndicator(Indicator):
     __slots__ = '_length', '_values'
 
     @classmethod
-    def indicator_type(cls):
+    def indicator_type(cls) -> int:
         return Indicator.TYPE_TREND
 
     @classmethod
-    def indicator_class(cls):
+    def indicator_class(cls) -> int:
         return Indicator.CLS_INDEX
 
-    def __init__(self, timeframe, length=9):
+    def __init__(self, timeframe: float, length: int = 9):
         super().__init__("history", timeframe)
 
         self._compute_at_close = True  # only at close
@@ -58,11 +60,11 @@ class HistoryIndicator(Indicator):
     def values(self):
         return self._values
 
-    def compute(self, timestamp, values):
+    def compute(self, timestamp: float, values):
         # no more delta than capacity
         delta = min(self._length, int((timestamp - self._last_timestamp) / self._timeframe))
 
-        # temporal coherency, fill left withmissing samples, assume the first value
+        # temporal coherency, fill left with missing samples, assume the first value
         if delta > len(values):
             v = np.append([values[0]]*(delta-len(values)), values)
         else:

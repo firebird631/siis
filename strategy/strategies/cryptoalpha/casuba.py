@@ -3,11 +3,10 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Crypto Alpha strategy, sub-strategy A.
 
-import numpy as np
-
 from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
+    StreamMemberOhlcSerie
 
 from .casub import CryptoAlphaStrategySub
 
@@ -21,7 +20,13 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
+        self.rsi = None
+        self.sma = None
+        self.ema = None
         self.stochrsi = None
+        self.tomdemark = None
+        self.bollingerbands = None
+        self.bsawe = None
 
         super().__init__(strategy_trader, params)
 
@@ -32,7 +37,7 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
         candles = self.get_candles()
 
         if len(candles) < self.depth:
-            # not enought samples
+            # not enough samples
             return
 
         prices = self.price.compute(timestamp, candles)
@@ -610,7 +615,7 @@ class CryptoAlphaStrategySubA(CryptoAlphaStrategySub):
             # last_timestamp
             self.tomdemark.compute(timestamp, self.price.timestamp, self.price.high, self.price.low, self.price.close)
 
-            if 0: # self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and (ema_sma < 0 or bsawe < 0):
+            if 0:  # self.tomdemark.c.c >= 8 and self.tomdemark.c.d < 0 and (ema_sma < 0 or bsawe < 0):
                 # setup complete and trend change
                 signal = StrategySignal(self.tf, timestamp)
                 signal.signal = StrategySignal.SIGNAL_EXIT

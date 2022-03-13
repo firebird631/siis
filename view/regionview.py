@@ -6,13 +6,7 @@
 import threading
 import hashlib
 
-from datetime import datetime
-
-from common.utils import timeframe_to_str
-from common.signal import Signal
-
 from terminal.terminal import Terminal, Color
-from terminal import charmap
 
 from view.tableview import TableView
 

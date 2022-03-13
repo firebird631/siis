@@ -4,13 +4,10 @@
 # Binarizer tools
 
 import sys
-import logging
-import traceback
 
-from common.utils import UTC, TIMEFRAME_FROM_STR_MAP
+from common.utils import TIMEFRAME_FROM_STR_MAP
 
 from terminal.terminal import Terminal
-from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.tools.fetcher')

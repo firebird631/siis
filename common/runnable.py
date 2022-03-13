@@ -6,6 +6,7 @@
 import traceback
 import threading
 import time
+from typing import Union, Callable
 
 from terminal.terminal import Terminal
 
@@ -74,7 +75,7 @@ class Runnable(object):
         # time.sleep(1)  # default does not use CPU
         return True
 
-    def command(self, command, data):
+    def command(self, command: int, data: dict) -> Union[dict, None]:
         return None
 
     def pre_run(self):
@@ -176,26 +177,20 @@ class Runnable(object):
         self._mutex.release()
 
     @property
-    def name(self):
+    def name(self) -> str:
         return ""
 
     @property
-    def identifier(self):
+    def identifier(self) -> str:
         return ""
 
     @property
-    def running(self):
+    def running(self) -> bool:
         return self._running
     
     @property
-    def playing(self):
+    def playing(self) -> bool:
         return self._playpause
-
-    def loads(self, in_data):
-        pass
-
-    def dumps(self, out_data):
-        pass
 
     def sync(self):
         pass
@@ -208,14 +203,16 @@ class Runnable(object):
             self._ping = (0, None, True)
             self._mutex.release()
         else:
-            Terminal.inst().action("Unable to join thread %s for %s seconds" % (self._thread.name if self._thread else "unknown", timeout), view='content')
+            Terminal.inst().action("Unable to join thread %s for %s seconds" % (
+                self._thread.name if self._thread else "unknown", timeout), view='content')
 
-    def watchdog(self, watchdog_service, timeout):
+    def watchdog(self, watchdog_service, timeout: float):
         if not self._running:
             return
 
         if self._mutex.acquire(timeout=timeout):
-            self._ping = (watchdog_service.gen_pid(self._thread.name if self._thread else "unknown"), watchdog_service, False)
+            self._ping = (watchdog_service.gen_pid(self._thread.name if self._thread else "unknown"),
+                          watchdog_service, False)
             self._mutex.release()
         else:
             watchdog_service.service_timeout(
@@ -230,7 +227,7 @@ class Runnable(object):
             watchdog_service.service_pong(pid, timestamp, msg)
 
     @classmethod
-    def mutexed(cls, fn):
+    def mutexed(cls, fn: Callable):
         """
         Annotation for methods that require mutex locker.
         """

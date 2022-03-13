@@ -3,13 +3,10 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Bitcoin Alpha strategy, sub-strategy A.
 
-import numpy as np
-
-from terminal.terminal import Terminal
-
 from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
+    StreamMemberOhlcSerie
 
 from .bcasub import BitcoinAlphaStrategySub
 
@@ -23,6 +20,19 @@ class BitcoinAlphaStrategySubA(BitcoinAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
+        self.sma = None
+        self.ema = None
+        self.rsi = None
+        self.stochrsi = None
+        self.tomdemark = None
+        self.score = None
+        self.sma200 = None
+        self.sma55 = None
+        self.bollingerbands = None
+        self.bswave = None
+        self.atr = None
+        self.bsawe = None
+
         super().__init__(strategy_trader, params)
 
         if 'scores' in params:

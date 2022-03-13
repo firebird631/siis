@@ -5,12 +5,10 @@
 
 import time
 import threading
-import hashlib
 import traceback
 
 from datetime import datetime
 
-from common.utils import timeframe_to_str
 from common.signal import Signal
 
 from terminal.terminal import Terminal, Color

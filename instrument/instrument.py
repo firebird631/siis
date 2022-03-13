@@ -3,13 +3,25 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Instrument symbol
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Union, Optional, Tuple, Dict
+
+if TYPE_CHECKING:
+    from watcher.watcher import Watcher
+    from .tickbar import TickBarBase
+
 import math
 
 from datetime import datetime, timedelta
+
 from common.utils import UTC, timeframe_to_str, truncate, decimal_place
 
 import logging
 logger = logging.getLogger('siis.instrument.instrument')
+
+TickType = Tuple[float, float, float, float, float, float]
+OHLCType = Tuple[float, float, float, float, float, float, float]
 
 
 class Candle(object):
@@ -21,7 +33,7 @@ class Candle(object):
 
     __slots__ = '_timestamp', '_timeframe', '_open', '_high', '_low', '_close', '_spread', '_volume', '_ended'
 
-    def __init__(self, timestamp, timeframe):
+    def __init__(self, timestamp: float, timeframe: float):
         self._timestamp = timestamp
         self._timeframe = timeframe
         
@@ -43,53 +55,53 @@ class Candle(object):
         return self._timeframe
 
     @property
-    def open(self):
+    def open(self) -> float:
         return self._open
 
     @property
-    def high(self):
+    def high(self) -> float:
         return self._high
 
     @property
-    def low(self):
+    def low(self) -> float:
         return self._low
 
     @property
-    def close(self):
+    def close(self) -> float:
         return self._close
 
     @property
-    def spread(self):
+    def spread(self) -> float:
         return self._spread
 
     @property
-    def ended(self):
+    def ended(self) -> bool:
         return self._ended
 
     @property
-    def volume(self):
+    def volume(self) -> float:
         return self._volume
 
     @property
-    def height(self):
+    def height(self) -> float:
         return self.high - self.low
     
-    def set(self, last): 
+    def set(self, last: float):
         self._open = last
         self._high = last
         self._low = last
         self._close = last
 
-    def set_ohlc(self, o, h, l, c): 
+    def set_ohlc(self, o: float, h: float, l: float, c: float):
         self._open = o
         self._high = h
         self._low = l
         self._close = c
 
-    def set_volume(self, ltv):
+    def set_volume(self, ltv: float):
         self._volume = ltv
 
-    def set_ohlc_s_v(self, o, h, l, c, s, v):
+    def set_ohlc_s_v(self, o: float, h: float, l: float, c: float, s: float, v: float):
         self._open = o
         self._high = h
         self._low = l
@@ -97,20 +109,20 @@ class Candle(object):
         self._spread = s
         self._volume = v
 
-    def set_spread(self, spread):
+    def set_spread(self, spread: float):
         self._spread = spread
 
-    def set_consolidated(self, cons):
+    def set_consolidated(self, cons: bool):
         self._ended = cons
 
-    def copy(self, dup):
+    def copy(self, dup: Candle):
         self._open = dup._open
         self._high = dup._high
         self._low = dup._low
         self._close = dup._close
         self._spread = dup._spread
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s %s %s/%s/%s/%s" % (
             timeframe_to_str(self._timeframe),
             self._timestamp,
@@ -127,13 +139,15 @@ class BuySellSignal(object):
 
     __slots__ = '_timestamp', '_timeframe', '_strategy', '_order_type', '_direction', '_exec_price', '_params'
 
-    def __init__(self, timestamp, timeframe):
+    _strategy: Union[str, None]
+
+    def __init__(self, timestamp: float, timeframe: float):
         self._timestamp = timestamp
         self._timeframe = timeframe
         self._strategy = None
         self._order_type = BuySellSignal.ORDER_ENTRY
         self._direction = None
-        self._exec_price = 0
+        self._exec_price = 0.0
         self._params = {}
 
     @property
@@ -145,22 +159,22 @@ class BuySellSignal(object):
         return self._timeframe
 
     @property
-    def strategy(self):
+    def strategy(self) -> str:
         return self._strategy
     
     @property
-    def direction(self):
+    def direction(self) -> int:
         return self._direction
     
     @property
-    def order_type(self):
+    def order_type(self) -> int:
         return self._order_type
 
     @property
-    def exec_price(self):
+    def exec_price(self) -> float:
         return self._exec_price
 
-    def set_data(self, strategy, order_type, direction, exec_price, timeframe):
+    def set_data(self, strategy: str, order_type: int, direction: int, exec_price: float, timeframe: float):
         self._strategy = strategy
         self._order_type = order_type
         self._direction = direction
@@ -168,11 +182,11 @@ class BuySellSignal(object):
         self._timeframe = timeframe
 
     @property
-    def params(self):
+    def params(self) -> dict:
         return self._params
     
     @params.setter
-    def params(self, params):
+    def params(self, params: dict):
         self._params = params
 
 
@@ -291,7 +305,9 @@ class Instrument(object):
                 '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', \
                 '_evening_session', '_overnight_session', '_week_session'
 
-    def __init__(self, market_id, symbol, alias=None):
+    _watchers: Dict[int, Watcher]
+
+    def __init__(self, market_id: str, symbol: str, alias: Optional[str] = None):
         self._watchers = {}
         self._market_id = market_id
         self._symbol = symbol
@@ -346,39 +362,39 @@ class Instrument(object):
 
         self._wanted = []  # list of wanted timeframe before be ready (its only for initialization)
 
-    def add_watcher(self, watcher_type, watcher):
+    def add_watcher(self, watcher_type: int, watcher: Watcher):
         if watcher:
             self._watchers[watcher_type] = watcher
 
-    def watcher(self, watcher_type):
+    def watcher(self, watcher_type: int) -> Union[Watcher, None]:
         return self._watchers.get(watcher_type)
 
     @property
-    def symbol(self):
+    def symbol(self) -> str:
         return self._symbol
 
     @symbol.setter
-    def symbol(self, symbol):
+    def symbol(self, symbol: str):
         self._symbol = symbol
 
     @property
-    def alias(self):
+    def alias(self) -> str:
         return self._alias
 
     @alias.setter
-    def alias(self, alias):
+    def alias(self, alias: str):
         self._alias = alias
 
     @property
-    def market_id(self):
+    def market_id(self) -> str:
         return self._market_id
 
     @property
-    def tradeable(self):
+    def tradeable(self) -> bool:
         return self._tradeable
 
     @tradeable.setter
-    def tradeable(self, status):
+    def tradeable(self, status: bool):
         self._tradeable = status
 
     #
@@ -386,77 +402,77 @@ class Instrument(object):
     #
 
     @property
-    def trade(self):
+    def trade(self) -> int:
         return self._trade
 
     @trade.setter
-    def trade(self, trade):
+    def trade(self, trade: int):
         self._trade = trade
 
     @property
-    def has_spot(self):
+    def has_spot(self) -> bool:
         return self._trade & Instrument.TRADE_SPOT == Instrument.TRADE_SPOT
 
     @property
-    def has_margin(self):
+    def has_margin(self) -> bool:
         return self._trade & Instrument.TRADE_MARGIN == Instrument.TRADE_MARGIN
 
     @property
-    def indivisible_position(self):
+    def indivisible_position(self) -> bool:
         return self._trade & Instrument.TRADE_IND_MARGIN == Instrument.TRADE_IND_MARGIN
 
     @property
-    def fifo_position(self):
+    def fifo_position(self) -> bool:
         return self._trade & Instrument.TRADE_FIFO == Instrument.TRADE_FIFO
 
     @property
-    def has_position(self):
+    def has_position(self) -> bool:
         return self._trade & Instrument.TRADE_POSITION == Instrument.TRADE_POSITION
 
     @property
-    def orders(self):
+    def orders(self) -> int:
         return self._orders
 
     @orders.setter
-    def orders(self, flags):
+    def orders(self, flags: int):
         self._orders = flags
 
-    def set_quote(self, symbol):
+    def set_quote(self, symbol: str):
         self._quote = symbol
 
     @property
-    def quote(self):
+    def quote(self) -> str:
         return self._quote
 
-    def set_base(self, symbol):
+    def set_base(self, symbol: str):
         self._base = symbol
 
     @property
-    def base(self):
+    def base(self) -> str:
         return self._base
 
     @property
-    def hedging(self):
+    def hedging(self) -> bool:
         return self._hedging
     
     @hedging.setter
-    def hedging(self, hedging):
+    def hedging(self, hedging: bool):
         self._hedging = hedging
 
     @property
-    def currency(self):
+    def currency(self) -> str:
         return self._currency
 
     @currency.setter
-    def currency(self, currency):
+    def currency(self, currency: str):
         self._currency = currency
 
     @property
-    def expiry(self):
+    def expiry(self) -> str:
         return self._expiry
     
     @expiry.setter
-    def expiry(self, expiry):
+    def expiry(self, expiry: str):
         self._expiry = expiry
 
     #
@@ -464,23 +480,23 @@ class Instrument(object):
     #
 
     @property
-    def trade_quantity(self):
+    def trade_quantity(self) -> float:
         return self._trade_quantity
 
     @trade_quantity.setter
-    def trade_quantity(self, quantity):
+    def trade_quantity(self, quantity: float):
         if quantity > 0.0:
             self._trade_quantity = quantity
 
     @property
-    def trade_quantity_mode(self):
+    def trade_quantity_mode(self) -> int:
         return self._trade_quantity_mode
 
     @trade_quantity_mode.setter
-    def trade_quantity_mode(self, trade_quantity_mode):
+    def trade_quantity_mode(self, trade_quantity_mode: int):
         self._trade_quantity_mode = trade_quantity_mode
 
-    def trade_quantity_mode_to_str(self):
+    def trade_quantity_mode_to_str(self) -> str:
         if self._trade_quantity_mode == Instrument.TRADE_QUANTITY_DEFAULT:
             return "default"
         elif self._trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
@@ -493,27 +509,27 @@ class Instrument(object):
     #
 
     @property
-    def evening_session(self):
+    def evening_session(self) -> Tuple[float, float]:
         return self._evening_session
 
     @property
-    def overnight_session(self):
+    def overnight_session(self) -> Union[Tuple[float, float], None]:
         return self._overnight_session
 
     @property
-    def has_overnight_session(self):
+    def has_overnight_session(self) -> bool:
         return self._overnight_session is not None
 
     @property
-    def session_offset(self):
+    def session_offset(self) -> float:
         return -self._evening_session[0]
 
     @property
-    def week_session(self):
+    def week_session(self) -> Union[Tuple[float, float], None]:
         return self._week_session
 
     @property
-    def has_week_session(self):
+    def has_week_session(self) -> bool:
         return self._week_session is not None
 
     #
@@ -521,51 +537,51 @@ class Instrument(object):
     #
 
     @property
-    def market_bid(self):
+    def market_bid(self) -> float:
         return self._market_bid
 
     @market_bid.setter
-    def market_bid(self, bid):
+    def market_bid(self, bid: float):
         self._market_bid = bid
 
     @property
-    def market_ask(self):
+    def market_ask(self) -> float:
         return self._market_ask
 
     @market_ask.setter
-    def market_ask(self, ask):
+    def market_ask(self, ask: float):
         self._market_ask = ask
 
     @property
-    def market_price(self):
+    def market_price(self) -> float:
         return (self._market_bid + self._market_ask) * 0.5
 
     @property
-    def market_spread(self):
+    def market_spread(self) -> float:
         return self._market_ask - self._market_bid
 
     @property
-    def last_update_time(self):
+    def last_update_time(self) -> float:
         return self._last_update_time
 
     @last_update_time.setter
-    def last_update_time(self, last_update_time):
+    def last_update_time(self, last_update_time: float):
         self._last_update_time = last_update_time
 
     @property
-    def vol24h_base(self):
+    def vol24h_base(self) -> float:
         return self._vol24h_base
     
     @property
-    def vol24h_quote(self):
+    def vol24h_quote(self) -> float:
         return self._vol24h_quote
     
     @vol24h_base.setter
-    def vol24h_base(self, v):
+    def vol24h_base(self, v: float):
         self._vol24h_base = v
 
     @vol24h_quote.setter
-    def vol24h_quote(self, v):
+    def vol24h_quote(self, v: float):
         self._vol24h_quote = v
  
     #
@@ -573,113 +589,113 @@ class Instrument(object):
     #
 
     @property
-    def size_limits(self):
+    def size_limits(self) -> Tuple[float, float, float, float]:
         return self._size_limits
 
     @property
-    def min_size(self):
+    def min_size(self) -> float:
         return self._size_limits[0]
 
     @property
-    def max_size(self):
+    def max_size(self) -> float:
         return self._size_limits[1]
 
     @property
-    def step_size(self):
+    def step_size(self) -> float:
         return self._size_limits[2]
 
     @property
-    def size_precision(self):
+    def size_precision(self) -> float:
         return self._size_limits[3]
 
     @property
-    def notional_limits(self):
+    def notional_limits(self) -> Tuple[float, float, float, float]:
         return self._notional_limits
 
     @property
-    def min_notional(self):
+    def min_notional(self) -> float:
         return self._notional_limits[0]
 
     @property
-    def max_notional(self):
+    def max_notional(self) -> float:
         return self._notional_limits[1]
 
     @property
-    def step_notional(self):
+    def step_notional(self) -> float:
         return self._notional_limits[2]
 
     @property
-    def notional_precision(self):
+    def notional_precision(self) -> float:
         return self._notional_limits[3]
 
     @property
-    def price_limits(self):
+    def price_limits(self) -> Tuple[float, float, float, float]:
         return self._price_limits
 
     @property
-    def min_price(self):
+    def min_price(self) -> float:
         return self._price_limits[0]
 
     @property
-    def max_price(self):
+    def max_price(self) -> float:
         return self._price_limits[1]
 
     @property
-    def step_price(self):
+    def step_price(self) -> float:
         return self._price_limits[2]
 
     @property
-    def tick_price(self):
+    def tick_price(self) -> float:
         return self._price_limits[2]
 
     @property
-    def price_precision(self):
+    def price_precision(self) -> float:
         return self._price_limits[3]
 
     @property
-    def value_per_pip(self):
+    def value_per_pip(self) -> float:
         return self._value_per_pip
 
     @property
-    def one_pip_means(self):
+    def one_pip_means(self) -> float:
         return self._one_pip_means
 
     @property
-    def leverage(self):
+    def leverage(self) -> float:
         """
         Account and instrument related leverage.
         """
         return self._leverage
     
     @leverage.setter
-    def leverage(self, leverage):
+    def leverage(self, leverage: float):
         self._leverage = leverage
 
-    def set_size_limits(self, min_size, max_size, step_size):
+    def set_size_limits(self, min_size: float, max_size: float, step_size: float):
         size_precision = max(0, decimal_place(step_size) if step_size > 0 else 0)
         self._size_limits = (min_size, max_size, step_size, size_precision)
 
-    def set_notional_limits(self, min_notional, max_notional, step_notional):
+    def set_notional_limits(self, min_notional: float, max_notional: float, step_notional: float):
         notional_precision = max(0, decimal_place(step_notional) if step_notional > 0 else 0)
         self._notional_limits = (min_notional, max_notional, step_notional, notional_precision)
 
-    def set_price_limits(self, min_price, max_price, step_price):
+    def set_price_limits(self, min_price: float, max_price: float, step_price: float):
         price_precision = max(0, decimal_place(step_price) if step_price > 0 else 0)
         self._price_limits = (min_price, max_price, step_price, price_precision)
 
     @value_per_pip.setter
-    def value_per_pip(self, value_per_pip):
+    def value_per_pip(self, value_per_pip: float):
         self._value_per_pip = value_per_pip
 
     @one_pip_means.setter
-    def one_pip_means(self, one_pip_means):
+    def one_pip_means(self, one_pip_means: float):
         self._one_pip_means = one_pip_means
 
     #
     # ticks or candles
     #
 
-    def check_temporal_coherency(self, tf):
+    def check_temporal_coherency(self, tf: float) -> List[Tuple[str, float, int, int, float, float]]:
         """
         Check temporal coherency of the candles and return the list of incoherence.
         """
@@ -724,7 +740,7 @@ class Instrument(object):
     # candles OHLC
     #
 
-    def add_candles(self, candles_list, max_candles=-1):
+    def add_candles(self, candles_list: List[Candle], max_candles: int = -1):
         """
         Append an array of new candle.
         @param candles_list
@@ -766,7 +782,7 @@ class Instrument(object):
                 while(len(candles)) > max_candles:
                     candles.pop(0)
 
-    def add_candle(self, candle, max_candles=-1):
+    def add_candle(self, candle: Candle, max_candles: int = -1):
         """
         Append a new candle.
         @param candle
@@ -805,7 +821,7 @@ class Instrument(object):
                 while(len(candles)) > max_candles:
                     candles.pop(0)
 
-    def last_candles(self, tf, number):
+    def last_candles(self, tf: float, number: int) -> List[Candle]:
         """
         Return as possible last n candles with a fixed step of time unit.
         """
@@ -820,7 +836,7 @@ class Instrument(object):
 
         return results
 
-    def candle(self, tf):
+    def candle(self, tf: float) -> Union[Candle, None]:
         """
         Return as possible the last candle.
         """
@@ -830,14 +846,14 @@ class Instrument(object):
 
         return None
 
-    def candles(self, tf):
+    def candles(self, tf: float) -> Union[List[Candle], None]:
         """
         Returns candles list for a specific timeframe.
         @param tf Timeframe
         """
         return self._candles.get(tf)
 
-    def reduce_candles(self, timeframe, max_candles):
+    def reduce_candles(self, timeframe: float, max_candles: int):
         """
         Reduce the number of candle to max_candles.
         """
@@ -847,7 +863,7 @@ class Instrument(object):
         if self._candles.get(timeframe):
             candles = self._candles[timeframe][-max_candles:]
 
-    def last_ended_timestamp(self, tf):
+    def last_ended_timestamp(self, tf: float) -> float:
         """
         Returns the timestamp of the last consolidated candle for a specific time unit.
         """
@@ -860,7 +876,7 @@ class Instrument(object):
 
         return 0.0
 
-    def candles_from(self, tf, from_ts):
+    def candles_from(self, tf: float, from_ts: float) -> List[Candle]:
         """
         Returns candle having timestamp >= from_ts in seconds.
         @param tf Timeframe
@@ -899,7 +915,7 @@ class Instrument(object):
 
         return results
 
-    def candles_after(self, tf, after_ts):
+    def candles_after(self, tf: float, after_ts: float) -> List[Candle]:
         """
         Returns candle having timestamp >= after_ts in seconds.
         @param tf Timeframe
@@ -938,7 +954,7 @@ class Instrument(object):
     # ticks
     #
 
-    def add_ticks(self, ticks_list):
+    def add_ticks(self, ticks_list: List[TickType]):
         if not ticks_list:
             return
 
@@ -953,7 +969,7 @@ class Instrument(object):
             # initiate array
             self._ticks = ticks_list
 
-    def add_tick(self, tick):
+    def add_tick(self, tick: TickType):
         if not tick:
             return
 
@@ -969,10 +985,10 @@ class Instrument(object):
     def clear_ticks(self):
         self._ticks.clear()
 
-    def ticks(self):
+    def ticks(self) -> List[TickType]:
         return self._ticks
 
-    def detach_ticks(self):
+    def detach_ticks(self) -> List[TickType]:
         """
         Detach the array of tick and setup a new empty for the instrument.
         """
@@ -980,7 +996,7 @@ class Instrument(object):
         self._ticks = []
         return ticks
 
-    def ticks_after(self, after_ts):
+    def ticks_after(self, after_ts: float) -> List[TickType]:
         """
         Returns ticks having timestamp > from_ts in seconds.
         """
@@ -1001,7 +1017,7 @@ class Instrument(object):
     # tick-bar
     #
     
-    def add_tickbars(self, tickbars_list, max_tickbars=-1):
+    def add_tickbars(self, tickbars_list: List[TickBarBase], max_tickbars: int = -1):
         """
         Append an array of new tickbars.
         @param tickbars_list
@@ -1035,7 +1051,7 @@ class Instrument(object):
             while(len(tickbars)) > max_tickbars:
                 tickbars.pop(0)
 
-    def add_tickbar(self, tickbar, max_tickbars=-1):
+    def add_tickbar(self, tickbar: TickBarBase, max_tickbars: int = -1):
         """
         Append a new tickbar.
         @param tickbar
@@ -1067,7 +1083,7 @@ class Instrument(object):
             while(len(tickbars)) > max_tickbars:
                 tickbars.pop(0)
 
-    def tickbar(self):
+    def tickbar(self) -> Optional[TickBarBase]:
         """
         Return as possible the last tickbar.
         """
@@ -1076,7 +1092,7 @@ class Instrument(object):
 
         return None
 
-    def tickbars(self):
+    def tickbars(self) -> List[TickBarBase]:
         """
         Returns tickbars list.
         """
@@ -1086,25 +1102,25 @@ class Instrument(object):
     # sync
     #
 
-    def ready(self):
+    def ready(self) -> bool:
         """
         Return true when ready to process.
         """
         return not self._wanted
 
-    def want_timeframe(self, timeframe):
+    def want_timeframe(self, timeframe: float):
         """
         Add a required candles for a specific timeframe.
         """
         self._wanted.append(timeframe)
 
-    def is_want_timeframe(self, timeframe):
+    def is_want_timeframe(self, timeframe: float) -> bool:
         """
         Check if a timeframe is wanted.
         """
         return timeframe in self._wanted
 
-    def ack_timeframe(self, timeframe):
+    def ack_timeframe(self, timeframe: float) -> bool:
         """
         Clear wanted timeframe status and returns true if it was wanted.
         """
@@ -1114,7 +1130,7 @@ class Instrument(object):
 
         return False
 
-    def open_exec_price(self, direction, maker=False):
+    def open_exec_price(self, direction: int, maker: bool = False) -> float:
         """
         Return the execution price if an order open a position.
         It depend of the direction of the order and the market bid/ask prices.
@@ -1128,7 +1144,7 @@ class Instrument(object):
         else:
             return (self._market_ask + self._market_bid) * 0.5
 
-    def close_exec_price(self, direction, maker=False):
+    def close_exec_price(self, direction: int, maker: bool = False) -> float:
         """
         Return the execution price if an order/position is closing.
         It depend of the direction of the order and the market bid/ask prices.
@@ -1146,7 +1162,7 @@ class Instrument(object):
     # format/adjust
     #
 
-    def adjust_price(self, price):
+    def adjust_price(self, price: float) -> float:
         """
         Format the price according to the precision.
         """
@@ -1159,7 +1175,7 @@ class Instrument(object):
         # adjusted price at precision and by step of pip meaning
         return truncate(round(price / tick_size) * tick_size, precision)
 
-    def adjust_quote(self, quote):
+    def adjust_quote(self, quote: float) -> float:
         """
         Format the quote according to the precision.
         """
@@ -1172,7 +1188,7 @@ class Instrument(object):
         # adjusted quote price at precision and by step of pip meaning
         return truncate(round(quote / tick_size) * tick_size, precision)
 
-    def format_price(self, price):
+    def format_price(self, price: float) -> str:
         """
         Format the price according to the precision.
         """
@@ -1191,7 +1207,7 @@ class Instrument(object):
 
         return formatted_price
 
-    def format_quote(self, quote):
+    def format_quote(self, quote: float) -> str:
         """
         Format the quote according to the precision.
         """
@@ -1210,7 +1226,7 @@ class Instrument(object):
 
         return formatted_quote
 
-    def adjust_quantity(self, quantity, min_is_zero=True):
+    def adjust_quantity(self, quantity: float, min_is_zero: bool = True) -> float:
         """
         From quantity return the floor tradeable quantity according to min, max and rounded to step size.
         To make a precise value for trade use format_value from this returned value.
@@ -1241,7 +1257,7 @@ class Instrument(object):
 
         return quantity
 
-    def format_quantity(self, quantity):
+    def format_quantity(self, quantity: float) -> str:
         """
         Return a quantity as str according to the precision of the step size.
         """
@@ -1260,28 +1276,28 @@ class Instrument(object):
     # fee/commission
     #
 
-    def set_fees(self, maker, taker):
+    def set_fees(self, maker: float, taker: float):
         self._fees[Instrument.MAKER][0] = maker
         self._fees[Instrument.TAKER][0] = taker
 
-    def set_commissions(self, maker, taker):
+    def set_commissions(self, maker: float, taker: float):
         self._fees[Instrument.MAKER][1] = maker
         self._fees[Instrument.TAKER][1] = taker
 
     @property
-    def maker_fee(self):
+    def maker_fee(self) -> float:
         return self._fees[Instrument.MAKER][0]
 
     @property
-    def taker_fee(self):
+    def taker_fee(self) -> float:
         return self._fees[Instrument.TAKER][0]
 
     @property
-    def maker_commission(self):
+    def maker_commission(self) -> float:
         return self._fees[Instrument.MAKER][1]
 
     @property
-    def taker_commission(self):
+    def taker_commission(self) -> float:
         return self._fees[Instrument.TAKER][1]
 
     #

@@ -3,8 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # www.binance.com data fetcher
 
-import json
-import time
 import traceback
 
 from common.utils import timeframe_to_str

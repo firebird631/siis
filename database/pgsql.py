@@ -3,17 +3,11 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Storage service, postgresql implementation
 
-import os
 import json
 import time
-import threading
-import copy
-import traceback
-import pathlib
 
 from importlib import import_module
 
-from watcher.service import WatcherService
 from common.signal import Signal
 
 from instrument.instrument import Instrument, Candle
@@ -21,7 +15,6 @@ from instrument.instrument import Instrument, Candle
 from trader.market import Market
 from trader.asset import Asset
 
-from .tickstorage import TickStorage, TickStreamer
 from .ohlcstorage import OhlcStorage, OhlcStreamer
 
 from .database import Database, DatabaseException
@@ -521,8 +514,13 @@ class PgSql(Database):
                     for row in rows:
                         asset = Asset(ua[1], row[0])
 
+                        try:
+                            last_trade_id = int(row[1])
+                        except ValueError:
+                            last_trade_id = 0
+
                         # only a sync will tell which quantity is free, which one is locked
-                        asset.update_price(float(row[2]) * 0.001, row[1], float(row[4]), row[5])
+                        asset.update_price(float(row[2]) * 0.001, last_trade_id, float(row[4]), row[5])
                         asset.set_quantity(0.0, float(row[3]))
 
                         assets.append(asset)

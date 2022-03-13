@@ -10,7 +10,6 @@ from terminal import charmap
 
 from common.utils import UTC
 
-from strategy.strategy import Strategy
 from strategy.helpers.closedtradedataset import get_closed_trades
 
 import logging

@@ -4,8 +4,6 @@
 # Optimizer tool.
 
 import sys
-import logging
-import traceback
 
 from datetime import datetime, timedelta
 

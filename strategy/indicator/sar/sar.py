@@ -4,7 +4,7 @@
 # Parabolic SAR indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MM_n
+# from strategy.indicator.utils import down_sample, MM_n
 
 import numpy as np
 from talib import SAR as ta_SAR

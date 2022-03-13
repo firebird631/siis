@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .alert.alert import Alert
     from .region.region import Region
     from trader.trader import Trader
+    from instrument.instrument import TickType
 
 import pathlib
 import threading
@@ -20,6 +21,8 @@ import traceback
 
 from datetime import datetime
 from typing import Union, Optional, List
+
+from instrument.instrument import Instrument
 
 from strategy.trade.strategyassettrade import StrategyAssetTrade
 from strategy.trade.strategyindmargintrade import StrategyIndMarginTrade
@@ -30,8 +33,6 @@ from strategy.trade.strategytrade import StrategyTrade
 from .strategytradercontext import StrategyTraderContext, StrategyTraderContextBuilder
 
 from .indicator.models import Limits
-
-from instrument.instrument import Instrument
 
 from common.utils import timeframe_to_str
 from strategy.strategysignal import StrategySignal
@@ -595,7 +596,7 @@ class StrategyTrader(object):
         """
         pass
 
-    def preprocess(self, trade: StrategyTrade):
+    def preprocess(self, trade: TickType):
         """
         Override this method to preprocess trade per trade each most recent data than the cache.
         """
@@ -1067,8 +1068,6 @@ class StrategyTrader(object):
         with self._trade_mutex:
             return len(self._trades) > 0
 
-        return False
-
     def list_trades(self) -> List[StrategyTrade]:
         """
         List of ids of pending and actives trades.
@@ -1374,6 +1373,12 @@ class StrategyTrader(object):
     def on_market_info(self):
         """
         When receive initial or update of market/instrument data.
+        """
+        pass
+
+    def on_received_initial_candles(self, timeframe: float):
+        """
+        Slot called once the initial bulk of candles are received for each timeframe.
         """
         pass
 

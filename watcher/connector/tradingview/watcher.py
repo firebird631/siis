@@ -4,7 +4,6 @@
 # tradingview.com watcher implementation
 
 import http.server
-import socketserver
 import json
 import threading
 import time
@@ -13,11 +12,9 @@ import traceback
 import urllib.parse
 
 from watcher.watcher import Watcher
-from watcher.author import Author
 from trader.position import Position
 from common.signal import Signal
 
-from terminal.terminal import Terminal
 from instrument.instrument import BuySellSignal
 
 import logging
@@ -38,6 +35,8 @@ class MyThread(threading.Thread):
 		self._server.runner = self
 		self._qlock = threading.RLock()
 		self._queries = []
+
+		self.running = False
 
 	def run(self):
 		self.running = True
@@ -70,8 +69,8 @@ class MyThread(threading.Thread):
 
 class MyHttpHandler(http.server.BaseHTTPRequestHandler):
 
-	def __init__(self, client_address, server, request):
-		super().__init__(client_address, server, request)
+	def __init__(self, request, client_address, server):
+		super().__init__(request, client_address, server)
 
 	def do_GET(self):
 		# return super().do_GET(self)
@@ -89,9 +88,9 @@ class MyHttpHandler(http.server.BaseHTTPRequestHandler):
 		self.wfile.write(result.encode("utf-8"))
 		self.server.runner.add_query(data)
 
-	def log_message(self, format, *args):
+	def log_message(self, _format, *args):
 		# @todo logger
-		msg = format % args
+		msg = _format % args
 		return
 
 
@@ -183,7 +182,7 @@ class TradingViewWatcher(Watcher):
 			
 			options = {}
 
-			# optionnal parameters goes in 'options' and begins by "o_"
+			# optional parameters goes in 'options' and begins by "o_"
 			for k, v in q.items():
 				if k.startswith('o_'):
 					options[k.lstrip('o_')] = v
@@ -210,7 +209,7 @@ class TradingViewWatcher(Watcher):
 				order_type = BuySellSignal.ORDER_ENTRY
 
 			bs.set_data(strategy, order_type, dir_type, price, timeframe)
-			bs.set_params(options)
+			bs.params = options
 
 			self.service.notify(Signal.SIGNAL_BUY_SELL_ORDER, self.name, bs)
 

@@ -6,10 +6,10 @@
 from instrument.instrument import Instrument
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import MM_n, down_sample
+# from strategy.indicator.utils import MM_n, down_sample
 from talib import ATR as ta_ATR, EMA as ta_EMA, MAX as ta_MAX, MIN as ta_MIN, SMA as ta_SMA
 
-from datetime import datetime
+# from datetime import datetime
 import numpy as np
 
 import logging
@@ -370,7 +370,7 @@ class ATRSRIndicator(Indicator):
 
         return self._up, self._down
 
-    def loads(self, data):
+    def loads(self, data: dict):
         pass
 
     def dumps(self):

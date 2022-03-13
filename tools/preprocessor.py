@@ -3,8 +3,6 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Preprocessor tools
 
-import sys
-import logging
 import traceback
 from importlib import import_module
 
@@ -14,7 +12,6 @@ from config import utils
 from terminal.terminal import Terminal
 from database.database import Database
 
-from strategy.strategy import Strategy
 from strategy.service import StrategyService
 
 import logging

@@ -3,8 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Strategy info
 
-from terminal.terminal import Terminal
-
 from monitor.streamable import Streamable
 
 
@@ -18,7 +16,7 @@ class StrategyInfo(object):
 
 		return None
 
-	def __init__(self, group_name, stream_name):
+	def __init__(self, group_name: str, stream_name: str):
 		self.chart = None
 
 		self.strategy_identifier = group_name
@@ -28,7 +26,7 @@ class StrategyInfo(object):
 
 		self._visible = False
 
-	def on_info(self, data):
+	def on_info(self, data: dict):
 		if data['n'] == 'tfs':
 			self.tfs = data['v']
 		elif data['n'] == 'depth':

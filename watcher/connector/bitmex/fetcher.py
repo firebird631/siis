@@ -3,16 +3,12 @@
 # @license Copyright (c) 2019 Dream Overflow
 # www.bitmex.com data fetcher
 
-import re
-import json
-import time
 import traceback
 
 from common.utils import timeframe_to_str
 from watcher.fetcher import Fetcher
 
 from connector.bitmex.connector import Connector
-from database.database import Database
 
 import logging
 logger = logging.getLogger('siis.fetcher.bitmex')
@@ -35,6 +31,7 @@ class BitMexFetcher(Fetcher):
         super().__init__("bitmex.com", service)
 
         self._connector = None
+        self._host = ""
 
     def connect(self):
         super().connect()
@@ -56,7 +53,7 @@ class BitMexFetcher(Fetcher):
                 if not self._connector.connected:
                     self._connector.connect(use_ws=False)
 
-                    # get list of all availables instruments
+                    # get list of all available instruments
                     self._available_instruments = set(self._connector.all_instruments)
 
         except Exception as e:

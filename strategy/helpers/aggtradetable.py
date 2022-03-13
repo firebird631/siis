@@ -3,14 +3,7 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy display table formatter helpers for views or notifiers
 
-from datetime import datetime
-
 from terminal.terminal import Color
-from terminal import charmap
-
-from common.utils import timeframe_to_str
-
-from strategy.strategy import Strategy
 
 from strategy.helpers.aggtradedataset import get_agg_trades
 

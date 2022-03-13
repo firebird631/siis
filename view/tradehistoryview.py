@@ -3,7 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Historical trades view.
 
-from terminal.terminal import Terminal
 from view.tableview import TableView
 
 from common.signal import Signal

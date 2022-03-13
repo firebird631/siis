@@ -1,10 +1,10 @@
 # @date 2019-02-16
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2016 Dream Overflow
-# Directionnal moving index indicator using close, low and high prices.
+# Directional moving index indicator using close, low and high prices.
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample
+# from strategy.indicator.utils import down_sample
 from talib import PLUS_DI as ta_PLUS_DI, MINUS_DI as ta_MINUS_DI
 
 import numpy as np
@@ -12,7 +12,7 @@ import numpy as np
 
 class DMIIndicator(Indicator):
     """
-    Directionnal Moving Index indicator using low and high prices.
+    Directional Moving Index indicator using low and high prices.
     """
 
     __slots__ = '_length', '_prev_dp', '_prev_dm', '_last_dp', '_last_dm', '_dps', '_dms'
@@ -42,10 +42,6 @@ class DMIIndicator(Indicator):
     @property
     def prev_dp(self):
         return self._prev_dp
-
-    @property
-    def prev_da(self):
-        return self._prev_da
 
     @property
     def prev_dm(self):

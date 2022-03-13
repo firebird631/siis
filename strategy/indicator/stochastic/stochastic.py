@@ -2,13 +2,13 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @author Xavier BONNIN
 # @license Copyright (c) 2018 Dream Overflow
-# Stochastique indicator
+# Stochastic indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MMexp_n, MM_n
+from strategy.indicator.utils import down_sample, MM_n  # , MMexp_n
 
 import numpy as np
-from talib import STOCH as ta_STOCH, STOCHF as to_STOCHF
+from talib import STOCH as ta_STOCH  # , STOCHF as to_STOCHF
 
 
 class StochasticIndicator(Indicator):

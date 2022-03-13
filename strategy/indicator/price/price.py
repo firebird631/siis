@@ -79,7 +79,7 @@ class PriceIndicator(Indicator):
         return self._close
 
     @property
-    def timestamp(self) -> float:
+    def timestamp(self):
         return self._timestamp
 
     @property

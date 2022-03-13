@@ -4,8 +4,8 @@
 # Average True Range indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MM_n
-from talib import ATR as ta_ATR, SMA as ta_SMA
+# from strategy.indicator.utils import down_sample, MM_n
+from talib import ATR as ta_ATR  # , SMA as ta_SMA
 
 import numpy as np
 

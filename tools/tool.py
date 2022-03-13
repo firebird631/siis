@@ -4,8 +4,6 @@
 # Base tools model
 
 import sys
-import logging
-import traceback
 import glob
 
 from os.path import dirname, basename, isfile, join

@@ -3,21 +3,15 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy alpha processor.
 
-import os
 import time
-import collections
 import traceback
 
 from datetime import datetime, timedelta
 
-from common.utils import timeframe_to_str, timeframe_from_str, UTC
-
-from common.signal import Signal
 from instrument.instrument import Instrument
 
 from watcher.watcher import Watcher
 
-from strategy.indicator.models import Limits
 from strategy.strategydatafeeder import StrategyDataFeeder
 
 from database.database import Database

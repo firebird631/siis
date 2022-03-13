@@ -4,10 +4,10 @@
 # BitCoin Alpha strategy, sub-strategy C.
 
 from strategy.indicator import utils
-from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
+    StreamMemberOhlcSerie
 
-from .basub import BitcoinAlphaStrategySub
+from .bcasub import BitcoinAlphaStrategySub
 
 import logging
 logger = logging.getLogger('siis.strategy.bitcoinalpha')
@@ -19,6 +19,13 @@ class BitcoinAlphaStrategySubC(BitcoinAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
+        # default indicators
+        self.rsi = None
+        self.stochrsi = None
+        self.sma = None
+        self.ema = None
+        self.atr = None
+
         super().__init__(strategy_trader, params)
 
         if 'scores' in params:
@@ -38,7 +45,7 @@ class BitcoinAlphaStrategySubC(BitcoinAlphaStrategySub):
         candles = self.get_candles()
 
         if len(candles) < self.depth:
-            # not enought samples
+            # not enough samples
             return
 
         prices = self.price.compute(timestamp, candles)

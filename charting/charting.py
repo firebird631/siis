@@ -482,7 +482,7 @@ class Chart(object):
 		else:
 			spec_xaxis = None
 
-		self._others[chart_id].hline_serie(plot_id, data, opt, label, c, xaxis=spec_xaxis, linestyle=linestyle, w=w)
+		self._others[chart_id].hline_serie(hline_id, data, opt, label, c, xaxis=spec_xaxis, linestyle=linestyle, w=w)
 
 	# def scatter_price_serie(self, plot_id, data, s=None, c=None, marker='o', cmap=None):
 	# 	"""

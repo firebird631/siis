@@ -5,7 +5,7 @@
 
 from terminal.command import Command
 
-from app.help import display_help, display_cli_help, display_command_help, display_version
+from app.help import display_help, display_command_help, display_version
 
 
 class HelpCommand(Command):

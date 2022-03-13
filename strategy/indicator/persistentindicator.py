@@ -17,9 +17,8 @@ class PersistentIndicator(Indicator):
     def persistent(cls):
         return True
 
-    @classmethod
-    def table(cls):
-        return  "indicator_%s" % self._name
-
     def __init__(self, name, timeframe):
         super().__init__(name, timeframe)
+
+    def table(self):
+        return "indicator_%s" % self._name

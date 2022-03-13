@@ -36,7 +36,7 @@ class BinanceAccount(Account):
         self._currency_precision = 8
         self._alt_currency_precision = 2
 
-        self._last_update = 0
+        self._last_update = 0.0
 
     def update(self, connector):
         if connector is None or not connector.connected:
@@ -51,6 +51,7 @@ class BinanceAccount(Account):
             self._asset_balance = 0.0
             self._free_asset_balance = 0.0
 
+            # asset_quantities impl for this trader
             asset_quantities = self.parent.asset_quantities()
 
             self._currency_ratio = self.parent.last_price(self._currency+self._alt_currency)

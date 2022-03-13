@@ -3,11 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy helper to get dataset
 
-from datetime import datetime
-
-from terminal.terminal import Color
-from terminal import charmap
-
 from common.utils import timeframe_to_str
 
 import logging
@@ -47,14 +42,14 @@ def get_stats(strategy):
 
     trader = strategy.trader()
 
-    with strategy._mutex:
+    with strategy.mutex:
         try:
             for k, strategy_trader in strategy._strategy_traders.items():
                 profit_loss = 0.0
                 trades = []
                 perf = 0.0
 
-                with strategy_trader._mutex:
+                with strategy_trader.mutex:
                     perf = strategy_trader._stats['perf']
                     best = strategy_trader._stats['best']
                     worst = strategy_trader._stats['worst']

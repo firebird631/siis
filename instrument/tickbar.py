@@ -3,11 +3,6 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Instrument tickbar models.
 
-import math
-
-from datetime import datetime, timedelta
-from common.utils import UTC, timeframe_to_str, truncate, decimal_place
-
 import logging
 logger = logging.getLogger('siis.instrument.tickbar')
 
@@ -21,7 +16,7 @@ class TickBarBase(object):
     __slots__ = '_timestamp', '_last_timestamp', '_volume', '_ended', '_open', '_close', '_ticks', '_num_trades', \
         '_pov', '_pov_bid', '_pov_ask', '_vol_bid', '_vol_ask', '_avg_size', '_num_trades', '_low', '_high', '_dir'
 
-    def __init__(self, timestamp, price):
+    def __init__(self, timestamp: float, price: float):
         """
         @param timestamp Opening timestamp in seconds.
         """
@@ -72,7 +67,7 @@ class TickBarBase(object):
         return self._last_timestamp
 
     @property
-    def ended(self):
+    def ended(self) -> bool:
         return self._ended
 
     @property
@@ -80,44 +75,44 @@ class TickBarBase(object):
         return self._ticks
 
     @property
-    def open(self):
+    def open(self) -> float:
         return self._open
     
     @property
-    def close(self):
+    def close(self) -> float:
         return self._close
 
     @property
-    def abs_height(self):
+    def abs_height(self) -> float:
         """
         Height in ticks from open to close, always absolute.
         """
         return self._close - self._open if self._close > self._open else self._open - self._close
 
     @property
-    def height(self):
+    def height(self) -> float:
         """
         Height in ticks from open to close, always relative.
         """
         return self._close - self._open
 
     @property
-    def pov(self):
+    def pov(self) -> float:
         """
         Returns the price where the bid+ask volume is the max.
         """
         return self._pov
 
     @property
-    def pov_bid(self):
+    def pov_bid(self) -> float:
         return self._pov_bid
     
     @property
-    def pov_ask(self):
+    def pov_ask(self) -> float:
         return self._pov_ask
 
     @property
-    def direction(self):
+    def direction(self) -> int:
         return self._dir
 
     #
@@ -130,12 +125,13 @@ class TickBarBase(object):
         self._update_pov()
 
     def add_tick(self, price, volume):
-        if price in self._ticks:
-            # @todo not index
-            pos = self._ticks.index(price)
-            self._ticks[pos] += volume
-        else:
-            self._ticks.append()
+        pass
+        # if price in self._ticks:
+        #     # @todo not index
+        #     pos = self._ticks.index(price)
+        #     self._ticks[pos] += volume
+        # else:
+        #     self._ticks.append()
 
     #
     # protected
@@ -195,16 +191,16 @@ class TickBarBidAsk(TickBarBase):
     Tick-bar instance for an instrument with distinct bid/ask volume.
     """
 
-    def __init__(self, timestamp, price):
+    def __init__(self, timestamp: float, price: float):
         super().__init__(timestamp, price)
 
-    def bid_vol(self, price):
+    def bid_vol(self, price: float) -> float:
         if price in self._ticks:
             return self._ticks[price][0]
 
         return 0.0
 
-    def ask_vol(self, price):
+    def ask_vol(self, price: float) -> float:
         if price in self._ticks:
             return self._ticks[price][1]
 
@@ -216,10 +212,10 @@ class TickBarVolume(TickBarBase):
     Tick-bar instance for an instrument with merged volume.
     """
 
-    def __init__(self, timestamp, price):
+    def __init__(self, timestamp: float, price: float):
         super().__init__(timestamp, price)
 
-    def vol(self, price):
+    def vol(self, price: float) -> float:
         if price in self._ticks:
             return self._ticks[price]
 

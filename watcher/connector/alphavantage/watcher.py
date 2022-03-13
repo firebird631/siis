@@ -3,24 +3,13 @@
 # @license Copyright (c) 2019 Dream Overflow
 # alphavantage.co watcher implementation
 
-import math
-import urllib
-import json
 import time
-import os.path
 import traceback
-import requests
 
 from watcher.watcher import Watcher
 from common.signal import Signal
 
 from connector.alphavantage.connector import Connector
-from terminal.terminal import Terminal
-
-from instrument.instrument import Instrument, Candle
-from database.database import Database
-
-from trader.market import Market
 
 import logging
 logger = logging.getLogger('siis.watcher.alphavantage')
@@ -85,6 +74,7 @@ class AlphaVantageWatcher(Watcher):
 
         self._markets_map = {}
         self._currencies = {}
+        self._subscriptions = []
 
     def connect(self):
         super().connect()
@@ -184,6 +174,8 @@ class AlphaVantageWatcher(Watcher):
         # Fetch markets
         #
 
+        now = time.time()
+
         for instrument in self._watched_instruments:
             market = self._markets_map.get(instrument)
 
@@ -213,7 +205,7 @@ class AlphaVantageWatcher(Watcher):
         super().post_run()
 
     def fetch_markets(self):
-        pass
+        return []
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         pass  # @todo

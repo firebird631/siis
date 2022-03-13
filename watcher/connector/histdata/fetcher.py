@@ -4,9 +4,7 @@
 # www.histdata.com data fetcher
 
 import os
-import json
 import shutil
-import time
 import traceback
 import zipfile
 
@@ -14,9 +12,6 @@ from datetime import datetime
 
 from common.utils import UTC, timeframe_to_str
 from watcher.fetcher import Fetcher
-
-# from connector.histdata.connector import Connector
-from terminal.terminal import Terminal
 
 import logging
 logger = logging.getLogger('siis.fetcher.histdata')
@@ -201,29 +196,33 @@ class HistDataFetcher(Fetcher):
                     cur_date = cur_date.replace(month=1, year=cur_date.year+1)
 
         except Exception as e:
-            logger.error("Fetcher %s cannot retrieve candles %s on market %s" % (self.name, tf, symbol))
+            logger.error("Fetcher %s cannot retrieve candles %s on market %s" % (self.name, tf, market_id))
             logger.error(repr(e))
 
         count = 0
 
-        for candle in candles:
-            count += 1
-            # (timestamp, open, high, low, open, close, spread, volume)
-            yield([candle[0], candle[2], candle[3], candle[1], candle[4], 0.0, candle[5]])
+        # for candle in candles:
+        #     count += 1
+        #     # (timestamp, open, high, low, open, close, spread, volume)
+        #     yield candle[0], candle[2], candle[3], candle[1], candle[4], 0.0, candle[5]
 
-        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (self.name, market_id, count, timeframe_to_str(tf)))
+        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (
+            self.name, market_id, count, timeframe_to_str(tf)))
 
     def is_yearly_or_monthly(self, tick, market_id, cur_date):
         if tick:
-            filename = "%s/%s/T/%s/HISTDATA_COM_ASCII_%s_T%s%02i.zip" % (self._base_path, market_id, cur_date.year, market_id, cur_date.year, cur_date.month)
+            filename = "%s/%s/T/%s/HISTDATA_COM_ASCII_%s_T%s%02i.zip" % (
+                self._base_path, market_id, cur_date.year, market_id, cur_date.year, cur_date.month)
             if os.path.isfile(filename):
                 return HistDataFetcher.FILE_MONTHLY, filename
         else:
-            filename = "%s/%s/1M/%s/HISTDATA_COM_ASCII_%s_M%s%02i.zip" % (self._base_path, market_id, cur_date.year, market_id, cur_date.year, cur_date.month)
+            filename = "%s/%s/1M/%s/HISTDATA_COM_ASCII_%s_M%s%02i.zip" % (
+                self._base_path, market_id, cur_date.year, market_id, cur_date.year, cur_date.month)
             if os.path.isfile(filename):
                 return HistDataFetcher.FILE_MONTHLY, filename
 
-            filename = "%s/%s/1M/%s/HISTDATA_COM_ASCII_%s_M%s.zip" % (self._base_path, market_id, cur_date.year, market_id, cur_date.year)
+            filename = "%s/%s/1M/%s/HISTDATA_COM_ASCII_%s_M%s.zip" % (
+                self._base_path, market_id, cur_date.year, market_id, cur_date.year)
             if os.path.isfile(filename):
                 return HistDataFetcher.FILE_YEARLY, filename
 

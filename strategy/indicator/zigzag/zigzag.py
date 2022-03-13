@@ -4,10 +4,10 @@
 # ZigZag indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample
+# from strategy.indicator.utils import down_sample
 
-import sys
-import numpy as np
+# import sys
+# import numpy as np
 
 
 class ZigZagIndicator(Indicator):
@@ -64,7 +64,7 @@ class ZigZagIndicator(Indicator):
     def highers(self):
         return self._highers
 
-    def compute(self, timestamp, open, high, low, close):
+    def compute(self, timestamp, _open, high, low, close):
         highers, lowers = [], []
 
         # @todo

@@ -4,18 +4,16 @@
 # Ohlc rebuilder from ticks/trades data tool
 
 import sys
-import logging
 import time
-import traceback
 
 from datetime import datetime, timedelta
 
-from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, timeframe_from_str, format_datetime
+from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, format_datetime
 
 from terminal.terminal import Terminal
 from database.database import Database
 
-from instrument.instrument import Candle, Instrument
+from instrument.instrument import Instrument
 from instrument.candlegenerator import CandleGenerator
 
 import logging

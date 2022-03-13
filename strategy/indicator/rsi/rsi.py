@@ -2,10 +2,10 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @author Xavier BONNIN
 # @license Copyright (c) 2018 Dream Overflow
-# Relative Strengh Index indicator
+# Relative Strength Index indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MMexp_n, MM_n
+from strategy.indicator.utils import down_sample, MM_n  # , MMexp_n
 
 import numpy as np
 from talib import RSI as ta_RSI
@@ -13,7 +13,7 @@ from talib import RSI as ta_RSI
 
 class RSIIndicator(Indicator):
     """
-    Relative Strengh Index indicator
+    Relative Strength Index indicator
     """
 
     __slots__ = '_length', '_prev', '_last', '_rsis'

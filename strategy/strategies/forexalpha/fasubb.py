@@ -5,9 +5,8 @@
 
 from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
-
-from terminal.terminal import Terminal
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
+    StreamMemberOhlcSerie
 
 from .fasub import ForexAlphaStrategySub
 
@@ -21,6 +20,10 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
+        self.rsi = None
+        self.sma = None
+        self.ema = None
+
         super().__init__(strategy_trader, params)
 
         if 'scores' in params:
@@ -41,7 +44,7 @@ class ForexAlphaStrategySubB(ForexAlphaStrategySub):
         candles = self.get_candles()
 
         if len(candles) < self.depth:
-            # not enought samples
+            # not enough samples
             return
 
         prices = self.price.compute(timestamp, candles)

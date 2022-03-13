@@ -4,8 +4,8 @@
 # @brief Ichimoku Kinko Hyo indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MMexp_n, MM_n
-from talib import MIN as ta_MIN, MAX as ta_MAX, MIDPRICE as ta_MIDPRICE
+# from strategy.indicator.utils import down_sample, MMexp_n, MM_n
+from talib import MIDPRICE as ta_MIDPRICE  # , MIN as ta_MIN, MAX as ta_MAX
 
 import numpy as np
 
@@ -21,8 +21,9 @@ class IchimokuIndicator(Indicator):
         - Tenkan sen and kiju sen are aligned to initial data
     """
 
-    __slots__ = '_tenkan_sen_l', '_kijun_sen_l', '_senkou_span_b_l', '_tenkans' ,'_kijuns', '_ssas', '_ssbs', '_chikous', \
-        '_prev_tenkan', '_last_tenkan', '_prev_kijun', '_last_kijun', '_trmax_h', '_trmin_l', '_krmax_h', '_krmin_l', '_sbrmax_h', '_sbrmin_l'
+    __slots__ = '_tenkan_sen_l', '_kijun_sen_l', '_senkou_span_b_l', '_tenkans' ,'_kijuns', \
+                '_ssas', '_ssbs', '_chikous', '_prev_tenkan', '_last_tenkan', '_prev_kijun', '_last_kijun', \
+                '_trmax_h', '_trmin_l', '_krmax_h', '_krmin_l', '_sbrmax_h', '_sbrmin_l'
 
     @classmethod
     def indicator_type(cls):

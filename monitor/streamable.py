@@ -105,8 +105,8 @@ class StreamMember(object):
     def name(self):
         return self._name
 
-    def update(self, value):
-        pass
+    # def update(self, value):
+    #     pass
 
     def has_update(self):
         return self._updated

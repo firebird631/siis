@@ -34,7 +34,7 @@ class BinanceFuturesAccount(Account):
         self._currency_precision = 2
         self._alt_currency_precision = 8
 
-        self._last_update = 0
+        self._last_update = 0.0
 
     def update(self, connector):
         if connector is None or not connector.connected:
@@ -67,8 +67,8 @@ class BinanceFuturesAccount(Account):
                 if balance:
                     self._name = balance[0]["accountAlias"]
             else:
-                # next through WS updates
-                balances = self.parent()._watcher.get_balances()
+                # next through WS updates, get_balances impl for this trader
+                balances = self.parent.watcher.get_balances()
 
                 self._balance = balances['totalWalletBalance']
 

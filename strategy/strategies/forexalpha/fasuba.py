@@ -7,7 +7,9 @@ import numpy as np
 
 from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
+    StreamMemberOhlcSerie
+
 from instrument.instrument import Instrument
 
 from terminal.terminal import Terminal
@@ -24,6 +26,19 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
+        self.rsi = None
+        self.sma = None
+        self.ema = None
+        self.atr = None
+        self.vwma = None
+        self.sma200 = None
+        self.sma55 = None
+        self.bsawe = None
+        self.stochrsi = None
+        self.tomdemark = None
+        self.bollingerbands = None
+        self.pivotpoint = None
+
         super().__init__(strategy_trader, params)
 
         if 'scores' in params:
@@ -43,7 +58,7 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
         candles = self.get_candles()
 
         if len(candles) < self.depth:
-            # not enought samples
+            # not enough samples
             return
 
         prices = self.price.compute(timestamp, candles)

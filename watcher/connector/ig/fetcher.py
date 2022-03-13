@@ -3,8 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # ig.com watcher implementation
 
-import urllib
-import json
 import time
 import pytz
 import traceback
@@ -14,7 +12,6 @@ from common.utils import UTC
 from watcher.fetcher import Fetcher
 from instrument.instrument import Instrument
 
-from terminal.terminal import Terminal
 from connector.ig.connector import IGConnector
 
 import logging
@@ -37,6 +34,7 @@ class IGFetcher(Fetcher):
         self._connector = None
         self._account_id = ""
         self._tzname = None
+        self._account_type = ""
 
     def connect(self):
         super().connect()

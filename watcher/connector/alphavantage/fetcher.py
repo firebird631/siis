@@ -3,14 +3,11 @@
 # @license Copyright (c) 2019 Dream Overflow
 # www.alphavantage.co data fetcher
 
-import json
-import time
 import traceback
 
 from watcher.fetcher import Fetcher
 
 from connector.alphavantage.connector import Connector
-from terminal.terminal import Terminal
 
 import logging
 logger = logging.getLogger('siis.fetcher.alphavantage')
@@ -26,6 +23,7 @@ class AlphaVantageFetcher(Fetcher):
 		super().__init__("alphavantage.co", service)
 
 		self._connector = None
+		self._subscriptions = []
 
 	def connect(self):
 		super().connect()

@@ -3,16 +3,11 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Syncer tools
 
-import sys
-import logging
-import traceback
-
 from tools.tool import Tool
 
 from terminal.terminal import Terminal
 from database.database import Database
 
-from watcher.watcher import Watcher
 from watcher.service import WatcherService
 
 import logging

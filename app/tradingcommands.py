@@ -294,7 +294,8 @@ class SetOptionCommand(Command):
         "param3: <value> Value of the parameter (integer, decimal or string)",
     )
 
-    INTEGER_RE = re.compile(r'^[+-]{0,1}[0-9]+$')
+    # INTEGER_RE = re.compile(r'^[+-]{0,1}[0-9]+$')
+    INTEGER_RE = re.compile(r'^[+-]?[0-9]+$')
     FLOAT_RE = re.compile(r'(?i)^\s*[+-]?(?:inf(inity)?|nan|(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s*$')
 
     def __init__(self, strategy_service):

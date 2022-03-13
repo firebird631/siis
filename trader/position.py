@@ -3,6 +3,14 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Trader position
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional, Union
+
+if TYPE_CHECKING:
+    from .trader import Trader
+    from .market import Market
+
 from common.keyed import Keyed
 
 
@@ -34,11 +42,14 @@ class Position(Keyed):
     STATE_CLOSING = 3
     STATE_CLOSED = 4
 
-    def __init__(self, trader):
+    _take_profit: Union[float, None]
+    _stop_loss: Union[float, None]
+
+    def __init__(self, trader: Trader):
         super().__init__()
 
         self._trader = trader
-        self._position_id = None
+        self._position_id = ""
         self._state = Position.STATE_PENDING
 
         self._symbol = ""
@@ -67,7 +78,9 @@ class Position(Keyed):
         self._trailing_stop = False
         self._direction = Position.LONG
 
-    def entry(self, direction, symbol, quantity, take_profit=None, stop_loss=None, leverage=1.0, trailing_stop=False):
+    def entry(self, direction: int, symbol: str, quantity: float, take_profit: Optional[float] = None,
+              stop_loss: Optional[float] = None, leverage: float = 1.0, trailing_stop: bool = False):
+
         self._state = Position.STATE_OPENED
         self._direction = direction
         self._symbol = symbol
@@ -85,179 +98,179 @@ class Position(Keyed):
         self._state = Position.STATE_CLOSED
         self._exit_price = exit_price
 
-    def set_position_id(self, position_id):
+    def set_position_id(self, position_id: str):
         self._position_id = position_id
 
-    def is_opened(self):
+    def is_opened(self) -> bool:
         return self._state == Position.STATE_OPENED
 
-    def is_closing(self):
+    def is_closing(self) -> bool:
         return self._state == Position.STATE_CLOSING
 
-    def is_closed(self):
+    def is_closed(self) -> bool:
         return self._state == Position.STATE_CLOSED
 
     @property
-    def state(self):
+    def state(self) -> int:
         return self._state
 
     @property
-    def position_id(self):
+    def position_id(self) -> str:
         return self._position_id
     
     @property
-    def trader(self):
+    def trader(self) -> Trader:
         return self._trader
 
     @property
-    def symbol(self):
+    def symbol(self) -> str:
         return self._symbol
 
     @property
-    def direction(self):
+    def direction(self) -> int:
         return self._direction
 
     @property
-    def take_profit(self):
+    def take_profit(self) -> float:
         return self._take_profit
     
     @property
-    def stop_loss(self):
+    def stop_loss(self) -> float:
         return self._stop_loss
     
     @property
-    def entry_price(self):
+    def entry_price(self) -> float:
         return self._entry_price
 
     @property
-    def exit_price(self):
+    def exit_price(self) -> float:
         return self._exit_price
 
     @property
-    def trailing_stop(self):
+    def trailing_stop(self) -> bool:
         return self._trailing_stop
     
     @property
-    def leverage(self):
+    def leverage(self) -> float:
         return self._leverage
 
     @property
-    def profit_loss_currency(self):
+    def profit_loss_currency(self) -> str:
         return self._profit_loss_currency
 
     @property
-    def raw_profit_loss(self):
+    def raw_profit_loss(self) -> float:
         return self._raw_profit_loss
 
     @property
-    def raw_profit_loss_rate(self):
+    def raw_profit_loss_rate(self) -> float:
         return self._raw_profit_loss_rate
 
     @property
-    def profit_loss(self):
+    def profit_loss(self) -> float:
         return self._profit_loss
 
     @property
-    def profit_loss_rate(self):
+    def profit_loss_rate(self) -> float:
         return self._profit_loss_rate
 
     @property
-    def profit_loss_market(self):
+    def profit_loss_market(self) -> float:
         return self._profit_loss_market
 
     @property
-    def profit_loss_market_rate(self):
+    def profit_loss_market_rate(self) -> float:
         return self._profit_loss_market_rate
 
     @property
-    def market_close(self):
+    def market_close(self) -> bool:
         return self._market_close
 
     @property
-    def created_time(self):
+    def created_time(self) -> float:
         return self._created_time
 
     @property
-    def closed_time(self):
+    def closed_time(self) -> float:
         return self._closed_time
 
     @property
-    def quantity(self):
+    def quantity(self) -> float:
         return self._quantity
 
     @trader.setter
-    def trader(self, trader):
+    def trader(self, trader: Trader):
         self._trader = trader
     
     @symbol.setter
-    def symbol(self, symbol):
+    def symbol(self, symbol: str):
         self._symbol = symbol
 
     @direction.setter
-    def direction(self, direction):
+    def direction(self, direction: int):
         self._direction = direction
 
     @profit_loss_currency.setter
-    def profit_loss_currency(self, currency):
+    def profit_loss_currency(self, currency: str):
         self._profit_loss_currency = currency
 
     @profit_loss.setter
-    def profit_loss(self, profit_loss):
+    def profit_loss(self, profit_loss: float):
         self._profit_loss = profit_loss
 
     @profit_loss_rate.setter
-    def profit_loss_rate(self, profit_loss_rate):
+    def profit_loss_rate(self, profit_loss_rate: float):
         self._profit_loss_rate = profit_loss_rate
     
     @profit_loss_market.setter
-    def profit_loss_market(self, profit_loss_market):
+    def profit_loss_market(self, profit_loss_market: float):
         self._profit_loss_market = profit_loss_market
 
     @profit_loss_market_rate.setter
-    def profit_loss_market_rate(self, profit_loss_market_rate):
+    def profit_loss_market_rate(self, profit_loss_market_rate: float):
         self._profit_loss_market_rate = profit_loss_market_rate
     
     @market_close.setter
-    def market_close(self, market_close):
+    def market_close(self, market_close: bool):
         self._market_close = market_close
 
     @trailing_stop.setter
-    def trailing_stop(self, trailing_stop):
+    def trailing_stop(self, trailing_stop: bool):
         self._trailing_stop = trailing_stop
 
     @created_time.setter
-    def created_time(self, timestamp):
+    def created_time(self, timestamp: float):
         self._created_time = timestamp
 
     @closed_time.setter
-    def closed_time(self, timestamp):
+    def closed_time(self, timestamp: float):
         self._closed_time = timestamp
 
     @quantity.setter
-    def quantity(self, quantity):
+    def quantity(self, quantity: float):
         self._quantity = quantity
 
     @entry_price.setter
-    def entry_price(self, entry_price):
+    def entry_price(self, entry_price: float):
         self._entry_price = entry_price
 
     @leverage.setter
-    def leverage(self, leverage):
+    def leverage(self, leverage: float):
         self._leverage = leverage
 
     @take_profit.setter
-    def take_profit(self, tp):
+    def take_profit(self, tp: float):
         self._take_profit = tp
 
     @stop_loss.setter
-    def stop_loss(self, sl):
+    def stop_loss(self, sl: float):
         self._stop_loss = sl
 
     @exit_price.setter
-    def exit_price(self, price):
+    def exit_price(self, price: float):
         self._exit_price = price
 
-    def change_rate(self, market):
+    def change_rate(self, market: Market) -> float:
         """
         Compute and return the gained rate related to the entry and market price.
         Its only the change of the price in percent (does not take care of the size of the position)
@@ -276,7 +289,7 @@ class Position(Keyed):
 
         return delta_price / self.entry_price if self.entry_price else 0.0
 
-    def update_profit_loss(self, market):
+    def update_profit_loss(self, market: Market):
         """
         Compute profit_loss and profit_loss_rate for maker and taker.
         @param market A valid market object related to the symbol of the position.
@@ -305,14 +318,14 @@ class Position(Keyed):
         self._profit_loss_market = raw_profit_loss - (position_cost * market.taker_fee) - market.taker_commission
         self._profit_loss_market_rate = (self._profit_loss_market / position_cost) if position_cost != 0.0 else 0.0
 
-    def close_direction(self):
+    def close_direction(self) -> int:
         """
         Return the inverse of the direction of the position that is needed to close or revert this position.
         It does not invert the position ! Its just a syntax sugar.
         """
         return Position.LONG if self.direction == Position.SHORT else Position.SHORT
 
-    def price_diff(self, market):
+    def price_diff(self, market: Market) -> float:
         """
         Difference of price from entry to current market price, depending of the direction.
         """
@@ -326,7 +339,7 @@ class Position(Keyed):
 
         return 0.0
 
-    def position_cost(self, market):
+    def position_cost(self, market: Market) -> float:
         """
         Return the cost of the position in base currency. It does not take care about the margin factor / leverage.
         """
@@ -337,7 +350,7 @@ class Position(Keyed):
         # return self.quantity * (market.lot_size * market.contract_size) * self._entry_price
         return self.quantity * market.contract_size * self._entry_price
 
-    def margin_cost(self, market):
+    def margin_cost(self, market: Market) -> float:
         """
         Return the used margin in base currency (using margin factor). Have to divide per base exchange rate to have
         it in account base currency. But in backtesting we don't have all the rate from base pair to base account.
@@ -349,7 +362,7 @@ class Position(Keyed):
         # return self.quantity * (market.lot_size * market.contract_size) * market.margin_factor * self._entry_price
         return self.quantity * market.contract_size * market.margin_factor * self._entry_price
 
-    def direction_to_str(self):
+    def direction_to_str(self) -> str:
         if self._direction > 0:
             return 'long'
         elif self._direction < 0:
@@ -357,7 +370,7 @@ class Position(Keyed):
         else:
             return ''
 
-    def direction_from_str(self, direction):
+    def direction_from_str(self, direction: str):
         if direction == 'long':
             self._direction = 1
         elif direction == 'short':
@@ -369,7 +382,7 @@ class Position(Keyed):
     # persistence
     #
 
-    def dumps(self):
+    def dumps(self) -> dict:
         """
         @todo Could humanize str and timestamp into datetime
         @return: dict
@@ -398,7 +411,7 @@ class Position(Keyed):
             'profit-loss-market-rate': self._profit_loss_market_rate,
         }
 
-    def loads(self, data):
+    def loads(self, data: dict):
         # if data.get('symbol', "") == self._symbol:
         #     # @todo could merge with current
 

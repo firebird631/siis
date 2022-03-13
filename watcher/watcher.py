@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .author import Author
     from .position import Position
     from trader.market import Market
+    from instrument.instrument import TickType, OHLCType
 
 import time
 import collections
@@ -59,7 +60,7 @@ class Watcher(Runnable):
     TICK_STORAGE_DELAY = 0.05  # 50ms
     MAX_PENDING_TICK = 10000
 
-    # stored ohlc timeframes
+    # stored OHLC timeframes
     STORED_TIMEFRAMES = (
         Instrument.TF_MIN,
         Instrument.TF_3MIN,
@@ -72,7 +73,7 @@ class Watcher(Runnable):
         Instrument.TF_DAY,
         Instrument.TF_WEEK)
 
-    # generated ohlc timeframes
+    # generated OHLC timeframes
     GENERATED_TF = (
         Instrument.TF_MIN,
         Instrument.TF_3MIN,
@@ -116,7 +117,7 @@ class Watcher(Runnable):
         self._store_trade = service.store_trade      # default never store trade/tick/quote during watching
         self._initial_fetch = service.initial_fetch  # default never fetch history of OHLC at connection
 
-        self._last_ohlc = {}  # last ohlc per market id and then per timeframe
+        self._last_ohlc = {}  # last OHLC per market id and then per timeframe
         self._last_update_times = {tf: 0.0 for tf in self.GENERATED_TF}
 
         self._last_market_update = time.time()
@@ -680,7 +681,8 @@ class Watcher(Runnable):
         # fetch ticks history
         for data in self.fetch_trades(market_id, from_date, to_date, None):
             # store (int timestamp in ms, str bid, str ask, str last, str volume, int direction)
-            Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3], data[4], data[5]))
+            Database.inst().store_market_trade((self.name, market_id,
+                                                data[0], data[1], data[2], data[3], data[4], data[5]))
 
             n += 1
 
@@ -689,7 +691,7 @@ class Watcher(Runnable):
                 time.sleep(Watcher.TICK_STORAGE_DELAY)  # wait a little before continue
 
     def fetch_trades(self, market_id: str, from_date: Optional[datetime] = None, to_date: Optional[datetime] = None,
-                     n_last: Optional[int] = None) -> List[Tuple[float, float, float, float, float, float]]:
+                     n_last: Optional[int] = None) -> List[TickType]:
         """
         Retrieve the historical trades data for a certain a period of date.
         @param market_id Specific name of the market
@@ -700,7 +702,7 @@ class Watcher(Runnable):
         return []
 
     def fetch_candles(self, market_id: str, timeframe: float, from_date: Optional[datetime] = None,
-                      to_date: Optional[datetime] = None, n_last: Optional[int] = None) -> List[Candle]:
+                      to_date: Optional[datetime] = None, n_last: Optional[int] = None) -> List[OHLCType]:
         """
         Retrieve the historical candles data for an unit of time and certain a period of date.
         @param market_id Specific name of the market

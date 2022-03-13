@@ -27,6 +27,17 @@ class CryptoAlphaStrategySubB(CryptoAlphaStrategySub):
         self.bollingerbands = None
         self.mama = None
 
+        # default indicators
+        self.tomdemark = None
+        self.stochrsi = None
+        self.pivotpoint = None
+
+        self.rsi = None
+        self.atr = None
+
+        self.sma = None
+        self.ema = None
+
         self.mama_cross = (0, 0, 0)
 
         super().__init__(strategy_trader, params)
@@ -49,7 +60,7 @@ class CryptoAlphaStrategySubB(CryptoAlphaStrategySub):
         candles = self.get_candles()
 
         if len(candles) < self.depth:
-            # not enought samples
+            # not enough samples
             return
 
         prices = self.price.compute(timestamp, candles)

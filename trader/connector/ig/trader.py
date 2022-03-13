@@ -48,9 +48,9 @@ class IGTrader(Trader):
         self._watcher = None
         self._account = IGAccount(self)
 
-        self._last_position_update = 0
-        self._last_order_update = 0
-        self._last_market_update = 0
+        self._last_position_update = 0.0
+        self._last_order_update = 0.0
+        self._last_market_update = 0.0
 
     @property
     def authenticated(self) -> bool:

@@ -13,7 +13,6 @@ from terminal.terminal import Terminal
 from instrument.instrument import Candle, Instrument
 from instrument.candlegenerator import CandleGenerator
 
-from common.signal import Signal
 from database.database import Database
 
 from trader.market import Market
@@ -428,7 +427,6 @@ class Fetcher(object):
     def fetch_closed_orders(self, from_date, to_date):
         """
         Retrieve the historical orders data for a certain a period of date.
-        @param market_id Specific name of the market or any
         @param from_date
         @param to_date
         @return list of dict or None if error

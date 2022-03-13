@@ -3,17 +3,14 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Candle storage/reading per market
 
-import os
-import json
 import time
 import copy
 import threading
-import traceback
 import collections
 
 from datetime import datetime, timedelta
+from typing import Tuple
 
-from common.signal import Signal
 from instrument.instrument import Candle
 
 from common.utils import UTC
@@ -26,11 +23,12 @@ class OhlcStorage(object):
     """
     Store per market sqlite DB.
     @note Generic SQL.
+    @todo
 
     Delete if timestamp :
         - timeframe for 45m to 2h older than 90 days
         - 10m to 30m older than 21 days
-        - 1m to 5m olders than 8 days
+        - 1m to 5m older than 8 days
     """
 
     DEFAULT_FLUSH_DELAY = 5*60  # every 5 mins
@@ -46,6 +44,7 @@ class OhlcStorage(object):
 
     def __init__(self, db, broker_id, market_id):
         self._db = db
+        self._thread_id = -1
 
         self._broker_id = broker_id
         self._market_id = market_id
@@ -69,9 +68,9 @@ class OhlcStorage(object):
     def has_query(self):
         return len(self._queries) > 0
 
-    def store(self, data):
+    def store(self, data: Tuple):
         """
-        @param data is a tuple or an array of tuples containing data in that order and format :
+        @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
             str market_id (not empty)
             integer timestamp (ms since epoch)

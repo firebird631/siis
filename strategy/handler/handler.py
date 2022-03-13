@@ -5,9 +5,6 @@
 
 import threading
 
-from datetime import datetime
-from common.utils import timeframe_to_str, timeframe_from_str
-
 import logging
 logger = logging.getLogger('siis.strategy.handler')
 error_logger = logging.getLogger('siis.error.strategy.handler')

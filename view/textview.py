@@ -3,7 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Text view base class.
 
-from terminal.terminal import Terminal
 from view.view import View
 
 
@@ -46,9 +45,9 @@ class TextView(View):
             self.scroll_row(-(self.height()-4))   
         elif key == 'KEY_NPAGE':
             self.scroll_row(self.height()-4)
-        elif c == 'KEY_SR':
+        elif key == 'KEY_SR':
             self.scroll_row(-1)
-        elif c == 'KEY_SF':
+        elif key == 'KEY_SF':
             self.scroll_row(1)
 
     def print(self, rows):

@@ -3,8 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Monitoring client
 
-from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME
-
 import sys
 
 import time
@@ -193,9 +191,9 @@ def application(argv):
             except (TypeError, ValueError) as e:
                 logger.error("Error sending message : %s" % repr(e))
 
-        fifo_rpc.flush()
-
+        # fifo_rpc.flush()
         # os.flush(fifo_rpc)
+
         os.close(fifo_rpc)
         fifo_rpc = -1
 
@@ -209,6 +207,7 @@ def application(argv):
     Terminal.inst().flush()
 
     Terminal.terminate()
+
 
 if __name__ == "__main__":
     application(sys.argv)

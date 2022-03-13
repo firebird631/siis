@@ -3,8 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Paper trader, asset spot ordering.
 
-from datetime import datetime
-
 from common.signal import Signal
 
 from trader.position import Position

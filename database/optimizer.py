@@ -6,9 +6,6 @@
 import logging
 logger = logging.getLogger('siis.database.optimizer')
 
-from database.database import Database
-from database.tickstorage import TickStorage, TickSteamer, TextToBinary
-
 
 class OhlcOptimizer(object):
 	"""

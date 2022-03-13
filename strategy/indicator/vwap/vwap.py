@@ -8,8 +8,8 @@ import math
 from strategy.indicator.indicator import Indicator
 from instrument.instrument import Instrument
 
-import numpy as np
-from talib import MULT as ta_MULT, STDDEV as ta_STDDEV
+# import numpy as np
+# from talib import MULT as ta_MULT, STDDEV as ta_STDDEV
 
 
 class VWAPIndicator(Indicator):

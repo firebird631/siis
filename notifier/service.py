@@ -3,6 +3,13 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Service responsible of the different configured and enabled notifiers.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict, Union, List
+
+if TYPE_CHECKING:
+    from .notifier import Notifier
+
 from importlib import import_module
 
 from common.signal import Signal
@@ -20,6 +27,9 @@ class NotifierService(Service):
     """
     Notifier service.
     """
+
+    _notifiers: Dict[str, object]
+    _notifiers_insts: Dict[str, Union[Notifier, object]]
 
     def __init__(self, options):
         super().__init__("notifier", options)
@@ -68,7 +78,7 @@ class NotifierService(Service):
                 continue
 
             if notifier.get("status") is not None and notifier.get("status") in ("load", "enabled"):
-                # retrieve the classname and instantiate it
+                # retrieve the class-name and instantiate it
                 parts = notifier.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -94,7 +104,7 @@ class NotifierService(Service):
                 continue
 
             if notifier_conf.get("status") is not None and notifier_conf.get("status") in ("enabled", "load"):
-                # retrieve the classname and instantiate it
+                # retrieve the class-name and instantiate it
                 if not notifier_conf.get('name'):
                     logger.error("Invalid notifier configuration for %s. Ignored !" % k)
 
@@ -128,7 +138,7 @@ class NotifierService(Service):
     def sync(self):
         pass
 
-    def command(self, command_type, data):
+    def command(self, command_type: int, data: dict) -> dict:
         """
         Send a manual command to a specific notifier.
         """
@@ -148,7 +158,7 @@ class NotifierService(Service):
 
         return results
 
-    def _init_notifier_config(self, options):
+    def _init_notifier_config(self, options: dict) -> dict:
         """
         Get the profile configuration for a specific notifier name.
         """
@@ -167,13 +177,13 @@ class NotifierService(Service):
 
         return notifier_config
 
-    def notifier_config(self, identifier):
+    def notifier_config(self, identifier: str) -> dict:
         """
         Get the configurations for a notifier as dict.
         """
         return self._notifiers_config.get(identifier, {})
 
-    def receiver(self, signal):
+    def receiver(self, signal: Signal):
         if signal.source == Signal.SOURCE_STRATEGY:
             if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_ALERT:
 
@@ -181,7 +191,7 @@ class NotifierService(Service):
                 with self._mutex:
                     self._signals_handler.notify(signal)
 
-    def notify(self, signal_type, source_name, signal_data):
+    def notify(self, signal_type: int, source_name: str, signal_data):
         if signal_data is None:
             return
 
@@ -190,8 +200,8 @@ class NotifierService(Service):
         with self._mutex:
             self._signals_handler.notify(signal)
 
-    def notifier(self, name):
+    def notifier(self, name: str) -> Union[Notifier, None]:
         return self._notifiers_insts.get(name)
 
-    def notifiers_identifiers(self):
+    def notifiers_identifiers(self) -> List[str]:
         return [notifier.identifier for k, notifier in self._notifiers_insts.items()]

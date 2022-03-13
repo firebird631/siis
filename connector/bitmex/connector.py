@@ -5,7 +5,6 @@
 
 import time
 import json
-import base64
 import requests
 
 from datetime import datetime, timedelta
@@ -83,8 +82,8 @@ class Connector(object):
                 self._ws = BitMEXWebsocket(self.__api_key, self.__api_secret, self._callback)
 
             if self._ws is not None and not self._ws.connected:
-                self._ws = BitMEXWebsocket(api_key, api_secret, callback)
-                # only subscribe to avalaibles instruments
+                self._ws = BitMEXWebsocket(self.__api_key, self.__api_secret, self._callback)
+                # only subscribe to available instruments
                 symbols = []
 
                 if '*' in self._watched_symbols:
@@ -96,7 +95,7 @@ class Connector(object):
                         if symbol in self._all_instruments:
                             symbols.append(symbol)
                         else:
-                            logger.warning('- BitMex instrument %s is not avalaible.' % (symbol,))
+                            logger.warning('- BitMex instrument %s is not available.' % (symbol,))
 
                     self._watched_symbols = symbols
 
@@ -481,4 +480,4 @@ class Connector(object):
                     'price': data['price']
                 })
 
-        return (buys, sells)
+        return buys, sells

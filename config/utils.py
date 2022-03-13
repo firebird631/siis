@@ -4,7 +4,6 @@
 # Config parser
 
 import json
-import importlib.util
 import itertools
 import pathlib
 

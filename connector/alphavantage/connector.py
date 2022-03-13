@@ -5,14 +5,13 @@
 
 import time
 import json
-import base64
 import requests
 
 from datetime import datetime
 from instrument.instrument import Instrument
 from common.utils import UTC
 
-from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME, APP_RELEASE
+from __init__ import APP_VERSION, APP_SHORT_NAME
 
 import logging
 logger = logging.getLogger('siis.connector.alphavantage')

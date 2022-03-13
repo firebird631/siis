@@ -6,9 +6,7 @@
 from strategy.indicator.indicator import Indicator
 from talib import STDDEV as ta_STDDEV, SMA as ta_SMA, TRANGE as ta_TRANGE
 
-import statistics as stat
 import numpy as np
-import copy
 
 import logging
 logger = logging.getLogger('siis.strategy.indicator.stddevbands')

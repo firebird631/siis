@@ -5,7 +5,7 @@
 # @brief Moving Average Convergence Divergence indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MMexp_n, MM_n
+from strategy.indicator.utils import down_sample, MMexp_n  # , MM_n
 from talib import MACD as ta_MACD
 
 import numpy as np
@@ -17,7 +17,8 @@ class MACDIndicator(Indicator):
     https://fr.wikipedia.org/wiki/MACD
     """
 
-    __slots__ = '_short_l', '_long_l', '_signal_l', '_prev_macd', '_last_macd', '_prev_signal', '_last_signal', '_macds', '_signals', '_hists'
+    __slots__ = '_short_l', '_long_l', '_signal_l', '_prev_macd', '_last_macd', '_prev_signal', '_last_signal', \
+                '_macds', '_signals', '_hists'
 
     @classmethod
     def indicator_type(cls):

@@ -3,26 +3,21 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Siis standard implementation of the application (application main)
 
-from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME, APP_RELEASE
+from __init__ import APP_VERSION, APP_SHORT_NAME, APP_RELEASE
 
 import signal
-import threading
 import sys
 import os
 import time
 import logging
-import pathlib
 import traceback
 
 from datetime import datetime
 
-from common.utils import parse_utc_datetime, UTC, fix_thread_set_name, TIMEFRAME_FROM_STR_MAP
+from common.utils import parse_utc_datetime, fix_thread_set_name
 
-from watcher.watcher import Watcher
 from watcher.service import WatcherService
 
-from trader.trader import Trader
-from strategy.strategy import Strategy
 from notifier.notifier import Notifier
 from trader.service import TraderService
 from strategy.service import StrategyService
@@ -36,7 +31,6 @@ from terminal.command import CommandsHandler
 
 from database.database import Database
 
-from common.runnable import Runnable
 from common.siislog import SiisLog
 
 from view.service import ViewService

@@ -274,7 +274,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         if limit_price and hard:
             # only if filled entry partially or totally
-            order = Order(self, instrument.market_id)
+            order = Order(trader, instrument.market_id)
             order.direction = -self.direction
             order.order_type = Order.ORDER_LIMIT
             order.reduce_only = True
@@ -357,7 +357,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         if stop_price and hard:
             # only if filled entry partially or totally
-            order = Order(self, instrument.market_id)
+            order = Order(trader, instrument.market_id)
             order.direction = -self.direction
             order.order_type = Order.ORDER_STOP
             order.reduce_only = True

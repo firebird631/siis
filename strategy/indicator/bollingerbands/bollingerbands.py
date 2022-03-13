@@ -144,7 +144,7 @@ class BollingerBandsIndicator(Indicator):
         sub_data = down_sample(data, step) if filtering else data [::step]
         t_subdata = range(0, len(data), step)
 
-        mm = MM_n(N, sub_data)
+        mm = MM_n(n, sub_data)
         up_bol = copy.deepcopy(mm)
         bottom_bol = copy.deepcopy(mm)
 

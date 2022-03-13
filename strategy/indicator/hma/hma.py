@@ -5,7 +5,7 @@
 
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample, MM_n
-from talib import SMA as ta_SMA, WMA as ta_WMA
+from talib import WMA as ta_WMA  # , SMA as ta_SMA
 
 import numpy as np
 import math
@@ -124,7 +124,7 @@ class HMAIndicator(Indicator):
 
     def compute(self, timestamp, prices):
         self._prev = self._last
-        self._hmas = HMAIndicator.HMA_n(self._length, prices)  #[-self._length-7:])
+        self._hmas = HMAIndicator.HMA_n(self._length, prices)  # [-self._length-7:])
 
         self._last = self._hmas[-1]
         self._last_timestamp = timestamp

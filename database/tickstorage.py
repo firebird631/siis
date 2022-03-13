@@ -4,11 +4,9 @@
 # Tick storage/streaming per market
 
 import os
-import json
 import copy
 import time
 import threading
-import traceback
 import pathlib
 import struct
 import collections
@@ -577,8 +575,6 @@ class LastTickFinder(object):
 
             return tick
 
-        return None
-
     def last(self):
         tick = None
 
@@ -671,8 +667,6 @@ class FirstTickFinder(object):
                 tfile.close()
 
             return tick
-
-        return None
 
     def first(self):
         tick = None

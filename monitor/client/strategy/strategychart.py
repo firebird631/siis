@@ -3,19 +3,14 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Standard strategy charting
 
-import time
-import copy
-
 import numpy as np
 
 from datetime import datetime
-from terminal.terminal import Terminal
-from trader.order import Order
 
 from monitor.streamable import Streamable, StreamMemberSerie, StreamMemberFloatSerie, StreamMemberFloatScatter, \
     StreamMemberFloatBarSerie, StreamMemberOhlcSerie
 
-from matplotlib.dates import epoch2num
+# from matplotlib.dates import epoch2num
 
 from charting.charting import Charting
 

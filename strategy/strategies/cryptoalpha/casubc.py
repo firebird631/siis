@@ -4,8 +4,8 @@
 # Crypto Alpha strategy, sub-strategy B.
 
 from strategy.indicator import utils
-from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
+    StreamMemberOhlcSerie
 
 from .casub import CryptoAlphaStrategySub
 
@@ -19,6 +19,17 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
+        # default indicators
+        self.tomdemark = None
+        self.stochrsi = None
+        self.pivotpoint = None
+
+        self.rsi = None
+        self.atr = None
+
+        self.sma = None
+        self.ema = None
+
         super().__init__(strategy_trader, params)
 
         self.rsi_low = params['constants']['rsi_low']
@@ -28,7 +39,7 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
         candles = self.get_candles()
 
         if len(candles) < self.depth:
-            # not enought samples
+            # not enough samples
             return
 
         prices = self.price.compute(timestamp, candles)

@@ -1,12 +1,10 @@
 # @date 2018-09-07
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Paper trader, margin ordering/postion.
+# Paper trader, margin ordering/position.
 
 import base64
 import uuid
-
-from datetime import datetime
 
 from common.signal import Signal
 

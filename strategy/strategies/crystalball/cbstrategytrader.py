@@ -81,11 +81,11 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
             self._last_filter_cache = (timestamp, False, False)
             return False, False
 
-        for entry in entries:
-            self.notify_signal(timestamp, entry)
+        for _entry in entries:
+            self.notify_signal(timestamp, _entry)
 
-        for exit in exits:
-            self.notify_signal(timestamp, exit)
+        for _exit in exits:
+            self.notify_signal(timestamp, _exit)
 
         # update user managed actives trades
         self.update_trades(timestamp)

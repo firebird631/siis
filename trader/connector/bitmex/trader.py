@@ -48,8 +48,9 @@ class BitMexTrader(Trader):
         self._watcher = None
         self._account = BitMexAccount(self)
 
-        self._last_position_update = 0
-        self._last_order_update = 0
+        self._last_position_update = 0.0
+        self._last_order_update = 0.0
+        self._last_update = 0.0
 
     def connect(self):
         super().connect()

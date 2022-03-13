@@ -5,8 +5,7 @@
 
 import json
 
-from app.appexception import CommandHandlerException, CommandException, CommandAutocompleteException, \
-    CommandParseException, CommandExecException
+from app.appexception import CommandHandlerException, CommandException
 from terminal.terminal import Terminal
 
 import logging

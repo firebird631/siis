@@ -4,8 +4,6 @@
 # Cleaner tools
 
 import sys
-import logging
-import traceback
 
 from tools.tool import Tool
 

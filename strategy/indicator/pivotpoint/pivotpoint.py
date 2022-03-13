@@ -3,11 +3,11 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Supports and resistances detection using pivot point method.
 
-from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MM_n
+from typing import List
 
-import copy
-import sys
+from strategy.indicator.indicator import Indicator
+# from strategy.indicator.utils import down_sample, MM_n
+
 import numpy as np
 
 
@@ -43,7 +43,7 @@ class PivotPointIndicator(Indicator):
 
     Woodie:
     Pivot = (H + L + 2 x C) / 4
-    Like as classicial
+    Like as classical
     """
 
     METHOD_CLASSICAL = 0
@@ -57,14 +57,14 @@ class PivotPointIndicator(Indicator):
                 '_last_pivot', '_num'
 
     @classmethod
-    def indicator_type(cls):
+    def indicator_type(cls) -> int:
         return Indicator.TYPE_VOLATILITY
 
     @classmethod
-    def indicator_class(cls):
+    def indicator_class(cls) -> int:
         return Indicator.CLS_OVERLAY
 
-    def __init__(self, timeframe, method=METHOD_CLASSICAL, num=6):
+    def __init__(self, timeframe: float, method: int = METHOD_CLASSICAL, num: int = 6):
         super().__init__("pivotpoint", timeframe)
 
         self._compute_at_close = True  # only at close
@@ -80,19 +80,16 @@ class PivotPointIndicator(Indicator):
         self._num = num
 
         self._pivot = np.array([])
-        self._supports = [None]*num
-        self._resistances = [None]*num
 
-        for n in range(0, num):
-            self._supports[n] = np.array([])
-            self._resistances[n] = np.array([])
+        self._supports = [np.array([]) for i in range(num)]
+        self._resistances = [np.array([]) for i in range(num)]
 
         self._last_supports = [0.0]*num
         self._last_resistances = [0.0]*num
         self._last_pivot = 0.0
 
     @property
-    def method(self):
+    def method(self) -> int:
         return self._method
     
     # @property
@@ -100,15 +97,15 @@ class PivotPointIndicator(Indicator):
     #     return self._price_mode
     
     @property
-    def last_supports(self):
+    def last_supports(self) -> List[float]:
         return self._last_supports
     
     @property
-    def last_resistances(self):
+    def last_resistances(self) -> List[float]:
         return self._last_resistances
 
     @property
-    def last_pivot(self):
+    def last_pivot(self) -> float:
         return self._last_pivot
 
     # @property
@@ -136,7 +133,7 @@ class PivotPointIndicator(Indicator):
         return self._resistances
 
     @property
-    def num(self):
+    def num(self) -> int:
         return self._num
     
     # @staticmethod
@@ -297,7 +294,7 @@ class PivotPointIndicator(Indicator):
                         self._supports[n][i+1] = low[i] - n * (high[i] - self._pivot[i+1])
                         self._resistances[n][i+1] = high[i] + n * (self._pivot[i+1] - low[i])
 
-    def compute(self, timestamp, _open, high, low, close):
+    def compute(self, timestamp: float, _open, high, low, close):
         if len(_open) < 2:
             # at least 2 entries (previous + current)
             return self._pivot, self._supports, self._resistances

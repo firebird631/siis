@@ -4,16 +4,12 @@
 # History tools
 
 import json
-import sys
-import logging
-import traceback
 
 from tools.tool import Tool
 from config import utils
 
 from terminal.terminal import Terminal
 
-from watcher.watcher import Watcher
 from watcher.service import WatcherService
 
 import logging

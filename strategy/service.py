@@ -9,11 +9,12 @@ import traceback
 
 from datetime import datetime
 from importlib import import_module
+from typing import Union
 
 from common.service import Service
 from common.workerpool import WorkerPool
 from common.signal import Signal
-from common.utils import format_datetime, format_delta
+from common.utils import format_delta
 
 from terminal.terminal import Terminal
 from strategy.strategy import Strategy
@@ -31,7 +32,7 @@ class StrategyService(Service):
     Strategy service is responsible of build, initialize, load configuration, start/stop the strategy.
     """
 
-    def __init__(self, watcher_service, trader_service, monitor_service, options):
+    def __init__(self, watcher_service, trader_service, monitor_service, options: dict):
         super().__init__("strategy", options)
 
         self._strategies = {}
@@ -83,6 +84,7 @@ class StrategyService(Service):
         self._end_ts = self._to_date.timestamp() if self._to_date else 0
         self._timestep_thread = None
         self._time_factor = 0.0
+        self._backtest_progress = 0.0
 
         if self._backtesting:
             # can use the time factor in backtesting only
@@ -124,7 +126,7 @@ class StrategyService(Service):
     def alerts(self):
         return self._alerts
 
-    def set_activity(self, status):
+    def set_activity(self, status: bool):
         """
         Enable/disable execution of orders on strategy
         """
@@ -141,11 +143,11 @@ class StrategyService(Service):
 
         return self._backtesting_play
 
-    def start(self, options):
+    def start(self, options: dict):
         # indicators
         for k, indicator in self._indicators_config.items():
             if indicator.get("status") is not None and indicator.get("status") == "load":
-                # retrieve the classname and instantiate it
+                # retrieve the class-name and instantiate it
                 parts = indicator.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -159,7 +161,7 @@ class StrategyService(Service):
         # tradeops
         for k, tradeop in self._tradeops_config.items():
             if tradeop.get("status") is not None and tradeop.get("status") == "load":
-                # retrieve the classname and instantiate it
+                # retrieve the class-name and instantiate it
                 parts = tradeop.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -173,7 +175,7 @@ class StrategyService(Service):
         # regions
         for k, region in self._regions_config.items():
             if region.get("status") is not None and region.get("status") == "load":
-                # retrieve the classname and instantiate it
+                # retrieve the class-name and instantiate it
                 parts = region.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -187,7 +189,7 @@ class StrategyService(Service):
         # alerts
         for k, alert in self._alerts_config.items():
             if alert.get("status") is not None and alert.get("status") == "load":
-                # retrieve the classname and instantiate it
+                # retrieve the class-name and instantiate it
                 parts = alert.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -204,7 +206,7 @@ class StrategyService(Service):
                 continue
 
             if strategy.get("status") is not None and strategy.get("status") == "load":
-                # retrieve the classname and instantiate it
+                # retrieve the class-name and instantiate it
                 parts = strategy.get('classpath', "strategy.strategy.Strategy").split('.')
 
                 module = import_module('.'.join(parts[:-1]))
@@ -334,7 +336,7 @@ class StrategyService(Service):
         if self._backtesting and not self._backtest:
             go_ready = True
 
-            self._backtest_progress = 0
+            self._backtest_progress = 0.0
 
             if self._strategy:
                 strategy = self._strategy
@@ -440,7 +442,7 @@ class StrategyService(Service):
                     int((self._timestep_thread.current - self._timestep_thread.begin) / self._timestep_thread.timestep),
                     format_delta(self._timestep_thread.end_ts - self._timestep_thread.begin_ts)))
 
-    def notify(self, signal_type, source_name, signal_data):
+    def notify(self, signal_type: int, source_name: str, signal_data):
         if signal_data is None:
             return
 
@@ -449,7 +451,7 @@ class StrategyService(Service):
         with self._mutex:
             self._signals_handler.notify(signal)
 
-    def command(self, command_type, data):
+    def command(self, command_type: int, data: dict) -> Union[dict, None]:
         results = None
 
         strategy = self._strategy
@@ -459,31 +461,29 @@ class StrategyService(Service):
 
         return results
 
-    def __gen_command_key(self):
+    def __gen_command_key(self) -> int:
         with self._mutex:
             next_key = self._next_key
             self._next_key += 1
 
             return next_key
 
-        return -1
-
-    def receiver(self, signal):
+    def receiver(self, signal: Signal):
         pass
 
-    def indicator(self, name):
+    def indicator(self, name: str):
         """Return a specific indicator model by its name"""
         return self._indicators.get(name)
 
-    def strategy(self):
+    def strategy(self) -> Strategy:
         """Return the instanced strategy"""
         return self._strategy
 
-    def strategy_name(self):
+    def strategy_name(self) -> Union[str, None]:
         """Returns the name of the loaded strategy"""
         return self._strategy.name if self._strategy else None
 
-    def strategy_identifier(self):
+    def strategy_identifier(self) -> Union[str, None]:
         """Returns the identifier of the loaded strategy"""
         return self._strategy.identifier if self._strategy else None
 
@@ -493,44 +493,44 @@ class StrategyService(Service):
         return self._timestamp if self._backtesting else time.time()
 
     @property
-    def backtesting(self):
+    def backtesting(self) -> bool:
         """True if backtesting"""
         return self._backtesting
 
     @property
-    def backtesting_play(self):
+    def backtesting_play(self) -> bool:
         """True if backtesting playing"""
         return self._backtesting_play
 
     @property
-    def from_date(self):
-        """Backtestnig starting datetime"""
+    def from_date(self) -> datetime:
+        """Backtesting starting datetime"""
         return self._from_date
 
     @property
-    def to_date(self):
+    def to_date(self) -> datetime:
         """Backtesting ending datetime"""
         return self._to_date
 
     @property
-    def timeframe(self):
+    def timeframe(self) -> float:
         """Backtesting base timeframe"""
         return self._timeframe
 
     @property
-    def report_path(self):
+    def report_path(self) -> str:
         """Base path where to store strategy reports"""
         return self._report_path
 
-    def strategy_config(self):
+    def strategy_config(self) -> dict:
         """Get the strategy configurations as dict"""
         return self._strategies_config
 
-    def indicator_config(self, name):
+    def indicator_config(self, name: str) -> dict:
         """Get the configurations for an indicator as dict"""
         return self._indicators_config.get(name, {})
 
-    def tradeop_config(self, name):
+    def tradeop_config(self, name: str) -> dict:
         """Get the configurations for a tradeop as dict"""
         return self._tradeops_config.get(name, {})
 
@@ -546,7 +546,7 @@ class StrategyService(Service):
         else:
             Terminal.inst().action("Unable to join service %s for %s seconds" % (self.name, timeout), view='content')
 
-    def watchdog(self, watchdog_service, timeout):
+    def watchdog(self, watchdog_service, timeout: float):
         # try to acquire, see for deadlock
         if self._mutex.acquire(timeout=timeout):
             # if no deadlock lock for service ping strategy
@@ -559,4 +559,5 @@ class StrategyService(Service):
 
             self._mutex.release()
         else:
-            watchdog_service.service_timeout(self.name, "Unable to join service %s for %s seconds" % (self.name, timeout))
+            watchdog_service.service_timeout(self.name, "Unable to join service %s for %s seconds" % (
+                self.name, timeout))

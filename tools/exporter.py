@@ -4,15 +4,12 @@
 # Exporter tool.
 
 import sys
-import logging
-import traceback
-import time
 import zipfile
 
 from datetime import datetime, timedelta
 
 from instrument.instrument import Instrument
-from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, format_datetime, format_delta
+from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, format_datetime
 
 from terminal.terminal import Terminal
 from database.database import Database
@@ -86,7 +83,8 @@ def export_ohlcs_siis_1_0_0(broker_id, market_id, timeframe, from_date, to_date,
             timestamp += timeframe * 100
 
     if progression < 100:
-        Terminal.inst().info("100%% on %s, %s for last 100 candles, current total of %s..." % (format_datetime(timestamp), count, total_count))
+        Terminal.inst().info("100%% on %s, %s for last 100 candles, current total of %s..." % (
+            format_datetime(timestamp), count, total_count))
     
     Terminal.inst().info("Last candle datetime is %s" % (format_datetime(tts),))
 
@@ -114,7 +112,7 @@ def export_ticks_siis_1_0_0(broker_id, market_id, from_date, to_date, dst):
         total_count += len(ticks)
 
         for data in ticks:
-            tick_dt = datetime.utcfromtimestamp(ohlc.timestamp).strftime("%Y%m%d %H%M%S%f")
+            tick_dt = datetime.utcfromtimestamp(data[0]).strftime("%Y%m%d %H%M%S%f")
 
             dst.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (tick_dt, data[1], data[2], data[3], data[4], data[5]))
 
@@ -129,7 +127,8 @@ def export_ticks_siis_1_0_0(broker_id, market_id, from_date, to_date, dst):
         if timestamp - prev_update >= progression_incr:
             progression += 1
 
-            Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
+            Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (
+                progression, format_datetime(timestamp), count, total_count))
 
             prev_update = timestamp
             count = 0
@@ -140,7 +139,8 @@ def export_ticks_siis_1_0_0(broker_id, market_id, from_date, to_date, dst):
         timestamp += Instrument.TF_1M  # by step of 1m
 
     if progression < 100:
-        Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (format_datetime(timestamp), count, total_count))
+        Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (
+            format_datetime(timestamp), count, total_count))
     
     Terminal.inst().info("Last tick datetime is %s" % (format_datetime(tts),))
 

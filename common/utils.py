@@ -161,7 +161,7 @@ def truncate(number: float, digits: int) -> float:
     return math.trunc(round(stepper * number)) / stepper
 
 
-def decimal_place(value: float) -> float:
+def decimal_place(value: float) -> int:
     return -int(math.floor(math.log10(value)))
 
 

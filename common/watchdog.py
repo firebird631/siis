@@ -3,11 +3,10 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Watchdog service
 
-import time, datetime
+import time
 import threading
 
 from .service import Service
-from config import utils
 
 import logging
 logger = logging.getLogger('siis.watchdog')

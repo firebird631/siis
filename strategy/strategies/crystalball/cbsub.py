@@ -3,8 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Crystal Ball strategy sub-strategy base class.
 
-from strategy.indicator.score import Score
-from instrument.candlegenerator import CandleGenerator
 from strategy.timeframebasedsub import TimeframeBasedSub
 
 

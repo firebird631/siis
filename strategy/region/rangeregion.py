@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from strategy.strategytrader import StrategyTrader
     from instrument.instrument import Instrument
 
 from .region import Region
@@ -31,7 +30,7 @@ class RangeRegion(Region):
     NAME = "range"
     REGION = Region.REGION_RANGE
 
-    def __init__(self, created, stage, direction, timeframe):
+    def __init__(self, created: float, stage: int, direction: int, timeframe: float):
         super().__init__(created, stage, direction, timeframe)
 
         self._low = 0.0
@@ -39,20 +38,20 @@ class RangeRegion(Region):
 
         self._cancellation = 0.0
 
-    def init(self, parameters):
+    def init(self, parameters: dict):
         self._low = parameters.get('low', 0.0)
         self._high = parameters.get('high', 0.0)
 
         self._cancellation = parameters.get('cancellation', 0.0)
 
-    def check(self):
+    def check(self) -> bool:
         return self._low > 0 and self._high > 0 and self._high >= self._low
 
-    def test(self, timestamp, signal_price):
+    def test(self, timestamp: float, signal_price: float) -> bool:
         # signal price is in low / high range
         return self._low <= signal_price <= self._high
 
-    def can_delete(self, timestamp, bid, ask):
+    def can_delete(self, timestamp: float, bid: float, ask: float) -> bool:
         if 0 < self._expiry <= timestamp:
             return True
 
@@ -85,7 +84,7 @@ class RangeRegion(Region):
     def condition_str(self, instrument: Instrument) -> str:
         return "[%s - %s]" % (instrument.format_price(self._low), instrument.format_price(self._high))
 
-    def parameters(self):
+    def parameters(self) -> dict:
         params = super().parameters()
 
         params['label'] = "Range region"
@@ -97,7 +96,7 @@ class RangeRegion(Region):
 
         return params
 
-    def dumps(self):
+    def dumps(self) -> dict:
         data = super().dumps()
         
         data['low'] = self._low
@@ -107,7 +106,7 @@ class RangeRegion(Region):
 
         return data
 
-    def loads(self, data):
+    def loads(self, data: dict):
         super().loads(data)
 
         self._low = data.get('low', 0.0)

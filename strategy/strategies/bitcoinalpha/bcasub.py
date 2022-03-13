@@ -3,7 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Bitcoin Alpha strategy sub-strategy base class.
 
-from instrument.candlegenerator import CandleGenerator
 from strategy.timeframebasedsub import TimeframeBasedSub
 
 

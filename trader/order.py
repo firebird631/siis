@@ -111,6 +111,10 @@ class Order(Keyed):
     #
 
     @property
+    def trader(self) -> Trader:
+        return self._trader
+
+    @property
     def quantity(self) -> float:
         return self._quantity
 

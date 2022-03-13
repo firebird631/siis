@@ -3,13 +3,17 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Dummy watcher implementation
 
-import json
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from watcher.service import WatcherService
+
 import time
 
 from watcher.watcher import Watcher
 from common.signal import Signal
-
-from terminal.terminal import Terminal
 
 
 class DummyWatcher(Watcher):
@@ -17,7 +21,7 @@ class DummyWatcher(Watcher):
     Dummy watcher used mostly for backtesting.
     """
 
-    def __init__(self, service, name, watcher_type=Watcher.WATCHER_ALL):
+    def __init__(self, service: WatcherService, name: str, watcher_type: int = Watcher.WATCHER_ALL):
         super().__init__(name, service, watcher_type)
 
         self._connected = False

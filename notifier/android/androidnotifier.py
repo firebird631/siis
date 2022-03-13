@@ -25,7 +25,7 @@ class AndroidNotifier(Notifier):
     @todo Strategy alert notifications
     """
 
-    def __init__(self, identifier, service, options):
+    def __init__(self, identifier: str, service, options: dict):
         super().__init__("android", identifier, service)
 
         self._backtesting = options.get('backtesting', False)

@@ -4,16 +4,13 @@
 # SIIS and MT4, MT5 Importer tool.
 
 import sys
-import logging
-import traceback
 import zipfile
 import pathlib
 
-from datetime import datetime, timedelta
-from tools.tool import Tool
+from datetime import datetime
 
 from instrument.instrument import Instrument
-from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_from_str, timeframe_to_str, format_datetime, format_delta
+from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_from_str, timeframe_to_str
 
 from terminal.terminal import Terminal
 from database.database import Database

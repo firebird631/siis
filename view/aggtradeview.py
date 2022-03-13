@@ -3,7 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Perf trade view.
 
-from terminal.terminal import Terminal
 from view.tableview import TableView
 
 from strategy.helpers.aggtradetable import agg_trades_stats_table

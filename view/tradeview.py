@@ -3,7 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Active trades view.
 
-from terminal.terminal import Terminal
 from view.tableview import TableView
 
 from strategy.helpers.activetradetable import trades_stats_table

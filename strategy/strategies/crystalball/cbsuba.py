@@ -5,11 +5,9 @@
 
 import numpy as np
 
-from terminal.terminal import Terminal
-
-from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
+    StreamMemberOhlcSerie
 
 from .cbsub import CrystalBallStrategySub
 
@@ -23,6 +21,18 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
     """
 
     def __init__(self, strategy_trader, params):
+        # default indicators
+        self.tomdemark = None
+
+        self.rsi = None
+        self.atr = None
+
+        self.sma = None
+        self.ema = None
+
+        self.bsawe = None
+        self.pivotpoint = None
+
         super().__init__(strategy_trader, params)
 
         self.rsi_low = params['constants']['rsi_low']
@@ -37,7 +47,7 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
             return
 
         if len(candles) < self.depth:
-            # not enought samples
+            # not enough samples
             return
 
         last_timestamp = candles[-1].timestamp

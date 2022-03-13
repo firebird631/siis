@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from strategy.strategytrader import StrategyTrader
     from instrument.instrument import Instrument
 
 from .region import Region
@@ -107,7 +106,7 @@ class TrendRegion(Region):
         return "[%s - %s] - [%s - %s]" % (instrument.format_price(self._low_a), instrument.format_price(self._high_a),
                                           instrument.format_price(self._low_b), instrument.format_price(self._high_b))
 
-    def parameters(self):
+    def parameters(self) -> dict:
         params = super().parameters()
 
         params['label'] = "Trend region"
@@ -122,7 +121,7 @@ class TrendRegion(Region):
 
         return params
 
-    def dumps(self):
+    def dumps(self) -> dict:
         data = super().dumps()
 
         data['low-a'] = self._low_a
@@ -135,7 +134,7 @@ class TrendRegion(Region):
 
         return data
 
-    def loads(self, data):
+    def loads(self, data: dict):
         super().loads(data)
 
         self._low_a = data.get('low-a', 0.0)

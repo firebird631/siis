@@ -15,7 +15,7 @@ import hmac
 from datetime import datetime, timedelta
 from common.utils import UTC
 
-from __init__ import APP_VERSION, APP_SHORT_NAME, APP_LONG_NAME, APP_RELEASE
+from __init__ import APP_VERSION, APP_SHORT_NAME
 
 from .ws import WssClient
 

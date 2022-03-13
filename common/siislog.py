@@ -6,10 +6,11 @@
 import copy
 import logging
 # import colorama
-import curses
+# import curses
 
 from logging.handlers import RotatingFileHandler
 from terminal.terminal import Terminal
+
 
 class ColoredFormatter(logging.Formatter):
 

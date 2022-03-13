@@ -3,10 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Indicator results local storing with usual comparison/checks
 
-import numpy as np
-from strategy.indicator import utils
-
-
 class Comparator(object):
     """
     Base class for indicator comparator.

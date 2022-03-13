@@ -4,7 +4,7 @@
 # SineWave Hilbert transform indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, cross
+# from strategy.indicator.utils import down_sample, cross
 
 import numpy as np
 from talib import HT_SINE as ta_HT_SINE

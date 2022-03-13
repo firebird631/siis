@@ -153,7 +153,7 @@ class PriceCrossAlert(Alert):
     # persistence
     #
 
-    def parameters(self):
+    def parameters(self) -> dict:
         result = super().parameters()
 
         result['direction'] = direction_to_str(self._dir)
@@ -163,7 +163,7 @@ class PriceCrossAlert(Alert):
 
         return result
 
-    def dumps(self):
+    def dumps(self) -> dict:
         result = super().dumps()
 
         result['direction'] = self._dir
@@ -173,7 +173,7 @@ class PriceCrossAlert(Alert):
 
         return result
 
-    def loads(self, data):
+    def loads(self, data: dict):
         super().loads(data)
 
         self._dir = data['direction']
@@ -185,7 +185,7 @@ class PriceCrossAlert(Alert):
     # helpers
     #
 
-    def price_src_to_str(self):
+    def price_src_to_str(self) -> str:
         if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
             return "bid"
         elif self._price_src == PriceCrossAlert.PRICE_SRC_ASK:

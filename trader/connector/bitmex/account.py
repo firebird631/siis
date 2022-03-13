@@ -35,7 +35,7 @@ class BitMexAccount(Account):
         self._alt_currency_precision = 2
 
         self._ratio = 1.0 / 100000000
-        self._last_update = 0
+        self._last_update = 0.0
 
     def update(self, connector):
         if connector is None or not connector.connected or not connector.ws_connected:

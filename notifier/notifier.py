@@ -3,6 +3,14 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Notifier module.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .service import NotifierService
+    from common.signal import Signal
+
 import pytz
 import time
 import threading
@@ -28,7 +36,9 @@ class Notifier(Runnable):
     COMMAND_INFO = 1
     COMMAND_TOGGLE = 2
 
-    def __init__(self, name: str, identifier: str, service):
+    _notifier_service: NotifierService
+
+    def __init__(self, name: str, identifier: str, service: NotifierService):
         super().__init__("nt-%s" % name)
 
         self._name = name
@@ -122,7 +132,7 @@ class Notifier(Runnable):
             self._condition.wait()
         self._condition.release()
 
-    def push_signal(self, signal):
+    def push_signal(self, signal: Signal):
         if not signal:
             return
 
@@ -131,14 +141,14 @@ class Notifier(Runnable):
         self._condition.notify()
         self._condition.release()
 
-    def command(self, command_type: int, data):
+    def command(self, command_type: int, data: dict):
         if command_type == self.COMMAND_INFO:
             message = "%s notifier is %s" % (self.identifier, "active" if self._playpause else "disabled")
             return {'error': False, 'messages': message}
 
         return None
 
-    def receiver(self, signal):
+    def receiver(self, signal: Signal):
         if not self._playpause:
             return
 

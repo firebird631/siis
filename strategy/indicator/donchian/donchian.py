@@ -4,7 +4,7 @@
 # Donchian channel indicator using low and high prices.
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample
+# from strategy.indicator.utils import down_sample
 from talib import MIN as ta_MIN, MAX as ta_MAX
 
 import numpy as np

@@ -52,8 +52,8 @@ class KrakenTrader(Trader):
 
         self._quotes = ("ZUSD", "ZEUR", "ZCAD", "ZAUD", "ZJPY", "XXBT", "XETH")
 
-        self._last_position_update = 0
-        self._last_order_update = 0
+        self._last_position_update = 0.0
+        self._last_order_update = 0.0
 
     def connect(self):
         super().connect()
@@ -183,7 +183,7 @@ class KrakenTrader(Trader):
             # store in database with the last update quantity
             Database.inst().store_asset((
                 self._name, self.account.name,
-                asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
+                asset_name, str(asset.last_trade_id), int(asset.last_update_time*1000.0),
                 asset.quantity, asset.price, asset.quote))
 
         # call base for stream

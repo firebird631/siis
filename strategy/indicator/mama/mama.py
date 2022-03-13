@@ -4,7 +4,7 @@
 # @brief MESA Adaptive Moving Average indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample
+# from strategy.indicator.utils import down_sample
 from talib import MAMA as ta_MAMA
 
 import numpy as np

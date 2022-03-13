@@ -504,7 +504,7 @@ class PaperTrader(Trader):
     def create_asset(self, asset_name, quantity, price, quote, precision=8):
         asset = Asset(self, asset_name, precision)
         asset.set_quantity(0, quantity)
-        asset.update_price(datetime.now(), 0, price, quote)
+        asset.update_price(datetime.now().timestamp(), 0, price, quote)
 
         with self._mutex:
             self._assets[asset_name] = asset

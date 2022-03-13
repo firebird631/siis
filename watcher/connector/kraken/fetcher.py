@@ -3,7 +3,6 @@
 # @license Copyright (c) 2019 Dream Overflow
 # www.kraken.com data fetcher
 
-import json
 import time
 import traceback
 import math
@@ -11,7 +10,6 @@ import math
 from datetime import datetime
 
 from common.utils import timeframe_to_str
-from trader.order import Order
 
 from database.database import Database
 from watcher.fetcher import Fetcher

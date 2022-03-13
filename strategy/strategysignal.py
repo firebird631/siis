@@ -258,7 +258,7 @@ class StrategySignal(object):
     def direction_to_str(self) -> str:
         return direction_to_str(self.dir)
 
-    def direction_from_str(self, direction: int) -> str:
+    def direction_from_str(self, direction: str) -> int:
         return direction_from_str(direction)
 
     #
@@ -266,7 +266,7 @@ class StrategySignal(object):
     #
 
     @staticmethod
-    def dump_timestamp(timestamp: float, v1: bool = False):
+    def dump_timestamp(timestamp: float, v1: bool = False) -> str:
         if v1:
             return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%SZ')
         else:

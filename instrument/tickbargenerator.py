@@ -3,16 +3,15 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Tick bar and reversal generators.
 
-from datetime import datetime, timedelta
-from common.utils import UTC, truncate
+from common.utils import truncate
 
-from instrument.tickbar import TickBarBidAsk, TickBarVolume
+from instrument.tickbar import TickBarBidAsk  # , TickBarVolume
 
 
 class TickBarBaseGenerator(object):
 
     __slots__ = '_size', '_last_timestamp', '_last_consumed', '_current', '_tick_size', \
-                '_price_precision', '_tick_scale'
+                '_price_precision', '_tick_scale', '_num_trades'
 
     def __init__(self, size, tick_scale=1.0):
         """
@@ -30,6 +29,7 @@ class TickBarBaseGenerator(object):
         self._last_timestamp = 0.0
 
         self._current = None
+        self._num_trades = 0
 
     @property
     def size(self):

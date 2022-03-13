@@ -6,7 +6,7 @@
 from terminal.command import Command
 from strategy.strategy import Strategy
 
-from common.utils import timeframe_from_str, UTC, parse_datetime
+from common.utils import timeframe_from_str, parse_datetime
 from strategy.alert.alert import Alert
 
 

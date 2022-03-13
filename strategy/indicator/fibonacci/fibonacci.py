@@ -4,10 +4,10 @@
 # Support and resistance detection using price and fibonacci levels
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MM_n
+from strategy.indicator.utils import down_sample  # , MM_n
 
 import sys
-import numpy as np
+# import numpy as np
 
 
 class FibonacciIndicator(Indicator):
@@ -25,14 +25,14 @@ class FibonacciIndicator(Indicator):
     PATTERN_FLAG = 2
 
     @classmethod
-    def indicator_type(cls):
+    def indicator_type(cls) -> int:
         return Indicator.TYPE_TREND
 
     @classmethod
-    def indicator_class(cls):
+    def indicator_class(cls) -> int:
         return Indicator.CLS_OVERLAY
 
-    def __init__(self, timeframe):
+    def __init__(self, timeframe: float):
         super().__init__("fibonacci", timeframe)
 
         self._compute_at_close = True  # only at close
@@ -52,7 +52,7 @@ class FibonacciIndicator(Indicator):
         return self._highers
 
     @staticmethod
-    def Fibonnacci(open, high, low, close):
+    def Fibonnacci(_open, high, low, close):
         """ 
         Retrouve les niveaux plus haut et plus bas et retrouve les niveaux fibo.
         """
@@ -83,13 +83,13 @@ class FibonacciIndicator(Indicator):
         return highers, lowers
 
     @staticmethod
-    def Fibonnacci_sf(open, high, low, close, step=1, filtering=False):
+    def Fibonnacci_sf(_open, high, low, close, step=1, filtering=False):
         """ 
         Retrouve les niveaux plus haut et plus bas et retrouve les niveaux fibo.
         """
         lsub_data = down_sample(low, step) if filtering else low [::step]
         hsub_data = down_sample(high, step) if filtering else high [::step]
-        t_subdata = range(0,len(data),step)
+        # t_subdata = range(0, len(lsub_data), step)
 
         # @todo fast MM_n for data
 
@@ -117,8 +117,8 @@ class FibonacciIndicator(Indicator):
 
         return highers, lowers
 
-    def compute(self, timestamp, open, high, low, close):
-        highers, lowers = FibonacciIndicator.Fibonnacci(open, high, low, close)
+    def compute(self, timestamp, _open, high, low, close):
+        highers, lowers = FibonacciIndicator.Fibonnacci(_open, high, low, close)
 
         self._lowers = lowers
         self._highers = highers

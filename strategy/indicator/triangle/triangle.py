@@ -5,12 +5,11 @@
 # Triangle indicator and trend detection indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MM_n
+from strategy.indicator.utils import down_sample  # , MM_n
 
 import scipy.stats as st
 
 import numpy as np
-import copy
 import math
 
 

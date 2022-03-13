@@ -3,8 +3,6 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Volume Profile indicator and composite
 
-import math
-
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.models import VolumeProfile
 from instrument.instrument import Instrument

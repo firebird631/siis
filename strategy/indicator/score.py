@@ -3,7 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Indicator score computation helper
 
-import copy
 import numpy as np
 
 from strategy.indicator import utils
@@ -79,7 +78,7 @@ class Score(object):
 		if len(self._scores) < 2:
 			return 0.0
 
-		return self[-1] - self[-2]
+		return self._scores[-1] - self._scores[-2]
 
 	def is_cross_last(self, with_score):
 		if len(self._scores) < 2:

@@ -12,16 +12,17 @@ from tools.tool import Tool
 
 def display_version():
     Terminal.inst().message("%s : %s" % (APP_SHORT_NAME, APP_LONG_NAME), view='content')
-    Terminal.inst().message("%s : version %s release %s" % (APP_SHORT_NAME, '.'.join(map(lambda n : "%s" % n, APP_VERSION)), APP_RELEASE), view='content')
+    Terminal.inst().message("%s : version %s release %s" % (
+        APP_SHORT_NAME, '.'.join(map(lambda n: "%s" % n, APP_VERSION)), APP_RELEASE), view='content')
 
 
 def display_help(commands_handler, user_context=False):
     if user_context:
         # user context help
-        Terminal.inst().message("User contextuel commands:", view='content')
+        Terminal.inst().message("User contextual commands:", view='content')
         for entry in commands_handler.get_user_summary():
             if entry[1]:
-                Terminal.inst().message(" - '%s' %s " % (entry[0], entry[1]) , view='content')
+                Terminal.inst().message(" - '%s' %s " % (entry[0], entry[1]), view='content')
     else:
         # general help
         Terminal.inst().message("General commands. Direct key actions (single key press), view key are in uppercase:", view='content')

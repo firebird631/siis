@@ -6,8 +6,6 @@
 import base64
 import uuid
 
-from datetime import datetime
-
 from common.signal import Signal
 
 from trader.position import Position

@@ -4,7 +4,6 @@
 # Forex Alpha strategy sub-strategy base class.
 
 from strategy.indicator.score import Score
-from instrument.candlegenerator import CandleGenerator
 from strategy.timeframebasedsub import TimeframeBasedSub
 
 

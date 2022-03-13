@@ -3,16 +3,13 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Strategy beta processor.
 
-import os
 import time
-import collections
 import traceback
 
 from datetime import datetime, timedelta
 
-from common.utils import timeframe_to_str, timeframe_from_str, UTC
+from common.utils import UTC
 
-from common.signal import Signal
 from instrument.instrument import Instrument
 
 from watcher.watcher import Watcher

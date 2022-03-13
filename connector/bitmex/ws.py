@@ -3,7 +3,6 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Websocket connector for bitmex.com
 
-import sys
 import websocket
 import threading
 import traceback
@@ -11,7 +10,6 @@ import ssl
 from time import sleep
 import json
 import decimal
-import logging
 from .apikeyauth import generate_nonce, generate_signature
 from urllib.parse import urlparse, urlunparse
 
@@ -251,8 +249,10 @@ class BitMEXWebsocket():
                                         on_error=self.__on_error,
                                         header=self.__get_auth())
 
-        # self.wst = threading.Thread(name="bitmex.ws", target=lambda: self.ws.run_forever(sslopt=sslopt_ca_certs, ping_timeout=10, ping_interval=60))
-        self.wst = threading.Thread(name="bitmex.ws", target=lambda: self.ws.run_forever(sslopt=sslopt_ca_certs, ping_timeout=None, ping_interval=None))
+        # self.wst = threading.Thread(name="bitmex.ws", target=lambda: self.ws.run_forever(
+        #   sslopt=sslopt_ca_certs, ping_timeout=10, ping_interval=60))
+        self.wst = threading.Thread(name="bitmex.ws", target=lambda: self.ws.run_forever(
+            sslopt=sslopt_ca_certs, ping_timeout=None, ping_interval=None))
         self.wst.daemon = True
         self.wst.start()
 

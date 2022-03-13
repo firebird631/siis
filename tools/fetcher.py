@@ -4,10 +4,8 @@
 # Fetcher tool
 
 import sys
-import logging
-import traceback
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from common.utils import UTC, TIMEFRAME_FROM_STR_MAP
 

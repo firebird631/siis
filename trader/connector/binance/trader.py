@@ -544,9 +544,9 @@ class BinanceTrader(Trader):
                 quantity = free + locked
 
                 last_update_time = asset.last_update_time
-                last_trade_id = int(asset.last_trade_id)
+                last_trade_id = asset.last_trade_id
 
-                # get recents deposits and withdraws
+                # get recent deposits and withdraws
                 deposits = self._watcher.connector.deposits(asset_name, last_update_time)
                 withdraws = self._watcher.connector.withdraws(asset_name, last_update_time)
 
@@ -704,7 +704,7 @@ class BinanceTrader(Trader):
 
             # compute the entry price
             last_update_time = asset.last_update_time
-            last_trade_id = int(asset.last_trade_id)
+            last_trade_id = asset.last_trade_id
 
             prev_qty = asset.quantity  # previous computed quantity
             prev_price = asset.price   # and price
@@ -769,7 +769,7 @@ class BinanceTrader(Trader):
                         logger.warning("Unsupported quote for asset " + asset_name)
 
                 # update the asset
-                asset.update_price(query_time, str(last_trade_id), curr_price, quote_symbol)
+                asset.update_price(query_time, last_trade_id, curr_price, quote_symbol)
                 asset.set_quantity(locked, free)
 
                 quantity_deviation = abs(quantity-curr_qty) / (quantity or 1.0)
@@ -792,7 +792,7 @@ class BinanceTrader(Trader):
                 # store in database with the last computed entry price
                 Database.inst().store_asset((
                     self._name, self.account.name,
-                    asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
+                    asset_name, str(asset.last_trade_id), int(asset.last_update_time*1000.0),
                     asset.quantity, asset.format_price(asset.price), asset.quote))
             else:
                 # no more quantity at time just before the query was made
@@ -802,7 +802,7 @@ class BinanceTrader(Trader):
                 # store in database with the last computed entry price
                 Database.inst().store_asset((
                     self._name, self.account.name,
-                    asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
+                    asset_name, str(asset.last_trade_id), int(asset.last_update_time*1000.0),
                     0.0, 0.0, asset.quote))
 
     def __get_or_add_asset(self, asset_name: str, precision: int = 8):
@@ -981,7 +981,7 @@ class BinanceTrader(Trader):
             # store in database with the last update quantity
             Database.inst().store_asset((
                 self._name, self.account.name,
-                asset_name, asset.last_trade_id, int(asset.last_update_time*1000.0),
+                asset_name, str(asset.last_trade_id), int(asset.last_update_time*1000.0),
                 asset.quantity, asset.price, asset.quote))
 
         # call base for stream
@@ -1047,7 +1047,7 @@ class BinanceTrader(Trader):
         #
 
         # price
-        asset.update_price(timestamp, trade_id, curr_price, asset.quote)
+        asset.update_price(timestamp, trade_id or asset.last_trade_id, curr_price, asset.quote)
 
         # and qty
         if buy_or_sell:
@@ -1069,7 +1069,7 @@ class BinanceTrader(Trader):
         # store in database with the last computed entry price
         Database.inst().store_asset((
             self._name, self.account.name,
-            asset.symbol, asset.last_trade_id, int(asset.last_update_time*1000.0),
+            asset.symbol, str(asset.last_trade_id), int(asset.last_update_time*1000.0),
             asset.quantity, asset.price, asset.quote))
 
     #
@@ -1199,7 +1199,7 @@ class BinanceTrader(Trader):
     #
 
     def asset_quantities(self) -> List[Tuple[str, float, float]]:
-        """
+        """²²
         Returns a list of triplet with (symbol, locked qty, free qty) for any of the non empty balance of assets.
         """
         with self._mutex:

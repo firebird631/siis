@@ -3,10 +3,19 @@
 # @license Copyright (c) 2019 Dream Overflow
 # View manager service.
 
-from view.service import ViewService
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from view.service import ViewService
+    from watcher.service import WatcherService
+    from strategy.service import StrategyService
+    from trader.service import TraderService
 
 
-def setup_default_views(view_service, watcher_service, trader_service, strategy_service):
+def setup_default_views(view_service: ViewService, watcher_service: WatcherService,
+                        trader_service: TraderService, strategy_service: StrategyService):
     # 'signal'
     from view.signalview import SignalView
     signal = SignalView(view_service, strategy_service)

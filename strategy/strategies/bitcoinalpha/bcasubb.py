@@ -3,11 +3,10 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Bitcoin Alpha strategy, sub-strategy B.
 
-from terminal.terminal import Terminal
-
 from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
-from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
+from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
+    StreamMemberOhlcSerie
 
 from .bcasub import BitcoinAlphaStrategySub
 
@@ -29,6 +28,12 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
         self.bollingerbands = None
         self.mama = None
 
+        self.rsi = None
+        self.sma = None
+        self.ema = None
+        self.pivotpoint = None
+        self.tomdemark = None
+
         super().__init__(strategy_trader, params)
 
         if 'scores' in params:
@@ -49,7 +54,7 @@ class BitcoinAlphaStrategySubB(BitcoinAlphaStrategySub):
         candles = self.get_candles()
 
         if len(candles) < self.depth:
-            # not enought samples
+            # not enough samples
             return
 
         prices = self.price.compute(timestamp, candles)

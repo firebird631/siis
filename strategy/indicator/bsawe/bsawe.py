@@ -4,9 +4,9 @@
 # Awesome based buy/sell signal indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, crossunder, crossover
+from strategy.indicator.utils import crossunder, crossover  # , down_sample
 
-import numpy as np
+# import numpy as np
 from talib import EMA as ta_EMA, SMA as ta_SMA
 
 import logging

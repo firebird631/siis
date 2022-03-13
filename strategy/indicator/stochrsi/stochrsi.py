@@ -5,10 +5,10 @@
 # Stochastic RSI indicator
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.utils import down_sample, MMexp_n, MM_n
+from strategy.indicator.utils import down_sample, MM_n  # ,MMexp_n
 
 import numpy as np
-from talib import STOCHRSI as ta_STOCHRSI, STOCH as ta_STOCH, RSI as ta_RSI
+from talib import STOCH as ta_STOCH, RSI as ta_RSI  # ,STOCHRSI as ta_STOCHRSI
 
 
 class StochRSIIndicator(Indicator):
@@ -160,7 +160,8 @@ class StochRSIIndicator(Indicator):
         #     self._len_D)
 
         rsis = ta_RSI(prices, self._length)
-        self._ks, self._ds = ta_STOCH(rsis, rsis, rsis, fastk_period=self._length, slowk_period=self._len_K, slowk_matype=0, slowd_period=self._len_D, slowd_matype=0)
+        self._ks, self._ds = ta_STOCH(rsis, rsis, rsis, fastk_period=self._length, slowk_period=self._len_K,
+                                      slowk_matype=0, slowd_period=self._len_D, slowd_matype=0)
 
         # self._ks, self._ds = ta_STOCHRSI(prices, self._length, self._len_K, self._len_D, 0)
 

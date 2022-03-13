@@ -8,15 +8,17 @@ import json
 import time
 import threading
 import pathlib
+from datetime import datetime
 
 from importlib import import_module
+from typing import Tuple, Optional, Union, List
 
 from strategy.indicator.models import Limits, VolumeProfile
 
 from config import utils
 
 from .tickstorage import TickStorage, TickStreamer, FirstTickFinder, LastTickFinder
-from .ohlcstorage import OhlcStorage, OhlcStreamer
+from .ohlcstorage import OhlcStreamer
 from .quotestorage import QuoteStorage, QuoteStreamer, LastQuoteFinder
 
 import logging
@@ -90,7 +92,7 @@ class Database(object):
             Database.__instance = None
 
     @classmethod
-    def create(cls, options):
+    def create(cls, options: dict):
         config = utils.load_config(options, 'databases')
 
         if config['siis'].get('type', 'mysql') == 'mysql':
@@ -158,13 +160,13 @@ class Database(object):
         except ModuleNotFoundError as e:
             logger.error(repr(e))
 
-    def lock(self, blocking=True, timeout=-1):
+    def lock(self, blocking: bool = True, timeout: float = -1):
         self._mutex.acquire(blocking, timeout)
 
     def unlock(self):
         self._mutex.release()
 
-    def setup(self, options):
+    def setup(self, options: dict):
         # load database
         config = utils.load_config(options, 'databases')
 
@@ -191,7 +193,7 @@ class Database(object):
         # is fetch mode flush tick continuously
         self._fetch = True
 
-    def connect(self, config):
+    def connect(self, config: dict):
         """
         Connection to the database host.
         """
@@ -267,9 +269,9 @@ class Database(object):
     # async saves
     #
 
-    def store_market_trade(self, data):
+    def store_market_trade(self, data: Tuple[str, str, int, str, str, str, str, int]):
         """
-        @param data is a tuple or an array of tuples containing data in that order and format :
+        @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
             str market_id (not empty)
             integer timestamp (ms since epoch)
@@ -297,7 +299,7 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def num_pending_ticks_storage(self):
+    def num_pending_ticks_storage(self) -> int:
         """
         Return current pending tick list size, for storage.
         """
@@ -305,9 +307,9 @@ class Database(object):
             n = len(self._pending_tick_insert)
             return n
 
-    def store_market_quote(self, data):
+    def store_market_quote(self, data: Tuple[str, str, int, int, str, str, str, str, str, str]):
         """
-        @param data is a tuple or an array of tuples containing data in that order and format :
+        @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
             str market_id (not empty)
             integer timestamp (ms since epoch)
@@ -338,14 +340,17 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def store_market_ohlc(self, data):
+    def store_market_ohlc(self, data: Tuple[str, str, int, int, str, str, str, str, str, str]):
         """
-        @param data is a tuple or an array of tuples containing data in that order and format :
+        @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
             str market_id (not empty)
             integer timestamp (ms since epoch)
             integer timeframe (time unit in seconds)        
-            str open, high, low, close (>= 0)
+            str open (>= 0)
+            str high (>= 0)
+            str low (>= 0)
+            str close (>= 0)
             str spread (>= 0)
             str volume (>= 0)
 
@@ -360,9 +365,9 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def store_market_liquidation(self, data):
+    def store_market_liquidation(self, data: Tuple[str, str, int, int, str, str]):
         """
-        @param data is a tuple or an array of tuples containing data in that order and format :
+        @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
             str market_id (not empty)
             integer timestamp (ms since epoch)
@@ -379,9 +384,11 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def store_market_info(self, data):
+    def store_market_info(self, data: Tuple[str, str, str, int, int, int, int, int, str, str, int, str, str, int, str,
+                                            int, str, str, str, str, str, str, str, str, str, str, str, str, str, str,
+                                            str, str, str, str, str]):
         """
-        @param data is a tuple or an array of tuples containing data in that order and format :
+        @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
             str market_id (not empty)
             str symbol (not empty)
@@ -431,12 +438,16 @@ class Database(object):
     # async loads
     #
 
-    def load_market_ohlc(self, service, broker_id, market_id, timeframe, from_datetime=None, to_datetime=None):
+    def load_market_ohlc(self, service, broker_id: str, market_id: str, timeframe: float,
+                         from_datetime: Optional[datetime] = None, to_datetime: Optional[datetime] = None):
         """
         Load a set of market ohlc, fill the intermediates missing ohlcs if necessary
         @param service to be notified once done
-        @param from_datetime Timestamp in ms
-        @param to_datetime Timestamp in ms
+        @param broker_id: str
+        @param market_id: str
+        @param timeframe: float
+        @param from_datetime datetime
+        @param to_datetime datetime
         """
         with self._mutex:
             from_ts = int(from_datetime.timestamp() * 1000) if from_datetime else None
@@ -447,11 +458,14 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def load_market_ohlc_last_n(self, service, broker_id, market_id, timeframe, last_n):
+    def load_market_ohlc_last_n(self, service, broker_id: str, market_id: str, timeframe: float, last_n: int):
         """
         Load a set of market ohlc, fill the intermediates missing ohlcs if necessary
         @param service to be notified once done
-        @param last_n last max n ohlcs to load
+        @param market_id: str
+        @param broker_id: str
+        @param timeframe: float
+        @param last_n: int last max n ohlcs to load
         """
         with self._mutex:
             self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, None, None, last_n))
@@ -459,10 +473,12 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def load_market_info(self, service, broker_id, market_id):
+    def load_market_info(self, service, broker_id: str, market_id: str):
         """
         Load a specific market info given its market id.
         @param service to be notified once done
+        @param market_id:
+        @param broker_id:
         """
         with self._mutex:
             self._pending_market_info_select.append((service, broker_id, market_id))
@@ -470,10 +486,11 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def load_market_list(self, service, broker_id):
+    def load_market_list(self, service, broker_id: str):
         """
         Load the complete list of market available for a specific broker id.
         @param service to be notified once done
+        @param broker_id: str
         """
         with self._mutex:
             self._pending_market_list_select.append((service, broker_id))
@@ -485,23 +502,24 @@ class Database(object):
     # sync loads
     #
 
-    def get_first_tick(self, broker_id, market_id):
+    def get_first_tick(self, broker_id: str, market_id: str):
         """Load and return only the first found and older stored tick."""
         return FirstTickFinder(self._markets_path, broker_id, market_id, binary=True).first()
 
-    def get_last_tick(self, broker_id, market_id):
+    def get_last_tick(self, broker_id: str, market_id: str):
         """Load and return only the last found and most recent stored tick."""
         return LastTickFinder(self._markets_path, broker_id, market_id, binary=True).last()
 
-    def get_last_quote(self, broker_id, market_id, timeframe):
+    def get_last_quote(self, broker_id: str, market_id: str, timeframe: float):
         """Load and return only the last found and most recent stored tick."""
         return LastQuoteFinder(self._markets_path, broker_id, market_id, timeframe, binary=True).last()
 
-    def get_last_ohlc(self, broker_id, market_id, timeframe):
+    def get_last_ohlc(self, broker_id: str, market_id: str, timeframe: float):
         """Load and return only the last found and most recent stored OHLC from a specific timeframe."""
         return None
 
-    def get_user_closed_trades(self, broker_id, account_id, strategy_id, from_date, to_date, market_id=None):
+    def get_user_closed_trades(self, broker_id: str, account_id: str, strategy_id: str,
+                               from_date: datetime, to_date: datetime, market_id: Optional[str] = None):
         """
         Sync load and return the user closed trades for an account and strategy identifier and a period of date
         Optional market_id.
@@ -512,19 +530,22 @@ class Database(object):
     # Tick and ohlc streamer
     #
 
-    def create_tick_streamer(self, broker_id, market_id, from_date, to_date, buffer_size=32768):
+    def create_tick_streamer(self, broker_id: str, market_id: str, from_date: datetime, to_date: datetime,
+                             buffer_size: int = 32768):
         """
         Create a new tick streamer.
         """
         return TickStreamer(self._markets_path, broker_id, market_id, from_date, to_date, buffer_size, True)
 
-    def create_quote_streamer(self, broker_id, market_id, timeframe, from_date, to_date, buffer_size=8192):
+    def create_quote_streamer(self, broker_id: str, market_id: str, timeframe: float,
+                              from_date: datetime, to_date: datetime, buffer_size: int = 8192):
         """
         Create a new quote streamer. It comes from the OHLC file storage.
         """
         return QuoteStreamer(self._markets_path, broker_id, market_id, timeframe, from_date, to_date, buffer_size, True)
 
-    def create_ohlc_streamer(self, broker_id, market_id, timeframe, from_date, to_date, buffer_size=8192):
+    def create_ohlc_streamer(self, broker_id: str, market_id: str, timeframe: float,
+                             from_date: datetime, to_date: datetime, buffer_size: int = 8192):
         """
         Create a new OHLC streamer. It comes from OHLC database table.
         """
@@ -534,9 +555,9 @@ class Database(object):
     # User
     # 
 
-    def store_asset(self, data):
+    def store_asset(self, data: Tuple[str, str, str, str, int, str, str, str]):
         """
-        @param data is a tuple or an array of tuples containing data in that order and format :
+        @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
             str account_id (not empty)
             str asset_id (not empty) identifier of the asset
@@ -555,10 +576,13 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def load_assets(self, service, trader, broker_id, account_id):
+    def load_assets(self, service, trader, broker_id: str, account_id: str):
         """
         Load all asset for a specific broker_id
         @param service to be notified once done
+        @param trader: Trader
+        @param account_id: str
+        @param broker_id: str
         """
         with self._mutex:
             self._pending_asset_select.append((service, trader, broker_id, account_id))
@@ -566,9 +590,9 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def store_user_trade(self, data):
+    def store_user_trade(self, data: Tuple[str, str, str, str, int, int, dict, dict]):
         """
-        @param data is a tuple or an array of tuples containing data in that order and format :
+        @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
             str account_id (not empty)
             str market_id (not empty)
@@ -587,9 +611,13 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def load_user_trades(self, service, strategy, broker_id, account_id, strategy_id):
+    def load_user_trades(self, service, strategy, broker_id: str, account_id: str, strategy_id: str):
         """
         Load all user trades data and options for a specific strategy_id / broker_id / account_id
+        @param strategy_id: str
+        @param account_id: str
+        @param broker_id: str
+        @param strategy: Strategy
         @param service to be notified once done
         """
         with self._mutex:
@@ -598,7 +626,7 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def clear_user_trades(self, broker_id, account_id, strategy_id):
+    def clear_user_trades(self, broker_id: str, account_id: str, strategy_id: str):
         """
         Delete all user trades data and options for a specific strategy_id / broker_id / account_id
         """
@@ -608,9 +636,9 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def store_user_trader(self, data):
+    def store_user_trader(self, data: Tuple[str, str, str, str, int, dict, dict, dict]):
         """
-        @param data is a tuple or an array of tuples containing data in that order and format :
+        @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
             str account_id (not empty)
             str market_id (not empty)
@@ -629,10 +657,14 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def load_user_traders(self, service, strategy, broker_id, account_id, strategy_id):
+    def load_user_traders(self, service, strategy, broker_id: str, account_id: str, strategy_id: str):
         """
         Load all user traders data and options for a specific strategy_id / broker_id / account_id
         @param service to be notified once done
+        @param strategy: Strategy
+        @param strategy_id: str
+        @param account_id: str
+        @param broker_id: str
         """
         with self._mutex:
             self._pending_user_trader_select.append((service, strategy, broker_id, account_id, strategy_id))
@@ -640,9 +672,9 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def store_user_closed_trade(self, data):
+    def store_user_closed_trade(self, data: Tuple[str, str, str, str, int, dict]):
         """
-        @param data is a tuple or an array of tuples containing data in that order and format :
+        @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
             str account_id (not empty)
             str market_id (not empty)
@@ -727,7 +759,8 @@ class Database(object):
     # Extra
     #
 
-    def cleanup_ohlc(self, broker_id, market_id=None, timeframes=None, from_date=None, to_date=None):
+    def cleanup_ohlc(self, broker_id: str, market_id: Optional[str] = None, timeframes=None,
+                     from_date: Optional[datetime] = None, to_date: Optional[datetime] = None):
         """
         Cleanup any OHLC for a specific broker_id.
         If market_id is specified only delete for this market else any market related to the broker identifier
@@ -740,11 +773,11 @@ class Database(object):
     # sync cache data
     #
 
-    def get_cached_db_filename(self, broker_id, market_id, strategy_id):
+    def get_cached_db_filename(self, broker_id: str, market_id: str, strategy_id: str):
         cleanup_name = strategy_id
         return os.path.join(self._markets_path, broker_id, market_id, 'C', cleanup_name + '.db')
 
-    def open_cached_db(self, broker_id, market_id, strategy_id):
+    def open_cached_db(self, broker_id: str, market_id: str, strategy_id: str):
         filename = self.get_cached_db_filename(broker_id, market_id, strategy_id)
         db = None
         exist = False
@@ -804,7 +837,7 @@ class Database(object):
 
         db.commit()
 
-    def get_cached_limits(self, broker_id, market_id, strategy_id):
+    def get_cached_limits(self, broker_id: str, market_id: str, strategy_id: str):
         """Load TA limits from the data cache for a specific broker id market id and strategy identifier."""
         try:
             db = self.open_cached_db(broker_id, market_id, strategy_id)
@@ -827,8 +860,9 @@ class Database(object):
             error_logger.error(repr(e))
             raise DatabaseException("Unable to get cached limits for %s %s" % (broker_id, market_id))
 
-    def get_cached_volume_profile(self, broker_id, market_id, strategy_id, timeframe, from_date, to_date=None,
-                                  sensibility=10, volume_area=70):
+    def get_cached_volume_profile(self, broker_id: str, market_id: str, strategy_id: str, timeframe: float,
+                                  from_date: datetime, to_date: Optional[datetime] = None,
+                                  sensibility: int = 10, volume_area: int = 70):
         """
         Load TA Volume Profile cache for a specific broker id market id and strategy identifier and inclusive period.
         """
@@ -867,7 +901,7 @@ class Database(object):
             error_logger.error(repr(e))
             raise DatabaseException("Unable to get a range of cached Volume Profile for %s %s" % (broker_id, market_id))
 
-    def store_cached_limits(self, broker_id, market_id, strategy_id, limits):
+    def store_cached_limits(self, broker_id: str, market_id: str, strategy_id: str, limits: Limits):
         """
         limits is Limits dataclass.
         """
@@ -879,7 +913,9 @@ class Database(object):
             cursor = db.cursor()
 
             cursor.execute("""INSERT OR REPLACE INTO limits(from_timestamp, last_timestamp, min_price, max_price) VALUES (?, ?, ?, ?)""", (
-                int(limits.from_timestamp * 1000), int(limits.last_timestamp * 1000), limits.min_price, limits.max_price))
+                int(limits.from_timestamp * 1000),
+                int(limits.last_timestamp * 1000),
+                limits.min_price, limits.max_price))
 
             db.commit()
 
@@ -887,11 +923,19 @@ class Database(object):
             db = None
         except self.sqlite3.IntegrityError as e:
             error_logger.error(repr(e))
-            raise DatabaseException("SQlite Integrity Error: Failed to insert cached Limits for %s.\n" % (market_id,) + str(e))
+            raise DatabaseException("SQlite Integrity Error: Failed to insert cached Limits for %s.\n" % (
+                market_id,) + str(e))
 
-    def store_cached_volume_profile(self, broker_id, market_id, strategy_id, timeframe, data,
-                                    sensibility=10, volume_area=70):
+    def store_cached_volume_profile(self, broker_id: str, market_id: str, strategy_id: str, timeframe: float,
+                                    data: Union[List[VolumeProfile], VolumeProfile],
+                                    sensibility: int = 10, volume_area: int = 70):
         """
+        @param volume_area:
+        @param sensibility:
+        @param timeframe:
+        @param strategy_id:
+        @param market_id:
+        @param broker_id:
         @param data A single tuple or a list of tuple.
 
         Format of a Volume Profile tuple is (timestamp:float in seconds, POC_price:float, POC_volume:float, Volumes:dict, Peaks:list, Valleys:list)
@@ -917,7 +961,7 @@ class Database(object):
                 error_logger.error(repr(e))
                 raise DatabaseException("SQlite Integrity Error: Failed to insert cached Volume Profile for %s %s.\n" % (broker_id, market_id,) + str(e))
 
-        elif type(data) is tuple:
+        elif type(data) is VolumeProfile:
             # single VP
             try:
                 db = self.open_cached_db(broker_id, market_id, strategy_id)

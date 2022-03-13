@@ -197,6 +197,8 @@ class IGService:
         self.IG_USERNAME = username
         self.IG_PASSWORD = password
 
+        self.ig_session = None
+
         try:
             self.BASE_URL = self.D_BASE_URL[acc_type.lower()]
         except Exception:
@@ -585,10 +587,8 @@ class IGService:
         action = 'read'
         response = self._req(action, endpoint, params, session)
         data = self.parse_response(response.text)
-        if self.return_munch:
-            from .utils import munchify
-            data = munchify(data)
-        return(data)
+
+        return data
 
     def fetch_related_client_sentiment_by_instrument(self, market_id, session=None):
         """

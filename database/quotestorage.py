@@ -498,8 +498,6 @@ class LastQuoteFinder(object):
 
             return quote
 
-        return None
-
     def last(self):
         quote = None
 

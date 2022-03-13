@@ -4,12 +4,13 @@
 # www.bitmex.com watcher implementation
 
 import re
-import json
 import time
 import traceback
 import math
 
 from datetime import datetime
+from typing import Union
+
 from common.utils import UTC
 
 from watcher.watcher import Watcher
@@ -20,9 +21,8 @@ from connector.bitmex.connector import Connector
 from trader.order import Order
 from trader.market import Market
 
-from instrument.instrument import Instrument, Candle
+from instrument.instrument import Instrument
 
-from terminal.terminal import Terminal
 from database.database import Database
 
 import logging
@@ -545,7 +545,9 @@ class BitMexWatcher(Watcher):
                     #
 
                     tradeable = instrument.get('state', 'Closed') == 'Open'
-                    update_time = datetime.strptime(instrument.get('timestamp', '1970-01-01 00:00:00.000Z'), "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
+                    update_time = datetime.strptime(instrument.get('timestamp', '1970-01-01 00:00:00.000Z'),
+                                                    "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
+
                     symbol = instrument.get('symbol', '')
                     base_symbol = instrument.get('rootSymbol', 'USD')
                     quote_symbol = symbol[-3:]
@@ -556,6 +558,7 @@ class BitMexWatcher(Watcher):
                     # base instrument
                     base_market_id = "XBT" + quote_symbol
                     base_market = None
+                    xbtusd_market = None
 
                     if quote_symbol == "USD" and base_market_id != symbol:
                         xbtusd_market = self.connector.ws.get_instrument("XBTUSD")
@@ -572,6 +575,9 @@ class BitMexWatcher(Watcher):
                     ask = instrument.get('askPrice')
 
                     if bid is not None and ask is not None:
+                        value_per_pip = 1.0
+                        contract_size = 1.0
+
                         # update contract size and value per pip
                         if quote_symbol == 'USD' and base_market_id == symbol:  # XBTUSD (xbt perpetual)
                             base_exchange_rate = instrument.get('lastPrice', 1.0)
@@ -597,8 +603,9 @@ class BitMexWatcher(Watcher):
                                 value_per_pip = contract_size * instrument.get('lastPrice', 1.0)
 
                         elif base_market and base_market_id != symbol:  # ADAZ18... (alts futures)
-                            base_exchange_rate = xbtusd_market.get('lastPrice', 1.0) / instrument.get('lastPrice', 1.0)
-                            contract_size = xbtusd_market.get('lastPrice', 1.0) / instrument.get('lastPrice', 1.0)
+                            if xbtusd_market:
+                                base_exchange_rate = xbtusd_market.get('lastPrice', 1.0) / instrument.get('lastPrice', 1.0)
+                                contract_size = xbtusd_market.get('lastPrice', 1.0) / instrument.get('lastPrice', 1.0)
                             value_per_pip = 1.0
 
                         vol24h = instrument.get('volume24h')
@@ -619,7 +626,7 @@ class BitMexWatcher(Watcher):
                 #   market_depth = self.connector.ws.market_depth(market_id)
                 #   self.service.notify(Signal.SIGNAL_ORDER_BOOK, self.name, (market_id, market_depth[0], market_depth[1]))
 
-    def fetch_market(self, market_id):
+    def fetch_market(self, market_id: str) -> Union[Market, None]:
         """
         Fetch and cache it. It rarely changes, except for base exchange rate, so assume it once for all.
         @todo min/max/step/min_notional
@@ -757,7 +764,9 @@ class BitMexWatcher(Watcher):
             # notify for strategy
             self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
 
-        return market
+            return market
+
+        return None
 
     def update_markets_info(self):
         """

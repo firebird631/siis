@@ -3,9 +3,16 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Account/user model
 
-from common.utils import truncate
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from .trader import Trader
 
 import threading
+
+from common.utils import truncate
 
 import logging
 logger = logging.getLogger('siis')
@@ -22,7 +29,7 @@ class Account(object):
     TYPE_MARGIN = 2
     TYPE_SPREADBET = 4
 
-    def __init__(self, parent):
+    def __init__(self, parent: Trader):
         self._mutex = threading.RLock()
         self._parent = parent
 
@@ -74,118 +81,118 @@ class Account(object):
         pass
 
     @property
-    def parent(self):
+    def parent(self) -> Trader:
         return self._parent
 
     @property
-    def account_type(self):
+    def account_type(self) -> int:
         return self._account_type
             
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def username(self):
+    def username(self) -> str:
         return self._username
 
     @property
-    def email(self):
+    def email(self) -> str:
         return self._email
 
     @property
-    def net_worth(self):
+    def net_worth(self) -> float:
         return self._net_worth
 
     @property
-    def balance(self):
+    def balance(self) -> float:
         return self._balance
 
     @property
-    def currency(self):
+    def currency(self) -> str:
         return self._currency
 
     @property
-    def currency_display(self):
+    def currency_display(self) -> str:
         return self._currency_display
 
     @property
-    def alt_currency(self):
+    def alt_currency(self) -> str:
         return self._alt_currency
 
     @property
-    def alt_currency_display(self):
+    def alt_currency_display(self) -> str:
         return self._alt_currency_display
 
     @property
-    def currency_ratio(self):
+    def currency_ratio(self) -> float:
         return self._currency_ratio
     
     @property
-    def currency_precision(self):
+    def currency_precision(self) -> int:
         return self._currency_precision
     
     @property
-    def alt_currency_precision(self):
+    def alt_currency_precision(self) -> int:
         return self._alt_currency_precision
 
     @property
-    def min_leverage(self):
+    def min_leverage(self) -> float:
         return self._leverage[0]
 
     @property
-    def max_leverage(self):
+    def max_leverage(self) -> float:
         return self._leverage[1]
 
     @property
-    def profit_loss(self):
+    def profit_loss(self) -> float:
         return self._profit_loss
 
     @property
-    def asset_profit_loss(self):
+    def asset_profit_loss(self) -> float:
         return self._asset_profit_loss
 
     @property
-    def default_stop_loss_rate(self):
+    def default_stop_loss_rate(self) -> float:
         return self._default_stop_loss_rate
 
     @property
-    def default_take_profit_rate(self):
+    def default_take_profit_rate(self) -> float:
         return self._default_take_profit_rate
 
     @property
-    def default_risk_ratio(self):
+    def default_risk_ratio(self) -> float:
         return self._default_risk_ratio
 
     @property
-    def margin_balance(self):
+    def margin_balance(self) -> float:
         return self._margin_balance
 
     @property
-    def risk_limit(self):
+    def risk_limit(self) -> float:
         return self._risk_limit
 
     @property
-    def margin_level(self):
+    def margin_level(self) -> float:
         return self._margin_level
 
     @property
-    def asset_balance(self):
+    def asset_balance(self) -> float:
         return self._asset_balance
 
     @property
-    def free_asset_balance(self):
+    def free_asset_balance(self) -> float:
         return self._free_asset_balance
 
     @property
-    def guaranteed_stop(self):
+    def guaranteed_stop(self) -> bool:
         return self._guaranteed_stop
 
     @account_type.setter
-    def account_type(self, account_type):
+    def account_type(self, account_type: int):
         self._account_type = account_type
 
-    def add_realized_profit_loss(self, profit_loss):
+    def add_realized_profit_loss(self, profit_loss: float):
         """
         Update the balance adding the realized profit/loss, and minus that profit/loss from the
         current unrealized profit loss
@@ -193,75 +200,75 @@ class Account(object):
         self._profit_loss -= profit_loss
         self._balance += profit_loss
 
-    def set_balance(self, balance):
+    def set_balance(self, balance: float):
         self._balance = balance
 
-    def use_balance(self, amount):
+    def use_balance(self, amount: float):
         self._balance -= amount
 
-    def set_asset_balance(self, balance, free):
+    def set_asset_balance(self, balance: float, free: float):
         self._asset_balance = balance
         self._free_asset_balance = free
 
-    def use_margin(self, margin):
+    def use_margin(self, margin: float):
         self._margin_balance -= margin
 
-    def free_margin(self, margin):
+    def free_margin(self, margin: float):
         self._margin_balance += margin
 
-    def set_used_margin(self, used_margin):
+    def set_used_margin(self, used_margin: float):
         self._margin_balance = self._balance - used_margin
 
-    def set_margin_balance(self, margin_balance):
+    def set_margin_balance(self, margin_balance: float):
         self._margin_balance = margin_balance
 
-    def add_unrealized_profit_loss(self, upnl):
+    def add_unrealized_profit_loss(self, upnl: float):
         self._profit_loss += upnl
 
-    def set_unrealized_profit_loss(self, upnl):
+    def set_unrealized_profit_loss(self, upnl: float):
         self._profit_loss = upnl
 
-    def add_unrealized_asset_profit_loss(self, upnl):
+    def add_unrealized_asset_profit_loss(self, upnl: float):
         self._asset_profit_loss += upnl
 
-    def set_unrealized_asset_profit_loss(self, upnl):
+    def set_unrealized_asset_profit_loss(self, upnl: float):
         self._asset_profit_loss = upnl
 
-    def set_currency(self, currency, currency_display=""):
+    def set_currency(self, currency: str, currency_display: str = ""):
         self._currency = currency
         self._currency_display = currency_display or currency
 
-    def set_alt_currency(self, alt_currency, alt_currency_display=""):
+    def set_alt_currency(self, alt_currency: str, alt_currency_display: str = ""):
         self._alt_currency = alt_currency
         self._alt_currency_display = alt_currency_display or alt_currency
 
-    def set_risk_limit(self, risk_limit):
+    def set_risk_limit(self, risk_limit: float):
         self._risk_limit = risk_limit
 
-    def set_margin_level(self, margin_level):
+    def set_margin_level(self, margin_level: float):
         self._margin_level = margin_level
 
-    def set_net_worth(self, net_worth):
+    def set_net_worth(self, net_worth: float):
         self._net_worth = net_worth
 
-    def initial(self, balance, currency, currency_display):
+    def initial(self, balance: float, currency: str, currency_display: str):
         self._balance = balance
         self._margin_balance = balance
         self._currency = currency
         self._currency_display = currency_display
 
     @currency_ratio.setter
-    def currency_ratio(self, currency_ratio):
+    def currency_ratio(self, currency_ratio: float):
         self._currency_ratio = currency_ratio
 
-    def lock(self, blocking=True, timeout=-1):
+    def lock(self, blocking: bool = True, timeout: float = -1):
         self._mutex.acquire(blocking, timeout)
 
     def unlock(self):
         self._mutex.release()       
 
     @classmethod
-    def mutexed(cls, fn):
+    def mutexed(cls, fn: Callable):
         """Annotation for methods that require mutex locker."""
         def wrapped(self, *args, **kwargs):
             with self._mutex:
@@ -273,7 +280,7 @@ class Account(object):
     # helpers
     #
 
-    def format_price(self, price):
+    def format_price(self, price: float) -> str:
         """
         Format the price according to the precision.
         """
@@ -286,7 +293,7 @@ class Account(object):
 
         return formatted_price
 
-    def format_alt_price(self, price):
+    def format_alt_price(self, price: float) -> str:
         """
         Format the price according to the precision.
         """
@@ -303,7 +310,7 @@ class Account(object):
     # persistence
     #
 
-    def dumps(self):
+    def dumps(self) -> dict:
         return {
             'balance': self._balance,
             'net-worth': self._net_worth,
@@ -316,7 +323,7 @@ class Account(object):
             'free-asset-balance': self._free_asset_balance
         }
 
-    def loads(self, data):
+    def loads(self, data: dict):
         self._balance = data.get('balance', 0.0)
         self._net_worth = data.get('net-worth', 0.0)
         self._margin_balance = data.get('margin-balance', 0.0)
