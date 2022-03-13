@@ -74,7 +74,9 @@ function audio_notify(mode) {
         document.getElementById("audio_win2").play();
     } else if (mode == 'timeout') {
         document.getElementById("audio_timeout").play();
-    } else if (mode == 'signal') {
+    } else if (mode == 'signal' && !alt) {
+        document.getElementById("audio_signal2").play();
+    } else if (mode == 'signal' && alt) {
         document.getElementById("audio_signal").play();
     } else if (mode == 'entry') {
         document.getElementById("audio_entry").play();

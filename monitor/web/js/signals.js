@@ -1,10 +1,15 @@
 
 function on_strategy_signal(market_id, signal_id, timestamp, signal, do_notify=true) {
+    if (signal_id > 0) {
+        // get only pure signal (not related to a trade)
+        return;
+    }
+
     let signal_elt = $('<tr class="signal"></tr>');
     let key = market_id + ':' + signal.timestamp;
     signal_elt.attr('signal-key', key);
 
-    let lsignal_id = $('<span class="signal-id"></span>').text(signal.id);
+    // let lsignal_id = $('<span class="signal-id"></span>').text(signal.id);
     let signal_symbol = $('<span class="signal-symbol"></span>').text(market_id);
     let signal_direction = $('<span class="signal-direction fa"></span>')
         .addClass(signal.direction == "long" ? 'trade-long' : 'trade-short')
@@ -31,7 +36,7 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal, do_notify=t
 
     let signal_copy = $('<button class="signal-copy btn btn-info fas fa-copy"></button>');
 
-    signal_elt.append($('<td></td>').append(lsignal_id));
+    // signal_elt.append($('<td></td>').append(lsignal_id));
     signal_elt.append($('<td></td>').append(signal_symbol));
     signal_elt.append($('<td></td>').append(signal_direction));
     signal_elt.append($('<td></td>').append(signal_way));
@@ -92,11 +97,11 @@ function on_copy_signal(elt) {
     }
 
     if (direction > 0) {
-        title = "Copy Signal - Open Long on " + market.symbol;
+        $("#copy_signal").find(".modal-title").text("Copy Signal - Open Long on " + market.symbol);
         $("#copy_signal_open").text("Long");
         $("#copy_signal_open").removeClass("btn-danger").addClass("btn-success");
     } else {
-        title = "Copy Signal - Open Short on " + market.symbol;
+        $("#copy_signal").find(".modal-title").text("Copy Signal - Open Short on " + market.symbol);
         $("#copy_signal_open").text("Short");
         $("#copy_signal_open").removeClass("btn-success").addClass("btn-danger");
     }
@@ -124,7 +129,6 @@ function on_copy_signal(elt) {
     $('#copy_signal_comment').val("");
 
     $('#copy_signal').modal({'show': true, 'backdrop': true});
-    $("#copy_signal").find(".modal-title").text(title);
 
     $('#copy_signal_open').off('click');
     $('#copy_signal_open').on('click', function(e) {
@@ -201,12 +205,6 @@ function on_copy_signal(elt) {
 
         if (mid_take_profit > 0.0) {
             data['sec-take-profit'] = mid_take_profit;
-        }
-
-        if (direction > 0) {
-            copy_signal_long(market_id, data);
-        } else {
-            copy_signal_short(market_id, data);
         }
 
         let endpoint = "strategy/trade";
@@ -357,6 +355,10 @@ window.fetch_signals = function() {
         // naturally ordered
         for (let i = 0; i < signals.length; ++i) {
             let signal = signals[i];
+            if (signal.id > 0) {
+                // get only pure signal (not related to a trade)
+                continue;
+            }
 
             window.signals[signal['market-id'] + ':' + signal.timestamp] = signal;
 
