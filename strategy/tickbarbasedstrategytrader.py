@@ -4,7 +4,7 @@
 # Tick-bar based strategy trader. 
 
 import copy
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from strategy.strategytrader import StrategyTrader
 
@@ -151,12 +151,12 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             if self._global_streamer:
                 self._global_streamer.publish()
 
-    def create_chart_streamer(self, sub):
+    def create_chart_streamer(self, timeframe) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
-                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, sub.tf))
+                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, timeframe.tf))
         streamer.add_member(StreamMemberInt('tf'))
 
-        sub.setup_streamer(streamer)
+        timeframe.setup_streamer(streamer)
 
         return streamer
 

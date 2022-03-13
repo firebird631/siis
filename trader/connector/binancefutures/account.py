@@ -3,6 +3,13 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Account/user model for binance futures
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .trader import BinanceFuturesTrader
+
 import time
 
 from trader.account import Account
@@ -21,7 +28,9 @@ class BinanceFuturesAccount(Account):
     ALT_CURRENCY = "BTC"
     ALT_CURRENCY_SYMBOL = "₿"
 
-    def __init__(self, parent):
+    _parent: BinanceFuturesTrader
+
+    def __init__(self, parent: BinanceFuturesTrader):
         super().__init__(parent)
 
         self._account_type = Account.TYPE_MARGIN
@@ -35,6 +44,10 @@ class BinanceFuturesAccount(Account):
         self._alt_currency_precision = 8
 
         self._last_update = 0.0
+
+    @property
+    def parent(self) -> BinanceFuturesTrader:
+        return self._parent
 
     def update(self, connector):
         if connector is None or not connector.connected:

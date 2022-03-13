@@ -29,6 +29,8 @@ class Account(object):
     TYPE_MARGIN = 2
     TYPE_SPREADBET = 4
 
+    _parent: Trader
+
     def __init__(self, parent: Trader):
         self._mutex = threading.RLock()
         self._parent = parent

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union, Tuple, List
+from typing import TYPE_CHECKING, Tuple, List, Dict
 
 if TYPE_CHECKING:
     from .strategy import Strategy
@@ -40,6 +40,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
     @see Strategy.base_timeframe
     """
+
+    timeframes: Dict[float, TimeframeBasedSub]
+    _timeframe_streamers: Dict[float, Streamable]
 
     def __init__(self, strategy: Strategy, instrument: Instrument, base_timeframe: float = Instrument.TF_TICK):
         """
@@ -221,12 +224,12 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             if self._global_streamer:
                 self._global_streamer.publish()
 
-    def create_chart_streamer(self, sub: TimeframeBasedSub) -> Streamable:
+    def create_chart_streamer(self, timeframe: TimeframeBasedSub) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
-                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, sub.tf))
+                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, timeframe.tf))
         streamer.add_member(StreamMemberInt('tf'))
 
-        sub.setup_streamer(streamer)
+        timeframe.setup_streamer(streamer)
 
         return streamer
 
@@ -257,49 +260,46 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         return result
 
-    def subscribe_stream(self, tf: Union[float, int, None]) -> bool:
+    def subscribe_stream(self, tf: float) -> bool:
         """
         Use or create a specific streamer.
         @param 
         """
-        result = False
-
         with self._mutex:
-            if tf is not None and isinstance(tf, (float, int)):
-                timeframe = self.timeframes.get(tf)
+            timeframe = self.timeframes.get(tf)
+            if timeframe is None:
+                return False
 
-            if timeframe in self._timeframe_streamers:
-                self._timeframe_streamers[timeframe].use()
-                result = True
+            if timeframe.tf in self._timeframe_streamers:
+                self._timeframe_streamers[timeframe.tf].use()
+                return True
             else:
                 streamer = self.create_chart_streamer(timeframe)
-
                 if streamer:
                     streamer.use()
                     self._timeframe_streamers[timeframe.tf] = streamer
-                    result = True
+                    return True
 
-        return result
+        return False
 
-    def unsubscribe_stream(self, tf: Union[float, int, None]) -> bool:
+    def unsubscribe_stream(self, tf: float) -> bool:
         """
         Delete a specific streamer when no more subscribers.
         """
-        result = False
-
         with self._mutex:
-            if tf is not None and isinstance(tf, (float, int)):
-                timeframe = self.timeframes.get(tf)
+            timeframe = self.timeframes.get(tf)
+            if timeframe is None:
+                return False
 
-            if timeframe in self._timeframe_streamers:
-                self._timeframe_streamers[timeframe].unuse()
-                if self._timeframe_streamers[timeframe].is_free():
+            if timeframe.tf in self._timeframe_streamers:
+                self._timeframe_streamers[timeframe.tf].unuse()
+                if self._timeframe_streamers[timeframe.tf].is_free():
                     # delete if 0 subscribers
-                    del self._timeframe_streamers[timeframe]
+                    del self._timeframe_streamers[timeframe.tf]
 
-                result = True
+                return True
 
-        return result
+        return False
 
     def report_state(self, mode: int = 0) -> dict:
         """

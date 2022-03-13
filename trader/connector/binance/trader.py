@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from trader.service import TraderService
     from trader.position import Position
     from instrument.instrument import Instrument
+    from watcher.connector.binance.watcher import BinanceWatcher
 
 import time
 import traceback
@@ -48,7 +49,10 @@ class BinanceTrader(Trader):
     @todo It seems sometimes that the quantity of the quote is not correctly adjusted on trade update,
         then having a warning of adjustment at the balance update just after, so its not a major problem except
         it can compute a wrong average entry price for the related quote asset
+    @todo OCO orders
     """
+
+    _watcher: Union[BinanceWatcher, None]
 
     def __init__(self, service: TraderService):
         super().__init__("binance.com", service)
@@ -58,6 +62,10 @@ class BinanceTrader(Trader):
 
         self._quotes = []
         self._ready = False
+
+    @property
+    def watcher(self) -> BinanceWatcher:
+        return self._watcher
 
     @property
     def authenticated(self) -> bool:

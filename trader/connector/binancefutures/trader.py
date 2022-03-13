@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from trader.service import TraderService
     from trader.market import Market
     from instrument.instrument import Instrument
+    from watcher.connector.binancefutures.watcher import BinanceFuturesWatcher
 
 import time
 import copy
@@ -40,6 +41,8 @@ class BinanceFuturesTrader(Trader):
     @todo hedging, IOC/FIK mode
     """
 
+    _watcher: Union[BinanceFuturesWatcher, None]
+
     def __init__(self, service: TraderService):
         super().__init__("binancefutures.com", service)
 
@@ -56,6 +59,10 @@ class BinanceFuturesTrader(Trader):
     @property
     def connected(self) -> bool:
         return self._watcher is not None and self._watcher.connector is not None and self._watcher.connector.connected
+
+    @property
+    def watcher(self) -> BinanceFuturesWatcher:
+        return self._watcher
 
     def connect(self):
         super().connect()

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from .region.region import Region
     from trader.trader import Trader
     from instrument.instrument import TickType
+    from monitor.streamable import Streamable
 
 import pathlib
 import threading
@@ -1841,7 +1842,7 @@ class StrategyTrader(object):
         """
         return []
 
-    def dumps_context(self, context_id) -> Optional[dict]:
+    def dumps_context(self, context_id: str) -> Optional[dict]:
         """
         Returns a dict with the normalized contexts details or None if don't exists.
         Must be override.
@@ -1852,21 +1853,21 @@ class StrategyTrader(object):
     # signal data streaming and monitoring
     #
 
-    def create_chart_streamer(self, timeframe):
+    def create_chart_streamer(self, timeframe) -> Union[Streamable, None]:
         """
         Create a streamer for the chart at a specific timeframe.
         Must be override.
         """
         return None
 
-    def subscribe_stream(self, timeframe):
+    def subscribe_stream(self, timeframe: float) -> bool:
         """
         Use or create a specific streamer.
         Must be override.
         """
         return False
 
-    def unsubscribe_stream(self, timeframe):
+    def unsubscribe_stream(self, timeframe: float) -> bool:
         """
         Delete a specific streamer when no more subscribers.
         Must be override.

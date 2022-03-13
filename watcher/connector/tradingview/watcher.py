@@ -86,7 +86,7 @@ class MyHttpHandler(http.server.BaseHTTPRequestHandler):
 		})
 
 		self.wfile.write(result.encode("utf-8"))
-		self.server.runner.add_query(data)
+		# self.server.runner.add_query(data)
 
 	def log_message(self, _format, *args):
 		# @todo logger

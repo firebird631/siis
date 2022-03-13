@@ -3,6 +3,13 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Account/user model
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .trader import BinanceTrader
+
 import time
 
 from trader.account import Account
@@ -23,6 +30,8 @@ class BinanceAccount(Account):
     ALT_CURRENCY = "USDT"
     ALT_CURRENCY_SYMBOL = "Ť"
 
+    _parent: BinanceTrader
+
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -37,6 +46,10 @@ class BinanceAccount(Account):
         self._alt_currency_precision = 2
 
         self._last_update = 0.0
+
+    @property
+    def parent(self) -> BinanceTrader:
+        return self._parent
 
     def update(self, connector):
         if connector is None or not connector.connected:

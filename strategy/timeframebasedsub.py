@@ -3,6 +3,8 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Timeframe based sub-strategy base class.
 
+from typing import List, Tuple
+
 from instrument.candlegenerator import CandleGenerator
 from common.utils import timeframe_to_str
 
@@ -15,7 +17,7 @@ class TimeframeBasedSub(object):
     TimeframeBasedSub sub computation base class.
     """
 
-    def __init__(self, strategy_trader, timeframe, depth, history, params=None):
+    def __init__(self, strategy_trader, timeframe: float, depth: int, history: int, params: dict = None):
         self.strategy_trader = strategy_trader  # parent strategy-trader object
 
         params = params or {}
@@ -42,7 +44,7 @@ class TimeframeBasedSub(object):
         self.prev_open_price = None   # previous OHLC open
         self.prev_close_price = None  # previous OHLC close
 
-    def setup_indicators(self, params):
+    def setup_indicators(self, params: dict):
         """
         Standard implementation to instantiate and setup the indicator based on the timeframe,
         from the parameters.
@@ -56,7 +58,7 @@ class TimeframeBasedSub(object):
         for ind, param in params['indicators'].items():
             if param is not None:
                 if self.strategy_trader.strategy.indicator(param[0]):
-                    # instanciate and setup indicator
+                    # instantiate and setup indicator
                     indicator = self.strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:])
                     indicator.setup(self.strategy_trader.instrument)
 
@@ -79,7 +81,7 @@ class TimeframeBasedSub(object):
                 # the last candle is not ended, we have to continue it
                 self.candles_gen.current = last_candle
 
-    def need_update(self, timestamp):
+    def need_update(self, timestamp: float) -> bool:
         """
         Return True if the compute must be done.
         If update at close then wait for the last OHLC close, else always returns true.
@@ -89,7 +91,7 @@ class TimeframeBasedSub(object):
 
         return True
 
-    def need_signal(self, timestamp):
+    def need_signal(self, timestamp: float) -> bool:
         """
         Return True if the signal can be generated and returned at this processing.
         If signal at close than wait for the last candle close, else always returns true.
@@ -99,13 +101,13 @@ class TimeframeBasedSub(object):
 
         return True
 
-    def process(self, timestamp):
+    def process(self, timestamp: float):
         """
         Process the computation here.
         """
         pass
 
-    def complete(self, candles, timestamp):
+    def complete(self, candles, timestamp: float):
         """
         Must be called at the end of the process method.
         """
@@ -128,18 +130,18 @@ class TimeframeBasedSub(object):
                 self.close_price = self.price.close[-2]
                 self.open_price = self.price.open[-2]
 
-    def cleanup(self, timestamp):
+    def cleanup(self, timestamp: float):
         """
         Once data are processed some cleanup could be necessary to be done
         before running the next process pass.
 
-        For example reseting stats of the closed OHLC.
+        For example resetting stats of the closed OHLC.
         """
         if self.close_price:
             self.prev_open_price = None
             self.prev_close_price = None
 
-    def get_candles(self):
+    def get_candles(self) -> List:
         """
         Get the candles list to process.
         """
@@ -153,32 +155,32 @@ class TimeframeBasedSub(object):
     #
 
     @property
-    def timeframe(self):
+    def timeframe(self) -> float:
         """
         Timeframe of this strategy-trader in second.
         """
         return self.tf
 
     @property
-    def samples_depth_size(self):
+    def samples_depth_size(self) -> int:
         """
         Number of Ohlc to have at least to process the computation.
         """
         return self.depth
 
     @property
-    def samples_history_size(self):
+    def samples_history_size(self) -> int:
         """
         Number of Ohlc used for initialization on kept in memory.
         """
         return self.history
 
     @property
-    def update_at_close(self):
+    def update_at_close(self) -> bool:
         return self._update_at_close
 
     @property
-    def signal_at_close(self):
+    def signal_at_close(self) -> bool:
         return self._signal_at_close
 
     @property
@@ -195,7 +197,7 @@ class TimeframeBasedSub(object):
     def stream(self, streamer):
         pass
 
-    def report_state(self):
+    def report_state(self) -> Tuple:
         """
         Return an tuple of tuples with the data value to report.
         """
