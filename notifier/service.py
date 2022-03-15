@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Union, List
+from typing import TYPE_CHECKING, Dict, Union, List, Type
 
 if TYPE_CHECKING:
     from .notifier import Notifier
@@ -28,7 +28,7 @@ class NotifierService(Service):
     Notifier service.
     """
 
-    _notifiers: Dict[str, object]
+    _notifiers: Dict[str, Type[Notifier, type]]
     _notifiers_insts: Dict[str, Union[Notifier, object]]
 
     def __init__(self, options):
@@ -82,7 +82,7 @@ class NotifierService(Service):
                 parts = notifier.get('classpath').split('.')
 
                 module = import_module('.'.join(parts[:-1]))
-                Clazz = getattr(module, parts[-1])
+                Clazz: Type[Notifier] = getattr(module, parts[-1])
 
                 if not Clazz:
                     raise NotifierServiceException("Cannot load notifier %s" % k)
@@ -108,7 +108,7 @@ class NotifierService(Service):
                 if not notifier_conf.get('name'):
                     logger.error("Invalid notifier configuration for %s. Ignored !" % k)
 
-                Clazz = self._notifiers.get(notifier_conf['name'])
+                Clazz: Type[Notifier] = self._notifiers.get(notifier_conf['name'])
                 if not Clazz:
                     logger.error("Unknown notifier name %s for %s. Ignored !" % (notifier_conf['name'], k))
                     continue

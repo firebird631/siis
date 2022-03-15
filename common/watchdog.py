@@ -3,6 +3,10 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Watchdog service
 
+from __future__ import annotations
+
+from typing import Dict, List, Tuple, Union
+
 import time
 import threading
 
@@ -21,7 +25,11 @@ class WatchdogService(Service):
     TIMER_DELAY = 15.0
     PING_TIMEOUT = 30.0
 
-    def __init__(self, options):
+    _timer: Union[threading.Timer, None]
+    _services: List[Service]
+    _pending: Dict[int, Tuple[float, str]]
+
+    def __init__(self, options: dict):
         super().__init__("watchdog", options)
 
         self._activity = options.get("watchdog", True)
@@ -35,12 +43,12 @@ class WatchdogService(Service):
         self._pending = {}
         self._npid = 1
 
-    def add_service(self, service):
+    def add_service(self, service: Service):
         with self._mutex:
             if service:
                 self._services.append(service)
 
-    def remove_service(self, service):
+    def remove_service(self, service: Service):
         with self._mutex:
             if service and service in self._services:
                 self._services.remove(service)
@@ -73,7 +81,7 @@ class WatchdogService(Service):
         self._timer.name = "watchdog"
         self._timer.start()
 
-    def start(self, options):
+    def start(self, options: dict):
         if self._activity and not self._timer:
             self._timer = threading.Timer(WatchdogService.TIMER_DELAY, self.run_watchdog)
             self._timer.name = "watchdog"
@@ -85,16 +93,16 @@ class WatchdogService(Service):
             self._timer.join()
             self._timer = None
 
-    def service_pong(self, pid, timestamp, msg):
+    def service_pong(self, pid: int, timestamp: float, msg: str):
         with self._mutex:
             if pid in self._pending:
                 del self._pending[pid]
 
-    def service_timeout(self, service, msg):
+    def service_timeout(self, service: str, msg: str):
         error_logger.fatal("Service %s not reachable : %s !" % (service, msg))
         # self.notify(Signal.SIGNAL_WATCHDOG_UNREACHABLE, k, (service, msg))
 
-    def gen_pid(self, ident):
+    def gen_pid(self, ident: str) -> int:
         r = 0
 
         with self._mutex:

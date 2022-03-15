@@ -1,14 +1,25 @@
 # @date 2018-08-07
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# service worker
+# Trader service
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from .trader import Trader
+    from common.watchdog import WatchdogService
+    from monitor.service import MonitorService
+    from watcher.service import WatcherService
 
 from config import utils
 from common.service import Service
 from common.signal import Signal
 
 from terminal.terminal import Terminal
-from trader.connector.papertrader.trader import PaperTrader
+
+from .connector.papertrader.trader import PaperTrader
 
 import logging
 logger = logging.getLogger('siis.trader.service')
@@ -60,11 +71,11 @@ class TraderService(Service):
         self._paper_mode = options.get('paper-mode', False)
 
     @property
-    def watcher_service(self):
+    def watcher_service(self) -> WatcherService:
         return self._watcher_service
 
     @property
-    def monitor_service(self):
+    def monitor_service(self) -> MonitorService:
         return self._monitor_service
 
     @property
@@ -167,7 +178,7 @@ class TraderService(Service):
 
             self._trader = None
 
-    def notify(self, signal_type, source_name, signal_data):
+    def notify(self, signal_type: int, source_name: str, signal_data):
         if signal_data is None:
             return
 
@@ -176,7 +187,7 @@ class TraderService(Service):
         with self._mutex:
             self._signals_handler.notify(signal)
 
-    def command(self, command_type, data):
+    def command(self, command_type: int, data: dict) -> Union[dict, None]:
         results = None
 
         trader = self._trader
@@ -185,16 +196,16 @@ class TraderService(Service):
 
         return results
 
-    def receiver(self, signal):
+    def receiver(self, signal: Signal):
         pass
 
-    def trader(self):
+    def trader(self) -> Trader:
         return self._trader
 
-    def trader_name(self):
+    def trader_name(self) -> Union[str, None]:
         return self._trader.name if self._trader else None
 
-    def gen_key(self):
+    def gen_key(self) -> str:
         nkey = -1
 
         with self._mutex:
@@ -221,7 +232,7 @@ class TraderService(Service):
         else:
             Terminal.inst().action("Unable to join service %s for %s seconds" % (self.name, timeout), view='content')
 
-    def watchdog(self, watchdog_service, timeout):
+    def watchdog(self, watchdog_service: WatchdogService, timeout: float):
         # try to acquire, see for deadlock
         if self._mutex.acquire(timeout=timeout):
             # if no deadlock lock for service ping trader
@@ -236,16 +247,16 @@ class TraderService(Service):
     # config
     #
 
-    def identity(self, name):
+    def identity(self, name: str):
         return self._identities_config.get(name, {}).get(self._identity)
 
-    def trader_config(self):
+    def trader_config(self) -> dict:
         """
         Get the trader configuration as dict.
         """
         return self._trader_config
 
-    def _init_trader_config(self, options):
+    def _init_trader_config(self, options: dict):
         """
         Get the profile configuration for a specific trader name.
         """
@@ -274,7 +285,7 @@ class TraderService(Service):
 
         return trader_config
 
-    def profile(self):
+    def profile(self) -> dict:
         """
         Get the profile configuration for the trader.
         """

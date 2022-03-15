@@ -424,13 +424,13 @@ def application(argv):
         sys.exit(-1)
 
     # view service
-    try:
-        watchdog_service.add_service(view_service)
-    except Exception as e:
-        Terminal.inst().error(str(e))
-        terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
-                  view_service, notifier_service)
-        sys.exit(-1)
+    # try:
+    #     watchdog_service.add_service(view_service)
+    # except Exception as e:
+    #     Terminal.inst().error(str(e))
+    #     terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
+    #               view_service, notifier_service)
+    #     sys.exit(-1)
 
     # database manager
     try:

@@ -1,9 +1,21 @@
 # @date 2018-08-25
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# service worker for strategy
+# Strategy service
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict, Type
+
+if TYPE_CHECKING:
+    from watcher.service import WatcherService
+    from trader.service import TraderService
+    from monitor.service import MonitorService
+    from common.watchdog import WatchdogService
+    from .alert.alert import Alert
+    from .region.region import Region
+    from .tradeop.tradeop import TradeOp
+    from .indicator.indicator import Indicator
 
 from typing import Union
 
@@ -20,6 +32,7 @@ from common.signal import Signal
 from common.utils import format_delta
 
 from terminal.terminal import Terminal
+
 from .strategy import Strategy
 from .strategyexception import StrategyServiceException
 
@@ -36,7 +49,14 @@ class StrategyService(Service):
     Strategy service is responsible of build, initialize, load configuration, start/stop the strategy.
     """
 
-    def __init__(self, watcher_service, trader_service, monitor_service, options: dict):
+    _watcher_service: WatcherService
+    _trader_service: TraderService
+    _monitor_service: MonitorService
+
+    _strategy: Union[Strategy, None]
+
+    def __init__(self, watcher_service: WatcherService, trader_service: TraderService,
+                 monitor_service: MonitorService, options: dict):
         super().__init__("strategy", options)
 
         self._strategies = {}
@@ -68,7 +88,7 @@ class StrategyService(Service):
         self._timestep = options.get('timestep', 60.0)
         self._timeframe = options.get('timeframe', 0.0)
 
-        self._timestamp = 0  # in backtesting current processed timestamp
+        self._timestamp = 0.0  # in backtesting current processed timestamp
 
         self._strategy = None
 
@@ -103,31 +123,31 @@ class StrategyService(Service):
         self._worker_pool = WorkerPool()
 
     @property
-    def watcher_service(self):
+    def watcher_service(self) -> WatcherService:
         return self._watcher_service
 
     @property
-    def trader_service(self):
+    def trader_service(self) -> TraderService:
         return self._trader_service
 
     @property
-    def monitor_service(self):
+    def monitor_service(self) -> MonitorService:
         return self._monitor_service
 
     @property
-    def worker_pool(self):
+    def worker_pool(self) -> WorkerPool:
         return self._worker_pool
 
     @property
-    def tradeops(self):
+    def tradeops(self) -> Dict[str, Type[TradeOp]]:
         return self._tradeops
 
     @property
-    def regions(self):
+    def regions(self) -> Dict[str, Type[Region]]:
         return self._regions
 
     @property
-    def alerts(self):
+    def alerts(self) -> Dict[str, Type[Alert]]:
         return self._alerts
 
     def set_activity(self, status: bool):
@@ -495,7 +515,7 @@ class StrategyService(Service):
     def receiver(self, signal: Signal):
         pass
 
-    def indicator(self, name: str):
+    def indicator(self, name: str) -> Union[Type[Indicator], None]:
         """Return a specific indicator model by its name"""
         return self._indicators.get(name)
 
@@ -570,7 +590,7 @@ class StrategyService(Service):
         else:
             Terminal.inst().action("Unable to join service %s for %s seconds" % (self.name, timeout), view='content')
 
-    def watchdog(self, watchdog_service, timeout: float):
+    def watchdog(self, watchdog_service: WatchdogService, timeout: float):
         # try to acquire, see for deadlock
         if self._mutex.acquire(timeout=timeout):
             # if no deadlock lock for service ping strategy

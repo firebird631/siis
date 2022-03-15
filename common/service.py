@@ -59,7 +59,7 @@ class Service(BaseService):
         if self._mutex.acquire(timeout=timeout):
             self._mutex.release()
         else:
-            Terminal.inst().action("%s is not joinable for %s seconds !" % (self.name, timeout))
+            Terminal.inst().action("%s is not reachable for %s seconds !" % (self.name, timeout))
 
     def watchdog(self, watchdog_service, timeout: float):
         # try to acquire, see for deadlock

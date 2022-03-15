@@ -5,7 +5,12 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
+
+if TYPE_CHECKING:
+    from instrument.instrument import Candle
+    from .timeframebasedstrategytrader import TimeframeBasedStrategyTrader
+    from monitor.streamable import Streamable
 
 from instrument.candlegenerator import CandleGenerator
 from common.utils import timeframe_to_str
@@ -19,7 +24,8 @@ class TimeframeBasedSub(object):
     TimeframeBasedSub sub computation base class.
     """
 
-    def __init__(self, strategy_trader, timeframe: float, depth: int, history: int, params: dict = None):
+    def __init__(self, strategy_trader: TimeframeBasedStrategyTrader, timeframe: float,
+                 depth: int, history: int, params: dict = None):
         self.strategy_trader = strategy_trader  # parent strategy-trader object
 
         params = params or {}
@@ -110,7 +116,7 @@ class TimeframeBasedSub(object):
         """
         pass
 
-    def complete(self, candles, timestamp: float):
+    def complete(self, candles: List[Candle], timestamp: float):
         """
         Must be called at the end of the process method.
         """
@@ -144,7 +150,7 @@ class TimeframeBasedSub(object):
             self.prev_open_price = None
             self.prev_close_price = None
 
-    def get_candles(self) -> List:
+    def get_candles(self) -> List[Candle]:
         """
         Get the candles list to process.
         """
@@ -187,17 +193,17 @@ class TimeframeBasedSub(object):
         return self._signal_at_close
 
     @property
-    def last_closed(self):
+    def last_closed(self) -> bool:
         return self._last_closed
 
     #
     # data streaming (@deprecated way) and monitoring
     #
 
-    def setup_streamer(self, streamer):
+    def setup_streamer(self, streamer: Streamable):
         pass
 
-    def stream(self, streamer):
+    def stream(self, streamer: Streamable):
         pass
 
     def report_state(self) -> Tuple:

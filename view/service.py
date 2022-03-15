@@ -28,7 +28,7 @@ traceback_logger = logging.getLogger('siis.traceback.view.service')
 
 class ViewService(BaseService):
     """
-    View manager service.
+    View manager service attached to the main thread so inherit from BaseService and not from Service.
     It support the refresh of actives views, receive signal from others services.
     """
 

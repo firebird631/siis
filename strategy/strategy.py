@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union, List, Dict
+from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type
 
 if TYPE_CHECKING:
+    from watcher.service import WatcherService
+    from trader.service import TraderService
     from trader.trader import Trader
     from .strategytrader import StrategyTrader
+    from .service import StrategyService
+    from .indicator.indicator import Indicator
 
 import threading
 import time
@@ -189,15 +193,15 @@ class Strategy(Runnable):
         return self._name
 
     @property
-    def watcher_service(self):
+    def watcher_service(self) -> WatcherService:
         return self._watcher_service
     
     @property
-    def trader_service(self):
+    def trader_service(self) -> TraderService:
         return self._trader_service
 
     @property
-    def service(self):
+    def service(self) -> StrategyService:
         return self._strategy_service
 
     @property
@@ -568,7 +572,7 @@ class Strategy(Runnable):
                 for k, strategy_trader in self._strategy_traders.items():
                     strategy_trader.save()
 
-    def indicator(self, name: str):
+    def indicator(self, name: str) -> Union[Type[Indicator], None]:
         """
         Get an indicator by its name
         """
