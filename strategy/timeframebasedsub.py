@@ -138,11 +138,11 @@ class TimeframeBasedSub(object):
 
         return True
 
-    def process(self, timestamp: float):
+    def process(self, timestamp: float) -> Union[StrategySignal, None]:
         """
         Process the computation here.
         """
-        pass
+        return None
 
     def complete(self, candles: List[Candle], timestamp: float):
         """

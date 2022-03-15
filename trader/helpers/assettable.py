@@ -15,14 +15,14 @@ def assets_table(trader, style='', offset=None, limit=None, col_ofs=None, filter
     """
     Returns a table of any non empty assets.
     """
-    COLUMNS = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'Change %', 'P/L', 'Quote', 'Pref Market')
+    columns = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'Change %', 'P/L', 'Quote', 'Pref Market')
 
-    total_size = (len(COLUMNS), 0)
+    total_size = (len(columns), 0)
     data = []
 
     with trader.mutex:
         assets = [asset for asset in trader._assets.values() if asset.quantity > 0.0]
-        total_size = (len(COLUMNS), len(assets))
+        total_size = (len(columns), len(assets))
 
         if offset is None:
             offset = 0
@@ -95,4 +95,4 @@ def assets_table(trader, style='', offset=None, limit=None, col_ofs=None, filter
 
             data.append(row[0:1] + row[1+col_ofs:])
 
-    return COLUMNS[0:1] + COLUMNS[1+col_ofs:], data, total_size
+    return columns[0:1] + columns[1+col_ofs:], data, total_size

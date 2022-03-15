@@ -538,7 +538,7 @@ class KrakenWatcher(Watcher):
 
                     self._connector.ws.unsubscribe_public('book', pairs)
 
-                    del self._watched_instruments[market_id]
+                    self._watched_instruments.remove(market_id)
 
                     return True
 

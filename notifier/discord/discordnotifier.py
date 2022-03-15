@@ -436,7 +436,7 @@ class DiscordNotifier(Notifier):
     #
 
     def split_and_send(self, dst, msg):
-        MAX_MSG_SIZE = 2000 - 6 - 25
+        max_msg_size = 2000 - 6 - 25
 
         rows = msg.split('\n')
         i = 0
@@ -451,7 +451,7 @@ class DiscordNotifier(Notifier):
         while i < len(rows):
             buf = ""
 
-            while (i < len(rows)) and (len(buf) + len(rows[i]) + 1 < MAX_MSG_SIZE):
+            while (i < len(rows)) and (len(buf) + len(rows[i]) + 1 < max_msg_size):
                 buf += rows[i] + '\n'
                 i += 1
 

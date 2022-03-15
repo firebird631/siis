@@ -104,11 +104,11 @@ class AlphaVantageWatcher(Watcher):
 
                 if '*' in self.configured_symbols():
                     # not permit there is thousand of symbols
-                    self._available_instruments = []
+                    self._available_instruments = set()
                 else:
                     instruments = self.configured_symbols()
 
-                # susbcribe for symbols
+                # subscribe for symbols
                 for symbol in instruments:
                     self._watched_instruments.add(symbol)
 

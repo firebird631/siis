@@ -697,7 +697,7 @@ def do_importer(options):
         src.close()
         src = None
 
-    Terminal.inst().info("Imported %s samples" % (total_count))
+    Terminal.inst().info("Imported %s samples" % total_count)
 
     Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 

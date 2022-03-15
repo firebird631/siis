@@ -18,13 +18,13 @@ def region_table(strategy, style='', offset=None, limit=None, col_ofs=None,
     """
     Returns a table of any active alerts.
     """
-    COLUMNS = ('Symbol', '#', 'Name', 'Dir', 'Stage', 'TF', 'Created', 'Expiry', 'Cancellation', 'Inside', 'Condition')
+    columns = ('Symbol', '#', 'Name', 'Dir', 'Stage', 'TF', 'Created', 'Expiry', 'Cancellation', 'Inside', 'Condition')
 
-    columns = tuple(COLUMNS)
+    columns = tuple(columns)
     total_size = (len(columns), 0)
     data = []
 
-    with strategy._mutex:
+    with strategy.mutex:
         regions = get_all_regions(strategy)
         total_size = (len(columns), len(regions))
 

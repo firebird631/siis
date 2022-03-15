@@ -241,21 +241,21 @@ class OhlcStorage(object):
         if ((time.time() - self._last_write) >= self.DEFAULT_FLUSH_DELAY) or (len(self._ohlcs) > self.MAX_PENDING_LEN):
             do_flush = True
 
-        if do_flush or self._queries:
-            self.open()
-
-            if do_flush:
-                self.flush()
-
-                if self._db._autocleanup:
-                    self.clean()
-
-                self._last_write = time.time()
-
-            # if self._queries:
-            #     self.process_async_queries()
-            
-            self.close()
+        # if do_flush or self._queries:
+        #     self.open()
+        #
+        #     if do_flush:
+        #         self.flush()
+        #
+        #         if self._db._autocleanup:
+        #             self.clean()
+        #
+        #         self._last_write = time.time()
+        #
+        #     # if self._queries:
+        #     #     self.process_async_queries()
+        #
+        #     self.close()
 
 
 class OhlcStreamer(object):

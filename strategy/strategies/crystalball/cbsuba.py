@@ -3,6 +3,10 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Crystal Bal strategy, sub-strategy A.
 
+from __future__ import annotations
+
+from typing import Union
+
 import numpy as np
 
 from strategy.strategysignal import StrategySignal
@@ -40,15 +44,15 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
 
         self.last_signal = None
 
-    def process(self, timestamp):
+    def process(self, timestamp: float) -> Union[StrategySignal, None]:
         candles = self.get_candles()
 
         if self.tf <= self.strategy_trader.min_traded_timeframe:
-            return
+            return None
 
         if len(candles) < self.depth:
             # not enough samples
-            return
+            return None
 
         last_timestamp = candles[-1].timestamp
 
@@ -73,7 +77,7 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
 
         return signal
 
-    def compute(self, timestamp, last_timestamp, candles, prices, volumes):
+    def compute(self, timestamp: float, last_timestamp: float, candles, prices, volumes) -> Union[StrategySignal, None]:
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA

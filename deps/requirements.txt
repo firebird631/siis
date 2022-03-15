@@ -16,3 +16,5 @@ mpl_finance>=0.10.0  # only for the simple charting client
 tabulate>=0.8.3
 TA-Lib>=0.4.17
 pycrypto>=2.6.1
+
+matplotlib>=3.5.1

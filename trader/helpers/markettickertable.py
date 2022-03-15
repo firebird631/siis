@@ -19,16 +19,16 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
     """
     Returns a table of any followed markets tickers.
     """
-    COLUMNS = ('Market', 'Symbol', 'Mid', 'Bid', 'Ask', 'Spread', 'Vol24h base', 'Vol24h quote',
+    columns = ('Market', 'Symbol', 'Mid', 'Bid', 'Ask', 'Spread', 'Vol24h base', 'Vol24h quote',
                'Time', 'Change(%)')
 
-    total_size = (len(COLUMNS), 0)
+    total_size = (len(columns), 0)
     data = []
     now = time.time()
 
     with trader.mutex:
         markets = list(trader._markets.values())
-        total_size = (len(COLUMNS), len(markets))
+        total_size = (len(columns), len(markets))
 
         if offset is None:
             offset = 0
@@ -118,4 +118,4 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
 
             data.append(row[0:2] + row[2+col_ofs:])
 
-    return COLUMNS[0:2] + COLUMNS[2+col_ofs:], data, total_size
+    return columns[0:2] + columns[2+col_ofs:], data, total_size

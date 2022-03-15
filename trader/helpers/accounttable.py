@@ -13,7 +13,7 @@ def account_table(trader, style='', offset=None, limit=None, col_ofs=None):
     """
     Returns a table of any followed markets.
     """
-    COLUMNS = ('Broker', 'Account', 'Username', 'Email', 'Asset', 'Free Asset', 'Balance', 'Margin',
+    columns = ('Broker', 'Account', 'Username', 'Email', 'Asset', 'Free Asset', 'Balance', 'Margin',
                'Level', 'Net worth', 'Risk limit', 'Unrealized P/L', 'Asset U. P/L')
     data = []
 
@@ -77,4 +77,4 @@ def account_table(trader, style='', offset=None, limit=None, col_ofs=None):
         if offset < 1 and limit > 0:
             data.append(row[0:2] + row[2+col_ofs:])
 
-    return COLUMNS[0:2] + COLUMNS[2+col_ofs:], data, (len(COLUMNS), 1)
+    return columns[0:2] + columns[2+col_ofs:], data, (len(columns), 1)

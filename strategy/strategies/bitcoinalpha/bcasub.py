@@ -27,6 +27,8 @@ class BitcoinAlphaStrategySub(TimeframeBasedSub):
         self.mama = None
         self.pivotpoint = None
 
+        self.mama_cross = (0, 0.0, 0.0)
+
         super().__init__(strategy_trader, params['timeframe'], params['depth'], params['history'], params)
 
         self.setup_indicators(params)

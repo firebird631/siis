@@ -15,16 +15,16 @@ def markets_table(trader, style='', offset=None, limit=None, col_ofs=None, group
     """
     Returns a table of any followed markets.
     """
-    COLUMNS = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip',
+    columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip',
                'Lot', 'Contract', 'Min Size', 'Max Size', 'Step Size', 'Min Price', 'Max Price', 'Step Price',
                'Min Notional', 'Max Notional', 'Step Notional', 'Leverage', 'Base ER')
 
-    total_size = (len(COLUMNS), 0)
+    total_size = (len(columns), 0)
     data = []
 
     with trader.mutex:
         markets = list(trader._markets.values())
-        total_size = (len(COLUMNS), len(markets))
+        total_size = (len(columns), len(markets))
 
         if offset is None:
             offset = 0
@@ -69,4 +69,4 @@ def markets_table(trader, style='', offset=None, limit=None, col_ofs=None, group
 
             data.append(row[0:2] + row[2+col_ofs:])
 
-    return COLUMNS[0:2] + COLUMNS[2+col_ofs:], data, total_size
+    return columns[0:2] + columns[2+col_ofs:], data, total_size

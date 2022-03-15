@@ -55,7 +55,8 @@ def get_active_positions(trader):
                         'tp': market.format_price(position.take_profit) if position.take_profit else "",
                         'sl': market.format_price(position.stop_loss) if position.stop_loss else "",
                         'tr': "Yes" if position.trailing_stop else "No",
-                        # 'tr-dist': market.format_price(position.trailing_stop_distance) if position.trailing_stop_distance else None,
+                        # 'tr-dist': market.format_price(position.trailing_stop_distance) if
+                        # position.trailing_stop_distance else None,
                         'pl': position.profit_loss_rate,
                         'pnl': market.format_price(position.profit_loss),
                         'mpl': position.profit_loss_market_rate,

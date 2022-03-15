@@ -23,20 +23,20 @@ def positions_stats_table(trader, style='', offset=None, limit=None, col_ofs=Non
     """
     Returns a table of any active positions.
     """
-    COLUMNS = ['Symbol', '#', charmap.ARROWUPDN, 'x', 'P/L(%)', 'SL', 'TP', 'TR', 'Entry date', 'Avg EP',
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'x', 'P/L(%)', 'SL', 'TP', 'TR', 'Entry date', 'Avg EP',
                'Exit date', 'Avg XP', 'UPNL', 'Cost', 'Margin', 'Key']
 
     if quantities:
-        COLUMNS += ['Qty']
+        columns += ['Qty']
 
-    COLUMNS = tuple(COLUMNS)
-    total_size = (len(COLUMNS), 0)
+    columns = tuple(columns)
+    total_size = (len(columns), 0)
     data = []
 
     with trader.mutex:
         try:
             positions = get_active_positions(trader)
-            total_size = (len(COLUMNS), len(positions))
+            total_size = (len(columns), len(positions))
 
             if offset is None:
                 offset = 0
@@ -107,4 +107,4 @@ def positions_stats_table(trader, style='', offset=None, limit=None, col_ofs=Non
             error_logger.error(repr(e))
             traceback_logger.error(traceback.format_exc())
 
-    return COLUMNS[0:4] + COLUMNS[4+col_ofs:], data, total_size
+    return columns[0:4] + columns[4+col_ofs:], data, total_size

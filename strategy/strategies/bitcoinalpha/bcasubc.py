@@ -3,6 +3,13 @@
 # @license Copyright (c) 2018 Dream Overflow
 # BitCoin Alpha strategy, sub-strategy C.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from strategy.strategysignal import StrategySignal
+
 from strategy.indicator import utils
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
     StreamMemberOhlcSerie
@@ -10,6 +17,7 @@ from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, Stream
 from .bcasub import BitcoinAlphaStrategySub
 
 import logging
+
 logger = logging.getLogger('siis.strategy.bitcoinalpha')
 
 
@@ -41,12 +49,12 @@ class BitcoinAlphaStrategySubC(BitcoinAlphaStrategySub):
         self.rsi_low = params['constants']['rsi_low']
         self.rsi_high = params['constants']['rsi_high']
 
-    def process(self, timestamp):
+    def process(self, timestamp) -> Union[StrategySignal, None]:
         candles = self.get_candles()
 
         if len(candles) < self.depth:
             # not enough samples
-            return
+            return None
 
         prices = self.price.compute(timestamp, candles)
         volumes = self.volume.compute(timestamp, candles)
@@ -69,7 +77,7 @@ class BitcoinAlphaStrategySubC(BitcoinAlphaStrategySub):
 
         return signal
 
-    def process1(self, timestamp, last_timestamp, candles, prices, volumes):
+    def process1(self, timestamp, last_timestamp, candles, prices, volumes) -> Union[StrategySignal, None]:
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA

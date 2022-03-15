@@ -3,6 +3,13 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Crypto Alpha strategy, sub-strategy B.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from strategy.strategysignal import StrategySignal
+
 from strategy.indicator import utils
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
     StreamMemberOhlcSerie
@@ -24,12 +31,12 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
         self.rsi_low = params['constants']['rsi_low']
         self.rsi_high = params['constants']['rsi_high']
 
-    def process(self, timestamp):
+    def process(self, timestamp: float) -> Union[StrategySignal, None]:
         candles = self.get_candles()
 
         if len(candles) < self.depth:
             # not enough samples
-            return
+            return None
 
         prices = self.price.compute(timestamp, candles)
         volumes = self.volume.compute(timestamp, candles)
@@ -52,7 +59,8 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
 
         return signal
 
-    def process1(self, timestamp, last_timestamp, candles, prices, volumes):
+    def process1(self, timestamp: float, last_timestamp: float, candles, prices,
+                 volumes) -> Union[StrategySignal, None]:
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA

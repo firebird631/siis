@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Type
+from typing import TYPE_CHECKING, Dict, Type, Optional
 
 if TYPE_CHECKING:
     from watcher.service import WatcherService
@@ -55,8 +55,8 @@ class StrategyService(Service):
 
     _strategy: Union[Strategy, None]
 
-    def __init__(self, watcher_service: WatcherService, trader_service: TraderService,
-                 monitor_service: MonitorService, options: dict):
+    def __init__(self, watcher_service: Optional[WatcherService], trader_service: Optional[TraderService],
+                 monitor_service: Optional[MonitorService], options: dict):
         super().__init__("strategy", options)
 
         self._strategies = {}

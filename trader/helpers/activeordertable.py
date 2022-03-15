@@ -23,22 +23,22 @@ def active_orders_table(trader, style='', offset=None, limit=None, col_ofs=None,
     """
     Returns a table of any active orders.
     """
-    COLUMNS = ['Symbol', '#', 'ref #', charmap.ARROWUPDN, 'Type', 'x', 'Limit', 'Stop', 'SL', 'TP',
+    columns = ['Symbol', '#', 'ref #', charmap.ARROWUPDN, 'Type', 'x', 'Limit', 'Stop', 'SL', 'TP',
                'TR', 'Created date', 'Transac date', 'Reduce', 'Post', 'Hedge', 'Close', 'Margin',
                'TIF', 'Price', 'Key']
 
     if quantities:
-        COLUMNS += ['Qty']
-        COLUMNS += ['Exec']
+        columns += ['Qty']
+        columns += ['Exec']
 
-    COLUMNS = tuple(COLUMNS)
-    total_size = (len(COLUMNS), 0)
+    columns = tuple(columns)
+    total_size = (len(columns), 0)
     data = []
 
     with trader.mutex:
         try:
             orders = get_active_orders(trader)
-            total_size = (len(COLUMNS), len(orders))
+            total_size = (len(columns), len(orders))
 
             if offset is None:
                 offset = 0
@@ -108,4 +108,4 @@ def active_orders_table(trader, style='', offset=None, limit=None, col_ofs=None,
             error_logger.error(repr(e))
             traceback_logger.error(traceback.format_exc())
 
-    return COLUMNS[0:2] + COLUMNS[2+col_ofs:], data, total_size
+    return columns[0:2] + columns[2+col_ofs:], data, total_size
