@@ -33,8 +33,8 @@ class Runnable(object):
 
         self._bench = Runnable.DEFAULT_USE_BENCH
         self._last_time = []
-        self._worst_time = 0
-        self._avg_time = 0
+        self._worst_time = 0.0
+        self._avg_time = 0.0
 
     @property
     def thread(self) -> threading.Thread:

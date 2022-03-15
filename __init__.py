@@ -8,4 +8,4 @@ __version__ = '0.3.5'
 APP_SHORT_NAME = "siis"
 APP_LONG_NAME = "Self Investor Income System"
 APP_VERSION = (0, 3, 5)
-APP_RELEASE = 464
+APP_RELEASE = 465

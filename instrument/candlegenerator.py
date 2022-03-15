@@ -106,7 +106,7 @@ class CandleGenerator(object):
             return None
 
         if from_tick[0] <= self._last_timestamp:
-            # already done (and what if two consecutives ticks have the same timestamp ?)
+            # already done (and what if two consecutive ticks have the same timestamp ?)
             return None
 
         # basetime can be slow, uses only to create a new candle
@@ -151,7 +151,6 @@ class CandleGenerator(object):
         self._last_timestamp = from_tick[0]
 
         return ended_candle
-
 
     def update_from_candle(self, from_candle, ignore_non_ended):
         """

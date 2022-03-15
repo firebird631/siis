@@ -86,11 +86,31 @@ class Watcher(Runnable):
         Instrument.TF_DAY,
         Instrument.TF_WEEK)
 
+    _name: str
+    _service: WatcherService
     _authors: Dict[str, Author]
     _positions: Dict[str, Position]
+    _watcher_type: int
+
+    _ready: bool
+    _connecting: bool
+
+    _signals = collections.deque
+
+    _available_instruments: Set[str]
+    _watched_instruments: Set[str]
+
+    _streamable: Union[Streamable, None]
+    _heartbeat: float
+
+    _store_ohlc: bool
+    _store_trade: bool
+    _initial_fetch: bool
 
     _last_ohlc: Dict[str, Dict[float, Union[Candle, None]]]
     _last_update_times: Dict[float, float]
+
+    _last_market_update: float
 
     def __init__(self, name: str, service: WatcherService, watcher_type: int):
         super().__init__("wt-%s" % (name,))
@@ -103,15 +123,11 @@ class Watcher(Runnable):
 
         self._ready = False
         self._connecting = False
-        self._retry = 0
-        self._last_retry = 0
 
         self._signals = collections.deque()
 
         self._available_instruments = set()  # all available instruments
         self._watched_instruments = set()    # watched instruments
-
-        self._data_streams = {}
 
         self._streamable = None
         self._heartbeat = 0
@@ -355,7 +371,8 @@ class Watcher(Runnable):
             if self.connected:
                 Terminal.inst().action("Watcher worker %s is alive %s" % (self._name, msg), view='content')
             else:
-                Terminal.inst().action("Watcher worker %s is alive but waiting for (re)connection %s" % (self._name, msg), view='content')
+                Terminal.inst().action("Watcher worker %s is alive but waiting for (re)connection %s" % (
+                    self._name, msg), view='content')
 
         if watchdog_service:
             watchdog_service.service_pong(pid, timestamp, msg)
@@ -454,15 +471,15 @@ class Watcher(Runnable):
         if ts >= ohlc.timestamp:
             # update the current OHLC
             if volume:
-                ohlc._volume += volume
+                ohlc.add_volume(volume)
 
             if last:
-                if not ohlc._open:
+                if not ohlc.open:
                     ohlc.set(last)
 
                 # update prices
-                ohlc._high = max(ohlc._high, last)
-                ohlc._low = min(ohlc._low, last)
+                ohlc._high = max(ohlc.high, last)
+                ohlc._low = min(ohlc.low, last)
 
                 # potential close
                 ohlc._close = last
@@ -475,9 +492,9 @@ class Watcher(Runnable):
         if self._store_ohlc and ended_ohlc and (tf in self.STORED_TIMEFRAMES):
             Database.inst().store_market_ohlc((
                 self.name, market_id, int(ended_ohlc.timestamp*1000), tf,
-                ended_ohlc._open, ended_ohlc._high, ended_ohlc._low, ended_ohlc._close,
-                ended_ohlc._spread,
-                ended_ohlc._volume))
+                ended_ohlc.open, ended_ohlc.high, ended_ohlc.low, ended_ohlc.close,
+                ended_ohlc.spread,
+                ended_ohlc.volume))
 
         return ohlc
 
@@ -497,9 +514,9 @@ class Watcher(Runnable):
         if self._store_ohlc and ended_ohlc and (tf in self.STORED_TIMEFRAMES):
             Database.inst().store_market_ohlc((
                 self.name, market_id, int(ended_ohlc.timestamp*1000), tf,
-                ended_ohlc._open, ended_ohlc._high, ended_ohlc._low, ended_ohlc._close,
-                ended_ohlc._spread,
-                ended_ohlc._volume))
+                ended_ohlc.open, ended_ohlc.high, ended_ohlc.low, ended_ohlc.close,
+                ended_ohlc.spread,
+                ended_ohlc.volume))
 
         return ended_ohlc
 

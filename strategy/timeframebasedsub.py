@@ -5,12 +5,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, List, Tuple, Union
 
 if TYPE_CHECKING:
     from instrument.instrument import Candle
-    from .timeframebasedstrategytrader import TimeframeBasedStrategyTrader
     from monitor.streamable import Streamable
+
+    from .timeframebasedstrategytrader import TimeframeBasedStrategyTrader
+    from .strategysignal import StrategySignal
+    from .indicator.price.price import PriceIndicator
+    from .indicator.volume.volume import VolumeIndicator
 
 from instrument.candlegenerator import CandleGenerator
 from common.utils import timeframe_to_str
@@ -23,6 +27,30 @@ class TimeframeBasedSub(object):
     """
     TimeframeBasedSub sub computation base class.
     """
+
+    strategy_trader: TimeframeBasedStrategyTrader
+
+    tf: float
+    depth: int
+    history: int
+
+    last_timestamp: float
+
+    _update_at_close: bool
+    _signal_at_close: bool
+
+    candles_gen: CandleGenerator
+    _last_closed: bool
+    
+    last_signal: Union[StrategySignal, None]
+
+    price: Union[PriceIndicator, None]
+    volume: Union[VolumeIndicator, None]
+
+    open_price: Union[float, None]
+    close_price: Union[float, None]
+    prev_open_price: Union[float, None]
+    prev_close_price: Union[float, None]
 
     def __init__(self, strategy_trader: TimeframeBasedStrategyTrader, timeframe: float,
                  depth: int, history: int, params: dict = None):

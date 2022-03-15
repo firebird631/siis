@@ -70,19 +70,23 @@ class StrategyTrader(object):
 
     strategy: Strategy
     instrument: Instrument
+
     _trade_context_builder: Union[StrategyTraderContextBuilder, Any, None]
     _activity: bool
     _affinity: int
     max_trades: int
+
     _initialized: int
     _check: int
     _limits: Limits
+
     _preprocessing: int
     _preprocess_depth: int
     _preprocess_streamer: Union[Streamable, None]
     _preprocess_from_timestamp: float
     _bootstrapping: int
     _processing: bool
+
     _trade_mutex: threading.RLock
     _trades: List[StrategyTrade]
     _next_trade_id: int
@@ -91,6 +95,7 @@ class StrategyTrader(object):
     _alerts: List[Alert]
     _next_alert_id: int
     _handlers: Dict[str, Handler]
+
     _global_streamer: Union[Streamable, None]
     _trade_entry_streamer: Union[Streamable, None]
     _trade_update_streamer: Union[Streamable, None]
@@ -98,12 +103,15 @@ class StrategyTrader(object):
     _signal_streamer: Union[Streamable, None]
     _alert_streamer: Union[Streamable, None]
     _region_streamer: Union[Streamable, None]
+
     _reporting: int
     _report_filename: Union[str, None]
+
     _stats: Dict[str, Union[int, float, List, Tuple]]
+
     _trade_context_builder: Union[StrategyTraderContextBuilder, None]
 
-    def __init__(self, strategy: Strategy, instrument: Instrument):
+    def __init__(self, strategy: Strategy, instrument: Instrument, params: dict = None):
         self.strategy = strategy
         self.instrument = instrument
 

@@ -101,6 +101,9 @@ class Candle(object):
     def set_volume(self, ltv: float):
         self._volume = ltv
 
+    def add_volume(self, ltv: float):
+        self._volume += ltv
+
     def set_ohlc_s_v(self, o: float, h: float, l: float, c: float, s: float, v: float):
         self._open = o
         self._high = h

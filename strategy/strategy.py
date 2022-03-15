@@ -5,15 +5,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type
+from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from watcher.service import WatcherService
     from trader.service import TraderService
     from trader.trader import Trader
+
     from .strategytrader import StrategyTrader
     from .service import StrategyService
     from .indicator.indicator import Indicator
+    from .strategydatafeeder import StrategyDataFeeder
 
 import threading
 import time
@@ -106,16 +110,49 @@ class Strategy(Runnable):
     COMMAND_TRADER_EXPORT_ALL = 28
     COMMAND_TRADER_IMPORT_ALL = 29
 
+    _name: str
+    _strategy_service: StrategyService
+    _watcher_service: WatcherService
+    _trader_service: TraderService
+    _identifier: Union[str, None]
+
+    _parameters: Dict[str, Union[str, int, float, Tuple, Dict]]
+
+    _setup_backtest: Union[Callable[[Strategy, datetime, datetime, float], None], None]
+    _setup_live: Union[Callable[[Strategy], None], None]
+
+    _update_strategy: Union[Callable[[Strategy, StrategyTrader], None], None]
+    _async_update_strategy: Union[Callable[[Strategy, StrategyTrader], None], None]
+
+    _preset: bool
+    _prefetched: bool
+
+    _watchers_conf: Union[Dict, None]
+    _trader_conf: Union[Dict, None]
+    _trader: Union[Trader, None]
+    _signals: collections.deque
+
+    _instruments: Dict[str, Instrument]
+    _feeders: Dict[str, StrategyDataFeeder]
     _strategy_traders: Dict[str, StrategyTrader]
 
+    _last_done_ts: float
+    _timestamp: float
+    _next_backtest_update: Union[Tuple[float, float], None]
+    _cpu_load: float
+    _overload_timestamp: float
+    _streamable: Union[Streamable, None]
+    _heartbeat: float
+    _condition: threading.Condition
+
     def __init__(self, name: str,
-                 strategy_service,
-                 watcher_service,
-                 trader_service,
-                 strategy_trader_clazz,
+                 strategy_service: StrategyService,
+                 watcher_service: WatcherService,
+                 trader_service: TraderService,
+                 strategy_trader_clazz: Type[StrategyTrader],
                  options: dict,
-                 default_parameters=None,
-                 user_parameters=None,
+                 default_parameters: Optional[dict] = None,
+                 user_parameters: Optional[dict] = None,
                  processor=alphaprocess):
 
         super().__init__("st-%s" % name)
@@ -127,7 +164,6 @@ class Strategy(Runnable):
         self._identifier = None
 
         self._strategy_trader_clazz = strategy_trader_clazz
-
         self._parameters = Strategy.parse_parameters(merge_parameters(default_parameters, user_parameters))
 
         #
