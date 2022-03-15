@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from strategy.strategytrader import StrategyTrader
+    from .strategytrader import StrategyTrader
 
 from datetime import datetime
 
@@ -39,11 +39,13 @@ class StrategySignal(object):
     - p is the price of the signal
     - sl for stop-loss price
     - tp for take-profit price
+    - tp2 for second optional (if tp defined and tp2>tp) take-profit price
+    - tp3 for third optional (if tp2 defined and tp3>tp2) take-profit price
     - ts for timestamp (UTC)
     """
 
     __slots__ = 'timeframe', 'ts', 'signal', 'dir', 'p', 'sl', 'tp', 'entry_timeout', 'expiry', 'label', \
-        'context', '_extra', 'order_type', 'quantity'
+        'context', '_extra', 'order_type', 'quantity', 'tp2', 'tp3'
 
     VERSION = "1.0.0"
 
@@ -60,7 +62,10 @@ class StrategySignal(object):
 
         self.p = 0.0       # signal price / possible entry-price
         self.sl = 0.0      # possible stop-loss price
-        self.tp = 0.0      # primary possible take profit price
+        self.tp = 0.0      # primary possible take profit price (max TP if sec and mid are defined)
+
+        self.tp2 = 0.0     # optional second take profit price. must be greater than first take profit
+        self.tp3 = 0.0     # optional third take profit price. must be greater than second take profit
 
         self.quantity = 0  # define quantity, if 0 default configured value is used
 
@@ -98,6 +103,24 @@ class StrategySignal(object):
     def take_profit(self) -> float:
         return self.tp
 
+    @property
+    def second_take_profit(self) -> float:
+        return self.tp2
+
+    @property
+    def third_take_profit(self) -> float:
+        return self.tp3
+
+    @property
+    def avg_take_profit(self) -> float:
+        avg_tp = self.tp + self.tp2 + self.tp3
+        if self.tp2 and self.tp3:
+            return avg_tp / 3
+        elif self.tp2:
+            return avg_tp / 2
+
+        return avg_tp
+
     @direction.setter
     def direction(self, direction: int):
         self.dir = direction
@@ -113,6 +136,14 @@ class StrategySignal(object):
     @take_profit.setter
     def take_profit(self, take_profit: float):
         self.tp = take_profit
+
+    @second_take_profit.setter
+    def second_take_profit(self, take_profit: float):
+        self.tp2 = take_profit
+
+    @third_take_profit.setter
+    def third_take_profit(self, take_profit: float):
+        self.tp3 = take_profit
 
     #
     # helpers
@@ -130,15 +161,15 @@ class StrategySignal(object):
         Stop-loss and take-profit are swapped.
         """
         if self.signal == StrategySignal.SIGNAL_ENTRY:
-            negged = StrategySignal(self.timeframe, self.ts)
-            negged.signal = StrategySignal.SIGNAL_EXIT
+            exit_signal = StrategySignal(self.timeframe, self.ts)
+            exit_signal.signal = StrategySignal.SIGNAL_EXIT
 
-            negged.dir = -self.dir
-            negged.p = self.p
-            negged.sl = self.tp
-            negged.tp = self.sl
+            exit_signal.dir = -self.dir
+            exit_signal.p = self.p
+            exit_signal.sl = self.tp
+            exit_signal.tp = self.sl
 
-            return negged
+            return exit_signal
 
         return None
 
@@ -167,7 +198,9 @@ class StrategySignal(object):
         self.p = _from.p
         self.sl = _from.sl
         self.tp = _from.tp
-        
+        self.tp2 = _from.tp2
+        self.tp3 = _from.tp3
+
         self.label = _from.label
         self.context = _from.context
 
@@ -178,12 +211,22 @@ class StrategySignal(object):
         return self.signal == _to.signal and self.dir == _to.dir
 
     def __str__(self) -> str:
-        mydate = datetime.fromtimestamp(self.ts)
-        date_str = mydate.strftime('%Y-%m-%d %H:%M:%S')
+        my_date = datetime.fromtimestamp(self.ts)
+        date_str = my_date.strftime('%Y-%m-%d %H:%M:%S')
 
-        return "tf=%s ts=%s signal=%s dir=%s p=%s sl=%s tp=%s %s" % (
-                timeframe_to_str(self.timeframe), date_str, self.signal_type_str(), self.direction_str(),
-                self.p, self.sl, self.tp, self.label)
+        tp2 = " tp2=%s" % self.tp2
+        tp3 = " tp3=%s" % self.tp3
+
+        result = "ctx=%s tf=%s ts=%s signal=%s dir=%s p=%s sl=%s tp=%s" % (
+            self.label, timeframe_to_str(self.timeframe), date_str, self.signal_type_str(),
+            self.direction_str(), self.p, self.sl, self.tp)
+
+        if self.tp2:
+            result += tp2
+        if self.tp3:
+            result += tp3
+
+        return result
 
     #
     # profit/loss
@@ -194,6 +237,32 @@ class StrategySignal(object):
             return ((self.tp - self.p) / self.p) if self.p > 0.0 else 0.0
         elif self.dir < 0:
             return ((self.p - self.tp) / self.p) if self.p > 0.0 else 0.0
+
+        return 0.0
+
+    def second_profit(self) -> float:
+        if self.dir > 0:
+            return ((self.tp2 - self.p) / self.p) if self.p > 0.0 else 0.0
+        elif self.dir < 0:
+            return ((self.p - self.tp2) / self.p) if self.p > 0.0 else 0.0
+
+        return 0.0
+
+    def third_profit(self) -> float:
+        if self.dir > 0:
+            return ((self.tp3 - self.p) / self.p) if self.p > 0.0 else 0.0
+        elif self.dir < 0:
+            return ((self.p - self.tp3) / self.p) if self.p > 0.0 else 0.0
+
+        return 0.0
+
+    def avg_profit(self) -> float:
+        avg_tp = self.avg_take_profit
+
+        if self.dir > 0:
+            return ((avg_tp - self.p) / self.p) if self.p > 0.0 else 0.0
+        elif self.dir < 0:
+            return ((self.p - avg_tp) / self.p) if self.p > 0.0 else 0.0
 
         return 0.0
 
@@ -216,6 +285,16 @@ class StrategySignal(object):
             return self.tp - self.p
         elif self.dir < 0:
             return self.p - self.tp
+
+        return 0.0
+
+    def avg_profit_dist(self) -> float:
+        avg_tp = self.avg_take_profit
+
+        if self.dir > 0:
+            return avg_tp - self.p
+        elif self.dir < 0:
+            return self.p - avg_tp
 
         return 0.0
 
@@ -297,6 +376,8 @@ class StrategySignal(object):
                 'order-price': strategy_trader.instrument.format_price(self.p),
                 'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
                 'take-profit-price': strategy_trader.instrument.format_price(self.tp),
+                'second-profit-price': strategy_trader.instrument.format_price(self.tp2),
+                'third-profit-price': strategy_trader.instrument.format_price(self.tp3),
                 'entry-open-time': self.dump_timestamp(self.ts),
             }
         elif self.signal == StrategySignal.SIGNAL_EXIT:
@@ -317,7 +398,9 @@ class StrategySignal(object):
                 'is-user-trade': False,
                 'label': self.label,
                 'direction': self.direction_to_str(),
-                'take-profit-price': strategy_trader.instrument.format_price(self.tp),
                 'stop-loss-price': strategy_trader.instrument.format_price(self.sl),
+                'take-profit-price': strategy_trader.instrument.format_price(self.tp),
+                'second-take-profit-price': strategy_trader.instrument.format_price(self.tp2),
+                'third-take-profit-price': strategy_trader.instrument.format_price(self.tp3),
                 'exit-open-time': self.dump_timestamp(self.ts),
             }

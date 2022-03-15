@@ -3,6 +3,8 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Key mapped object.
 
+from __future__ import annotations
+
 from typing import Union
 
 

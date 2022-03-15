@@ -3,13 +3,16 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Candle storage/reading per market
 
+from __future__ import annotations
+
+from typing import Tuple
+
 import time
 import copy
 import threading
 import collections
 
 from datetime import datetime, timedelta
-from typing import Tuple
 
 from instrument.instrument import Candle
 

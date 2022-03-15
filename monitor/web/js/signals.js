@@ -126,6 +126,14 @@ function on_copy_signal(elt) {
     $('#copy_signal_stop_loss_range').slider('setValue', 50);
     $('#copy_signal_stop_loss_type').selectpicker('val', 'percent').change();
 
+    /*$('#copy_signal_second_take_profit_price').val(parseFloat(signal['second-take-profit-price']));
+    $('#copy_signal_second_take_profit_range').slider('setValue', 50);
+    $('#copy_signal_second_take_profit_type').selectpicker('val', 'percent').change();
+
+    $('#copy_signal_third_take_profit_price').val(parseFloat(signal['third-take-profit-price']));
+    $('#copy_signal_third_take_profit_range').slider('setValue', 50);
+    $('#copy_signal_third_take_profit_type').selectpicker('val', 'percent').change();*/
+
     $('#copy_signal_comment').val("");
 
     $('#copy_signal').modal({'show': true, 'backdrop': true});
@@ -134,8 +142,15 @@ function on_copy_signal(elt) {
     $('#copy_signal_open').on('click', function(e) {
         let comment = $('#copy_signal_comment').val();
 
-        let sec_take_profit = 0.0;  // parseFloat($('#copy_signal_sec_take_profit_price').val());
-        let mid_take_profit = 0.0;  // parseFloat($('#copy_signal_mid_take_profit_price').val());
+        let second_take_profit = 0.0;
+        let third_take_profit = 0.0;
+
+        /*if ($('#copy_signal_second_take_profit_price').val()) {
+            second_take_profit = parseFloat($('#copy_signal_second_take_profit_price').val());
+        }
+        if ($('#copy_signal_third_take_profit_price').val()) {
+            third_take_profit = parseFloat($('#copy_signal_third_take_profit_price').val());
+        }*/
 
         let trigger_price = 0.0;
         let limit_price = 0.0;
@@ -199,12 +214,12 @@ function on_copy_signal(elt) {
             data['comment'] = comment;
         }
 
-        if (sec_take_profit > 0.0) {
-            data['sec-take-profit'] = sec_take_profit;
+        if (second_take_profit > 0.0) {
+            data['second-take-profit'] = second_take_profit;
         }
 
-        if (mid_take_profit > 0.0) {
-            data['sec-take-profit'] = mid_take_profit;
+        if (third_take_profit > 0.0) {
+            data['third-take-profit'] = third_take_profit;
         }
 
         let endpoint = "strategy/trade";

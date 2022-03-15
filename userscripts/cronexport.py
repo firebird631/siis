@@ -16,6 +16,7 @@ class CronExportScript(threading.Thread):
     REGION_DELAY = 60.0*5
     STRATEGY_DELAY = 60.0*5
     TRADER_DELAY = 60.0*5
+    HISTORY_DELAY = 60.0 * 5
 
     def __init__(self, strategy_service, trader_service, unmanaged=False):
         super().__init__()
@@ -29,6 +30,7 @@ class CronExportScript(threading.Thread):
         self._regions_last_time = 0.0
         self._strategy_last_time = 0.0
         self._trader_last_time = 0.0
+        self._history_last_time = 0.0
 
         self._process = True
         self._unmanaged = unmanaged
@@ -116,6 +118,18 @@ class CronExportScript(threading.Thread):
                         'dataset': "trader",
                         'export-format': "json",
                         'filename': self._report_path + "/siis_trader.json",
+                    })
+
+            if now - self._history_last_time >= CronExportScript.HISTORY_DELAY:
+                self._history_last_time = now
+
+                if self._strategy_service.strategy():
+                    # export historical trades
+                    results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT_ALL, {
+                        'dataset': "history",
+                        'pending': True,
+                        'export-format': "json",
+                        'filename': self._report_path + "/siis_history.json",
                     })
 
             if self._unmanaged and self._strategy_service.strategy() is None:

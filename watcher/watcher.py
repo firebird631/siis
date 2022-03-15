@@ -89,6 +89,9 @@ class Watcher(Runnable):
     _authors: Dict[str, Author]
     _positions: Dict[str, Position]
 
+    _last_ohlc: Dict[str, Dict[float, Union[Candle, None]]]
+    _last_update_times: Dict[float, float]
+
     def __init__(self, name: str, service: WatcherService, watcher_type: int):
         super().__init__("wt-%s" % (name,))
 
@@ -201,9 +204,9 @@ class Watcher(Runnable):
         if market_id not in self._watched_instruments:
             self._watched_instruments.add(market_id)
 
-        ltimeframes = set.union(set(Watcher.STORED_TIMEFRAMES), set(timeframes))
+        _timeframes = set.union(set(Watcher.STORED_TIMEFRAMES), set(timeframes))
 
-        for timeframe in ltimeframes:
+        for timeframe in _timeframes:
             if timeframe != Instrument.TF_TICK:
                 if market_id not in self._last_ohlc:
                     self._last_ohlc[market_id] = {}
@@ -255,7 +258,8 @@ class Watcher(Runnable):
         """
         return self._watched_instruments
 
-    def subscribe(self, market_id: str, ohlc_depths=None, tick_depth=None, order_book_depth=None):
+    def subscribe(self, market_id: str, ohlc_depths: Optional[dict[float]] = None,
+                  tick_depth: Optional[int] = None, order_book_depth: Optional[int] = None):
         """
         Subscribes for receiving data from price source for a market and a timeframe.
 
@@ -276,7 +280,7 @@ class Watcher(Runnable):
         """
         return False
 
-    def current_ohlc(self, market_id: str, timeframe: float):
+    def current_ohlc(self, market_id: str, timeframe: float) -> Union[Candle, None]:
         """
         Return current OHLC for a specific market-id and timeframe or None.
         """
@@ -477,7 +481,8 @@ class Watcher(Runnable):
 
         return ohlc
 
-    def close_ohlc(self, market_id, last_ohlc_by_timeframe, tf, ts):
+    def close_ohlc(self, market_id: str, last_ohlc_by_timeframe: Dict[float, Union[Candle, None]],
+                   tf: float, ts: float) -> Union[Candle, None]:
         ohlc = last_ohlc_by_timeframe.get(tf)
         ended_ohlc = None
 

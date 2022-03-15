@@ -3,12 +3,15 @@
 # @license Copyright (c) 2018 Dream Overflow
 # www.binance.com watcher implementation
 
+from __future__ import annotations
+
+from typing import Optional, List, Tuple
+
 import time
 import traceback
 import math
 
 from datetime import datetime
-from typing import Optional, List, Tuple
 
 from watcher.watcher import Watcher
 from common.signal import Signal

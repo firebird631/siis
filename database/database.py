@@ -3,6 +3,10 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Storage service
 
+from __future__ import annotations
+
+from typing import Tuple, Optional, Union, List
+
 import os
 import json
 import time
@@ -11,7 +15,6 @@ import pathlib
 from datetime import datetime
 
 from importlib import import_module
-from typing import Tuple, Optional, Union, List
 
 from strategy.indicator.models import Limits, VolumeProfile
 

@@ -3,13 +3,16 @@
 # @license Copyright (c) 2018 Dream Overflow
 # service worker for strategy
 
+from __future__ import annotations
+
+from typing import Union
+
 import time
 import threading
 import traceback
 
 from datetime import datetime
 from importlib import import_module
-from typing import Union
 
 from common.service import Service
 from common.workerpool import WorkerPool
@@ -17,14 +20,15 @@ from common.signal import Signal
 from common.utils import format_delta
 
 from terminal.terminal import Terminal
-from strategy.strategy import Strategy
-from strategy.strategyexception import StrategyServiceException
+from .strategy import Strategy
+from .strategyexception import StrategyServiceException
 
 from config import utils
 
 import logging
 logger = logging.getLogger('siis.strategy.service')
-error_logger = logging.getLogger('siis.strategy.service')
+error_logger = logging.getLogger('siis.error.strategy.service')
+traceback_logger = logging.getLogger('siis.traceback.strategy.service')
 
 
 class StrategyService(Service):
@@ -150,8 +154,12 @@ class StrategyService(Service):
                 # retrieve the class-name and instantiate it
                 parts = indicator.get('classpath').split('.')
 
-                module = import_module('.'.join(parts[:-1]))
-                Clazz = getattr(module, parts[-1])
+                try:
+                    module = import_module('.'.join(parts[:-1]))
+                    Clazz = getattr(module, parts[-1])
+                except Exception as e:
+                    traceback_logger.error(traceback.format_exc())
+                    raise
 
                 if not Clazz:
                     raise StrategyServiceException("Cannot load indicator %s" % k) 
@@ -164,8 +172,12 @@ class StrategyService(Service):
                 # retrieve the class-name and instantiate it
                 parts = tradeop.get('classpath').split('.')
 
-                module = import_module('.'.join(parts[:-1]))
-                Clazz = getattr(module, parts[-1])
+                try:
+                    module = import_module('.'.join(parts[:-1]))
+                    Clazz = getattr(module, parts[-1])
+                except Exception as e:
+                    traceback_logger.error(traceback.format_exc())
+                    raise
 
                 if not Clazz:
                     raise StrategyServiceException("Cannot load tradeop %s" % k) 
@@ -178,8 +190,12 @@ class StrategyService(Service):
                 # retrieve the class-name and instantiate it
                 parts = region.get('classpath').split('.')
 
-                module = import_module('.'.join(parts[:-1]))
-                Clazz = getattr(module, parts[-1])
+                try:
+                    module = import_module('.'.join(parts[:-1]))
+                    Clazz = getattr(module, parts[-1])
+                except Exception as e:
+                    traceback_logger.error(traceback.format_exc())
+                    raise
 
                 if not Clazz:
                     raise StrategyServiceException("Cannot load region %s" % k) 
@@ -192,8 +208,12 @@ class StrategyService(Service):
                 # retrieve the class-name and instantiate it
                 parts = alert.get('classpath').split('.')
 
-                module = import_module('.'.join(parts[:-1]))
-                Clazz = getattr(module, parts[-1])
+                try:
+                    module = import_module('.'.join(parts[:-1]))
+                    Clazz = getattr(module, parts[-1])
+                except Exception as e:
+                    traceback_logger.error(traceback.format_exc())
+                    raise
 
                 if not Clazz:
                     raise StrategyServiceException("Cannot load alert %s" % k) 
@@ -209,23 +229,27 @@ class StrategyService(Service):
                 # retrieve the class-name and instantiate it
                 parts = strategy.get('classpath', "strategy.strategy.Strategy").split('.')
 
-                module = import_module('.'.join(parts[:-1]))
-                Clazz = getattr(module, parts[-1])
+                try:
+                    module = import_module('.'.join(parts[:-1]))
+                    Clazz = getattr(module, parts[-1])
 
-                parts = strategy.get('strategytrader', {}).get('classpath', "").split('.')
+                    parts = strategy.get('strategytrader', {}).get('classpath', "").split('.')
 
-                module = import_module('.'.join(parts[:-1]))
-                TraderClazz = getattr(module, parts[-1])
+                    module = import_module('.'.join(parts[:-1]))
+                    TraderClazz = getattr(module, parts[-1])
 
-                parts = strategy.get('parameters', {}).get('classpath', "")
+                    parts = strategy.get('parameters', {}).get('classpath', "")
 
-                module = import_module(parts)
-                DefaultParams = getattr(module, 'DEFAULT_PARAMS')
+                    module = import_module(parts)
+                    DefaultParams = getattr(module, 'DEFAULT_PARAMS')
 
-                parts = strategy.get('options', {}).get('processor', 'alphaprocess')
+                    parts = strategy.get('options', {}).get('processor', 'alphaprocess')
 
-                module = import_module(parts)
-                ProcessModule = module
+                    module = import_module(parts)
+                    ProcessModule = module
+                except Exception as e:
+                    traceback_logger.error(traceback.format_exc())
+                    raise
 
                 if not Clazz:
                     raise StrategyServiceException("Cannot load strategy %s" % k)

@@ -3,11 +3,13 @@
 # @license Copyright (c) 2019 Dream Overflow
 # View manager service.
 
+from __future__ import annotations
+
+from typing import List
+
 import collections
 import threading
 import time
-
-from typing import List
 
 from common.baseservice import BaseService
 from common.signal import Signal

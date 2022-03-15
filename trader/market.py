@@ -3,8 +3,11 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Market data
 
-import time
+from __future__ import annotations
+
 from typing import Union, Tuple, List, Set
+
+import time
 
 from trader.position import Position
 from common.utils import truncate, decimal_place

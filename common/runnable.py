@@ -3,10 +3,13 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy interface
 
+from __future__ import annotations
+
+from typing import Union, Callable
+
 import traceback
 import threading
 import time
-from typing import Union, Callable
 
 from terminal.terminal import Terminal
 

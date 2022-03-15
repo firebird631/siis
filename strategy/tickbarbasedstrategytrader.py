@@ -3,10 +3,11 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Tick-bar based strategy trader. 
 
-import copy
+from __future__ import annotations
+
 from typing import List, Tuple
 
-from strategy.strategytrader import StrategyTrader
+import copy
 
 from instrument.instrument import Instrument
 
@@ -15,6 +16,8 @@ from monitor.streamable import Streamable, StreamMemberInt, \
     StreamMemberFloatSerie, StreamMemberTradeSignal, \
     StreamMemberStrategyAlert, StreamMemberStrategyAlertCreate, StreamMemberStrategyAlertRemove, \
     StreamMemberStrategyRegion, StreamMemberStrategyRegionCreate, StreamMemberStrategyRegionRemove
+
+from .strategytrader import StrategyTrader
 
 import logging
 logger = logging.getLogger('siis.strategy.tickbarbasedstrategytrader')

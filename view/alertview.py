@@ -3,12 +3,15 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Alerts view.
 
+from __future__ import annotations
+
+from typing import List
+
 import copy
 import threading
 import hashlib
 
 from datetime import datetime
-from typing import List
 
 from common.signal import Signal
 

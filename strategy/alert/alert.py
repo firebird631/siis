@@ -5,12 +5,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from strategy.strategytrader import StrategyTrader
 
-from typing import Union
 from datetime import datetime
 
 from common.utils import timeframe_to_str

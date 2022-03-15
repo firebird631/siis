@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 
 import copy
 
-from strategy.strategytrader import StrategyTrader
-from strategy.strategysignal import StrategySignal
+from .strategytrader import StrategyTrader
+from .strategysignal import StrategySignal
 
 from instrument.instrument import Instrument
 from common.utils import timeframe_from_str

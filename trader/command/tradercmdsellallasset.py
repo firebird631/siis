@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import traceback
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -15,6 +14,7 @@ from terminal.terminal import Terminal
 
 from trader.order import Order
 
+import traceback
 import logging
 
 logger = logging.getLogger('siis.trader')

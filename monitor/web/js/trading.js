@@ -1090,8 +1090,8 @@ function on_open_new_trade(elt, direction) {
     let stop_loss = 0.0;
     let take_profit = 0.0;
 
-    let sec_take_profit = 0.0;
-    let mid_take_profit = 0.0;
+    let second_take_profit = 0.0;
+    let third_take_profit = 0.0;
 
     let stop_loss_price_mode = window.methods[retrieve_stop_loss_method(trader_id)].type;
     let take_profit_price_mode = window.methods[retrieve_take_profit_method(trader_id)].type;
@@ -1174,16 +1174,16 @@ function on_open_new_trade(elt, direction) {
 
     // reset fields
     $('#trade_comment').val("");
-    $('#sec_take_profit_price').val("");
-    $('#mid_take_profit_price').val("");
+    $('#second_take_profit_price').val("");
+    $('#third_take_profit_price').val("");
 
     // on update value
-    $('#sec_take_profit_price').off('input');
-    $('#sec_take_profit_price').on('input', function(elt) {
+    $('#second_take_profit_price').off('input');
+    $('#second_take_profit_price').on('input', function(elt) {
     });
 
-    $('#mid_take_profit_price').off('input');
-    $('#mid_take_profit_price').on('input', function(elt) {
+    $('#third_take_profit_price').off('input');
+    $('#third_take_profit_price').on('input', function(elt) {
     });
 
     $('#open_trade_adv').modal({'show': true, 'backdrop': true});
@@ -1192,8 +1192,8 @@ function on_open_new_trade(elt, direction) {
     $('#open_trade_adv_open').off('click');
     $('#open_trade_adv_open').on('click', function(e) {
         let comment = $('#trade_comment').val();
-        let sec_take_profit_val = $('#sec_take_profit_price').val();
-        let mid_take_profit_val = $('#mid_take_profit_price').val();
+        let second_take_profit_val = $('#second_take_profit_price').val();
+        let third_take_profit_val = $('#third_take_profit_price').val();
 
         let extra = {
         };
@@ -1202,12 +1202,12 @@ function on_open_new_trade(elt, direction) {
             extra['comment'] = comment;
         }
 
-        if (sec_take_profit > 0.0) {
-            extra['sec-take-profit'] = sec_take_profit;
+        if (second_take_profit > 0.0) {
+            extra['second-take-profit'] = second_take_profit;
         }
 
-        if (mid_take_profit > 0.0) {
-            extra['sec-take-profit'] = mid_take_profit;
+        if (third_take_profit > 0.0) {
+            extra['third-take-profit'] = third_take_profit;
         }
 
         if (direction > 0) {

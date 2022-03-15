@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union, Optional, Tuple
+from typing import TYPE_CHECKING, Union, Optional, Tuple, List
 
 if TYPE_CHECKING:
     from trader.trader import Trader
@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from strategy.strategytradercontext import StrategyTraderContextBuilder
 
 from datetime import datetime
-from typing import List
 
 from common.utils import timeframe_to_str, UTC
 

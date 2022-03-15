@@ -3,10 +3,13 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Utils
 
+from __future__ import annotations
+
+from typing import Union, Set, Tuple, List
+
 import math
 
 from datetime import datetime, timedelta, tzinfo
-from typing import Union, Set, Tuple, List
 
 
 class UTC(tzinfo):

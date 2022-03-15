@@ -3,6 +3,8 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Timeframe based sub-strategy base class.
 
+from __future__ import annotations
+
 from typing import List, Tuple
 
 from instrument.candlegenerator import CandleGenerator

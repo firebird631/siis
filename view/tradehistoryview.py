@@ -9,7 +9,7 @@ from common.signal import Signal
 from strategy.helpers.closedtradetable import closed_trades_stats_table
 
 import logging
-error_logger = logging.getLogger('siis.view.tradehistory')
+error_logger = logging.getLogger('siis.error.view.tradehistory')
 
 
 class TradeHistoryView(TableView):

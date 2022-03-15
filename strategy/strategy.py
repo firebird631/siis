@@ -5,16 +5,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union, List, Dict
 
 if TYPE_CHECKING:
     from trader.trader import Trader
+    from .strategytrader import StrategyTrader
 
 import threading
 import time
 import collections
-
-from typing import Union, List, Dict
 
 from .alert.alert import Alert
 from terminal.terminal import Terminal
@@ -29,8 +28,6 @@ from instrument.instrument import Instrument
 from watcher.watcher import Watcher
 
 from database.database import Database
-
-from .strategytrader import StrategyTrader
 
 from .process import alphaprocess
 

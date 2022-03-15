@@ -3,13 +3,16 @@
 # @license Copyright (c) 2018 Dream Overflow
 # www.bitmex.com watcher implementation
 
+from __future__ import annotations
+
+from typing import Union
+
 import re
 import time
 import traceback
 import math
 
 from datetime import datetime
-from typing import Union
 
 from common.utils import UTC
 

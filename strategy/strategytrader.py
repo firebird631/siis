@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Tuple, Dict, Union, Optional, List
 
 if TYPE_CHECKING:
     from .strategy import Strategy
     from .alert.alert import Alert
     from .region.region import Region
+    from .handler.handler import Handler
     from trader.trader import Trader
     from instrument.instrument import TickType
     from monitor.streamable import Streamable
@@ -21,7 +22,6 @@ import time
 import traceback
 
 from datetime import datetime
-from typing import Union, Optional, List
 
 from instrument.instrument import Instrument
 
@@ -68,7 +68,40 @@ class StrategyTrader(object):
         'verbose': REPORTING_VERBOSE,
     }
 
+    strategy: Strategy
+    instrument: Instrument
     _trade_context_builder: Union[StrategyTraderContextBuilder, Any, None]
+    _activity: bool
+    _affinity: int
+    max_trades: int
+    _initialized: int
+    _check: int
+    _limits: Limits
+    _preprocessing: int
+    _preprocess_depth: int
+    _preprocess_streamer: Union[Streamable, None]
+    _preprocess_from_timestamp: float
+    _bootstrapping: int
+    _processing: bool
+    _trade_mutex: threading.RLock
+    _trades: List[StrategyTrade]
+    _next_trade_id: int
+    _regions: List[Region]
+    _next_region_id: int
+    _alerts: List[Alert]
+    _next_alert_id: int
+    _handlers: Dict[str, Handler]
+    _global_streamer: Union[Streamable, None]
+    _trade_entry_streamer: Union[Streamable, None]
+    _trade_update_streamer: Union[Streamable, None]
+    _trade_exit_streamer: Union[Streamable, None]
+    _signal_streamer: Union[Streamable, None]
+    _alert_streamer: Union[Streamable, None]
+    _region_streamer: Union[Streamable, None]
+    _reporting: int
+    _report_filename: Union[str, None]
+    _stats: Dict[str, Union[int, float, List, Tuple]]
+    _trade_context_builder: Union[StrategyTraderContextBuilder, None]
 
     def __init__(self, strategy: Strategy, instrument: Instrument):
         self.strategy = strategy
