@@ -131,17 +131,23 @@ def check_auth_token(request):
             return True
 
     # or from args (not safe)
-    auth_token = request.args.get(b'auth-token', [b""])[0].decode("utf-8")
-    if auth_token:
-        if auth_token == s_auth_token.value:
-            return True
+    try:
+        auth_token = request.args.get(b'auth-token', [b"\"\""])[0].decode("utf-8")
+        if auth_token:
+            if auth_token == s_auth_token.value:
+                return True
+    except Exception as e:
+        error_logger.error(repr(e))
 
     # or from body (intermediate)
-    content = json.loads(request.content.read().decode("utf-8"))
-    auth_token = content.get('auth-token')
-    if auth_token:
-        if auth_token == s_auth_token.value:
-            return True
+    try:
+        content = json.loads(request.content.read().decode("utf-8"))
+        auth_token = content.get('auth-token')
+        if auth_token:
+            if auth_token == s_auth_token.value:
+                return True
+    except Exception as e:
+        error_logger.error(repr(e))
 
     return False
 

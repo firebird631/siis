@@ -2,6 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
 # Crystal Ball indicator strategy trader.
+from typing import Tuple
 
 from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
 
@@ -42,7 +43,7 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
 
         self.setup_streaming()
 
-    def filter_market(self, timestamp):
+    def filter_market(self, timestamp: float) -> Tuple[bool, bool]:
         """
         The first boolean mean accept, the second compute.
         Return True, True if the market is accepted and can be computed this time.

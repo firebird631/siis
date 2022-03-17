@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, Tuple
 
 if TYPE_CHECKING:
     from .bcasub import BitcoinAlphaStrategySub
@@ -77,7 +77,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         self.setup_streaming()
 
-    def filter_market(self, timestamp):
+    def filter_market(self, timestamp: float) -> Tuple[bool, bool]:
         """
         The first boolean mean accept, the second compute.
         Return True, True if the market is accepted and can be computed this time.
