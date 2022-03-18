@@ -65,7 +65,7 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal, do_notify=t
 
     // limit to last 200 signals
     if ($('div.signal-list-entries tbody').children('tr').length > 200) {
-        let older = $('div.signal-list-entries tbody').last('tr');
+        let older = $('div.signal-list-entries tbody').children('tr:last');
         let older_key = older.attr('signal-key');
 
         older.remove();
