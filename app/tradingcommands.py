@@ -1687,7 +1687,7 @@ class CloseAllTradeCommand(Command):
     )
 
     def __init__(self, strategy_service):
-        super().__init__('!closeall', '!CA')
+        super().__init__('!closeall', '!CLOSEALL')
 
         self._strategy_service = strategy_service
 
@@ -1720,7 +1720,7 @@ class CancelAllPendingTradeCommand(Command):
     )
 
     def __init__(self, strategy_service):
-        super().__init__('!cancelall', '!CCA')
+        super().__init__('!cancelall', '!CANCELALL')
 
         self._strategy_service = strategy_service
 
@@ -1753,7 +1753,7 @@ class SellAllAssetCommand(Command):
     )
 
     def __init__(self, trader_service):
-        super().__init__('!sellall', '!SA')
+        super().__init__('!sellall', '!SELLALL')
 
         self._trader_service = trader_service
 
@@ -1788,7 +1788,7 @@ class CancelAllOrderCommand(Command):
     CHOICES = ("spot-entry", "spot-exit", "spot", "margin-entry", "margin-exit", "margin", "entry", "exit")
 
     def __init__(self, trader_service):
-        super().__init__('!rmallorder', '!CAO')
+        super().__init__('!rmallorder', '!RMALLORDER')
 
         self._trader_service = trader_service
 
@@ -1856,7 +1856,7 @@ class CancelOrderCommand(Command):
     )
 
     def __init__(self, trader_service):
-        super().__init__('!rmorder', '!RMO')
+        super().__init__('!rmorder', '!RMORDER')
 
         self._trader_service = trader_service
 
@@ -1951,7 +1951,7 @@ class CloseAllPositionCommand(Command):
     SUMMARY = "to close at market all opened positions, immediately"
 
     def __init__(self, trader_service):
-        super().__init__('!close-all-position', '!CAP')
+        super().__init__('!close-all-position', '!CLOSEALLPOSITION')
 
         self._trader_service = trader_service
 
