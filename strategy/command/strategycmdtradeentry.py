@@ -40,6 +40,7 @@ def cmd_trade_entry(strategy: Strategy, strategy_trader: StrategyTrader, data: d
     limit_price = data.get('limit-price')
     trigger_price = data.get('trigger-price')
     quantity_rate = data.get('quantity-rate', 1.0)
+    user_quantity = data.get('user-quantity', 0.0)
     stop_loss = data.get('stop-loss', 0.0)
     take_profit = data.get('take-profit', 0.0)
     stop_loss_price_mode = data.get('stop-loss-price-mode', 'price')
@@ -54,6 +55,10 @@ def cmd_trade_entry(strategy: Strategy, strategy_trader: StrategyTrader, data: d
 
     if quantity_rate <= 0.0:
         results['messages'].append("Missing or empty quantity.")
+        results['error'] = True
+
+    if user_quantity < 0.0:
+        results['messages'].append("User quantity cannot be lesser than zero.")
         results['error'] = True
 
     if method not in ('market', 'limit', 'limit-percent', 'trigger', 'best-1', 'best+1', 'best-2', 'best+2'):
@@ -150,16 +155,28 @@ def cmd_trade_entry(strategy: Strategy, strategy_trader: StrategyTrader, data: d
 
         # adjust max quantity according to free asset of quote, and convert in asset base quantity
         if trader.has_asset(strategy_trader.instrument.quote):
-            qty = trade_quantity * quantity_rate
+            if user_quantity > 0.0:
+                order_quantity = strategy_trader.instrument.adjust_quantity(user_quantity)
+                qty = user_quantity * price
 
-            if trader.has_quantity(strategy_trader.instrument.quote, qty):
-                order_quantity = strategy_trader.instrument.adjust_quantity(qty / price)  # and adjusted to 0/max/step
+                if not trader.has_quantity(strategy_trader.instrument.quote, qty):
+                    results['error'] = True
+                    results['messages'].append("Not enough free quote asset %s, has %s but need %s" % (
+                        strategy_trader.instrument.quote,
+                        strategy_trader.instrument.format_quantity(trader.asset(strategy_trader.instrument.quote).free),
+                        strategy_trader.instrument.format_quantity(qty)))
             else:
-                results['error'] = True
-                results['messages'].append("Not enough free quote asset %s, has %s but need %s" % (
-                    strategy_trader.instrument.quote,
-                    strategy_trader.instrument.format_quantity(trader.asset(strategy_trader.instrument.quote).free),
-                    strategy_trader.instrument.format_quantity(qty)))
+                qty = trade_quantity * quantity_rate
+
+                if trader.has_quantity(strategy_trader.instrument.quote, qty):
+                    # and adjusted to 0/max/step
+                    order_quantity = strategy_trader.instrument.adjust_quantity(qty / price)
+                else:
+                    results['error'] = True
+                    results['messages'].append("Not enough free quote asset %s, has %s but need %s" % (
+                        strategy_trader.instrument.quote,
+                        strategy_trader.instrument.format_quantity(trader.asset(strategy_trader.instrument.quote).free),
+                        strategy_trader.instrument.format_quantity(qty)))
 
     elif strategy_trader.instrument.has_margin and strategy_trader.instrument.has_position:
         trade = StrategyPositionTrade(timeframe)

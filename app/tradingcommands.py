@@ -432,6 +432,7 @@ class LongCommand(Command):
         "param8: [/]<timeframe> Entry timeout timeframe (1m, 4h, 1d..) (optional)",
         "param9: [x]<decimal> Manual leverage if supported (optional)",
         "param10: [+]<timeframe> Expiry (optional)",
+        "param11: [q]<quantity> User defined asset quantity (optional)",
     )
 
     def __init__(self, strategy_service):
@@ -452,6 +453,7 @@ class LongCommand(Command):
         take_profit = 0.0
         stop_loss_price_mode = "price"
         take_profit_price_mode = "price"
+        user_quantity = 0.0
         quantity_rate = 1.0
         timeframe = Instrument.TF_4HOUR
         entry_timeout = None
@@ -539,6 +541,9 @@ class LongCommand(Command):
                 elif value.startswith("-"):
                     context = value[1:]
 
+                elif value.startswith("q"):
+                    user_quantity = float(value[1:])
+
         except ValueError:
             return False, "Invalid parameters"
 
@@ -558,6 +563,7 @@ class LongCommand(Command):
             'trigger-price': trigger_price,
             'method': method,
             'quantity-rate': quantity_rate,
+            'user-quantity': user_quantity,
             'stop-loss': stop_loss,
             'take-profit': take_profit,
             'stop-loss-price-mode': stop_loss_price_mode,
