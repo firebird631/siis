@@ -573,7 +573,10 @@ class BinanceWatcher(Watcher):
         return
 
         if data['e'] == 'depthUpdate':
-            symbol = data['s']
+            symbol = data.get('s')
+
+            if not symbol:
+                return
 
             if symbol not in self._depths:
                 # initial snapshot of the order book from REST API
@@ -639,7 +642,11 @@ class BinanceWatcher(Watcher):
         event_type = data.get('e', "")
 
         if event_type == "aggTrade":
-            symbol = data['s']
+            symbol = data.get('s')
+
+            if not symbol:
+                return
+
             trade_time = data['T'] * 0.001
 
             # trade_id = data['t']
@@ -713,8 +720,11 @@ class BinanceWatcher(Watcher):
         if event_type == 'executionReport':
             exec_logger.info("binance.com executionReport %s" % str(data))
 
+            symbol = data.get('s')
+            if not symbol:
+                return
+
             event_timestamp = float(data['E']) * 0.001
-            symbol = data['s']
             cid = data['c']
 
             if data['x'] == 'REJECTED':  # and data['X'] == '?':

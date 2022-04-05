@@ -562,7 +562,10 @@ class BinanceFuturesWatcher(Watcher):
 
     def __on_book_tickers_data(self, data):
         # market data instrument by symbol
-        symbol = data['s']
+        symbol = data.get('s')
+
+        if not symbol:
+            return
 
         bid = float(data['b'])  # B for qty
         ask = float(data['a'])  # A for qty
@@ -575,7 +578,10 @@ class BinanceFuturesWatcher(Watcher):
         return
 
         # if data['e'] == 'depthUpdate':
-        #     symbol = data['s']
+        #     symbol = data.get('s')
+        #
+        #     if not symbol:
+        #         return
         #
         #     if symbol not in self._depths:
         #         # initial snapshot of the order book from REST API
@@ -641,7 +647,11 @@ class BinanceFuturesWatcher(Watcher):
         event_type = data.get('e', "")
 
         if event_type == "aggTrade":
-            symbol = data['s']
+            symbol = data.get('s')
+
+            if not symbol:
+                return
+
             trade_time = data['T'] * 0.001
 
             # trade_id = data['t']
@@ -674,9 +684,12 @@ class BinanceFuturesWatcher(Watcher):
         event_type = data.get('e', '')
 
         if event_type == 'kline':
-            k = data['k']
+            symbol = data.get('s')
 
-            symbol = k['s']
+            if not symbol:
+                return
+
+            k = data['k']
             timestamp = k['t'] * 0.001
 
             tf = self.REV_TF_MAP[k['i']]

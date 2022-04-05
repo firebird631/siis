@@ -94,6 +94,7 @@ class StrategyTrader(object):
     _next_region_id: int
     _alerts: List[Alert]
     _next_alert_id: int
+    _global_handler: Union[Handler, None]
     _handlers: Dict[str, Handler]
 
     _global_streamer: Union[Streamable, None]
@@ -145,7 +146,8 @@ class StrategyTrader(object):
         self._alerts = []
         self._next_alert_id = 1
 
-        self._handlers = {}  # installed handlers per context (some can be shared)
+        self._global_handler = None   # installed handler for any contexts (some can be shared)
+        self._handlers = {}           # installed handlers per context (some can be shared)
 
         self._global_streamer = None
         self._trade_entry_streamer = None
@@ -1755,18 +1757,38 @@ class StrategyTrader(object):
                     except Exception as e:
                         error_logger.error(repr(e))
 
-    def retrieve_handler(self, context_id):
+                if self._global_handler:
+                    try:
+                        self._global_handler.process(self)
+                    except Exception as e:
+                        error_logger.error(repr(e))
+
+    def retrieve_handler(self, context_id: str) -> Union[Handler, None]:
         with self._mutex:
             return self._handlers.get(context_id)
 
-    def dumps_handlers(self):
+    @property
+    def global_handler(self) -> Handler:
+        return self._global_handler
+
+    def dumps_handlers(self) -> List[Dict[str, str]]:
+        """
+        Dumps of any installed per context handler and of the global handler.
+        @return:
+        """
         results = []
+
+        if self._global_handler:
+            try:
+                results.append(self._global_handler.dumps(self))
+            except Exception as e:
+                error_logger.error(repr(e))
 
         if self._handlers:
             with self._mutex:
                 for context_id, handler in self._handlers.items():
                     try:
-                        results.append(handler.dumps())
+                        results.append(handler.dumps(self))
                     except Exception as e:
                         error_logger.error(repr(e))
 
@@ -2187,7 +2209,11 @@ class StrategyTrader(object):
             if self._reporting == self.REPORTING_VERBOSE:
                 self.report(trade, True)
 
-            # inform handler
+            # inform handlers
+            if self._global_handler:
+                with self._mutex:
+                    self._global_handler.on_trade_opened(self, trade)
+
             if self._handlers and trade.context is not None and trade.context.name in self._handlers:
                 with self._mutex:
                     self._handlers[trade.context.name].on_trade_opened(self, trade)
@@ -2204,6 +2230,15 @@ class StrategyTrader(object):
                     self._trade_update_streamer.publish()
                 except Exception as e:
                     logger.error(repr(e))
+
+            # inform handlers
+            if self._global_handler:
+                with self._mutex:
+                    self._global_handler.on_trade_updated(self, trade)
+
+            if self._handlers and trade.context is not None and trade.context.name in self._handlers:
+                with self._mutex:
+                    self._handlers[trade.context.name].on_trade_updated(self, trade)
 
     def notify_trade_exit(self, timestamp: float, trade: StrategyTrade):
         if trade:
@@ -2222,7 +2257,11 @@ class StrategyTrader(object):
             if self._reporting == self.REPORTING_VERBOSE:
                 self.report(trade, False)
 
-            # inform handler
+            # inform handlers
+            if self._global_handler:
+                with self._mutex:
+                    self._global_handler.on_trade_exited(self, trade)
+
             if self._handlers and trade.context is not None and trade.context.name in self._handlers:
                 with self._mutex:
                     self._handlers[trade.context.name].on_trade_exited(self, trade)

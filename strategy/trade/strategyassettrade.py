@@ -312,6 +312,71 @@ class StrategyAssetTrade(StrategyTrade):
 
         return self.NOTHING_TO_DO
 
+    def cancel_close(self, trader: Trader, instrument: Instrument) -> int:
+        """
+        @todo for OCO
+        """
+        if self.oco_oid:
+            pass
+
+        elif self.limit_oid:
+            # cancel the sell order
+            if trader.cancel_order(self.limit_oid, instrument) > 0:
+                # returns true, no need to wait signal confirmation
+                self.limit_oid = None
+                self.limit_ref_oid = None
+
+                if self.x <= 0:
+                    self._exit_state = StrategyTrade.STATE_CANCELED
+
+                return self.ACCEPTED
+            else:
+                data = trader.order_info(self.entry_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no entry order, nothing to do
+                    self.limit_ref_oid = None
+                    self.limit_oid = None
+
+                    self._exit_state = StrategyTrade.STATE_CANCELED
+                else:
+                    # exists, do nothing need to retry
+                    return self.ERROR
+
+        elif self.stop_oid:
+            # cancel the sell order
+            if trader.cancel_order(self.stop_oid, instrument) > 0:
+                # returns true, no need to wait signal confirmation
+                self.stop_oid = None
+                self.stop_ref_oid = None
+
+                if self.x <= 0:
+                    self._exit_state = StrategyTrade.STATE_CANCELED
+
+                return self.ACCEPTED
+            else:
+                data = trader.order_info(self.entry_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no entry order, nothing to do
+                    self.stop_ref_oid = None
+                    self.stop_oid = None
+
+                    self._exit_state = StrategyTrade.STATE_CANCELED
+                else:
+                    # exists, do nothing need to retry
+                    return self.ERROR
+
+        return self.NOTHING_TO_DO
+
     def modify_take_profit(self, trader: Trader, instrument: Instrument, limit_price: float, hard: bool = True) -> int:
         """
         @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
