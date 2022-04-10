@@ -63,7 +63,7 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
 
             if market.last_trade_dir != 0:
                 last_trade = Color.colorize_cond(market.format_price(market.last_trade), market.last_trade_dir > 0,
-                                                 style=style)
+                                                 style=style, true=Color.GREEN, false=Color.RED)
             else:
                 last_trade = '-'
 
@@ -98,6 +98,11 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
             else:
                 last_timestamp = '-'  # charmap.HOURGLASS
 
+            if market.last_trade_timestamp > 0:
+                last_trade_timestamp = datetime.fromtimestamp(market.last_trade_timestamp).strftime("%H:%M:%S")
+            else:
+                last_trade_timestamp = '-'  # charmap.HOURGLASS
+
             # relative change in percent
             if not market.last_mem:
                 market.mem_set()
@@ -121,7 +126,8 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
                 vol24h_quote,
                 last_timestamp,
                 relative_change,
-                last_trade)
+                last_trade,
+                last_trade_timestamp)
 
             data.append(row[0:2] + row[2+col_ofs:])
 
