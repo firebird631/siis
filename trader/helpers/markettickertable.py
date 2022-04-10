@@ -88,7 +88,7 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
             if market.last_update_time > 0:
                 last_timestamp = datetime.fromtimestamp(market.last_update_time).strftime("%H:%M:%S")
 
-                # color ticker/depth since last receive (>15m, >30m)
+                # color ticker since last receive (>15m, >30m)
                 if trader.timestamp - market.last_update_time > 60*30.0:
                     last_timestamp = Color.colorize(last_timestamp, Color.RED, style)
                 elif trader.timestamp - market.last_update_time > 60*15.0:
@@ -100,6 +100,14 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
 
             if market.last_trade_timestamp > 0:
                 last_trade_timestamp = datetime.fromtimestamp(market.last_trade_timestamp).strftime("%H:%M:%S")
+
+                # color last trade since last receive (>15m, >30m)
+                if trader.timestamp - market.last_trade_timestamp > 60*30.0:
+                    last_trade_timestamp = Color.colorize(last_trade_timestamp, Color.RED, style)
+                elif trader.timestamp - market.last_trade_timestamp > 60*15.0:
+                    last_trade_timestamp = Color.colorize(last_trade_timestamp, Color.ORANGE, style)
+                else:
+                    last_trade_timestamp = Color.colorize(last_trade_timestamp, Color.GREEN, style)
             else:
                 last_trade_timestamp = '-'  # charmap.HOURGLASS
 
