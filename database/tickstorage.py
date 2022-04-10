@@ -27,7 +27,7 @@ class TickStorage(object):
     File format is a tab separated file with no header and :
     timestamp(int ms since epoch) bid(str) ask(str) last(str) volume(str) direction(signed char)
 
-    Price and volume should be formated with the asset precision if possible but scientific notation
+    Price and volume should be formatted with the asset precision if possible but scientific notation
     is tolerate.
     """
 
@@ -189,7 +189,8 @@ class TickStreamer(object):
         self._is_binary = False
 
         self._struct = struct.Struct('dddddb')
-        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('a', 'float64'), ('l', 'float64'), ('v', 'float64'), ('d', 'int8')])
+        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('a', 'float64'), ('l', 'float64'),
+                                    ('v', 'float64'), ('d', 'int8')])
 
     @property
     def from_date(self):
@@ -403,7 +404,8 @@ class TickStreamer(object):
                 if self._curr_date.month == 12:
                     self._curr_date = datetime(year=self._curr_date.year+1, month=1, day=1, tzinfo=UTC())
                 else:
-                    self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1, tzinfo=UTC())
+                    self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1,
+                                               tzinfo=UTC())
 
 
 class TextToBinary(object):
@@ -469,7 +471,7 @@ class TextToBinary(object):
             self.next()
 
     def finished(self):
-        return (self._curr_date >= self._to_date)
+        return self._curr_date >= self._to_date
 
     def next(self):
         if self._curr_date < self._to_date:
@@ -494,7 +496,8 @@ class TextToBinary(object):
             if self._curr_date.month == 12:
                 self._curr_date = datetime(year=self._curr_date.year+1, month=1, day=1, tzinfo=UTC())
             else:
-                self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1, tzinfo=UTC())
+                self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1,
+                                           tzinfo=UTC())
 
 
 class LastTickFinder(object):
@@ -515,7 +518,8 @@ class LastTickFinder(object):
         self._binary = binary  # use binary format
 
         self._struct = struct.Struct('dddddb')
-        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('a', 'float64'), ('l', 'float64'), ('v', 'float64'), ('d', 'int8')])
+        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('a', 'float64'), ('l', 'float64'),
+                                    ('v', 'float64'), ('d', 'int8')])
 
     def open(self):
         data_path = pathlib.Path(self._markets_path, self._broker_id, self._market_id, 'T')
@@ -591,7 +595,8 @@ class LastTickFinder(object):
 
                 self._curr_date = datetime(year=self._curr_date.year-1, month=12, day=1, tzinfo=UTC())
             else:
-                self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month-1, day=1, tzinfo=UTC())
+                self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month-1, day=1,
+                                           tzinfo=UTC())
 
         return tick
 
@@ -614,7 +619,8 @@ class FirstTickFinder(object):
         self._binary = binary  # use binary format
 
         self._struct = struct.Struct('dddddb')
-        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('a', 'float64'), ('l', 'float64'), ('v', 'float64'), ('d', 'int8')])
+        self._tick_type = np.dtype([('t', 'float64'), ('b', 'float64'), ('a', 'float64'), ('l', 'float64'),
+                                    ('v', 'float64'), ('d', 'int8')])
 
     def open(self):
         data_path = pathlib.Path(self._markets_path, self._broker_id, self._market_id, 'T')
@@ -685,6 +691,7 @@ class FirstTickFinder(object):
 
                 self._curr_date = datetime(year=self._curr_date.year+1, month=1, day=1, tzinfo=UTC())
             else:
-                self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1, tzinfo=UTC())
+                self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month+1, day=1,
+                                           tzinfo=UTC())
 
         return tick

@@ -87,7 +87,8 @@ class Market(object):
                 '_value_per_pip', '_one_pip_means', '_margin_factor', '_size_limits', '_price_limits', \
                 '_notional_limits', '_market_type', '_unit_type', '_contract_type', '_vol24h_base', '_vol24h_quote', \
                 '_hedging', '_fees', '_fee_currency', '_previous', '_leverages', '_last_update_time', \
-                '_bid', '_ask', '_last_mem', '_last_mem_timestamp'
+                '_bid', '_ask', '_last_mem', '_last_mem_timestamp', \
+                '_last_trade', '_last_trade_dir', '_last_trade_timestamp'
 
     def __init__(self, market_id, symbol):
         self._market_id = market_id
@@ -141,6 +142,10 @@ class Market(object):
 
         self._last_mem = 0.0
         self._last_mem_timestamp = 0.0
+
+        self._last_trade = 0.0
+        self._last_trade_dir = 0
+        self._last_trade_timestamp = 0.0
 
     @property
     def market_id(self) -> str:
@@ -282,6 +287,18 @@ class Market(object):
     @last_update_time.setter
     def last_update_time(self, last_update_time: float):
         self._last_update_time = last_update_time
+
+    @property
+    def last_trade(self):
+        return self._last_trade
+
+    @property
+    def last_trade_dir(self):
+        return self._last_trade_dir
+
+    @property
+    def last_trade_timestamp(self):
+        return self._last_trade_timestamp
 
     @property
     def is_open(self) -> bool:
@@ -794,6 +811,14 @@ class Market(object):
         @return float spread or None
         """
         return (self._previous[-1][2] - self._previous[-1][1]) if self._previous else None
+
+    def set_last_trade(self, price: float, direction: float, timestamp: float):
+        """
+        Update to the last trade with price, direction (1 or -1) and timestamp in seconds.
+        """
+        self._last_trade = price
+        self._last_trade_dir = direction
+        self._last_trade_timestamp = timestamp
 
     #
     # helpers

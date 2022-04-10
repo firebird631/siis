@@ -20,7 +20,7 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
     Returns a table of any followed markets tickers.
     """
     columns = ('Market', 'Symbol', 'Mid', 'Bid', 'Ask', 'Spread', 'Vol24h base', 'Vol24h quote',
-               'Time', 'Change(%)')
+               'Time', 'Change(%)', 'Last', 'At')
 
     total_size = (len(columns), 0)
     data = []
@@ -60,6 +60,12 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
                 bid = market.format_price(market.bid)
                 ask = market.format_price(market.ask)
                 spread = market.format_spread(market.spread)
+
+            if market.last_trade_dir != 0:
+                last_trade = Color.colorize_cond(market.format_price(market.last_trade), market.last_trade_dir > 0,
+                                                 style=style)
+            else:
+                last_trade = '-'
 
             if market.vol24h_quote:
                 # @todo could be configured
@@ -114,7 +120,8 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
                 market.format_quantity(market.vol24h_base) if market.vol24h_base else '-',  # charmap.HOURGLASS,
                 vol24h_quote,
                 last_timestamp,
-                relative_change)
+                relative_change,
+                last_trade)
 
             data.append(row[0:2] + row[2+col_ofs:])
 

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from .service import TraderService
     from .account import Account
     from .market import Market
-    from instrument.instrument import Instrument
+    from instrument.instrument import Instrument, TickType
 
 import time
 import copy
@@ -276,6 +276,8 @@ class Trader(Runnable):
                     self.on_update_market(*signal.data)
                 elif signal.signal_type == Signal.SIGNAL_ACCOUNT_DATA:
                     self.on_account_updated(*signal.data)
+                elif signal.signal_type == Signal.SIGNAL_TICK_DATA:
+                    self.on_trade_market(*signal.data)
 
                 elif signal.signal_type == Signal.SIGNAL_POSITION_OPENED:
                     self.on_position_opened(*signal.data)
@@ -612,22 +614,22 @@ class Trader(Runnable):
                 # only interested by the watcher of the same name
                 return
 
-            if signal.signal_type == Signal.SIGNAL_MARKET_DATA:
-                # if not self.has_market(signal.data[0]):
+            if signal.signal_type in (Signal.SIGNAL_MARKET_DATA, Signal.SIGNAL_TICK_DATA):
                 if not signal.data[0] in self._markets:
-                    # non interested by this instrument/symbol
+                    # not interested by this instrument/symbol
                     return
 
                 if len(self._signals) > Trader.MAX_SIGNALS:
                     # if trader message queue saturate its mostly because of market data too many update
-                    # then ignore some of those message, the others ones are too important to be ignored
+                    # then ignore some of those messages, the others ones are too important to be ignored
                     return
 
             elif signal.signal_type not in (
                     Signal.SIGNAL_ACCOUNT_DATA, Signal.SIGNAL_WATCHER_CONNECTED, Signal.SIGNAL_WATCHER_DISCONNECTED,
-                    Signal.SIGNAL_POSITION_OPENED, Signal.SIGNAL_POSITION_UPDATED, Signal.SIGNAL_POSITION_DELETED, Signal.SIGNAL_POSITION_AMENDED,
-                    Signal.SIGNAL_ORDER_OPENED, Signal.SIGNAL_ORDER_UPDATED, Signal.SIGNAL_ORDER_DELETED, Signal.SIGNAL_ORDER_REJECTED,
-                    Signal.SIGNAL_ORDER_CANCELED, Signal.SIGNAL_ORDER_TRADED,
+                    Signal.SIGNAL_POSITION_OPENED, Signal.SIGNAL_POSITION_UPDATED, Signal.SIGNAL_POSITION_DELETED,
+                    Signal.SIGNAL_POSITION_AMENDED,
+                    Signal.SIGNAL_ORDER_OPENED, Signal.SIGNAL_ORDER_UPDATED, Signal.SIGNAL_ORDER_DELETED,
+                    Signal.SIGNAL_ORDER_REJECTED, Signal.SIGNAL_ORDER_CANCELED, Signal.SIGNAL_ORDER_TRADED,
                     Signal.SIGNAL_ASSET_UPDATED):
                 return
 
@@ -1018,6 +1020,21 @@ class Trader(Runnable):
 
         # push last price to keep a local cache of history
         market.push_price()
+
+    @Runnable.mutexed
+    def on_trade_market(self, market_id: str, tick: TickType):
+        market = self._markets.get(market_id)
+        if market is None:
+            # not interested by this market
+            return
+
+        # set the last executed trade (t b a l v d)
+        if market.last_trade_timestamp > 0.0:
+            direction = 1 if tick[3] > market.last_trade else -1
+        else:
+            direction = 0
+
+        market.set_last_trade(tick[3], direction, tick[0])
 
     #
     # utils
