@@ -8,7 +8,7 @@ import threading
 import traceback
 
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
-from twisted.internet import ssl  # , reactor
+from twisted.internet import ssl, reactor  # , reactor
 from twisted.internet.protocol import ReconnectingClientFactory
 
 from connector.binance.client import Client
@@ -22,10 +22,33 @@ traceback_logger = logging.getLogger('siis.traceback.connector.binance.ws')
 
 class BinanceClientProtocol(WebSocketClientProtocol):
 
-    def __init__(self):
+    def __init__(self, factory):
         super().__init__()
+        self.factory = factory
+
+    def onOpen(self):
+        self.factory.protocol_instance = self
 
     def onConnect(self, response):
+        subscriptions = self.factory.subscriptions
+        if subscriptions:
+            params = []
+            rid = 1
+
+            for subscription, pair in subscriptions.items():
+                if pair:
+                    params += ["%s@%s" % (p.lower(), subscription) for p in pair]
+
+            data = {
+                "method": "SUBSCRIBE",
+                "params": params,
+                "id": rid
+            }
+            logger.info("onConnect %s" % data)
+
+            payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+            self.sendMessage(payload, isBinary=False)
+
         # reset the delay after reconnecting
         self.factory.resetDelay()
 
@@ -41,6 +64,10 @@ class BinanceClientProtocol(WebSocketClientProtocol):
                 except Exception as e:
                     error_logger.error(repr(e))
                     traceback_logger.error(traceback.format_exc())
+
+    # def connectionLost(self, reason):
+    #     WebSocketClientProtocol.connectionLost(self, reason)
+    #     error_logger.error("Binance WS public connection lost: Reason is {}".format(reason))
 
 
 class BinanceReconnectingClientFactory(ReconnectingClientFactory):
@@ -61,15 +88,35 @@ class BinanceClientFactory(WebSocketClientFactory, BinanceReconnectingClientFact
         'm': 'Max reconnect retries reached'
     }
 
+    def __init__(self, *args, subscription=None, pair=None, **kwargs):
+        WebSocketClientFactory.__init__(self, *args, **kwargs)
+        self.protocol_instance = None
+        self.base_client = None
+
+        # active pairs
+        self.subscriptions = {}
+
+        if subscription and pair:
+            self.subscriptions[subscription] = set(pair)
+
     def clientConnectionFailed(self, connector, reason):
+        if not self.reconnect:
+            return
+
         self.retry(connector)
         if self.retries > self.maxRetries:
             self.callback(self._reconnect_error_payload)
 
     def clientConnectionLost(self, connector, reason):
+        if not self.reconnect:
+            return
+
         self.retry(connector)
         if self.retries > self.maxRetries:
             self.callback(self._reconnect_error_payload)
+
+    def buildProtocol(self, addr):
+        return BinanceClientProtocol(self)
 
 
 class BinanceSocketManager(threading.Thread):
@@ -101,6 +148,9 @@ class BinanceSocketManager(threading.Thread):
         """
         threading.Thread.__init__(self, name="binance-ws")
 
+        self._next_id = 2  # 1 is for connect
+        self.factories = {}
+
         self._conns = {}
         self._user_timer = None
         self._user_listen_key = None
@@ -111,19 +161,26 @@ class BinanceSocketManager(threading.Thread):
         self._future = futures
         self._url = BinanceSocketManager.FUTURES_STREAM_URL if futures else BinanceSocketManager.STREAM_URL
 
-    def _start_socket(self, path, callback, prefix='ws/'):
-        if path in self._conns:
-            return False
+    def _start_socket(self, id_, path, callback, prefix='ws/', subscription=None, pair=None):
+        try:
+            if id_ in self._conns:  # path in self._conns:
+                return False
 
-        factory_url = self._url + prefix + path
-        factory = BinanceClientFactory(factory_url)
-        factory.protocol = BinanceClientProtocol
-        factory.callback = callback
-        factory.reconnect = True
-        context_factory = ssl.ClientContextFactory()
+            factory_url = self._url + prefix + path
+            factory = BinanceClientFactory(factory_url, subscription=subscription, pair=pair)
+            factory.base_client = self
+            factory.protocol = BinanceClientProtocol
+            factory.callback = callback
+            factory.reconnect = False  # True
+            self.factories[id_] = factory
+            context_factory = ssl.ClientContextFactory()
 
-        # self._conns[path] = reactor.connectSSL(factory_url, 443 if self._future else 9443, factory, context_factory, 5.0)
-        self._conns[path] = connectWS(factory, context_factory)
+            # self._conns[path] = reactor.connectSSL(factory_url, 443 if self._future else 9443, factory,
+            #                                        context_factory, 5.0)
+            # self._conns[path] = connectWS(factory, context_factory)
+            self._conns[id_] = connectWS(factory, context_factory)
+        except Exception as e:
+            logger.error(repr(e))
 
         return path
 
@@ -194,7 +251,7 @@ class BinanceSocketManager(threading.Thread):
         socket_name = symbol.lower() + '@depth'
         if depth and depth != '1':
             socket_name = '{}{}'.format(socket_name, depth)
-        return self._start_socket(socket_name, callback)
+        return self._start_socket('depth', socket_name, callback)
 
     def start_kline_socket(self, symbol, callback, interval=Client.KLINE_INTERVAL_1MINUTE):
         """Start a websocket for symbol kline data
@@ -240,7 +297,7 @@ class BinanceSocketManager(threading.Thread):
             }
         """
         socket_name = '{}@kline_{}'.format(symbol.lower(), interval)
-        return self._start_socket(socket_name, callback)
+        return self._start_socket('kline', socket_name, callback)
 
     def start_miniticker_socket(self, callback, update_time=1000):
         """Start a miniticker websocket for all trades
@@ -274,7 +331,7 @@ class BinanceSocketManager(threading.Thread):
             ]
         """
 
-        return self._start_socket('!miniTicker@arr@{}ms'.format(update_time), callback)
+        return self._start_socket('!miniTicker', '!miniTicker@arr@{}ms'.format(update_time), callback)
 
     def start_trade_socket(self, symbol, callback):
         """Start a websocket for symbol trade data
@@ -307,7 +364,7 @@ class BinanceSocketManager(threading.Thread):
             }
 
         """
-        return self._start_socket(symbol.lower() + '@trade', callback)
+        return self._start_socket('trade', symbol.lower() + '@trade', callback)
 
     def start_aggtrade_socket(self, symbol, callback):
         """Start a websocket for symbol trade data
@@ -340,7 +397,7 @@ class BinanceSocketManager(threading.Thread):
             }
 
         """
-        return self._start_socket(symbol.lower() + '@aggTrade', callback)
+        return self._start_socket('aggTrad', symbol.lower() + '@aggTrade', callback)
 
     def start_symbol_ticker_socket(self, symbol, callback):
         """Start a websocket for a symbol's ticker data
@@ -385,7 +442,7 @@ class BinanceSocketManager(threading.Thread):
             }
 
         """
-        return self._start_socket(symbol.lower() + '@ticker', callback)
+        return self._start_socket('ticker', symbol.lower() + '@ticker', callback)
 
     def start_ticker_socket(self, callback):
         """Start a websocket for all ticker data
@@ -429,7 +486,7 @@ class BinanceSocketManager(threading.Thread):
                 }
             ]
         """
-        return self._start_socket('!ticker@arr', callback)
+        return self._start_socket('ticker', '!ticker@arr', callback)
 
     def start_book_ticker_socket(self, callback):
         """Start a websocket for all book ticker data
@@ -458,7 +515,7 @@ class BinanceSocketManager(threading.Thread):
                 }
             ]
         """
-        return self._start_socket('!bookTicker', callback)
+        return self._start_socket('bookTicker', '!bookTicker', callback)
 
     def start_multiplex_socket(self, streams, callback):
         """Start a multiplexed socket using a list of socket names.
@@ -481,39 +538,81 @@ class BinanceSocketManager(threading.Thread):
 
         """
         stream_path = 'streams={}'.format('/'.join(streams))
-        return self._start_socket(stream_path, callback, 'stream?')
+        return self._start_socket('multiplex', stream_path, callback, 'stream?')
 
-    # def subscribe_multiplex(self, subscription, callback):
-    #     stream_path = 'streams={}'.format('/'.join(subscription))
-    #     exists = False
-    #
-    #     params = {
-    #         "method": "SUBSCRIBE",
-    #         "params": subscription,
-    #         # "id": int
-    #     }
-    #
-    #     for conn in self._conns.keys():
-    #         if conn.startswith('streams='):
-    #             exists = True
-    #             break
-    #
-    #     if not exists:
-    #         stream_path = 'streams={}'.format('/'.join(streams))
-    #         return self._start_socket(stream_path, callback, 'stream?')
-    #     else:
-    #         reactor.callFromThread(self.send_subscribe, id_, subscription, pair)
-    #
-    # def unsubscribe_multiplex(self, subscription, pair):
-    #     id_ = "_".join([subscription])
-    #     params = {
-    #         "method": "UNSUBSCRIBE",
-    #         "params": subscription,
-    #         # "id": int
-    #     }
-    #
-    #     if id_ in self._private_conns:
-    #         reactor.callFromThread(self.send_unsubscribe, id_, subscription, pair)
+    def send_subscribe(self, id_, subscription, pair):
+        try:
+            factory = self.factories.get(id_)
+
+            if subscription and pair and factory:
+                if subscription not in factory.subscriptions:
+                    factory.subscriptions[subscription] = set()
+
+                factory.subscriptions[subscription].update(pair)
+
+                logger.info("send_subscribe %s / %s" % (id_, factory.protocol_instance))
+                if factory.protocol_instance:
+                    rid = self._next_id
+                    self._next_id += 1
+                    logger.info("2 send_subscribe %s" % id_)
+
+                    data = {
+                        "method": "SUBSCRIBE",
+                        "params": ["%s@%s" % (p.lower(), subscription) for p in pair],
+                        "id": rid
+                    }
+
+                    logger.info("send_subscribe %s" % data)
+                    payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+                    factory.protocol_instance.sendMessage(payload, isBinary=False)
+
+        except Exception as e:
+            error_logger.error("%s : %s" % (subscription, repr(e)))
+            traceback_logger.error(traceback.format_exc())
+
+    def send_unsubscribe(self, id_, subscription, pair):
+        try:
+            factory = self.factories.get(id_)
+
+            if subscription and pair and factory:
+                if subscription not in factory.subscriptions:
+                    factory.subscriptions[subscription] = set()
+
+                factory.subscriptions[subscription] = factory.subscriptions[subscription].difference(pair)
+
+                if factory.protocol_instance:
+                    rid = self._next_id
+                    self._next_id += 1
+
+                    data = {
+                        "method": "UNSUBSCRIBE",
+                        "params": ["%s@%s" % (p.lower(), subscription) for p in pair],
+                        "id": rid
+                    }
+
+                    payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+                    factory.protocol_instance.sendMessage(payload, isBinary=False)
+
+        except Exception as e:
+            error_logger.error("%s : %s" % (subscription, repr(e)))
+            traceback_logger.error(traceback.format_exc())
+
+    def subscribe_public(self, subscription, pair, callback):
+        id_ = "_".join([subscription])
+
+        if id_ not in self._conns:
+            # stream_path = 'streams={}'.format('/'.join(subscription))
+            stream_path = 'streams={}'.format(subscription)
+            return self._start_socket(subscription, stream_path, callback,
+                                      'stream?', subscription=subscription, pair=pair)
+        else:
+            reactor.callFromThread(self.send_subscribe, id_, subscription, pair)
+
+    def unsubscribe_public(self, subscription, pair):
+        id_ = "_".join([subscription])
+
+        if id_ in self._conns:
+            reactor.callFromThread(self.send_unsubscribe, id_, subscription, pair)
 
     def start_user_socket(self, callback):
         """Start a websocket for user data
@@ -543,7 +642,7 @@ class BinanceSocketManager(threading.Thread):
                     break
         self._user_listen_key = user_listen_key
         self._user_callback = callback
-        conn_key = self._start_socket(self._user_listen_key, callback)
+        conn_key = self._start_socket('user', self._user_listen_key, callback)
         if conn_key:
             # start timer to keep socket alive
             self._start_user_timer()
@@ -589,7 +688,7 @@ class BinanceSocketManager(threading.Thread):
         # disable reconnecting if we are closing
         self._conns[conn_key].factory = WebSocketClientFactory(self._url + 'tmp_path')
         self._conns[conn_key].disconnect()
-        del(self._conns[conn_key])
+        del self._conns[conn_key]
 
         # check if we have a user stream socket
         if len(conn_key) >= 60 and conn_key[:60] == self._user_listen_key:

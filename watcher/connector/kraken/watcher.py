@@ -42,9 +42,9 @@ class KrakenWatcher(Watcher):
 
     BASE_QUOTE = "ZUSD"
     UPDATE_ASSET_BALANCE_DELAY = 60.0  # each minute
-    
-    USE_SPREAD = False  # use spread data in place of ticker (more faster and precise but wakeup a lot the listeners)
-    
+
+    USE_SPREAD = False  # use spread data in place of ticker (faster and precise but wakeup a lot the listeners)
+
     RECONNECT_WINDOW = 10*60.0  # 10min of rolling window
     MAX_RETRY_PER_WINDOW = 150  # 150 retry per rolling window
 
@@ -317,7 +317,6 @@ class KrakenWatcher(Watcher):
                                 if market_id in instruments:
                                     pairs.append(instruments[market_id]['wsname'])
 
-                            # if pairs:
                             try:
                                 self._connector.ws.subscribe_public(
                                     subscription='ticker',
@@ -572,7 +571,7 @@ class KrakenWatcher(Watcher):
             return False
 
         if not self.connected:
-            # connection lost, ready status to false to retry a connection
+            # connection lost, set ready status to false before to retry a connection
             self._ready = False
             return False
 
@@ -632,10 +631,10 @@ class KrakenWatcher(Watcher):
         if time.time() - self._last_market_update >= KrakenWatcher.UPDATE_MARKET_INFO_DELAY:
             try:
                 self.update_markets_info()
+                self._last_market_update = time.time()  # update in 4h
             except Exception as e:
                 error_logger.error("update_markets_info %s" % str(e))
-            finally:
-                self._last_market_update = time.time()
+                self._last_market_update = time.time() - 300.0  # retry in 5 minutes
 
         return True
 

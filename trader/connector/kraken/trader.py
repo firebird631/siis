@@ -50,7 +50,7 @@ class KrakenTrader(Trader):
         self._watcher = None
         self._account = KrakenAccount(self)
 
-        self._quotes = ("ZUSD", "ZEUR", "ZCAD", "ZAUD", "ZJPY", "XXBT", "XETH")
+        self._quotes = ("ZUSD", "ZEUR", "ZCAD", "ZAUD", "ZJPY", "XXBT", "XETH", "USDT")
 
         self._last_position_update = 0.0
         self._last_order_update = 0.0

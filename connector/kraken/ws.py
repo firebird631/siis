@@ -436,7 +436,7 @@ class WssClient(KrakenSocketManager):
     def unsubscribe_public(self, subscription, pair):
         id_ = "_".join([subscription])
 
-        if id_ in self._private_conns:
+        if id_ in self._conns:
             reactor.callFromThread(self.send_unsubscribe, id_, subscription, pair)
 
     def subscribe_private(self, token, subscription, callback):

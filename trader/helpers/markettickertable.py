@@ -65,13 +65,12 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
                 last_trade = Color.colorize_cond(market.format_price(market.last_trade), market.last_trade_dir > 0,
                                                  style=style, true=Color.GREEN, false=Color.RED)
             else:
-                last_trade = '-'
+                last_trade = market.format_price(market.last_trade) if market.last_trade else '-'
 
             if market.vol24h_quote:
-                # @todo could be configured
-                low = 0
-                if market.quote in ('USD', 'EUR', 'ZEUR', 'ZUSD', 'ZCAD', 'ZJPY', 'USDT', 'PAX', 'DAI',
-                                    'USDC', 'USDS', 'BUSD', 'TUSD'):
+                if market.quote in ('USD', 'EUR', 'CAD', 'JPY', 'CHF', 'CHN',
+                                    'ZUSD', 'ZEUR', 'ZCAD', 'ZJPY', 'ZCHF',
+                                    'USDT', 'PAX', 'DAI', 'USDC', 'USDS', 'BUSD', 'TUSD'):
                     low = 500000
                 elif market.quote in ('BTC', 'XBT', 'XXBT'):
                     low = 100
@@ -79,6 +78,8 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
                     low = 5000
                 elif market.quote in ('BNB',):
                     low = 50000
+                else:
+                    low = 0
 
                 vol24h_quote = Color.colorize_cond("%.2f" % market.vol24h_quote, market.vol24h_quote < low,
                                                    style=style, true=Color.YELLOW, false=Color.WHITE)

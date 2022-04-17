@@ -112,7 +112,7 @@ class BinanceTrader(Trader):
 
         with self._mutex:
             try:
-                # fill the list of quotes symbols
+                # fill the list with quotes symbols
                 symbols = self._watcher.connector.client.get_exchange_info()
                 for symbol in symbols['symbols']:
                     if symbol['quoteAsset'] not in self._quotes:

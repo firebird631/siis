@@ -3,6 +3,10 @@
 # @license Copyright (c) 2020 Dream Overflow
 # www.binance.com futures watcher implementation
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Union, Optional, Tuple
+
 import time
 import traceback
 import math
@@ -27,6 +31,7 @@ import logging
 logger = logging.getLogger('siis.watcher.binancefutures')
 exec_logger = logging.getLogger('siis.exec.watcher.binancefutures')
 error_logger = logging.getLogger('siis.error.watcher.binancefutures')
+traceback_logger = logging.getLogger('siis.traceback.watcher.binancefutures')
 
 
 class BinanceFuturesWatcher(Watcher):
@@ -39,10 +44,12 @@ class BinanceFuturesWatcher(Watcher):
     @todo Once a market is not longer found (market update) we could remove it from watched list,
         and even have a special signal to strategy, and remove the subscriber, and markets data from watcher and trader
 
-    @todo does the subscriptions renegotiated by the ws client at reconnection ?
+    @note A single connection can listen to a maximum of 200 streams.
+    @note WebSocket connections have a limit of 10 incoming messages per second.
     """
 
-    BASE_QUOTE = 'USDT'
+    BASE_QUOTE = 'USDT'         # default base quote
+    USE_DEPTH_AS_TRADE = False  # Use depth best bid/ask in place of aggregated trade data (use a single stream)
 
     REV_TF_MAP = {
         '1m': 60,
@@ -85,11 +92,9 @@ class BinanceFuturesWatcher(Watcher):
         self.__configured_symbols = set()  # cache for configured symbols set
         self.__matching_symbols = set()    # cache for matching symbols
 
-        self._multiplex_handler = None  # WS multiple instruments
-        self._multiplex_handlers = {}   # WS instruments per instrument
-        self._tickers_handler = None    # WS all tickers
+        self._tickers_handler = None       # WS all tickers
         self._book_tickers_handler = None  # WS all book tickers
-        self._user_data_handler = None  # WS user data
+        self._user_data_handler = None     # WS user data
 
     def connect(self):
         super().connect()
@@ -147,7 +152,34 @@ class BinanceFuturesWatcher(Watcher):
                         # userdata
                         self._user_data_handler = self._connector.ws.start_user_socket(self.__on_user_data)
 
-                        # @todo reconnect subscribed markets on lost
+                        # retry the previous subscriptions
+                        if self._watched_instruments:
+                            logger.debug("%s subscribe to markets data stream..." % self.name)
+
+                            pairs = []
+
+                            for market_id in self._watched_instruments:
+                                if market_id in instruments:
+                                    pairs.append(market_id.lower())
+
+                            try:
+                                # self._connector.ws.subscribe_public(
+                                #     subscription='ticker',
+                                #     pair=pairs,
+                                #     callback=self.__on_ticker_data
+                                # )
+
+                                self._connector.ws.subscribe_public(
+                                    subscription='aggTrade',
+                                    pair=pairs,
+                                    callback=self.__on_trade_data
+                                )
+
+                                # @todo order book
+
+                            except Exception as e:
+                                error_logger.error(repr(e))
+                                traceback_logger.error(traceback.format_exc())
 
                         # and start ws manager if necessary
                         try:
@@ -184,8 +216,6 @@ class BinanceFuturesWatcher(Watcher):
                     self._connector = None
 
                     # reset WS handlers
-                    self._multiplex_handler = None
-                    self._multiplex_handlers = {}
                     self._tickers_handler = None
                     self._book_tickers_handler = None
                     self._user_data_handler = None
@@ -237,19 +267,8 @@ class BinanceFuturesWatcher(Watcher):
         if market_id not in self.__matching_symbols:
             return False
 
-        multiplex = []
-
         # live data
         symbol = market_id.lower()
-
-        # depth - order book
-        # multiplex.append(symbol + '@depth')
-
-        # aggregated trade
-        multiplex.append(symbol + '@aggTrade')
-
-        # not used : ohlc (1m, 5m, 1h), prefer rebuild ourself using aggregated trades
-        # multiplex.append('{}@kline_{}'.format(symbol, '1m'))  # '5m' '1h'...
 
         # fetch from source
         if self._initial_fetch:
@@ -329,18 +348,49 @@ class BinanceFuturesWatcher(Watcher):
             self.insert_watched_instrument(market_id, [0])
 
             # and start listening for this symbol (trade+depth)
-            self._multiplex_handlers[market_id] = self._connector.ws.start_multiplex_socket(
-                multiplex, self.__on_multiplex_data)
+
+            # for now tickers are in tickers all + book tickers
+            # self._connector.ws.subscribe_public(
+            #     subscription='miniTicker',
+            #     callback=self.__on_tickers_data
+            # )
+
+            # not used : ohlc (1m, 5m, 1h), prefer rebuild ourselves using aggregated trades
+            # kline_data = ['{}@kline_{}'.format(symbol, '1m')]  # '5m' '1h'...
+
+            self._connector.ws.subscribe_public(
+                subscription='aggTrade',
+                pair=[symbol],
+                callback=self.__on_trade_data
+            )
+
+            # if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
+            #     self._connector.ws.subscribe_public(
+            #         subscription='depth',
+            #         pair=[symbol],
+            #         callback=self.__on_book_tickers_data
+            #     )
+
+            # no more than 10 messages per seconds on websocket
+            time.sleep(0.1)
 
         return True
 
     def unsubscribe(self, market_id, timeframe):
         with self._mutex:
-            if market_id in self._multiplex_handlers:
-                self._multiplex_handlers[market_id].close()
-                del self._multiplex_handlers[market_id]
+            if market_id in self._watched_instruments:
+                instruments = self._available_instruments
 
-                return True
+                if market_id in instruments:
+                    pair = [market_id.lower()]
+
+                    # self._connector.ws.unsubscribe_public('miniTicker', pair)
+                    self._connector.ws.unsubscribe_public('aggTrade', pair)
+                    # self._connector.ws.unsubscribe_public('depth', pair)
+
+                    self._watched_instruments.remove(market_id)
+
+                    return True
 
         return False
 
@@ -353,7 +403,7 @@ class BinanceFuturesWatcher(Watcher):
             return False
 
         if not self.connected:
-            # connection lost, ready status to false to retry a connection
+            # connection lost, ready status false to retry a connection
             self._ready = False
             return False
 
@@ -371,10 +421,10 @@ class BinanceFuturesWatcher(Watcher):
         if time.time() - self._last_market_update >= BinanceFuturesWatcher.UPDATE_MARKET_INFO_DELAY:
             try:
                 self.update_markets_info()
+                self._last_market_update = time.time()  # update in 4h
             except Exception as e:
                 error_logger.error("update_markets_info %s" % str(e))
-            finally:
-                self._last_market_update = time.time()
+                self._last_market_update = time.time() - 300.0  # retry in 5 minutes
 
         return True
 
@@ -420,12 +470,12 @@ class BinanceFuturesWatcher(Watcher):
             price_limits = ["0.0", "0.0", "0.0"]
 
             # size min/max/step
-            for afilter in symbol["filters"]:
-                if afilter['filterType'] == "LOT_SIZE":
-                    size_limits = [afilter['minQty'], afilter['maxQty'], afilter['stepSize']]
+            for sym_filter in symbol["filters"]:
+                if sym_filter['filterType'] == "LOT_SIZE":
+                    size_limits = [sym_filter['minQty'], sym_filter['maxQty'], sym_filter['stepSize']]
 
-                elif afilter['filterType'] == "PRICE_FILTER":  # 'MARKET_LOT_SIZE'
-                    price_limits = [afilter['minPrice'], afilter['maxPrice'], afilter['tickSize']]
+                elif sym_filter['filterType'] == "PRICE_FILTER":  # 'MARKET_LOT_SIZE'
+                    price_limits = [sym_filter['minPrice'], sym_filter['maxPrice'], sym_filter['tickSize']]
 
             market.set_size_limits(float(size_limits[0]), float(size_limits[1]), float(size_limits[2]))
             market.set_price_limits(float(price_limits[0]), float(price_limits[1]), float(price_limits[2]))
@@ -563,7 +613,6 @@ class BinanceFuturesWatcher(Watcher):
     def __on_book_tickers_data(self, data):
         # market data instrument by symbol
         symbol = data.get('s')
-
         if not symbol:
             return
 
@@ -573,7 +622,25 @@ class BinanceFuturesWatcher(Watcher):
         market_data = (symbol, True, None, bid, ask, None, None, None, None, None)
         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
+    def __on_multiplex_data(self, data):
+        """
+        Intercepts ticker all, depth for followed symbols.
+        Klines are generated from tickers data. It is a preferred way to reduce network traffic and API usage.
+        """
+        if not data.get('stream'):
+            return
+
+        if data['stream'].endswith('@aggTrade'):
+            self.__on_trade_data(data['data'])
+        elif data['stream'].endswith('@depth'):
+            self.__on_depth_data(data['data'])
+        elif data['stream'].endswith('@kline_'):
+            self.__on_kline_data(data['data'])
+
     def __on_depth_data(self, data):
+        if 'data' in data:
+            data = data['data']
+
         # @todo using binance.DepthCache
         return
 
@@ -626,26 +693,11 @@ class BinanceFuturesWatcher(Watcher):
         #
         #     # self.service.notify(Signal.SIGNAL_ORDER_BOOK, self.name, (symbol, depth[1], depth[2]))
 
-    def __on_multiplex_data(self, data):
-        """
-        Intercepts ticker all, depth for followed symbols.
-        Klines are generated from tickers data. Its a preferred way to reduce network traffic and API usage.
-        """
-        if not data.get('stream'):
-            return
-
-        if data['stream'].endswith('@aggTrade'):
-            self.__on_trade_data(data['data'])
-        elif data['stream'].endswith('@depth'):
-            self.__on_depth_data(data['data'])
-        # elif '@kline_' in data['stream']:
-        #     self.__on_kline_data(data['data'])
-        # elif data['stream'] == '!ticker@arr':
-        #     self.__on_tickers_data(data['data'])
-
     def __on_trade_data(self, data):
-        event_type = data.get('e', "")
+        if 'data' in data:
+            data = data['data']
 
+        event_type = data.get('e', "")
         if event_type == "aggTrade":
             symbol = data.get('s')
 
@@ -681,8 +733,10 @@ class BinanceFuturesWatcher(Watcher):
                     self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
 
     def __on_kline_data(self, data):
-        event_type = data.get('e', '')
+        if 'data' in data:
+            data = data['data']
 
+        event_type = data.get('e', '')
         if event_type == 'kline':
             symbol = data.get('s')
 
