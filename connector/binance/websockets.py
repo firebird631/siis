@@ -171,7 +171,7 @@ class BinanceSocketManager(threading.Thread):
             factory.base_client = self
             factory.protocol = BinanceClientProtocol
             factory.callback = callback
-            factory.reconnect = False  # True
+            factory.reconnect = True
             self.factories[id_] = factory
             context_factory = ssl.ClientContextFactory()
 
@@ -550,11 +550,11 @@ class BinanceSocketManager(threading.Thread):
 
                 factory.subscriptions[subscription].update(pair)
 
-                logger.info("send_subscribe %s / %s" % (id_, factory.protocol_instance))
+                # logger.info("send_subscribe %s / %s" % (id_, factory.protocol_instance))
                 if factory.protocol_instance:
                     rid = self._next_id
                     self._next_id += 1
-                    logger.info("2 send_subscribe %s" % id_)
+                    # logger.info("2 send_subscribe %s" % id_)
 
                     data = {
                         "method": "SUBSCRIBE",
@@ -562,7 +562,7 @@ class BinanceSocketManager(threading.Thread):
                         "id": rid
                     }
 
-                    logger.info("send_subscribe %s" % data)
+                    # logger.info("send_subscribe %s" % data)
                     payload = json.dumps(data, ensure_ascii=False).encode('utf8')
                     factory.protocol_instance.sendMessage(payload, isBinary=False)
 

@@ -153,7 +153,7 @@ class BinanceWatcher(Watcher):
                             pairs = []
 
                             for market_id in self._watched_instruments:
-                                if market_id in instruments:
+                                if market_id in self._available_instruments:
                                     pairs.append(market_id.lower())
 
                             try:

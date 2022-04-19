@@ -1624,7 +1624,7 @@ class StrategyTrader(object):
         if self._regions:
             mutated = False
 
-            # one ore many region, have to pass at least one test
+            # one or many region, have to pass at least one test
             with self._mutex:
                 for region in self._regions:
                     if region.can_delete(timestamp, bid, ask):
@@ -1693,8 +1693,8 @@ class StrategyTrader(object):
         @param timeframes list of TimeframeBasedSub to check with any alerts.
 
         @note Thread-safe method.
-        @note If the alert is triggered, it still keep alive until the next check_alerts call,
-              even if its a one shot alert.
+        @note If the alert is triggered, it still keeps alive until the next check_alerts call,
+              even if it is a one shot alert.
         """
         if self._alerts:
             mutated = False
