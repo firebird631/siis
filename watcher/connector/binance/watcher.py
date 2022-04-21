@@ -139,9 +139,9 @@ class BinanceWatcher(Watcher):
                             self._available_instruments.add(instrument['symbol'])
 
                         # all tickers and book tickers
-                        self._tickers_handler = self._connector.ws.start_ticker_socket(self.__on_tickers_data)
-                        self._book_tickers_handler = self._connector.ws.start_book_ticker_socket(
-                            self.__on_book_tickers_data)
+                        # self._tickers_handler = self._connector.ws.start_ticker_socket(self.__on_ticker_arr_data)
+                        # self._book_tickers_handler = self._connector.ws.start_book_ticker_socket(
+                        #     self.__on_book_ticker_data)
 
                         # userdata
                         self._user_data_handler = self._connector.ws.start_user_socket(self.__on_user_data)
@@ -157,11 +157,17 @@ class BinanceWatcher(Watcher):
                                     pairs.append(market_id.lower())
 
                             try:
-                                # self._connector.ws.subscribe_public(
-                                #     subscription='ticker',
-                                #     pair=pairs,
-                                #     callback=self.__on_ticker_data
-                                # )
+                                self._connector.ws.subscribe_public(
+                                    subscription='ticker',  # 'miniTicker'
+                                    pair=pairs,
+                                    callback=self.__on_ticker_data
+                                )
+
+                                self._connector.ws.subscribe_public(
+                                    subscription='bookTicker',
+                                    pair=pairs,
+                                    callback=self.__on_book_ticker_data
+                                )
 
                                 self._connector.ws.subscribe_public(
                                     subscription='aggTrade',
@@ -343,11 +349,17 @@ class BinanceWatcher(Watcher):
 
                 # and start listening for this symbol (trade+depth)
 
-                # for now tickers are in tickers all + book tickers
-                # self._connector.ws.subscribe_public(
-                #     subscription='miniTicker',
-                #     callback=self.__on_tickers_data
-                # )
+                self._connector.ws.subscribe_public(
+                    subscription='ticker',  # 'miniTicker'
+                    pair=[symbol],
+                    callback=self.__on_ticker_data
+                )
+
+                self._connector.ws.subscribe_public(
+                    subscription='bookTicker',
+                    pair=[symbol],
+                    callback=self.__on_book_ticker_data
+                )
 
                 # not used : ohlc (1m, 5m, 1h), prefer rebuild ourselves using aggregated trades
                 # kline_data = ['{}@kline_{}'.format(symbol, '1m')]  # '5m' '1h'...
@@ -362,7 +374,7 @@ class BinanceWatcher(Watcher):
                 #     self._connector.ws.subscribe_public(
                 #         subscription='depth',
                 #         pair=[symbol],
-                #         callback=self.__on_book_tickers_data
+                #         callback=self.__on_book_ticker_data
                 #     )
 
                 # no more than 10 messages per seconds on websocket
@@ -572,7 +584,47 @@ class BinanceWatcher(Watcher):
         for ticker in tickers:
             self._tickers_data[ticker['symbol']] = ticker
 
-    def __on_tickers_data(self, data):
+    def __on_ticker_data(self, data):
+        # market data instrument by symbol
+        if type(data) is not dict:
+            return
+
+        symbol = data.get('s')
+        if not symbol:
+            return
+
+        last_trade_id = data.get('L', 0)
+
+        if last_trade_id != self._last_trade_id.get(symbol, 0):
+            self._last_trade_id[symbol] = last_trade_id
+
+            last_update_time = data['C'] * 0.001
+
+            bid = float(data['b'])
+            ask = float(data['a'])
+
+            vol24_base = float(data['v']) if data['v'] else 0.0
+            vol24_quote = float(data['q']) if data['q'] else 0.0
+
+            # @todo compute base_exchange_rate
+            # if quote_asset != self.BASE_QUOTE:
+            #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
+            #         market.base_exchange_rate = float(self._tickers_data.get(
+            #             quote_asset+self.BASE_QUOTE, {'price', '1.0'})['price'])
+            #     elif self._tickers_data.get(self.BASE_QUOTE+quote_asset):
+            #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(
+            #             self.BASE_QUOTE+quote_asset, {'price', '1.0'})['price'])
+            #     else:
+            #         market.base_exchange_rate = 1.0
+            # else:
+            #     market.base_exchange_rate = 1.0
+
+            market_data = (symbol, last_update_time > 0, last_update_time, bid, ask,
+                           None, None, None, vol24_base, vol24_quote)
+
+            self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+
+    def __on_ticker_arr_data(self, data):
         # market data instrument by symbol
         if type(data) not in (list, tuple):
             return
@@ -619,7 +671,7 @@ class BinanceWatcher(Watcher):
 
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
-    def __on_book_tickers_data(self, data):
+    def __on_book_ticker_data(self, data):
         if type(data) is not dict:
             return
 
@@ -651,6 +703,10 @@ class BinanceWatcher(Watcher):
             self.__on_depth_data(data['data'])
         elif data['stream'].endswith('@kline_'):
             self.__on_kline_data(data['data'])
+        elif data['stream'].endswith('@ticker'):
+            self.__on_ticker_data(data['data'])
+        elif data['stream'].endswith('@bookTicker'):
+            self.__on_book_ticker_data(data['data'])
 
     def __on_depth_data(self, data):
         if type(data) is not dict:

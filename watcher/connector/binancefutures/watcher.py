@@ -361,6 +361,12 @@ class BinanceFuturesWatcher(Watcher):
                 callback=self.__on_ticker_data
             )
 
+            self._connector.ws.subscribe_public(
+                subscription='bookTicker',
+                pair=[symbol],
+                callback=self.__on_book_ticker_data
+            )
+
             # not used : ohlc (1m, 5m, 1h), prefer rebuild ourselves using aggregated trades
             # kline_data = ['{}@kline_{}'.format(symbol, '1m')]  # '5m' '1h'...
 
@@ -368,12 +374,6 @@ class BinanceFuturesWatcher(Watcher):
                 subscription='aggTrade',
                 pair=[symbol],
                 callback=self.__on_trade_data
-            )
-
-            self._connector.ws.subscribe_public(
-                subscription='bookTicker',
-                pair=[symbol],
-                callback=self.__on_book_ticker_data
             )
 
             # if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
