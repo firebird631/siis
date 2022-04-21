@@ -38,16 +38,22 @@ class BinanceClientProtocol(WebSocketClientProtocol):
             for subscription, pair in subscriptions.items():
                 if pair:
                     params += ["%s@%s" % (p.lower(), subscription) for p in pair]
+                # else:
+                #     params.append(subscription)
 
             data = {
                 "method": "SUBSCRIBE",
                 "params": params,
                 "id": rid
             }
-            logger.info("onConnect %s" % data)
 
-            payload = json.dumps(data, ensure_ascii=False).encode('utf8')
-            self.sendMessage(payload, isBinary=False)
+            if params:
+                logger.info("onConnect %s" % data)
+
+                payload = json.dumps(data, ensure_ascii=False).encode('utf8')
+                self.sendMessage(payload, isBinary=False)
+            else:
+                logger.info("onConnect %s" % '/'.join(subscriptions.keys()))
 
         # reset the delay after reconnecting
         self.factory.resetDelay()
@@ -67,7 +73,8 @@ class BinanceClientProtocol(WebSocketClientProtocol):
 
     # def connectionLost(self, reason):
     #     WebSocketClientProtocol.connectionLost(self, reason)
-    #     error_logger.error("Binance WS public connection lost: Reason is {}".format(reason))
+    #     subs = '/'.join(self.factory.subscriptions.keys())
+    #     error_logger.error("Binance WS public connection lost for %s: Reason is %s" % (subs, reason))
 
 
 class BinanceReconnectingClientFactory(ReconnectingClientFactory):
@@ -96,8 +103,8 @@ class BinanceClientFactory(WebSocketClientFactory, BinanceReconnectingClientFact
         # active pairs
         self.subscriptions = {}
 
-        if subscription and pair:
-            self.subscriptions[subscription] = set(pair)
+        if subscription:
+            self.subscriptions[subscription] = set(pair or [])
 
     def clientConnectionFailed(self, connector, reason):
         if not self.reconnect:
@@ -251,7 +258,7 @@ class BinanceSocketManager(threading.Thread):
         socket_name = symbol.lower() + '@depth'
         if depth and depth != '1':
             socket_name = '{}{}'.format(socket_name, depth)
-        return self._start_socket('depth', socket_name, callback)
+        return self._start_socket(socket_name, socket_name, callback, subscription='depth', pair=symbol.lower())
 
     def start_kline_socket(self, symbol, callback, interval=Client.KLINE_INTERVAL_1MINUTE):
         """Start a websocket for symbol kline data
@@ -297,7 +304,7 @@ class BinanceSocketManager(threading.Thread):
             }
         """
         socket_name = '{}@kline_{}'.format(symbol.lower(), interval)
-        return self._start_socket('kline', socket_name, callback)
+        return self._start_socket(socket_name, socket_name, callback, subscription='kline', pair=symbol.lower())
 
     def start_miniticker_socket(self, callback, update_time=1000):
         """Start a miniticker websocket for all trades
@@ -331,7 +338,8 @@ class BinanceSocketManager(threading.Thread):
             ]
         """
 
-        return self._start_socket('!miniTicker', '!miniTicker@arr@{}ms'.format(update_time), callback)
+        return self._start_socket('!miniTicker', '!miniTicker@arr@{}ms'.format(update_time), callback,
+                                  subscription='!miniTicker')
 
     def start_trade_socket(self, symbol, callback):
         """Start a websocket for symbol trade data
@@ -364,7 +372,8 @@ class BinanceSocketManager(threading.Thread):
             }
 
         """
-        return self._start_socket('trade', symbol.lower() + '@trade', callback)
+        return self._start_socket(symbol.lower() + '@trade', symbol.lower() + '@trade', callback,
+                                  subscription='trade', pair=symbol.lower())
 
     def start_aggtrade_socket(self, symbol, callback):
         """Start a websocket for symbol trade data
@@ -397,7 +406,8 @@ class BinanceSocketManager(threading.Thread):
             }
 
         """
-        return self._start_socket('aggTrad', symbol.lower() + '@aggTrade', callback)
+        return self._start_socket(symbol.lower() + '@aggTrade', symbol.lower() + '@aggTrade', callback,
+                                  subscription='aggTrade', pair=symbol.lower())
 
     def start_symbol_ticker_socket(self, symbol, callback):
         """Start a websocket for a symbol's ticker data
@@ -442,7 +452,8 @@ class BinanceSocketManager(threading.Thread):
             }
 
         """
-        return self._start_socket('ticker', symbol.lower() + '@ticker', callback)
+        return self._start_socket(symbol.lower() + '@ticker', symbol.lower() + '@ticker', callback,
+                                  subscription='ticker', pair=symbol.lower())
 
     def start_ticker_socket(self, callback):
         """Start a websocket for all ticker data
@@ -486,7 +497,7 @@ class BinanceSocketManager(threading.Thread):
                 }
             ]
         """
-        return self._start_socket('ticker', '!ticker@arr', callback)
+        return self._start_socket('!ticker@arr', '!ticker@arr', callback, subscription='!ticker@arr')
 
     def start_book_ticker_socket(self, callback):
         """Start a websocket for all book ticker data
@@ -515,30 +526,31 @@ class BinanceSocketManager(threading.Thread):
                 }
             ]
         """
-        return self._start_socket('bookTicker', '!bookTicker', callback)
+        return self._start_socket('!bookTicker', '!bookTicker', callback, prefix="stream?streams=",
+                                  subscription='!bookTicker')
 
-    def start_multiplex_socket(self, streams, callback):
-        """Start a multiplexed socket using a list of socket names.
-        User stream sockets can not be included.
-
-        Symbols in socket name must be lowercase i.e bnbbtc@aggTrade, neobtc@ticker
-
-        Combined stream events are wrapped as follows: {"stream":"<streamName>","data":<rawPayload>}
-
-        https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md
-
-        :param streams: list of stream names in lower case
-        :type streams: list
-        :param callback: callback function to handle messages
-        :type callback: function
-
-        :returns: connection key string if successful, False otherwise
-
-        Message Format - see Binance API docs for all types
-
-        """
-        stream_path = 'streams={}'.format('/'.join(streams))
-        return self._start_socket('multiplex', stream_path, callback, 'stream?')
+    # def start_multiplex_socket(self, streams, callback):
+    #     """Start a multiplexed socket using a list of socket names.
+    #     User stream sockets can not be included.
+    #
+    #     Symbols in socket name must be lowercase i.e bnbbtc@aggTrade, neobtc@ticker
+    #
+    #     Combined stream events are wrapped as follows: {"stream":"<streamName>","data":<rawPayload>}
+    #
+    #     https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md
+    #
+    #     :param streams: list of stream names in lower case
+    #     :type streams: list
+    #     :param callback: callback function to handle messages
+    #     :type callback: function
+    #
+    #     :returns: connection key string if successful, False otherwise
+    #
+    #     Message Format - see Binance API docs for all types
+    #
+    #     """
+    #     stream_path = 'streams={}'.format('/'.join(streams))
+    #     return self._start_socket('multiplex', stream_path, callback, subscription='stream?')
 
     def send_subscribe(self, id_, subscription, pair):
         try:
@@ -603,8 +615,7 @@ class BinanceSocketManager(threading.Thread):
         if id_ not in self._conns:
             # stream_path = 'streams={}'.format('/'.join(subscription))
             stream_path = 'streams={}'.format(subscription)
-            return self._start_socket(subscription, stream_path, callback,
-                                      'stream?', subscription=subscription, pair=pair)
+            return self._start_socket(subscription, stream_path, callback, subscription=subscription, pair=pair)
         else:
             reactor.callFromThread(self.send_subscribe, id_, subscription, pair)
 

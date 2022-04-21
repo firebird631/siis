@@ -47,8 +47,8 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
 
         for market in markets:
             # recent = market.recent(trader.timestamp - 0.5 if not prev_timestamp else prev_timestamp)
-            recent = market.previous(-2)
-            if recent:
+            recent = market.previous(-1)
+            if recent is not None:
                 mid = Color.colorize_updn(market.format_price(market.price), (recent[1]+recent[2])*0.5,
                                           market.price, style=style)
                 bid = Color.colorize_updn(market.format_price(market.bid), recent[1], market.bid, style=style)
@@ -62,9 +62,21 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
                 spread = market.format_spread(market.spread)
 
             if market.last_trade_dir != 0:
+                # mid = Color.colorize_cond(market.format_price(market.price), market.last_trade_dir > 0,
+                #                           style=style, true=Color.GREEN, false=Color.RED)
+                # bid = Color.colorize_cond(market.format_price(market.bid), market.last_trade_dir > 0,
+                #                           style=style, true=Color.GREEN, false=Color.RED)
+                # ask = Color.colorize_cond(market.format_price(market.ask), market.last_trade_dir > 0,
+                #                           style=style, true=Color.GREEN, false=Color.RED)
+                # spread = Color.colorize_cond(market.format_price(market.spread), market.last_trade_dir > 0,
+                #                              style=style, true=Color.GREEN, false=Color.RED)
                 last_trade = Color.colorize_cond(market.format_price(market.last_trade), market.last_trade_dir > 0,
                                                  style=style, true=Color.GREEN, false=Color.RED)
             else:
+                # mid = market.format_price(market.price)
+                # bid = market.format_price(market.bid)
+                # ask = market.format_price(market.ask)
+                # spread = market.format_spread(market.spread)
                 last_trade = market.format_price(market.last_trade) if market.last_trade else '-'
 
             if market.vol24h_quote:

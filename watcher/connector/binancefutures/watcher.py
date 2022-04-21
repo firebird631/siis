@@ -145,9 +145,9 @@ class BinanceFuturesWatcher(Watcher):
                             self._available_instruments.add(instrument['symbol'])
 
                         # all tickers and book tickers
-                        self._tickers_handler = self._connector.ws.start_ticker_socket(self.__on_tickers_data)
-                        self._book_tickers_handler = self._connector.ws.start_book_ticker_socket(
-                            self.__on_book_tickers_data)
+                        # self._tickers_handler = self._connector.ws.start_ticker_socket(self.__on_ticker_arr_data)
+                        # self._book_tickers_handler = self._connector.ws.start_book_ticker_socket(
+                        #     self.__on_book_ticker_data)
 
                         # userdata
                         self._user_data_handler = self._connector.ws.start_user_socket(self.__on_user_data)
@@ -163,11 +163,17 @@ class BinanceFuturesWatcher(Watcher):
                                     pairs.append(market_id.lower())
 
                             try:
-                                # self._connector.ws.subscribe_public(
-                                #     subscription='ticker',
-                                #     pair=pairs,
-                                #     callback=self.__on_ticker_data
-                                # )
+                                self._connector.ws.subscribe_public(
+                                    subscription='ticker',  # 'miniTicker'
+                                    pair=pairs,
+                                    callback=self.__on_ticker_data
+                                )
+
+                                self._connector.ws.subscribe_public(
+                                    subscription='bookTicker',
+                                    pair=pairs,
+                                    callback=self.__on_book_ticker_data
+                                )
 
                                 self._connector.ws.subscribe_public(
                                     subscription='aggTrade',
@@ -349,11 +355,11 @@ class BinanceFuturesWatcher(Watcher):
 
             # and start listening for this symbol (trade+depth)
 
-            # for now tickers are in tickers all + book tickers
-            # self._connector.ws.subscribe_public(
-            #     subscription='miniTicker',
-            #     callback=self.__on_tickers_data
-            # )
+            self._connector.ws.subscribe_public(
+                subscription='ticker',  # 'miniTicker'
+                pair=[symbol],
+                callback=self.__on_ticker_data
+            )
 
             # not used : ohlc (1m, 5m, 1h), prefer rebuild ourselves using aggregated trades
             # kline_data = ['{}@kline_{}'.format(symbol, '1m')]  # '5m' '1h'...
@@ -364,11 +370,17 @@ class BinanceFuturesWatcher(Watcher):
                 callback=self.__on_trade_data
             )
 
+            self._connector.ws.subscribe_public(
+                subscription='bookTicker',
+                pair=[symbol],
+                callback=self.__on_book_ticker_data
+            )
+
             # if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
             #     self._connector.ws.subscribe_public(
             #         subscription='depth',
             #         pair=[symbol],
-            #         callback=self.__on_book_tickers_data
+            #         callback=self.__on_depth_data
             #     )
 
             # no more than 10 messages per seconds on websocket
@@ -386,6 +398,8 @@ class BinanceFuturesWatcher(Watcher):
 
                     # self._connector.ws.unsubscribe_public('miniTicker', pair)
                     self._connector.ws.unsubscribe_public('aggTrade', pair)
+                    self._connector.ws.unsubscribe_public('bookTicker', pair)
+                    self._connector.ws.unsubscribe_public('ticker', pair)
                     # self._connector.ws.unsubscribe_public('depth', pair)
 
                     self._watched_instruments.remove(market_id)
@@ -463,7 +477,7 @@ class BinanceFuturesWatcher(Watcher):
             market.contract_size = 1.0
             market.lot_size = 1.0
             market.margin_factor = 1.0
-            market.base_exchange_rate = 1.0  # any pairs quotes in USDT
+            market.base_exchange_rate = 1.0  # any pairs quote in USDT
 
             size_limits = ["1.0", "0.0", "1.0"]
             notional_limits = ["0.0", "0.0", "0.0"]
@@ -576,16 +590,40 @@ class BinanceFuturesWatcher(Watcher):
             self._leverages_data[position['symbol']] = (position.get('isolated', False), float(
                 position.get('leverage', '1')))
 
-    def __on_tickers_data(self, data):
+    def __on_ticker_data(self, data):
+        # market data instrument by symbol
+        if type(data) is not dict:
+            return
+
+        symbol = data.get('s')
+        if not symbol:
+            return
+
+        last_trade_id = data.get('L', 0)
+
+        if last_trade_id != self._last_trade_id.get(symbol, 0):
+            self._last_trade_id[symbol] = last_trade_id
+
+            last_update_time = data['C'] * 0.001
+
+            # from book ticker
+            bid = None
+            ask = None
+
+            vol24_base = float(data['v']) if data['v'] else 0.0
+            vol24_quote = float(data['q']) if data['q'] else 0.0
+
+            market_data = (symbol, last_update_time > 0, last_update_time, bid, ask,
+                           None, None, None, vol24_base, vol24_quote)
+            self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
+
+    def __on_ticker_arr_data(self, data):
         # market data instrument by symbol
         if type(data) not in (list, tuple):
             return
 
         for ticker in data:
             if type(ticker) is not dict:
-                continue
-
-            if 's' not in ticker:
                 continue
 
             symbol = ticker.get('s')
@@ -610,7 +648,10 @@ class BinanceFuturesWatcher(Watcher):
                                None, None, None, vol24_base, vol24_quote)
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
-    def __on_book_tickers_data(self, data):
+    def __on_book_ticker_data(self, data):
+        if type(data) is not dict:
+            return
+
         # market data instrument by symbol
         symbol = data.get('s')
         if not symbol:
@@ -627,6 +668,9 @@ class BinanceFuturesWatcher(Watcher):
         Intercepts ticker all, depth for followed symbols.
         Klines are generated from tickers data. It is a preferred way to reduce network traffic and API usage.
         """
+        if type(data) is not dict:
+            return
+
         if not data.get('stream'):
             return
 
@@ -636,8 +680,15 @@ class BinanceFuturesWatcher(Watcher):
             self.__on_depth_data(data['data'])
         elif data['stream'].endswith('@kline_'):
             self.__on_kline_data(data['data'])
+        elif data['stream'].endswith('@ticker'):
+            self.__on_ticker_data(data['data'])
+        elif data['stream'].endswith('@bookTicker'):
+            self.__on_book_ticker_data(data['data'])
 
     def __on_depth_data(self, data):
+        if type(data) is not dict:
+            return
+
         if 'data' in data:
             data = data['data']
 
@@ -694,6 +745,9 @@ class BinanceFuturesWatcher(Watcher):
         #     # self.service.notify(Signal.SIGNAL_ORDER_BOOK, self.name, (symbol, depth[1], depth[2]))
 
     def __on_trade_data(self, data):
+        if type(data) is not dict:
+            return
+
         if 'data' in data:
             data = data['data']
 
@@ -733,6 +787,9 @@ class BinanceFuturesWatcher(Watcher):
                     self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
 
     def __on_kline_data(self, data):
+        if type(data) is not dict:
+            return
+
         if 'data' in data:
             data = data['data']
 

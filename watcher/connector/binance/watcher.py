@@ -620,6 +620,9 @@ class BinanceWatcher(Watcher):
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_book_tickers_data(self, data):
+        if type(data) is not dict:
+            return
+
         # market data instrument by symbol
         symbol = data.get('s')
         if not symbol:
@@ -636,6 +639,9 @@ class BinanceWatcher(Watcher):
         Intercepts ticker all, depth for followed symbols.
         Klines are generated from tickers data. It is a preferred way to reduce network traffic and API usage.
         """
+        if type(data) is not dict:
+            return
+
         if not data.get('stream'):
             return
 
@@ -647,6 +653,9 @@ class BinanceWatcher(Watcher):
             self.__on_kline_data(data['data'])
 
     def __on_depth_data(self, data):
+        if type(data) is not dict:
+            return
+
         if 'data' in data:
             data = data['data']
 
@@ -703,6 +712,9 @@ class BinanceWatcher(Watcher):
             # self.service.notify(Signal.SIGNAL_ORDER_BOOK, self.name, (symbol, depth[1], depth[2]))
 
     def __on_trade_data(self, data):
+        if type(data) is not dict:
+            return
+
         if 'data' in data:
             data = data['data']
 
@@ -743,6 +755,9 @@ class BinanceWatcher(Watcher):
                     self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
 
     def __on_kline_data(self, data):
+        if type(data) is not dict:
+            return
+
         if 'data' in data:
             data = data['data']
 
@@ -783,6 +798,9 @@ class BinanceWatcher(Watcher):
         """
         @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#web-socket-payloads
         """
+        if type(data) is not dict:
+            return
+
         event_type = data.get('e', '')
 
         if event_type == 'executionReport':

@@ -763,7 +763,7 @@ class Market(object):
 
     def recent_price(self, timestamp: float) -> Union[float, None]:
         """
-        One minute ticks price history.
+        Last ticks price history.
         @return Price at timestamp or None.
 
         @todo Could use a dichotomy search.
@@ -780,7 +780,7 @@ class Market(object):
 
     def recent(self, timestamp: float) -> Union[float, None]:
         """
-        One minute ticks price history.
+        Last ticks price history.
         @return tuple(timestamp, bid, ask, base-exchange-rate) or None
 
         @todo Could use a dichotomy search.
@@ -797,7 +797,7 @@ class Market(object):
 
     def previous(self, position: int = -1) -> Union[float, None]:
         """
-        One minute ticks price history, return the previous entry.
+        Last ticks price history, return the previous entry.
         @return tuple(timestamp, bid, ask, base-exchange-rate) or None
         """
         if 0 > position >= -len(self._previous):
@@ -807,7 +807,7 @@ class Market(object):
 
     def previous_spread(self) -> Union[float, None]:
         """
-        One minute ticks price history, return the previous entry spread.
+        Last ticks price history, return the previous entry spread.
         @return float spread or None
         """
         return (self._previous[-1][2] - self._previous[-1][1]) if self._previous else None

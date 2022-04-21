@@ -985,15 +985,18 @@ class Trader(Runnable):
         """
         market = self._markets.get(market_id)
         if market is None:
-            # not interested by this market
+            # not interested in this market
             return
 
+        # push last price to keep a local cache of history
+        if bid or ask:
+            market.push_price()
+
+        # defined and not 0
         if bid:
-            # defined and not 0
             market.bid = bid
 
         if ask:
-            # defined and not 0
             market.ask = ask
 
         if base_exchange_rate is not None:
@@ -1018,14 +1021,11 @@ class Trader(Runnable):
         if vol24h_quote is not None:
             market.vol24h_quote = vol24h_quote
 
-        # push last price to keep a local cache of history
-        market.push_price()
-
     @Runnable.mutexed
     def on_trade_market(self, market_id: str, tick: TickType):
         market = self._markets.get(market_id)
         if market is None:
-            # not interested by this market
+            # not interested in this market
             return
 
         # set the last executed trade (t b a l v d)
