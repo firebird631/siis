@@ -12,7 +12,8 @@ function on_order_long(elt, extra=null) {
         let limit_price = 0.0;
         let trigger_price = 0.0;
         let method = "";
-        let quantity_rate = 1;
+        let quantity_rate = 1.0;
+        let user_quantity = 0.0;
 
         let stop_loss = 0.0;
         let take_profit = 0.0;
@@ -31,7 +32,7 @@ function on_order_long(elt, extra=null) {
         } else if (take_profit_price_mode != "none") {
             take_profit = window.methods[retrieve_take_profit_method(trader_id)].distance;
         }
-        
+
         let entry_price_mode = window.entry_methods[retrieve_entry_method(trader_id)].type;
 
         if (entry_price_mode == "limit") {
@@ -66,10 +67,15 @@ function on_order_long(elt, extra=null) {
             'limit-price': limit_price,
             'trigger-price': trigger_price,
             'method': method,
-            'quantity-rate': quantity_rate,
             'entry-timeout': entry_timeout,
             'leverage': leverage
         };
+
+        if (user_quantity > 0.0) {
+            data['user-quantity'] = user_quantity;
+        } else {
+            data['quantity-rate'] = quantity_rate;
+        }
 
         if (stop_loss_price_mode != "none") {
             data['stop-loss'] = stop_loss;
@@ -142,7 +148,8 @@ function on_order_short(elt, extra=null) {
         let limit_price = 0.0;
         let trigger_price = 0.0;
         let method = "";
-        let quantity_rate = 1;
+        let quantity_rate = 1.0;
+        let user_quantity = 0.0;
 
         let stop_loss = 0.0;
         let take_profit = 0.0;
@@ -196,10 +203,15 @@ function on_order_short(elt, extra=null) {
             'limit-price': limit_price,
             'trigger-price': trigger_price,
             'method': method,
-            'quantity-rate': quantity_rate,
             'entry-timeout': entry_timeout,
             'leverage': leverage
         };
+
+        if (user_quantity > 0.0) {
+            data['user-quantity'] = user_quantity;
+        } else {
+            data['quantity-rate'] = quantity_rate;
+        }
 
         if (stop_loss_price_mode != "none") {
             data['stop-loss'] = stop_loss;
@@ -1085,7 +1097,8 @@ function on_open_new_trade(elt, direction) {
 
     let limit_price = 0.0;
     let trigger_price = 0.0;
-    let quantity_rate = 1;
+    let quantity_rate = 1.0;
+    let user_quantity = 0.0;
 
     let stop_loss = 0.0;
     let take_profit = 0.0;

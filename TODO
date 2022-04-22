@@ -68,11 +68,9 @@ Sum order :
     - listes :
         - tiers par (% pnl+-, market+-, date+-, upnl+-)
         - paginer si list > 100 élements
-    - copy de signal (bouton)
-        - CTRL + click copie direct en l'état
-    - créer une alerte price-cross
-    - créer une range region
-    - créer une trend region
+    - menu + modal pour créer une alerte price-cross
+    - menu + model pour créer une range region
+    - menu + model pour créer une trend region
     - recevoir stream de bid/ask, abonnement/resiliation
     - calculer r:r sur open trade, calcule % et montant risqué selon stop-loss
 

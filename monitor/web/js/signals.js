@@ -96,80 +96,34 @@ function on_copy_signal(elt) {
         return;
     }
 
-    if (direction > 0) {
-        $("#copy_signal").find(".modal-title").text("Copy Signal - Open Long on " + market.symbol);
-        $("#copy_signal_open").text("Long");
-        $("#copy_signal_open").removeClass("btn-danger").addClass("btn-success");
-    } else {
-        $("#copy_signal").find(".modal-title").text("Copy Signal - Open Short on " + market.symbol);
-        $("#copy_signal_open").text("Short");
-        $("#copy_signal_open").removeClass("btn-success").addClass("btn-danger");
-    }
-
-    if (signal['label'] && signal['timeframe']) {
-        $('#copy_signal_context').val(signal['label'] + ' (' + signal['timeframe'] + ')');
-    } else {
-        $('#copy_signal_context').val(signal['label'] || signal['timeframe']);
-    }
-
-    if (signal['order-price'] > 0.0) {
-        $('#copy_signal_order_price').attr('type', "number").val(parseFloat(signal['order-price']));
-    } else {
-        $('#copy_signal_order_price').attr('type', "text").val("Market");
-    }
-
-    $('#copy_signal_take_profit_price').val(parseFloat(signal['take-profit-price']));
-    $('#copy_signal_take_profit_range').slider('setValue', 50);
-    $('#copy_signal_take_profit_type').selectpicker('val', 'percent').change();
-
-    $('#copy_signal_stop_loss_price').val(parseFloat(signal['stop-loss-price']));
-    $('#copy_signal_stop_loss_range').slider('setValue', 50);
-    $('#copy_signal_stop_loss_type').selectpicker('val', 'percent').change();
-
-    /*$('#copy_signal_second_take_profit_price').val(parseFloat(signal['second-take-profit-price']));
-    $('#copy_signal_second_take_profit_range').slider('setValue', 50);
-    $('#copy_signal_second_take_profit_type').selectpicker('val', 'percent').change();
-
-    $('#copy_signal_third_take_profit_price').val(parseFloat(signal['third-take-profit-price']));
-    $('#copy_signal_third_take_profit_range').slider('setValue', 50);
-    $('#copy_signal_third_take_profit_type').selectpicker('val', 'percent').change();*/
-
-    $('#copy_signal_comment').val("");
-
-    $('#copy_signal').modal({'show': true, 'backdrop': true});
-
-    $('#copy_signal_open').off('click');
-    $('#copy_signal_open').on('click', function(e) {
-        let comment = $('#copy_signal_comment').val();
-
+    if (elt.ctrlKey) {
+        // direct copy (no modal window)
         let second_take_profit = 0.0;
         let third_take_profit = 0.0;
 
-        /*if ($('#copy_signal_second_take_profit_price').val()) {
-            second_take_profit = parseFloat($('#copy_signal_second_take_profit_price').val());
+        if ('second-take-profit-price' in signal) {
+            second_take_profit = parseFloat(signal['second-take-profit-price']);
         }
-        if ($('#copy_signal_third_take_profit_price').val()) {
-            third_take_profit = parseFloat($('#copy_signal_third_take_profit_price').val());
-        }*/
+        if ('third-take-profit-price' in signal) {
+            third_take_profit = parseFloat(signal['third-take-profit-price']);
+        }
 
         let trigger_price = 0.0;
         let limit_price = 0.0;
         let method = 'market';
 
-        if ($('#copy_signal_order_price').attr('type') == "text" && $('#copy_signal_order_price').val() == "Market") {
-            limit_price = 0.0;
-            method = 'market';
-        } else {
-            limit_price = parseFloat($('#copy_signal_order_price').val());
+        if (signal['order-price'] > 0.0) {
+            limit_price = parseFloat(signal['order-price']);
             method = 'limit';
         }
 
         let quantity_rate = 1.0;
+        let user_quantity = 0.0;
         let entry_timeout = 0.0;
         let leverage = 1.0;
 
-        let take_profit = parseFloat($('#copy_signal_take_profit_price').val());
-        let stop_loss = parseFloat($('#copy_signal_stop_loss_price').val());
+        let take_profit = parseFloat(signal['take-profit-price']);
+        let stop_loss = parseFloat(signal['stop-loss-price']);
 
         let data = {
             'command': 'trade-entry',
@@ -178,10 +132,15 @@ function on_copy_signal(elt) {
             'limit-price': limit_price,
             'trigger-price': trigger_price,
             'method': method,
-            'quantity-rate': quantity_rate,
             'entry-timeout': entry_timeout,
             'leverage': leverage
         };
+
+        if (user_quantity > 0.0) {
+            data['user-quantity'] = user_quantity;
+        } else {
+            data['quantity-rate'] = quantity_rate;
+        }
 
         if (stop_loss > 0.0) {
             data['stop-loss'] = stop_loss;
@@ -208,10 +167,6 @@ function on_copy_signal(elt) {
             data['context'] = context;
         } else if (timeframe) {
             data['timeframe'] = timeframe;
-        }
-
-        if (comment) {
-            data['comment'] = comment;
         }
 
         if (second_take_profit > 0.0) {
@@ -251,7 +206,171 @@ function on_copy_signal(elt) {
                 notify({'message': msg, 'title': title, 'type': 'error'});
             }
         });
-    });
+    } else {
+        // setup modal dialog and events
+        if (direction > 0) {
+            $("#copy_signal").find(".modal-title").text("Copy Signal - Open Long on " + market.symbol);
+            $("#copy_signal_open").text("Long");
+            $("#copy_signal_open").removeClass("btn-danger").addClass("btn-success");
+        } else {
+            $("#copy_signal").find(".modal-title").text("Copy Signal - Open Short on " + market.symbol);
+            $("#copy_signal_open").text("Short");
+            $("#copy_signal_open").removeClass("btn-success").addClass("btn-danger");
+        }
+
+        if (signal['label'] && signal['timeframe']) {
+            $('#copy_signal_context').val(signal['label'] + ' (' + signal['timeframe'] + ')');
+        } else {
+            $('#copy_signal_context').val(signal['label'] || signal['timeframe']);
+        }
+
+        if (signal['order-price'] > 0.0) {
+            $('#copy_signal_order_price').attr('type', "number").val(parseFloat(signal['order-price']));
+        } else {
+            $('#copy_signal_order_price').attr('type', "text").val("Market");
+        }
+
+        $('#copy_signal_take_profit_price').val(parseFloat(signal['take-profit-price']));
+        $('#copy_signal_take_profit_range').slider('setValue', 50);
+        $('#copy_signal_take_profit_type').selectpicker('val', 'percent').change();
+
+        $('#copy_signal_stop_loss_price').val(parseFloat(signal['stop-loss-price']));
+        $('#copy_signal_stop_loss_range').slider('setValue', 50);
+        $('#copy_signal_stop_loss_type').selectpicker('val', 'percent').change();
+
+        /*$('#copy_signal_second_take_profit_price').val(parseFloat(signal['second-take-profit-price']));
+        $('#copy_signal_second_take_profit_range').slider('setValue', 50);
+        $('#copy_signal_second_take_profit_type').selectpicker('val', 'percent').change();
+
+        $('#copy_signal_third_take_profit_price').val(parseFloat(signal['third-take-profit-price']));
+        $('#copy_signal_third_take_profit_range').slider('setValue', 50);
+        $('#copy_signal_third_take_profit_type').selectpicker('val', 'percent').change();*/
+
+        $('#copy_signal_comment').val("");
+
+        $('#copy_signal').modal({'show': true, 'backdrop': true});
+
+        $('#copy_signal_open').off('click');
+        $('#copy_signal_open').on('click', function(e) {
+            let comment = $('#copy_signal_comment').val();
+
+            let second_take_profit = 0.0;
+            let third_take_profit = 0.0;
+
+            /*if ($('#copy_signal_second_take_profit_price').val()) {
+                second_take_profit = parseFloat($('#copy_signal_second_take_profit_price').val());
+            }
+            if ($('#copy_signal_third_take_profit_price').val()) {
+                third_take_profit = parseFloat($('#copy_signal_third_take_profit_price').val());
+            }*/
+
+            let trigger_price = 0.0;
+            let limit_price = 0.0;
+            let method = 'market';
+
+            if ($('#copy_signal_order_price').attr('type') == "text" && $('#copy_signal_order_price').val() == "Market") {
+                limit_price = 0.0;
+                method = 'market';
+            } else {
+                limit_price = parseFloat($('#copy_signal_order_price').val());
+                method = 'limit';
+            }
+
+            let quantity_rate = 1.0;
+            let user_quantity = 0.0;
+            let entry_timeout = 0.0;
+            let leverage = 1.0;
+
+            let take_profit = parseFloat($('#copy_signal_take_profit_price').val());
+            let stop_loss = parseFloat($('#copy_signal_stop_loss_price').val());
+
+            let data = {
+                'command': 'trade-entry',
+                'market-id': market_id,
+                'direction': direction,
+                'limit-price': limit_price,
+                'trigger-price': trigger_price,
+                'method': method,
+                'entry-timeout': entry_timeout,
+                'leverage': leverage
+            };
+
+            if (user_quantity > 0.0) {
+                data['user-quantity'] = user_quantity;
+            } else {
+                data['quantity-rate'] = quantity_rate;
+            }
+
+            if (stop_loss > 0.0) {
+                data['stop-loss'] = stop_loss;
+                data['stop-loss-price-mode'] = 'price';
+            }
+
+            if (take_profit > 0.0) {
+                data['take-profit'] = take_profit;
+                data['take-profit-price-mode'] = 'price';
+            }
+
+            let market = window.markets[market_id];
+            if (!market) {
+                return;
+            }
+
+            let profile_name = signal.context;
+            let profile = market.profiles[profile_name];
+
+            let context = profile_name;
+            let timeframe = signal.timeframe;
+
+            if (context && profile && ('strategy' in profile)) {
+                data['context'] = context;
+            } else if (timeframe) {
+                data['timeframe'] = timeframe;
+            }
+
+            if (comment) {
+                data['comment'] = comment;
+            }
+
+            if (second_take_profit > 0.0) {
+                data['second-take-profit'] = second_take_profit;
+            }
+
+            if (third_take_profit > 0.0) {
+                data['third-take-profit'] = third_take_profit;
+            }
+
+            let endpoint = "strategy/trade";
+            let url = base_url() + '/' + endpoint;
+            let title = direction > 0 ? 'Order Long' : 'Order Short';
+
+            $.ajax({
+                type: "POST",
+                url: url,
+                headers: {
+                    'Authorization': "Bearer " + server['auth-token'],
+                    'TWISTED_SESSION': server.session,
+                },
+                data: JSON.stringify(data),
+                dataType: 'json',
+                contentType: 'application/json'
+            })
+            .done(function(data) {
+                if (data.error) {
+                    for (let msg in data.messages) {
+                        notify({'message': data.messages[msg], 'title': title, 'type': 'error'});
+                    }
+                } else {
+                    notify({'message': "Success", 'title': title, 'type': 'success'});
+                }
+            })
+            .fail(function(data) {
+                for (let msg in data.messages) {
+                    notify({'message': msg, 'title': title, 'type': 'error'});
+                }
+            });
+        });
+    }
 }
 
 function on_change_copy_signal_take_profit_step() {
