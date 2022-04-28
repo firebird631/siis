@@ -11,11 +11,7 @@ import copy
 
 from instrument.instrument import Instrument
 
-from monitor.streamable import Streamable, StreamMemberInt, \
-    StreamMemberTradeEntry, StreamMemberTradeUpdate, StreamMemberTradeExit, \
-    StreamMemberFloatSerie, StreamMemberTradeSignal, \
-    StreamMemberStrategyAlert, StreamMemberStrategyAlertCreate, StreamMemberStrategyAlertRemove, \
-    StreamMemberStrategyRegion, StreamMemberStrategyRegionCreate, StreamMemberStrategyRegionRemove
+from monitor.streamable import Streamable, StreamMemberInt
 
 from .strategytrader import StrategyTrader
 
@@ -110,49 +106,10 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     #
 
     def setup_streaming(self):
-        # global stream about compute status, once per compute frame
-        self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO,
-                                           self.strategy.identifier, self.instrument.market_id)
-        self._global_streamer.add_member(StreamMemberFloatSerie('performance', 0))
-
-        # trade streams
-        self._trade_entry_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE,
-                                                self.strategy.identifier, self.instrument.market_id)
-        self._trade_entry_streamer.add_member(StreamMemberTradeEntry('trade-entry'))
-
-        self._trade_update_streamer = Streamable(self.strategy.service.monitor_service,
-                                                 Streamable.STREAM_STRATEGY_TRADE,
-                                                 self.strategy.identifier, self.instrument.market_id)
-        self._trade_update_streamer.add_member(StreamMemberTradeUpdate('trade-update'))
-
-        self._trade_exit_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE,
-                                               self.strategy.identifier, self.instrument.market_id)
-        self._trade_exit_streamer.add_member(StreamMemberTradeExit('trade-exit'))
-
-        # signal stream
-        self._signal_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_SIGNAL,
-                                           self.strategy.identifier, self.instrument.market_id)
-        self._signal_streamer.add_member(StreamMemberTradeSignal('signal'))
-
-        # alert stream
-        self._alert_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_ALERT,
-                                          self.strategy.identifier, self.instrument.market_id)
-        self._alert_streamer.add_member(StreamMemberStrategyAlert('alert'))
-        self._alert_streamer.add_member(StreamMemberStrategyAlertCreate('add-alert'))
-        self._alert_streamer.add_member(StreamMemberStrategyAlertRemove('rm-alert'))
-
-        # region stream
-        self._region_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_REGION,
-                                           self.strategy.identifier, self.instrument.market_id)
-        self._region_streamer.add_member(StreamMemberStrategyRegion('region'))
-        self._region_streamer.add_member(StreamMemberStrategyRegionCreate('add-region'))
-        self._region_streamer.add_member(StreamMemberStrategyRegionRemove('rm-region'))
+        super().setup_streaming()
 
     def stream(self):
-        # only once per compute frame
-        with self._mutex:
-            if self._global_streamer:
-                self._global_streamer.publish()
+        super().stream()
 
     def create_chart_streamer(self, timeframe) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,

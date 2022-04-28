@@ -21,14 +21,13 @@ Features
     * [x] Binance Spot
     * [X] Binance Future
     * [x] Bitmex
+    * [x] IG CFD (forex, indices, commodities)
     * [x] Kraken Spot
     * [x] Kraken Margin (partial)
     * [ ] Kraken Futures (planned)
-    * [x] IG CFD
 * Some others source of prices/volumes data fetchers
     * [x] HistData (only to import manually downloaded files)
     * [ ] AlphaVantage (WIP)
-    * [ ] Tiingo (WIP)
 * Fetching of OHLC and ticks/trades history data in a PostgreSQL or MySQL database
 * Multiple instances can run at the same time
 * Many strategies and markets can run on a same instance (tested with 100+ markets on a single instance)
@@ -60,14 +59,13 @@ Features
     * SineWave
     * Pivot Point Supports Resistances
     * TomDemark TD9
-    * Ask if you want more :-)
 * Pure signal strategies are possibles in way to only generating some signals/alerts
 * Notifications : Signal, trade, performance and account status :
     * [x] Android application (signal, trade, account) (WIP)
     * [x] Discord WebHook (signal, trade, trade list, performance)
     * [x] Desktop Linux only (popup through D-Bus, audible alerts using aplay)
+    * [x] Telegram (with bot commands)
     * [ ] Hangout / Google chat (planned)
-    * [ ] Telegram (planned)
     * [ ] XMPP (planned)
 * 4 initials strategies serves as examples :
     * BitcoinAlpha for serious coins
@@ -106,7 +104,7 @@ If this project helped you out feel free to donate.
 Installation
 ------------
 
-Need Python 3.6 or Python 3.7 on your system.
+Need Python 3.8 or more recent.
 Tested on Debian, Ubuntu and Fedora.
 
 ### Create a PIP virtual env ###

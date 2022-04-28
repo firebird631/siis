@@ -1,3 +1,9 @@
+/**
+ * @date 2020-01-24
+ * @author Frederic Scherma, All rights reserved without prejudices.
+ * @license Copyright (c) 2020 Dream Overflow
+ * Web trader signal handler.
+ */
 
 function on_strategy_signal(market_id, signal_id, timestamp, signal, do_notify=true) {
     if (signal_id > 0) {

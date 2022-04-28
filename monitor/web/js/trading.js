@@ -1,3 +1,10 @@
+/**
+ * @date 2020-01-24
+ * @author Frederic Scherma, All rights reserved without prejudices.
+ * @license Copyright (c) 2020 Dream Overflow
+ * Web trader trading.
+ */
+
 function on_order_long(elt, extra=null) {
     let market_id = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
@@ -2080,4 +2087,75 @@ function trade_validation(asset, currency, zero_count) {
     }
 
     console.log('qty=' + qty + ' / asset=' + window.account_balances[asset]['total']);
+}
+
+//
+// others slots
+//
+
+function on_strategy_trader_activity(market_id, activity) {
+    if (market_id in window.markets) {
+        let market = window.markets[market_id];
+        market.trade.activity = activity;
+
+        $('button[market-id="' + market_id + '"] span')
+            .removeClass('fa-play')
+            .removeClass('fa-pause')
+            .addClass(activity ? 'fa-play' : 'fa-pause');
+
+        // notify({'message': "Toggle auto-trade", 'type': 'success'});
+    }
+}
+
+function on_strategy_trader_affinity(market_id, value) {
+    if (market_id in window.markets) {
+        let market = window.markets[market_id];
+        market.trade.affinity = value;
+    }
+}
+
+function on_strategy_trader_max_trades(market_id, max_trades) {
+    if (market_id in window.markets) {
+        let market = window.markets[market_id];
+        // default or quote to base
+        market.trade['max-trades'] = max_trades;
+    }
+}
+
+function on_strategy_trader_instrument_trade_mode(market_id, value) {
+    if (market_id in window.markets) {
+        let market = window.markets[market_id];
+        // default or quote to base
+        market.trade['quantity-mode'] = quantity_mode;
+    }
+}
+
+function on_strategy_trader_instrument_trade_quantity(market_id, quantity) {
+    if (market_id in window.markets) {
+        let market = window.markets[market_id];
+        market.trade.quantity = quantity;
+    }
+}
+
+function on_strategy_trader_trade_quantity_mode(market_id, quantity_mode) {
+    if (market_id in window.markets) {
+        let market = window.markets[market_id];
+        // @todo
+
+        // mode
+        // TRADE_MODE_NONE = 0;
+        // TRADE_MODE_SIGNAL = 1;
+        // TRADE_MODE_TRADE = 2;
+
+        // quantity-mode
+        // TRADE_QUANTITY_NORMAL = 0;
+        // TRADE_QUANTITY_SPECIFIC = 1;
+        // TRADE_QUANTITY_REINVEST_MAX_LAST = 2;
+        // TRADE_QUANTITY_INC_STEP = 3;
+        // TRADE_QUANTITY_MANAGED = 4;
+
+        // quantity
+
+        // step
+    }
 }

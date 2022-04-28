@@ -39,7 +39,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # mean when there is already a position on the same direction does not increase in the same
         # direction if 0 or increase at max N times
         self.pyramided = params['pyramided']
-        self.max_trades = params['max-trades']
+        self._max_trades = params['max-trades']
         self.hedging = params['hedging']  # only if the broker/market allow it
 
         self.min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', "15m"))

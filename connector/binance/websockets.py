@@ -48,12 +48,12 @@ class BinanceClientProtocol(WebSocketClientProtocol):
             }
 
             if params:
-                logger.info("onConnect %s" % data)
+                logger.debug("onConnect %s" % data)
 
                 payload = json.dumps(data, ensure_ascii=False).encode('utf8')
                 self.sendMessage(payload, isBinary=False)
             else:
-                logger.info("onConnect %s" % '/'.join(subscriptions.keys()))
+                logger.debug("onConnect %s" % '/'.join(subscriptions.keys()))
 
         # reset the delay after reconnecting
         self.factory.resetDelay()

@@ -155,8 +155,6 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
         streamer.add_member(StreamMemberFloatSerie('rsi-high', 2))
         streamer.add_member(StreamMemberFloatSerie('rsi', 2))
 
-        streamer.add_member(StreamMemberFloatSerie('perf', 3))
-
         # bollinger, triangle, pivotpoint, td9, fibonacci...
 
         streamer.add_member(StreamMemberSerie('end'))
@@ -184,8 +182,6 @@ class CrystalBallStrategySubA(CrystalBallStrategySub):
             # streamer.member('stochrsi-high').update(80, ts)
             # streamer.member('stochrsi-k').update(self.stochrsi.stochrsis[i], ts)
             # streamer.member('stochrsi-d').update(self.stochrsi.stochrsis[i], ts)
-
-            streamer.member('perf').update(self.strategy_trader._stats['perf']*100, ts)
 
             streamer.member('end').update(ts)
 

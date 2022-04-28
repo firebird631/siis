@@ -1,3 +1,10 @@
+/**
+ * @date 2020-01-24
+ * @author Frederic Scherma, All rights reserved without prejudices.
+ * @license Copyright (c) 2020 Dream Overflow
+ * Web trader main.
+ */
+
 $(window).ready(function() {
     CURRENCIES = {
         'EUR': 2,
@@ -1152,14 +1159,17 @@ function fetch_strategy() {
                 'symbol': market['symbol'],
                 'market-id': market['market-id'],
                 'value-per-pip': market['value-per-pip'],
-                'price-limits': market['price-limits'],  // array 4 float
-                'notional-limits': market['notional-limits'],  // array 4 float
-                'size-limits': market['size-limits'],  // array 4 float
+                'price-limits': market['price-limits'],        // array 4 floats
+                'notional-limits': market['notional-limits'],  // array 4 floats
+                'size-limits': market['size-limits'],          // array 4 floats
                 'bid': market['bid'],
                 'ask': market['ask'],
                 'mid': market['mid'],
                 'spread': market['spread'],
-                'profiles': {}
+                'volumes': market['volumes'],    // dict with 2 floats
+                'sessions': market['sessions'],  // dict with 2 tuples
+                'trade': market['trade'],        // dict with 5 members
+                'profiles': {}                   // dict of str:dict(context)
             };
 
             // append the default profiles from contexts
@@ -1245,9 +1255,6 @@ function fetch_strategy() {
                     }
                 }
 
-                // @todo initial activity and affinity per trader
-                // @todo need to be streamed in the WS in case of change from the terminal
-
                 window.markets[market_id].profiles[profile_id] = {
                     'strategy': profile['strategy'],
                     'label': profile['profile-id'],
@@ -1271,7 +1278,7 @@ function fetch_strategy() {
         if (server.permissions.indexOf("strategy-trader") != -1) {
             // @todo traders options
         } else {
-            // @todo trader must not have play/pause, modify quantity, modify affinity
+            // @todo trader must not have play/pause, modify quantity, modify affinity ...
         }
 
         if (server.permissions.indexOf("strategy-view") != -1) {
@@ -1814,7 +1821,9 @@ function toggle_auto(elt) {
                     notify({'message': data.messages[msg], 'title': 'Toggle auto-trade"', 'type': 'error'});
                 }
             } else {
-                // @todo for each trader having the same market-id
+                // for each trader having the same market-id (done by WS)
+                market.trade.activity = result['activity'];
+
                 $('button[market-id="' + market_id + '"] span')
                     .removeClass('fa-play')
                     .removeClass('fa-pause')

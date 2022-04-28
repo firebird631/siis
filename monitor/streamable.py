@@ -201,6 +201,26 @@ class StreamMemberFloat(StreamMember):
         return {'n': self._name, 't': self._type, 'v': self._value}
 
 
+class StreamMemberDict(StreamMember):
+    """
+    Specialization for a signal dict (object) value.
+    """
+
+    TYPE_DICT = "d"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberDict.TYPE_DICT)
+
+        self._value = {}
+
+    def update(self, value):
+        self._value = value
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 't': self._type, 'v': self._value}
+
+
 class StreamMemberFloatTuple(StreamMember):
     """
     Specialization for a signal float tuple values.

@@ -2,6 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
 # Crystal Ball indicator strategy trader.
+
 from typing import Tuple
 
 from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
@@ -22,9 +23,10 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
     def __init__(self, strategy, instrument, params):
         super().__init__(strategy, instrument, Instrument.TF_TICK)
 
-        # mean when there is already a position on the same direction does not increase in the same direction if 0 or increase at max N times
+        # mean when there is already a position on the same direction does not increase in the
+        # same direction if 0 or increase at max N times
         self.pyramided = params['pyramided']
-        self.max_trades = params['max-trades']
+        self._max_trades = params['max-trades']
 
         self.min_price = params['min-price']
         self.min_vol24h = params['min-vol24h']
@@ -51,7 +53,7 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
         if timestamp - self._last_filter_cache[0] < 60*60:  # only once per hour
             return self._last_filter_cache[1], self._last_filter_cache[2]
 
-        # if there is no actives trades we can avoid computation on some ininteresting markets
+        # if there is no actives trades we can avoid computation on some uninteresting markets
         if self.trades:
             if self.instrument.vol24h_quote is not None and self.instrument.vol24h_quote < self.min_vol24h:
                 # accepted but 24h volume is very small (rare possibilities of exit)

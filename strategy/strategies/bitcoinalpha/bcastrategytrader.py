@@ -47,7 +47,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # mean when there is already a position on the same direction does not increase in the same
         # direction if 0 or increase at max N times
         self.pyramided = params['pyramided']
-        self.max_trades = params['max-trades']
+        self._max_trades = params['max-trades']
 
         self.min_price = params['min-price']
         self.min_vol24h = params['min-vol24h']

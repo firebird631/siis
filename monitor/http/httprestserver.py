@@ -197,6 +197,11 @@ class StrategyInfoRestAPI(resource.Resource):
 
         for market_id in instruments_ids:
             instr = self._strategy_service.strategy().instrument(market_id)
+
+            strategy_trader = self._strategy_service.strategy.strategy_traders.get(market_id)
+            if strategy_trader is None:
+                continue
+
             profiles = {}
 
             markets[market_id] = {
@@ -216,20 +221,23 @@ class StrategyInfoRestAPI(resource.Resource):
                 'mid': instr.market_price,
                 'spread': instr.market_spread,
                 'last-update-time': instr.last_update_time,
-                'profiles': profiles,
                 'sessions': {
                     'evening': instr.evening_session,
                     'overnight': instr.overnight_session,
                     'week': instr.week_session
                 },
                 'trade': {
-                    'quantity': instr.trade_quantity,
-                    'quantity-mode': instr.trade_quantity_mode
+                    'activity': strategy_trader.activity,       # bool
+                    'affinity': strategy_trader.affinity,       # int
+                    'max-trades': strategy_trader.max_trades,   # int
+                    'quantity': instr.trade_quantity,           # float
+                    'quantity-mode': instr.trade_quantity_mode  # int const
                 },
                 'volumes': {
-                    'base': instr.vol24h_base,
-                    'quote': instr.vol24h_quote
-                }
+                    'base': instr.vol24h_base,   # float
+                    'quote': instr.vol24h_quote  # float
+                },
+                'profiles': profiles  # dict str:dict
             }
 
             contexts_ids = self._strategy_service.strategy().contexts_ids(market_id)
@@ -307,9 +315,42 @@ class InstrumentRestAPI(resource.Resource):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
         uri = request.uri.decode("utf-8").split('/')
-        results = {}
 
-        # @todo get state info activity, affinity, quantity, context
+        market_id = ""
+        context_id = ""
+
+        if b'market-id' in request.args:
+            try:
+                market_id = request.args[b'market-id'][0].decode("utf-8")
+            except ValueError:
+                return NoResource("Incorrect market-id value")
+
+        if b'context-id' in request.args:
+            try:
+                context_id = request.args[b'context-id'][0].decode("utf-8")
+            except ValueError:
+                return NoResource("Incorrect context-id value")
+
+        strategy_name = self._strategy_service.strategy_name()
+        strategy_id = self._strategy_service.strategy_identifier()
+
+        # @todo get state info quantity, context/profile
+
+        with self._strategy_service.strategy.mutex:
+            strategy_trader = self._strategy_service.strategy.strategy_traders.get(market_id)
+            if strategy_trader is None:
+                return NoResource("Unknown market-id %s" % market_id)
+
+            with strategy_trader.trade_mutex:
+                results = {
+                    'strategy': strategy_name,
+                    'strategy-id': strategy_id,
+                    'market-id': market_id,
+                    'activity': strategy_trader.activity,
+                    'affinity': strategy_trader.affinity,
+                    # context/profile
+                    # 'trade-mode': strategy_trader.
+                }
 
         return json.dumps(results).encode("utf-8")
 
@@ -396,7 +437,7 @@ class StrategyTradeRestAPI(resource.Resource):
                 return NoResource("Incorrect market-id value")
 
         if trade_id > 0:
-            with self._mutex:
+            with self._strategy_service.strategy.mutex:
                 strategy_trader = self._strategy_service.strategy.strategy_traders.get(market_id)
                 if strategy_trader is None:
                     return NoResource("Unknown market-id %s" % market_id)

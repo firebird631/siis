@@ -1057,8 +1057,6 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
         streamer.add_member(StreamMemberFloatSerie('hma', 0))
         streamer.add_member(StreamMemberFloatSerie('vwma', 0))
 
-        streamer.add_member(StreamMemberFloatSerie('perf', 3))
-
         # stochastic, bollinger, triangle, score, pivotpoint, td9, fibonacci...
 
         streamer.add_member(StreamMemberSerie('end'))
@@ -1092,8 +1090,6 @@ class ForexAlphaStrategySubA(ForexAlphaStrategySub):
             streamer.member('ema').update(float(self.ema.emas[i]), ts)
             # streamer.member('hma').update(float(self.hma.hmas[i]), ts)
             # streamer.member('vwma').update(float(self.vwma.vwmas[i]), ts)
-
-            streamer.member('perf').update(self.strategy_trader._stats['perf']*100, ts)
 
             streamer.member('end').update(ts)
 

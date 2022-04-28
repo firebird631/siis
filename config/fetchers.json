@@ -14,9 +14,6 @@
     "ig.com": {
         "classpath": "watcher.connector.ig.fetcher.IGFetcher"
     },
-    "tiingo.com": {
-        "classpath": "watcher.connector.tiingo.fetcher.TiingoFetcher"
-    },
     "histdata.com": {
         "classpath": "watcher.connector.histdata.fetcher.HistDataFetcher"
     },

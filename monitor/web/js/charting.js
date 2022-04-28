@@ -1,3 +1,10 @@
+/**
+ * @date 2020-01-24
+ * @author Frederic Scherma, All rights reserved without prejudices.
+ * @license Copyright (c) 2020 Dream Overflow
+ * Web trader charting module.
+ */
+
 function on_chart_data_serie(market_id, timestamp, value) {
     console.log(value);
 }

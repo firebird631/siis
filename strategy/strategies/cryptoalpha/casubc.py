@@ -148,8 +148,6 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
         streamer.add_member(StreamMemberFloatSerie('hma', 0))
         streamer.add_member(StreamMemberFloatSerie('vwma', 0))
 
-        streamer.add_member(StreamMemberFloatSerie('perf', 3))
-
         streamer.add_member(StreamMemberSerie('end'))
 
         streamer.last_timestamp = self.last_timestamp
@@ -180,8 +178,6 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
             streamer.member('ema').update(self.ema.emas[i], ts)
             # streamer.member('hma').update(self.hma.hmas[i], ts)
             # streamer.member('vwma').update(self.vwma.vwmas[i], ts)
-
-            streamer.member('perf').update(self.strategy_trader._stats['perf']*100, ts)
 
             streamer.member('end').update(ts)
 

@@ -42,6 +42,12 @@ from terminal.terminal import Terminal
 from database.database import Database
 from trader.order import Order
 
+from monitor.streamable import Streamable, StreamMemberBool, StreamMemberInt, StreamMemberFloat, StreamMemberDict, \
+    StreamMemberTradeEntry, StreamMemberTradeUpdate, StreamMemberTradeExit, \
+    StreamMemberFloatSerie, StreamMemberTradeSignal, \
+    StreamMemberStrategyAlert, StreamMemberStrategyAlertCreate, StreamMemberStrategyAlertRemove, \
+    StreamMemberStrategyRegion, StreamMemberStrategyRegionCreate, StreamMemberStrategyRegionRemove
+
 import logging
 logger = logging.getLogger('siis.strategy.trader')
 error_logger = logging.getLogger('siis.error.strategy.trader')
@@ -74,7 +80,7 @@ class StrategyTrader(object):
     _trade_context_builder: Union[StrategyTraderContextBuilder, Any, None]
     _activity: bool
     _affinity: int
-    max_trades: int
+    _max_trades: int
 
     _initialized: int
     _check: int
@@ -119,8 +125,7 @@ class StrategyTrader(object):
         self._mutex = threading.RLock()  # activity, global locker, region locker, instrument locker
         self._activity = True
         self._affinity = 5          # based on a linear scale [0..100]
-
-        self.max_trades = 0
+        self._max_trades = 0
 
         self._initialized = 1       # initiate data before running, 1 waited, 2 in progress, 0 normal
         self._checked = 1           # check trades/orders/positions, 1 waited, 2 in progress, 0 normal
@@ -597,7 +602,11 @@ class StrategyTrader(object):
         """
         Enable/disable execution of the automated orders.
         """
-        self._activity = status
+        if self._activity != status:
+            self._activity = status
+
+            if self._global_streamer:
+                self._global_streamer.member('activity').update(self._activity)
 
     @property
     def affinity(self) -> int:
@@ -611,7 +620,23 @@ class StrategyTrader(object):
         """
         Set strategy trader affinity rate.
         """
-        self._affinity = affinity
+        if self._affinity != affinity:
+            self._affinity = affinity
+
+            if self._global_streamer:
+                self._global_streamer.member('affinity').update(self._affinity)
+
+    @property
+    def max_trades(self):
+        return self._max_trades
+
+    @max_trades.setter
+    def max_trades(self, max_trades):
+        if self._max_trades != max_trades:
+            self._max_trades = max_trades
+
+            if self._global_streamer:
+                self._global_streamer.member('max-trades').update(self._max_trades)
 
     def restart(self):
         """
@@ -1435,14 +1460,14 @@ class StrategyTrader(object):
         Modify the take-profit limit or market price of a trade.
         @param trade: Valid trade model
         @param limit_price: Limit price if hard else market price once reached
-        @param hard: True create an order if possible depending of the market type else software order at market
+        @param hard: True create an order if possible depending on the market type else software order at market
             with possible slippage and at market price
         @return: A StrategyTrade status code.
 
         @node On spot market either a take-profit limit or a market stop-loss order can be defined. One of them
             will be a soft order (meaning managed by strategy when the market will reach the price).
 
-        @note If the trade is not active (not full or partially realized) an hard order cannot be created.
+        @note If the trade is not active (not full or partially realized) a hard order cannot be created.
         @note If there is too many attempt to modify an order (hard) the modification will be rejected temporarily.
         """
         if trade:
@@ -1506,11 +1531,11 @@ class StrategyTrader(object):
         @param trade: Valid trade model
         @param limit_price: Limit price if hard else market price once reached
         @param stop_price: Stop market price if hard else market price once reached
-        @param hard: True create an order if possible depending of the market type else software order at market
+        @param hard: True create an order if possible depending on the market type else software order at market
             with possible slippage and at market price
         @return: A StrategyTrade status code.
 
-        @note If the trade is not active (not full or partially realized) an hard order cannot be created.
+        @note If the trade is not active (not full or partially realized) a hard order cannot be created.
         @note Available only for spot market, and allowing to place a stop-loss and a take-profit order at the
             same time, execution of One will Cancel the Other.
 
@@ -2109,7 +2134,7 @@ class StrategyTrader(object):
         """
         @param max_trades Max simultaneous trades for this instrument.
         @param same_timeframe Compared timeframe.
-        @param same_timeframe_num 0 mean Allow multiple trade of the same timeframe, else it define the max allowed.
+        @param same_timeframe_num 0 mean Allow multiple trade of the same timeframe, else it defines the max allowed.
         """
         result = None
 
@@ -2289,6 +2314,56 @@ class StrategyTrader(object):
     #
     # stream helpers
     #
+
+    def setup_streaming(self):
+        # global stream about compute status, once per compute frame
+        self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO,
+                                           self.strategy.identifier, self.instrument.market_id)
+        self._global_streamer.add_member(StreamMemberBool('activity'))
+        self._global_streamer.add_member(StreamMemberInt('affinity'))
+        self._global_streamer.add_member(StreamMemberInt('max-trades'))
+        self._global_streamer.add_member(StreamMemberInt('trade-mode'))
+        self._global_streamer.add_member(StreamMemberFloat('trade-quantity'))
+        self._global_streamer.add_member(StreamMemberDict('context'))
+
+        # trade streams
+        self._trade_entry_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE,
+                                                self.strategy.identifier, self.instrument.market_id)
+        self._trade_entry_streamer.add_member(StreamMemberTradeEntry('trade-entry'))
+
+        self._trade_update_streamer = Streamable(self.strategy.service.monitor_service,
+                                                 Streamable.STREAM_STRATEGY_TRADE,
+                                                 self.strategy.identifier, self.instrument.market_id)
+        self._trade_update_streamer.add_member(StreamMemberTradeUpdate('trade-update'))
+
+        self._trade_exit_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE,
+                                               self.strategy.identifier, self.instrument.market_id)
+        self._trade_exit_streamer.add_member(StreamMemberTradeExit('trade-exit'))
+
+        # signal stream
+        self._signal_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_SIGNAL,
+                                           self.strategy.identifier, self.instrument.market_id)
+        self._signal_streamer.add_member(StreamMemberTradeSignal('signal'))
+
+        # alert stream
+        self._alert_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_ALERT,
+                                          self.strategy.identifier, self.instrument.market_id)
+        self._alert_streamer.add_member(StreamMemberStrategyAlert('alert'))
+        self._alert_streamer.add_member(StreamMemberStrategyAlertCreate('add-alert'))
+        self._alert_streamer.add_member(StreamMemberStrategyAlertRemove('rm-alert'))
+
+        # region stream
+        self._region_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_REGION,
+                                           self.strategy.identifier, self.instrument.market_id)
+        self._region_streamer.add_member(StreamMemberStrategyRegion('region'))
+        self._region_streamer.add_member(StreamMemberStrategyRegionCreate('add-region'))
+        self._region_streamer.add_member(StreamMemberStrategyRegionRemove('rm-region'))
+
+    def stream(self):
+        # only once per compute frame
+        with self._mutex:
+            if self._global_streamer:
+                self._global_streamer.publish()
 
     def stream_trade_update(self, timestamp: float, trade: StrategyTrade):
         if self._trade_update_streamer:

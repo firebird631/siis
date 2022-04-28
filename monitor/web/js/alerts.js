@@ -1,3 +1,10 @@
+/**
+ * @date 2020-01-24
+ * @author Frederic Scherma, All rights reserved without prejudices.
+ * @license Copyright (c) 2020 Dream Overflow
+ * Web trader alerts handler.
+ */
+
 // @todo add price cross alert dialog
 
 function on_strategy_signal_alert(market_id, alert_id, timestamp, alert, do_notify=true) {

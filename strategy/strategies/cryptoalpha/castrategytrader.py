@@ -50,7 +50,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # mean when there is already a position on the same direction does not increase in the
         # same direction if 0 or increase at max N times
-        self.max_trades = params['max-trades']
+        self._max_trades = params['max-trades']
         self.trade_delay = params['trade-delay']
 
         self.min_price = params['min-price']

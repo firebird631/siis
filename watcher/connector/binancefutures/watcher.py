@@ -657,8 +657,15 @@ class BinanceFuturesWatcher(Watcher):
         if not symbol:
             return
 
-        bid = float(data['b'])  # B for qty
-        ask = float(data['a'])  # A for qty
+        if 'b' in data:
+            bid = float(data['b'])  # B for qty
+        else:
+            bid = None
+
+        if 'a' in data:
+            ask = float(data['a'])  # A for qty
+        else:
+            ask = None
 
         market_data = (symbol, True, None, bid, ask, None, None, None, None, None)
         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)

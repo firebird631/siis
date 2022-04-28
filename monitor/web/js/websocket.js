@@ -1,3 +1,10 @@
+/**
+ * @date 2020-01-24
+ * @author Frederic Scherma, All rights reserved without prejudices.
+ * @license Copyright (c) 2020 Dream Overflow
+ * Web trader websocket handler.
+ */
+
 const STREAM_UNDEFINED = 0;
 const STREAM_GENERAL = 1;
 const STREAM_TRADER = 2;
@@ -9,6 +16,16 @@ const STREAM_STRATEGY_ALERT = 7;
 const STREAM_STRATEGY_SIGNAL = 8;
 const STREAM_WATCHER = 9;
 const STREAM_STRATEGY_REGION = 10;
+
+const TRADE_MODE_NONE = 0;
+const TRADE_MODE_SIGNAL = 1;
+const TRADE_MODE_TRADE = 2;
+
+const TRADE_QUANTITY_NORMAL = 0;
+const TRADE_QUANTITY_SPECIFIC = 1;
+const TRADE_QUANTITY_REINVEST_MAX_LAST = 2;
+const TRADE_QUANTITY_INC_STEP = 3;
+const TRADE_QUANTITY_MANAGED = 4;
 
 function read_value(data) {
     if (data.t == "b") {
@@ -200,8 +217,40 @@ function on_ws_message(data) {
         // @todo
 
     } else if (data.c == STREAM_STRATEGY_INFO) {
-        // strategy trader performance
-        // @todo
+        // strategy trader info
+        let value = read_value(data);
+
+        if (data.n == 'activity') {
+            if (data.t == 'b') {
+                on_strategy_trader_activity(data.s, value);
+            }
+
+        } else if (data.n == 'affinity') {
+            if (data.t == 'i') {
+                on_strategy_trader_affinity(data.s, value);
+            }
+
+        } else if (data.n == 'max-trades') {
+            if (data.t == 'i') {
+                on_strategy_trader_max_trades(data.s, value);
+            }
+
+        } else if (data.n == 'trade-mode') {
+            if (data.t == 'i') {
+                on_strategy_trader_instrument_trade_mode(data.s, value);
+            }
+
+        } else if (value && data.n == 'trade-quantity') {
+            if (data.t == 'f') {
+                // quantity value (default or quote to base)
+                on_strategy_trader_instrument_trade_quantity(data.s, value);
+            }
+
+        } else if (data.n == 'context') {
+            if (data.t == 'd') {
+                on_strategy_trader_profile(data.s, value.id, value);
+            }
+        }
 
     } else if (data.c == STREAM_STRATEGY_TRADE) {
         // strategy trader trade
