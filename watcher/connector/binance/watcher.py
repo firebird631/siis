@@ -163,11 +163,12 @@ class BinanceWatcher(Watcher):
                                     callback=self.__on_ticker_data
                                 )
 
-                                self._connector.ws.subscribe_public(
-                                    subscription='bookTicker',
-                                    pair=pairs,
-                                    callback=self.__on_book_ticker_data
-                                )
+                                # ticker data gives best bid and ask price
+                                # self._connector.ws.subscribe_public(
+                                #     subscription='bookTicker',
+                                #     pair=pairs,
+                                #     callback=self.__on_book_ticker_data
+                                # )
 
                                 self._connector.ws.subscribe_public(
                                     subscription='aggTrade',
@@ -355,11 +356,12 @@ class BinanceWatcher(Watcher):
                     callback=self.__on_ticker_data
                 )
 
-                self._connector.ws.subscribe_public(
-                    subscription='bookTicker',
-                    pair=[symbol],
-                    callback=self.__on_book_ticker_data
-                )
+                # ticker data gives best bid and ask price
+                # self._connector.ws.subscribe_public(
+                #     subscription='bookTicker',
+                #     pair=[symbol],
+                #     callback=self.__on_book_ticker_data
+                # )
 
                 # not used : ohlc (1m, 5m, 1h), prefer rebuild ourselves using aggregated trades
                 # kline_data = ['{}@kline_{}'.format(symbol, '1m')]  # '5m' '1h'...
@@ -589,6 +591,10 @@ class BinanceWatcher(Watcher):
         if type(data) is not dict:
             return
 
+        event_type = data.get('e', "")
+        if event_type != 'ticker':
+            return
+
         symbol = data.get('s')
         if not symbol:
             return
@@ -600,8 +606,8 @@ class BinanceWatcher(Watcher):
 
             last_update_time = data['C'] * 0.001
 
-            bid = float(data['b'])
-            ask = float(data['a'])
+            bid = float(data['b']) if data.get('b') else None
+            ask = float(data['a']) if data.get('a') else None
 
             vol24_base = float(data['v']) if data['v'] else 0.0
             vol24_quote = float(data['q']) if data['q'] else 0.0
@@ -647,8 +653,9 @@ class BinanceWatcher(Watcher):
 
                 last_update_time = ticker['C'] * 0.001
 
-                bid = float(ticker['b'])
-                ask = float(ticker['a'])
+                # here we have best bid and ask price
+                bid = float(ticker['b']) if ticker.get('b') else None
+                ask = float(ticker['a']) if ticker.get('a') else None
 
                 vol24_base = float(ticker['v']) if ticker['v'] else 0.0
                 vol24_quote = float(ticker['q']) if ticker['q'] else 0.0
@@ -675,15 +682,20 @@ class BinanceWatcher(Watcher):
         if type(data) is not dict:
             return
 
+        event_type = data.get('e', "")
+        if event_type != 'bookTicker':
+            return
+
         # market data instrument by symbol
         symbol = data.get('s')
         if not symbol:
             return
 
-        bid = float(data['b'])  # B for qty
-        ask = float(data['a'])  # A for qty
+        # not available in futures but only for spot
+        bid = float(data['b']) if data.get('b') else None  # B for qty
+        ask = float(data['a']) if data.get('a') else None  # A for qty
 
-        market_data = (symbol, True, None, bid, ask, None, None, None, None, None)
+        market_data = (symbol, None, None, bid, ask, None, None, None, None, None)
         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def __on_multiplex_data(self, data):
@@ -715,57 +727,73 @@ class BinanceWatcher(Watcher):
         if 'data' in data:
             data = data['data']
 
-        # @todo using binance.DepthCache
-        return
+        event_type = data.get('e', "")
+        if event_type != 'depthUpdate':
+            return
 
-        if data['e'] == 'depthUpdate':
-            symbol = data.get('s')
+        symbol = data.get('s')
+        if not symbol:
+            return
 
-            if not symbol:
-                return
+        # get bid/ask for market update from depth book
+        last_update_time = data['T'] * 0.001
 
-            if symbol not in self._depths:
-                # initial snapshot of the order book from REST API
-                initial = self._connector.client.get_order_book(symbol=symbol, limit=100)
+        if 'b' in data and data['b']:
+            bid = float(data['b'][0][0])  # B for qty
+        else:
+            bid = None
 
-                bids = {}
-                asks = {}
+        if 'a' in data and data['a']:
+            ask = float(data['a'][0][0])  # A for qty
+        else:
+            ask = None
 
-                for bid in initial['bids']:
-                    bids[bid[0]] = bid[1]
+        market_data = (symbol, last_update_time > 0, last_update_time, bid, ask, None, None, None, None, None)
+        self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
-                for ask in initial['asks']:
-                    asks[ask[0]] = ask[1]
-
-                self._depths[symbol] = [initial.get('lastUpdateId', 0), bids, asks]
-
-            depth = self._depths[symbol]
-
-            # The first processed should have U <= lastUpdateId+1 AND u >= lastUpdateId+1
-            if data['u'] <= depth[0] or data['U'] >= depth[0]:
-                # drop event if older than the last snapshot
-                return
-
-            if data['U'] != depth[0] + 1:
-                logger.warning("Watcher %s, there is a gap into depth data for symbol %s" % (self._name, symbol))
-
-            for bid in data['b']:
-                # if data['U'] <= depth[0]+1 and data['u'] >= depth[0]+1:
-                if bid[1] == 0:
-                    del depth[1][bid[0]]  # remove at price
-                else:
-                    depth[2][bid[0]] = bid[1]  # price : volume
-
-            for ask in data['a']:
-                if ask[1] == 0:
-                    del depth[2][ask[0]]
-                else:
-                    depth[2][ask[0]] = ask[1]
-
-            # last processed id, next must be +1
-            depth[0] = data['u']
-
-            # self.service.notify(Signal.SIGNAL_ORDER_BOOK, self.name, (symbol, depth[1], depth[2]))
+        # # @todo using binance.DepthCache
+        # if symbol not in self._depths:
+        #     # initial snapshot of the order book from REST API
+        #     initial = self._connector.client.get_order_book(symbol=symbol, limit=100)
+        #
+        #     bids = {}
+        #     asks = {}
+        #
+        #     for bid in initial['bids']:
+        #         bids[bid[0]] = bid[1]
+        #
+        #     for ask in initial['asks']:
+        #         asks[ask[0]] = ask[1]
+        #
+        #     self._depths[symbol] = [initial.get('lastUpdateId', 0), bids, asks]
+        #
+        # depth = self._depths[symbol]
+        #
+        # # The first processed should have U <= lastUpdateId+1 AND u >= lastUpdateId+1
+        # if data['u'] <= depth[0] or data['U'] >= depth[0]:
+        #     # drop event if older than the last snapshot
+        #     return
+        #
+        # if data['U'] != depth[0] + 1:
+        #     logger.warning("Watcher %s, there is a gap into depth data for symbol %s" % (self._name, symbol))
+        #
+        # for bid in data['b']:
+        #     # if data['U'] <= depth[0]+1 and data['u'] >= depth[0]+1:
+        #     if bid[1] == 0:
+        #         del depth[1][bid[0]]  # remove at price
+        #     else:
+        #         depth[2][bid[0]] = bid[1]  # price : volume
+        #
+        # for ask in data['a']:
+        #     if ask[1] == 0:
+        #         del depth[2][ask[0]]
+        #     else:
+        #         depth[2][ask[0]] = ask[1]
+        #
+        # # last processed id, next must be +1
+        # depth[0] = data['u']
+        #
+        # # self.service.notify(Signal.SIGNAL_ORDER_BOOK, self.name, (symbol, depth[1], depth[2]))
 
     def __on_trade_data(self, data):
         if type(data) is not dict:

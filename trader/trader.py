@@ -611,12 +611,12 @@ class Trader(Runnable):
     def receiver(self, signal: Signal):
         if signal.source == Signal.SOURCE_WATCHER:
             if signal.source_name != self._name:
-                # only interested by the watcher of the same name
+                # only interested in the watcher of the same name
                 return
 
             if signal.signal_type in (Signal.SIGNAL_MARKET_DATA, Signal.SIGNAL_TICK_DATA):
                 if not signal.data[0] in self._markets:
-                    # not interested by this instrument/symbol
+                    # not interested in this instrument/symbol
                     return
 
                 if len(self._signals) > Trader.MAX_SIGNALS:
@@ -637,9 +637,9 @@ class Trader(Runnable):
             self._signals.append(signal)
 
         elif signal.source == Signal.SOURCE_TRADER:
-            # in fact it comes from the DB service but request in self trader name
+            # in fact, it comes from the DB service but request in self trader name
             if signal.signal_type not in (Signal.SIGNAL_ASSET_DATA, Signal.SIGNAL_ASSET_DATA_BULK):
-                # non interested by others signals
+                # non interested in others signals
                 return 
 
             # signal of interest

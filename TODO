@@ -49,17 +49,15 @@ Sum order :
 
 #103 WebTrader
     - HTTP :
-        - POST/GET strategy-trader affinity
-        - POST/GET strategy-trader trade-mode
-        - POST/GET strategy-trader instrument trade-mode
-        - POST/GET strategy-trader instrument quantity (if no reinvest handler)
+        - POST/GET reinvest-gain handler
+        - POST/GET dca handler
     - WS :
-        - wt-read strategy-trader state play/pause
-        - wt-read strategy-trader affinity
-        - notify/wt-read strategy-trader trade-mode
-        - notify/wt-read strategy-trader instrument trade-mode
-        - notify/wt-read strategy-trader instrument quantity (if no reinvest handler)
+        - notify/wt-read strategy-trader context data
         - notify/wt-read strategy-trader regions hit
+    - display dialog detail with :
+        - read/modify affinity
+        - read/modify max-trade
+        - read/modify contexts
     - charting :
         - charting OHLC et ticks (streaming) + performance
         - goto charting historique sur un trade passé

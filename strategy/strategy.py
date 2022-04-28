@@ -1337,7 +1337,7 @@ class Strategy(Runnable):
         if signal.source == Signal.SOURCE_STRATEGY:
             if signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                 if signal.data[0] not in self._strategy_traders:
-                    # not interested by this instrument/symbol
+                    # not interested in this instrument/symbol
                     return
 
                 # any others are a signal of interest
@@ -1361,7 +1361,7 @@ class Strategy(Runnable):
 
         elif signal.source == Signal.SOURCE_WATCHER:
             if signal.source_name not in self._watchers_conf:
-                # not interested by this watcher
+                # not interested in this watcher
                 return
 
             # filter by instrument for tick data
@@ -1371,7 +1371,7 @@ class Strategy(Runnable):
                     return
 
                 if signal.data[0] not in self._strategy_traders:
-                    # non interested by this instrument/symbol
+                    # non interested in this instrument/symbol
                     return
 
             elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA:
@@ -1380,23 +1380,23 @@ class Strategy(Runnable):
                     return
 
                 if signal.data[0] not in self._strategy_traders:
-                    # non interested by this instrument/symbol
+                    # non interested in this instrument/symbol
                     return
 
             # filter by instrument for buy/sell signal
             elif signal.signal_type == Signal.SIGNAL_BUY_SELL_ORDER:
                 if signal.data[0] not in self._strategy_traders:
-                    # non interested by this instrument/symbol
+                    # non interested in this instrument/symbol
                     return
 
             elif signal.signal_type == Signal.SIGNAL_MARKET_DATA:
                 if signal.data[0] not in self._strategy_traders:
-                    # non interested by this instrument/symbol
+                    # non interested in this instrument/symbol
                     return
 
             elif signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
                 if signal.data[0] not in self._strategy_traders:
-                    # non interested by this instrument/symbol
+                    # non interested in this instrument/symbol
                     return
 
             # if len(self._signals) > Strategy.MAX_SIGNALS:
