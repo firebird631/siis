@@ -198,7 +198,7 @@ class StrategyInfoRestAPI(resource.Resource):
         for market_id in instruments_ids:
             instr = self._strategy_service.strategy().instrument(market_id)
 
-            strategy_trader = self._strategy_service.strategy.strategy_traders.get(market_id)
+            strategy_trader = self._strategy_service.strategy().strategy_traders.get(market_id)
             if strategy_trader is None:
                 continue
 
@@ -336,8 +336,8 @@ class InstrumentRestAPI(resource.Resource):
 
         # @todo get state info quantity, context/profile
 
-        with self._strategy_service.strategy.mutex:
-            strategy_trader = self._strategy_service.strategy.strategy_traders.get(market_id)
+        with self._strategy_service.strategy().mutex:
+            strategy_trader = self._strategy_service.strategy().strategy_traders.get(market_id)
             if strategy_trader is None:
                 return NoResource("Unknown market-id %s" % market_id)
 
@@ -438,7 +438,7 @@ class StrategyTradeRestAPI(resource.Resource):
 
         if trade_id > 0:
             with self._strategy_service.strategy.mutex:
-                strategy_trader = self._strategy_service.strategy.strategy_traders.get(market_id)
+                strategy_trader = self._strategy_service.strategy().strategy_traders.get(market_id)
                 if strategy_trader is None:
                     return NoResource("Unknown market-id %s" % market_id)
 
