@@ -608,7 +608,7 @@ class BinanceFuturesWatcher(Watcher):
             return
 
         event_type = data.get('e', "")
-        if event_type != 'ticker':
+        if event_type != '24hrTicker':
             return
 
         symbol = data.get('s')
@@ -626,8 +626,8 @@ class BinanceFuturesWatcher(Watcher):
             bid = None
             ask = None
 
-            vol24_base = float(data['v']) if data['v'] else 0.0
-            vol24_quote = float(data['q']) if data['q'] else 0.0
+            vol24_base = float(data['v']) if data.get('v') else 0.0
+            vol24_quote = float(data['q']) if data.get('q') else 0.0
 
             market_data = (symbol, last_update_time > 0, last_update_time, bid, ask,
                            None, None, None, vol24_base, vol24_quote)

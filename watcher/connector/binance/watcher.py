@@ -592,7 +592,7 @@ class BinanceWatcher(Watcher):
             return
 
         event_type = data.get('e', "")
-        if event_type != 'ticker':
+        if event_type != '24hrTicker':
             return
 
         symbol = data.get('s')
