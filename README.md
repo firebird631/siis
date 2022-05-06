@@ -111,7 +111,7 @@ Features
   * Uses TamperMonkey with Javascript
   * Watch the strategy trade last
 * Manually add per trade directives
-    * One or many stop-loss operation (trigger level + new stop price)
+    * One or many step stop-loss operation (trigger level + new stop price)
 * Manually add per market some regions of interest to help the bot filtering signals
     * Define a region for trade entry | exit | both in long | short | both direction
     * Strategy can filter signal to only be processed in your regions of interest
@@ -217,7 +217,7 @@ The first line of comment in these files describe a possible way to install them
 
 ##### TimescaleDB #####
 
-The following step is not required at this time.
+The next step is not required at this time.
 
 ###### Debian or Ubuntu ######
 
@@ -341,7 +341,7 @@ Excepted for the tools (fetch, binarize, optimize, rebuild, sync, export, import
 There are different running mode, the normal mode, will start the watching, trading capacity (paper-mode, live or backtesting) and offering an interactive terminal session,
 or you can run the specifics tools (fetcher, binarizer, optimizer, syncer, rebuilder...).
 
-[More information about the different tools.](doc/tools/)
+[More information about the different tools.](doc/tools)
 
 Fetcher : importing some historical market data
 -----------------------------------------------
@@ -398,14 +398,14 @@ In the scripts/ directory there is some examples of how you can fetch your data 
 
 Take care than some brokers have limitations. For example IG will limit to 10000 candles per week. This limit is easy to reach.
 Some other like BitMex limit to 30 queries per second in non auth mode or 60 in auth mode.
-Concretely thats mean get months of data of trades could take more than a day.
+Concretely that mean get months of data of trades could take more than a day.
 
 [More information about the fetching process and the different fetchers.](doc/fetching.md)
 
 Backtesting
 -----------
 
-Lets start with an example :
+Let's start with an example :
 
 ```
 python siis.py real --profile=my-backtest1 --backtest --from=2017-08-01T00:00:00 --to=2017-12-31T23:59:59 --timestep=15
@@ -438,8 +438,8 @@ and then 60 mean 1 minute of simulation per second.
 
 [More information about the backtesting processing and advanced usages.](doc/backtesting.md)
 
-How to create or modify a strategy
-----------------------------------
+How to create or modify an existing strategy
+--------------------------------------------
 
 [A guide explaining how to create, modify and configure a strategy.](doc/strategy.md)
 

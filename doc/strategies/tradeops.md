@@ -6,7 +6,6 @@ There is specifics commands explained in [doc/cli.md](/doc/cli.md) to create or 
 
 ...
 
-
-## Dynamic Stop Loss ##
+## Step Stop Loss ##
 
 ... 

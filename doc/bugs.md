@@ -1,5 +1,6 @@
-Troubles
-========
+# Troubles #
+
+## Issues ##
 
 **TA-lib is not found** : look you have installed it, and maybe you have to export your LD_LIBRARY_PATH.
 
@@ -34,3 +35,12 @@ it's annoying for live paper-mode and for backtesting. Similar issues could appe
 Maybe I will plan to have only percent P/L, where the paper-trader will accept any trades.
 
 Please understand than I develop this project during my free time, and for free, only your donations could help me.
+
+## Known bugs ##
+
+...
+
+
+## Issues during installation ##
+
+...

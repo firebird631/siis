@@ -9,8 +9,7 @@ or temporal results buy with a different structure than the inputs.
 
 ...
 
-
-## List ##
+## Implemented indicators ##
 
 ### Price ###
 
@@ -98,7 +97,6 @@ Most common and simple indicator, the smoothed moving average.
 
 ...
 
-
 ### ATR based Support/resistance detection ###
 
 ...
@@ -110,7 +108,6 @@ Most common and simple indicator, the smoothed moving average.
 ### ZigZag based detection ###
 
 ...
-
 
 ## Creating an indicator ##
 
