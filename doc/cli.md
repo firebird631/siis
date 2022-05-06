@@ -10,103 +10,94 @@ python siis.py <identity> [--help, --options...]
 
 [Those options are explained into the general README.md.](/README.md)
 
-
 ## Program terminal instance ##
 
 Once started you could leave using the command ":q"\<enter-key>.
 
-There is a default mode, with some keys are bound to some fonctions, lower case and upper case letters, and digits,
+There is a default mode, with some keys are bound to some functions, lower case and upper case letters, and digits,
 plus the arrows, shift arrows, and special case for the hjkl keys.
 
-The command mode begin when you tip a semicolumn ":" character.
-
+The command mode begin when you tip a semicolon ":" character.
 
 ### Default mode ###
 
-Global fonctions are accessible through direct keys :
+Global functions are accessible through direct keys :
 * changing the active view
 * clearing the console or signal or debug view content
 * toggle on the desktop notifier (popup and audio alerts)
 * global state
 
-
 ### Command mode ###
 
-More specifics functions are obtained using the commande mode :
+More specifics functions are obtained using the command mode :
 * appliance management (only of what is possible to modify)
 * trader info, control and strategy info, control
 * trade info and trade operations
-* region mangement and region info
+* region management and region info
 * charting
 * aliases
 
-
 ### Views ###
 
-There is differents views, accessibles using actions keys.
-On a view you can using the page-up and page-down keys to scroll per page,
+There are different views, accessible using actions keys.
+On a view you can use the page-up and page-down keys to scroll per page,
 or using a Shift+(Arrow-key) (left and right scroll by 1 column, up and down by 1 row).
 
 The Shift+Page-Up and Shift+Page-Down allow to change the displayed strategy appliance.
 
 The h,j,k and l key in default modes acts like the Shift+(Arrow-key). Some SSH client does not
-correctly map Shit+(Arrow-key), then its a usefull alternative.
+correctly map Shit+(Arrow-key), then it is a useful alternative.
 
 There are multiples regions :
 
 ![View regions](/doc/img/viewareas1.png)
 
-
 #### Content region ###
 
-The 4 rows area in the bottom of the screen, upside of the notifier and the command line,
+The 4 rows area at the bottom of the screen, upside of the notifier and the command line,
 defined the content message view.
 
 All important message goes here, like a disconnection, or a major error.
 
-
 #### Right pane ####
 
 Unused, but reserved for later usage, like to display the order book.
-
+It is disabled for now.
 
 #### Console view ####
 
 This is the initially displayed view, accessible through the Shift+I shortcut.
 All logged message goes to this view, you can scroll using shift+arrow and page-up/down keys.
 
-By default it always auto-scroll to the last message.
+By default, it always auto-scroll to the last message.
 
 Errors, warning, message, results of an interactive command goes here.
 
 You can clear its content using Shift+C shortcut.
 
-
 #### Debug view ####
 
-This is where the developper debug message goes, accessible through the Shift+D shortcut.
+This is where the developer debug message goes, accessible through the Shift+D shortcut.
 All logged message goes to this view, you can scroll using shift+arrow and page-up/down keys.
 
-By default it always auto-scroll to the last message.
+By default, it always auto-scroll to the last message.
 
-This is a special view, normally only using on developpment stage of a strategy.
+This is a special view, normally only using on development stage of a strategy.
 
 You can clear its content using Shift+C shortcut.
-
 
 #### Signal view ####
 
 This is where the generated strategies/appliances signals goes, accessible through the Shift+N shortcut.
 
-* Generated signal or trade are catched by this view, the last 200 only are visibles.
+* Generated signal or trade are caught by this view, the last 200 only are visible.
 * Each signal has a hash color
 * The order is from oldest to the most recent
-* The comma key ',' allow to group signal entry and exit
+* The comma key ',' allow grouping signal entry and exit
 
 ![Signals view](/doc/img/signalsview1.png)
 
 ...
-
 
 #### Markets view ####
 
@@ -116,7 +107,6 @@ This display the status and details of the markets, accessible through the Shift
 
 ...
 
-
 #### Tickers view ####
 
 This display tickers of the markets, accessible through the Shift+T shortcut.
@@ -124,7 +114,6 @@ This display tickers of the markets, accessible through the Shift+T shortcut.
 ![Tickers view](/doc/img/tickersview1.png)
 
 ...
-
 
 #### Account view ####
 
@@ -134,7 +123,6 @@ This display accounts details like balance, margins, unrealized P/L are visibles
 
 ...
 
-
 #### Asset view ####
 
 This display assets balances, free, locked, total, unrealized P/L are visibles, accessible through the Shift+Q shortcut.
@@ -142,7 +130,6 @@ This display assets balances, free, locked, total, unrealized P/L are visibles, 
 ![Assets view](/doc/img/accountsview1.png)
 
 ...
-
 
 #### Active trades view ####
 
@@ -154,7 +141,6 @@ The current displayed strategy/appliance can be switched using the Shift+Page-Up
 
 ...
 
-
 #### History trades view ####
 
 This display history of realized trades for the current strategy, accessible through the Shift+S shortcut.
@@ -165,17 +151,15 @@ The current displayed strategy/appliance can be switched using the Shift+Page-Up
 
 ...
 
-
 #### Performance/resume view ####
 
-This display sums of the differents trades per market and the total for the current strategy, accessible through the Shift+P shortcut.
+This display sums of the different trades per market and the total for the current strategy, accessible through the Shift+P shortcut.
 
 The current displayed strategy/appliance can be switched using the Shift+Page-Up/Page-Down shortcuts.
 
 ![Performances view](/doc/img/perfsview1.png)
 
 ...
-
 
 #### Order book view ####
 
@@ -187,7 +171,6 @@ The current displayed strategy/appliance can be switched using the Shift+Page-Up
 The current displayed market can be switched using the +/- shortcuts.
 
 ... to be implemented ...
-
 
 #### Strategy/appliance indicators/state view ####
 
