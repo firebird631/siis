@@ -74,7 +74,7 @@ def application(argv):
     fix_thread_set_name()
 
     # init terminal display
-    Terminal()
+    Terminal.inst()
 
     options = {
         'working-path': os.getcwd(),
@@ -92,7 +92,7 @@ def application(argv):
     # create initial siis data structure if necessary
     install(options)
 
-    siis_log = SiisLog(options, Terminal().inst().style())
+    siis_log = SiisLog(options, Terminal.inst().style())
     siis_logger = logging.getLogger('siis')
     traceback_logger = logging.getLogger('siis.traceback')
 
@@ -541,7 +541,7 @@ def application(argv):
     display_welcome()
 
     LOOP_SLEEP = 0.016  # in second
-    MAX_CMD_ALIVE = 15  # in second
+    MAX_CMD_ALIVE = 5   # in second
 
     running = True
 

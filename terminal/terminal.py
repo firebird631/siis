@@ -20,6 +20,9 @@ import logging
 error_logger = logging.getLogger('siis.error.terminal')
 
 
+terminal = None
+
+
 class Color(object):
 
     WHITE = '\033[0;0m'    # '\\0'
@@ -141,6 +144,7 @@ class View(object):
         self._name = name
         self._mode = mode
         self._active = active
+        self._update_timestamp = 0.0
 
         self._mutex = threading.RLock()
         self._content = []
@@ -233,6 +237,8 @@ class View(object):
                 self._content = []
 
             self._dirty = True
+            self._update_timestamp = time.time()
+
             self._win.erase()
 
     @property
@@ -324,6 +330,7 @@ class View(object):
         with self._mutex:
             try:
                 self._dirty = True
+                self._update_timestamp = time.time()
 
                 if self._win:
                     if self._mode == View.MODE_STREAM:
@@ -378,7 +385,7 @@ class View(object):
                             if self._active:
                                 if n >= self._first_row and n < self.height:
                                     if self._right_align:
-                                        # not perfect because count non color escapes
+                                        # not perfect because count non-color escapes
                                         rm = row.count('\\')
                                         x = max(0, self.width - len(row) - rm - 1)
                                     else:
@@ -416,7 +423,7 @@ class View(object):
         @todo Have to reshape any of the views and redraw the actives.
         """
         if self._parent_win:
-            # coef from previous parent size
+            # coefficient from previous parent size
             # hr = h / self._parent_size[0]
             # wr = w / self._parent_size[1]
 
@@ -450,11 +457,13 @@ class View(object):
             new_win = None
 
             try:
-                if 1:  # window:
-                    new_win = curses.newwin(*new_rect)
-                else:
-                    new_win = stdscr.subwin(*new_rect)
-                    # new_win = stdscr.subpad(*new_rect)
+                # if window:
+                #     new_win = curses.newwin(*new_rect)
+                # else:
+                #     new_win = stdscr.subwin(*new_rect)
+                #     # new_win = stdscr.subpad(*new_rect)
+                new_win = curses.newwin(*new_rect)
+
             except Exception as e:
                 error_logger.error(repr(e))
 
@@ -640,7 +649,7 @@ class View(object):
 
     # def draw_table(self, dataframe):
     #     """
-    #     Display a table with a header header and a body,
+    #     Display a table with a header and a body,
     #     """
     #     if not dataframe:
     #         return
@@ -679,7 +688,7 @@ class View(object):
 
     def draw_table(self, columns, data, total_size=None):
         """
-        Display a table with a header header and a body,
+        Display a table with a header and a body,
         """
         if not columns or data is None:
             return
@@ -703,7 +712,7 @@ class View(object):
         # data_arr = []
 
         # for d in data[self._table_first_row:self._table_first_row+num_rows]:
-        #     # ignore some columns and some rows
+        #     # ignore some columns and rows
         #     data_arr.append(d[self._table_first_col:])
 
         self._cur_table = total_size if total_size else (len(columns), len(data))
@@ -720,7 +729,7 @@ class View(object):
     def table_scroll_row(self, n):
         """
         Scroll n row (positive or negative) from current first row.
-        The max number of displayed row depend of the height of the view.
+        The max number of displayed row depend on the height of the view.
         """
         self._table_first_row += n
 
@@ -740,7 +749,7 @@ class View(object):
             self._table_first_col = 0
 
         if self._table_first_col >= self._cur_table[0]:
-            self._table_first_col = self._cur_table[0] -1
+            self._table_first_col = self._cur_table[0] - 1
 
     def format(self):
         return Terminal.inst().style(), self._table_first_row, self.height - 4, self._table_first_col
@@ -771,22 +780,25 @@ class Terminal(object):
     @classmethod
     def inst(cls):
         global terminal
+        if terminal is None:
+            terminal = Terminal()
+
         return terminal
 
     @classmethod
     def terminate(cls):
         global terminal
+        if terminal is None:
+            terminal = Terminal()
+
         # colorama.deinit()
 
-        if terminal:
+        if terminal is not None:
             terminal.restore_term()
             terminal.cleanup()
             terminal = None
 
     def __init__(self):
-        global terminal  # singleton
-        terminal = self
-
         self._mutex = threading.RLock()
 
         self._views = {
@@ -886,15 +898,21 @@ class Terminal(object):
         old_debug_content = self._views['debug']._content
 
         self._views = {
+            #
             # top
-            # top left 1 half row
+            #
+
+            # top-left 1 half row
             'info': View('info', View.MODE_BLOCK, self._stdscr, pos=(0, 0), size=(width//2, 1), active=True),
 
             # top right 1 half row
             'help': View('help', View.MODE_BLOCK, self._stdscr, pos=(width//2, 0), size=(width//2, 1),
                          active=True, right_align=True),
 
+            #
             # body
+            #
+
             # 1 row for a title/description, for main content
             'content-head': View('content-head', View.MODE_BLOCK, self._stdscr, pos=(0, 1), size=(w1, 1), active=True),
             # remain is body
@@ -911,7 +929,10 @@ class Terminal(object):
             # 'panel': View('panel', View.MODE_BLOCK, self._stdscr, pos=(0, 2), size=(w2, h1), active=True,
             #               border=True),
 
+            #
             # bottom
+            #
+
             # bottom 4 rows
             'default': View('default', View.MODE_STREAM, self._stdscr, pos=(0, height-6), size=(width, free_h),
                             active=True),
@@ -1257,6 +1278,11 @@ class Terminal(object):
                 _view.refresh()
 
     def update(self):
+        # clear status message after 5 seconds
+        if self._views.get('status')._content and (time.time() - self._views.get('status')._update_timestamp) > 5.0:
+            self._views.get('status').clear()
+
+        # reshape
         if self._query_reshape < 0 and time.time() > -self._query_reshape:
             self._query_reshape = 0.0
 

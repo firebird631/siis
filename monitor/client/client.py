@@ -72,7 +72,7 @@ def application(argv):
     fix_thread_set_name()
 
     # init terminal display
-    Terminal()
+    Terminal.inst()
 
     options = {
         'log-path': './user/log',

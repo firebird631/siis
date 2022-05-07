@@ -22,6 +22,15 @@ or with override of port :
 python siis.py real --profile=macd_usdt --monitor --monitor-port=6339
 ```
 
+Now you can open your favorite Web Browser with url :
+
+```
+http://127.0.0.1:6339
+```
+
+In the case of using bot locally. If you changed the default port or run multiple instance of SiiS you can change the port.
+If you execute the bot on a server, you have to replace 127.0.0.1 by the IP of your server.
+
 ## Sample of captures ##
 
 ### Performance ###
