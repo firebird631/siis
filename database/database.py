@@ -142,7 +142,7 @@ class Database(object):
         self._last_ohlc_flush = 0
         self._last_ohlc_clean = time.time()
 
-        self._markets_path = None   # path were data are stored into files (ticks, quotes, cached indicators)
+        self._markets_path = None   # path where data are stored into files (ticks, quotes, cached indicators)
 
         self._tick_storages = {}    # TickStorage per market
         self._pending_tick_insert = set()

@@ -166,10 +166,10 @@ def application(argv):
                     # do the initial OHLC fetch for watchers (syncer, watcher), default False
                     options['initial-fetch'] = True
                 elif arg == '--store-trade':
-                    # store trade/quote/tick during wather process (watcher), default False
+                    # store trade/quote/tick during watcher process (watcher), default False
                     options['store-trade'] = True
                 elif arg == '--store-ohlc' or arg == '--store-candle':
-                    # store OHLCs during wather process (watcher), default False
+                    # store OHLCs during watcher process (watcher), default False
                     options['store-ohlc'] = True
 
                 elif arg == '--backtest':

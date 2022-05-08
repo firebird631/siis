@@ -34,7 +34,7 @@ class OhlcStorage(object):
         - 1m to 5m older than 8 days
     """
 
-    DEFAULT_FLUSH_DELAY = 5*60  # every 5 mins
+    DEFAULT_FLUSH_DELAY = 5*60  # every 5 min
     MAX_PENDING_LEN = 500       # or 500 inserts
 
     # must be from lesser timeframe to higher

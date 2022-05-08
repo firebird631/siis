@@ -1,5 +1,5 @@
-SiiS Self Investor Income System
-================================
+SiiS : Self Investor Income System
+==================================
 
 Copyright (c) 2018-2022 Frédéric Scherma. All rights reserved.
 
@@ -15,6 +15,14 @@ Uses a PostgreSQL database. Can support MySQL (not officially tested).
 
 I have no commercials interests with trading platforms.
 
+Current supported version
+-------------------------
+
+The current supported version is 0.3.7 or greater, and release 467 or above.
+Older versions are no longer supported. Any forks are not supported.
+
+Thanks to you use this official repository.
+
 Terminal Trader presentation
 ----------------------------
 ![Intro image](doc/img/bt_dax_trades.png)
@@ -29,14 +37,13 @@ Features
 * Intended for Linux, but should work on Windows (c) or MacOSX (c)
 * Traditional and crypto-markets trading platforms are supported
     * [x] Binance Spot (no margin)
-    * [x] Binance Future
+    * [x] Binance Futures
     * [x] Bitmex
     * [x] IG CFD (forex, indices, commodities)
     * [x] Kraken Spot
     * [x] Kraken Margin (partial)
-    * [ ] Kraken Futures (planned)
 * Some others source of prices/volumes data fetchers
-    * [x] HistData (only to import manually downloaded files)
+    * [x] HistData (only to import downloaded files)
     * [ ] AlphaVantage (planned)
 * Fetching of OHLC history data in SQL database
 * Fetching of ticks or trades history data optimized files
@@ -91,8 +98,8 @@ Features
     * Ichimoku
     * SineWave
     * Pivot Point Supports/Resistances
-    * TomDemark TD9
-    * ...
+    * TomDemark TD9 ...
+    * [See strategy indicators for more details](doc/strategies/indicators.md)
 * Full automated trading or semi-automated trading
   * Notify and display signals to manually validate
 * External notifiers for signals, trading and status :
@@ -284,19 +291,19 @@ Configuration
 -------------
 
 The first running create a data structure on your local user.
-* /home/\<username\>/.siis on Linux based systems
-* C:\Users\\<username\>\AppData\Local\siis on Windows
-* /Users/\<username\>/.siis on MacOSX
+* **/home/\<username\>/.siis** on Linux based systems
+* **C:\Users\\<username\>\AppData\Local\siis** on Windows
+* **/Users/\<username\>/.siis** on MacOSX
 
 The directory will contain 4 subdirectories:
 
-* config/ contains important configurations files (described belows)
+* **config/** contains important configurations files (described belows)
   * [Explanations of the different configuration files](/doc/config.md)
-* log/ contains the log files
+* **log/** contains the log files
   * [Explanations of the different log files](/doc/logging.md)
-* markets/ contains the market data with subdirectories for each exchange
+* **markets/** contains the market data with subdirectories for each exchange
   * [Explanations of the markets data](/doc/dataset.md)
-* reports/ contains the reports of the strategies traders, and used by default for scripts executions results
+* **reports/** contains the reports of the strategies traders, and used by default for scripts executions results
   * Some strategy have the capacity to log trades, signals, performance and even more.
   * Some user script write files to disk by using this directory as default
 
@@ -307,33 +314,52 @@ Running
 python siis.py <identity> [--help, --options...]
 ```
 
+The identity name must be specified, and need to be configured into the _identities.json_ file.
+
 ### List of command line options ###
+
+#### General options ####
 
 * --help display command line help.
 * --version display the version number.
-* --profile=\<profile> Use a specific profile of appliance else default loads any.
+* --profile=\<profile\> Use a specific profile of appliance else default loads any.
 * --paper-mode instantiate paper mode trader and simulate as good as possible.
-* --backtest process a backtesting, uses paper mode traders and data history available in the database.
-* --timestep=\<seconds> Timestep in seconds to increment the backesting. More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal candles size uses in the backtested strategies. Default is 60 seconds.
-* --time-factor=\<factor> in backtesting mode only allow the user to change the time factor and permit interacting during the backtesting. Default speed factor is as fast as possible.
-* --from=<YYYY-MM-DDThh:mm:ss> define the date time from which start the backtesting, fetcher or binarizer. If omitted use whole data set (take care).
-* --to=<YYYY-MM-DDThh:mm:ss> define the date time to which stop the backtesting, fetcher or binarizer. If omitted use now.
-* --last=\<number> Fast last number of candles for every watched market (take care can take all requests credits on the broker).
-* --market=\<market-id> Specific market identifier to fetch, binarize only.
-* --broker=\<broker-name> Specific fetcher or watcher name to fetch or binarize market from.
-* --timeframe=\<timeframe> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in **1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1M, 1w**
-* --cascaded=\<max-timeframe> During fetch process generate the candles of highers timeframe from lowers. Default is no. Take care to have entire multiple to fulfill the generated candles.
-* --spec=\<specific-option> Specific fetcher option (example STOCK for alphavantage.co fetcher to fetch a stock market).
+* --backtest Process a backtesting, uses paper mode traders and data history available in the database.
+* --timestep=\<seconds\> Timestep in seconds to increment the backesting. More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal candles size uses in the backtested strategies. Default is 60 seconds.
+* --time-factor=\<factor\> in backtesting mode only allow the user to change the time factor and permit interacting during the backtesting. Default speed factor is as fast as possible.
+* --from=<YYYY-MM-DDThh:mm:ss\> define the date time from which start the backtesting, fetcher or binarizer. If omitted use whole data set (take care).
+* --to=<YYYY-MM-DDThh:mm:ss\> define the date time to which stop the backtesting, fetcher or binarizer. If omitted use now.
+* --last=\<number\> Fast last number of candles for every watched market (take care can take all requests credits on the broker).
+* --market=\<market-id\> Specific market identifier to fetch, binarize only.
+* --broker=\<broker-name\> Specific fetcher or watcher name to fetch or binarize market from.
+* --timeframe=\<timeframe\> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in **1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1M, 1w**
+* --cascaded=\<max-timeframe\> During fetch process generate the candles of highers timeframe from lowers. Default is no. Take care to have entire multiple to fulfill the generated candles.
+* --target=\<timeframe\> During fetch or rebuild process generate the candles of specified timeframe. Default is no. Take care to have entire multiple to fulfill the generated candles.
 * --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.
-* --read-only Don't write OHLCs candles data to the database. Default is writing to the database.
-* --fetch Process the data fetcher.
-* --install-market Used only with --fetch to only install the fake market data info to database without trying to fetch anything.
-* --binarize Process from text file to binary a conversion, for a market (text version of data could be removed on the future).
-* --rebuild Rebuild OHLC from the trades/ticks data for a market. Need to specify --broker, --market, --timeframe, --from and --to date, --cascaded
-* --optimize Check one or many market for trades/ticks or OHLCs, and returns data corruption or gaps (later could propose some fix). Need to specify --broker, --market, --timeframe, --from and --to date
-* --sync Synchronize the market data from the broker. Need to specify --broker and --market
-* --export Market data export tool, to use with --broker=, --market=, --from=, --to=, --timeframe= and --filename= arguments
-* --import Market data import tool from previous export, to use with --filename= argument
+* --store-trade To force write of trade or tick data during the execution of the bot (default not stored).
+* --store-ohlc To force write of OHLC (candles/klines) data during the execution of the bot (default not stored).
+* --initial-fetch or --prefetch Process the fetching of recent OHLCs when subscribing to a market. Default don't fetch.
+* --store-ohlc or --store-candle Write OHLCs to DB. Default not stored.")
+* --store-trade Write tick/trade/quote to filesystem. Default not stored.
+* --monitor Enable Web monitor HTTP socket and WebSocket. Default port is 8080.
+* --monitor-port Override the default or configured monitor HTTP port. Websocket port is monitor port+1. Default port is 8081.
+* --preprocess [WIP] Precompute some data before running the strategy.
+
+#### Related to tools ####
+
+* --verbose Used by some tools to display more information.
+* --fetch or --tool=fetcher Process the data fetcher. Can get markets details, trade/tick and OHLCs history.
+  * --install-market Used only with the fetcher tool, to install the fake market data info to database without trying to fetch anything from the exchange.
+  * --spec=\<specific-option\> Specific fetcher option (example STOCK for alphavantage.co fetcher to fetch a stock market).
+* --binarize or --tool=binarizer Convert data from text file format to binary format for a specific market.
+* --rebuild or --tool=rebuilder To rebuild OHLC from the trades/ticks data for a market. Need to specify --broker, --market, --timeframe, --from and --to date, --cascaded
+* --optimize or --tool=optimizer Check one or many market for trades/ticks or OHLCs, and returns data corruption or gaps (later could propose some fix). Need to specify --broker, --market, --timeframe, --from and --to date
+* --sync or --tool=syncer Synchronize the market data from the broker. Need to specify --broker and --market
+* --export or --tool=exporter Market data export tool, to use with --broker=, --market=, --from=, --to=, --timeframe= and --filename= arguments
+  * --filename Mandatory, Destination path or prefix for the filename
+* --import or --tool=importer Market data import tool from previous export, to use with --filename= argument
+* --clean or --tool=cleaner Remove some data format the database.
+* --statistics or --tool=statistics To export some statistics data to generate extra reports.
 
 You need to define the name of the identity to use. This is related to the name defined into the identity.json file.
 Excepted for the tools (fetch, binarize, optimize, rebuild, sync, export, import) the name of the profile to use --profile=\<profilename> must be specified.
@@ -346,59 +372,65 @@ or you can run the specifics tools (fetcher, binarizer, optimizer, syncer, rebui
 Fetcher : importing some historical market data
 -----------------------------------------------
 
-Fetching is for getting historical market data of OHLC, and also of trade/tick data.
-OHLC goes into the SQL database, trades/ticks data goes to binary files, organized into the markets/ directory.
+Fetching is the process of getting historical market data (details, OHLC, trade/tick).
+OHLC data goes into the SQL database, trades/ticks data goes to filesystem, organized into the _markets/_ directory.
 
-Starting by example will be more easy, so :
+Starting with an example will be more intuitive :
 
 ```
-python siis.py real --fetch --broker=binance.com --market=*USDT,*BTC --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=1w
+python siis.py real --tool=fetcher --broker=binance.com --market=*USDT,*BTC --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=1w
 ```
 
-This example will fetch any weekly OHLC of pairs based on USDT and BTC, from 2017-08-01 to 2019-08-31.
-Common timeframes are formed of number plus a letter (s for second, m for minute, h for hour, d for day, w for week, M for month).
-Here we want only the weekly OHLC, then --timeframe=1w.
+This example will fetch any weekly OHLCs for the markets pairs based on USDT and BTC, from 2017-08-01 to 2019-08-31.
+Common timeframes are formed of a number plus a letter (s for second, m for minute, h for hour, d for day, w for week, M for month).
+Here we want only the weekly OHLC, then **--timeframe=1w**.
 
-Defines the range of datetime using --from=\<datetime> and --to=\<datetime>.
+Defines the range of datetime using **--from=\<datetime\>** and **--to=\<datetime\>**.
 The format of the datetime is 4 digits year, 2 digits month, 2 digits day of month, a T separator (meaning time),
-2 digits hour, 2 digits minutes, 2 digits seconds. The datetime is interpreted as UTC.
+2 digits hour, 2 digits minutes, 2 digits seconds. The datetime is interpreted as UTC. It could be simplified by omitting some parts.
+You can omit seconds, minutes, hours, only specify the date part, a date without the day of month, 
+a date with only the year will start on first of january. 
 
-The optional option --cascaded=\<max-timeframe> will generate the higher multiple of OHLC until one of (1m, 5m, 15m, 1h, 4h, 1d, 1w).
-The non-multiple timeframe (like 3m, or 45m) are not generated with cascaded because of the nature of the implementation in cascade it's not possible.
-You have to use the rebuild command option to generate these OHLC from the direct sub-multiple.
+The optional option --cascaded=\<max-timeframe> will generate the higher multiple of OHLC until one of (1m, 5m, 15m, 1h, 4h, 1d, 1w, 1M).
+The non-multiple timeframe (like 3m, or 45m) are not generated with cascaded because of the nature of the implementation in cascade it is not possible.
+You have to use the rebuild command option to generate these OHLC from a sub-multiple.
 
-For example, this will fetch from 5m OHLC from the broker, and then generate 15m, 30m, 1h, 2h, 4h and 1d from them :
-
-```
-python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=5m --cascaded=1d
-```
-
-Market must be the unique market id of the broker, not the common usual name. The comma act as a separator. Wildcard * can be placed at the beginning of
-the market identifier. Negation ! can be placed at the beginning of the market identifier to avoid a specific market when a wildcard filter is also used.
-Example of --market=\*USDT,!BCHUSDT will fetch for any USDT based excepted for BCHUSDT
-
-If you need to only fetch the last n recent OHLCs, you can use the --last=\<number> option.
-
-The --spec optional option could be necessary for some fetchers, like with alphavantage.co where you have to specify the type of the market (--spec=STOCK).
-
-Getting trade/tick level imply to define --timeframe=t. 
+For example, this will fetch from 5m OHLC from exchange, and then generate 15m, 30m, 1h, 2h, 4h and 1d from them :
 
 ```
-python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=t
+python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08 --to=2019-08-31T23:59:59 --timeframe=5m --cascaded=1d
+```
+
+Market must be the unique market id of the broker, not the common usual name. The comma act as a separator. 
+A wildcard * can be placed at the beginning of the market identifier. A negation symbol ! can be placed at the beginning 
+of the market identifier to exclude a specific market when a wildcard filter is also used.
+Example of **--market=\*USDT,!BCHUSDT** will fetch for any USDT based except for BCHUSDT.
+
+If you need to only fetch the last n recent OHLCs, you can use the **--last=\<number\>** option.
+
+The **--spec** optional option could be necessary with some fetchers, like with alphavantage.co where you have to 
+specify the type of the market (--spec=STOCK).
+
+Getting trade/tick level data imply to define **--timeframe=t**. 
+
+```
+python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08 --to=2019-08-31T23:59:59 --timeframe=t
 ```
 
 You can set the --cascaded option even from tick/trade timeframe.
 For example a complete fetching from 1m to 1w :
 
 ```
-python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08-01T00:00:00 --to=2019-08-31T23:59:59 --timeframe=t --cascaded=1w
+python siis.py real --fetch --broker=binance.com --market=BTCUSDT --from=2017-08 --to=2019-08-31T23:59:59 --timeframe=t --cascaded=1w
 ```
 
-In the scripts/ directory there is some examples of how you can fetch your data using a bash script. Even these scripts could be added in a crontab entry.
+In the _scripts/_ directory there is some examples of how you can fetch your data using a bash script. 
+These scripts could be installed in a crontab.
 
-Take care than some brokers have limitations. For example IG will limit to 10000 candles per week. This limit is easy to reach.
-Some other like BitMex limit to 30 queries per second in non auth mode or 60 in auth mode.
-Concretely that mean get months of data of trades could take more than a day.
+Take care than some exchanges have limitations. For example IG will limit to 10 000 candles per week. 
+This limit is quickly reached. 
+Some others, like BitMex limit to 30 queries per second in non auth mode or 60 in auth mode. That mean get months of 
+data of trades could take more than a day.
 
 [More information about the fetching process and the different fetchers.](doc/fetching.md)
 
@@ -408,35 +440,38 @@ Backtesting
 Let's start with an example :
 
 ```
-python siis.py real --profile=my-backtest1 --backtest --from=2017-08-01T00:00:00 --to=2017-12-31T23:59:59 --timestep=15
+python siis.py real --profile=my-backtest1 --backtest --from=2017-08 --to=2017-12-31T23:59:59 --timestep=15
 ```
 
-Backtesting, like live and paper-mode need to know which profile to use. Let's define a profile file named my-backtest1.json in .siis/config/profiles/,
-and an appliance file that must be referred from the profile file.
+Backtesting, like live and paper-mode need to know which profile to use. Let's define a profile file named 
+_my-backtest1.json_ in our _.siis/config/profiles/_.
 
-The datetime range must be defined, --from and --to, and a timestep must be specified.
+The datetime range must be defined, **--from=** and **--to=**, and a **--timestep==** must be specified.
 This will be the minimal increment of time - in second - between two iterations.
-The lesser the timestep is the longer the computation will take, but if you have a strategy that work at the tick/trade level then the backtesting
-will be more accurate.
+The lesser the timestep is the longer the computation will take, but if you have a strategy that 
+works at the tick/trade level then the backtesting will be more accurate.
 
-The C++ version (WIP) have no performance issue (can run 1000x to 10000x faster than the Python version).
+A C++ version have no performance issue (can run 1000x faster than the Python version).
 
-Imagine your strategy works on close of 4h OHLC, you can run your backtesting with a --timestep=4h. Or imagine your strategy works on close of 5m, 
-but you want the exit of a trade be more reactive than 5m, because if the price move briefly in few seconds, then you'll probably have different results
-using a lesser timestep.
+Imagine your strategy works on close of 4h OHLC, you can run your backtesting with a --timestep=4h. 
+Else imagine your strategy works on close of 5m, but you want the exit of a trade be more reactive than 5m, 
+because if the price move briefly in few seconds, then you'll probably have different results using a lesser timestep.
 
-Ideally a timestep of 0.1 will give accurate results, but the computations will take many hours. Some optimizations to only recompute the only last value
-for indicators will probably give a bit a performance, but the main problem rest the nature of the Python, without C/C++ submodules I have no idea
-how to optimize it : GIL is slow, Python list and slicing are slow, even a simple loop take a lot of time compared to C/C++.
+Ideally a timestep of 0.1 second will give accurate results, but the computations could take many hours, depending on
+what your strategy compute internally. 
+Some optimizations to only recompute the only last value for indicators will probably give a bit a performance, 
+but the main problem rest the nature of the Python.  Without optimized C or C++ submodules I have no idea how to 
+optimize it : GIL is slow, Python list and slicing are slow, even a simple loop take a lot of time compared to C/C++.
 
-Originally I've developed this backtesting feature to be focused to replay multiples markets, on a virtual account, not only oriented to backtest the raw
-performance of the strategy.
+Originally I've developed this backtesting feature to be focused to replay multiples markets, on a virtual account, 
+not only oriented to backtest the raw performance of the strategy.
 
-Adding the --time-factor=\<factor> will add a supplementary delay during the backtesting. The idea is if you want to replay a recent period,
-and have the time to interact manually, like replaying a semi-automated day of scalping. The factor is a multiple of the time : 1 meaning real-time,
-and then 60 mean 1 minute of simulation per second.
+Adding the **--time-factor=\<factor\>** will add a supplementary delay during each iteration of the backtesting. 
+The idea is if you want to replay a recent period, and have the time to interact manually, like replaying a 
+semi-automated day of scalping. The factor is a multiple of the time : 1 meaning real-time, then 60 mean 1 minute of 
+simulation per second.
 
-[More information about the backtesting processing and advanced usages.](doc/backtesting.md)
+[More information about backtesting and its advanced usage.](doc/backtesting.md)
 
 How to create or modify an existing strategy
 --------------------------------------------
@@ -446,10 +481,11 @@ How to create or modify an existing strategy
 The winning strategy
 --------------------
 
-Understand the given strategies acts here as examples, you can use them, can work on some patterns, cannot work
-on some others. Considers doing your owns, or to use SiiS as a trading monitor with improved trade following,
-dynamic stop-loss, take-profit. Some fixes could be needed for the current strategies, it serves as a labs, I will not
-publish my always winning unicorn strategy ^^.
+Understand the given strategies acts here as examples, you can use them, can work on some patterns, 
+cannot work on some others. Considers doing your owns, or to use SiiS as a trading monitor with improved trade following,
+dynamic stop-loss, take-profit. Some fixes could be needed for the current strategies, it serves as a labs.
+
+I will publish some other of my strategies into distinct repositories.
 
 Paper-mode
 ----------
@@ -524,49 +560,7 @@ Web trader / Web Application
 About data storage
 ------------------
 
-The tick or trade data (price, volume) are stored during the running or when fetching data at the tick timeframe.
-The OHLC data are stored in the SQL database. By default, any candles from 1m to 1w are stored and kept indefinitely.
-The databases.json file defines an option "auto-cleanup", by default to false, if set to true it will clean up each 4 hours
-the last OHLCs like :
-
-* Weekly, daily, 4h and 3h OHLC are always kept
-* 2h, 1h and 45m OHLC are kept for 90 days
-* 30m, 15m, 10m are kept for 21 days
-* 5m, 3m, 1m are kept for 8 days
-* 1s, 10s, 15s, 30s are never kept
-
-I will probably do more options in **databases.json** in way to configure the max kept OHLC for each timeframe,
-and create a special db-cleanup running mode that will only process the db-cleanup for the live servers.
-
-There is no interest for live mode to kept to many past for low timeframe, but it's necessary to keep them for
-the backtesting.
-
-You can use the rebuild command to rebuild missing OHLCs from sub-multiple or from ticks/trades data.
-
-It is possible to set up your own crontab with an SQL script the clean as your way.
-
-The strategy call the watchers to prefetch the last recent OHLC for the timeframes.
-The default value if 100 OHLCs (Binance, Bitmex, Kraken) but this could be a problem with IG because of the 10k sample
-history limit per week then for now I don't prefetch more than 1 or 2 OHLCs per timeframe for IG.
-
-For convenience, I've made some bash scripts to frequently fetch OHLC, and some others script (look at the scripts/ directory for examples)
-that I run just before starting a live instance to make a prefetching (only the last N candles).
-
-About the file containing the ticks, there is bad effect of that design. The good effect is the high performance, but because of Python
-performance this is not very impressive, but the C++ version could read millions of tick per seconds, its more performant than any
-timestamp based DB engine. So the bad side is that I've chosen to have 1 file per month (per market), and the problem is about temporal consistency
-of the data. I don't make any check of the timestamp before appending, then fetching could append to a file containing some more recent data,
-and maybe with some gaps.
-
-You can use the optimize command option to check your data, for trades/ticks and for any OHLC timeframes.
-
-Trades/ticks are by default not stored from watcher running, but excepted for IG, because it's not possible to get back history from their API.
-The problem is if you don't let an instance all the week, you will have some gap. You could manage to restart only once per week, during the
-weekend the bot in that case, and to apply your strategies changes at this time.
-
-Finally, you can disable writing of OHLCS generated during watcher using the option --read-only.
-
-[More information about the structure and organisation of the data.](doc/dataset.md)
+[Information about the structure and organisation of the data.](doc/dataset.md)
 
 Note about performance, stability and scalability
 -------------------------------------------------
@@ -579,19 +573,15 @@ Because of the Python GIL, threads are efficients when used for the IO operation
 Performance seems good, tested with 100+ traded markets at trades/ticks level of watching.
 It could be interesting to use the asyncio capacities to distribute the computing, but in cost of extra communication, and an additional latency.
 
-I recommend to use only a single watcher/trader and a single strategy/appliance per profile.
-More will require extra threads, causing possible global latencies.
+Because you can execute many instances of SiiS, you can split your strategy into different instances. 
 
-In addition, if you have different set of parameters for markets you could prefer to use distinct profiles and then instance of SiiS.
-For example, you trade EURUSD and USDPY using the same profile and instance, but you have a separate profile and instance for trade the indices,
-and another for trading the commodities.
+For example, you trade pairs on USDT, but you distinct 4 sorts ok markets, serious coin, alt coin, shit-coin and low volume shit-coins.
+Then you could have 4 distinct profiles and then 4 instances of SiiS.
 
-Another example, you trade pairs on USDT, but you distinct 4 sorts ok markets, serious coin, alt coin and shit-coin and low volume shit-coins.
-Then you could have 4 distinct profiles and then 4 instances. And more probably you might have different strategies.
+Another example, an exchange offers trading on spot and some others pairs on margin, then you will start two different instances.
 
-Again another example, a broker offers trading on asset and some others pairs on margin, considers having different profiles, and then different instances too.
-
-Finally, you could set up your different VPS, one instance per VPS, lesser failures, lower resource usage, and you could adjust the hardware to the optimal point.
+Finally, you could set up your different VPS, one instance per VPS, for lesser failures, lower resource usage, 
+and you could adjust the hardware to the optimal point to minimize costs.
 
 Troubles
 --------
@@ -601,11 +591,11 @@ If you have some issues you can first check about [the know issues lists](doc/bu
 Disclaimer
 ----------
 
-The authors are not responsible for the losses on your trading accounts you will make using SiiS,
+The authors are not responsible for the losses on your trading accounts that you will make by using SiiS,
 neither of the data losses, corruptions, computers crashes or physical damages on your computers or on the cloud you use.
 
 The authors are not responsible for the losses due to the lack of the security of your systems.
 
 Use SiiS at your own risk, backtest strategies many times before running them on a live account. Test the stability,
-test the efficiency, take in account the potential execution slippage and latency caused by the network, the broker or
+test the efficiency, take in account the potential execution slippage and latency caused by the network, the exchange or
 by having an inadequate system.

@@ -97,7 +97,7 @@ class MonitorService(Service):
         self._host = self._monitoring_config.get('host', '127.0.0.1')
         self._port = self._monitoring_config.get('port', '8080')
 
-        # port can be override by command line --monitor-port= arg
+        # port can be overridden by command line --monitor-port= arg
         if options.get('monitor-port'):
             self._port = options['monitor-port']
 
