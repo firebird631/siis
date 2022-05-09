@@ -108,7 +108,14 @@ Take care to always have enough free disk space before to start a fetch or to ex
 
 ## User strategy persistence ##
 
-Explain ...
+In live mode ony (real trading), when the bot is quit, status of the strategy traders are saved into the database 
+using the name and identifier of the strategy, and the name of the trading account. 
+When restarting the bot settings are reloaded from profile configure, and status variables that are stored previously 
+into the database will override them.
+
+To force to use the initial profile setting you have to clear database related record or to change the identifier of 
+profile. **[WIP feature]** The **--tool=cleaner** using the **--object=profile-for-account:\<account-id\>** allow 
+you to clean the previously saved status.
 
 ## Trades persistence ##
 

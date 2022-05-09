@@ -21,7 +21,7 @@ Current supported version
 The current supported version is 0.3.7 or greater, and release 467 or above.
 Older versions are no longer supported. Any forks are not supported.
 
-Thanks to you use this official repository.
+Thanks to check that you use only the official repository : [https://github.com/firebird631/siis](https://github.com/firebird631/siis).
 
 Terminal Trader presentation
 ----------------------------
@@ -78,12 +78,13 @@ Features
   * [x] Binance Spot
   * [ ] Kraken Spot (WIP)
 * Web trader and terminal screen, display :
-  * account details and assets quantities
-  * tickers and markets information, 24h change and volume
-  * active and pending trades
-  * trades performance (historical and actives)
-  * alerts, signals, regions
-  * ...
+  * Account details and assets quantities
+  * Tickers and markets information, 24h change and volume
+  * Active and pending trades
+  * Historical trades
+  * Trading performance
+  * Alerts, Signals, Regions
+  * Log, Debug
 * Works on multiple timeframes from 1 second to 1 month
     * Can compute at each tick/trade or at any timeframe
 * Support for order-flow (WIP)
@@ -537,17 +538,17 @@ Interaction / CLI
 -----------------
 
 SiiS offers a basic but auto sufficient set of commands and keyboard shortcuts to manage and control your trades,
-looking your account, markets, tickers, trades, orders, positions and strategies performances.
+looking your account, markets, tickers, trades, orders, positions and strategy performance.
 
-In addition, there is a charting feature using matplotlib.
-The goal is to finish the monitoring service, and to realise a Web client to monitor and manage each instance.
+In addition, there is a charting feature using matplotlib only for debug purpose and that will be removed once the
+charting feature of the Web Trader will be completed.
 
 During the execution of the program you can type a command starting by a semicolon : plus the name of the command.
-Let's first type the :help command. To exit the command is q then type : followed by q and then press enter.
+Let's first type the :help command. To exit the command is quit, then type : followed by quit and then press enter.
 
-There is some direct keys, not using the semicolon, in default mode, and some complex commands in command mode.
+There is some direct keys, not using the semicolon, in default mode, and complex commands in command mode.
 
-The :help command give you the list a shortcut and commands, and :help \<command-name> to have detailed help
+The :help command give you the list of shortcuts and commands, and :help \<command-name\> give the detailed help
 for a specific command.
 
 [More information about the command line interface, the different view and interacting with them.](doc/cli.md)
@@ -555,7 +556,7 @@ for a specific command.
 Web trader / Web Application
 ----------------------------
 
-[SiiS offers a user-friendly Web trader for the users.](doc/webtrader/webtrader.md)
+[SiiS is provided with a user-friendly Web Trader.](doc/webtrader/webtrader.md)
 
 About data storage
 ------------------
@@ -586,7 +587,7 @@ and you could adjust the hardware to the optimal point to minimize costs.
 Troubles
 --------
 
-If you have some issues you can first check about [the know issues lists](doc/bugs.md).
+If you have some issues you can first check about [the know issues](doc/bugs.md).
 
 Disclaimer
 ----------

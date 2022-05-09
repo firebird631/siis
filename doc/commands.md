@@ -11,7 +11,9 @@ related to a trade, a trade operation or a strategy region.
 
 You should use the TAB key for auto-complete the arguments, it completes most of the arguments.
 
-## Help ##
+## General commands ##
+
+### Help ###
 
 ```:help (command)``` or ```:h```
 
@@ -22,13 +24,13 @@ Without extra argument it displays the help instructions and the list of command
 If an argument is provided it must be one of the listed command. It will display a detailed help for
 the specific command.
 
-## User ##
+### User ###
 
 ```:user``` or ```:u```
 
 Display the contextual user help.
 
-## Alias ##
+### Alias ###
 
 ```:alias F(X) (command)``` or ```:@ F(X) (command)```
 
@@ -50,15 +52,15 @@ Note that you can create incomplete alias like :
 
 Then you could complete with the name of the pair of others arguments.
 
-## Un-alias ##
+### Un-alias ###
 
 ```:alias F(X)``` or ```:^ F(X)```
 
 Delete a previously created alias, see Alias command.
 
-## Play ##
+### Play ###
 
-```:play (apps|notifiers) (identifier) (market)```
+```:play (strategy|notifiers) (identifier) (market)```
 
 Allow enabling (play) either a strategy or a notifier or a specific strategy market.
 
@@ -70,9 +72,9 @@ If a market is specified it will only activate this specific market.
 
 If a notifier identifier argument is defined then only this notifier is activated.
 
-## Pause ##
+### Pause ###
 
-```:pause (apps|notifiers) (identifier) (market)```
+```:pause (strategy|notifiers) (identifier) (market)```
 
 Allow disabling either a strategy/appliance or a notifier.
 
@@ -84,9 +86,9 @@ If a market is specified it will only pause this specific market.
 
 If a notifier identifier argument is defined then only this notifier is paused.
 
-## Info ##
+### Info ###
 
-```:info (apps|notifiers) (identifier) (market)```
+```:info (strategy|notifiers) (identifier) (market)```
 
 Returns the state either of strategies/appliances or of notifiers.
 
@@ -95,7 +97,9 @@ As with Play and Pause command it take the same arguments.
 For notifiers, it displays the activity status.
 For strategies, it displays the activity per market status, and the default trade amount/quantity/lot-size.
 
-## Long ##
+## Trading commands ##
+
+### Long ###
 
 This command refers to a market of a strategy/appliance.
 
@@ -119,7 +123,7 @@ Mandatory parameters are strategy/appliance and market. Others are optional and 
 	it must be one of the predefined timeframe values
 - \*quantity-rate Defined a size/amount factor from the predefined value (example x2.0 will double the default size, x0.5 will reduce by half)
 - quantity-rate% Defined a size/amount factor from the predefined value in percent (example 200% will double the default size, 50% will reduce by half)
-- xleverage Defined the Leverage of the trade in case of individual position leverage (rare case) (example x5 will define the leverage to 5)
+- x leverage Defined the Leverage of the trade in case of individual position leverage (rare case) (example x5 will define the leverage to 5)
 
 If neither of L@X and T@X are defined then the order is executed on market as taker, according to the order-book.
 If no timeframe is defined the default is 4h.
@@ -135,7 +139,7 @@ will create a long order with 200% of the configured quantity, enter at limit pr
 at 8000$ and a take profit maker order at 9400$. The trade will be auto-canceled if the limit price is not reached after 1 day,
 and the timeframe of the trade is 4 hour.
 
-## Short ##
+### Short ###
 
 This command refers to a market of a strategy/appliance.
 
@@ -158,7 +162,7 @@ Example :
 will create a short order, enter at limit price of 1.15$, place a stop-loss taker order at 1.16$
 and a take profit maker order at 1.14$. The trade will be never auto-canceled, and the timeframe of the trade is default to 4 hour.
 
-## Close ##
+### Close ###
 
 This command refers to a market of a strategy/appliance and an existing trade.
 
@@ -173,7 +177,7 @@ The identifier of a trade is a number, listed from the trade view.
 If the trade is not active (meaning no entered partially or fully) it will cancel the related entering order(s).
 If the trade is active it sends a close market order to the broker.
 
-## Clean ##
+### Clean ###
 
 This command refers to a market of a strategy/appliance and an existing trade.
 
@@ -196,7 +200,7 @@ will force the remove the undesirable trade entry.
 In some case the issue could be related to a persistent trade that is reloaded after restarting the bot but the tests let it pass,
 or if the retrieved asset quantity does not correspond (slightly) to the realized quantity.
 
-## Set quantity ##
+### Set quantity ###
 
 This command refers to a market of a strategy/appliance.
 
@@ -206,7 +210,7 @@ With info command it is possible to look how much amount/quantity/lot-size are o
 This value is not dynamically modified at this time, and you would increase/decrease it sometimes, depending of the risk 
 you want and of the previous profits.
 
-All arguments are mandatories.
+All arguments are mandatory.
 
 The quantity parameters is either an amount of the asset or a contract size, or a lot size, it depend of the type of the instrument.
 
@@ -235,7 +239,7 @@ Example :
 
 will modify the stop-loss price of the trade 2 to 8600$ and force to do it on broker side.
 
-## Modify Take Profit ##
+### Modify Take Profit ###
 
 This command refers to a market of a strategy/appliance and an existing trade.
 
@@ -262,7 +266,7 @@ the order on the broker, but depending on the strategy, it could detect the user
 or the strategy could override later this value, or other strategy could then disable its automated management, and no longer
 modify take-profit and stop-loss targets.
 
-## Assign ##
+### Assign ###
 
 This command refers to a market of a strategy/appliance and an existing quantity/position.
 
@@ -293,23 +297,23 @@ it will not able to look for free asset quantity.
 This is an advanced feature, you have to know what you do before using it, and knowing how the strategy 
 will integers with the trade.
 
-## Chart ##
+### Chart ###
 
 This command refers to a market of a strategy/appliance and a valid timeframe.
 
 ```:chart (appliance) (market) (timeframe)``` or ```:V (appliance) (market) (timeframe)```
 
-It open a new window with a matplotlib chart, as dynamic as possible, for the selected timeframe.
+It opens a new window with a matplotlib chart, as dynamic as possible, for the selected timeframe.
 Note this feature is only for dev/testing only, the charting client is very primitive and could have
 some bugs. The future monitoring WebClient will offer more user-friendly and powerful charting feature.
 
-## User Save ##
+### User Save ###
 
 ```:save``` or ```:s```
 
-Force to save now all strategies/appliances states and existing trades. This operation is done automatically at program exit.
+Force saving now all strategies/appliances states and existing trades. This operation is done automatically at program exit.
 
-## Add Dynamic Stop Loss ##
+### Add a Step Stop Loss ###
 
 This command refers to a trading operation of an existing trade.
 
@@ -329,7 +333,7 @@ Once executed the operation is deleted.
 
 You can add many step-stop-loss operation, at different level, then you could progressively secure your trade during the pump.
 
-## Remove Operation ##
+### Remove Operation ###
 
 This command refers to a trading operation of an existing trade.
 
@@ -342,7 +346,7 @@ Delete an existing operation on an existing trade.
 Trade and operation arguments are integer values.
 Once deleted an operation can be recreated.
 
-## Trade Info ##
+### Trade Info ###
 
 ```:trade (appliance) (market) (trade)``` or ```:T (appliance) (market) (trade)```
 
@@ -351,7 +355,7 @@ This command refers to a market of a strategy/appliance and an existing trade.
 Returns the list of the defined operation on a specific trade.
 You can remove them using the Remove Operation.
 
-## Add Range Region ##
+### Add Range Region ###
 
 This command refers to a strategy.
 
@@ -359,7 +363,7 @@ This command refers to a strategy.
 
 ...
 
-## Add Trend Region ##
+### Add Trend Region ###
 
 This command refers to a strategy.
 
@@ -367,10 +371,12 @@ This command refers to a strategy.
 
 ...
 
-## Remove Region ##
+### Remove Region ###
 
 This command refers to an existing region of a strategy.
 
 [More information about strategy/appliance regions.](doc/strategies/regions.md)
 
 ...
+
+@todo alerts, global commands ...

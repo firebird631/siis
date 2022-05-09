@@ -1,5 +1,6 @@
 # Watcher : Binance Spot #
 
-**Trader name : binance.com**
+**Watcher name : binance.com**
+**Host name : api.binance.com**
 
 ...

@@ -1,6 +1,6 @@
-# Watcher : BitMex  #
+# Trader : BitMex  #
 
-**Watcher name : bitmex.com**
+**Trader name : bitmex.com**
 **Host name : bitmex.com**
 **Demo host name : testnet.bitmex.com**
 

@@ -1,5 +1,6 @@
 # Watcher : Kraken Spot  #
 
-**Trader name : kraken.com**
+**Watcher name : kraken.com**
+**Host name : api.kraken.com**
 
 ...

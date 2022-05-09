@@ -1,5 +1,6 @@
 # Watcher : Binance Futures #
 
-**Trader name : binancefutures.com**
+**Watcher name : binancefutures.com**
+**Host name : api.binance.com**
 
 ...

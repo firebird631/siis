@@ -35,6 +35,8 @@ Sum order :
             - quote free + volume executé en quote
             - asset update signal
 
+#125 --object=profile-for-account:\<account-id\> pour supprimer les data de strategy
+
 #######
 # WIP #
 #######
