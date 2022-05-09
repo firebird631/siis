@@ -1,3 +1,6 @@
 __pycache__/
 *.py[cod]
 config/identity.py
+siis.sublime-project
+siis.sublime-workspace
+
