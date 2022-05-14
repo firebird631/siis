@@ -23,6 +23,12 @@ Older versions are no longer supported. Any forks are not supported.
 
 Thanks to check that you use only the official repository : [https://github.com/firebird631/siis](https://github.com/firebird631/siis).
 
+Introduction
+------------
+
+After reading this main documentation page you should go through the subsections.
+All subsections can be retrieved from the [documentation directory](doc/README.md)
+
 Terminal Trader presentation
 ----------------------------
 ![Intro image](doc/img/bt_dax_trades.png)
@@ -218,7 +224,7 @@ export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 Prefers the PostgreSQL database server for performance and because I have mostly tested with it.
 Another argument in favor of PostreSQL is in a future I could use of the extension TimescaleDB to improve timeseries tables performances.
 
-The sql/ directory contains the initial SQL script for creations of the tables.
+The _sql/_ directory contains the initial SQL script for creations of the tables.
 The first line of comment in these files describe a possible way to install them.
 
 #### PostgreSQL ####
@@ -360,21 +366,21 @@ The identity name must be specified, and need to be configured into the _identit
   * --filename Mandatory, Destination path or prefix for the filename
 * --import or --tool=importer Market data import tool from previous export, to use with --filename= argument
 * --clean or --tool=cleaner Remove some data format the database.
-* --statistics or --tool=statistics To export some statistics data to generate extra reports.
+* --statistics or --tool=statistics To export some _statistics data to generate extra reports._
 
 You need to define the name of the identity to use. This is related to the name defined into the identity.json file.
-Excepted for the tools (fetch, binarize, optimize, rebuild, sync, export, import) the name of the profile to use --profile=\<profilename> must be specified.
+Excepted for most of the tools, the name of the profile to use **--profile=\<profile-name\>** must be specified.
 
-There are different running mode, the normal mode, will start the watching, trading capacity (paper-mode, live or backtesting) and offering an interactive terminal session,
-or you can run the specifics tools (fetcher, binarizer, optimizer, syncer, rebuilder...).
+There are different running mode, the normal mode, will start the watchers, the trading capacity (paper-mode, live or backtesting) 
+and offers an interactive terminal session, or you can run the specifics tools (fetcher, binarizer, optimizer, syncer, rebuilder...).
 
 [More information about the different tools.](doc/tools)
 
 Fetcher : importing some historical market data
 -----------------------------------------------
 
-Fetching is the process of getting historical market data (details, OHLC, trade/tick).
-OHLC data goes into the SQL database, trades/ticks data goes to filesystem, organized into the _markets/_ directory.
+Fetching is the process of getting historical market data (details, OHLCs, trades/ticks).
+OHLCs data goes into the SQL database, trades/ticks data goes into the filesystem, organized into the _markets/_ directory.
 
 Starting with an example will be more intuitive :
 
@@ -499,18 +505,19 @@ Example :
 python siis.py real --profile=bitmex-xbteth1 --paper-mode
 ```
 
-Here 'real' mean for the name of the identity to use, related to API key.
+Here **real** mean for the name of the identity to use, related to the API key you want to connect with.
 
-Adding the --paper-mode will create a paper-trader instance in place of a connector to your real broker account.
-Initial amounts of margin or quantity of assets must be configured into the profiles.
+Adding the **--paper-mode** argument create a paper-trader instance in place of a connector to a real account.
+Initial amounts of margin or quantity of assets must be configured into the profile.
 
-At this time the slippage is not simulated. Orders are executed at bid/ofr price according to the direction.
-The order book is not used to look for the real offered quantities, then order are filled in one trade without slippage.
+At this time the slippage is not simulated. Orders are executed at bid/ask price according to the direction.
+The order book is not used to look for the real offered quantities, then order are filled in one trade 
+and without slippage.
 
-A slippage factor will be implemented sooner.
+A randomly chosen slippage factor could be implemented.
 
-In that case the watchers are running and stores OHLC and ticks/trade data (or not if --read-only is specified).
-In paper-mode OHLCs are stored to the database like in a normal live mode.
+In paper-mode OHLCs and tick/trade data are stored to the database like in a normal live mode if the arguments
+**--store-ohlc** or **--store-trade** are specified.
 
 [More information about the paper-mode.](doc/papermode.md)
 
@@ -525,33 +532,39 @@ Example :
 python siis.py real --profile=bitmex-xbteth1
 ```
 
-Trades will be executed on your trading account.
+Trades will be executed on your trading account on a real account.
 
-I'll suggest in a first time to test with a demo account or a testnet.
-Then, once you are ok with your strategy, with the interface, and the stability, and in a second time try with small amount,
-on real account, before finally letting the bot playing with bigger amount. Please read the disclaimer at the bottom of this file.
+I'll suggest you in a first time to test with a demo account or a testnet before to try with real account,
+or try with very small amount.
 
-By default, OHLCs are stored to the database in live mode, but the trade/ticks must be manually fetched,
-excepted for IG which by default store the ticks during live mode, because it is not possible to get them from history.
+Then, once you are ok with your strategy, with the interface, the stability, in a second time try with small amount,
+on real account, finally let the bot playing with bigger amount. Please read the disclaimer at the bottom of this file.
+
+By default, the stream of OHLCs are not stored to the database, you can add the **--store-ohlc** argument to save them.
+
+By default, the stream of trades/ticks are not stored to the database, you can add the **--store-trade** argument to save them.
+
+The strategy at startup will load, from the exchange, the necessary history of OHLC data.
+That OHLCs, loaded at the startup of the strategy are stored into the database.
 
 Interaction / CLI
 -----------------
 
 SiiS offers a basic but auto sufficient set of commands and keyboard shortcuts to manage and control your trades,
-looking your account, markets, tickers, trades, orders, positions and strategy performance.
+monitor your account, markets, tickers, trades, orders, positions, alerts and strategy performance.
 
-In addition, there is a charting feature using matplotlib only for debug purpose and that will be removed once the
-charting feature of the Web Trader will be completed.
+In addition, there is a charting feature using matplotlib, only for debug purpose, that will be removed once the
+charting feature of the Web-Trader will be completed.
 
-During the execution of the program you can type a command starting by a semicolon : plus the name of the command.
-Let's first type the :help command. To exit the command is quit, then type : followed by quit and then press enter.
+During the execution of the program you can type a command starting by a colon key : followed by the name of the command.
+Let's first type the **:help** command. To exit the command is quit, then type : followed by quit and then press enter.
 
-There is some direct keys, not using the semicolon, in default mode, and complex commands in command mode.
+There is some direct keys, not using the colon key, in default mode, and more specifics commands in command mode.
 
-The :help command give you the list of shortcuts and commands, and :help \<command-name\> give the detailed help
+The **:help** command give you the list of shortcuts and commands, and **:help \<command-name\>** give the detailed help
 for a specific command.
 
-[More information about the command line interface, the different view and interacting with them.](doc/cli.md)
+[More information about the command line interface, the different views and how to interact with.](doc/cli.md)
 
 Web trader / Web Application
 ----------------------------

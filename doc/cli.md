@@ -1,41 +1,81 @@
 # Command Line Interface #
 
-There is three sort of commands, on the terminal shell and 2 on the program terminal instance (default and command mode).
+There is three sort of commands :
+* On the terminal shell: command line arguments,
+* During the program terminal instance :
+  * Default mode,
+  * Command mode.
 
 ## Command Line Arguments ##
+
+To start SiiS bot, you must from the command line interpreter (bash, sh, command.exe...),
+type the command line.
 
 ```
 python siis.py <identity> [--help, --options...]
 ```
 
-[Those options are explained into the general README.md.](/README.md)
+* python is the interpreter that will execute the program
+* siis.py is the main program entry point
+* \<identity\> must be replaced by the name of a configured identity
+* Some options must be defined depending on your goal
+
+[Those options are explained into the general README.md.](../README.md)
 
 ## Program terminal instance ##
 
-Once started you could leave using the command ":q"\<enter-key>.
+Once started you could exit the bot using the command **:quit** followed by the ENTER key.
 
-There is a default mode, with some keys are bound to some functions, lower case and upper case letters, and digits,
-plus the arrows, shift arrows, and special case for the hjkl keys.
+There is a default mode, with some keys that are bound to some functions like changing the view,
+table ordering or grouping, formatting and navigation :
+* Upper case letters (capitals) are used to change the active view
+  * A for account detail view (total asset value, margin, margin level...)
+  * B for active alerts view
+  * C to clear the content of the debug or console views
+  * D for debug log view
+  * F for actives and pending trades view
+  * I for console log view
+  * M for market details view
+  * N for signal view
+  * O for order view
+  * P for performance view
+  * Q for asset details view (free, locked, total quantity, average entry price...)
+  * R for actives regions view
+  * S for history trades view
+  * T for market ticker view (bid, ask, mid, spread), 24h volume, last traded price...)
+  * W for triggered alerts view
+  * X for actives positions view
+  * Z for strategy-traders stats per market view
+* Navigation keys (h,j,k,l), arrows, page-up, page-down, home, end, plus(+), minus(-)
+* Formatting keys (comma(,), semicolon(;), ! and %)
+* Alias keys : F1 to F12 
+* Desktop notifier shortcut (a,n)
+* colon(:) key to activate the command mode
+* ENTER key to validate a typed command
+* ESCape key to cancel a currently typed command
 
-The command mode begin when you tip a semicolon ":" character.
+The command mode begin when you tip a colon ":" character. Press ESCape key to cancel.
 
 ### Default mode ###
 
-Global functions are accessible through direct keys :
-* changing the active view
-* clearing the console or signal or debug view content
-* toggle on the desktop notifier (popup and audio alerts)
-* global state
+In default mode, global functions are accessible through direct keys :
+* Changing the active view
+* Clearing the console or signal or debug view content
+* Toggle on the desktop notifier (popup and audio alerts)
+* Formatting options
+* Navigation trough tables and markets
+* Global state
 
 ### Command mode ###
 
 More specifics functions are obtained using the command mode :
-* appliance management (only of what is possible to modify)
-* trader info, control and strategy info, control
-* trade info and trade operations
-* region management and region info
-* charting
-* aliases
+* Create, modify, close or cancel trades
+* Getting information, modify some parameters
+* Create, modify, remove some alerts
+* Create, modify, remove some trading region
+* Charting (deprecated)
+* Setting, unsetting command aliases
+* ...
 
 ### Views ###
 
@@ -50,7 +90,7 @@ correctly map Shit+(Arrow-key), then it is a useful alternative.
 
 There are multiples regions :
 
-![View regions](/doc/img/viewareas1.png)
+![View regions](img/viewareas1.png)
 
 #### Content region ###
 
@@ -95,7 +135,7 @@ This is where the generated strategies/appliances signals goes, accessible throu
 * The order is from oldest to the most recent
 * The comma key ',' allow grouping signal entry and exit
 
-![Signals view](/doc/img/signalsview1.png)
+![Signals view](img/signalsview1.png)
 
 ...
 
@@ -103,7 +143,7 @@ This is where the generated strategies/appliances signals goes, accessible throu
 
 This display the status and details of the markets, accessible through the Shift+M shortcut.
 
-![Markets view](/doc/img/marketsview1.png)
+![Markets view](img/marketsview1.png)
 
 ...
 
@@ -111,7 +151,7 @@ This display the status and details of the markets, accessible through the Shift
 
 This display tickers of the markets, accessible through the Shift+T shortcut.
 
-![Tickers view](/doc/img/tickersview1.png)
+![Tickers view](img/tickersview1.png)
 
 ...
 
@@ -119,7 +159,7 @@ This display tickers of the markets, accessible through the Shift+T shortcut.
 
 This display accounts details like balance, margins, unrealized P/L are visibles, accessible through the Shift+A shortcut.
 
-![Accounts view](/doc/img/accountsview1.png)
+![Accounts view](img/accountsview1.png)
 
 ...
 
@@ -127,7 +167,7 @@ This display accounts details like balance, margins, unrealized P/L are visibles
 
 This display assets balances, free, locked, total, unrealized P/L are visibles, accessible through the Shift+Q shortcut.
 
-![Assets view](/doc/img/accountsview1.png)
+![Assets view](img/accountsview1.png)
 
 ...
 
@@ -137,7 +177,7 @@ This display current active, valid or pending trades for the current strategy, a
 
 The current displayed strategy/appliance can be switched using the Shift+Page-Up/Page-Down shortcuts.
 
-![Active trades view](/doc/img/activetradesview1.png)
+![Active trades view](img/activetradesview1.png)
 
 ...
 
@@ -147,17 +187,17 @@ This display history of realized trades for the current strategy, accessible thr
 
 The current displayed strategy/appliance can be switched using the Shift+Page-Up/Page-Down shortcuts.
 
-![Trades history view](/doc/img/tradeshistoryview1.png)
+![Trades history view](img/tradeshistoryview1.png)
 
 ...
 
-#### Performance/resume view ####
+#### Performance view ####
 
 This display sums of the different trades per market and the total for the current strategy, accessible through the Shift+P shortcut.
 
 The current displayed strategy/appliance can be switched using the Shift+Page-Up/Page-Down shortcuts.
 
-![Performances view](/doc/img/perfsview1.png)
+![Performances view](img/perfsview1.png)
 
 ...
 
@@ -170,14 +210,12 @@ To toggle the display of the order book use the Shift+B shortcut.
 The current displayed strategy/appliance can be switched using the Shift+Page-Up/Page-Down shortcuts.
 The current displayed market can be switched using the +/- shortcuts.
 
-... to be implemented ...
+#### Strategy state view ####
 
-#### Strategy/appliance indicators/state view ####
-
-Each strategy/appliance have some states, the ideas is to allow any strategy to display some living data, helping the
+Each strategy-trader have some states, the ideas is to allow any strategy to display some living data, helping the
 creation of a strategy, or helping to understand the state of some signals and indicators.
 
-The current displayed strategy/appliance can be switched using the Shift+Page-Up/Page-Down shortcuts.
+The current displayed strategy-trader can be switched using the Shift+Page-Up/Page-Down shortcuts.
 The current displayed market can be switched using the +/- shortcuts.
 
-... to be implemented ...
+...
