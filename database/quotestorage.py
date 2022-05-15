@@ -27,7 +27,7 @@ class QuoteStorage(object):
     timestamp(int ms since epoch) open(str) high(str) low(str) close(str) spread(str) volume(str)
 
     Price and volume should be formatted with the asset precision if possible but scientific notation
-    is tolerate.
+    is tolerated.
     """
 
     FLUSH_DELAY = 60.0

@@ -2,7 +2,7 @@
 
 Data are stored into the SQL database and into the filesystem.
 Data stored on the filesystem are located into the configured (.siis by default) directory,
-into your home ([see configuration for more details](config.md)).
+into your home ([see configuration for more details](../configuration/index.md)).
 
 ## Market dataset ##
 

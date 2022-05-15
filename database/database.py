@@ -150,7 +150,7 @@ class Database(object):
         self._quote_storages = {}   # QuoteStorage per market
         self._pending_quote_insert = set()
 
-        self._autocleanup = False
+        self._auto_cleanup = False
         self._fetch = False
         self._store_trade_text = False
         self._store_trade_binary = True
@@ -174,7 +174,7 @@ class Database(object):
         config = utils.load_config(options, 'databases')
 
         if 'siis' in config:
-            self._autocleanup = config['siis'].get('auto-cleanup', False)
+            self._auto_cleanup = config['siis'].get('auto-cleanup', False)
             self._store_trade_text = config['siis'].get('trade-text', False)
             self._store_trade_binary = config['siis'].get('trade-binary', True)
 
@@ -287,17 +287,17 @@ class Database(object):
         with self._mutex:
             # store market per keyed array
             key = data[0]+'/'+data[1]
-            tickstorage = self._tick_storages.get(key)
+            tick_storage = self._tick_storages.get(key)
 
-            if not tickstorage:
-                tickstorage = TickStorage(self._markets_path, data[0], data[1], text=self._store_trade_text,
-                                          binary=self._store_trade_binary)
-                self._tick_storages[key] = tickstorage
+            if not tick_storage:
+                tick_storage = TickStorage(self._markets_path, data[0], data[1],
+                                           text=self._store_trade_text, binary=self._store_trade_binary)
+                self._tick_storages[key] = tick_storage
 
-            tickstorage.store(data)
+            tick_storage.store(data)
 
-            # pending list of TickStorage controller having data to process to avoid to check everyone
-            self._pending_tick_insert.add(tickstorage)
+            # pending list of TickStorage controller having data to process to avoid checking everyone
+            self._pending_tick_insert.add(tick_storage)
 
         with self._condition:
             self._condition.notify()
@@ -327,18 +327,18 @@ class Database(object):
         with self._mutex:
             # store market per keyed array
             key = data[0]+'/'+data[1]
-            quotestorage = self._quote_storages.get(key)
+            quote_storage = self._quote_storages.get(key)
 
-            if not quotestorage:
-                quotestorage = QuoteStorage(self._markets_path, data[0], data[1], data[3],
-                                            text=self._store_trade_text, binary=self._store_trade_binary)
+            if not quote_storage:
+                quote_storage = QuoteStorage(self._markets_path, data[0], data[1], data[3],
+                                             text=self._store_trade_text, binary=self._store_trade_binary)
 
-                self._quote_storages[key] = quotestorage
+                self._quote_storages[key] = quote_storage
 
-            quotestorage.store(data)
+            quote_storage.store(data)
 
-            # pending list of QuoteStorage controller having data to process to avoid to check everyone
-            self._pending_quote_insert.add(quotestorage)
+            # pending list of QuoteStorage controller having data to process to avoid checking everyone
+            self._pending_quote_insert.add(quote_storage)
 
         with self._condition:
             self._condition.notify()

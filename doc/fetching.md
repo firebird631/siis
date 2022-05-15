@@ -1,3 +1,0 @@
-# Fetching of data from brokers #
-
-... complete ...

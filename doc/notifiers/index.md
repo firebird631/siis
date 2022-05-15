@@ -1,6 +1,15 @@
-# Notifying of signals, trades, accounts and system reports #
+# Notifiers #
 
 THe notifiers offers the possibility to send notification to external services and to the system desktop.
+It can notify of signals, trades, accounts and system reports.
+
+Different externals services can be notified :
+
+* [Desktop](desktop.md)
+* [Android](android.md) 
+* [Discord](discord.md)
+* [Telegram](telegram.md)
+* [Xmpp](xmpp.md)
 
 ### Configuration ###
 
@@ -18,29 +27,29 @@ It is possible to disable it from a profile.
 * Not support for Windows desktop for now
 * Customizable audio alerts at user level and at profile level
 
-[More details of the Desktop notifier...](notifiers/desktop.md)
+[More details of the Desktop notifier...](desktop.md)
 
 ## Android (tm) (c) Google ##
 
-An Android application is in development, and allow to receive notifications using the Firebase API.
+An Android application is in development, and allow receiving notifications using the Firebase API.
 This application could be used to receive public signals, or to receive your own private notification using your private auth-key.
 
-[More details of the Android (tm) notifier...](notifiers/android.md)
+[More details of the Android (tm) notifier...](android.md)
 
 ## Discord (tm) (c) ##
 
-Only webhooks supported. Help is welcome to uses Discord API for more advanced features.
+Only webhooks supported. Help is welcome to use Discord API for more advanced features.
 
-[More details of the Discord (tm) notifier...](notifiers/discord.md)
-
-## Xmpp (open-source protocol) ##
-
-Planned support, help is welcome.
-
-[More details of the XMPP notifier...](notifiers/xmpp.md)
+[More details of the Discord (tm) notifier...](discord.md)
 
 ## Telegram (tm) (c) ##
 
 Planned support, help is welcome.
 
-[More details of the Telegram (tm) notifier...](notifiers/telegram.md)
+[More details of the Telegram (tm) notifier...](telegram.md)
+
+## Xmpp (open-source protocol) ##
+
+Planned support, help is welcome.
+
+[More details of the XMPP notifier...](xmpp.md)

@@ -27,7 +27,7 @@ Introduction
 ------------
 
 After reading this main documentation page you should go through the subsections.
-All subsections can be retrieved from the [documentation directory](doc/README.md)
+All subsections can be retrieved from the [documentation directory](doc/index.md)
 
 Terminal Trader presentation
 ----------------------------
@@ -305,11 +305,11 @@ The first running create a data structure on your local user.
 The directory will contain 4 subdirectories:
 
 * **config/** contains important configurations files (described belows)
-  * [Explanations of the different configuration files](/doc/config.md)
+  * [Explanations of the different configuration files](/doc/configuration/index.md)
 * **log/** contains the log files
   * [Explanations of the different log files](/doc/logging.md)
 * **markets/** contains the market data with subdirectories for each exchange
-  * [Explanations of the markets data](/doc/dataset.md)
+  * [Explanations of the markets data](/doc/organisation/dataset.md)
 * **reports/** contains the reports of the strategies traders, and used by default for scripts executions results
   * Some strategy have the capacity to log trades, signals, performance and even more.
   * Some user script write files to disk by using this directory as default
@@ -439,7 +439,7 @@ This limit is quickly reached.
 Some others, like BitMex limit to 30 queries per second in non auth mode or 60 in auth mode. That mean get months of 
 data of trades could take more than a day.
 
-[More information about the fetching process and the different fetchers.](doc/fetching.md)
+[More information about the fetching process and the different fetchers.](doc/fetchers/index.md)
 
 Backtesting
 -----------
@@ -478,12 +478,12 @@ The idea is if you want to replay a recent period, and have the time to interact
 semi-automated day of scalping. The factor is a multiple of the time : 1 meaning real-time, then 60 mean 1 minute of 
 simulation per second.
 
-[More information about backtesting and its advanced usage.](doc/backtesting.md)
+[More information about backtesting and its advanced usage.](doc/backtesting/index.md)
 
 How to create or modify an existing strategy
 --------------------------------------------
 
-[A guide explaining how to create, modify and configure a strategy.](doc/strategy.md)
+[A guide explaining how to create, modify and configure a strategy.](doc/strategies/index.md)
 
 The winning strategy
 --------------------
@@ -519,7 +519,7 @@ A randomly chosen slippage factor could be implemented.
 In paper-mode OHLCs and tick/trade data are stored to the database like in a normal live mode if the arguments
 **--store-ohlc** or **--store-trade** are specified.
 
-[More information about the paper-mode.](doc/papermode.md)
+[More information about the paper-mode.](doc/papermode/index.md)
 
 Live-mode
 ---------
@@ -569,12 +569,12 @@ for a specific command.
 Web trader / Web Application
 ----------------------------
 
-[SiiS is provided with a user-friendly Web Trader.](doc/webtrader/webtrader.md)
+[SiiS is provided with a user-friendly Web Trader.](doc/webtrader/index.md)
 
 About data storage
 ------------------
 
-[Information about the structure and organisation of the data.](doc/dataset.md)
+[Information about the structure and organisation of the data.](doc/organisation/dataset.md)
 
 Note about performance, stability and scalability
 -------------------------------------------------
@@ -601,6 +601,11 @@ Troubles
 --------
 
 If you have some issues you can first check about [the know issues](doc/bugs.md).
+
+Support
+-------
+
+You can contact me for a private technical support.
 
 Disclaimer
 ----------

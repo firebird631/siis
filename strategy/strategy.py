@@ -824,7 +824,7 @@ class Strategy(Runnable):
 
     def send_initialize_strategy_trader(self, market_id: str):
         """
-        Force to wakeup a strategy-trader. This could be useful when the market is sleeping and there is
+        Force to wake up a strategy-trader. This could be useful when the market is sleeping and there is
         a user operation to perform.
         """
         strategy_trader = self._strategy_traders.get(market_id)
@@ -843,7 +843,7 @@ class Strategy(Runnable):
 
     def send_update_strategy_trader(self, market_id: str):
         """
-        Force to wakeup a strategy-trader. This could be useful when the market is sleeping and there is
+        Force to wake-up a strategy-trader. This could be useful when the market is sleeping and there is
         a user operation to perform.
         """
         strategy_trader = self._strategy_traders.get(market_id)

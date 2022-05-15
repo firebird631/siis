@@ -7,7 +7,7 @@
 The Web Trader is a more user-friendly interface that is served by the bot instance.
 Each instance can serve its own mini web-service, by setting the --monitor option on the CLI.
 
-The monitoring port is configured by the monitoring.json file ([see configuration](../config.md)).
+The monitoring port is configured by the monitoring.json file ([see configuration](../configuration/index.md)).
 It can be overridden by the CLI option **--monitor-port=\<port\>**.
 
 Example:

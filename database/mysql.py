@@ -705,7 +705,7 @@ class MySql(Database):
         # clean older ohlcs
         #
 
-        if self._autocleanup:
+        if self._auto_cleanup:
             if time.time() - self._last_ohlc_clean >= OhlcStorage.CLEANUP_DELAY:
                 try:
                     now = time.time()

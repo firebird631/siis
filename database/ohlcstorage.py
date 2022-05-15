@@ -247,7 +247,7 @@ class OhlcStorage(object):
         #     if do_flush:
         #         self.flush()
         #
-        #         if self._db._autocleanup:
+        #         if self._db._auto_cleanup:
         #             self.clean()
         #
         #         self._last_write = time.time()
