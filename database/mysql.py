@@ -33,12 +33,7 @@ class MySql(Database):
         super().__init__()
         self._db = None
         self._conn_params = ""
-        self.MySQLdb = None
-
-        try:
-            self.MySQLdb = import_module('MySQLdb', package='')
-        except ModuleNotFoundError as e:
-            logger.error(repr(e))
+        self.MySQLdb = import_module('MySQLdb', package='')
 
     def connect(self, config):
         if 'siis' in config and self.MySQLdb:

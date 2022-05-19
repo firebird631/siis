@@ -658,7 +658,7 @@ class StrategyMarginTrade(StrategyTrade):
             elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
                 prev_x = self.x
 
-                # either we have 'filled' component (partial qty) or the 'cumulative-filled' or the twice
+                # either we have 'filled' component (partial qty) or the 'cumulative-filled' or both
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     filled = data['cumulative-filled'] - self.x   # computed filled qty
                 elif data.get('filled') is not None and data['filled'] > 0:

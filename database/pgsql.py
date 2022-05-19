@@ -38,12 +38,7 @@ class PgSql(Database):
         super().__init__()
         self._db = None
         self._conn_str = ""
-        self.psycopg2 = None
-
-        try:
-            self.psycopg2 = import_module('psycopg2', package='')
-        except ModuleNotFoundError as e:
-            logger.error(repr(e))
+        self.psycopg2 = import_module('psycopg2', package='')
 
     def connect(self, config):
         if 'siis' in config and self.psycopg2:

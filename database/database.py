@@ -83,8 +83,9 @@ class Database(object):
 
     @classmethod
     def inst(cls):
-        if Database.__instance is None:
-            Database.__instance = Database()
+        # singleton is instantiated by the create method
+        # if Database.__instance is None:
+        #     Database.__instance = Database()
 
         return Database.__instance
 
