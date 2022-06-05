@@ -222,9 +222,10 @@ class StrategyInfoRestAPI(resource.Resource):
                 'spread': instr.market_spread,
                 'last-update-time': instr.last_update_time,
                 'sessions': {
-                    'evening': instr.evening_session,
-                    'overnight': instr.overnight_session,
-                    'week': instr.week_session
+                    'timezone': instr.timezone,
+                    'offset': instr.session_offset,
+                    'duration': instr.session_duration,
+                    'trading': instr.trading_sessions
                 },
                 'trade': {
                     'activity': strategy_trader.activity,       # bool

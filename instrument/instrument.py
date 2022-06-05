@@ -306,7 +306,7 @@ class Instrument(object):
                 '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', \
                 '_base', '_quote', '_trade', '_orders', \
                 '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', \
-                '_evening_session', '_overnight_session', '_week_session'
+                '_timezone', '_session_offset', '_session_duration', '_trading_sessions'
 
     _watchers: Dict[int, Watcher]
 
@@ -354,16 +354,16 @@ class Instrument(object):
         self._one_pip_means = 1.0
         self._value_per_pip = 1.0
 
-        # evening session from 00h00m00s000ms to 23h59m59s999ms in UTC
-        self._evening_session = (0.0, 24*60*60.0-0.001)
+        # evening session from 00h00m00s000ms to 23h59m59s999ms in UTC, tuple with float time offset and time duration
+        self._timezone = 0.0         # market timezone UTC+N
+        self._session_offset = 0.0   # day session offset from 00:00 in seconds
+        self._session_duration = 24*60*60.0  # day session duration in seconds
 
-        # no overnight session by default else a tuple of two durations in seconds
-        self._overnight_session = None
+        # allowed trading session (empty mean anytime) else must be explicit. each session is a tuple with
+        # an int day of week, int hour of day, int minute of day.
+        self._trading_sessions = []
 
-        # no week session mean every day markets, else a tuple of two float timedelta in seconds
-        self._week_session = None
-
-        self._wanted = []  # list of wanted timeframe before be ready (its only for initialization)
+        self._wanted = []  # list of wanted timeframe before be ready (it is only for initialization)
 
     def add_watcher(self, watcher_type: int, watcher: Watcher):
         if watcher:
@@ -512,28 +512,27 @@ class Instrument(object):
     #
 
     @property
-    def evening_session(self) -> Tuple[float, float]:
-        return self._evening_session
-
-    @property
-    def overnight_session(self) -> Union[Tuple[float, float], None]:
-        return self._overnight_session
-
-    @property
-    def has_overnight_session(self) -> bool:
-        return self._overnight_session is not None
+    def timezone(self) -> float:
+        return self._timezone
 
     @property
     def session_offset(self) -> float:
-        return -self._evening_session[0]
+        return self._session_offset
 
     @property
-    def week_session(self) -> Union[Tuple[float, float], None]:
-        return self._week_session
+    def session_duration(self) -> float:
+        return self._session_duration
 
     @property
-    def has_week_session(self) -> bool:
-        return self._week_session is not None
+    def has_trading_sessions(self) -> bool:
+        return len(self._trading_sessions) > 0
+
+    @property
+    def trading_session(self) -> List[Tuple[int, int, int]]:
+        """
+        @return: Empty list or each tuple is three values for day of week, hour of day, minute of day
+        """
+        return self._trading_sessions
 
     #
     # price/volume
@@ -1136,7 +1135,7 @@ class Instrument(object):
     def open_exec_price(self, direction: int, maker: bool = False) -> float:
         """
         Return the execution price if an order open a position.
-        It depend of the direction of the order and the market bid/ask prices.
+        It depends on the direction of the order and the market bid/ask prices.
         If position is long, then returns the market ask price.
         If position is short, then returns the market bid price.
         """
@@ -1150,7 +1149,7 @@ class Instrument(object):
     def close_exec_price(self, direction: int, maker: bool = False) -> float:
         """
         Return the execution price if an order/position is closing.
-        It depend of the direction of the order and the market bid/ask prices.
+        It depends on the direction of the order and the market bid/ask prices.
         If position is long, then returns the market bid price.
         If position is short, then returns the market ask price.
         """
@@ -1326,3 +1325,39 @@ class Instrument(object):
             return dt.timestamp()
 
         return 0.0
+
+    @staticmethod
+    def duration_from_str(duration: str):
+        if not duration or type(duration) is not str:
+            return None
+
+        parts = duration.split(':')
+        if len(parts) != 2:
+            return None
+
+        try:
+            hours = int(parts[0])
+            minutes = int(parts[1])
+        except ValueError:
+            return None
+
+        return hours * 60.0 + minutes
+
+    @staticmethod
+    def moment_from_str(moment: str):
+        # mon tue wed thu fri sat sun
+        if not moment or type(moment) is not str:
+            return None
+
+        return None
+        # parts = moment.split(':')
+        # if len(parts) != 2:
+        #     return None
+        #
+        # try:
+        #     hours = int(parts[0])
+        #     minutes = int(parts[1])
+        # except ValueError:
+        #     return None
+        #
+        # return hours * 60.0 + minutes

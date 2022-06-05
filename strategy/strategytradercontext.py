@@ -246,10 +246,41 @@ class EXEntry(EntryExit):
         # optional cautious, true by default
         self.cautious = params.get('cautious', True)
 
-        # 0.0 mean no check
-        self.risk = params.get('risk', 0.0)
-        self.reward = params.get('reward', 0.0)
-        self.max_spread = params.get('max-spread', 0.0)
+        # risk, 0.0 mean no check
+        risk = params.get('risk', 0.0)
+        if type(risk) in (float, int):
+            # value in delta price
+            self.risk = risk
+        elif type(risk) is not str:
+            raise ValueError("Invalid format 'risk' must be string, int or float for %s" % self.name())
+
+        if risk.endswith('pip'):
+            # value in pips
+            self.risk = float(risk[:-3]) * strategy_trader.instrument.one_pip_means
+
+        # reward
+        reward = params.get('reward', 0.0)
+        if type(reward) in (float, int):
+            # value in delta price
+            self.risk = reward
+        elif type(reward) is not str:
+            raise ValueError("Invalid format 'reward' must be string, int or float for %s" % self.name())
+
+        if reward.endswith('pip'):
+            # value in pips
+            self.reward = float(reward[:-3]) * strategy_trader.instrument.one_pip_means
+
+        # max-spread
+        max_spread = params.get('max-spread', 0.0)
+        if type(max_spread) in (float, int):
+            # value in delta price
+            self.max_spread = max_spread
+        elif type(max_spread) is not str:
+            raise ValueError("Invalid format 'max-spread' must be string, int or float for %s" % self.name())
+
+        if max_spread.endswith('pip'):
+            # value in pips
+            self.max_spread = float(max_spread[:-3]) * strategy_trader.instrument.one_pip_means
 
     def dumps(self) -> dict:
         result = super().dumps()
@@ -410,8 +441,6 @@ class StrategyTraderContext(StrategyTraderContextBase):
 
         self.pre_signal = None   # runtime current pullback pre-signal
         self.last_signal = None  # runtime last generated strategy signal
-
-        self.disengagements = []  # @todo loads/compile
 
         self.long_call = None
         self.short_call = None

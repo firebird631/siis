@@ -167,7 +167,7 @@ class TickBarVWAPIndicator(Indicator):
     """
     Volume Weighted Average indicator based on tick or trade and relate to tickbars.
 
-    The history depend of the length parameters. It is related the number of tickbars history needed.
+    The history depends on the length parameters. It is related the number of tickbars history needed.
     """
 
     __slots__ = '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', '_tops', '_bottoms', \
