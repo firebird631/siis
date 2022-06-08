@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 import math
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from common.utils import UTC, timeframe_to_str, truncate, decimal_place
@@ -193,6 +194,17 @@ class BuySellSignal(object):
         self._params = params
 
 
+@dataclass
+class TradingSession:
+    """
+    Instrument trading session dataclass.
+    """
+
+    day_of_week: int = 0
+    from_time: float = 0.0
+    to_time: float = 0.0
+
+
 class Instrument(object):
     """
     Instrument is the strategy side of the market model.
@@ -309,6 +321,7 @@ class Instrument(object):
                 '_timezone', '_session_offset', '_session_duration', '_trading_sessions'
 
     _watchers: Dict[int, Watcher]
+    _trading_sessions: List[TradingSession]
 
     def __init__(self, market_id: str, symbol: str, alias: Optional[str] = None):
         self._watchers = {}
@@ -360,7 +373,7 @@ class Instrument(object):
         self._session_duration = 24*60*60.0  # day session duration in seconds
 
         # allowed trading session (empty mean anytime) else must be explicit. each session is a tuple with
-        # an int day of week, int hour of day, int minute of day.
+        # an int day of week, float offset from current day in seconds
         self._trading_sessions = []
 
         self._wanted = []  # list of wanted timeframe before be ready (it is only for initialization)
@@ -528,7 +541,7 @@ class Instrument(object):
         return len(self._trading_sessions) > 0
 
     @property
-    def trading_session(self) -> List[Tuple[int, int, int]]:
+    def trading_session(self) -> List[TradingSession]:
         """
         @return: Empty list or each tuple is three values for day of week, hour of day, minute of day
         """
@@ -1303,6 +1316,38 @@ class Instrument(object):
         return self._fees[Instrument.TAKER][1]
 
     #
+    # configuration
+    #
+
+    def loads_session(self, data: Dict[str, Union[str, float, int]]):
+        """
+        Load trading sessions details from a dict.
+        @param data: session field (dict)
+        """
+        if 'timezone' in data:
+            self._timezone = float(data['timezone'])
+
+        if 'offset' in data:
+            self._session_offset = Instrument.duration_from_str(data['offset'])
+
+        if 'duration' in data:
+            self._session_duration = Instrument.duration_from_str(data['duration'])
+
+        if 'allowed' in data:
+            if type(data['trading']) is str:
+                self._trading_sessions = Instrument.sessions_from_str(data['trading'])
+
+            elif type(data['trading']) in (list, tuple):
+                for m in data['trading']:
+                    sessions = Instrument.sessions_from_str(m)
+                    if not sessions:
+                        continue
+
+                    for session in sessions:
+                        if session not in self._trading_sessions:
+                            self._trading_sessions.append(session)
+
+    #
     # static
     #
 
@@ -1344,20 +1389,49 @@ class Instrument(object):
         return hours * 60.0 + minutes
 
     @staticmethod
-    def moment_from_str(moment: str):
+    def sessions_from_str(moment: str) -> Union[List[TradingSession], None]:
         # mon tue wed thu fri sat sun
         if not moment or type(moment) is not str:
             return None
 
-        return None
-        # parts = moment.split(':')
-        # if len(parts) != 2:
-        #     return None
-        #
-        # try:
-        #     hours = int(parts[0])
-        #     minutes = int(parts[1])
-        # except ValueError:
-        #     return None
-        #
-        # return hours * 60.0 + minutes
+        days_of_week = {
+            "any": -2,
+            "dow": -1,
+            "mon": 0,
+            "tue": 1,
+            "wed": 2,
+            "thu": 3,
+            "fri": 4,
+            "sat": 5,
+            "sun": 6
+        }
+
+        parts = moment.split('/')
+        if len(parts) != 2:
+            return None
+
+        times = parts[1].split("-")
+        if len(times) != 2:
+            return None
+
+        if parts[0] not in days_of_week:
+            return None
+
+        fd = Instrument.duration_from_str(times[0])
+        td = Instrument.duration_from_str(times[1])
+
+        results = []
+
+        if parts[0] == "any":
+            # any days
+            for d in range(0, 7):
+                results.append(TradingSession(d, fd, td))
+        elif parts[1] == "dow":
+            # any days of week
+            for d in range(0, 5):
+                results.append(TradingSession(d, fd, td))
+        else:
+            # day is defined
+            results.append(TradingSession(days_of_week[parts[0]], fd, td))
+
+        return results

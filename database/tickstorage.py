@@ -28,7 +28,7 @@ class TickStorage(object):
     timestamp(int ms since epoch) bid(str) ask(str) last(str) volume(str) direction(signed char)
 
     Price and volume should be formatted with the asset precision if possible but scientific notation
-    is tolerate.
+    is tolerated.
     """
 
     FLUSH_DELAY = 60.0
@@ -145,6 +145,11 @@ class TickStorage(object):
                     self._binary_file.write(s)
 
                 n += 1
+
+        except TypeError as e:
+            # ignore them
+            logger.error(repr(e))
+
         except Exception as e:
             logger.error(repr(e))
 
@@ -238,7 +243,7 @@ class TickStreamer(object):
                 st = os.stat(pathname)
                 file_size = st.st_size
 
-                # directly seek to intial position to avoid useless parsing
+                # directly seek to initial position to avoid useless parsing
                 timestamp = self._curr_date.timestamp()
                 prev_timestamp = 0
                 pos = 0

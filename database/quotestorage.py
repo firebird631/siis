@@ -151,6 +151,11 @@ class QuoteStorage(object):
                     self._binary_file.write(s)
 
                 n += 1
+
+        except TypeError as e:
+            # ignore them
+            logger.error(repr(e))
+
         except Exception as e:
             logger.error(repr(e))
 

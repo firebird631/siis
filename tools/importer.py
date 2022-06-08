@@ -2,12 +2,13 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # SIIS and MT4, MT5 Importer tool.
-
+import signal
 import sys
+import traceback
 import zipfile
 import pathlib
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from instrument.instrument import Instrument
 from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_from_str, timeframe_to_str
@@ -33,6 +34,7 @@ class Importer(object):  # Tool
         self.prev_bid = None
         self.prev_ask = None
         self.prev_last = None
+        self.prev_datetime = None
 
 
 FORMAT_UNDEFINED = 0
@@ -135,12 +137,6 @@ def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
 
     timestamp = int(dt.timestamp() * 1000)
 
-    if from_date and dt < from_date:
-        return 0
-
-    if to_date and dt > to_date:
-        return 0
-
     if parts[2]:
         self.prev_bid = parts[2]
     
@@ -149,11 +145,22 @@ def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
 
     if parts[4]:
         self.prev_last = parts[4]
+    else:
+        # else use bid price
+        self.prev_last = self.prev_bid
 
     if parts[5]:
         fvol = parts[5]
     else:
         fvol = "1"
+
+    self.prev_datetime = dt
+
+    if from_date and dt < from_date:
+        return 0
+
+    if to_date and dt > to_date:
+        return 0
 
     Database.inst().store_market_trade((
         broker_id, market_id, timestamp,
@@ -252,12 +259,6 @@ def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
     dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S.%f').replace(tzinfo=UTC())
     timestamp = int(dt.timestamp() * 1000)
 
-    if from_date and dt < from_date:
-        return 0
-
-    if to_date and dt > to_date:
-        return 0
-
     if parts[2]:
         self.prev_bid = parts[2]
 
@@ -266,11 +267,22 @@ def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
 
     if parts[4]:
         self.prev_last = parts[4]
+    else:
+        # else use bid price
+        self.prev_last = self.prev_bid
 
     if parts[5]:
         ltv = parts[5]
     else:
-        ltv = "1"  # at least 1 tick mean 1 tick volume, but could depend of what we want
+        ltv = "1"  # at least 1 tick mean 1 tick volume, but could depend on what we want
+
+    self.prev_datetime = dt
+
+    if from_date and dt < from_date:
+        return 0
+
+    if to_date and dt > to_date:
+        return 0
 
     Database.inst().store_market_trade((
         broker_id, market_id, timestamp,
@@ -385,13 +397,13 @@ def adjust_from_date(broker_id, market_id, timeframe, from_date):
         last_tick = Database.inst().get_last_tick(broker_id, market_id)
         next_date = datetime.fromtimestamp(last_tick[0] + 0.001, tz=UTC()) if last_tick else None
 
-        return next_date if next_date > from_date else from_date
+        return next_date if next_date and from_date and next_date > from_date else from_date
     else:
         # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
         last_ohlc = Database.inst().get_last_ohlc(broker_id, market_id)
         last_date = datetime.fromtimestamp(last_ohlc.timestamp, tz=UTC()) if last_ohlc else None
 
-        return last_date if last_date >= from_date else from_date
+        return last_date if last_date and from_date and last_date >= from_date else from_date
 
 
 def do_importer(options):
@@ -410,7 +422,7 @@ def do_importer(options):
     filename = options.get('filename')
     detected_format = FORMAT_UNDEFINED
     detected_timeframe = None
-    
+
     is_mtx_tick = False
     is_mtx_time = False
     is_mtx_long = False
@@ -521,7 +533,7 @@ def do_importer(options):
             src.seek(0, 0)
 
     if detected_format == FORMAT_UNDEFINED:
-         error_exit(src, "Unknown file format")
+        error_exit(src, "Unknown file format")
 
     if detected_format in (FORMAT_MT4, FORMAT_MT5):
         if detected_timeframe is not None and timeframe is None:
@@ -593,6 +605,23 @@ def do_importer(options):
 
     total_count = 0
 
+    def tool_signal_handler(sig, frame):
+        Terminal.inst().info("User interruption !")
+        Terminal.inst().info("Imported %s samples" % total_count)
+
+        Terminal.inst().info("Flushing database...")
+        Terminal.inst().flush()
+
+        Database.terminate()
+
+        Terminal.inst().info("Importation done!")
+        Terminal.inst().flush()
+
+        Terminal.terminate()
+        sys.exit(1)
+
+    signal.signal(signal.SIGINT, tool_signal_handler)
+
     try:
         if detected_format == FORMAT_SIIS:
             cur_timeframe = None
@@ -616,27 +645,41 @@ def do_importer(options):
                     continue
 
                 if cur_timeframe == Instrument.TF_TICK:
-                    total_count += import_tick_siis_1_0_0(broker_id, market_id, cur_from_date, cur_to_date, row)
+                    total_count += import_tick_siis_1_0_0(broker_id, market_id,
+                                                          cur_from_date, cur_to_date, row)
 
                 elif cur_timeframe > 0:
-                    total_count += import_ohlc_siis_1_0_0(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
+                    total_count += import_ohlc_siis_1_0_0(broker_id, market_id, cur_timeframe,
+                                                          cur_from_date, cur_to_date, row)
 
         elif detected_format == FORMAT_MT4:
             cur_timeframe = timeframe if not is_mtx_tick else Instrument.TF_TICK
             cur_from_date = from_date
             cur_to_date = to_date
+            position = cur_from_date
 
             if cur_timeframe == Instrument.TF_TICK:
+                # do not overwrite ticks/trades/quotes
+                cur_from_date = adjust_from_date(broker_id, market_id, cur_timeframe, cur_from_date)
+                Terminal.inst().info("Start from %s..." % cur_from_date)
+
                 while 1:
                     row = src.readline()
                     if not row:
                         break
 
                     # do not overwrite ticks/trades/quotes
-                    cur_from_date = adjust_from_date(broker_id, market_id, cur_timeframe, cur_from_date)
+                    # cur_from_date = adjust_from_date(broker_id, market_id, cur_timeframe, cur_from_date)
+
+                    if position and cur_from_date and cur_from_date - position >= timedelta(days=1):
+                        position = cur_from_date
+                        Terminal.inst().info("Import progress %s..." % position)
 
                     row = row.rstrip("\n")
                     total_count += import_tick_mt4(tool, broker_id, market_id, cur_from_date, cur_to_date, row)
+
+                    if total_count > 0:
+                        cur_from_date = tool.prev_datetime
 
             elif cur_timeframe > 0:
                 if is_mtx_long:
@@ -646,7 +689,8 @@ def do_importer(options):
                             break
 
                         row = row.rstrip("\n")
-                        total_count += import_ohlc_mt4_long(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
+                        total_count += import_ohlc_mt4_long(broker_id, market_id, cur_timeframe,
+                                                            cur_from_date, cur_to_date, row)
                 else:
                     while 1:
                         row = src.readline()
@@ -654,24 +698,36 @@ def do_importer(options):
                             break
 
                         row = row.rstrip("\n")
-                        total_count += import_ohlc_mt4(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
+                        total_count += import_ohlc_mt4(broker_id, market_id, cur_timeframe,
+                                                       cur_from_date, cur_to_date, row)
 
         elif detected_format == FORMAT_MT5:
             cur_timeframe = timeframe if not is_mtx_tick else Instrument.TF_TICK
             cur_from_date = from_date
             cur_to_date = to_date
+            position = cur_from_date
 
             if cur_timeframe == Instrument.TF_TICK:
+                cur_from_date = adjust_from_date(broker_id, market_id, cur_timeframe, cur_from_date)
+                Terminal.inst().info("Start from %s..." % cur_from_date)
+
                 while 1:
                     row = src.readline()
                     if not row:
                         break
 
                     # do not overwrite ticks/trades/quotes
-                    cur_from_date = adjust_from_date(broker_id, market_id, cur_timeframe, cur_from_date)
+                    # cur_from_date = adjust_from_date(broker_id, market_id, cur_timeframe, cur_from_date)
+
+                    if position and cur_from_date and cur_from_date - position >= timedelta(days=1):
+                        position = cur_from_date
+                        Terminal.inst().info("Import progress %s..." % position)
 
                     row = row.rstrip("\n")
                     total_count += import_tick_mt5(tool, broker_id, market_id, cur_from_date, cur_to_date, row)
+
+                    if total_count > 0:
+                        cur_from_date = tool.prev_datetime
 
             elif cur_timeframe > 0:
                 if is_mtx_time:
@@ -681,7 +737,8 @@ def do_importer(options):
                             break
 
                         row = row.rstrip("\n")
-                        total_count += import_ohlc_mt5_time(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
+                        total_count += import_ohlc_mt5_time(broker_id, market_id, cur_timeframe,
+                                                            cur_from_date, cur_to_date, row)
                 else:
                     while 1:
                         row = src.readline()
@@ -689,10 +746,12 @@ def do_importer(options):
                             break
 
                         row = row.rstrip("\n")
-                        total_count += import_ohlc_mt5(broker_id, market_id, cur_timeframe, cur_from_date, cur_to_date, row)
+                        total_count += import_ohlc_mt5(broker_id, market_id, cur_timeframe,
+                                                       cur_from_date, cur_to_date, row)
 
     except Exception as e:
         error_logger.error(str(e))
+        print(traceback.format_exc())
     finally:
         src.close()
         src = None

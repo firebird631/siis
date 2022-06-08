@@ -251,36 +251,36 @@ class EXEntry(EntryExit):
         if type(risk) in (float, int):
             # value in delta price
             self.risk = risk
-        elif type(risk) is not str:
+        elif type(risk) is str:
+            if risk.endswith('pip'):
+                # value in pips
+                self.risk = float(risk[:-3]) * strategy_trader.instrument.one_pip_means
+        else:
             raise ValueError("Invalid format 'risk' must be string, int or float for %s" % self.name())
-
-        if risk.endswith('pip'):
-            # value in pips
-            self.risk = float(risk[:-3]) * strategy_trader.instrument.one_pip_means
 
         # reward
         reward = params.get('reward', 0.0)
         if type(reward) in (float, int):
             # value in delta price
-            self.risk = reward
-        elif type(reward) is not str:
+            self.reward = reward
+        elif type(reward) is str:
+            if reward.endswith('pip'):
+                # value in pips
+                self.reward = float(reward[:-3]) * strategy_trader.instrument.one_pip_means
+        else:
             raise ValueError("Invalid format 'reward' must be string, int or float for %s" % self.name())
-
-        if reward.endswith('pip'):
-            # value in pips
-            self.reward = float(reward[:-3]) * strategy_trader.instrument.one_pip_means
 
         # max-spread
         max_spread = params.get('max-spread', 0.0)
         if type(max_spread) in (float, int):
             # value in delta price
             self.max_spread = max_spread
-        elif type(max_spread) is not str:
+        elif type(max_spread) is str:
+            if max_spread.endswith('pip'):
+                # value in pips
+                self.max_spread = float(max_spread[:-3]) * strategy_trader.instrument.one_pip_means
+        else:
             raise ValueError("Invalid format 'max-spread' must be string, int or float for %s" % self.name())
-
-        if max_spread.endswith('pip'):
-            # value in pips
-            self.max_spread = float(max_spread[:-3]) * strategy_trader.instrument.one_pip_means
 
     def dumps(self) -> dict:
         result = super().dumps()

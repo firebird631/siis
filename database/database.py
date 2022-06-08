@@ -723,7 +723,7 @@ class Database(object):
 
     def process_tick(self):
         with self._mutex:
-            # is there some ticks to store
+            # are there some ticks to store
             if not self._pending_tick_insert:
                 return
 
@@ -742,7 +742,7 @@ class Database(object):
 
     def process_quote(self):
         with self._mutex:
-            # is there some quotes to store
+            # are there some quotes to store
             if not self._pending_quote_insert:
                 return
 
