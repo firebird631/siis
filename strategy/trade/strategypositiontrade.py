@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
@@ -41,8 +42,8 @@ class StrategyPositionTrade(StrategyTrade):
         self.create_oid = None   # related entry order id
         self.position_id = None  # related position id
 
-        self.position_stop = 0.0      # Non zero mean position had a stop defined on broker side
-        self.position_limit = 0.0     # Non zero mean position had a limit defined on broker side
+        self.position_stop = 0.0      # Non-zero mean position had a stop defined on broker side
+        self.position_limit = 0.0     # Non-zero mean position had a limit defined on broker side
         self.position_quantity = 0.0  # Current position quantity
 
         self.leverage = 1.0
@@ -162,23 +163,21 @@ class StrategyPositionTrade(StrategyTrade):
                     # cancel a partially filled trade means it is then fully filled
                     self._entry_state = StrategyTrade.STATE_FILLED
             else:
-                error = True
-                # @todo once implemented trader.order_info for IG
-                # data = trader.order_info(self.create_oid, instrument)
-                #
-                # if data is None:
-                #     # API error, do nothing need retry
-                #     error = True
-                #
-                # elif data['id'] is None:
-                #     # cannot retrieve the order, wrong id, no create order, nothing to do
-                #     self.create_ref_oid = None
-                #     self.create_oid = None
-                #
-                #     self._entry_state = StrategyTrade.STATE_CANCELED
-                # else:
-                #     # exists, do nothing need to retry
-                #     error = True
+                data = trader.order_info(self.create_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    error = True
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no create order, nothing to do
+                    self.create_ref_oid = None
+                    self.create_oid = None
+
+                    self._entry_state = StrategyTrade.STATE_CANCELED
+                else:
+                    # exists, do nothing need to retry
+                    error = True
 
         return not error
 
@@ -198,23 +197,21 @@ class StrategyPositionTrade(StrategyTrade):
 
                 return self.ACCEPTED
             else:
-                return self.ERROR
-                # @todo once implemented trader.order_info for IG
-                # data = trader.order_info(self.create_oid, instrument)
-                #
-                # if data is None:
-                #     # API error, do nothing need retry
-                #     return self.ERROR
-                #
-                # elif data['id'] is None:
-                #     # cannot retrieve the order, wrong id, no create order, nothing to do
-                #     self.create_ref_oid = None
-                #     self.create_oid = None
-                #
-                #     self._entry_state = StrategyTrade.STATE_CANCELED
-                # else:
-                #     # exists, do nothing need to retry
-                #     return self.ERROR
+                data = trader.order_info(self.create_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no create order, nothing to do
+                    self.create_ref_oid = None
+                    self.create_oid = None
+
+                    self._entry_state = StrategyTrade.STATE_CANCELED
+                else:
+                    # exists, do nothing need to retry
+                    return self.ERROR
 
         return self.NOTHING_TO_DO
 
@@ -260,20 +257,18 @@ class StrategyPositionTrade(StrategyTrade):
 
                 self._entry_state = StrategyTrade.STATE_CANCELED
             else:
-                return self.ERROR
-                # @todo once implemented trader.order_info for IG
-                # data = trader.order_info(self.create_oid, instrument)
-                #
-                # if data is None:
-                #     # API error, do nothing need retry
-                #     return self.ERROR
-                #
-                # elif data['id'] is None:
-                #     # cannot retrieve the order, wrong id, no create order
-                #     self.create_ref_oid = None
-                #     self.create_oid = None
-                # else:
-                #     return self.ERROR
+                data = trader.order_info(self.create_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no create order
+                    self.create_ref_oid = None
+                    self.create_oid = None
+                else:
+                    return self.ERROR
 
         if self.position_id:
             # most of the margin broker case we have a position id
@@ -312,7 +307,7 @@ class StrategyPositionTrade(StrategyTrade):
             if ref_order_id == self.create_ref_oid:
                 self.create_oid = data['id']
 
-                # init created timestamp at the create order open
+                # init created timestamp when create order open
                 if not self.eot:
                     self.eot = data['timestamp']
 
@@ -323,7 +318,7 @@ class StrategyPositionTrade(StrategyTrade):
                     self.tp = data['take-profit']
 
                 if self.e == 0:
-                    # because could occurs after position open signal
+                    # because could occur after position open signal
                     self._entry_state = StrategyTrade.STATE_OPENED
 
         elif signal_type == Signal.SIGNAL_ORDER_DELETED:
@@ -360,12 +355,12 @@ class StrategyPositionTrade(StrategyTrade):
                 # if info == "closed" or info == "partially-closed":
                 #     print(data)
 
-                # if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                #     filled = data['cumulative-filled'] - self.e  # compute filled qty
-                # elif data.get('filled') is not None and data['filled'] > 0:
-                #     filled = data['filled']
-                # else:
-                #     filled = 0
+                if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
+                    filled = data['cumulative-filled'] - self.e  # compute filled qty
+                elif data.get('filled') is not None and data['filled'] > 0:
+                    filled = data['filled']
+                else:
+                    filled = 0
 
                 # if data.get('avg-price') is not None and data['avg-price'] > 0:
                 #     # in that case we have avg-price already computed
@@ -378,7 +373,7 @@ class StrategyPositionTrade(StrategyTrade):
                 #     # no have uses order price
                 #     self.aep = self.op
 
-                # # cumulative filled entry qty
+                # cumulative filled entry qty
                 # if data.get('cumulative-filled') is not None:
                 #     self.e = data.get('cumulative-filled')
                 # elif filled > 0:
@@ -442,6 +437,10 @@ class StrategyPositionTrade(StrategyTrade):
                 elif last_qty >= self.oq:
                     self._entry_state = StrategyTrade.STATE_FILLED
 
+                    # entry cannot longer be canceled once fully filled
+                    self.create_oid = None
+                    self.create_ref_oid = None
+
             # retains the trade timestamp
             self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
@@ -491,6 +490,10 @@ class StrategyPositionTrade(StrategyTrade):
                         self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
                     elif last_qty >= self.oq:
                         self._entry_state = StrategyTrade.STATE_FILLED
+
+                        # entry cannot longer be canceled once fully filled
+                        self.create_oid = None
+                        self.create_ref_oid = None
 
             # keep for close and for delta computation on update
             self.position_quantity = last_qty
@@ -667,6 +670,7 @@ class StrategyPositionTrade(StrategyTrade):
 
             if not create_order:
                 # need to lookup history to know if positions exists/existed
+                data = trader.order_info(self.create_oid, instrument)
                 # order_history = trader.order_history(self.create_oid, self.create_ref_oid)
                 # if order_history:
                 #     # @todo compute history, and current state, and retrieve position if still exists
@@ -694,7 +698,7 @@ class StrategyPositionTrade(StrategyTrade):
                 self._exit_state = self.STATE_FILLED
 
         elif self._exit_state == self.STATE_FILLED: 
-            # was already filled... might not occurs but check for it
+            # was already filled... might not occur but check for it
             return 1  # position or create_order
 
         # qty/avg price/timestamp update if possible

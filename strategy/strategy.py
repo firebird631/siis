@@ -1016,6 +1016,13 @@ class Strategy(Runnable):
                                     strategy_trader.instrument.ack_timeframe(0)
 
                                 do_update.add(strategy_trader)
+                        else:
+                            with strategy_trader.mutex:
+                                if initial:
+                                    # empty ticks acquired
+                                    strategy_trader.instrument.ack_timeframe(0)
+
+                                do_update.add(strategy_trader)
 
                 elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA_BULK:
                     # incoming bulk of history candles
@@ -1046,6 +1053,22 @@ class Strategy(Runnable):
                                     # timeframe acquired
                                     instrument.ack_timeframe(signal.data[1])
 
+                                strategy_trader.on_received_initial_candles(signal.data[1])
+
+                            do_update.add(strategy_trader)
+                        else:
+                            # initials candles loaded but empty results
+                            if initial:
+                                instrument = strategy_trader.instrument
+
+                                logger.debug("Retrieved no OHLCs for %s in %s" % (
+                                    instrument.market_id, timeframe_to_str(signal.data[1])))
+
+                                with strategy_trader.mutex:
+                                    # timeframe acquired
+                                    instrument.ack_timeframe(signal.data[1])
+
+                                # necessary call for strategy complete initialization
                                 strategy_trader.on_received_initial_candles(signal.data[1])
 
                             do_update.add(strategy_trader)
@@ -1163,15 +1186,15 @@ class Strategy(Runnable):
                     # trade signal
                     self.order_signal(signal.signal_type, signal.data)
 
-        if self.service.backtesting:
-            # process one more backtest step
-            with self._mutex:
-                next_bt_upd = self._next_backtest_update
-                self._next_backtest_update = None
-
-            if next_bt_upd:
-                self.backtest_update(next_bt_upd[0], next_bt_upd[1])
-        else:
+        # if self.service.backtesting:
+        #     # process one more backtest step
+        #     with self._mutex:
+        #         next_bt_upd = self._next_backtest_update
+        #         self._next_backtest_update = None
+        #
+        #     if next_bt_upd:
+        #         self.backtest_update(next_bt_upd[0], next_bt_upd[1])
+        if not self.service.backtesting:  # else:
             # normal processing
             if do_update:
                 if len(self._strategy_traders) >= 1:
@@ -1216,8 +1239,8 @@ class Strategy(Runnable):
         updated = feeder.feed(timestamp)
 
         if trader and updated:
-            # update the market instrument data before processing
-            # but we does not have the exact base exchange rate and contract size, its emulated in the paper trader
+            # update the market instrument data before processing,
+            # but we do not have the exact base exchange rate and contract size, it is emulated in the paper trader
 
             # the feeder update the instrument price data, so use them directly
             trader.on_update_market(instrument.market_id, True, instrument.last_update_time,
@@ -1228,8 +1251,9 @@ class Strategy(Runnable):
             self._update_strategy(self, strategy_trader)
 
     def backtest_update(self, timestamp: float, total_ts: float):
+
         """
-        Process the backtesting update, for any instrument feeds candles to instruments and does the necessary updates.
+        Process the backtesting update, for any instrument feeds candles to instrument and does the necessary updates.
         Override only if necessary. This default implementation should suffice.
 
         The strategy_trader list here is not mutex, because it backtesting context we never could add or remove one.

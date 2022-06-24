@@ -49,10 +49,12 @@ class StrategyDataFeeder(object):
         Initialize data streamer.
         """
         for tf in self._timeframes:
-            self._candle_streamer[tf] = Database.inst().create_ohlc_streamer(watcher_name, self._market_id, tf, from_date=from_date, to_date=to_date)
+            self._candle_streamer[tf] = Database.inst().create_ohlc_streamer(watcher_name, self._market_id, tf,
+                                                                             from_date=from_date, to_date=to_date)
 
         if self._fetch_ticks:
-            self._tick_streamer = Database.inst().create_tick_streamer(watcher_name, self._market_id, from_date=from_date, to_date=to_date)
+            self._tick_streamer = Database.inst().create_tick_streamer(watcher_name, self._market_id,
+                                                                       from_date=from_date, to_date=to_date)
 
         self._initialized = True
 
@@ -71,7 +73,7 @@ class StrategyDataFeeder(object):
     def feed(self, timestamp):
         """
         Feed the next candles to fill the passed timestamp, for the predefined timeframes and instrument.
-        If one ore more data are feds then returns the list of updated units of time.
+        If one or more data are feds then returns the list of updated units of time.
 
         @return list of updated timeframe sorted from lesser to higher.
         """
@@ -87,7 +89,7 @@ class StrategyDataFeeder(object):
             if streamer is None or streamer.finished():
                 continue
 
-            # bufferize
+            # buffer
             candles = streamer.next(timestamp)
 
             if candles:

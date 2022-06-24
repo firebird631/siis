@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Union, Optional
 
+from common.utils import UTC
+
 if TYPE_CHECKING:
     from trader.service import TraderService
     from trader.market import Market
@@ -359,6 +361,17 @@ class IGTrader(Trader):
 
         except IGException as e:
             error_logger.error("%s except on order %s cancellation - cause : %s !" % (self.name, order_id, str(e)))
+            # reason = None
+            #
+            # try:
+            #     err_data = json.loads(str(e))
+            #     if type(err_data) is dict:
+            #         reason = err_data.get('errorCode', None)
+            # except Exception:
+            #     pass
+            #
+            # if reason == "error.service.delete.working.order.not.found":
+            #     return Order.REASON_ERROR
 
             # @todo reason to error
             return Order.REASON_ERROR
@@ -456,8 +469,157 @@ class IGTrader(Trader):
         return True
 
     def order_info(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> Union[dict, None]:
-        # @todo
-        return None
+        """
+        Retrieve the detail of an order.
+
+        @param order_id:
+        @param market_or_instrument:
+        @return:
+
+        @todo Must include more details
+        @note https://developers.ig.com/rest-trading-api-reference/service-detail?id=612
+        """
+        if not order_id or not market_or_instrument:
+            return None
+
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to retrieve order info because of missing connector" % (self.name,))
+            return None
+
+        try:
+            results = self._watcher.connector.ig.fetch_deal_by_deal_reference(order_id, retry=False)
+        except Exception:
+            # None as error
+            return None
+
+        if results:  # and results.get('dealId', "") == order_id:
+            order_data = results
+
+            try:
+                # 'dealId': str
+                symbol = order_data.get('epic')  # 'expiry': '-'
+                market = self.market(symbol)
+
+                if not market:
+                    return None
+
+                price = None
+                stop_price = None
+                completed = False
+                order_ref_id = ""
+                event_timestamp = datetime.strptime(order_data['date'], '%Y-%m-%dT%H:%M:%S.%f').replace(
+                    tzinfo=UTC()).timestamp()
+
+                # 'trailingStop': False
+                # 'profit': None
+                # 'reason': 'SUCCESS'
+
+                if order_data['dealStatus'] == 'ACCEPTED':
+                    pass
+                elif order_data['dealStatus'] == 'REJECTED':
+                    pass
+
+                if order_data['status'] == 'OPEN':
+                    status = 'opened'
+                elif order_data['status'] == 'AMENDED':
+                    status = 'opened'
+                elif order_data['status'] == 'PARTIALLY_CLOSED':
+                    status = 'opened'
+                elif order_data['status'] == 'CLOSED':
+                    status = 'closed'
+                    completed = True
+                elif order_data['status'] == 'DELETED':
+                    status = 'deleted'
+                else:
+                    status = ""
+
+                if order_data.get('dealReference'):
+                    order_ref_id = order_data['dealReference']
+
+                if order_data.get('orderType'):
+                    if order_data['orderType'] == "LIMIT":
+                        order_type = Order.ORDER_LIMIT
+                        price = float(order_data['level']) if 'level' in order_data else None
+                    elif order_data['orderType'] == "STOP":
+                        order_type = Order.ORDER_STOP
+                        stop_price = float(order_data['level']) if 'level' in order_data else None
+                    else:
+                        order_type = Order.ORDER_MARKET
+                else:
+                    order_type = Order.ORDER_MARKET
+
+                if order_data.get('timeInForce'):
+                    if order_data['timeInForce'] == "GOOD_TILL_CANCELLED":
+                        time_in_force = Order.TIME_IN_FORCE_GTC
+                    elif order_data['timeInForce'] == "GOOD_TILL_DATE":
+                        time_in_force = Order.TIME_IN_FORCE_GTD
+                        # order_data['goodTillDate']   @todo till date
+                        # expiry
+                    else:
+                        time_in_force = Order.TIME_IN_FORCE_GTC
+                else:
+                    time_in_force = Order.TIME_IN_FORCE_GTC
+
+                stop_distance = float(order_data['stopDistance']) if order_data.get('stopDistance') is not None else None
+                # 'stopLevel': None
+                limit_distance = float(order_data['limitDistance']) if order_data.get('limitDistance') is not None else None
+                # 'limitLevel': None
+                # guaranteed_stop = order_data.get('guaranteedStop', False)
+                # currency = data.get('currency', "")  # 'profitCurrency'
+
+                post_only = False
+
+                cumulative_filled = float(order_data['size'])
+                order_volume = order_data['size']
+                fully_filled = completed
+
+                # if cumulative_filled >= order_volume:
+                #     fully_filled = True
+
+                # # trades = array of trade ids related to order (if trades info requested and data available)
+                # trades = []
+
+                # in 'affectedDeals' : [{}]
+                # 'dealId': str
+                # 'status': 'AMENDED' 'DELETED' 'FULLY_CLOSED' 'OPENED' 'PARTIALLY_CLOSED'
+
+                order_info = {
+                    'id': order_id,
+                    'symbol': symbol,
+                    'status': status,
+                    'ref-id': order_ref_id,
+                    'direction': Order.LONG if order_data.get('direction', "BUY") == "BUY" else Order.SHORT,
+                    'type': order_type,
+                    'timestamp': event_timestamp,
+                    'avg-price': float(order_data['level']),
+                    'quantity': order_volume,
+                    'cumulative-filled': cumulative_filled,
+                    'cumulative-commission-amount': 0,
+                    'price': price,
+                    'stop-price': stop_price,
+                    'time-in-force': time_in_force,
+                    'post-only': post_only,
+                    # 'close-only': ,
+                    # 'reduce-only': ,
+                    'stop-loss': stop_distance,
+                    'take-profit': limit_distance,
+                    'fully-filled': fully_filled
+                    # 'trades': trades
+                }
+
+                return order_info
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+                # error during processing
+                return None
+
+        # empty means success returns but does not exist
+        return {
+            'id': None
+        }
 
     #
     # global accessors

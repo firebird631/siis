@@ -433,7 +433,8 @@ class StrategyService(Service):
                                 _strategy.backtest_update(self.current, self.end)
 
                                 if self.time_factor > 0:
-                                    # wait factor of time step, so 1 mean realtime simulation, 0 mean as fast as possible
+                                    # wait factor of time step, so 1 mean realtime simulation,
+                                    # 0 mean as fast as possible
                                     time.sleep((1/self.time_factor)*self.timestep)
 
                                 self.current += self.timestep  # add one time step

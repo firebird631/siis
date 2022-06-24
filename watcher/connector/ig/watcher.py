@@ -553,12 +553,17 @@ class IGWatcher(Watcher):
                 elif market_id in self._cached_tick:
                     ltv = self._cached_tick[market_id][4]
 
+                # cache for when a value is not defined
+                self._cached_tick[market_id] = (utm, bid, ask, price, ltv)
+
                 if utm is None or bid is None or ask is None:
                     # need all information, wait the next one
                     return
 
-                # cache for when a value is not defined
-                self._cached_tick[market_id] = (utm, bid, ask, price, ltv)
+                if price is None:
+                    # no traded price, emulate it as debug option
+                    price = (float(bid) + float(ask)) * 0.5
+                    # return
 
                 tick = (float(utm) * 0.001, float(bid), float(ask), float(price), float(ltv or "0"), 0)
                 spread = tick[2] - tick[1]

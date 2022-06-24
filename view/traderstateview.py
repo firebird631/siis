@@ -28,8 +28,8 @@ class TraderStateView(TableView):
     """
     Trader state view.
     Display a specific strategy trader for an instrument, in details,
-    the differents globals states, and the per timeframes states and indicators.
-    It depend of the specific implementation per strategy.
+    the different globals states, and the per timeframes states and indicators.
+    It depend on the specific implementation per strategy.
     """
 
     REFRESH_RATE = 60

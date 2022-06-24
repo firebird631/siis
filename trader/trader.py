@@ -449,14 +449,14 @@ class Trader(Runnable):
     def create_order(self, order: Order, market_or_instrument: Union[Market, Instrument]) -> int:
         """
         Create an order. The symbol of the order must be on of the trader instruments.
-        @note This call depend of the state of the connector.
+        @note This call depend on the state of the connector.
         """
         return 0
 
     def cancel_order(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> int:
         """
         Cancel an existing order. The symbol of the order must be on of the trader instruments.
-        @note This call depend of the state of the connector.
+        @note This call depend on the state of the connector.
         """
         return 0
 

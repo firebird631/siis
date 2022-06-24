@@ -584,7 +584,7 @@ class KrakenTrader(Trader):
                 # error during processing
                 return None
 
-        # empty means success returns but does not exists
+        # empty means success returns but does not exist
         return {
             'id': None
         }

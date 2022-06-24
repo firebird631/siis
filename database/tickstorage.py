@@ -176,7 +176,6 @@ class TickStreamer(object):
         @param from_date datetime Object
         @param to_date datetime Object
         """
-
         self._markets_path = markets_path
         self._broker_id = broker_id
         self._market_id = market_id

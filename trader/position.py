@@ -327,7 +327,7 @@ class Position(Keyed):
 
     def price_diff(self, market: Market) -> float:
         """
-        Difference of price from entry to current market price, depending of the direction.
+        Difference of price from entry to current market price, depending on the direction.
         """
         if market is None:
             return 0.0

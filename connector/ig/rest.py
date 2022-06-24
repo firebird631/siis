@@ -343,7 +343,7 @@ class IGService:
 
     # -------- DEALING -------- #
 
-    def fetch_deal_by_deal_reference(self, deal_reference, session=None):
+    def fetch_deal_by_deal_reference(self, deal_reference, session=None, retry=True):
         """
         Returns a deal confirmation for the given deal reference
         """
@@ -356,6 +356,15 @@ class IGService:
         for i in range(5):
             response = self._req(action, endpoint, params, session)
             if response.status_code == 404:
+                # 404 error.confirms.deal-not-found Deal confirmation not found
+                err_code = json.loads(response.text).get('errorCode', "")
+                logger.debug(response.text)
+
+                if err_code == "error.confirms.deal-not-found" and not retry:
+                    return {}
+                elif err_code == "invalid.url":
+                    break
+
                 logger.info("Deal reference %s not found, retrying." % deal_reference)
                 time.sleep(1)
             else:
